@@ -1,0 +1,879 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Talenta siswa · Kesiswaan</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Urbanist:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F4F5FB;font-family:"Plus Jakarta Sans",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;color:#151A33;-webkit-font-smoothing:antialiased}
+*{box-sizing:border-box}
+a{color:#3148D6}a:hover{color:#2638B0}
+h1,h2,h3,.display{font-family:"Urbanist","Plus Jakarta Sans",system-ui,sans-serif;letter-spacing:-0.01em}
+.page{background:radial-gradient(900px 320px at 88% -8%,#ECE8FF 0%,rgba(236,232,255,0) 70%),radial-gradient(760px 300px at 28% -14%,#E2F0FF 0%,rgba(226,240,255,0) 70%),#F4F5FB}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:44px;padding:0 18px;border-radius:12px;font:600 15px/1 "Plus Jakarta Sans",system-ui,sans-serif;border:1px solid transparent;cursor:pointer;text-decoration:none;white-space:nowrap}
+.btn-primary{background:#3148D6;color:#FFFFFF;box-shadow:0 8px 18px -10px rgba(49,72,214,.65)}
+.btn-primary:hover{background:#2638B0;color:#FFFFFF}
+.btn-quiet{background:#FFFFFF;color:#151A33;border-color:#DCDFEC}
+.btn-quiet:hover{background:#F4F5FB;color:#151A33}
+.btn-soft{background:#ECEFFF;color:#2A3CB8}
+.btn-soft:hover{background:#DFE4FF;color:#2A3CB8}
+.btn-danger{background:#FFFFFF;color:#B42318;border-color:#F3C4BE}
+.btn-danger:hover{background:#FDECEA;color:#B42318}
+.btn-sm{height:36px;padding:0 14px;font-size:14px;border-radius:10px}
+.btn:focus-visible,.nav:focus-visible,.input:focus-visible,.icon-btn:focus-visible,.tab:focus-visible,.pick:focus-visible{outline:3px solid #A9B6F5;outline-offset:2px}
+.icon-btn{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:12px;border:1px solid #E7E9F3;background:#FFFFFF;color:#4A5068;cursor:pointer;position:relative;text-decoration:none}
+.icon-btn:hover{background:#F4F5FB;color:#151A33}
+.dot{position:absolute;top:8px;right:9px;width:8px;height:8px;border-radius:999px;background:#3148D6;border:2px solid #FFFFFF}
+.card{background:#FFFFFF;border:1px solid #E7E9F3;border-radius:20px;box-shadow:0 1px 2px rgba(20,24,60,.04),0 10px 28px -18px rgba(20,24,60,.18)}
+.chip{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 10px;border-radius:999px;font-size:12.5px;font-weight:600;white-space:nowrap}
+.c-blue{background:#ECEFFF;color:#2A3CB8}
+.c-green{background:#E4F5EA;color:#1B6B45}
+.c-orange{background:#FFEEDD;color:#9A3F00}
+.c-red{background:#FDECEA;color:#B42318}
+.c-gray{background:#EEF0F6;color:#4A5068}
+.c-gold{background:#FFF3D1;color:#6B4E00}
+.c-glass{background:rgba(255,255,255,.82);color:#151A33}
+.b-sains{background:#E6F0FF;color:#1D56AD}
+.b-riset{background:#F0EBFF;color:#5534B8}
+.b-seni{background:#FDE8F0;color:#A61F54}
+.b-olahraga{background:#E0F4F8;color:#0B6577}
+.cover-sains{background:linear-gradient(135deg,#DCE9FF,#C3D8FF);color:#1D56AD}
+.cover-riset{background:linear-gradient(135deg,#EEE7FF,#D9CCFF);color:#5534B8}
+.cover-seni{background:linear-gradient(135deg,#FFE6EF,#FFCFE0);color:#A61F54}
+.cover-olahraga{background:linear-gradient(135deg,#DDF4F8,#BFE8F0);color:#0B6577}
+.label{font-size:13px;font-weight:600;color:#4A5068}
+.input{height:46px;width:100%;border:1px solid #DCDFEC;border-radius:12px;padding:0 14px;font:500 15px "Plus Jakarta Sans",system-ui,sans-serif;color:#151A33;background:#FFFFFF}
+.input::placeholder{color:#8A90A6}
+textarea.input{height:auto;padding:12px 14px;line-height:1.5;resize:vertical}
+.nav{display:flex;align-items:center;gap:12px;height:44px;padding:0 14px;border-radius:12px;color:#4A5068;text-decoration:none;font-size:14.5px;font-weight:600}
+.nav:hover{background:#F1F2FA;color:#151A33}
+.nav-on{background:#3148D6;color:#FFFFFF;box-shadow:0 8px 18px -10px rgba(49,72,214,.7)}
+.nav-on:hover{background:#2638B0;color:#FFFFFF}
+.nav-sec{font-size:11.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#8A90A6;padding:8px 14px 2px}
+.badge{margin-left:auto;min-width:22px;height:22px;padding:0 7px;border-radius:999px;background:#ECEFFF;color:#2A3CB8;font-size:12px;font-weight:700;display:inline-flex;align-items:center;justify-content:center}
+.nav-on .badge{background:#FFFFFF;color:#2A3CB8}
+.avatar{display:inline-flex;align-items:center;justify-content:center;border-radius:999px;background:#ECEFFF;color:#2A3CB8;font-weight:700;flex-shrink:0}
+.stack{display:flex}.stack .avatar{border:2px solid #FFFFFF;margin-left:-8px}.stack .avatar:first-child{margin-left:0}
+.pick{cursor:pointer;border:1px solid #DCDFEC;background:#FFFFFF;border-radius:14px;font:600 14.5px "Plus Jakarta Sans",system-ui,sans-serif;color:#151A33}
+.pick-on{border:2px solid #3148D6;background:#ECEFFF;color:#2A3CB8}
+.tabbar{position:absolute;left:0;right:0;bottom:0;height:80px;background:#FFFFFF;border-top:1px solid #E7E9F3;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));padding:8px 6px 16px}
+.tab{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:52px;border-radius:14px;color:#666C84;text-decoration:none;font-size:11.5px;font-weight:600}
+.tab-ic{width:48px;height:28px;border-radius:999px;display:flex;align-items:center;justify-content:center}
+.tab-on{color:#3148D6}.tab-on .tab-ic{background:#ECEFFF}
+.muted{color:#666C84}
+.num{font-variant-numeric:tabular-nums}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.label{line-height:16px}
+.ellip{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tile-ic{width:42px;height:42px;border-radius:14px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
+.seg{display:inline-flex;align-items:center;gap:3px;padding:3px;background:#FFFFFF;border:1px solid #E7E9F3;border-radius:14px;flex-shrink:0}
+.seg-btn{display:inline-flex;align-items:center;gap:7px;height:36px;padding:0 11px;border:0;border-radius:11px;background:transparent;font:600 13.5px "Plus Jakarta Sans",system-ui,sans-serif;color:#4A5068;cursor:pointer;white-space:nowrap}
+.seg-btn:hover{background:#F1F2FA;color:#151A33}
+.seg-on,.seg-on:hover{background:#3148D6;color:#FFFFFF}
+.cnt{min-width:22px;height:22px;padding:0 6px;border-radius:999px;background:#EEF0F6;color:#4A5068;font-size:12px;font-weight:700;display:inline-flex;align-items:center;justify-content:center}
+.seg-on .cnt{background:#FFFFFF;color:#2A3CB8}
+.sep{display:inline-flex;align-items:center;color:#8A90A6}
+.vdiv{display:inline-block;width:1px;height:22px;background:#E7E9F3;margin:0 3px}
+.jc{display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 13px;border:0;border-radius:999px;font:600 13.5px "Plus Jakarta Sans",system-ui,sans-serif;cursor:pointer;white-space:nowrap}
+.jc:hover{box-shadow:inset 0 0 0 1px rgba(21,26,51,.12)}
+.jc-all{background:#EEF0F6;color:#4A5068}
+.jc-on-all{background:#3148D6;color:#FFFFFF}
+.jc-on-sains{background:#1D56AD;color:#FFFFFF}
+.jc-on-riset{background:#5534B8;color:#FFFFFF}
+.jc-on-seni{background:#A61F54;color:#FFFFFF}
+.jc-on-olahraga{background:#0B6577;color:#FFFFFF}
+.seg-btn:focus-visible,.jc:focus-visible,.pc:focus-visible,.lnk:focus-visible{outline:3px solid #A9B6F5;outline-offset:2px}
+.fsel{width:200px;height:40px;font-size:14px;padding:0 10px;flex-shrink:0}
+.input:disabled{background:#F4F5FB;color:#666C84;cursor:not-allowed}
+.input-err{border-color:#B42318}
+.strip{border-top:1px solid #EEF0F6}
+.strip-sel{background:#F3F5FF}
+.strip-ok{background:#F2FAF5}
+.strip-row{display:flex;align-items:center;gap:10px;min-height:46px;padding:0 16px}
+.lnk{height:36px;padding:0 8px;border:0;border-radius:10px;background:transparent;color:#3148D6;font:700 13px "Plus Jakarta Sans",system-ui,sans-serif;cursor:pointer;white-space:nowrap}
+.lnk:hover{background:#ECEFFF;color:#2638B0}
+.tbl{width:100%;border-collapse:collapse;table-layout:fixed}
+.tbl th{text-align:left;font-size:12.5px;font-weight:700;color:#666C84;padding:0 8px;height:36px;background:#F8F9FD;border-bottom:1px solid #E7E9F3;white-space:nowrap}
+.tbl td{padding:6px 8px;border-bottom:1px solid #EEF0F6;font-size:13.5px;vertical-align:middle}
+.tbl td.td-sm{padding:6px}
+.tbl tbody tr:hover td{background:#FAFBFE}
+.tbl tbody tr.row-chk td{background:#F7F8FF}
+.tbl tbody tr.row-sel td{background:#F1F4FF}
+.tbl tbody tr.row-sel td:first-child{box-shadow:inset 3px 0 0 #3148D6}
+.row-hide{display:none}
+.cbw{width:36px;height:36px;display:inline-flex;align-items:center;justify-content:center;border-radius:10px;cursor:pointer}
+.cbw:hover{background:#F1F2FA}
+.cbw input{width:18px;height:18px;margin:0;accent-color:#3148D6;cursor:pointer}
+.cbw input:focus-visible{outline:3px solid #A9B6F5;outline-offset:2px}
+.sw{display:flex;align-items:center;gap:8px;min-width:0}
+.sw-t{display:flex;flex-direction:column;min-width:0}
+.sw-n{font-size:13px;font-weight:700;line-height:17px}
+.sw-k{font-size:12px;line-height:16px;color:#666C84}
+.tl{display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-width:0}
+.tl-c{max-width:100%;font-size:12px;line-height:15px;color:#4A5068}
+.tj{display:inline-flex;align-items:center;height:21px;padding:0 8px;border-radius:999px;font-size:12px;font-weight:700;white-space:nowrap}
+.bk{display:inline-flex;align-items:center;gap:5px;font-size:13px;font-weight:600;color:#151A33}
+.bk svg{color:#4A5068;flex-shrink:0}
+.pr{display:flex;flex-direction:column}
+.pr-p{font-size:13px;font-weight:700;line-height:17px}
+.pr-n{font-size:12px;line-height:16px;color:#666C84}
+.stc{display:inline-flex;align-items:center;min-height:24px;padding:3px 9px;border-radius:9px;font-size:12px;font-weight:600;line-height:1.3;white-space:normal}
+.ib{width:36px;height:36px;border-radius:10px}
+.icon-btn[disabled],.icon-btn[disabled]:hover{opacity:.4;cursor:not-allowed;background:#FFFFFF;color:#4A5068}
+.btn[disabled],.btn[disabled]:hover{opacity:.45;cursor:not-allowed;box-shadow:none}
+.sec-h{margin:0;font:600 13px/16px "Plus Jakarta Sans",system-ui,sans-serif;letter-spacing:0;color:#4A5068}
+.pc{display:flex;align-items:center;gap:10px;width:100%;padding:6px 10px;border-radius:14px;border:1px solid #E7E9F3;background:#FFFFFF;font:inherit;color:inherit;text-align:left;cursor:pointer}
+.pc:hover{background:#F8F9FD}
+.pc-on,.pc-on:hover{border:2px solid #3148D6;background:#F5F7FF;padding:5px 9px}
+.chs{height:24px;padding:0 9px;font-size:12px;flex-shrink:0}
+.kv{display:grid;grid-template-columns:92px minmax(0,1fr);gap:10px;font-size:13px;line-height:18px}
+.kv dt{font-weight:600;color:#666C84}
+.kv dd{margin:0;font-weight:500;color:#151A33}
+.fin{display:flex;align-items:center;gap:10px;min-height:44px;padding:6px 12px;border-radius:12px}
+.fin-ok{background:#E4F5EA;color:#1B6B45}
+.fin-no{background:#FDECEA;color:#B42318}
+</style>
+</helmet>
+<div class="page" style="width:1440px;height:1000px;display:flex;overflow:hidden">
+  <aside style="width:264px;flex-shrink:0;background:#FFFFFF;border-right:1px solid #E7E9F3;padding:22px 16px;display:flex;flex-direction:column;gap:18px">
+    <div style="display:flex;align-items:center;gap:12px;padding:0 4px">
+      <span role="img" aria-label="Logo SMAGA Talent Hub" style="width:40px;height:40px;border-radius:12px;background:#3148D6;color:#FFFFFF;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 4 6v6c0 4.5 3.4 8.2 8 9 4.6-.8 8-4.5 8-9V6z"></path><path d="m8.5 12 2.5 2.5 4.5-5"></path></svg></span>
+      <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
+        <span class="display" style="font-size:17px;font-weight:800;line-height:1.15">SMAGA Talent Hub</span>
+        <span class="muted" style="font-size:12px;line-height:1.3">SMA Negeri 3 Semarang</span>
+      </div>
+    </div>
+    <nav aria-label="Menu utama" style="display:flex;flex-direction:column;gap:4px">
+      <div class="nav-sec">Menu</div>
+      <a class="nav" href="#"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"></path></svg>Beranda</a>
+      <a class="nav" href="Kesiswaan-Kelola-Lomba.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z"></path><path d="M17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3"></path></svg>Kelola lomba</a>
+      <a class="nav" href="Kesiswaan-Kelola-Lomba.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 13h5l1.5 3h5L16 13h5"></path><path d="M5 5h14l2 8v6a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-6z"></path></svg>Usulan siswa<span class="badge num">3</span></a>
+      <a class="nav" href="Kesiswaan-Verifikasi-Hasil.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 4 6v6c0 4.5 3.4 8.2 8 9 4.6-.8 8-4.5 8-9V6z"></path><path d="m8.5 12 2.5 2.5 4.5-5"></path></svg>Verifikasi hasil<span class="badge num">4</span></a>
+      <div class="nav-sec" style="margin-top:10px">Data</div>
+      <a class="nav" href="#"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="5" rx="8" ry="3"></ellipse><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"></path></svg>Database prestasi</a>
+      <a class="nav nav-on" href="Kesiswaan-Talenta.dc.html" aria-current="page"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"></circle><path d="M2.5 20a6.5 6.5 0 0 1 13 0"></path><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14a6 6 0 0 1 3.5 6"></path></svg>Talenta siswa</a>
+      <a class="nav" href="#"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="9" r="6"></circle><path d="m8.5 14-1.5 7 5-3 5 3-1.5-7"></path></svg>Apresiasi</a>
+    </nav>
+    <div style="margin-top:auto;padding:12px;border-radius:16px;background:#F4F5FB;display:flex;align-items:center;gap:10px">
+      <span class="avatar" style="width:38px;height:38px;font-size:14px" aria-hidden="true">DR</span>
+      <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
+        <span style="font-size:14px;font-weight:700;line-height:1.3">Ibu Dwi Rahayu</span>
+        <span class="muted" style="font-size:12.5px;line-height:1.3">Kesiswaan</span>
+      </div>
+    </div>
+  </aside>
+
+  <main style="flex:1;min-width:0;min-height:0;padding:22px 28px;display:flex;flex-direction:column;gap:16px">
+    <header style="display:flex;align-items:center;justify-content:space-between;gap:24px">
+      <div style="display:flex;flex-direction:column;gap:4px;min-width:0">
+        <h1 style="margin:0;font-size:30px;font-weight:800;line-height:1.15">Talenta siswa</h1>
+        <p class="muted" style="margin:0;font-size:14.5px;line-height:1.4">Penjaringan, pemetaan, dan seleksi peserta pembinaan.</p>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;flex-shrink:0">
+        <button class="btn btn-quiet" type="button"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v12M7 11l5 5 5-5M4 20h16"></path></svg>Unduh data (Excel)</button>
+        <button class="icon-btn" type="button" aria-label="Notifikasi, 2 baru"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 16v-5a6 6 0 1 1 12 0v5l1.5 2h-15z"></path><path d="M10 20a2 2 0 0 0 4 0"></path></svg><span class="dot"></span></button>
+        <span class="avatar" role="img" aria-label="Ibu Dwi Rahayu" style="width:40px;height:40px;font-size:14px">DR</span>
+      </div>
+    </header>
+
+    <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px">
+      <div class="card" style="padding:14px 16px;display:flex;align-items:center;gap:14px">
+        <span class="tile-ic" style="background:#EEF0F6;color:#4A5068"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 13h5l1.5 3h5L16 13h5"></path><path d="M5 5h14l2 8v6a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-6z"></path></svg></span>
+        <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
+          <span class="muted" style="font-size:13px;font-weight:600;line-height:17px">Terdaftar</span>
+          <span style="display:flex;align-items:baseline;gap:8px"><span class="display num" style="font-size:26px;font-weight:800;line-height:1.1">{{ cnt.terdaftar }}</span><span class="muted ellip" style="font-size:12.5px">belum dipetakan</span></span>
+        </div>
+      </div>
+      <div class="card" style="padding:14px 16px;display:flex;align-items:center;gap:14px">
+        <span class="tile-ic" style="background:#ECEFFF;color:#3148D6"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"></circle><path d="M2.5 20a6.5 6.5 0 0 1 13 0"></path><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14a6 6 0 0 1 3.5 6"></path></svg></span>
+        <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
+          <span class="muted" style="font-size:13px;font-weight:600;line-height:17px">Pemetaan</span>
+          <span style="display:flex;align-items:baseline;gap:8px"><span class="display num" style="font-size:26px;font-weight:800;line-height:1.1">{{ cnt.pemetaan }}</span><span class="muted ellip" style="font-size:12.5px">sedang dipetakan</span></span>
+        </div>
+      </div>
+      <div class="card" style="padding:14px 16px;display:flex;align-items:center;gap:14px">
+        <span class="tile-ic" style="background:#FFEEDD;color:#9A3F00"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg></span>
+        <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
+          <span class="muted" style="font-size:13px;font-weight:600;line-height:17px">Seleksi/asesmen</span>
+          <span style="display:flex;align-items:baseline;gap:8px"><span class="display num" style="font-size:26px;font-weight:800;line-height:1.1">{{ cnt.seleksi }}</span><span class="muted ellip" style="font-size:12.5px">menunggu hasil</span></span>
+        </div>
+      </div>
+      <div class="card" style="padding:14px 16px;display:flex;align-items:center;gap:14px">
+        <span class="tile-ic" style="background:#E4F5EA;color:#1B6B45"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="9" r="6"></circle><path d="m8.5 14-1.5 7 5-3 5 3-1.5-7"></path></svg></span>
+        <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
+          <span class="muted" style="font-size:13px;font-weight:600;line-height:17px">Peserta pembinaan</span>
+          <span style="display:flex;align-items:baseline;gap:8px"><span class="display num" style="font-size:26px;font-weight:800;line-height:1.1">{{ cnt.pembinaan }}</span><span class="muted ellip" style="font-size:12.5px">di 4 bidang</span></span>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;align-items:center;gap:16px;min-width:0">
+      <div class="seg" role="group" aria-label="Tahap penjaringan">
+        <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="6">
+          <sc-if value="{{ t.arrow }}" hint-placeholder-val="{{ false }}"><span class="sep" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"></path></svg></span></sc-if>
+          <sc-if value="{{ t.divider }}" hint-placeholder-val="{{ false }}"><span class="vdiv" aria-hidden="true"></span></sc-if>
+          <button type="button" class="{{ t.cls }}" aria-pressed="{{ t.pressed }}" onClick="{{ t.pick }}">{{ t.label }} <span class="cnt num">{{ t.n }}</span></button>
+        </sc-for>
+      </div>
+      <span class="chip c-green" style="margin-left:auto">Penjaringan dibuka</span>
+    </div>
+
+    <div style="display:flex;gap:16px;flex:1;min-height:0">
+      <section class="card" aria-labelledby="t-title" style="flex:1;min-width:0;display:flex;flex-direction:column;overflow:hidden">
+        <h2 id="t-title" class="sr-only">Daftar pilihan talenta</h2>
+        <div style="padding:12px 16px 10px;display:flex;flex-direction:column;gap:8px">
+          <div role="group" aria-label="Jenis talenta" style="display:flex;align-items:center;gap:6px">
+            <sc-for list="{{ jenisChips }}" as="j" hint-placeholder-count="7">
+              <button type="button" class="{{ j.cls }}" aria-pressed="{{ j.pressed }}" aria-label="{{ j.aria }}" onClick="{{ j.pick }}"><sc-if value="{{ j.on }}" hint-placeholder-val="{{ false }}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"></path></svg></sc-if>{{ j.label }}</button>
+            </sc-for>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <label class="sr-only" for="f-cabang">Cabang talenta</label>
+            <sc-if value="{{ cab.none }}" hint-placeholder-val="{{ true }}"><select class="input fsel" id="f-cabang" disabled="{{ true }}" title="Pilih jenis talenta dulu"><option>{{ cab.noneText }}</option></select></sc-if>
+            <sc-if value="{{ cab.osn }}" hint-placeholder-val="{{ false }}"><select class="input fsel" id="f-cabang" value="{{ cabang }}" onChange="{{ setCabang }}"><option value="semua">Semua bidang OSN</option><option>Fisika</option><option>Kimia</option><option>Biologi</option><option>Matematika</option><option>Komputer</option><option>Koding dan AI</option><option>Astronomi</option><option>Kebumian</option><option>Geografi</option><option>Ekonomi</option></select></sc-if>
+            <sc-if value="{{ cab.riset }}" hint-placeholder-val="{{ false }}"><select class="input fsel" id="f-cabang" value="{{ cabang }}" onChange="{{ setCabang }}"><option value="semua">Semua cabang Riset</option><option>OPSI</option><option>FIKSI</option></select></sc-if>
+            <sc-if value="{{ cab.fls3n }}" hint-placeholder-val="{{ false }}"><select class="input fsel" id="f-cabang" value="{{ cabang }}" onChange="{{ setCabang }}"><option value="semua">Semua cabang FLS3N</option><option>Baca Puisi</option><option>Cipta Lagu</option><option>Cipta Puisi</option><option>Desain Poster</option><option>Fotografi</option><option>Instrumen Solo Gitar</option><option>Menyanyi Solo Putra</option><option>Menyanyi Solo Putri</option><option>Jurnalistik</option><option>Kriya</option><option>Komik Digital</option><option>Menulis Cerita Pendek</option><option>Monolog</option><option value="Tari Kreasi">Tari Kreasi (tim 2)</option><option value="Film Pendek">Film Pendek (tim 3)</option><option value="Kreativitas Musik Tradisional">Kreativitas Musik Tradisional (tim 5)</option></select></sc-if>
+            <sc-if value="{{ cab.o2sn }}" hint-placeholder-val="{{ false }}"><select class="input fsel" id="f-cabang" value="{{ cabang }}" onChange="{{ setCabang }}"><option value="semua">Semua cabang O2SN</option><option>Atletik</option><option>Renang</option><option>Bulu Tangkis</option><option>Pencak Silat</option><option>Karate</option></select></sc-if>
+            <sc-if value="{{ cab.debat }}" hint-placeholder-val="{{ false }}"><select class="input fsel" id="f-cabang" value="{{ cabang }}" onChange="{{ setCabang }}"><option value="semua">Semua cabang Debat</option><option value="LDBI">Debat Bahasa Indonesia (LDBI)</option><option value="NSDC">Debat Bahasa Inggris (NSDC)</option></select></sc-if>
+            <label class="sr-only" for="f-kelas">Kelas</label>
+            <select class="input" id="f-kelas" value="{{ kelas }}" onChange="{{ setKelas }}" style="width:140px;height:40px;font-size:14px;padding:0 10px;flex-shrink:0">
+              <option value="semua">Semua kelas</option>
+              <optgroup label="Kelas X">
+                <option>X-1</option><option>X-2</option><option>X-3</option><option>X-4</option><option>X-5</option><option>X-6</option><option>X-7</option><option>X-8</option><option>X-9</option><option>X-10</option><option>X-TAHFIDZ</option><option>X-OLIMP</option>
+              </optgroup>
+              <optgroup label="Kelas XI">
+                <option>XI-1</option><option>XI-2</option><option>XI-3</option><option>XI-4</option><option>XI-5</option><option>XI-6</option><option>XI-7</option><option>XI-8</option><option>XI-9</option><option>XI-10</option><option>XI-11</option><option>XI-12</option>
+              </optgroup>
+              <optgroup label="Kelas XII">
+                <option>XII-1</option><option>XII-2</option><option>XII-3</option><option>XII-4</option><option>XII-5</option><option>XII-6</option><option>XII-7</option><option>XII-8</option><option>XII-9</option><option>XII-10</option><option>XII-11</option><option>XII-12</option>
+              </optgroup>
+            </select>
+            <div style="position:relative;flex:1;min-width:0">
+              <label class="sr-only" for="f-cari">Cari nama atau NIS</label>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="position:absolute;left:13px;top:11px;color:#8A90A6"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+              <input class="input" id="f-cari" type="search" placeholder="Cari nama atau NIS" value="{{ q }}" onChange="{{ setQ }}" style="height:40px;font-size:14px;padding-left:40px">
+            </div>
+          </div>
+        </div>
+
+        <div class="{{ stripCls }}">
+          <sc-if value="{{ sIdle }}" hint-placeholder-val="{{ true }}">
+            <div class="strip-row">
+              <span class="num" style="font-size:13px;font-weight:600">{{ shownText }}</span>
+              <span class="muted" style="margin-left:auto;font-size:12.5px">Centang baris untuk pindah tahap sekaligus.</span>
+            </div>
+          </sc-if>
+          <sc-if value="{{ sDone }}" hint-placeholder-val="{{ false }}">
+            <div class="strip-row" role="status">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color:#1B6B45;flex-shrink:0"><path d="m5 12 5 5 9-10"></path></svg>
+              <span style="font-size:13px;font-weight:600;color:#1B6B45">{{ doneText }}</span>
+              <button class="btn btn-quiet btn-sm" type="button" style="margin-left:auto" onClick="{{ undoBulk }}">Urungkan</button>
+            </div>
+          </sc-if>
+          <sc-if value="{{ sSel }}" hint-placeholder-val="{{ false }}">
+            <div class="strip-row">
+              <span class="num" style="font-size:13.5px;font-weight:700;margin-right:4px">{{ nChecked }} dipilih</span>
+              <button class="btn btn-primary btn-sm" type="button" disabled="{{ cantBulkMove }}" onClick="{{ bulkMove }}">Pindahkan ke {{ bulkNext }}</button>
+              <button class="btn btn-danger btn-sm" type="button" onClick="{{ bulkTolak }}">Tidak lolos</button>
+              <button class="lnk" type="button" style="margin-left:auto" onClick="{{ clearChecked }}">Batal pilih</button>
+            </div>
+          </sc-if>
+          <sc-if value="{{ sTolak }}" hint-placeholder-val="{{ false }}">
+            <div class="strip-row">
+              <label class="sr-only" for="bulk-note">Catatan untuk siswa yang tidak lolos</label>
+              <input class="{{ bulkInputCls }}" id="bulk-note" type="text" value="{{ bulkNote }}" onChange="{{ setBulkNote }}" placeholder="{{ bulkPh }}" aria-invalid="{{ bulkInvalid }}" style="flex:1;min-width:0;height:36px;font-size:13.5px;border-radius:10px;padding:0 12px">
+              <button class="btn btn-danger btn-sm" type="button" onClick="{{ bulkTolakKirim }}">Kirim · {{ nChecked }} tidak lolos</button>
+              <button class="btn btn-quiet btn-sm" type="button" onClick="{{ bulkTolakBatal }}">Batal</button>
+            </div>
+          </sc-if>
+        </div>
+
+        <div style="flex:1;min-height:0;overflow:auto;border-top:1px solid #EEF0F6">
+          <table class="tbl">
+            <thead>
+              <tr>
+                <th scope="col" style="width:42px;padding:0 0 0 6px"><label class="cbw"><input type="checkbox" checked="{{ allOn }}" onChange="{{ toggleAll }}" aria-label="Pilih semua baris yang tampil"></label></th>
+                <th scope="col">Siswa</th>
+                <th scope="col" style="width:128px">Talenta</th>
+                <th scope="col" style="width:56px;padding:0 6px">Bukti</th>
+                <th scope="col" style="width:84px">Prestasi<span class="sr-only"> di STH</span></th>
+                <th scope="col" style="width:104px">Status</th>
+                <th scope="col" style="width:88px;padding:0 6px">Aksi</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="{{ r0.trCls }}">
+                <td style="padding:0 0 0 6px"><label class="cbw"><input type="checkbox" checked="{{ r0.checked }}" onChange="{{ r0.toggle }}" aria-label="{{ r0.cbLabel }}"></label></td>
+                <td><div class="sw"><span class="avatar" style="width:28px;height:28px;font-size:11px" aria-hidden="true">{{ r0.ini }}</span><span class="sw-t"><span class="ellip sw-n">{{ r0.nama }}</span><span class="sw-k">{{ r0.kelas }}</span></span></div></td>
+                <td><div class="tl"><span class="{{ r0.jCls }}">{{ r0.jenis }}<span class="sr-only">, {{ r0.bidangLabel }}</span></span><span class="ellip tl-c">{{ r0.cabangLabel }}</span></div></td>
+                <td class="td-sm"><sc-if value="{{ r0.hasBukti }}" hint-placeholder-val="{{ true }}"><span class="bk"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"></path><path d="M14 3v5h5"></path></svg>Ada</span></sc-if><sc-if value="{{ r0.noBukti }}" hint-placeholder-val="{{ false }}"><span class="muted"><span aria-hidden="true">–</span><span class="sr-only">Tidak ada</span></span></sc-if></td>
+                <td><span class="pr"><span class="num pr-p">{{ r0.poin }}</span><span class="pr-n">{{ r0.prestasi }}</span></span></td>
+                <td><span class="{{ r0.stCls }}">{{ r0.stLabel }}</span></td>
+                <td class="td-sm"><div style="display:flex;gap:4px"><button class="icon-btn ib" type="button" title="Lihat" aria-label="{{ r0.lihatAria }}" aria-pressed="{{ r0.pressed }}" onClick="{{ r0.pick }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"></path><circle cx="12" cy="12" r="3"></circle></svg></button><button class="icon-btn ib" type="button" title="Lolos ke tahap berikutnya" aria-label="{{ r0.nextAria }}" disabled="{{ r0.cantNext }}" onClick="{{ r0.advance }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"></path></svg></button></div></td>
+              </tr>
+              <tr class="{{ r1.trCls }}">
+                <td style="padding:0 0 0 6px"><label class="cbw"><input type="checkbox" checked="{{ r1.checked }}" onChange="{{ r1.toggle }}" aria-label="{{ r1.cbLabel }}"></label></td>
+                <td><div class="sw"><span class="avatar" style="width:28px;height:28px;font-size:11px" aria-hidden="true">{{ r1.ini }}</span><span class="sw-t"><span class="ellip sw-n">{{ r1.nama }}</span><span class="sw-k">{{ r1.kelas }}</span></span></div></td>
+                <td><div class="tl"><span class="{{ r1.jCls }}">{{ r1.jenis }}<span class="sr-only">, {{ r1.bidangLabel }}</span></span><span class="ellip tl-c">{{ r1.cabangLabel }}</span></div></td>
+                <td class="td-sm"><sc-if value="{{ r1.hasBukti }}" hint-placeholder-val="{{ false }}"><span class="bk"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"></path><path d="M14 3v5h5"></path></svg>Ada</span></sc-if><sc-if value="{{ r1.noBukti }}" hint-placeholder-val="{{ true }}"><span class="muted"><span aria-hidden="true">–</span><span class="sr-only">Tidak ada</span></span></sc-if></td>
+                <td><span class="pr"><span class="num pr-p">{{ r1.poin }}</span><span class="pr-n">{{ r1.prestasi }}</span></span></td>
+                <td><span class="{{ r1.stCls }}">{{ r1.stLabel }}</span></td>
+                <td class="td-sm"><div style="display:flex;gap:4px"><button class="icon-btn ib" type="button" title="Lihat" aria-label="{{ r1.lihatAria }}" aria-pressed="{{ r1.pressed }}" onClick="{{ r1.pick }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"></path><circle cx="12" cy="12" r="3"></circle></svg></button><button class="icon-btn ib" type="button" title="Lolos ke tahap berikutnya" aria-label="{{ r1.nextAria }}" disabled="{{ r1.cantNext }}" onClick="{{ r1.advance }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"></path></svg></button></div></td>
+              </tr>
+              <tr class="{{ r2.trCls }}">
+                <td style="padding:0 0 0 6px"><label class="cbw"><input type="checkbox" checked="{{ r2.checked }}" onChange="{{ r2.toggle }}" aria-label="{{ r2.cbLabel }}"></label></td>
+                <td><div class="sw"><span class="avatar" style="width:28px;height:28px;font-size:11px" aria-hidden="true">{{ r2.ini }}</span><span class="sw-t"><span class="ellip sw-n">{{ r2.nama }}</span><span class="sw-k">{{ r2.kelas }}</span></span></div></td>
+                <td><div class="tl"><span class="{{ r2.jCls }}">{{ r2.jenis }}<span class="sr-only">, {{ r2.bidangLabel }}</span></span><span class="ellip tl-c">{{ r2.cabangLabel }}</span></div></td>
+                <td class="td-sm"><sc-if value="{{ r2.hasBukti }}" hint-placeholder-val="{{ true }}"><span class="bk"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"></path><path d="M14 3v5h5"></path></svg>Ada</span></sc-if><sc-if value="{{ r2.noBukti }}" hint-placeholder-val="{{ false }}"><span class="muted"><span aria-hidden="true">–</span><span class="sr-only">Tidak ada</span></span></sc-if></td>
+                <td><span class="pr"><span class="num pr-p">{{ r2.poin }}</span><span class="pr-n">{{ r2.prestasi }}</span></span></td>
+                <td><span class="{{ r2.stCls }}">{{ r2.stLabel }}</span></td>
+                <td class="td-sm"><div style="display:flex;gap:4px"><button class="icon-btn ib" type="button" title="Lihat" aria-label="{{ r2.lihatAria }}" aria-pressed="{{ r2.pressed }}" onClick="{{ r2.pick }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"></path><circle cx="12" cy="12" r="3"></circle></svg></button><button class="icon-btn ib" type="button" title="Lolos ke tahap berikutnya" aria-label="{{ r2.nextAria }}" disabled="{{ r2.cantNext }}" onClick="{{ r2.advance }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"></path></svg></button></div></td>
+              </tr>
+              <tr class="{{ r3.trCls }}">
+                <td style="padding:0 0 0 6px"><label class="cbw"><input type="checkbox" checked="{{ r3.checked }}" onChange="{{ r3.toggle }}" aria-label="{{ r3.cbLabel }}"></label></td>
+                <td><div class="sw"><span class="avatar" style="width:28px;height:28px;font-size:11px" aria-hidden="true">{{ r3.ini }}</span><span class="sw-t"><span class="ellip sw-n">{{ r3.nama }}</span><span class="sw-k">{{ r3.kelas }}</span></span></div></td>
+                <td><div class="tl"><span class="{{ r3.jCls }}">{{ r3.jenis }}<span class="sr-only">, {{ r3.bidangLabel }}</span></span><span class="ellip tl-c">{{ r3.cabangLabel }}</span></div></td>
+                <td class="td-sm"><sc-if value="{{ r3.hasBukti }}" hint-placeholder-val="{{ true }}"><span class="bk"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"></path><path d="M14 3v5h5"></path></svg>Ada</span></sc-if><sc-if value="{{ r3.noBukti }}" hint-placeholder-val="{{ false }}"><span class="muted"><span aria-hidden="true">–</span><span class="sr-only">Tidak ada</span></span></sc-if></td>
+                <td><span class="pr"><span class="num pr-p">{{ r3.poin }}</span><span class="pr-n">{{ r3.prestasi }}</span></span></td>
+                <td><span class="{{ r3.stCls }}">{{ r3.stLabel }}</span></td>
+                <td class="td-sm"><div style="display:flex;gap:4px"><button class="icon-btn ib" type="button" title="Lihat" aria-label="{{ r3.lihatAria }}" aria-pressed="{{ r3.pressed }}" onClick="{{ r3.pick }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"></path><circle cx="12" cy="12" r="3"></circle></svg></button><button class="icon-btn ib" type="button" title="Lolos ke tahap berikutnya" aria-label="{{ r3.nextAria }}" disabled="{{ r3.cantNext }}" onClick="{{ r3.advance }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"></path></svg></button></div></td>
+              </tr>
+              <tr class="{{ r4.trCls }}">
+                <td style="padding:0 0 0 6px"><label class="cbw"><input type="checkbox" checked="{{ r4.checked }}" onChange="{{ r4.toggle }}" aria-label="{{ r4.cbLabel }}"></label></td>
+                <td><div class="sw"><span class="avatar" style="width:28px;height:28px;font-size:11px" aria-hidden="true">{{ r4.ini }}</span><span class="sw-t"><span class="ellip sw-n">{{ r4.nama }}</span><span class="sw-k">{{ r4.kelas }}</span></span></div></td>
+                <td><div class="tl"><span class="{{ r4.jCls }}">{{ r4.jenis }}<span class="sr-only">, {{ r4.bidangLabel }}</span></span><span class="ellip tl-c">{{ r4.cabangLabel }}</span></div></td>
+                <td class="td-sm"><sc-if value="{{ r4.hasBukti }}" hint-placeholder-val="{{ true }}"><span class="bk"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"></path><path d="M14 3v5h5"></path></svg>Ada</span></sc-if><sc-if value="{{ r4.noBukti }}" hint-placeholder-val="{{ false }}"><span class="muted"><span aria-hidden="true">–</span><span class="sr-only">Tidak ada</span></span></sc-if></td>
+                <td><span class="pr"><span class="num pr-p">{{ r4.poin }}</span><span class="pr-n">{{ r4.prestasi }}</span></span></td>
+                <td><span class="{{ r4.stCls }}">{{ r4.stLabel }}</span></td>
+                <td class="td-sm"><div style="display:flex;gap:4px"><button class="icon-btn ib" type="button" title="Lihat" aria-label="{{ r4.lihatAria }}" aria-pressed="{{ r4.pressed }}" onClick="{{ r4.pick }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"></path><circle cx="12" cy="12" r="3"></circle></svg></button><button class="icon-btn ib" type="button" title="Lolos ke tahap berikutnya" aria-label="{{ r4.nextAria }}" disabled="{{ r4.cantNext }}" onClick="{{ r4.advance }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"></path></svg></button></div></td>
+              </tr>
+              <tr class="{{ r5.trCls }}">
+                <td style="padding:0 0 0 6px"><label class="cbw"><input type="checkbox" checked="{{ r5.checked }}" onChange="{{ r5.toggle }}" aria-label="{{ r5.cbLabel }}"></label></td>
+                <td><div class="sw"><span class="avatar" style="width:28px;height:28px;font-size:11px" aria-hidden="true">{{ r5.ini }}</span><span class="sw-t"><span class="ellip sw-n">{{ r5.nama }}</span><span class="sw-k">{{ r5.kelas }}</span></span></div></td>
+                <td><div class="tl"><span class="{{ r5.jCls }}">{{ r5.jenis }}<span class="sr-only">, {{ r5.bidangLabel }}</span></span><span class="ellip tl-c">{{ r5.cabangLabel }}</span></div></td>
+                <td class="td-sm"><sc-if value="{{ r5.hasBukti }}" hint-placeholder-val="{{ true }}"><span class="bk"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"></path><path d="M14 3v5h5"></path></svg>Ada</span></sc-if><sc-if value="{{ r5.noBukti }}" hint-placeholder-val="{{ false }}"><span class="muted"><span aria-hidden="true">–</span><span class="sr-only">Tidak ada</span></span></sc-if></td>
+                <td><span class="pr"><span class="num pr-p">{{ r5.poin }}</span><span class="pr-n">{{ r5.prestasi }}</span></span></td>
+                <td><span class="{{ r5.stCls }}">{{ r5.stLabel }}</span></td>
+                <td class="td-sm"><div style="display:flex;gap:4px"><button class="icon-btn ib" type="button" title="Lihat" aria-label="{{ r5.lihatAria }}" aria-pressed="{{ r5.pressed }}" onClick="{{ r5.pick }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"></path><circle cx="12" cy="12" r="3"></circle></svg></button><button class="icon-btn ib" type="button" title="Lolos ke tahap berikutnya" aria-label="{{ r5.nextAria }}" disabled="{{ r5.cantNext }}" onClick="{{ r5.advance }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"></path></svg></button></div></td>
+              </tr>
+              <tr class="{{ r6.trCls }}">
+                <td style="padding:0 0 0 6px"><label class="cbw"><input type="checkbox" checked="{{ r6.checked }}" onChange="{{ r6.toggle }}" aria-label="{{ r6.cbLabel }}"></label></td>
+                <td><div class="sw"><span class="avatar" style="width:28px;height:28px;font-size:11px" aria-hidden="true">{{ r6.ini }}</span><span class="sw-t"><span class="ellip sw-n">{{ r6.nama }}</span><span class="sw-k">{{ r6.kelas }}</span></span></div></td>
+                <td><div class="tl"><span class="{{ r6.jCls }}">{{ r6.jenis }}<span class="sr-only">, {{ r6.bidangLabel }}</span></span><span class="ellip tl-c">{{ r6.cabangLabel }}</span></div></td>
+                <td class="td-sm"><sc-if value="{{ r6.hasBukti }}" hint-placeholder-val="{{ true }}"><span class="bk"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"></path><path d="M14 3v5h5"></path></svg>Ada</span></sc-if><sc-if value="{{ r6.noBukti }}" hint-placeholder-val="{{ false }}"><span class="muted"><span aria-hidden="true">–</span><span class="sr-only">Tidak ada</span></span></sc-if></td>
+                <td><span class="pr"><span class="num pr-p">{{ r6.poin }}</span><span class="pr-n">{{ r6.prestasi }}</span></span></td>
+                <td><span class="{{ r6.stCls }}">{{ r6.stLabel }}</span></td>
+                <td class="td-sm"><div style="display:flex;gap:4px"><button class="icon-btn ib" type="button" title="Lihat" aria-label="{{ r6.lihatAria }}" aria-pressed="{{ r6.pressed }}" onClick="{{ r6.pick }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"></path><circle cx="12" cy="12" r="3"></circle></svg></button><button class="icon-btn ib" type="button" title="Lolos ke tahap berikutnya" aria-label="{{ r6.nextAria }}" disabled="{{ r6.cantNext }}" onClick="{{ r6.advance }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"></path></svg></button></div></td>
+              </tr>
+              <tr class="{{ r7.trCls }}">
+                <td style="padding:0 0 0 6px"><label class="cbw"><input type="checkbox" checked="{{ r7.checked }}" onChange="{{ r7.toggle }}" aria-label="{{ r7.cbLabel }}"></label></td>
+                <td><div class="sw"><span class="avatar" style="width:28px;height:28px;font-size:11px" aria-hidden="true">{{ r7.ini }}</span><span class="sw-t"><span class="ellip sw-n">{{ r7.nama }}</span><span class="sw-k">{{ r7.kelas }}</span></span></div></td>
+                <td><div class="tl"><span class="{{ r7.jCls }}">{{ r7.jenis }}<span class="sr-only">, {{ r7.bidangLabel }}</span></span><span class="ellip tl-c">{{ r7.cabangLabel }}</span></div></td>
+                <td class="td-sm"><sc-if value="{{ r7.hasBukti }}" hint-placeholder-val="{{ false }}"><span class="bk"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"></path><path d="M14 3v5h5"></path></svg>Ada</span></sc-if><sc-if value="{{ r7.noBukti }}" hint-placeholder-val="{{ true }}"><span class="muted"><span aria-hidden="true">–</span><span class="sr-only">Tidak ada</span></span></sc-if></td>
+                <td><span class="pr"><span class="num pr-p">{{ r7.poin }}</span><span class="pr-n">{{ r7.prestasi }}</span></span></td>
+                <td><span class="{{ r7.stCls }}">{{ r7.stLabel }}</span></td>
+                <td class="td-sm"><div style="display:flex;gap:4px"><button class="icon-btn ib" type="button" title="Lihat" aria-label="{{ r7.lihatAria }}" aria-pressed="{{ r7.pressed }}" onClick="{{ r7.pick }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"></path><circle cx="12" cy="12" r="3"></circle></svg></button><button class="icon-btn ib" type="button" title="Lolos ke tahap berikutnya" aria-label="{{ r7.nextAria }}" disabled="{{ r7.cantNext }}" onClick="{{ r7.advance }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"></path></svg></button></div></td>
+              </tr>
+              <tr class="{{ r8.trCls }}">
+                <td style="padding:0 0 0 6px"><label class="cbw"><input type="checkbox" checked="{{ r8.checked }}" onChange="{{ r8.toggle }}" aria-label="{{ r8.cbLabel }}"></label></td>
+                <td><div class="sw"><span class="avatar" style="width:28px;height:28px;font-size:11px" aria-hidden="true">{{ r8.ini }}</span><span class="sw-t"><span class="ellip sw-n">{{ r8.nama }}</span><span class="sw-k">{{ r8.kelas }}</span></span></div></td>
+                <td><div class="tl"><span class="{{ r8.jCls }}">{{ r8.jenis }}<span class="sr-only">, {{ r8.bidangLabel }}</span></span><span class="ellip tl-c">{{ r8.cabangLabel }}</span></div></td>
+                <td class="td-sm"><sc-if value="{{ r8.hasBukti }}" hint-placeholder-val="{{ true }}"><span class="bk"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"></path><path d="M14 3v5h5"></path></svg>Ada</span></sc-if><sc-if value="{{ r8.noBukti }}" hint-placeholder-val="{{ false }}"><span class="muted"><span aria-hidden="true">–</span><span class="sr-only">Tidak ada</span></span></sc-if></td>
+                <td><span class="pr"><span class="num pr-p">{{ r8.poin }}</span><span class="pr-n">{{ r8.prestasi }}</span></span></td>
+                <td><span class="{{ r8.stCls }}">{{ r8.stLabel }}</span></td>
+                <td class="td-sm"><div style="display:flex;gap:4px"><button class="icon-btn ib" type="button" title="Lihat" aria-label="{{ r8.lihatAria }}" aria-pressed="{{ r8.pressed }}" onClick="{{ r8.pick }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"></path><circle cx="12" cy="12" r="3"></circle></svg></button><button class="icon-btn ib" type="button" title="Lolos ke tahap berikutnya" aria-label="{{ r8.nextAria }}" disabled="{{ r8.cantNext }}" onClick="{{ r8.advance }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"></path></svg></button></div></td>
+              </tr>
+              <tr class="{{ r9.trCls }}">
+                <td style="padding:0 0 0 6px"><label class="cbw"><input type="checkbox" checked="{{ r9.checked }}" onChange="{{ r9.toggle }}" aria-label="{{ r9.cbLabel }}"></label></td>
+                <td><div class="sw"><span class="avatar" style="width:28px;height:28px;font-size:11px" aria-hidden="true">{{ r9.ini }}</span><span class="sw-t"><span class="ellip sw-n">{{ r9.nama }}</span><span class="sw-k">{{ r9.kelas }}</span></span></div></td>
+                <td><div class="tl"><span class="{{ r9.jCls }}">{{ r9.jenis }}<span class="sr-only">, {{ r9.bidangLabel }}</span></span><span class="ellip tl-c">{{ r9.cabangLabel }}</span></div></td>
+                <td class="td-sm"><sc-if value="{{ r9.hasBukti }}" hint-placeholder-val="{{ true }}"><span class="bk"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"></path><path d="M14 3v5h5"></path></svg>Ada</span></sc-if><sc-if value="{{ r9.noBukti }}" hint-placeholder-val="{{ false }}"><span class="muted"><span aria-hidden="true">–</span><span class="sr-only">Tidak ada</span></span></sc-if></td>
+                <td><span class="pr"><span class="num pr-p">{{ r9.poin }}</span><span class="pr-n">{{ r9.prestasi }}</span></span></td>
+                <td><span class="{{ r9.stCls }}">{{ r9.stLabel }}</span></td>
+                <td class="td-sm"><div style="display:flex;gap:4px"><button class="icon-btn ib" type="button" title="Lihat" aria-label="{{ r9.lihatAria }}" aria-pressed="{{ r9.pressed }}" onClick="{{ r9.pick }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"></path><circle cx="12" cy="12" r="3"></circle></svg></button><button class="icon-btn ib" type="button" title="Lolos ke tahap berikutnya" aria-label="{{ r9.nextAria }}" disabled="{{ r9.cantNext }}" onClick="{{ r9.advance }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"></path></svg></button></div></td>
+              </tr>
+              <tr class="{{ emptyCls }}">
+                <td colspan="7" class="muted" style="height:120px;text-align:center;font-size:14px">{{ emptyText }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="card" aria-labelledby="p-nama" style="width:392px;flex-shrink:0;min-height:0;overflow-y:auto;padding:16px 18px;display:flex;flex-direction:column;gap:12px">
+        <div style="display:flex;align-items:center;gap:12px">
+          <span class="avatar" style="width:44px;height:44px;font-size:15px" aria-hidden="true">{{ p.ini }}</span>
+          <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px">
+            <h2 id="p-nama" class="ellip" style="margin:0;font-size:18px;font-weight:800;line-height:1.2">{{ p.nama }}</h2>
+            <span class="muted num" style="font-size:12.5px">{{ p.kelas }} · NIS {{ p.nis }}</span>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;flex-shrink:0">
+            <span class="chip c-gold num" style="height:24px">{{ p.poin }}</span>
+            <span class="muted" style="font-size:12px">{{ p.stLine }}</span>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <h3 class="sec-h">Pilihan talenta · <span class="num">{{ p.nChoice }}</span></h3>
+          <sc-for list="{{ p.choices }}" as="c" hint-placeholder-count="1">
+            <button type="button" class="{{ c.cls }}" aria-pressed="{{ c.pressed }}" onClick="{{ c.pick }}">
+              <span class="{{ c.coverCls }}" style="width:32px;height:32px;border-radius:10px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0" aria-hidden="true">
+                <sc-if value="{{ c.isSains }}" hint-placeholder-val="{{ true }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3h6M10 3v6l-5 9a2 2 0 0 0 1.7 3h10.6a2 2 0 0 0 1.7-3l-5-9V3"></path><path d="M7.5 15h9"></path></svg></sc-if>
+                <sc-if value="{{ c.isRiset }}" hint-placeholder-val="{{ false }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6M10 21h4"></path><path d="M12 3a6 6 0 0 0-3.5 10.9c.6.4 1 1.1 1 1.8V16h5v-.3c0-.7.4-1.4 1-1.8A6 6 0 0 0 12 3z"></path></svg></sc-if>
+                <sc-if value="{{ c.isSeni }}" hint-placeholder-val="{{ false }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a9 9 0 1 0 0 18c1.1 0 1.5-.8 1.5-1.6 0-1.3-1.2-1.6-1.2-2.9 0-.9.7-1.5 1.7-1.5H17a4 4 0 0 0 4-4c0-4.4-4-8-9-8z"></path><circle cx="7.5" cy="11" r="1"></circle><circle cx="10" cy="7" r="1"></circle><circle cx="15" cy="7.5" r="1"></circle></svg></sc-if>
+                <sc-if value="{{ c.isOlahraga }}" hint-placeholder-val="{{ false }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 3c2.5 2.5 3.5 5.5 3.5 9s-1 6.5-3.5 9M12 3C9.5 5.5 8.5 8.5 8.5 12s1 6.5 3.5 9M3.5 9h17M3.5 15h17"></path></svg></sc-if>
+              </span>
+              <span style="flex:1;min-width:0;display:flex;flex-direction:column">
+                <span class="ellip" style="font-size:13.5px;font-weight:700;line-height:18px">{{ c.label }}</span>
+                <span class="muted ellip" style="font-size:12px;line-height:16px">{{ c.sub }}</span>
+              </span>
+              <span class="{{ c.stCls }}">{{ c.stLabel }}</span>
+            </button>
+          </sc-for>
+        </div>
+
+        <sc-if value="{{ p.hasBukti }}" hint-placeholder-val="{{ true }}">
+          <div style="display:flex;align-items:center;gap:10px;padding:7px 8px 7px 10px;border-radius:14px;border:1px solid #E7E9F3">
+            <span style="width:34px;height:34px;border-radius:10px;background:#EEF0F6;color:#4A5068;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"></path><path d="M14 3v5h5"></path></svg></span>
+            <span style="flex:1;min-width:0;display:flex;flex-direction:column">
+              <span class="ellip" style="font-size:13.5px;font-weight:600;line-height:18px">{{ p.bukti }}</span>
+              <span class="muted" style="font-size:12px;line-height:16px">Bukti dukung · {{ p.buktiSize }}</span>
+            </span>
+            <a class="btn btn-quiet btn-sm" href="#" aria-label="Buka bukti dukung">Buka</a>
+          </div>
+        </sc-if>
+        <sc-if value="{{ p.noBukti }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;align-items:center;gap:10px;min-height:52px;padding:7px 10px;border-radius:14px;border:1px dashed #DCDFEC;background:#FAFBFE">
+            <span style="width:34px;height:34px;border-radius:10px;background:#EEF0F6;color:#666C84;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"></path><path d="M14 3v5h5"></path></svg></span>
+            <span style="flex:1;font-size:13px;color:#4A5068">Tidak ada bukti dukung</span>
+            <span class="chip c-gray" style="height:24px;font-size:12px">Opsional</span>
+          </div>
+        </sc-if>
+
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <h3 class="sec-h">Riwayat talenta</h3>
+          <dl style="margin:0;padding:9px 12px;border-radius:14px;background:#F4F5FB;display:flex;flex-direction:column;gap:5px">
+            <div class="kv"><dt>Minat</dt><dd>{{ p.minat }}</dd></div>
+            <div class="kv"><dt>Organisasi</dt><dd>{{ p.org }}</dd></div>
+            <div class="kv"><dt>Prestasi SMP</dt><dd>{{ p.smp }}</dd></div>
+          </dl>
+        </div>
+
+        <div style="display:grid;grid-template-columns:104px minmax(0,1fr);gap:8px 10px;align-items:center">
+          <label class="label" for="p-guru">Guru pembina</label>
+          <select class="input" id="p-guru" value="{{ p.guru }}" onChange="{{ p.setGuru }}" style="height:40px;font-size:13px;padding:0 8px">
+            <option value="">Belum ditentukan</option>
+            <option value="hendra">Pak Hendra Kusuma, S.Pd., M.Si.</option>
+            <option value="retno">Bu Retno Wulandari, S.Pd.</option>
+            <option value="maya">Bu Maya Anggraini, S.Sn.</option>
+            <option value="agus">Pak Agus Setiawan, S.Or.</option>
+          </select>
+          <label class="label" for="p-jadwal">Jadwal asesmen</label>
+          <input class="input" id="p-jadwal" type="date" value="{{ p.jadwal }}" onChange="{{ p.setJadwal }}" style="height:40px;font-size:13.5px;padding:0 10px">
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:5px">
+          <label class="label" for="p-note">Catatan pembina <span class="muted" style="font-weight:500">· wajib bila tidak lolos</span></label>
+          <textarea class="input" id="p-note" value="{{ p.note }}" onChange="{{ p.setNote }}" aria-invalid="{{ p.invalid }}" placeholder="Masukan untuk siswa" style="height:56px;resize:none;font-size:13.5px;padding:8px 12px"></textarea>
+          <sc-if value="{{ p.hasErr }}" hint-placeholder-val="{{ false }}"><span role="alert" style="font-size:12.5px;font-weight:600;color:#B42318">{{ p.err }}</span></sc-if>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:6px;margin-top:auto">
+          <sc-if value="{{ p.canAct }}" hint-placeholder-val="{{ true }}">
+            <div style="display:flex;gap:10px">
+              <button class="btn btn-primary" type="button" style="flex:1;height:42px" onClick="{{ p.advance }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"></path></svg>Lolos ke {{ p.nextLabel }}</button>
+              <button class="btn btn-danger" type="button" style="height:42px" onClick="{{ p.reject }}">Tidak lolos</button>
+            </div>
+          </sc-if>
+          <sc-if value="{{ p.isFinal }}" hint-placeholder-val="{{ false }}">
+            <div role="status" class="{{ p.finCls }}">
+              <span style="width:30px;height:30px;border-radius:10px;background:#FFFFFF;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0" aria-hidden="true">
+                <sc-if value="{{ p.isOk }}" hint-placeholder-val="{{ true }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="9" r="6"></circle><path d="m8.5 14-1.5 7 5-3 5 3-1.5-7"></path></svg></sc-if>
+                <sc-if value="{{ p.isNo }}" hint-placeholder-val="{{ false }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"></path></svg></sc-if>
+              </span>
+              <span style="flex:1;min-width:0;display:flex;flex-direction:column">
+                <span style="font-size:13.5px;font-weight:700;line-height:18px">{{ p.finTitle }}</span>
+                <span class="ellip" style="font-size:12.5px;font-weight:500;line-height:16px">{{ p.finText }}</span>
+              </span>
+            </div>
+          </sc-if>
+          <sc-if value="{{ p.hasUndo }}" hint-placeholder-val="{{ false }}">
+            <div role="status" style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:#1B6B45">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink:0"><path d="m5 12 5 5 9-10"></path></svg>
+              <span style="flex:1;min-width:0">{{ p.undoText }}</span>
+              <button class="lnk" type="button" onClick="{{ p.undo }}">Urungkan</button>
+            </div>
+          </sc-if>
+          <sc-if value="{{ p.noUndo }}" hint-placeholder-val="{{ true }}">
+            <p class="muted" style="margin:0;font-size:12.5px;display:flex;align-items:center;gap:6px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink:0"><path d="M6 16v-5a6 6 0 1 1 12 0v5l1.5 2h-15z"></path><path d="M10 20a2 2 0 0 0 4 0"></path></svg>Siswa menerima notifikasi setiap perubahan tahap.</p>
+          </sc-if>
+        </div>
+      </section>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1000}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = {
+      tahap: 'semua',
+      jenis: 'semua',
+      cabang: 'semua',
+      kelas: 'semua',
+      q: '',
+      sel: 'hana-bio',
+      st: this.initSt(),
+      prev: {},
+      guru: { 'nadia-opsi': 'retno', 'nadia-kimia': '', 'hana-bio': 'hendra', 'rizky-kimia': 'hendra', 'salsa-puisi': 'maya', 'citra-tari': 'maya', 'fajar-silat': 'agus', 'aurelia-ldbi': 'maya', 'galang-olpain': '', 'bima-fiksi': 'retno' },
+      jadwal: { 'hana-bio': '2026-10-07', 'rizky-kimia': '2026-10-05', 'aurelia-ldbi': '2026-10-06', 'citra-tari': '2026-10-09', 'bima-fiksi': '2026-10-08' },
+      note: {},
+      checked: {},
+      tolak: false,
+      bulkNote: '',
+      bulkErr: false,
+      last: null,
+      err: ''
+    };
+  }
+
+  initSt() {
+    return {
+      'nadia-opsi': 'pembinaan',
+      'nadia-kimia': 'terdaftar',
+      'hana-bio': 'pemetaan',
+      'rizky-kimia': 'seleksi',
+      'salsa-puisi': 'pembinaan',
+      'citra-tari': 'pemetaan',
+      'fajar-silat': 'pembinaan',
+      'aurelia-ldbi': 'seleksi',
+      'galang-olpain': 'terdaftar',
+      'bima-fiksi': 'seleksi'
+    };
+  }
+
+  rows() {
+    return [
+      { id: 'nadia-opsi', sid: 'nadia', jenis: 'Riset', cabang: 'OPSI', cabangLabel: 'OPSI', tgl: '16 Sep', bukti: 'sertifikat-opsi-2026.pdf', size: 'PDF · 1,2 MB' },
+      { id: 'nadia-kimia', sid: 'nadia', jenis: 'OSN', cabang: 'Kimia', cabangLabel: 'Kimia', tgl: '29 Sep', bukti: '', size: '' },
+      { id: 'hana-bio', sid: 'hana', jenis: 'OSN', cabang: 'Biologi', cabangLabel: 'Biologi', tgl: '17 Sep', bukti: 'sertifikat-osn-smp-biologi-2025.pdf', size: 'PDF · 780 KB' },
+      { id: 'rizky-kimia', sid: 'rizky', jenis: 'OSN', cabang: 'Kimia', cabangLabel: 'Kimia', tgl: '16 Sep', bukti: 'sertifikat-okn-undip-2026.pdf', size: 'PDF · 1,1 MB' },
+      { id: 'salsa-puisi', sid: 'salsa', jenis: 'FLS3N', cabang: 'Baca Puisi', cabangLabel: 'Baca Puisi', tgl: '16 Sep', bukti: 'sertifikat-fls3n-prov-2026.pdf', size: 'PDF · 1,0 MB' },
+      { id: 'citra-tari', sid: 'citra', jenis: 'FLS3N', cabang: 'Tari Kreasi', cabangLabel: 'Tari Kreasi (tim 2)', tgl: '21 Sep', bukti: 'sertifikat-festival-tari-2026.pdf', size: 'PDF · 940 KB' },
+      { id: 'fajar-silat', sid: 'fajar', jenis: 'O2SN', cabang: 'Pencak Silat', cabangLabel: 'Pencak Silat', tgl: '16 Sep', bukti: 'piagam-o2sn-prov-2026.pdf', size: 'PDF · 900 KB' },
+      { id: 'aurelia-ldbi', sid: 'aurelia', jenis: 'Debat', cabang: 'LDBI', cabangLabel: 'LDBI', tgl: '18 Sep', bukti: '', size: '' },
+      { id: 'galang-olpain', sid: 'galang', jenis: 'OLPAIN', cabang: '', cabangLabel: 'Tanpa cabang', tgl: '28 Sep', bukti: 'sertifikat-olimpiade-pai-smp-2025.pdf', size: 'PDF · 640 KB' },
+      { id: 'bima-fiksi', sid: 'bima', jenis: 'Riset', cabang: 'FIKSI', cabangLabel: 'FIKSI', tgl: '17 Sep', bukti: 'sertifikat-robotik-nasional-2025.pdf', size: 'PDF · 1,3 MB' }
+    ];
+  }
+
+  students() {
+    return {
+      nadia: { nama: 'Nadia Putri Anindya', kelas: 'XI-4', nis: '225226201', ini: 'NA', n: 3, poin: 104, minat: 'Penelitian, Kimia', org: 'KIR SMAGA — anggota sejak 2025', smp: 'Juara II LKTI tingkat kota, 2024' },
+      hana: { nama: 'Hana Safira', kelas: 'X-8', nis: '226227088', ini: 'HS', n: 3, poin: 132, minat: 'Biologi, kimia', org: 'KIR SMAGA, PMR', smp: 'Juara 1 OSN SMP Biologi, Kota Semarang (2025)' },
+      rizky: { nama: 'Rizky Maulana', kelas: 'XI-1', nis: '225226118', ini: 'RM', n: 3, poin: 121, minat: 'Kimia, fisika', org: 'Tim olimpiade SMAGA', smp: 'Finalis OSN SMP Fisika, Provinsi (2024)' },
+      salsa: { nama: 'Salsabila Kirana', kelas: 'XI-5', nis: '225226157', ini: 'SK', n: 5, poin: 268, minat: 'Sastra, teater, film', org: 'Teater SMAGA, Jurnalistik', smp: 'Juara 1 FLS2N SMP Baca Puisi, Kota (2024)' },
+      citra: { nama: 'Citra Ayu Lestari', kelas: 'XI-2', nis: '225226073', ini: 'CL', n: 3, poin: 164, minat: 'Tari kreasi, puisi', org: 'Sanggar tari SMAGA', smp: 'Juara 2 FLS2N SMP Tari, Kota (2024)' },
+      fajar: { nama: 'Fajar Ramadhan', kelas: 'XII-1', nis: '224225012', ini: 'FR', n: 5, poin: 180, minat: 'Pencak silat', org: 'Ekskul pencak silat', smp: 'Juara 1 O2SN SMP Pencak Silat, Kota (2023)' },
+      aurelia: { nama: 'Aurelia Maharani', kelas: 'X-3', nis: '226227031', ini: 'AM', n: 5, poin: 196, minat: 'Biologi, debat', org: 'Klub debat SMAGA, KIR', smp: 'Juara 2 Lomba Debat SMP, Kota (2025)' },
+      galang: { nama: 'Umar Faruq Hidayat', kelas: 'X-TAHFIDZ', nis: '226227044', ini: 'UH', n: 0, poin: 0, minat: 'Tahfidz, kajian PAI', org: 'Rohis SMAGA', smp: 'Juara 1 MTQ Pelajar SMP, Kota (2025)' },
+      bima: { nama: 'Bima Satria Wicaksono', kelas: 'XII-7', nis: '224225219', ini: 'BW', n: 5, poin: 240, minat: 'Robotika, rekayasa', org: 'Klub robotik SMAGA', smp: 'Juara 2 Lomba Robotik SMP, Provinsi (2023)' }
+    };
+  }
+
+  renderVals() {
+    const s = this.state;
+    const R = this.rows();
+    const S = this.students();
+    const BID = { OSN: 'sains', OLPAIN: 'sains', Riset: 'riset', FLS3N: 'seni', Debat: 'seni', O2SN: 'olahraga' };
+    const BL = { sains: 'Sains', riset: 'Riset', seni: 'Seni Budaya', olahraga: 'Olahraga' };
+    const LBL = { terdaftar: 'Terdaftar', pemetaan: 'Pemetaan', seleksi: 'Seleksi', pembinaan: 'Peserta pembinaan', tidak: 'Tidak lolos' };
+    const CHIP = { terdaftar: 'c-blue', pemetaan: 'c-blue', seleksi: 'c-orange', pembinaan: 'c-green', tidak: 'c-red' };
+    const NEXT = { terdaftar: 'pemetaan', pemetaan: 'seleksi', seleksi: 'pembinaan' };
+    const NEXTL = { pemetaan: 'Pemetaan', seleksi: 'Seleksi', pembinaan: 'Pembinaan', tidak: 'Tidak lolos' };
+    const GURU = { hendra: 'Pak Hendra Kusuma, S.Pd., M.Si.', retno: 'Bu Retno Wulandari, S.Pd.', maya: 'Bu Maya Anggraini, S.Sn.', agus: 'Pak Agus Setiawan, S.Or.' };
+    const BASE = { terdaftar: 118, pemetaan: 46, seleksi: 21, pembinaan: 58, tidak: 0 };
+
+    const tally = (m) => {
+      const t = { terdaftar: 0, pemetaan: 0, seleksi: 0, pembinaan: 0, tidak: 0 };
+      Object.keys(m).forEach((k) => { t[m[k]] += 1; });
+      return t;
+    };
+    const t0 = tally(this.initSt());
+    const t1 = tally(s.st);
+    const cnt = {};
+    Object.keys(BASE).forEach((k) => { cnt[k] = BASE[k] + t1[k] - t0[k]; });
+    cnt.semua = cnt.terdaftar + cnt.pemetaan + cnt.seleksi + cnt.pembinaan + cnt.tidak;
+
+    const q = s.q.trim().toLowerCase();
+    const vis = (r) => {
+      const P = S[r.sid];
+      return (s.tahap === 'semua' || s.st[r.id] === s.tahap)
+        && (s.jenis === 'semua' || r.jenis === s.jenis)
+        && (s.cabang === 'semua' || r.cabang === s.cabang)
+        && (s.kelas === 'semua' || P.kelas === s.kelas)
+        && (!q || P.nama.toLowerCase().indexOf(q) >= 0 || P.nis.indexOf(q) >= 0);
+    };
+    const visible = R.filter(vis);
+    const checkedIds = visible.filter((r) => s.checked[r.id]).map((r) => r.id);
+    const nChecked = checkedIds.length;
+    const allOn = visible.length > 0 && visible.every((r) => s.checked[r.id]);
+    const filtersDefault = s.jenis === 'semua' && s.cabang === 'semua' && s.kelas === 'semua' && !q;
+    const resetSel = { checked: {}, tolak: false, bulkErr: false, last: null };
+
+    const move = (ids, to) => {
+      const st = { ...this.state.st };
+      const prev = { ...this.state.prev };
+      const before = {};
+      ids.forEach((id) => {
+        const cur = st[id];
+        const target = to === 'next' ? NEXT[cur] : to;
+        if (!target || target === cur) return;
+        before[id] = cur;
+        prev[id] = cur;
+        st[id] = target;
+      });
+      return { st: st, prev: prev, before: before };
+    };
+
+    const rowObjs = R.map((r) => {
+      const P = S[r.sid];
+      const st = s.st[r.id];
+      const b = BID[r.jenis];
+      const nx = NEXT[st];
+      const isSel = r.id === s.sel;
+      const on = !!s.checked[r.id];
+      const tag = P.nama + ', ' + r.jenis + (r.cabang ? ' ' + r.cabangLabel : '');
+      return {
+        trCls: (vis(r) ? '' : 'row-hide') + (isSel ? ' row-sel' : '') + (on ? ' row-chk' : ''),
+        checked: on,
+        toggle: () => this.setState({ checked: { ...this.state.checked, [r.id]: !this.state.checked[r.id] }, tolak: false, bulkErr: false, last: null }),
+        cbLabel: 'Pilih ' + tag,
+        ini: P.ini,
+        nama: P.nama,
+        kelas: P.kelas,
+        jCls: 'tj b-' + b,
+        jenis: r.jenis,
+        bidangLabel: 'bidang ' + BL[b],
+        cabangLabel: r.cabangLabel,
+        hasBukti: !!r.bukti,
+        noBukti: !r.bukti,
+        poin: P.n ? P.poin + ' poin' : '–',
+        prestasi: P.n ? P.n + ' prestasi' : 'Belum ada',
+        stCls: 'stc ' + CHIP[st],
+        stLabel: LBL[st],
+        lihatAria: 'Lihat ' + tag,
+        pressed: isSel ? 'true' : 'false',
+        pick: () => this.setState({ sel: r.id, err: '' }),
+        nextAria: nx ? 'Lolos ke ' + NEXTL[nx] + ': ' + tag : 'Tidak ada tahap berikutnya: ' + tag,
+        cantNext: !nx,
+        advance: () => {
+          const m = move([r.id], 'next');
+          this.setState({ st: m.st, prev: m.prev, sel: r.id, err: '', last: null });
+        }
+      };
+    });
+
+    const TABS = [['semua', 'Semua'], ['terdaftar', 'Terdaftar'], ['pemetaan', 'Pemetaan'], ['seleksi', 'Seleksi'], ['pembinaan', 'Peserta pembinaan'], ['tidak', 'Tidak lolos']];
+    const JEN = [['semua', 'Semua', ''], ['OSN', 'OSN', 'sains'], ['Riset', 'Riset', 'riset'], ['FLS3N', 'FLS3N', 'seni'], ['O2SN', 'O2SN', 'olahraga'], ['OLPAIN', 'OLPAIN', 'sains'], ['Debat', 'Debat', 'seni']];
+
+    const movable = checkedIds.filter((id) => NEXT[s.st[id]]);
+    const stages = movable.map((id) => s.st[id]).filter((v, i, a) => a.indexOf(v) === i);
+    const bulkNext = stages.length === 1 ? NEXTL[NEXT[stages[0]]] : 'tahap berikutnya';
+
+    const cur = R.find((r) => r.id === s.sel) || R[2];
+    const CP = S[cur.sid];
+    const cst = s.st[cur.id];
+    const cnx = NEXT[cst];
+    const guruKey = s.guru[cur.id] || '';
+    const upd = (key, val) => this.setState({ [key]: { ...this.state[key], [this.state.sel]: val }, err: '' });
+    const choices = R.filter((r) => r.sid === cur.sid).map((r) => {
+      const b = BID[r.jenis];
+      const on = r.id === cur.id;
+      const st = s.st[r.id];
+      return {
+        label: r.jenis + (r.cabang ? ' · ' + r.cabangLabel : ''),
+        sub: BL[b] + ' · ' + r.tgl,
+        cls: on ? 'pc pc-on' : 'pc',
+        pressed: on ? 'true' : 'false',
+        coverCls: 'cover-' + b,
+        isSains: b === 'sains',
+        isRiset: b === 'riset',
+        isSeni: b === 'seni',
+        isOlahraga: b === 'olahraga',
+        stCls: 'chip chs ' + CHIP[st],
+        stLabel: LBL[st],
+        pick: () => this.setState({ sel: r.id, err: '' })
+      };
+    });
+    const pv = s.prev[cur.id];
+
+    return {
+      cnt: cnt,
+      tabs: TABS.map((t, i) => ({
+        label: t[1],
+        n: cnt[t[0]],
+        arrow: i >= 2 && i <= 4,
+        divider: i === 1 || i === 5,
+        cls: s.tahap === t[0] ? 'seg-btn seg-on' : 'seg-btn',
+        pressed: s.tahap === t[0] ? 'true' : 'false',
+        pick: () => this.setState({ tahap: t[0], ...resetSel })
+      })),
+      jenisChips: JEN.map((j) => {
+        const on = s.jenis === j[0];
+        return {
+          label: j[1],
+          on: on,
+          cls: 'jc ' + (j[2] ? (on ? 'jc-on-' + j[2] : 'b-' + j[2]) : (on ? 'jc-on-all' : 'jc-all')),
+          pressed: on ? 'true' : 'false',
+          aria: j[2] ? j[1] + ', bidang ' + BL[j[2]] : 'Semua jenis talenta',
+          pick: () => this.setState({ jenis: j[0], cabang: 'semua', ...resetSel })
+        };
+      }),
+      cab: {
+        none: s.jenis === 'semua' || s.jenis === 'OLPAIN',
+        noneText: s.jenis === 'OLPAIN' ? 'Tanpa cabang' : 'Semua cabang',
+        osn: s.jenis === 'OSN',
+        riset: s.jenis === 'Riset',
+        fls3n: s.jenis === 'FLS3N',
+        o2sn: s.jenis === 'O2SN',
+        debat: s.jenis === 'Debat'
+      },
+      cabang: s.cabang,
+      setCabang: (e) => this.setState({ cabang: e.target.value, ...resetSel }),
+      kelas: s.kelas,
+      setKelas: (e) => this.setState({ kelas: e.target.value, ...resetSel }),
+      q: s.q,
+      setQ: (e) => this.setState({ q: e.target.value, ...resetSel }),
+
+      stripCls: nChecked > 0 ? 'strip strip-sel' : (s.last ? 'strip strip-ok' : 'strip'),
+      sIdle: nChecked === 0 && !s.last,
+      sDone: nChecked === 0 && !!s.last,
+      sSel: nChecked > 0 && !s.tolak,
+      sTolak: nChecked > 0 && s.tolak,
+      shownText: filtersDefault ? 'Menampilkan ' + visible.length + ' dari ' + cnt[s.tahap] + ' pilihan talenta' : visible.length + ' hasil sesuai filter',
+      doneText: s.last ? s.last.text : '',
+      undoBulk: () => {
+        const L = this.state.last;
+        if (!L) return;
+        const st = { ...this.state.st };
+        const prev = { ...this.state.prev };
+        Object.keys(L.before).forEach((id) => { st[id] = L.before[id]; delete prev[id]; });
+        this.setState({ st: st, prev: prev, last: null });
+      },
+      nChecked: nChecked,
+      bulkNext: bulkNext,
+      cantBulkMove: movable.length === 0,
+      bulkMove: () => {
+        const m = move(checkedIds, 'next');
+        const n = Object.keys(m.before).length;
+        this.setState({ st: m.st, prev: m.prev, checked: {}, tolak: false, last: { before: m.before, text: n + ' pilihan dipindahkan ke ' + bulkNext + '. Notifikasi terkirim.' } });
+      },
+      bulkTolak: () => this.setState({ tolak: true, bulkErr: false }),
+      clearChecked: () => this.setState({ checked: {}, tolak: false, bulkErr: false }),
+      bulkNote: s.bulkNote,
+      setBulkNote: (e) => this.setState({ bulkNote: e.target.value, bulkErr: false }),
+      bulkInputCls: s.bulkErr ? 'input input-err' : 'input',
+      bulkPh: s.bulkErr ? 'Catatan wajib diisi' : 'Catatan untuk ' + nChecked + ' siswa (wajib)',
+      bulkInvalid: s.bulkErr ? 'true' : 'false',
+      bulkTolakKirim: () => {
+        const text = this.state.bulkNote.trim();
+        if (!text) { this.setState({ bulkErr: true }); return; }
+        const m = move(checkedIds, 'tidak');
+        const note = { ...this.state.note };
+        checkedIds.forEach((id) => { note[id] = text; });
+        const n = Object.keys(m.before).length;
+        this.setState({ st: m.st, prev: m.prev, note: note, checked: {}, tolak: false, bulkNote: '', bulkErr: false, last: { before: m.before, text: n + ' pilihan ditandai tidak lolos. Catatan terkirim.' } });
+      },
+      bulkTolakBatal: () => this.setState({ tolak: false, bulkErr: false }),
+
+      allOn: allOn,
+      toggleAll: () => {
+        const c = { ...this.state.checked };
+        visible.forEach((r) => { c[r.id] = !allOn; });
+        this.setState({ checked: c, tolak: false, bulkErr: false, last: null });
+      },
+      r0: rowObjs[0],
+      r1: rowObjs[1],
+      r2: rowObjs[2],
+      r3: rowObjs[3],
+      r4: rowObjs[4],
+      r5: rowObjs[5],
+      r6: rowObjs[6],
+      r7: rowObjs[7],
+      r8: rowObjs[8],
+      r9: rowObjs[9],
+      emptyCls: visible.length ? 'row-hide' : '',
+      emptyText: s.tahap === 'tidak' && filtersDefault ? 'Belum ada siswa yang tidak lolos.' : 'Tidak ada pilihan talenta yang cocok.',
+
+      p: {
+        ini: CP.ini,
+        nama: CP.nama,
+        kelas: CP.kelas,
+        nis: CP.nis,
+        poin: CP.poin + ' poin',
+        stLine: CP.n ? CP.n + ' prestasi di STH' : 'Belum ada prestasi di STH',
+        nChoice: choices.length,
+        choices: choices,
+        hasBukti: !!cur.bukti,
+        noBukti: !cur.bukti,
+        bukti: cur.bukti,
+        buktiSize: cur.size,
+        minat: CP.minat,
+        org: CP.org,
+        smp: CP.smp,
+        guru: guruKey,
+        setGuru: (e) => upd('guru', e.target.value),
+        jadwal: s.jadwal[cur.id] || '',
+        setJadwal: (e) => upd('jadwal', e.target.value),
+        note: s.note[cur.id] || '',
+        setNote: (e) => upd('note', e.target.value),
+        err: s.err,
+        hasErr: !!s.err,
+        invalid: s.err ? 'true' : 'false',
+        canAct: !!cnx,
+        nextLabel: cnx ? NEXTL[cnx] : '',
+        advance: () => {
+          const m = move([this.state.sel], 'next');
+          this.setState({ st: m.st, prev: m.prev, err: '', last: null });
+        },
+        reject: () => {
+          const id = this.state.sel;
+          if (!(this.state.note[id] || '').trim()) {
+            this.setState({ err: 'Tulis catatan dulu. Siswa akan menerimanya.' });
+            return;
+          }
+          const m = move([id], 'tidak');
+          this.setState({ st: m.st, prev: m.prev, err: '', last: null });
+        },
+        isFinal: !cnx,
+        isOk: cst === 'pembinaan',
+        isNo: cst === 'tidak',
+        finCls: cst === 'tidak' ? 'fin fin-no' : 'fin fin-ok',
+        finTitle: LBL[cst],
+        finText: cst === 'tidak' ? 'Catatan terkirim ke siswa.' : (GURU[guruKey] ? 'Pembina: ' + GURU[guruKey] : 'Pembina belum ditentukan'),
+        hasUndo: !!pv,
+        noUndo: !pv,
+        undoText: pv ? 'Dipindahkan dari ' + LBL[pv] + '. Notifikasi terkirim.' : '',
+        undo: () => {
+          const id = this.state.sel;
+          const back = this.state.prev[id];
+          if (!back) return;
+          const prev = { ...this.state.prev };
+          delete prev[id];
+          this.setState({ st: { ...this.state.st, [id]: back }, prev: prev, err: '' });
+        }
+      }
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,737 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Kelola lomba · Kesiswaan</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Urbanist:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F4F5FB;font-family:"Plus Jakarta Sans",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;color:#151A33;-webkit-font-smoothing:antialiased}
+*{box-sizing:border-box}
+a{color:#3148D6}a:hover{color:#2638B0}
+h1,h2,h3,.display{font-family:"Urbanist","Plus Jakarta Sans",system-ui,sans-serif;letter-spacing:-0.01em}
+.page{background:radial-gradient(900px 320px at 88% -8%,#ECE8FF 0%,rgba(236,232,255,0) 70%),radial-gradient(760px 300px at 28% -14%,#E2F0FF 0%,rgba(226,240,255,0) 70%),#F4F5FB}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:44px;padding:0 18px;border-radius:12px;font:600 15px/1 "Plus Jakarta Sans",system-ui,sans-serif;border:1px solid transparent;cursor:pointer;text-decoration:none;white-space:nowrap}
+.btn-primary{background:#3148D6;color:#FFFFFF;box-shadow:0 8px 18px -10px rgba(49,72,214,.65)}
+.btn-primary:hover{background:#2638B0;color:#FFFFFF}
+.btn-quiet{background:#FFFFFF;color:#151A33;border-color:#DCDFEC}
+.btn-quiet:hover{background:#F4F5FB;color:#151A33}
+.btn-soft{background:#ECEFFF;color:#2A3CB8}
+.btn-soft:hover{background:#DFE4FF;color:#2A3CB8}
+.btn-danger{background:#FFFFFF;color:#B42318;border-color:#F3C4BE}
+.btn-danger:hover{background:#FDECEA;color:#B42318}
+.btn-sm{height:36px;padding:0 14px;font-size:14px;border-radius:10px}
+.btn:focus-visible,.nav:focus-visible,.input:focus-visible,.icon-btn:focus-visible,.tab:focus-visible,.pick:focus-visible{outline:3px solid #A9B6F5;outline-offset:2px}
+.icon-btn{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:12px;border:1px solid #E7E9F3;background:#FFFFFF;color:#4A5068;cursor:pointer;position:relative;text-decoration:none}
+.icon-btn:hover{background:#F4F5FB;color:#151A33}
+.dot{position:absolute;top:8px;right:9px;width:8px;height:8px;border-radius:999px;background:#3148D6;border:2px solid #FFFFFF}
+.card{background:#FFFFFF;border:1px solid #E7E9F3;border-radius:20px;box-shadow:0 1px 2px rgba(20,24,60,.04),0 10px 28px -18px rgba(20,24,60,.18)}
+.chip{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 10px;border-radius:999px;font-size:12.5px;font-weight:600;white-space:nowrap}
+.c-blue{background:#ECEFFF;color:#2A3CB8}
+.c-green{background:#E4F5EA;color:#1B6B45}
+.c-orange{background:#FFEEDD;color:#9A3F00}
+.c-red{background:#FDECEA;color:#B42318}
+.c-gray{background:#EEF0F6;color:#4A5068}
+.c-gold{background:#FFF3D1;color:#6B4E00}
+.c-glass{background:rgba(255,255,255,.82);color:#151A33}
+.b-sains{background:#E6F0FF;color:#1D56AD}
+.b-riset{background:#F0EBFF;color:#5534B8}
+.b-seni{background:#FDE8F0;color:#A61F54}
+.b-olahraga{background:#E0F4F8;color:#0B6577}
+.cover-sains{background:linear-gradient(135deg,#DCE9FF,#C3D8FF);color:#1D56AD}
+.cover-riset{background:linear-gradient(135deg,#EEE7FF,#D9CCFF);color:#5534B8}
+.cover-seni{background:linear-gradient(135deg,#FFE6EF,#FFCFE0);color:#A61F54}
+.cover-olahraga{background:linear-gradient(135deg,#DDF4F8,#BFE8F0);color:#0B6577}
+.label{font-size:13px;font-weight:600;color:#4A5068}
+.input{height:46px;width:100%;border:1px solid #DCDFEC;border-radius:12px;padding:0 14px;font:500 15px "Plus Jakarta Sans",system-ui,sans-serif;color:#151A33;background:#FFFFFF}
+.input::placeholder{color:#8A90A6}
+textarea.input{height:auto;padding:12px 14px;line-height:1.5;resize:vertical}
+.nav{display:flex;align-items:center;gap:12px;height:44px;padding:0 14px;border-radius:12px;color:#4A5068;text-decoration:none;font-size:14.5px;font-weight:600}
+.nav:hover{background:#F1F2FA;color:#151A33}
+.nav-on{background:#3148D6;color:#FFFFFF;box-shadow:0 8px 18px -10px rgba(49,72,214,.7)}
+.nav-on:hover{background:#2638B0;color:#FFFFFF}
+.nav-sec{font-size:11.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#8A90A6;padding:8px 14px 2px}
+.badge{margin-left:auto;min-width:22px;height:22px;padding:0 7px;border-radius:999px;background:#ECEFFF;color:#2A3CB8;font-size:12px;font-weight:700;display:inline-flex;align-items:center;justify-content:center}
+.nav-on .badge{background:#FFFFFF;color:#2A3CB8}
+.avatar{display:inline-flex;align-items:center;justify-content:center;border-radius:999px;background:#ECEFFF;color:#2A3CB8;font-weight:700;flex-shrink:0}
+.stack{display:flex}.stack .avatar{border:2px solid #FFFFFF;margin-left:-8px}.stack .avatar:first-child{margin-left:0}
+.pick{cursor:pointer;border:1px solid #DCDFEC;background:#FFFFFF;border-radius:14px;font:600 14.5px "Plus Jakarta Sans",system-ui,sans-serif;color:#151A33}
+.pick-on{border:2px solid #3148D6;background:#ECEFFF;color:#2A3CB8}
+.tabbar{position:absolute;left:0;right:0;bottom:0;height:80px;background:#FFFFFF;border-top:1px solid #E7E9F3;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));padding:8px 6px 16px}
+.tab{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:52px;border-radius:14px;color:#666C84;text-decoration:none;font-size:11.5px;font-weight:600}
+.tab-ic{width:48px;height:28px;border-radius:999px;display:flex;align-items:center;justify-content:center}
+.tab-on{color:#3148D6}.tab-on .tab-ic{background:#ECEFFF}
+.muted{color:#666C84}
+.num{font-variant-numeric:tabular-nums}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.label{line-height:16px}
+.fld{display:flex;flex-direction:column;gap:5px;min-width:0}
+.dr .input{height:40px;font-size:14px;padding:0 12px}
+
+.seg{display:flex;gap:3px;padding:3px;height:40px;background:#F4F5FB;border:1px solid #E7E9F3;border-radius:12px}
+.seg-btn{flex:1 1 auto;border:0;background:transparent;border-radius:9px;padding:0 8px;font:600 13.5px "Plus Jakarta Sans",system-ui,sans-serif;color:#4A5068;cursor:pointer;white-space:nowrap}
+.seg-btn:hover{background:#E9EBF5;color:#151A33}
+.seg-on,.seg-on:hover{background:#3148D6;color:#FFFFFF}
+.seg-btn:focus-visible,.tabp:focus-visible{outline:3px solid #A9B6F5;outline-offset:1px}
+.bpick{height:40px;display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:0 6px;font-size:13.5px}
+.kpick{height:40px;display:inline-flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;padding:0}
+.kpick .kl{font:800 15px/16px "Urbanist",system-ui,sans-serif}
+.kpick .kw{font-size:12px;line-height:14px;font-weight:600;color:#666C84}
+.pick-on.kpick .kw{color:#2A3CB8}
+.upload{display:flex;align-items:center;gap:10px;height:50px;padding:0 12px;border:1.5px dashed #C4C9DD;border-radius:14px;background:#FAFBFE;cursor:pointer;min-width:0}
+.upload:hover{border-color:#3148D6;background:#F5F7FF}
+.upload:focus-within{outline:3px solid #A9B6F5;outline-offset:1px}
+.tbl{width:100%;border-collapse:collapse;table-layout:fixed}
+.tbl th{text-align:left;font-size:12.5px;font-weight:700;color:#666C84;padding:0 12px;height:42px;background:#F8F9FD;border-bottom:1px solid #E7E9F3}
+.tbl td{padding:11px 12px;border-bottom:1px solid #EEF0F6;font-size:14px;vertical-align:middle}
+.tbl th:first-child,.tbl td:first-child{padding-left:18px}
+.tbl tbody tr:last-child td{border-bottom:0}
+.tbl tbody tr:hover td{background:#FAFBFE}
+.tabp{display:inline-flex;align-items:center;gap:8px;height:40px;padding:0 14px;border-radius:12px;border:0;background:transparent;font:600 14.5px "Plus Jakarta Sans",system-ui,sans-serif;color:#4A5068;cursor:pointer}
+.tabp:hover{background:#F4F5FB;color:#151A33}
+.tabp-on,.tabp-on:hover{background:#ECEFFF;color:#2A3CB8}
+.cnt{min-width:22px;height:22px;padding:0 7px;border-radius:999px;background:#EEF0F6;color:#4A5068;font-size:12px;font-weight:700;display:inline-flex;align-items:center;justify-content:center}
+.tabp-on .cnt{background:#FFFFFF;color:#2A3CB8}
+.cv{width:40px;height:40px;border-radius:12px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
+.ellip{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+</style>
+</helmet>
+<div class="page" style="width:1440px;height:1000px;display:flex;overflow:hidden;position:relative">
+  <aside style="width:264px;flex-shrink:0;background:#FFFFFF;border-right:1px solid #E7E9F3;padding:22px 16px;display:flex;flex-direction:column;gap:18px">
+    <div style="display:flex;align-items:center;gap:12px;padding:0 4px">
+      <span role="img" aria-label="Logo SMAGA Talent Hub" style="width:40px;height:40px;border-radius:12px;background:#3148D6;color:#FFFFFF;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 4 6v6c0 4.5 3.4 8.2 8 9 4.6-.8 8-4.5 8-9V6z"></path><path d="m8.5 12 2.5 2.5 4.5-5"></path></svg></span>
+      <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
+        <span class="display" style="font-size:17px;font-weight:800;line-height:1.15">SMAGA Talent Hub</span>
+        <span class="muted" style="font-size:12px;line-height:1.3">SMA Negeri 3 Semarang</span>
+      </div>
+    </div>
+    <nav aria-label="Menu utama" style="display:flex;flex-direction:column;gap:4px">
+      <div class="nav-sec">Menu</div>
+      <a class="nav" href="#"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"></path></svg>Beranda</a>
+      <a class="nav nav-on" href="Kesiswaan-Kelola-Lomba.dc.html" aria-current="page" onClick="{{ goKatalog }}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z"></path><path d="M17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3"></path></svg>Kelola lomba</a>
+      <a class="nav" href="#usulan" onClick="{{ goUsulan }}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 13h5l1.5 3h5L16 13h5"></path><path d="M5 5h14l2 8v6a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-6z"></path></svg>Usulan siswa<span class="badge num">{{ pendingUsulan }}</span></a>
+      <a class="nav" href="Kesiswaan-Verifikasi-Hasil.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 4 6v6c0 4.5 3.4 8.2 8 9 4.6-.8 8-4.5 8-9V6z"></path><path d="m8.5 12 2.5 2.5 4.5-5"></path></svg>Verifikasi hasil<span class="badge num">4</span></a>
+      <div class="nav-sec" style="margin-top:10px">Data</div>
+      <a class="nav" href="#"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="5" rx="8" ry="3"></ellipse><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"></path></svg>Database prestasi</a>
+      <a class="nav" href="Kesiswaan-Talenta.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"></circle><path d="M2.5 20a6.5 6.5 0 0 1 13 0"></path><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14a6 6 0 0 1 3.5 6"></path></svg>Talenta siswa</a>
+      <a class="nav" href="#"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="9" r="6"></circle><path d="m8.5 14-1.5 7 5-3 5 3-1.5-7"></path></svg>Apresiasi</a>
+    </nav>
+    <div style="margin-top:auto;padding:12px;border-radius:16px;background:#F4F5FB;display:flex;align-items:center;gap:10px">
+      <span class="avatar" style="width:38px;height:38px;font-size:14px" aria-hidden="true">DR</span>
+      <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
+        <span style="font-size:14px;font-weight:700;line-height:1.3">Ibu Dwi Rahayu</span>
+        <span class="muted" style="font-size:12.5px;line-height:1.3">Kesiswaan</span>
+      </div>
+    </div>
+  </aside>
+
+  <main style="flex:1;min-width:0;padding:26px 36px;display:flex;flex-direction:column;gap:22px;position:relative">
+    <header style="display:flex;align-items:center;justify-content:space-between;gap:24px">
+      <div style="display:flex;flex-direction:column;gap:4px;min-width:0">
+        <h1 style="margin:0;font-size:30px;font-weight:800;line-height:1.15">Kelola lomba</h1>
+        <p class="muted" style="margin:0;font-size:15px">Lomba yang dipublikasikan tampil di katalog siswa.</p>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;flex-shrink:0">
+        <button class="btn btn-primary" type="button" onClick="{{ openAdd }}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>Tambah lomba</button>
+        <div style="position:relative;width:300px">
+          <label class="sr-only" for="cari-atas">Cari lomba atau siswa</label>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="position:absolute;left:14px;top:13px;color:#8A90A6"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+          <input class="input" id="cari-atas" type="search" placeholder="Cari lomba atau siswa" style="padding-left:44px">
+        </div>
+        <button class="icon-btn" type="button" aria-label="Notifikasi, 2 baru"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 16v-5a6 6 0 1 1 12 0v5l1.5 2h-15z"></path><path d="M10 20a2 2 0 0 0 4 0"></path></svg><span class="dot"></span></button>
+        <span class="avatar" role="img" aria-label="Ibu Dwi Rahayu" style="width:40px;height:40px;font-size:14px">DR</span>
+      </div>
+    </header>
+
+    <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:18px">
+      <div class="card" style="padding:18px;display:flex;align-items:center;gap:14px">
+        <span style="width:44px;height:44px;border-radius:14px;background:#ECEFFF;color:#3148D6;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z"></path><path d="M17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3"></path></svg></span>
+        <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
+          <span class="muted" style="font-size:13px;font-weight:600">Lomba aktif</span>
+          <span class="display num" style="font-size:28px;font-weight:800;line-height:1.1">6</span>
+          <span class="muted" style="font-size:12.5px">pendaftaran dibuka</span>
+        </div>
+      </div>
+      <div class="card" style="padding:18px;display:flex;align-items:center;gap:14px">
+        <span style="width:44px;height:44px;border-radius:14px;background:#E4F5EA;color:#1B6B45;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"></circle><path d="M2.5 20a6.5 6.5 0 0 1 13 0"></path><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14a6 6 0 0 1 3.5 6"></path></svg></span>
+        <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
+          <span class="muted" style="font-size:13px;font-weight:600">Pendaftar bulan ini</span>
+          <span class="display num" style="font-size:28px;font-weight:800;line-height:1.1">39</span>
+          <span class="muted" style="font-size:12.5px">siswa di 7 lomba</span>
+        </div>
+      </div>
+      <div class="card" style="padding:18px;display:flex;align-items:center;gap:14px">
+        <span style="width:44px;height:44px;border-radius:14px;background:#FFEEDD;color:#9A3F00;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 13h5l1.5 3h5L16 13h5"></path><path d="M5 5h14l2 8v6a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-6z"></path></svg></span>
+        <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
+          <span class="muted" style="font-size:13px;font-weight:600">Usulan siswa</span>
+          <span class="display num" style="font-size:28px;font-weight:800;line-height:1.1">{{ pendingUsulan }}</span>
+          <span class="muted" style="font-size:12.5px">menunggu ditinjau</span>
+        </div>
+      </div>
+      <div class="card" style="padding:18px;display:flex;align-items:center;gap:14px">
+        <span style="width:44px;height:44px;border-radius:14px;background:#EEF0F6;color:#4A5068;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg></span>
+        <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
+          <span class="muted" style="font-size:13px;font-weight:600">Ditutup minggu ini</span>
+          <span class="display num" style="font-size:28px;font-weight:800;line-height:1.1">1</span>
+          <span class="muted" style="font-size:12.5px">FLS3N Kota · 2 Okt</span>
+        </div>
+      </div>
+    </div>
+
+    <section class="card" style="display:flex;flex-direction:column;overflow:hidden;min-height:0">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px;border-bottom:1px solid #E7E9F3">
+        <div role="tablist" aria-label="Daftar lomba" style="display:flex;gap:6px">
+          <button id="tab-katalog" role="tab" type="button" class="{{ tabs.katalog.cls }}" aria-selected="{{ tabs.katalog.sel }}" onClick="{{ tabs.katalog.pick }}">Katalog <span class="cnt num">8</span></button>
+          <button id="usulan" role="tab" type="button" class="{{ tabs.usulan.cls }}" aria-selected="{{ tabs.usulan.sel }}" onClick="{{ tabs.usulan.pick }}">Usulan siswa <span class="cnt num">{{ pendingUsulan }}</span></button>
+        </div>
+        <span class="muted" style="font-size:13px">Urut dari batas daftar terdekat</span>
+      </div>
+
+      <sc-if value="{{ isKatalog }}" hint-placeholder-val="{{ true }}">
+        <div role="tabpanel" aria-labelledby="tab-katalog">
+          <table class="tbl">
+            <caption class="sr-only">Katalog lomba SMAGA, 8 lomba</caption>
+            <thead>
+              <tr>
+                <th scope="col">Lomba</th>
+                <th scope="col" style="width:128px">Bidang</th>
+                <th scope="col" style="width:92px">Tingkat</th>
+                <th scope="col" style="width:112px">Batas daftar</th>
+                <th scope="col" style="width:96px">Pendaftar</th>
+                <th scope="col" style="width:164px">Status</th>
+                <th scope="col" style="width:104px">Aksi</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><div style="display:flex;align-items:center;gap:12px;min-width:0"><span class="cv cover-seni" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a9 9 0 1 0 0 18c1.1 0 1.5-.8 1.5-1.6 0-1.3-1.2-1.6-1.2-2.9 0-.9.7-1.5 1.7-1.5H17a4 4 0 0 0 4-4c0-4.4-4-8-9-8z"></path><circle cx="7.5" cy="11" r="1"></circle><circle cx="10" cy="7" r="1"></circle><circle cx="15" cy="7.5" r="1"></circle></svg></span><div style="display:flex;flex-direction:column;gap:2px;min-width:0"><span style="font-weight:700;line-height:1.35">FLS3N Kota Semarang 2026</span><span class="muted ellip" style="font-size:12.5px">Puspresnas · Kategori A · Individu</span></div></div></td>
+                <td><span class="chip b-seni">Seni Budaya</span></td>
+                <td>Kota/Kab</td>
+                <td><div style="display:flex;flex-direction:column;gap:2px"><span class="num">2 Okt 2026</span><span style="font-size:12.5px;font-weight:700;color:#9A3F00">2 hari lagi</span></div></td>
+                <td class="num">7 siswa</td>
+                <td><span class="chip c-green"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"></path></svg>Dipublikasikan</span></td>
+                <td><div style="display:flex;gap:8px"><button class="icon-btn" type="button" style="width:36px;height:36px;border-radius:10px" aria-label="Ubah FLS3N Kota Semarang 2026" onClick="{{ ed.fls3n }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z"></path><path d="m13.5 6.5 4 4"></path></svg></button><a class="icon-btn" href="Detail-Lomba.dc.html" style="width:36px;height:36px;border-radius:10px" aria-label="Lihat FLS3N Kota Semarang 2026 di katalog"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"></path><circle cx="12" cy="12" r="3"></circle></svg></a></div></td>
+              </tr>
+              <tr>
+                <td><div style="display:flex;align-items:center;gap:12px;min-width:0"><span class="cv cover-sains" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3h6M10 3v6l-5 9a2 2 0 0 0 1.7 3h10.6a2 2 0 0 0 1.7-3l-5-9V3"></path><path d="M7.5 15h9"></path></svg></span><div style="display:flex;flex-direction:column;gap:2px;min-width:0"><span style="font-weight:700;line-height:1.35">OSN Tingkat Kota Semarang 2026</span><span class="muted ellip" style="font-size:12.5px">Puspresnas · Kategori A · Individu</span></div></div></td>
+                <td><span class="chip b-sains">Sains</span></td>
+                <td>Kota/Kab</td>
+                <td class="num">8 Okt 2026</td>
+                <td class="num">12 siswa</td>
+                <td><span class="chip c-green"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"></path></svg>Dipublikasikan</span></td>
+                <td><div style="display:flex;gap:8px"><button class="icon-btn" type="button" style="width:36px;height:36px;border-radius:10px" aria-label="Ubah OSN Tingkat Kota Semarang 2026" onClick="{{ ed.osn }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z"></path><path d="m13.5 6.5 4 4"></path></svg></button><a class="icon-btn" href="Detail-Lomba.dc.html" style="width:36px;height:36px;border-radius:10px" aria-label="Lihat OSN Tingkat Kota Semarang 2026 di katalog"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"></path><circle cx="12" cy="12" r="3"></circle></svg></a></div></td>
+              </tr>
+              <tr>
+                <td><div style="display:flex;align-items:center;gap:12px;min-width:0"><span class="cv cover-olahraga" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 3c2.5 2.5 3.5 5.5 3.5 9s-1 6.5-3.5 9M12 3C9.5 5.5 8.5 8.5 8.5 12s1 6.5 3.5 9M3.5 9h17M3.5 15h17"></path></svg></span><div style="display:flex;flex-direction:column;gap:2px;min-width:0"><span style="font-weight:700;line-height:1.35">O2SN Kota Semarang 2026 · Bulu tangkis</span><span class="muted ellip" style="font-size:12.5px">Puspresnas · Kategori A · Individu</span></div></div></td>
+                <td><span class="chip b-olahraga">Olahraga</span></td>
+                <td>Kota/Kab</td>
+                <td class="num">9 Okt 2026</td>
+                <td class="num">4 siswa</td>
+                <td><span class="chip c-green"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"></path></svg>Dipublikasikan</span></td>
+                <td><div style="display:flex;gap:8px"><button class="icon-btn" type="button" style="width:36px;height:36px;border-radius:10px" aria-label="Ubah O2SN Kota Semarang 2026" onClick="{{ ed.o2sn }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z"></path><path d="m13.5 6.5 4 4"></path></svg></button><a class="icon-btn" href="Detail-Lomba.dc.html" style="width:36px;height:36px;border-radius:10px" aria-label="Lihat O2SN Kota Semarang 2026 di katalog"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"></path><circle cx="12" cy="12" r="3"></circle></svg></a></div></td>
+              </tr>
+              <tr>
+                <td><div style="display:flex;align-items:center;gap:12px;min-width:0"><span class="cv cover-riset" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6M10 21h4"></path><path d="M12 3a6 6 0 0 0-3.5 10.9c.6.4 1 1.1 1 1.8V16h5v-.3c0-.7.4-1.4 1-1.8A6 6 0 0 0 12 3z"></path></svg></span><div style="display:flex;flex-direction:column;gap:2px;min-width:0"><span style="font-weight:700;line-height:1.35">Lomba Peneliti Belia (LPB) 2026</span><span class="muted ellip" style="font-size:12.5px">Center for Young Scientists · Kategori C · Tim maks 3</span></div></div></td>
+                <td><span class="chip b-riset">Riset</span></td>
+                <td>Nasional</td>
+                <td class="num">10 Okt 2026</td>
+                <td class="num">5 siswa</td>
+                <td><span class="chip c-green"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"></path></svg>Dipublikasikan</span></td>
+                <td><div style="display:flex;gap:8px"><button class="icon-btn" type="button" style="width:36px;height:36px;border-radius:10px" aria-label="Ubah Lomba Peneliti Belia 2026" onClick="{{ ed.lpb }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z"></path><path d="m13.5 6.5 4 4"></path></svg></button><a class="icon-btn" href="Detail-Lomba.dc.html" style="width:36px;height:36px;border-radius:10px" aria-label="Lihat Lomba Peneliti Belia 2026 di katalog"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"></path><circle cx="12" cy="12" r="3"></circle></svg></a></div></td>
+              </tr>
+              <tr>
+                <td><div style="display:flex;align-items:center;gap:12px;min-width:0"><span class="cv cover-seni" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a9 9 0 1 0 0 18c1.1 0 1.5-.8 1.5-1.6 0-1.3-1.2-1.6-1.2-2.9 0-.9.7-1.5 1.7-1.5H17a4 4 0 0 0 4-4c0-4.4-4-8-9-8z"></path><circle cx="7.5" cy="11" r="1"></circle><circle cx="10" cy="7" r="1"></circle><circle cx="15" cy="7.5" r="1"></circle></svg></span><div style="display:flex;flex-direction:column;gap:2px;min-width:0"><span style="font-weight:700;line-height:1.35">Lomba Debat Bahasa Indonesia (LDBI) Kota 2026</span><span class="muted ellip" style="font-size:12.5px">Puspresnas · Kategori A · Tim 3</span></div></div></td>
+                <td><span class="chip b-seni">Seni Budaya</span></td>
+                <td>Kota/Kab</td>
+                <td class="num">12 Okt 2026</td>
+                <td class="num">6 siswa</td>
+                <td><span class="chip c-green"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"></path></svg>Dipublikasikan</span></td>
+                <td><div style="display:flex;gap:8px"><button class="icon-btn" type="button" style="width:36px;height:36px;border-radius:10px" aria-label="Ubah LDBI Kota 2026" onClick="{{ ed.ldbi }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z"></path><path d="m13.5 6.5 4 4"></path></svg></button><a class="icon-btn" href="Detail-Lomba.dc.html" style="width:36px;height:36px;border-radius:10px" aria-label="Lihat LDBI Kota 2026 di katalog"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"></path><circle cx="12" cy="12" r="3"></circle></svg></a></div></td>
+              </tr>
+              <tr>
+                <td><div style="display:flex;align-items:center;gap:12px;min-width:0"><span class="cv cover-olahraga" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 3c2.5 2.5 3.5 5.5 3.5 9s-1 6.5-3.5 9M12 3C9.5 5.5 8.5 8.5 8.5 12s1 6.5 3.5 9M3.5 9h17M3.5 15h17"></path></svg></span><div style="display:flex;flex-direction:column;gap:2px;min-width:0"><span style="font-weight:700;line-height:1.35">Kejuaraan Pencak Silat Pelajar Jateng 2026</span><span class="muted ellip" style="font-size:12.5px">IPSI Jawa Tengah · Kategori C · Individu</span></div></div></td>
+                <td><span class="chip b-olahraga">Olahraga</span></td>
+                <td>Provinsi</td>
+                <td class="num">15 Okt 2026</td>
+                <td class="num">2 siswa</td>
+                <td><span class="chip c-green"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"></path></svg>Dipublikasikan</span></td>
+                <td><div style="display:flex;gap:8px"><button class="icon-btn" type="button" style="width:36px;height:36px;border-radius:10px" aria-label="Ubah Kejuaraan Pencak Silat Pelajar Jateng 2026" onClick="{{ ed.silat }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z"></path><path d="m13.5 6.5 4 4"></path></svg></button><a class="icon-btn" href="Detail-Lomba.dc.html" style="width:36px;height:36px;border-radius:10px" aria-label="Lihat Kejuaraan Pencak Silat Pelajar Jateng 2026 di katalog"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"></path><circle cx="12" cy="12" r="3"></circle></svg></a></div></td>
+              </tr>
+              <tr>
+                <td><div style="display:flex;align-items:center;gap:12px;min-width:0"><span class="cv cover-riset" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6M10 21h4"></path><path d="M12 3a6 6 0 0 0-3.5 10.9c.6.4 1 1.1 1 1.8V16h5v-.3c0-.7.4-1.4 1-1.8A6 6 0 0 0 12 3z"></path></svg></span><div style="display:flex;flex-direction:column;gap:2px;min-width:0"><span style="font-weight:700;line-height:1.35">National Science and Invention Fair (NSIF) 2026</span><span class="muted ellip" style="font-size:12.5px">Penyelenggara swasta · Kategori D · Tim maks 3</span></div></div></td>
+                <td><span class="chip b-riset">Riset</span></td>
+                <td>Nasional</td>
+                <td class="num">20 Okt 2026</td>
+                <td class="num">3 siswa</td>
+                <td><span class="chip c-green"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"></path></svg>Dipublikasikan</span></td>
+                <td><div style="display:flex;gap:8px"><button class="icon-btn" type="button" style="width:36px;height:36px;border-radius:10px" aria-label="Ubah NSIF 2026" onClick="{{ ed.nsif }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z"></path><path d="m13.5 6.5 4 4"></path></svg></button><a class="icon-btn" href="Detail-Lomba.dc.html" style="width:36px;height:36px;border-radius:10px" aria-label="Lihat NSIF 2026 di katalog"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"></path><circle cx="12" cy="12" r="3"></circle></svg></a></div></td>
+              </tr>
+              <tr>
+                <td><div style="display:flex;align-items:center;gap:12px;min-width:0"><span class="cv cover-riset" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6M10 21h4"></path><path d="M12 3a6 6 0 0 0-3.5 10.9c.6.4 1 1.1 1 1.8V16h5v-.3c0-.7.4-1.4 1-1.8A6 6 0 0 0 12 3z"></path></svg></span><div style="display:flex;flex-direction:column;gap:2px;min-width:0"><span style="font-weight:700;line-height:1.35">KRENOVA Kota Semarang 2027</span><span class="muted ellip" style="font-size:12.5px">Pemerintah Kota Semarang · Kategori B · Individu/Tim</span></div></div></td>
+                <td><span class="chip b-riset">Riset</span></td>
+                <td>Kota/Kab</td>
+                <td><div style="display:flex;flex-direction:column;gap:2px"><span class="muted" style="font-size:12.5px">Dibuka</span><span class="num">1 Des 2026</span></div></td>
+                <td class="muted num">0 siswa</td>
+                <td><span class="chip c-blue"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg>Segera dibuka</span></td>
+                <td><div style="display:flex;gap:8px"><button class="icon-btn" type="button" style="width:36px;height:36px;border-radius:10px" aria-label="Ubah KRENOVA Kota Semarang 2027" onClick="{{ ed.krenova }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z"></path><path d="m13.5 6.5 4 4"></path></svg></button><a class="icon-btn" href="Detail-Lomba.dc.html" style="width:36px;height:36px;border-radius:10px" aria-label="Lihat KRENOVA Kota Semarang 2027 di katalog"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"></path><circle cx="12" cy="12" r="3"></circle></svg></a></div></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isUsulan }}" hint-placeholder-val="{{ false }}">
+        <div role="tabpanel" aria-labelledby="usulan" style="padding:18px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px">
+          <sc-for list="{{ usulan }}" as="u" hint-placeholder-count="3">
+            <article style="border:1px solid #E7E9F3;border-radius:18px;padding:16px;display:flex;flex-direction:column;gap:12px;background:#FFFFFF">
+              <div style="display:flex;align-items:center;gap:10px">
+                <span class="avatar" style="width:36px;height:36px;font-size:13px" aria-hidden="true">{{ u.ini }}</span>
+                <div style="display:flex;flex-direction:column;gap:1px;min-width:0;flex:1">
+                  <span style="font-size:14px;font-weight:700">{{ u.siswa }} · {{ u.kelas }}</span>
+                  <span class="muted" style="font-size:12.5px">{{ u.waktu }}</span>
+                </div>
+                <span class="{{ u.chipCls }}">{{ u.chip }}</span>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:4px">
+                <h3 style="margin:0;font-size:17px;font-weight:700;line-height:1.3">{{ u.nama }}</h3>
+                <span class="muted" style="font-size:13.5px">{{ u.peny }}</span>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:8px;padding:12px;border-radius:14px;background:#F4F5FB;font-size:13.5px">
+                <div style="display:flex;align-items:center;gap:8px;min-width:0">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color:#666C84;flex-shrink:0"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"></path><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"></path></svg>
+                  <sc-if value="{{ u.hasLink }}" hint-placeholder-val="{{ true }}"><a class="ellip" href="#" style="font-weight:600">{{ u.link }}</a></sc-if>
+                  <sc-if value="{{ u.noLink }}" hint-placeholder-val="{{ false }}"><span class="muted">Tanpa tautan</span></sc-if>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px;min-width:0">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color:#666C84;flex-shrink:0"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"></path><path d="M14 3v5h5"></path></svg>
+                  <a class="ellip" href="#" style="font-weight:600">{{ u.brosur }}</a>
+                  <span class="muted num" style="flex-shrink:0">{{ u.size }}</span>
+                </div>
+              </div>
+              <sc-if value="{{ u.isBaru }}" hint-placeholder-val="{{ true }}">
+                <div style="display:flex;gap:8px">
+                  <button class="btn btn-primary btn-sm" type="button" onClick="{{ u.jadikan }}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>Jadikan lomba</button>
+                  <button class="btn btn-danger btn-sm" type="button" onClick="{{ u.tolak }}">Tolak</button>
+                </div>
+              </sc-if>
+              <sc-if value="{{ u.isDone }}" hint-placeholder-val="{{ false }}">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:36px">
+                  <span class="muted" style="font-size:13px">{{ u.doneText }}</span>
+                  <sc-if value="{{ u.canUndo }}" hint-placeholder-val="{{ false }}"><button class="btn btn-quiet btn-sm" type="button" onClick="{{ u.undo }}">Urungkan</button></sc-if>
+                </div>
+              </sc-if>
+            </article>
+          </sc-for>
+        </div>
+      </sc-if>
+    </section>
+
+    <sc-if value="{{ hasToast }}" hint-placeholder-val="{{ false }}">
+      <div role="status" class="card" style="position:absolute;right:36px;bottom:28px;display:flex;align-items:center;gap:12px;padding:12px 12px 12px 16px;max-width:520px">
+        <span style="width:32px;height:32px;border-radius:10px;background:#E4F5EA;color:#1B6B45;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"></path></svg></span>
+        <span style="font-size:14px;font-weight:600">{{ toast }}</span>
+        <button class="icon-btn" type="button" aria-label="Tutup pesan" onClick="{{ closeToast }}" style="width:36px;height:36px;border:0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"></path></svg></button>
+      </div>
+    </sc-if>
+  </main>
+
+  <sc-if value="{{ drawer }}" hint-placeholder-val="{{ true }}">
+    <div style="position:absolute;inset:0;z-index:20">
+      <div aria-hidden="true" onClick="{{ close }}" style="position:absolute;inset:0;background:rgba(21,26,51,.42)"></div>
+      <aside class="dr" role="dialog" aria-modal="true" aria-labelledby="dr-title" style="position:absolute;top:0;right:0;bottom:0;width:520px;background:#FFFFFF;border-left:1px solid #E7E9F3;box-shadow:-24px 0 48px -24px rgba(20,24,60,.35);display:flex;flex-direction:column">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 24px;border-bottom:1px solid #E7E9F3">
+          <div style="display:flex;align-items:center;gap:10px;min-width:0">
+            <h2 id="dr-title" style="margin:0;font-size:20px;font-weight:700">{{ drawerTitle }}</h2>
+            <sc-if value="{{ fromUsulan }}" hint-placeholder-val="{{ false }}"><span class="chip c-blue">{{ usulanChip }}</span></sc-if>
+          </div>
+          <button class="icon-btn" type="button" aria-label="Tutup formulir" onClick="{{ close }}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"></path></svg></button>
+        </div>
+
+        <div style="flex:1;min-height:0;overflow-y:auto;padding:16px 24px;display:flex;flex-direction:column;gap:11px">
+          <div class="fld">
+            <label class="label" for="f-nama">Nama lomba</label>
+            <input class="input" id="f-nama" type="text" value="{{ form.nama }}" onChange="{{ on.nama }}" placeholder="Contoh: OSN Tingkat Kota Semarang 2026">
+          </div>
+
+          <div class="fld">
+            <span class="label" id="lb-bidang">Bidang</span>
+            <div role="group" aria-labelledby="lb-bidang" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px">
+              <button type="button" class="{{ bd.sains.cls }}" aria-pressed="{{ bd.sains.pressed }}" onClick="{{ bd.sains.pick }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color:#1D56AD"><path d="M9 3h6M10 3v6l-5 9a2 2 0 0 0 1.7 3h10.6a2 2 0 0 0 1.7-3l-5-9V3"></path><path d="M7.5 15h9"></path></svg>Sains</button>
+              <button type="button" class="{{ bd.riset.cls }}" aria-pressed="{{ bd.riset.pressed }}" onClick="{{ bd.riset.pick }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color:#5534B8"><path d="M9 18h6M10 21h4"></path><path d="M12 3a6 6 0 0 0-3.5 10.9c.6.4 1 1.1 1 1.8V16h5v-.3c0-.7.4-1.4 1-1.8A6 6 0 0 0 12 3z"></path></svg>Riset</button>
+              <button type="button" class="{{ bd.seni.cls }}" aria-pressed="{{ bd.seni.pressed }}" onClick="{{ bd.seni.pick }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color:#A61F54"><path d="M12 3a9 9 0 1 0 0 18c1.1 0 1.5-.8 1.5-1.6 0-1.3-1.2-1.6-1.2-2.9 0-.9.7-1.5 1.7-1.5H17a4 4 0 0 0 4-4c0-4.4-4-8-9-8z"></path><circle cx="7.5" cy="11" r="1"></circle><circle cx="10" cy="7" r="1"></circle><circle cx="15" cy="7.5" r="1"></circle></svg>Seni Budaya</button>
+              <button type="button" class="{{ bd.olahraga.cls }}" aria-pressed="{{ bd.olahraga.pressed }}" onClick="{{ bd.olahraga.pick }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color:#0B6577"><circle cx="12" cy="12" r="9"></circle><path d="M12 3c2.5 2.5 3.5 5.5 3.5 9s-1 6.5-3.5 9M12 3C9.5 5.5 8.5 8.5 8.5 12s1 6.5 3.5 9M3.5 9h17M3.5 15h17"></path></svg>Olahraga</button>
+            </div>
+          </div>
+
+          <div class="fld">
+            <label class="label" for="f-peny">Penyelenggara</label>
+            <input class="input" id="f-peny" type="text" value="{{ form.peny }}" onChange="{{ on.peny }}" placeholder="Nama lembaga penyelenggara">
+          </div>
+
+          <div style="display:flex;gap:12px">
+            <div class="fld" style="flex:1">
+              <label class="label" for="f-jenis">Jenis penyelenggara</label>
+              <select class="input" id="f-jenis" value="{{ form.jenis }}" onChange="{{ on.jenis }}">
+                <option>Pemerintah pusat</option>
+                <option>Pemerintah daerah</option>
+                <option>PTN</option>
+                <option>PTS</option>
+                <option>BUMN/BUMD</option>
+                <option>Organisasi profesi</option>
+                <option>Federasi olahraga</option>
+                <option>Yayasan/lembaga</option>
+                <option>Perusahaan/swasta</option>
+                <option>Lainnya</option>
+              </select>
+            </div>
+            <div class="fld" style="width:258px;flex-shrink:0">
+              <span class="label" id="lb-kat">Kategori bobot</span>
+              <div role="group" aria-labelledby="lb-kat" style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px">
+                <button type="button" class="{{ kt.A.cls }}" aria-pressed="{{ kt.A.pressed }}" aria-label="Kategori A, bobot 1,00" onClick="{{ kt.A.pick }}"><span class="kl">A</span><span class="kw num">1,00</span></button>
+                <button type="button" class="{{ kt.B.cls }}" aria-pressed="{{ kt.B.pressed }}" aria-label="Kategori B, bobot 0,80" onClick="{{ kt.B.pick }}"><span class="kl">B</span><span class="kw num">0,80</span></button>
+                <button type="button" class="{{ kt.C.cls }}" aria-pressed="{{ kt.C.pressed }}" aria-label="Kategori C, bobot 0,60" onClick="{{ kt.C.pick }}"><span class="kl">C</span><span class="kw num">0,60</span></button>
+                <button type="button" class="{{ kt.D.cls }}" aria-pressed="{{ kt.D.pressed }}" aria-label="Kategori D, bobot 0,40" onClick="{{ kt.D.pick }}"><span class="kl">D</span><span class="kw num">0,40</span></button>
+                <button type="button" class="{{ kt.E.cls }}" aria-pressed="{{ kt.E.pressed }}" aria-label="Kategori E, bobot 0,20" onClick="{{ kt.E.pick }}"><span class="kl">E</span><span class="kw num">0,20</span></button>
+              </div>
+            </div>
+          </div>
+
+          <div style="display:flex;gap:12px">
+            <div class="fld" style="flex:1">
+              <label class="label" for="f-ajang">Status ajang</label>
+              <select class="input" id="f-ajang" value="{{ form.ajang }}" onChange="{{ on.ajang }}">
+                <option>Ajang Puspresnas</option>
+                <option>Terkurasi Puspresnas/SIMT</option>
+                <option>Pemerintah non-Puspresnas</option>
+                <option>Non-pemerintah</option>
+                <option>Belum terverifikasi</option>
+              </select>
+            </div>
+            <div class="fld" style="width:222px;flex-shrink:0">
+              <span class="label" id="lb-mode">Pelaksanaan</span>
+              <div class="seg" role="group" aria-labelledby="lb-mode">
+                <button type="button" class="{{ md.Daring.cls }}" aria-pressed="{{ md.Daring.pressed }}" onClick="{{ md.Daring.pick }}">Daring</button>
+                <button type="button" class="{{ md.Luring.cls }}" aria-pressed="{{ md.Luring.pressed }}" onClick="{{ md.Luring.pick }}">Luring</button>
+                <button type="button" class="{{ md.Hybrid.cls }}" aria-pressed="{{ md.Hybrid.pressed }}" onClick="{{ md.Hybrid.pick }}">Hybrid</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="fld">
+            <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px">
+              <span class="label" id="lb-tingkat">Tingkat</span>
+              <span class="muted" style="font-size:12px">Sesuai cakupan peserta nyata.</span>
+            </div>
+            <div class="seg" role="group" aria-labelledby="lb-tingkat">
+              <button type="button" class="{{ tk.intl.cls }}" aria-pressed="{{ tk.intl.pressed }}" onClick="{{ tk.intl.pick }}">Internasional</button>
+              <button type="button" class="{{ tk.nas.cls }}" aria-pressed="{{ tk.nas.pressed }}" onClick="{{ tk.nas.pick }}">Nasional</button>
+              <button type="button" class="{{ tk.prov.cls }}" aria-pressed="{{ tk.prov.pressed }}" onClick="{{ tk.prov.pick }}">Provinsi</button>
+              <button type="button" class="{{ tk.kota.cls }}" aria-pressed="{{ tk.kota.pressed }}" onClick="{{ tk.kota.pick }}">Kota/Kab</button>
+              <button type="button" class="{{ tk.sek.cls }}" aria-pressed="{{ tk.sek.pressed }}" onClick="{{ tk.sek.pick }}">Sekolah</button>
+            </div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px">
+            <div class="fld">
+              <label class="label" for="f-dibuka">Daftar dibuka</label>
+              <input class="input num" id="f-dibuka" type="text" value="{{ form.dibuka }}" onChange="{{ on.dibuka }}" placeholder="Tanggal">
+            </div>
+            <div class="fld">
+              <label class="label" for="f-batas">Batas daftar</label>
+              <input class="input num" id="f-batas" type="text" value="{{ form.batas }}" onChange="{{ on.batas }}" placeholder="Tanggal">
+            </div>
+            <div class="fld">
+              <label class="label" for="f-mulai">Tanggal mulai</label>
+              <input class="input num" id="f-mulai" type="text" value="{{ form.mulai }}" onChange="{{ on.mulai }}" placeholder="Tanggal">
+            </div>
+            <div class="fld">
+              <label class="label" for="f-selesai">Tanggal selesai</label>
+              <input class="input num" id="f-selesai" type="text" value="{{ form.selesai }}" onChange="{{ on.selesai }}" placeholder="Tanggal">
+            </div>
+          </div>
+
+          <div style="display:flex;gap:12px">
+            <div class="fld" style="flex:1">
+              <label class="label" for="f-tempat">Tempat</label>
+              <input class="input" id="f-tempat" type="text" value="{{ form.tempat }}" onChange="{{ on.tempat }}" placeholder="Kota atau platform">
+            </div>
+            <div class="fld" style="width:160px;flex-shrink:0">
+              <span class="label" id="lb-peserta">Peserta</span>
+              <div class="seg" role="group" aria-labelledby="lb-peserta">
+                <button type="button" class="{{ ps.Individu.cls }}" aria-pressed="{{ ps.Individu.pressed }}" onClick="{{ ps.Individu.pick }}">Individu</button>
+                <button type="button" class="{{ ps.Tim.cls }}" aria-pressed="{{ ps.Tim.pressed }}" onClick="{{ ps.Tim.pick }}">Tim</button>
+              </div>
+            </div>
+            <div class="fld" style="width:96px;flex-shrink:0">
+              <label class="label" for="f-maks">Maks anggota</label>
+              <input class="input num" id="f-maks" type="number" min="1" max="10" value="{{ maksVal }}" disabled="{{ isIndividu }}" onChange="{{ on.maks }}">
+            </div>
+          </div>
+
+          <div style="display:flex;gap:12px">
+            <div class="fld" style="flex:1.25">
+              <label class="label" for="f-guru">Guru pembimbing default</label>
+              <select class="input" id="f-guru" value="{{ form.guru }}" onChange="{{ on.guru }}">
+                <option>Bu Retno Wulandari, S.Pd.</option>
+                <option>Pak Hendra Kusuma, S.Pd., M.Si.</option>
+                <option>Bu Maya Anggraini, S.Sn.</option>
+                <option>Pak Agus Setiawan, S.Or.</option>
+              </select>
+            </div>
+            <div class="fld" style="flex:1">
+              <label class="label" for="f-web">Website resmi</label>
+              <input class="input" id="f-web" type="url" value="{{ form.web }}" onChange="{{ on.web }}" placeholder="https://">
+            </div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px">
+            <div class="fld">
+              <span class="label">Juknis/brosur</span>
+              <label class="upload" for="f-juknis">
+                <input id="f-juknis" class="sr-only" type="file" accept=".pdf,image/*" onChange="{{ on.juknisFile }}">
+                <sc-if value="{{ hasJuknis }}" hint-placeholder-val="{{ true }}">
+                  <span style="width:34px;height:34px;border-radius:10px;background:#FDECEA;color:#B42318;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"></path><path d="M14 3v5h5"></path></svg></span>
+                  <span style="display:flex;flex-direction:column;gap:1px;min-width:0;flex:1">
+                    <span class="ellip" style="font-size:13.5px;font-weight:600">{{ form.juknis }}</span>
+                    <span class="muted num" style="font-size:12px">{{ form.juknisSize }} · ganti file</span>
+                  </span>
+                </sc-if>
+                <sc-if value="{{ noJuknis }}" hint-placeholder-val="{{ false }}">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color:#3148D6;flex-shrink:0"><path d="M12 16V4M7 9l5-5 5 5M4 20h16"></path></svg>
+                  <span style="display:flex;flex-direction:column;gap:1px">
+                    <span style="font-size:13.5px;font-weight:600;color:#2A3CB8">Unggah PDF</span>
+                    <span class="muted" style="font-size:12px">Juknis resmi lomba</span>
+                  </span>
+                </sc-if>
+              </label>
+              <span class="muted" style="font-size:12px">PDF atau gambar, maks 5 MB.</span>
+            </div>
+            <div class="fld">
+              <span class="label">Sampul (opsional)</span>
+              <label class="upload" for="f-sampul">
+                <input id="f-sampul" class="sr-only" type="file" accept="image/*" onChange="{{ on.sampulFile }}">
+                <span class="{{ coverCls }}" style="width:34px;height:34px;border-radius:10px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0" aria-hidden="true">
+                  <sc-if value="{{ bIs.sains }}" hint-placeholder-val="{{ false }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3h6M10 3v6l-5 9a2 2 0 0 0 1.7 3h10.6a2 2 0 0 0 1.7-3l-5-9V3"></path><path d="M7.5 15h9"></path></svg></sc-if>
+                  <sc-if value="{{ bIs.riset }}" hint-placeholder-val="{{ true }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6M10 21h4"></path><path d="M12 3a6 6 0 0 0-3.5 10.9c.6.4 1 1.1 1 1.8V16h5v-.3c0-.7.4-1.4 1-1.8A6 6 0 0 0 12 3z"></path></svg></sc-if>
+                  <sc-if value="{{ bIs.seni }}" hint-placeholder-val="{{ false }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a9 9 0 1 0 0 18c1.1 0 1.5-.8 1.5-1.6 0-1.3-1.2-1.6-1.2-2.9 0-.9.7-1.5 1.7-1.5H17a4 4 0 0 0 4-4c0-4.4-4-8-9-8z"></path><circle cx="7.5" cy="11" r="1"></circle><circle cx="10" cy="7" r="1"></circle><circle cx="15" cy="7.5" r="1"></circle></svg></sc-if>
+                  <sc-if value="{{ bIs.olahraga }}" hint-placeholder-val="{{ false }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 3c2.5 2.5 3.5 5.5 3.5 9s-1 6.5-3.5 9M12 3C9.5 5.5 8.5 8.5 8.5 12s1 6.5 3.5 9M3.5 9h17M3.5 15h17"></path></svg></sc-if>
+                </span>
+                <span style="display:flex;flex-direction:column;gap:1px;min-width:0">
+                  <span class="ellip" style="font-size:13.5px;font-weight:600;color:#2A3CB8">{{ sampulText }}</span>
+                  <span class="muted" style="font-size:12px">JPG atau PNG</span>
+                </span>
+              </label>
+              <span class="muted" style="font-size:12px">Kosongkan untuk sampul warna bidang.</span>
+            </div>
+          </div>
+
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 12px 9px 14px;border-radius:14px;background:#F4F5FB">
+            <span style="display:flex;align-items:center;gap:8px;font-size:13.5px;font-weight:600;color:#4A5068">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="9" r="6"></circle><path d="m8.5 14-1.5 7 5-3 5 3-1.5-7"></path></svg>
+              Jika Juara I:
+              <span class="num" style="color:#151A33;font-weight:700">{{ rumus.tw }} × 1,00 × {{ rumus.bobot }} =</span>
+            </span>
+            <span class="chip c-gold num" style="font-size:13.5px;font-weight:700">{{ rumus.poin }} poin</span>
+          </div>
+        </div>
+
+        <div style="display:flex;align-items:center;justify-content:flex-end;gap:10px;padding:10px 24px;border-top:1px solid #E7E9F3">
+          <button class="btn btn-quiet" type="button" onClick="{{ saveDraft }}">Simpan draf</button>
+          <button class="btn btn-primary" type="button" onClick="{{ publish }}">{{ publishLabel }}</button>
+        </div>
+      </aside>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1000}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = {
+      tab: 'katalog',
+      drawer: true,
+      mode: 'add',
+      src: '',
+      form: this.catalog().nsif,
+      usulan: { ispo: 'baru', film: 'baru', robotik: 'baru' },
+      toast: ''
+    };
+  }
+
+  catalog() {
+    const PUS = 'Puspresnas';
+    const PUSWEB = 'https://pusatprestasinasional.kemdikbud.go.id';
+    return {
+      fls3n: { short: 'FLS3N Kota 2026', nama: 'FLS3N Kota Semarang 2026', bidang: 'seni', peny: PUS, jenis: 'Pemerintah pusat', kat: 'A', ajang: 'Ajang Puspresnas', tingkat: 'Kota/Kab', mode: 'Luring', mulai: '27 Okt 2026', selesai: '27 Okt 2026', dibuka: '10 Sep 2026', batas: '2 Okt 2026', tempat: 'Kota Semarang', peserta: 'Individu', maks: 1, guru: 'Bu Maya Anggraini, S.Sn.', juknis: 'juknis-fls3n-kota-2026.pdf', juknisSize: '1,1 MB', web: PUSWEB, sampul: '' },
+      osn: { short: 'OSN Kota 2026', nama: 'OSN Tingkat Kota Semarang 2026', bidang: 'sains', peny: PUS, jenis: 'Pemerintah pusat', kat: 'A', ajang: 'Ajang Puspresnas', tingkat: 'Kota/Kab', mode: 'Luring', mulai: '14 Okt 2026', selesai: '14 Okt 2026', dibuka: '8 Sep 2026', batas: '8 Okt 2026', tempat: 'Kota Semarang', peserta: 'Individu', maks: 1, guru: 'Pak Hendra Kusuma, S.Pd., M.Si.', juknis: 'juknis-osn-kota-2026.pdf', juknisSize: '820 KB', web: PUSWEB, sampul: '' },
+      o2sn: { short: 'O2SN Kota 2026', nama: 'O2SN Kota Semarang 2026 · Bulu tangkis', bidang: 'olahraga', peny: PUS, jenis: 'Pemerintah pusat', kat: 'A', ajang: 'Ajang Puspresnas', tingkat: 'Kota/Kab', mode: 'Luring', mulai: '20 Okt 2026', selesai: '20 Okt 2026', dibuka: '9 Sep 2026', batas: '9 Okt 2026', tempat: 'Kota Semarang', peserta: 'Individu', maks: 1, guru: 'Pak Agus Setiawan, S.Or.', juknis: 'juknis-o2sn-kota-2026.pdf', juknisSize: '960 KB', web: PUSWEB, sampul: '' },
+      lpb: { short: 'LPB 2026', nama: 'Lomba Peneliti Belia (LPB) 2026', bidang: 'riset', peny: 'Center for Young Scientists (CYS)', jenis: 'Yayasan/lembaga', kat: 'C', ajang: 'Non-pemerintah', tingkat: 'Nasional', mode: 'Daring', mulai: '17 Okt 2026', selesai: '17 Okt 2026', dibuka: '1 Sep 2026', batas: '10 Okt 2026', tempat: 'Daring', peserta: 'Tim', maks: 3, guru: 'Bu Retno Wulandari, S.Pd.', juknis: 'juknis-lpb-2026.pdf', juknisSize: '1,4 MB', web: '', sampul: '' },
+      ldbi: { short: 'LDBI Kota 2026', nama: 'Lomba Debat Bahasa Indonesia (LDBI) Kota 2026', bidang: 'seni', peny: PUS, jenis: 'Pemerintah pusat', kat: 'A', ajang: 'Ajang Puspresnas', tingkat: 'Kota/Kab', mode: 'Luring', mulai: '24 Okt 2026', selesai: '24 Okt 2026', dibuka: '12 Sep 2026', batas: '12 Okt 2026', tempat: 'Kota Semarang', peserta: 'Tim', maks: 3, guru: 'Bu Maya Anggraini, S.Sn.', juknis: 'juknis-ldbi-kota-2026.pdf', juknisSize: '780 KB', web: PUSWEB, sampul: '' },
+      silat: { short: 'Pencak Silat Pelajar Jateng 2026', nama: 'Kejuaraan Pencak Silat Pelajar Jateng 2026', bidang: 'olahraga', peny: 'IPSI Jawa Tengah', jenis: 'Federasi olahraga', kat: 'C', ajang: 'Non-pemerintah', tingkat: 'Provinsi', mode: 'Luring', mulai: '1 Nov 2026', selesai: '1 Nov 2026', dibuka: '15 Sep 2026', batas: '15 Okt 2026', tempat: 'Jawa Tengah', peserta: 'Individu', maks: 1, guru: 'Pak Agus Setiawan, S.Or.', juknis: 'juknis-silat-pelajar-jateng-2026.pdf', juknisSize: '1,2 MB', web: '', sampul: '' },
+      nsif: { short: 'NSIF 2026', nama: 'National Science and Invention Fair (NSIF) 2026', bidang: 'riset', peny: '[nama penyelenggara swasta]', jenis: 'Perusahaan/swasta', kat: 'D', ajang: 'Non-pemerintah', tingkat: 'Nasional', mode: 'Daring', mulai: '7 Nov 2026', selesai: '7 Nov 2026', dibuka: '15 Sep 2026', batas: '20 Okt 2026', tempat: 'Daring', peserta: 'Tim', maks: 3, guru: 'Pak Hendra Kusuma, S.Pd., M.Si.', juknis: 'juknis-nsif-2026.pdf', juknisSize: '1,2 MB', web: '[situs resmi penyelenggara]', sampul: '' },
+      krenova: { short: 'KRENOVA Kota Semarang 2027', nama: 'KRENOVA Kota Semarang 2027', bidang: 'riset', peny: 'Pemerintah Kota Semarang', jenis: 'Pemerintah daerah', kat: 'B', ajang: 'Pemerintah non-Puspresnas', tingkat: 'Kota/Kab', mode: 'Luring', mulai: 'Feb 2027', selesai: '', dibuka: '1 Des 2026', batas: '', tempat: 'Kota Semarang', peserta: 'Tim', maks: 3, guru: 'Bu Retno Wulandari, S.Pd.', juknis: '', juknisSize: '', web: '', sampul: '' }
+    };
+  }
+
+  proposals() {
+    return [
+      { id: 'ispo', nama: 'International Science Project Olympiad (ISPO) 2027', peny: 'Panitia ISPO', siswa: 'Raka Pradipta', first: 'Raka', kelas: 'XII-2', ini: 'RP', waktu: 'Diusulkan 28 Sep 2026', link: 'ispo.or.id', brosur: 'brosur-ispo-2027.pdf', size: '1,8 MB',
+        form: { short: 'ISPO 2027', nama: 'International Science Project Olympiad (ISPO) 2027', bidang: 'riset', peny: 'Panitia ISPO', jenis: 'Yayasan/lembaga', kat: 'D', ajang: 'Belum terverifikasi', tingkat: 'Nasional', mode: 'Luring', mulai: '', selesai: '', dibuka: '', batas: '', tempat: '', peserta: 'Tim', maks: 2, guru: 'Bu Retno Wulandari, S.Pd.', juknis: 'brosur-ispo-2027.pdf', juknisSize: '1,8 MB', web: 'https://ispo.or.id', sampul: '' } },
+      { id: 'film', nama: 'Lomba Film Pendek Pelajar Semarang', peny: 'Komunitas Film Pelajar Semarang', siswa: 'Salsabila Kirana', first: 'Salsabila', kelas: 'XI-5', ini: 'SK', waktu: 'Diusulkan 27 Sep 2026', link: '', brosur: 'poster-film-pendek.jpg', size: '640 KB',
+        form: { short: 'Lomba Film Pendek Pelajar Semarang', nama: 'Lomba Film Pendek Pelajar Semarang', bidang: 'seni', peny: 'Komunitas Film Pelajar Semarang', jenis: 'Lainnya', kat: 'E', ajang: 'Belum terverifikasi', tingkat: 'Kota/Kab', mode: 'Luring', mulai: '', selesai: '', dibuka: '', batas: '', tempat: 'Kota Semarang', peserta: 'Tim', maks: 5, guru: 'Bu Maya Anggraini, S.Sn.', juknis: 'poster-film-pendek.jpg', juknisSize: '640 KB', web: '', sampul: '' } },
+      { id: 'robotik', nama: 'Kompetisi Robotik Pelajar Jateng 2026', peny: 'Lembaga Robotika Pelajar Jateng', siswa: 'Bima Satria Wicaksono', first: 'Bima', kelas: 'XII-7', ini: 'BW', waktu: 'Diusulkan 21 Sep 2026', link: 'instagram.com/robotikpelajar.jateng', brosur: 'juknis-robotik-jateng.pdf', size: '1,2 MB',
+        form: { short: 'Kompetisi Robotik Pelajar Jateng 2026', nama: 'Kompetisi Robotik Pelajar Jateng 2026', bidang: 'riset', peny: 'Lembaga Robotika Pelajar Jateng', jenis: 'Yayasan/lembaga', kat: 'D', ajang: 'Belum terverifikasi', tingkat: 'Provinsi', mode: 'Luring', mulai: '', selesai: '', dibuka: '', batas: '', tempat: 'Semarang', peserta: 'Tim', maks: 3, guru: 'Pak Hendra Kusuma, S.Pd., M.Si.', juknis: 'juknis-robotik-jateng.pdf', juknisSize: '1,2 MB', web: '', sampul: '' } }
+    ];
+  }
+
+  renderVals() {
+    const s = this.state;
+    const f = s.form;
+    const CAT = this.catalog();
+    const PROPS = this.proposals();
+    const TW = { 'Internasional': 100, 'Nasional': 80, 'Provinsi': 60, 'Kota/Kab': 40, 'Sekolah': 20 };
+    const KW = { A: 1, B: 0.8, C: 0.6, D: 0.4, E: 0.2 };
+    const fmt = (n) => n.toFixed(2).replace('.', ',');
+    const setF = (patch) => this.setState({ form: { ...this.state.form, ...patch } });
+    const field = (k) => (e) => setF({ [k]: e.target.value });
+    const opt = (cur, val, base, onCls, patch) => ({
+      cls: cur === val ? base + ' ' + onCls : base,
+      pressed: cur === val ? 'true' : 'false',
+      pick: () => setF(patch)
+    });
+
+    const bd = {};
+    ['sains', 'riset', 'seni', 'olahraga'].forEach((b) => { bd[b] = opt(f.bidang, b, 'pick bpick', 'pick-on', { bidang: b }); });
+    const kt = {};
+    ['A', 'B', 'C', 'D', 'E'].forEach((k) => { kt[k] = opt(f.kat, k, 'pick kpick', 'pick-on', { kat: k }); });
+    const md = {};
+    ['Daring', 'Luring', 'Hybrid'].forEach((m) => { md[m] = opt(f.mode, m, 'seg-btn', 'seg-on', { mode: m }); });
+    const ps = {};
+    ['Individu', 'Tim'].forEach((p) => { ps[p] = opt(f.peserta, p, 'seg-btn', 'seg-on', { peserta: p }); });
+    const TK = { intl: 'Internasional', nas: 'Nasional', prov: 'Provinsi', kota: 'Kota/Kab', sek: 'Sekolah' };
+    const tk = {};
+    Object.keys(TK).forEach((key) => { tk[key] = opt(f.tingkat, TK[key], 'seg-btn', 'seg-on', { tingkat: TK[key] }); });
+
+    const tw = TW[f.tingkat] || 0;
+    const kw = KW[f.kat] || 0;
+
+    const ed = {};
+    Object.keys(CAT).forEach((id) => {
+      ed[id] = () => this.setState({ drawer: true, mode: 'edit', src: id, form: { ...CAT[id] }, toast: '' });
+    });
+
+    const tabOpt = (id) => ({
+      cls: s.tab === id ? 'tabp tabp-on' : 'tabp',
+      sel: s.tab === id ? 'true' : 'false',
+      pick: () => this.setState({ tab: id })
+    });
+
+    const CHIP = {
+      baru: { cls: 'chip c-orange', label: 'Perlu ditinjau', done: '' },
+      draf: { cls: 'chip c-gray', label: 'Draf dibuat', done: 'Draf lomba dibuat. Belum tampil di katalog.' },
+      jadi: { cls: 'chip c-green', label: 'Dijadikan lomba', done: 'Sudah tampil di katalog siswa.' },
+      tolak: { cls: 'chip c-red', label: 'Ditolak', done: 'Siswa mendapat notifikasi penolakan.' }
+    };
+    const usulan = PROPS.map((p) => {
+      const st = s.usulan[p.id];
+      const c = CHIP[st];
+      return {
+        ...p,
+        hasLink: !!p.link,
+        noLink: !p.link,
+        chipCls: c.cls,
+        chip: c.label,
+        isBaru: st === 'baru',
+        isDone: st !== 'baru',
+        doneText: c.done,
+        canUndo: st === 'tolak',
+        jadikan: () => this.setState({ drawer: true, mode: 'usulan', src: p.id, form: { ...p.form }, toast: '' }),
+        tolak: () => this.setState({ usulan: { ...this.state.usulan, [p.id]: 'tolak' }, toast: 'Usulan ' + p.form.short + ' ditolak.' }),
+        undo: () => this.setState({ usulan: { ...this.state.usulan, [p.id]: 'baru' }, toast: '' })
+      };
+    });
+    const pendingUsulan = PROPS.filter((p) => s.usulan[p.id] === 'baru').length;
+    const srcProp = PROPS.find((p) => p.id === s.src);
+
+    const finish = (status) => {
+      const st = this.state;
+      const next = { drawer: false };
+      const name = st.form.short || st.form.nama || 'Lomba';
+      if (status === 'jadi') {
+        next.toast = st.mode === 'edit' ? 'Perubahan ' + name + ' disimpan.' : name + ' dipublikasikan ke katalog siswa.';
+      } else {
+        next.toast = 'Draf ' + name + ' disimpan. Belum tampil di katalog.';
+      }
+      if (st.mode === 'usulan' && st.src) next.usulan = { ...st.usulan, [st.src]: status };
+      this.setState(next);
+    };
+
+    return {
+      tabs: { katalog: tabOpt('katalog'), usulan: tabOpt('usulan') },
+      isKatalog: s.tab === 'katalog',
+      isUsulan: s.tab === 'usulan',
+      goKatalog: () => this.setState({ tab: 'katalog' }),
+      goUsulan: () => this.setState({ tab: 'usulan', drawer: false }),
+      usulan: usulan,
+      pendingUsulan: pendingUsulan,
+      ed: ed,
+      openAdd: () => this.setState({ drawer: true, mode: 'add', src: '', form: { ...CAT.nsif }, toast: '' }),
+      close: () => this.setState({ drawer: false }),
+      drawer: s.drawer,
+      drawerTitle: s.mode === 'edit' ? 'Ubah lomba' : 'Tambah lomba',
+      fromUsulan: s.mode === 'usulan' && !!srcProp,
+      usulanChip: srcProp ? 'Dari usulan ' + srcProp.first : '',
+      publishLabel: s.mode === 'edit' ? 'Simpan perubahan' : 'Publikasikan',
+      publish: () => finish('jadi'),
+      saveDraft: () => finish('draf'),
+      form: f,
+      on: {
+        nama: field('nama'),
+        peny: field('peny'),
+        jenis: field('jenis'),
+        ajang: field('ajang'),
+        mulai: field('mulai'),
+        selesai: field('selesai'),
+        dibuka: field('dibuka'),
+        batas: field('batas'),
+        tempat: field('tempat'),
+        maks: field('maks'),
+        guru: field('guru'),
+        web: field('web'),
+        juknisFile: (e) => {
+          const file = e.target.files && e.target.files[0];
+          if (file) setF({ juknis: file.name, juknisSize: Math.max(1, Math.round(file.size / 1024)) + ' KB' });
+        },
+        sampulFile: (e) => {
+          const file = e.target.files && e.target.files[0];
+          if (file) setF({ sampul: file.name });
+        }
+      },
+      bd: bd,
+      kt: kt,
+      md: md,
+      ps: ps,
+      tk: tk,
+      isIndividu: f.peserta === 'Individu',
+      maksVal: f.peserta === 'Individu' ? 1 : f.maks,
+      hasJuknis: !!f.juknis,
+      noJuknis: !f.juknis,
+      coverCls: 'cover-' + f.bidang,
+      bIs: { sains: f.bidang === 'sains', riset: f.bidang === 'riset', seni: f.bidang === 'seni', olahraga: f.bidang === 'olahraga' },
+      sampulText: f.sampul ? f.sampul : 'Unggah gambar',
+      rumus: { tw: tw, bobot: fmt(kw), poin: Math.round(tw * 1 * kw) },
+      toast: s.toast,
+      hasToast: !!s.toast && !s.drawer,
+      closeToast: () => this.setState({ toast: '' })
+    };
+  }
+}
+</script>
+</body>
+</html>

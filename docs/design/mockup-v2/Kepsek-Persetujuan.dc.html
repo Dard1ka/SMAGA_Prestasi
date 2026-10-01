@@ -1,0 +1,432 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Persetujuan lomba · Kepala Sekolah</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Urbanist:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F4F5FB;font-family:"Plus Jakarta Sans",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;color:#151A33;-webkit-font-smoothing:antialiased}
+*{box-sizing:border-box}
+a{color:#3148D6}a:hover{color:#2638B0}
+h1,h2,h3,.display{font-family:"Urbanist","Plus Jakarta Sans",system-ui,sans-serif;letter-spacing:-0.01em}
+.page{background:radial-gradient(900px 320px at 88% -8%,#ECE8FF 0%,rgba(236,232,255,0) 70%),radial-gradient(760px 300px at 28% -14%,#E2F0FF 0%,rgba(226,240,255,0) 70%),#F4F5FB}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:44px;padding:0 18px;border-radius:12px;font:600 15px/1 "Plus Jakarta Sans",system-ui,sans-serif;border:1px solid transparent;cursor:pointer;text-decoration:none;white-space:nowrap}
+.btn-primary{background:#3148D6;color:#FFFFFF;box-shadow:0 8px 18px -10px rgba(49,72,214,.65)}
+.btn-primary:hover{background:#2638B0;color:#FFFFFF}
+.btn-quiet{background:#FFFFFF;color:#151A33;border-color:#DCDFEC}
+.btn-quiet:hover{background:#F4F5FB;color:#151A33}
+.btn-soft{background:#ECEFFF;color:#2A3CB8}
+.btn-soft:hover{background:#DFE4FF;color:#2A3CB8}
+.btn-danger{background:#FFFFFF;color:#B42318;border-color:#F3C4BE}
+.btn-danger:hover{background:#FDECEA;color:#B42318}
+.btn-sm{height:36px;padding:0 14px;font-size:14px;border-radius:10px}
+.btn:focus-visible,.nav:focus-visible,.input:focus-visible,.icon-btn:focus-visible,.tab:focus-visible,.pick:focus-visible{outline:3px solid #A9B6F5;outline-offset:2px}
+.icon-btn{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:12px;border:1px solid #E7E9F3;background:#FFFFFF;color:#4A5068;cursor:pointer;position:relative;text-decoration:none}
+.icon-btn:hover{background:#F4F5FB;color:#151A33}
+.dot{position:absolute;top:8px;right:9px;width:8px;height:8px;border-radius:999px;background:#3148D6;border:2px solid #FFFFFF}
+.card{background:#FFFFFF;border:1px solid #E7E9F3;border-radius:20px;box-shadow:0 1px 2px rgba(20,24,60,.04),0 10px 28px -18px rgba(20,24,60,.18)}
+.chip{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 10px;border-radius:999px;font-size:12.5px;font-weight:600;white-space:nowrap}
+.c-blue{background:#ECEFFF;color:#2A3CB8}
+.c-green{background:#E4F5EA;color:#1B6B45}
+.c-orange{background:#FFEEDD;color:#9A3F00}
+.c-red{background:#FDECEA;color:#B42318}
+.c-gray{background:#EEF0F6;color:#4A5068}
+.c-gold{background:#FFF3D1;color:#6B4E00}
+.c-glass{background:rgba(255,255,255,.82);color:#151A33}
+.b-sains{background:#E6F0FF;color:#1D56AD}
+.b-riset{background:#F0EBFF;color:#5534B8}
+.b-seni{background:#FDE8F0;color:#A61F54}
+.b-olahraga{background:#E0F4F8;color:#0B6577}
+.cover-sains{background:linear-gradient(135deg,#DCE9FF,#C3D8FF);color:#1D56AD}
+.cover-riset{background:linear-gradient(135deg,#EEE7FF,#D9CCFF);color:#5534B8}
+.cover-seni{background:linear-gradient(135deg,#FFE6EF,#FFCFE0);color:#A61F54}
+.cover-olahraga{background:linear-gradient(135deg,#DDF4F8,#BFE8F0);color:#0B6577}
+.label{font-size:13px;font-weight:600;color:#4A5068}
+.input{height:46px;width:100%;border:1px solid #DCDFEC;border-radius:12px;padding:0 14px;font:500 15px "Plus Jakarta Sans",system-ui,sans-serif;color:#151A33;background:#FFFFFF}
+.input::placeholder{color:#8A90A6}
+textarea.input{height:auto;padding:12px 14px;line-height:1.5;resize:vertical}
+.nav{display:flex;align-items:center;gap:12px;height:44px;padding:0 14px;border-radius:12px;color:#4A5068;text-decoration:none;font-size:14.5px;font-weight:600}
+.nav:hover{background:#F1F2FA;color:#151A33}
+.nav-on{background:#3148D6;color:#FFFFFF;box-shadow:0 8px 18px -10px rgba(49,72,214,.7)}
+.nav-on:hover{background:#2638B0;color:#FFFFFF}
+.nav-sec{font-size:11.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#8A90A6;padding:8px 14px 2px}
+.badge{margin-left:auto;min-width:22px;height:22px;padding:0 7px;border-radius:999px;background:#ECEFFF;color:#2A3CB8;font-size:12px;font-weight:700;display:inline-flex;align-items:center;justify-content:center}
+.nav-on .badge{background:#FFFFFF;color:#2A3CB8}
+.avatar{display:inline-flex;align-items:center;justify-content:center;border-radius:999px;background:#ECEFFF;color:#2A3CB8;font-weight:700;flex-shrink:0}
+.stack{display:flex}.stack .avatar{border:2px solid #FFFFFF;margin-left:-8px}.stack .avatar:first-child{margin-left:0}
+.pick{cursor:pointer;border:1px solid #DCDFEC;background:#FFFFFF;border-radius:14px;font:600 14.5px "Plus Jakarta Sans",system-ui,sans-serif;color:#151A33}
+.pick-on{border:2px solid #3148D6;background:#ECEFFF;color:#2A3CB8}
+.tabbar{position:absolute;left:0;right:0;bottom:0;height:80px;background:#FFFFFF;border-top:1px solid #E7E9F3;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));padding:8px 6px 16px}
+.tab{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:52px;border-radius:14px;color:#666C84;text-decoration:none;font-size:11.5px;font-weight:600}
+.tab-ic{width:48px;height:28px;border-radius:999px;display:flex;align-items:center;justify-content:center}
+.tab-on{color:#3148D6}.tab-on .tab-ic{background:#ECEFFF}
+.muted{color:#666C84}
+.num{font-variant-numeric:tabular-nums}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.label{line-height:16px}
+.cbwrap{width:36px;height:36px;display:inline-flex;align-items:center;justify-content:center;border-radius:10px;cursor:pointer;flex-shrink:0}
+.cbwrap:hover{background:#F1F2FA}
+.cbwrap input{width:18px;height:18px;margin:0;accent-color:#3148D6;cursor:pointer}
+.cbwrap input:focus-visible{outline:3px solid #A9B6F5;outline-offset:2px}
+.check{display:inline-flex;align-items:center;gap:10px;height:40px;padding:0 10px 0 8px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer}
+.check:hover{background:#F1F2FA}
+.check input{width:18px;height:18px;margin:0;accent-color:#3148D6}
+.row{padding:14px 20px 14px 14px;border-bottom:1px solid #EEF0F6}
+.row:last-child{border-bottom:0}
+.row-sel{background:#F8F9FF}
+.row-ok{background:#F4FBF7}
+.row-tolak{background:#FFF8F7}
+.mlabel{font-size:12px;font-weight:600;color:#666C84;line-height:15px}
+.mval{font-size:13.5px;font-weight:600;line-height:19px}
+.btn[disabled],.btn[disabled]:hover{opacity:.45;cursor:not-allowed;box-shadow:none;background:#3148D6}
+.cv{display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
+</style>
+</helmet>
+<div class="page" style="width:1440px;height:1000px;display:flex;overflow:hidden">
+  <aside style="width:264px;flex-shrink:0;background:#FFFFFF;border-right:1px solid #E7E9F3;padding:22px 16px;display:flex;flex-direction:column;gap:18px">
+    <div style="display:flex;align-items:center;gap:12px;padding:0 4px">
+      <span role="img" aria-label="Logo SMAGA Talent Hub" style="width:40px;height:40px;border-radius:12px;background:#3148D6;color:#FFFFFF;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 4 6v6c0 4.5 3.4 8.2 8 9 4.6-.8 8-4.5 8-9V6z"></path><path d="m8.5 12 2.5 2.5 4.5-5"></path></svg></span>
+      <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
+        <span class="display" style="font-size:17px;font-weight:800;line-height:1.15">SMAGA Talent Hub</span>
+        <span class="muted" style="font-size:12px;line-height:1.3">SMA Negeri 3 Semarang</span>
+      </div>
+    </div>
+    <nav aria-label="Menu utama" style="display:flex;flex-direction:column;gap:4px">
+      <div class="nav-sec">Menu</div>
+      <a class="nav" href="Dashboard-Sekolah.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 20V11M12 20V5M18 20v-6M3 20h18"></path></svg>Dashboard</a>
+      <a class="nav nav-on" href="Kepsek-Persetujuan.dc.html" aria-current="page"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="m8 12 3 3 5-6"></path></svg>Persetujuan<span class="badge num">{{ sum.menunggu }}</span></a>
+      <a class="nav" href="Prestasi-Bidang.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v9h9"></path><path d="M20.5 15A9 9 0 1 1 9 3.5"></path></svg>Prestasi per bidang</a>
+      <div class="nav-sec" style="margin-top:10px">Laporan</div>
+      <a class="nav" href="#"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"></path><path d="M14 3v5h5"></path></svg>Laporan</a>
+    </nav>
+    <div style="margin-top:auto;padding:12px;border-radius:16px;background:#F4F5FB;display:flex;align-items:center;gap:10px">
+      <span class="avatar" style="width:38px;height:38px;font-size:14px" aria-hidden="true">BH</span>
+      <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
+        <span style="font-size:14px;font-weight:700;line-height:1.3">Drs. Bambang Hartono, M.Pd.</span>
+        <span class="muted" style="font-size:12.5px;line-height:1.3">Kepala Sekolah</span>
+      </div>
+    </div>
+  </aside>
+
+  <main style="flex:1;min-width:0;padding:26px 36px;display:flex;flex-direction:column;gap:22px">
+    <header style="display:flex;align-items:center;justify-content:space-between;gap:24px">
+      <div style="display:flex;flex-direction:column;gap:4px;min-width:0">
+        <h1 style="margin:0;font-size:30px;font-weight:800;line-height:1.15">Persetujuan lomba</h1>
+        <p class="muted" style="margin:0;font-size:15px">Setujui pendaftaran agar Tata Usaha bisa membuat surat tugas.</p>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;flex-shrink:0">
+        <div style="position:relative;width:300px">
+          <label class="sr-only" for="cari-atas">Cari siswa atau lomba</label>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="position:absolute;left:14px;top:13px;color:#8A90A6"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+          <input class="input" id="cari-atas" type="search" placeholder="Cari siswa atau lomba" style="padding-left:44px">
+        </div>
+        <button class="icon-btn" type="button" aria-label="Notifikasi, 2 baru"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 16v-5a6 6 0 1 1 12 0v5l1.5 2h-15z"></path><path d="M10 20a2 2 0 0 0 4 0"></path></svg><span class="dot"></span></button>
+        <span class="avatar" role="img" aria-label="Drs. Bambang Hartono, M.Pd." style="width:40px;height:40px;font-size:14px">BH</span>
+      </div>
+    </header>
+
+    <div style="display:flex;gap:22px;flex:1;min-height:0">
+      <section class="card" aria-label="Pendaftaran menunggu persetujuan" style="flex:1;min-width:0;display:flex;flex-direction:column;overflow:hidden">
+        <div style="display:flex;align-items:center;gap:12px;padding:12px 20px 12px 14px;border-bottom:1px solid #E7E9F3;flex-shrink:0">
+          <label class="check"><input type="checkbox" checked="{{ allChecked }}" disabled="{{ noPending }}" onChange="{{ toggleAll }}">Pilih semua</label>
+          <span aria-hidden="true" style="width:1px;height:24px;background:#E7E9F3"></span>
+          <label class="sr-only" for="f-bidang">Saring bidang</label>
+          <select class="input" id="f-bidang" value="{{ fb }}" onChange="{{ setFb }}" style="height:40px;width:176px;font-size:14px;padding:0 12px">
+            <option value="semua">Semua bidang</option>
+            <option value="sains">Sains</option>
+            <option value="riset">Riset</option>
+            <option value="seni">Seni Budaya</option>
+            <option value="olahraga">Olahraga</option>
+          </select>
+          <span class="muted num" style="font-size:13.5px">{{ shownText }}</span>
+          <button class="btn btn-primary" type="button" style="margin-left:auto" disabled="{{ noneChecked }}" onClick="{{ approveChecked }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"></path></svg>Setujui terpilih (<span class="num">{{ nChecked }}</span>)</button>
+        </div>
+
+        <div style="flex:1;min-height:0;overflow-y:auto">
+          <sc-for list="{{ rows }}" as="r" hint-placeholder-count="5">
+            <article class="{{ r.cls }}" aria-label="{{ r.nama }}">
+              <div style="display:flex;align-items:flex-start;gap:8px">
+                <label class="cbwrap" style="margin-top:6px"><input type="checkbox" checked="{{ r.checked }}" disabled="{{ r.decided }}" onChange="{{ r.toggle }}" aria-label="{{ r.cbLabel }}"></label>
+                <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:10px">
+                  <div style="display:flex;align-items:flex-start;gap:14px">
+                    <span class="{{ r.coverCls }}" style="width:48px;height:48px;border-radius:14px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0" aria-hidden="true">
+                      <sc-if value="{{ r.isSains }}" hint-placeholder-val="{{ false }}"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3h6M10 3v6l-5 9a2 2 0 0 0 1.7 3h10.6a2 2 0 0 0 1.7-3l-5-9V3"></path><path d="M7.5 15h9"></path></svg></sc-if>
+                      <sc-if value="{{ r.isRiset }}" hint-placeholder-val="{{ true }}"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6M10 21h4"></path><path d="M12 3a6 6 0 0 0-3.5 10.9c.6.4 1 1.1 1 1.8V16h5v-.3c0-.7.4-1.4 1-1.8A6 6 0 0 0 12 3z"></path></svg></sc-if>
+                      <sc-if value="{{ r.isSeni }}" hint-placeholder-val="{{ false }}"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a9 9 0 1 0 0 18c1.1 0 1.5-.8 1.5-1.6 0-1.3-1.2-1.6-1.2-2.9 0-.9.7-1.5 1.7-1.5H17a4 4 0 0 0 4-4c0-4.4-4-8-9-8z"></path><circle cx="7.5" cy="11" r="1"></circle><circle cx="10" cy="7" r="1"></circle><circle cx="15" cy="7.5" r="1"></circle></svg></sc-if>
+                      <sc-if value="{{ r.isOlahraga }}" hint-placeholder-val="{{ false }}"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 3c2.5 2.5 3.5 5.5 3.5 9s-1 6.5-3.5 9M12 3C9.5 5.5 8.5 8.5 8.5 12s1 6.5 3.5 9M3.5 9h17M3.5 15h17"></path></svg></sc-if>
+                    </span>
+                    <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:6px">
+                      <h3 style="margin:0;font-size:17px;font-weight:700;line-height:1.3">{{ r.nama }}</h3>
+                      <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+                        <span class="chip c-gray">{{ r.tingkat }}</span>
+                        <span class="{{ r.bidangCls }}">{{ r.bidangLabel }}</span>
+                        <sc-if value="{{ r.tim }}" hint-placeholder-val="{{ false }}"><span class="chip c-green"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"></path></svg>{{ r.timLine }}</span></sc-if>
+                        <sc-if value="{{ r.solo }}" hint-placeholder-val="{{ true }}"><span class="chip c-gray">Individu</span></sc-if>
+                      </div>
+                    </div>
+                    <sc-if value="{{ r.isPending }}" hint-placeholder-val="{{ true }}">
+                      <div style="display:flex;gap:8px;flex-shrink:0">
+                        <button class="btn btn-primary btn-sm" type="button" onClick="{{ r.approve }}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"></path></svg>Setujui</button>
+                        <button class="btn btn-quiet btn-sm" type="button" aria-expanded="{{ r.tolakExpanded }}" onClick="{{ r.openTolak }}">Tolak</button>
+                      </div>
+                    </sc-if>
+                    <sc-if value="{{ r.isOk }}" hint-placeholder-val="{{ false }}">
+                      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0">
+                        <span class="chip c-green"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"></path></svg>Disetujui · masuk antrean TU</span>
+                        <button class="btn btn-quiet btn-sm" type="button" onClick="{{ r.undo }}">Urungkan</button>
+                      </div>
+                    </sc-if>
+                    <sc-if value="{{ r.isTolak }}" hint-placeholder-val="{{ false }}">
+                      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0">
+                        <span class="chip c-red"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"></path></svg>Ditolak · siswa diberi tahu</span>
+                        <button class="btn btn-quiet btn-sm" type="button" onClick="{{ r.undo }}">Urungkan</button>
+                      </div>
+                    </sc-if>
+                  </div>
+
+                  <div style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:16px;padding-left:62px">
+                    <div style="grid-column:span 2;display:flex;flex-direction:column;gap:4px;min-width:0">
+                      <span class="mlabel">Peserta</span>
+                      <div style="display:flex;align-items:flex-start;gap:8px;min-width:0">
+                        <div class="stack" style="flex-shrink:0">
+                          <sc-for list="{{ r.members }}" as="m" hint-placeholder-count="2">
+                            <span class="avatar" style="width:26px;height:26px;font-size:10.5px" aria-hidden="true">{{ m.ini }}</span>
+                          </sc-for>
+                        </div>
+                        <span class="mval" style="min-width:0">{{ r.names }}</span>
+                      </div>
+                    </div>
+                    <div style="display:flex;flex-direction:column;gap:4px;min-width:0">
+                      <span class="mlabel">Pembimbing</span>
+                      <span class="mval">{{ r.guru }}</span>
+                    </div>
+                    <div style="display:flex;flex-direction:column;gap:4px;min-width:0">
+                      <span class="mlabel">Jadwal lomba</span>
+                      <span class="mval num">{{ r.jadwal }}</span>
+                      <span class="muted" style="font-size:12.5px;line-height:17px">{{ r.mode }}</span>
+                    </div>
+                    <div style="display:flex;flex-direction:column;gap:4px;min-width:0">
+                      <span class="mlabel">Didaftarkan</span>
+                      <span class="mval num">29 Sep</span>
+                      <span class="muted" style="font-size:12.5px;line-height:17px">{{ r.oleh }}</span>
+                    </div>
+                  </div>
+
+                  <sc-if value="{{ r.showTolak }}" hint-placeholder-val="{{ false }}">
+                    <div style="padding-left:62px;display:flex;flex-direction:column;gap:6px">
+                      <label class="label" for="{{ r.noteId }}">Alasan penolakan (wajib)</label>
+                      <div style="display:flex;gap:8px">
+                        <input class="input" id="{{ r.noteId }}" type="text" value="{{ r.note }}" onChange="{{ r.setNote }}" placeholder="Contoh: jadwal bentrok dengan penilaian tengah semester." style="height:40px;font-size:14px;padding:0 12px">
+                        <button class="btn btn-danger btn-sm" type="button" style="height:40px;flex-shrink:0" onClick="{{ r.confirmTolak }}">Kirim penolakan</button>
+                        <button class="btn btn-quiet btn-sm" type="button" style="height:40px;flex-shrink:0" onClick="{{ r.cancelTolak }}">Batal</button>
+                      </div>
+                      <sc-if value="{{ r.hasErr }}" hint-placeholder-val="{{ false }}"><span role="alert" style="font-size:12.5px;font-weight:600;color:#B42318">Tulis alasan penolakan dulu.</span></sc-if>
+                    </div>
+                  </sc-if>
+                  <sc-if value="{{ r.isTolak }}" hint-placeholder-val="{{ false }}">
+                    <p style="margin:0;padding-left:62px;font-size:13px;color:#B42318">Alasan: {{ r.note }}</p>
+                  </sc-if>
+                </div>
+              </div>
+            </article>
+          </sc-for>
+          <sc-if value="{{ isEmpty }}" hint-placeholder-val="{{ false }}">
+            <div style="padding:48px 20px;display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center">
+              <span style="font-size:15px;font-weight:700">Tidak ada pendaftaran di bidang ini</span>
+              <span class="muted" style="font-size:13.5px">Pilih bidang lain atau semua bidang.</span>
+            </div>
+          </sc-if>
+        </div>
+      </section>
+
+      <div style="width:300px;flex-shrink:0;display:flex;flex-direction:column;gap:18px">
+        <section class="card" aria-labelledby="sum-title" style="padding:18px;display:flex;flex-direction:column;gap:12px">
+          <h2 id="sum-title" style="margin:0;font-size:17px;font-weight:700">Ringkasan</h2>
+          <div style="display:flex;align-items:center;gap:12px">
+            <span style="width:40px;height:40px;border-radius:12px;background:#FFEEDD;color:#9A3F00;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg></span>
+            <span style="flex:1;font-size:14px;font-weight:600">Menunggu</span>
+            <span class="display num" style="font-size:24px;font-weight:800">{{ sum.menunggu }}</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px">
+            <span style="width:40px;height:40px;border-radius:12px;background:#E4F5EA;color:#1B6B45;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="m8 12 3 3 5-6"></path></svg></span>
+            <span style="flex:1;font-size:14px;font-weight:600">Disetujui minggu ini</span>
+            <span class="display num" style="font-size:24px;font-weight:800">{{ sum.ok }}</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px">
+            <span style="width:40px;height:40px;border-radius:12px;background:#FDECEA;color:#B42318;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"></path></svg></span>
+            <span style="flex:1;font-size:14px;font-weight:600">Ditolak</span>
+            <span class="display num" style="font-size:24px;font-weight:800">{{ sum.tolak }}</span>
+          </div>
+        </section>
+
+        <section class="card" aria-labelledby="dekat-title" style="padding:18px;display:flex;flex-direction:column;gap:12px">
+          <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px">
+            <h2 id="dekat-title" style="margin:0;font-size:17px;font-weight:700">Lomba terdekat</h2>
+            <a href="Dashboard-Sekolah.dc.html" style="font-size:13.5px;font-weight:600;text-decoration:none">Dashboard</a>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px">
+            <span style="width:46px;height:50px;border-radius:12px;background:#F4F5FB;border:1px solid #E7E9F3;display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0"><span class="display num" style="font-size:18px;font-weight:800;line-height:1">14</span><span style="font-size:11.5px;font-weight:700;color:#666C84;text-transform:uppercase;letter-spacing:.04em">Okt</span></span>
+            <span style="display:flex;flex-direction:column;gap:2px;min-width:0"><span style="font-size:14px;font-weight:700;line-height:1.3">OSN Tingkat Kota Semarang 2026</span><span class="muted" style="font-size:12.5px">12 siswa SMAGA · Kota/Kab</span></span>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px">
+            <span style="width:46px;height:50px;border-radius:12px;background:#F4F5FB;border:1px solid #E7E9F3;display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0"><span class="display num" style="font-size:18px;font-weight:800;line-height:1">17</span><span style="font-size:11.5px;font-weight:700;color:#666C84;text-transform:uppercase;letter-spacing:.04em">Okt</span></span>
+            <span style="display:flex;flex-direction:column;gap:2px;min-width:0"><span style="font-size:14px;font-weight:700;line-height:1.3">Lomba Peneliti Belia (LPB) 2026</span><span class="muted" style="font-size:12.5px">5 siswa SMAGA · Nasional</span></span>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px">
+            <span style="width:46px;height:50px;border-radius:12px;background:#F4F5FB;border:1px solid #E7E9F3;display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0"><span class="display num" style="font-size:18px;font-weight:800;line-height:1">20</span><span style="font-size:11.5px;font-weight:700;color:#666C84;text-transform:uppercase;letter-spacing:.04em">Okt</span></span>
+            <span style="display:flex;flex-direction:column;gap:2px;min-width:0"><span style="font-size:14px;font-weight:700;line-height:1.3">O2SN Kota Semarang 2026 · Bulu tangkis</span><span class="muted" style="font-size:12.5px">4 siswa SMAGA · Kota/Kab</span></span>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px">
+            <span style="width:46px;height:50px;border-radius:12px;background:#F4F5FB;border:1px solid #E7E9F3;display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0"><span class="display num" style="font-size:18px;font-weight:800;line-height:1">24</span><span style="font-size:11.5px;font-weight:700;color:#666C84;text-transform:uppercase;letter-spacing:.04em">Okt</span></span>
+            <span style="display:flex;flex-direction:column;gap:2px;min-width:0"><span style="font-size:14px;font-weight:700;line-height:1.3">LDBI Kota 2026</span><span class="muted" style="font-size:12.5px">6 siswa SMAGA · Kota/Kab</span></span>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px">
+            <span style="width:46px;height:50px;border-radius:12px;background:#F4F5FB;border:1px solid #E7E9F3;display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0"><span class="display num" style="font-size:18px;font-weight:800;line-height:1">27</span><span style="font-size:11.5px;font-weight:700;color:#666C84;text-transform:uppercase;letter-spacing:.04em">Okt</span></span>
+            <span style="display:flex;flex-direction:column;gap:2px;min-width:0"><span style="font-size:14px;font-weight:700;line-height:1.3">FLS3N Kota Semarang 2026</span><span class="muted" style="font-size:12.5px">7 siswa SMAGA · Kota/Kab</span></span>
+          </div>
+        </section>
+      </div>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1000}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = {
+      fb: 'semua',
+      checked: { lpb: true, osn: true, o2sn: false, ldbi: false, silat: false },
+      dec: { lpb: '', osn: '', o2sn: '', ldbi: '', silat: '' },
+      open: { lpb: false, osn: false, o2sn: false, ldbi: false, silat: false },
+      note: { lpb: '', osn: '', o2sn: '', ldbi: '', silat: '' },
+      err: { lpb: false, osn: false, o2sn: false, ldbi: false, silat: false }
+    };
+  }
+
+  regs() {
+    return [
+      { id: 'lpb', nama: 'Lomba Peneliti Belia (LPB) 2026', bidang: 'riset', bidangLabel: 'Riset', tingkat: 'Nasional', tim: true, timLine: 'Tim 2 · semua sudah konfirmasi',
+        members: [{ ini: 'NA' }, { ini: 'DN' }], names: 'Nadia Putri Anindya XI-4 (ketua), Dimas Arya Nugroho XI-4', guru: 'Bu Retno Wulandari, S.Pd.', jadwal: '17 Okt 2026', mode: 'Daring', oleh: 'oleh ketua tim' },
+      { id: 'osn', nama: 'OSN Tingkat Kota Semarang 2026', bidang: 'sains', bidangLabel: 'Sains', tingkat: 'Kota/Kab', tim: false, timLine: '',
+        members: [{ ini: 'HS' }], names: 'Hana Safira · X-8', guru: 'Pak Hendra Kusuma, S.Pd., M.Si.', jadwal: '14 Okt 2026', mode: 'Luring · Kota Semarang', oleh: 'oleh siswa' },
+      { id: 'o2sn', nama: 'O2SN Kota Semarang 2026 · Bulu tangkis', bidang: 'olahraga', bidangLabel: 'Olahraga', tingkat: 'Kota/Kab', tim: false, timLine: '',
+        members: [{ ini: 'FR' }], names: 'Fajar Ramadhan · XII-1', guru: 'Pak Agus Setiawan, S.Or.', jadwal: '20 Okt 2026', mode: 'Luring · Kota Semarang', oleh: 'oleh siswa' },
+      { id: 'ldbi', nama: 'Lomba Debat Bahasa Indonesia (LDBI) Kota 2026', bidang: 'seni', bidangLabel: 'Seni Budaya', tingkat: 'Kota/Kab', tim: true, timLine: 'Tim 3 · semua sudah konfirmasi',
+        members: [{ ini: 'SK' }, { ini: 'CL' }, { ini: 'AM' }], names: 'Salsabila Kirana XI-5 (ketua), Citra Ayu Lestari XI-2, Aurelia Maharani X-3', guru: 'Bu Maya Anggraini, S.Sn.', jadwal: '24 Okt 2026', mode: 'Luring · Kota Semarang', oleh: 'oleh ketua tim' },
+      { id: 'silat', nama: 'Kejuaraan Pencak Silat Pelajar Jateng 2026', bidang: 'olahraga', bidangLabel: 'Olahraga', tingkat: 'Provinsi', tim: false, timLine: '',
+        members: [{ ini: 'YP' }], names: 'Yoga Pratama · XII-5', guru: 'Pak Agus Setiawan, S.Or.', jadwal: '1 Nov 2026', mode: 'Luring · Jawa Tengah', oleh: 'oleh siswa' }
+    ];
+  }
+
+  renderVals() {
+    const s = this.state;
+    const R = this.regs();
+    const upd = (key, id, val) => this.setState({ [key]: { ...this.state[key], [id]: val } });
+    const visible = R.filter((r) => s.fb === 'semua' || r.bidang === s.fb);
+    const visPending = visible.filter((r) => !s.dec[r.id]);
+    const visChecked = visPending.filter((r) => s.checked[r.id]);
+    const allChecked = visPending.length > 0 && visChecked.length === visPending.length;
+    const countDec = (v) => R.filter((r) => s.dec[r.id] === v).length;
+
+    const rows = visible.map((r) => {
+      const dec = s.dec[r.id];
+      const pending = !dec;
+      const isChecked = pending && s.checked[r.id];
+      let cls = 'row';
+      if (dec === 'ok') cls = 'row row-ok';
+      else if (dec === 'tolak') cls = 'row row-tolak';
+      else if (isChecked) cls = 'row row-sel';
+      return {
+        ...r,
+        solo: !r.tim,
+        cls: cls,
+        coverCls: 'cover-' + r.bidang,
+        bidangCls: 'chip b-' + r.bidang,
+        isSains: r.bidang === 'sains',
+        isRiset: r.bidang === 'riset',
+        isSeni: r.bidang === 'seni',
+        isOlahraga: r.bidang === 'olahraga',
+        checked: isChecked,
+        decided: !pending,
+        cbLabel: 'Pilih ' + r.nama,
+        isPending: pending,
+        isOk: dec === 'ok',
+        isTolak: dec === 'tolak',
+        showTolak: pending && s.open[r.id],
+        tolakExpanded: pending && s.open[r.id] ? 'true' : 'false',
+        noteId: 'alasan-' + r.id,
+        note: s.note[r.id],
+        hasErr: s.err[r.id],
+        toggle: () => upd('checked', r.id, !this.state.checked[r.id]),
+        approve: () => this.setState({
+          dec: { ...this.state.dec, [r.id]: 'ok' },
+          checked: { ...this.state.checked, [r.id]: false },
+          open: { ...this.state.open, [r.id]: false }
+        }),
+        openTolak: () => upd('open', r.id, !this.state.open[r.id]),
+        setNote: (e) => this.setState({
+          note: { ...this.state.note, [r.id]: e.target.value },
+          err: { ...this.state.err, [r.id]: false }
+        }),
+        confirmTolak: () => {
+          const st = this.state;
+          if (!st.note[r.id].trim()) {
+            upd('err', r.id, true);
+            return;
+          }
+          this.setState({
+            dec: { ...st.dec, [r.id]: 'tolak' },
+            checked: { ...st.checked, [r.id]: false },
+            open: { ...st.open, [r.id]: false }
+          });
+        },
+        cancelTolak: () => this.setState({
+          open: { ...this.state.open, [r.id]: false },
+          err: { ...this.state.err, [r.id]: false }
+        }),
+        undo: () => upd('dec', r.id, '')
+      };
+    });
+
+    return {
+      rows: rows,
+      isEmpty: visible.length === 0,
+      fb: s.fb,
+      setFb: (e) => this.setState({ fb: e.target.value }),
+      shownText: visPending.length + ' menunggu',
+      allChecked: allChecked,
+      noPending: visPending.length === 0,
+      toggleAll: () => {
+        const st = this.state;
+        const next = { ...st.checked };
+        visPending.forEach((r) => { next[r.id] = !allChecked; });
+        this.setState({ checked: next });
+      },
+      nChecked: visChecked.length,
+      noneChecked: visChecked.length === 0,
+      approveChecked: () => {
+        const st = this.state;
+        const dec = { ...st.dec };
+        const checked = { ...st.checked };
+        const open = { ...st.open };
+        visChecked.forEach((r) => { dec[r.id] = 'ok'; checked[r.id] = false; open[r.id] = false; });
+        this.setState({ dec: dec, checked: checked, open: open });
+      },
+      sum: {
+        menunggu: R.length - countDec('ok') - countDec('tolak'),
+        ok: 7 + countDec('ok'),
+        tolak: 1 + countDec('tolak')
+      }
+    };
+  }
+}
+</script>
+</body>
+</html>

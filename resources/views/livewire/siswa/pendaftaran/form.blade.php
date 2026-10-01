@@ -1,0 +1,187 @@
+{{-- "Daftar lomba" panel (board Detail-Lomba, right column). State + rules: App\Livewire\Siswa\Pendaftaran\Form. --}}
+<div class="flex flex-col gap-4">
+    <div class="flex items-center justify-between gap-3">
+        <h2 id="h-daftar" class="title-section m-0">Daftar lomba</h2>
+        @if ($closesShort)
+            <x-sth.chip tone="gray" class="num">Batas {{ $closesShort }}</x-sth.chip>
+        @endif
+    </div>
+
+    @error('competition')
+        <x-sth.alert tone="error">{{ $message }}</x-sth.alert>
+    @enderror
+    @error('registration')
+        <x-sth.alert tone="error">{{ $message }}</x-sth.alert>
+    @enderror
+
+    @if ($status)
+        {{-- Already in a running registration of this lomba (or just sent). --}}
+        <div role="status" class="flex flex-col gap-4">
+            @if ($status['pendingInvite'])
+                <div class="flex flex-col gap-2 rounded-tile bg-primary-tint p-4">
+                    <p class="m-0 font-bold">{{ $status['leaderName'] }} mengajak kamu ikut tim.</p>
+                    <p class="m-0 text-sm text-ink-2">Konfirmasi sebelum batas pendaftaran.</p>
+                    <x-sth.button size="sm" :href="$status['undangan']" class="self-start">Lihat undangan</x-sth.button>
+                </div>
+            @else
+                <div class="flex flex-col items-start gap-2">
+                    <span class="inline-flex size-12 items-center justify-center rounded-full bg-green-bg text-green" aria-hidden="true"><x-sth.icon name="check" :size="26" /></span>
+                    <h3 class="title-card m-0">{{ $status['isLeader'] ? 'Pendaftaran terkirim' : 'Kamu sudah terdaftar' }}</h3>
+                    <x-sth.chip :tone="$status['tone']">{{ $status['label'] }}</x-sth.chip>
+                </div>
+            @endif
+
+            <ol class="m-0 flex list-none flex-col gap-3 p-0">
+                @if ($status['isTeam'])
+                    <li class="flex items-start gap-3">
+                        <span @class(['inline-flex size-7 shrink-0 items-center justify-center rounded-full text-sm font-bold', 'bg-green-bg text-green' => ! $status['waitingMembers'], 'bg-primary-tint text-primary' => $status['waitingMembers']])>
+                            @if ($status['waitingMembers'])<span class="num">1</span>@else<x-sth.icon name="check" :size="16" />@endif
+                        </span>
+                        <div class="flex flex-col">
+                            <span class="font-semibold">Anggota konfirmasi</span>
+                            @if ($status['membersText'])<span class="num text-[13px] text-muted">{{ $status['membersText'] }}</span>@endif
+                        </div>
+                    </li>
+                @endif
+                <li class="flex items-start gap-3">
+                    <span @class(['inline-flex size-7 shrink-0 items-center justify-center rounded-full text-sm font-bold', 'bg-green-bg text-green' => $status['phase'] > 2, 'bg-primary-tint text-primary' => $status['phase'] <= 2])>
+                        @if ($status['phase'] > 2)<x-sth.icon name="check" :size="16" />@else<span class="num">{{ $status['isTeam'] ? 2 : 1 }}</span>@endif
+                    </span>
+                    <span class="font-semibold">Kepala Sekolah menyetujui</span>
+                </li>
+                <li class="flex items-start gap-3">
+                    <span @class(['inline-flex size-7 shrink-0 items-center justify-center rounded-full text-sm font-bold', 'bg-green-bg text-green' => $status['phase'] > 3, 'bg-subtle text-muted' => $status['phase'] <= 3])>
+                        @if ($status['phase'] > 3)<x-sth.icon name="check" :size="16" />@else<span class="num">{{ $status['isTeam'] ? 3 : 2 }}</span>@endif
+                    </span>
+                    <span class="font-semibold">Tata Usaha membuat surat tugas</span>
+                </li>
+            </ol>
+
+            <p class="m-0 text-sm text-muted">Pembimbing: <span class="font-semibold text-ink">{{ $status['mentor'] }}</span></p>
+
+            <div class="flex flex-wrap gap-2">
+                @if ($status['lombaSaya'])
+                    <x-sth.button variant="soft" :href="$status['lombaSaya']" icon-right="chevron-right">Lihat di Lomba saya</x-sth.button>
+                @endif
+                @if ($status['canCancel'])
+                    <x-sth.button variant="quiet" size="sm" data-sth-open="batal-daftar" aria-haspopup="dialog">Batalkan pendaftaran</x-sth.button>
+                @endif
+            </div>
+
+            @if ($status['canCancel'])
+                <x-sth.modal id="batal-daftar" title="Batalkan pendaftaran?" description="Anggota tim akan diberi tahu. Kamu bisa mendaftar lagi selama pendaftaran masih dibuka." size="sm">
+                    <p class="m-0">Pendaftaran {{ $competition->name }} akan dibatalkan.</p>
+                    <x-slot:footer>
+                        <x-sth.button variant="quiet" data-sth-close>Kembali</x-sth.button>
+                        <x-sth.button variant="danger" wire:click="batalkan" wire:loading.attr="disabled">Batalkan pendaftaran</x-sth.button>
+                    </x-slot:footer>
+                </x-sth.modal>
+            @endif
+        </div>
+    @elseif (! $canCreate)
+        <div class="flex flex-col gap-2">
+            @if ($window['key'] === 'segera')
+                <x-sth.alert title="Belum dibuka">{{ $window['note'] }}.</x-sth.alert>
+            @elseif ($window['key'] === 'ditutup' || ! $competition->isPublished())
+                <x-sth.alert tone="warning" title="Pendaftaran ditutup">Lomba ini tidak menerima pendaftaran lagi.</x-sth.alert>
+            @else
+                <x-sth.alert tone="warning">Kamu belum bisa mendaftar lomba ini. Hubungi Kesiswaan bila ada kendala.</x-sth.alert>
+            @endif
+        </div>
+    @else
+        <form wire:submit="kirim" class="flex flex-col gap-4" novalidate>
+            <div class="flex flex-col gap-2">
+                <x-sth.segmented wire:model.live="type" label="Jenis peserta" block :options="[
+                    'individu' => ['label' => 'Individu', 'icon' => 'user', 'disabled' => ! $individuAllowed],
+                    'tim' => ['label' => 'Tim', 'icon' => 'users', 'disabled' => ! $teamAllowed],
+                ]" />
+                @if (! $individuAllowed || ! $teamAllowed)
+                    <p class="m-0 flex items-center gap-1.5 text-[13px] text-muted"><x-sth.icon name="info" :size="16" />Lomba ini khusus {{ $teamAllowed ? 'tim' : 'individu' }}.</p>
+                @endif
+            </div>
+
+            @if ($type === 'tim')
+                <div class="flex flex-col gap-2">
+                    <div class="flex items-center justify-between gap-2">
+                        <span class="label" id="lbl-anggota">Anggota tim @if ($maxTeam)(maks {{ $maxTeam }})@endif</span>
+                        <span class="num text-[13px] text-muted">{{ count($memberRows) + 1 }} orang</span>
+                    </div>
+                    <ul aria-labelledby="lbl-anggota" class="m-0 flex list-none flex-col gap-2 p-0">
+                        <li class="flex items-center gap-3 rounded-tile bg-page p-2.5">
+                            <x-sth.avatar :name="auth()->user()->name" size="sm" />
+                            <div class="flex min-w-0 flex-1 flex-col">
+                                <span class="flex items-center gap-2 font-semibold"><span class="ellip">{{ auth()->user()->name }}</span><x-sth.chip tone="blue" size="sm">Kamu</x-sth.chip></span>
+                                <span class="text-[13px] text-muted">Ketua · {{ $me?->classroom?->name }}</span>
+                            </div>
+                        </li>
+                        @foreach ($memberRows as $row)
+                            <li wire:key="anggota-{{ $row['id'] }}" class="flex items-center gap-3 rounded-tile border border-line p-2.5">
+                                <x-sth.avatar :name="$row['name']" size="sm" />
+                                <div class="flex min-w-0 flex-1 flex-col">
+                                    <span class="ellip font-semibold">{{ $row['name'] }}</span>
+                                    <span class="text-[13px] text-muted">{{ $row['kelas'] }} · diundang setelah kamu kirim</span>
+                                </div>
+                                <x-sth.icon-button icon="x" size="sm" ghost :label="'Hapus '.$row['name']" wire:click="hapus('{{ $row['id'] }}')" />
+                            </li>
+                        @endforeach
+                    </ul>
+                    @error('members')
+                        <p class="field-error m-0"><x-sth.icon name="alert" :size="16" />{{ $message }}</p>
+                    @enderror
+                </div>
+
+                @unless ($teamFull)
+                    <div class="flex flex-col gap-2">
+                        <x-sth.input wire:model.live.debounce.500ms="q" id="cari-anggota" type="search" label="Tambah anggota" icon="search"
+                                     placeholder="Cari nama, NIS, atau NISN" autocomplete="off" maxlength="60"
+                                     hint="Nama diambil dari akun masing-masing siswa." />
+                        @if ($hasil !== [])
+                            <ul aria-label="Akun siswa yang cocok" class="m-0 flex list-none flex-col gap-1.5 p-0">
+                                @foreach ($hasil as $row)
+                                    <li wire:key="hasil-{{ $row['id'] }}" class="flex items-center gap-3 rounded-tile p-2 hover:bg-hover">
+                                        <x-sth.avatar :name="$row['name']" size="sm" />
+                                        <div class="flex min-w-0 flex-1 flex-col">
+                                            <span class="ellip font-semibold">{{ $row['name'] }}</span>
+                                            <span class="text-[13px] text-muted">{{ $row['kelas'] }}</span>
+                                        </div>
+                                        @if ($row['busy'])
+                                            <x-sth.chip tone="gray" size="sm">Sudah terdaftar</x-sth.chip>
+                                        @elseif (in_array($row['id'], $members, true))
+                                            <x-sth.chip tone="blue" size="sm">Ditambahkan</x-sth.chip>
+                                        @else
+                                            <x-sth.button variant="soft" size="sm" icon="plus" wire:click="tambah('{{ $row['id'] }}')" :aria-label="'Tambah '.$row['name']">Tambah</x-sth.button>
+                                        @endif
+                                    </li>
+                                @endforeach
+                            </ul>
+                        @endif
+                        @if ($searchNote)
+                            <p class="m-0 text-[13px] text-muted" role="status">{{ $searchNote }}</p>
+                        @endif
+                    </div>
+                @else
+                    <p class="m-0 text-[13px] font-semibold text-orange">Tim sudah {{ $maxTeam }} orang. Hapus anggota untuk mengganti.</p>
+                @endunless
+            @endif
+
+            <x-sth.select wire:model="mentorId" id="guru" label="Guru pembimbing" placeholder="Pilih guru pembimbing" :options="$mentors" />
+
+            <div class="flex flex-col gap-3 border-t border-line pt-4">
+                <x-sth.checkbox wire:model.live="setuju" id="setuju">Data yang saya isi benar.</x-sth.checkbox>
+                <x-sth.button type="submit" icon="send" block wire:loading.attr="disabled" wire:target="kirim"
+                              :disabled="! $setuju || ($type === 'tim' && $memberRows === [])" aria-describedby="kirim-help">Kirim pendaftaran</x-sth.button>
+                <p id="kirim-help" class="m-0 text-[13px] text-muted">
+                    @if ($type === 'tim' && $memberRows === [])
+                        Tambahkan minimal 1 anggota tim.
+                    @elseif (! $setuju)
+                        Centang pernyataan di atas untuk mengirim.
+                    @elseif ($type === 'tim')
+                        Anggota konfirmasi dulu, lalu Kepala Sekolah menyetujui.
+                    @else
+                        Pendaftaran diteruskan ke Kepala Sekolah.
+                    @endif
+                </p>
+            </div>
+        </form>
+    @endif
+</div>

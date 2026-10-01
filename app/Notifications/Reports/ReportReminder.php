@@ -1,0 +1,82 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Notifications\Reports;
+
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Notifications\Messages\MailMessage;
+use Illuminate\Notifications\Notification;
+use Illuminate\Support\Facades\Route;
+
+/**
+ * To the ketua: the laporan hasil is due soon (sth:reports:remind, 14 and 3 days before final_on + 45, D-25).
+ */
+class ReportReminder extends Notification implements ShouldQueue
+{
+    use Queueable;
+
+    public function __construct(
+        public readonly string $registrationId,
+        public readonly string $competitionName,
+        public readonly string $dueOn,
+        public readonly int $daysLeft,
+    ) {}
+
+    /** @return list<string> */
+    public function via(object $notifiable): array
+    {
+        return ['mail', 'database'];
+    }
+
+    /** @return array<string, string> */
+    public function viaQueues(): array
+    {
+        return ['mail' => (string) config('fortify.sth.mail_queue', 'mail'), 'database' => 'default'];
+    }
+
+    public function toMail(object $notifiable): MailMessage
+    {
+        $message = (new MailMessage)
+            ->subject($this->title())
+            ->line($this->body())
+            ->salutation('SMAGA Talent Hub');
+
+        $url = $this->url();
+
+        return $url !== null ? $message->action('Laporkan hasil', $url) : $message;
+    }
+
+    /** @return array<string, mixed> */
+    public function toArray(object $notifiable): array
+    {
+        return [
+            'kind' => 'report.reminder',
+            'title' => $this->title(),
+            'body' => $this->body(),
+            'url' => $this->url(),
+            'registration_id' => $this->registrationId,
+            'days_left' => $this->daysLeft,
+        ];
+    }
+
+    private function title(): string
+    {
+        return 'Laporan '.$this->competitionName.' ditunggu';
+    }
+
+    private function body(): string
+    {
+        $left = $this->daysLeft === 0 ? 'hari ini' : $this->daysLeft.' hari lagi';
+
+        return 'Batas laporan hasil '.$this->dueOn.' ('.$left.'). Unggah sertifikat dan foto dokumentasi.';
+    }
+
+    private function url(): ?string
+    {
+        return Route::has('siswa.lomba-saya.show')
+            ? route('siswa.lomba-saya.show', ['registration' => $this->registrationId])
+            : null;
+    }
+}

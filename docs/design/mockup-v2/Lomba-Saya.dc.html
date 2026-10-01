@@ -1,0 +1,690 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Lomba saya</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Urbanist:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F4F5FB;font-family:"Plus Jakarta Sans",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;color:#151A33;-webkit-font-smoothing:antialiased}
+*{box-sizing:border-box}
+a{color:#3148D6}a:hover{color:#2638B0}
+h1,h2,h3,.display{font-family:"Urbanist","Plus Jakarta Sans",system-ui,sans-serif;letter-spacing:-0.01em}
+.page{background:radial-gradient(900px 320px at 88% -8%,#ECE8FF 0%,rgba(236,232,255,0) 70%),radial-gradient(760px 300px at 28% -14%,#E2F0FF 0%,rgba(226,240,255,0) 70%),#F4F5FB}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:44px;padding:0 18px;border-radius:12px;font:600 15px/1 "Plus Jakarta Sans",system-ui,sans-serif;border:1px solid transparent;cursor:pointer;text-decoration:none;white-space:nowrap}
+.btn-primary{background:#3148D6;color:#FFFFFF;box-shadow:0 8px 18px -10px rgba(49,72,214,.65)}
+.btn-primary:hover{background:#2638B0;color:#FFFFFF}
+.btn-quiet{background:#FFFFFF;color:#151A33;border-color:#DCDFEC}
+.btn-quiet:hover{background:#F4F5FB;color:#151A33}
+.btn-soft{background:#ECEFFF;color:#2A3CB8}
+.btn-soft:hover{background:#DFE4FF;color:#2A3CB8}
+.btn-danger{background:#FFFFFF;color:#B42318;border-color:#F3C4BE}
+.btn-danger:hover{background:#FDECEA;color:#B42318}
+.btn-sm{height:36px;padding:0 14px;font-size:14px;border-radius:10px}
+.btn:focus-visible,.nav:focus-visible,.input:focus-visible,.icon-btn:focus-visible,.tab:focus-visible,.pick:focus-visible{outline:3px solid #A9B6F5;outline-offset:2px}
+.icon-btn{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:12px;border:1px solid #E7E9F3;background:#FFFFFF;color:#4A5068;cursor:pointer;position:relative;text-decoration:none}
+.icon-btn:hover{background:#F4F5FB;color:#151A33}
+.dot{position:absolute;top:8px;right:9px;width:8px;height:8px;border-radius:999px;background:#3148D6;border:2px solid #FFFFFF}
+.card{background:#FFFFFF;border:1px solid #E7E9F3;border-radius:20px;box-shadow:0 1px 2px rgba(20,24,60,.04),0 10px 28px -18px rgba(20,24,60,.18)}
+.chip{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 10px;border-radius:999px;font-size:12.5px;font-weight:600;white-space:nowrap}
+.c-blue{background:#ECEFFF;color:#2A3CB8}
+.c-green{background:#E4F5EA;color:#1B6B45}
+.c-orange{background:#FFEEDD;color:#9A3F00}
+.c-red{background:#FDECEA;color:#B42318}
+.c-gray{background:#EEF0F6;color:#4A5068}
+.c-gold{background:#FFF3D1;color:#6B4E00}
+.c-glass{background:rgba(255,255,255,.82);color:#151A33}
+.b-sains{background:#E6F0FF;color:#1D56AD}
+.b-riset{background:#F0EBFF;color:#5534B8}
+.b-seni{background:#FDE8F0;color:#A61F54}
+.b-olahraga{background:#E0F4F8;color:#0B6577}
+.cover-sains{background:linear-gradient(135deg,#DCE9FF,#C3D8FF);color:#1D56AD}
+.cover-riset{background:linear-gradient(135deg,#EEE7FF,#D9CCFF);color:#5534B8}
+.cover-seni{background:linear-gradient(135deg,#FFE6EF,#FFCFE0);color:#A61F54}
+.cover-olahraga{background:linear-gradient(135deg,#DDF4F8,#BFE8F0);color:#0B6577}
+.label{font-size:13px;font-weight:600;color:#4A5068}
+.input{height:46px;width:100%;border:1px solid #DCDFEC;border-radius:12px;padding:0 14px;font:500 15px "Plus Jakarta Sans",system-ui,sans-serif;color:#151A33;background:#FFFFFF}
+.input::placeholder{color:#8A90A6}
+textarea.input{height:auto;padding:12px 14px;line-height:1.5;resize:vertical}
+.nav{display:flex;align-items:center;gap:12px;height:44px;padding:0 14px;border-radius:12px;color:#4A5068;text-decoration:none;font-size:14.5px;font-weight:600}
+.nav:hover{background:#F1F2FA;color:#151A33}
+.nav-on{background:#3148D6;color:#FFFFFF;box-shadow:0 8px 18px -10px rgba(49,72,214,.7)}
+.nav-on:hover{background:#2638B0;color:#FFFFFF}
+.nav-sec{font-size:11.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#8A90A6;padding:8px 14px 2px}
+.badge{margin-left:auto;min-width:22px;height:22px;padding:0 7px;border-radius:999px;background:#ECEFFF;color:#2A3CB8;font-size:12px;font-weight:700;display:inline-flex;align-items:center;justify-content:center}
+.nav-on .badge{background:#FFFFFF;color:#2A3CB8}
+.avatar{display:inline-flex;align-items:center;justify-content:center;border-radius:999px;background:#ECEFFF;color:#2A3CB8;font-weight:700;flex-shrink:0}
+.stack{display:flex}.stack .avatar{border:2px solid #FFFFFF;margin-left:-8px}.stack .avatar:first-child{margin-left:0}
+.pick{cursor:pointer;border:1px solid #DCDFEC;background:#FFFFFF;border-radius:14px;font:600 14.5px "Plus Jakarta Sans",system-ui,sans-serif;color:#151A33}
+.pick-on{border:2px solid #3148D6;background:#ECEFFF;color:#2A3CB8}
+.tabbar{position:absolute;left:0;right:0;bottom:0;height:80px;background:#FFFFFF;border-top:1px solid #E7E9F3;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));padding:8px 6px 16px}
+.tab{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:52px;border-radius:14px;color:#666C84;text-decoration:none;font-size:11.5px;font-weight:600}
+.tab-ic{width:48px;height:28px;border-radius:999px;display:flex;align-items:center;justify-content:center}
+.tab-on{color:#3148D6}.tab-on .tab-ic{background:#ECEFFF}
+.muted{color:#666C84}
+.num{font-variant-numeric:tabular-nums}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.seg{height:40px;border:0;border-radius:11px;background:transparent;display:flex;align-items:center;justify-content:center;gap:8px;font:600 14.5px "Plus Jakarta Sans",system-ui,sans-serif;color:#4A5068;cursor:pointer}
+.seg:hover{color:#151A33}
+.seg-on{background:#FFFFFF;color:#151A33;box-shadow:0 1px 2px rgba(20,24,60,.06),0 6px 14px -8px rgba(20,24,60,.25)}
+.seg-n{min-width:22px;height:22px;padding:0 7px;border-radius:999px;background:#FFFFFF;color:#4A5068;font-size:12px;font-weight:700;display:inline-flex;align-items:center;justify-content:center}
+.seg-on .seg-n{background:#ECEFFF;color:#2A3CB8}
+.reg{display:flex;flex-direction:column;gap:12px;width:100%;padding:16px;text-align:left;background:#FFFFFF;border:1px solid #E7E9F3;border-radius:20px;cursor:pointer;font:500 14px "Plus Jakarta Sans",system-ui,sans-serif;color:#151A33;box-shadow:0 1px 2px rgba(20,24,60,.04),0 10px 28px -18px rgba(20,24,60,.18)}
+.reg:hover{border-color:#C9CEE2}
+.reg-on,.reg-on:hover{border:2px solid #3148D6;padding:15px;box-shadow:0 14px 28px -18px rgba(49,72,214,.6)}
+.reg-chev{color:#8A90A6}.reg-on .reg-chev{color:#3148D6}
+.sg{display:block;height:6px;border-radius:999px;background:#E3E6F2}
+.sg-done{background:#3148D6}.sg-cur{background:#8FA0EE}.sg-act{background:#9A3F00}
+.pane{scrollbar-width:thin;scrollbar-color:#C9CEE2 transparent}
+.pane>*{flex-shrink:0}
+.trk{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(6,minmax(0,1fr))}
+.trk-step{position:relative;display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center;padding:0 4px}
+.trk-line{position:absolute;top:13.5px;left:calc(50% + 19px);right:calc(-50% + 19px);height:3px;border-radius:999px;background:#DCDFEC}
+.s-done .trk-line{background:#3148D6}
+.trk-last .trk-line{display:none}
+.trk-dot{position:relative;width:30px;height:30px;border-radius:999px;display:flex;align-items:center;justify-content:center;font:800 13px/1 "Urbanist","Plus Jakarta Sans",system-ui,sans-serif}
+.s-done .trk-dot{background:#3148D6;color:#FFFFFF}
+.s-cur .trk-dot{background:#FFFFFF;box-shadow:inset 0 0 0 3px #3148D6;color:#3148D6}
+.s-act .trk-dot{background:#FFEEDD;box-shadow:inset 0 0 0 3px #9A3F00;color:#9A3F00}
+.s-up .trk-dot{background:#EEF0F6;color:#666C84}
+.trk-lbl{font-size:13px;line-height:18px;font-weight:600;color:#4A5068}
+.s-cur .trk-lbl,.s-act .trk-lbl{font-weight:700;color:#151A33}
+.trk-date{font-size:12px;line-height:16px;color:#666C84}
+.s-cur .trk-date{color:#2A3CB8;font-weight:600}
+.s-act .trk-date{color:#9A3F00;font-weight:700}
+.rt{display:flex;flex-direction:column;gap:2px;min-width:0;padding:10px 14px;border-radius:14px;background:#F4F5FB}
+.rt-l{font-size:12px;line-height:16px;font-weight:600;color:#666C84;white-space:nowrap}
+.rt-v{font-family:"Urbanist","Plus Jakarta Sans",system-ui,sans-serif;font-size:20px;line-height:24px;font-weight:800;color:#151A33;font-variant-numeric:tabular-nums;white-space:nowrap}
+.rt-gold{background:#FFF3D1}.rt-gold .rt-l,.rt-gold .rt-v{color:#6B4E00}
+.rt-op{font-size:18px;font-weight:700;color:#8A90A6}
+.pk{height:40px;padding:0 14px}.pick-on.pk{padding:0 13px}
+.pick:hover{border-color:#3148D6}
+.drop{display:flex;align-items:center;gap:12px;width:100%;min-height:64px;padding:12px 14px;border:1.5px dashed #C9CEE2;border-radius:14px;background:#FAFBFE;cursor:pointer;text-align:left;font:500 14px "Plus Jakarta Sans",system-ui,sans-serif;color:#151A33}
+.drop:hover{border-color:#3148D6;background:#F5F7FF}
+.seg:focus-visible,.reg:focus-visible,.drop:focus-visible{outline:3px solid #A9B6F5;outline-offset:2px}
+</style>
+</helmet>
+<div class="page" style="width:1440px;height:1000px;display:flex;overflow:hidden">
+  <aside style="width:264px;flex-shrink:0;background:#FFFFFF;border-right:1px solid #E7E9F3;padding:22px 16px;display:flex;flex-direction:column;gap:18px">
+    <div style="display:flex;align-items:center;gap:12px;padding:0 4px">
+      <span role="img" aria-label="Logo SMAGA Talent Hub" style="width:40px;height:40px;border-radius:12px;background:#3148D6;color:#FFFFFF;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 4 6v6c0 4.5 3.4 8.2 8 9 4.6-.8 8-4.5 8-9V6z"></path><path d="m8.5 12 2.5 2.5 4.5-5"></path></svg></span>
+      <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
+        <span class="display" style="font-size:17px;font-weight:800;line-height:1.15">SMAGA Talent Hub</span>
+        <span class="muted" style="font-size:12px;line-height:1.3">SMA Negeri 3 Semarang</span>
+      </div>
+    </div>
+    <a class="btn btn-primary" href="Katalog-Lomba.dc.html" style="width:100%"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>Cari lomba</a>
+    <nav aria-label="Menu utama" style="display:flex;flex-direction:column;gap:4px">
+      <div class="nav-sec">Menu</div>
+      <a class="nav" href="Beranda-Siswa.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"></path></svg>Beranda</a>
+      <a class="nav" href="Katalog-Lomba.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>Cari lomba</a>
+      <a class="nav nav-on" href="Lomba-Saya.dc.html" aria-current="page"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="4" width="14" height="17" rx="2"></rect><path d="M9 4V3h6v1M9 10h6M9 14h6M9 18h4"></path></svg>Lomba saya<span class="badge num">2</span></a>
+      <a class="nav" href="Portofolio.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="9" r="6"></circle><path d="m8.5 14-1.5 7 5-3 5 3-1.5-7"></path></svg>Portofolio</a>
+      <a class="nav" href="Peringkat.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 20V11M12 20V5M18 20v-6M3 20h18"></path></svg>Peringkat</a>
+      <div class="nav-sec" style="margin-top:10px">Akun</div>
+      <a class="nav" href="Profil-Talenta.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"></circle><path d="M4 21a8 8 0 0 1 16 0"></path></svg>Profil talenta</a>
+      <a class="nav" href="#"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .8-1 1.5v.7M12 17h.01"></path></svg>Bantuan</a>
+    </nav>
+    <div style="margin-top:auto;padding:12px;border-radius:16px;background:#F4F5FB;display:flex;align-items:center;gap:10px">
+      <span class="avatar" style="width:38px;height:38px;font-size:14px" aria-hidden="true">NA</span>
+      <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
+        <span style="font-size:14px;font-weight:700;line-height:1.3">Nadia Putri Anindya</span>
+        <span class="muted" style="font-size:12.5px;line-height:1.3">Siswa · XI-4</span>
+      </div>
+    </div>
+  </aside>
+
+  <main style="flex:1;min-width:0;padding:26px 36px;display:flex;flex-direction:column;gap:22px">
+    <header style="display:flex;align-items:center;justify-content:space-between;gap:24px">
+      <div style="display:flex;flex-direction:column;gap:4px;min-width:0">
+        <h1 style="margin:0;font-size:30px;font-weight:800;line-height:1.15">Lomba saya</h1>
+        <p class="muted" style="margin:0;font-size:15px">Pantau pendaftaran, surat tugas, dan laporan hasil.</p>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;flex-shrink:0">
+        <div style="position:relative;width:300px">
+          <label class="sr-only" for="cari-atas">Cari lomba</label>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="position:absolute;left:14px;top:13px;color:#8A90A6"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+          <input class="input" id="cari-atas" type="search" placeholder="Cari lomba" style="padding-left:44px">
+        </div>
+        <button class="icon-btn" type="button" aria-label="Notifikasi, 2 baru"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 16v-5a6 6 0 1 1 12 0v5l1.5 2h-15z"></path><path d="M10 20a2 2 0 0 0 4 0"></path></svg><span class="dot"></span></button>
+        <span class="avatar" role="img" aria-label="Nadia Putri Anindya" style="width:40px;height:40px;font-size:14px">NA</span>
+      </div>
+    </header>
+
+    <div style="flex:1;min-height:0;display:flex;gap:22px">
+
+      <section aria-label="Daftar pendaftaran lomba" style="width:380px;flex-shrink:0;min-height:0;display:flex;flex-direction:column;gap:16px">
+        <div role="group" aria-label="Status lomba" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px;padding:4px;background:#E9EBF5;border-radius:14px">
+          <button type="button" class="{{ segBerjalan }}" aria-pressed="{{ pBerjalan }}" onClick="{{ toBerjalan }}">Berjalan<span class="seg-n num">2</span></button>
+          <button type="button" class="{{ segSelesai }}" aria-pressed="{{ pSelesai }}" onClick="{{ toSelesai }}">Selesai<span class="seg-n num">3</span></button>
+        </div>
+        <ul style="list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:12px">
+          <sc-for list="{{ items }}" as="it" hint-placeholder-count="2">
+            <li>
+              <button type="button" class="{{ it.cls }}" aria-pressed="{{ it.pressed }}" onClick="{{ it.pick }}">
+                <span style="display:flex;align-items:center;gap:12px;width:100%">
+                  <span class="{{ it.coverCls }}" aria-hidden="true" style="width:48px;height:48px;border-radius:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                    <sc-if value="{{ it.isRiset }}" hint-placeholder-val="{{ true }}"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6M10 21h4"></path><path d="M12 3a6 6 0 0 0-3.5 10.9c.6.4 1 1.1 1 1.8V16h5v-.3c0-.7.4-1.4 1-1.8A6 6 0 0 0 12 3z"></path></svg></sc-if>
+                    <sc-if value="{{ it.isOlahraga }}" hint-placeholder-val="{{ false }}"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 3c2.5 2.5 3.5 5.5 3.5 9s-1 6.5-3.5 9M12 3C9.5 5.5 8.5 8.5 8.5 12s1 6.5 3.5 9M3.5 9h17M3.5 15h17"></path></svg></sc-if>
+                  </span>
+                  <span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px">
+                    <span class="display" style="font-size:17px;line-height:22px;font-weight:700">{{ it.title }}</span>
+                    <span class="muted" style="font-size:13px;line-height:18px;font-weight:500">{{ it.meta }}</span>
+                  </span>
+                  <svg class="reg-chev" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink:0"><path d="m9 6 6 6-6 6"></path></svg>
+                </span>
+                <span style="display:flex;flex-direction:column;gap:8px;width:100%">
+                  <span aria-hidden="true" style="display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:4px">
+                    <sc-for list="{{ it.segs }}" as="sg" hint-placeholder-count="6"><span class="{{ sg.cls }}"></span></sc-for>
+                  </span>
+                  <span class="num" style="font-size:13px;line-height:18px;font-weight:700">{{ it.tahap }}</span>
+                </span>
+                <span class="{{ it.chipCls }}" style="align-self:flex-start;gap:0">
+                  <sc-if value="{{ it.icClock }}" hint-placeholder-val="{{ true }}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="margin-right:6px;display:block"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg></sc-if>
+                  <sc-if value="{{ it.icCheck }}" hint-placeholder-val="{{ false }}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="margin-right:6px;display:block"><path d="m5 12 5 5 9-10"></path></svg></sc-if>
+                  <sc-if value="{{ it.icAward }}" hint-placeholder-val="{{ false }}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="margin-right:6px;display:block"><circle cx="12" cy="9" r="6"></circle><path d="m8.5 14-1.5 7 5-3 5 3-1.5-7"></path></svg></sc-if>
+                  <span>{{ it.chip }}</span>
+                </span>
+              </button>
+            </li>
+          </sc-for>
+        </ul>
+      </section>
+
+      <section class="pane" aria-labelledby="detail-judul" style="flex:1;min-width:0;min-height:0;overflow-y:auto;margin:-6px -10px 0;padding:6px 10px 20px;display:flex;flex-direction:column">
+
+        <div class="card" style="padding:22px;display:flex;flex-direction:column;gap:16px">
+          <div style="display:flex;align-items:center;gap:16px">
+            <span class="{{ d.coverCls }}" aria-hidden="true" style="width:60px;height:60px;border-radius:18px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+              <sc-if value="{{ d.isRiset }}" hint-placeholder-val="{{ true }}"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6M10 21h4"></path><path d="M12 3a6 6 0 0 0-3.5 10.9c.6.4 1 1.1 1 1.8V16h5v-.3c0-.7.4-1.4 1-1.8A6 6 0 0 0 12 3z"></path></svg></sc-if>
+              <sc-if value="{{ d.isOlahraga }}" hint-placeholder-val="{{ false }}"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 3c2.5 2.5 3.5 5.5 3.5 9s-1 6.5-3.5 9M12 3C9.5 5.5 8.5 8.5 8.5 12s1 6.5 3.5 9M3.5 9h17M3.5 15h17"></path></svg></sc-if>
+            </span>
+            <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:4px">
+              <h2 id="detail-judul" style="margin:0;font-size:26px;line-height:32px;font-weight:800">{{ d.title }}</h2>
+              <p class="muted" style="margin:0;font-size:14px;line-height:20px">{{ d.sub }}</p>
+            </div>
+          </div>
+          <div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px">
+            <div style="display:flex;gap:8px">
+              <sc-for list="{{ d.chips }}" as="c" hint-placeholder-count="3"><span class="{{ c.cls }}">{{ c.label }}</span></sc-for>
+            </div>
+            <span style="display:inline-flex;align-items:center;gap:6px;font-size:13.5px;font-weight:500;color:#4A5068"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"></rect><path d="M3 10h18M8 3v4M16 3v4"></path></svg>{{ d.date }}</span>
+            <span style="display:inline-flex;align-items:center;gap:6px;font-size:13.5px;font-weight:500;color:#4A5068"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"></path><circle cx="12" cy="10" r="2.5"></circle></svg>{{ d.place }}</span>
+          </div>
+          <div style="border-top:1px solid #E7E9F3;padding-top:18px">
+            <ol class="trk" aria-label="Jejak prestasi">
+              <sc-for list="{{ d.phases }}" as="p" hint-placeholder-count="6">
+                <li class="{{ p.cls }}">
+                  <span class="trk-line" aria-hidden="true"></span>
+                  <span class="trk-dot" aria-hidden="true">
+                    <sc-if value="{{ p.done }}" hint-placeholder-val="{{ true }}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"></path></svg></sc-if>
+                    <sc-if value="{{ p.notDone }}" hint-placeholder-val="{{ false }}"><span class="num">{{ p.n }}</span></sc-if>
+                  </span>
+                  <span class="trk-lbl">{{ p.label }}</span>
+                  <span class="trk-date">{{ p.date }}</span>
+                  <span class="sr-only">{{ p.sr }}</span>
+                </li>
+              </sc-for>
+            </ol>
+          </div>
+        </div>
+
+        <sc-if value="{{ isWice }}" hint-placeholder-val="{{ true }}">
+         <div style="display:flex;flex-direction:column;margin-top:18px">
+          <sc-if value="{{ laporPending }}" hint-placeholder-val="{{ true }}">
+            <section class="card" aria-labelledby="lapor-judul" style="padding:20px 22px;display:flex;flex-direction:column;gap:14px;border-color:#FFD8B5">
+              <div style="display:flex;align-items:center;gap:16px">
+                <span aria-hidden="true" style="width:48px;height:48px;border-radius:14px;background:#FFEEDD;color:#9A3F00;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5M4 20h16"></path></svg></span>
+                <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:4px">
+                  <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+                    <h3 id="lapor-judul" style="margin:0;font-size:18px;line-height:24px;font-weight:700">Laporkan hasil</h3>
+                    <span class="chip c-orange"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg>Batas 24 Okt · 24 hari lagi</span>
+                  </div>
+                  <p class="muted" style="margin:0;font-size:14px;line-height:20px">Unggah sertifikat dan foto dokumentasi lombamu.</p>
+                </div>
+                <div style="display:flex;flex-shrink:0">
+                  <sc-if value="{{ showLaporBtn }}" hint-placeholder-val="{{ true }}">
+                    <button type="button" class="btn btn-primary" onClick="{{ openLapor }}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5M4 20h16"></path></svg>Laporkan hasil</button>
+                  </sc-if>
+                  <sc-if value="{{ lapor }}" hint-placeholder-val="{{ false }}">
+                    <button type="button" class="btn btn-quiet btn-sm" onClick="{{ closeLapor }}">Batal</button>
+                  </sc-if>
+                </div>
+              </div>
+              <div style="display:flex;flex-direction:column">
+              <p style="margin:0;display:flex;align-items:center;gap:8px;padding:9px 12px;border-radius:12px;background:#F4F5FB;font-size:13.5px;line-height:20px;font-weight:600;color:#4A5068"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color:#3148D6;flex-shrink:0"><circle cx="9" cy="8" r="3.5"></circle><path d="M2.5 20a6.5 6.5 0 0 1 13 0"></path><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14a6 6 0 0 1 3.5 6"></path></svg>Setiap anggota tim mendapat poin penuh.</p>
+
+              <sc-if value="{{ lapor }}" hint-placeholder-val="{{ false }}">
+                <div style="margin-top:18px;border-top:1px solid #E7E9F3;padding-top:18px;display:flex;flex-direction:column;gap:18px">
+                  <div role="group" aria-labelledby="hasil-label" style="display:flex;flex-direction:column;gap:10px">
+                    <span id="hasil-label" class="label">Hasil yang diraih</span>
+                    <div style="display:flex;flex-wrap:wrap;gap:8px">
+                      <sc-for list="{{ hasilOpts }}" as="o" hint-placeholder-count="10">
+                        <button type="button" class="{{ o.cls }}" aria-pressed="{{ o.pressed }}" onClick="{{ o.pick }}">{{ o.label }}</button>
+                      </sc-for>
+                    </div>
+                  </div>
+                  <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px">
+                    <div style="display:flex;flex-direction:column;gap:8px">
+                      <span class="label">Sertifikat/piagam <span class="muted" style="font-weight:500">· wajib</span></span>
+                      <button type="button" class="drop">
+                        <span aria-hidden="true" style="width:40px;height:40px;border-radius:12px;background:#ECEFFF;color:#2A3CB8;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5M4 20h16"></path></svg></span>
+                        <span style="display:flex;flex-direction:column;gap:2px;min-width:0">
+                          <span style="font-weight:700;color:#2A3CB8">Unggah sertifikat</span>
+                          <span class="muted" style="font-size:12.5px">PDF atau JPG, maks 5 MB</span>
+                        </span>
+                      </button>
+                    </div>
+                    <div style="display:flex;flex-direction:column;gap:8px">
+                      <span class="label">Foto dokumentasi</span>
+                      <button type="button" class="drop">
+                        <span aria-hidden="true" style="width:40px;height:40px;border-radius:12px;background:#ECEFFF;color:#2A3CB8;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"></rect><circle cx="9" cy="10" r="2"></circle><path d="m21 17-5-5-9 8"></path></svg></span>
+                        <span style="display:flex;flex-direction:column;gap:2px;min-width:0">
+                          <span style="font-weight:700;color:#2A3CB8">Tambah foto</span>
+                          <span class="muted" style="font-size:12.5px">JPG atau PNG, maks 5 foto</span>
+                        </span>
+                      </button>
+                    </div>
+                  </div>
+                  <div style="display:flex;flex-direction:column;gap:10px">
+                    <span class="label">Perkiraan poin <span class="muted" style="font-weight:500">(final setelah diverifikasi)</span></span>
+                    <div role="group" aria-label="Rumus poin" style="display:flex;align-items:center;gap:10px">
+                      <div class="rt"><span class="rt-l">Tingkat</span><span class="rt-v">100</span></div>
+                      <span class="rt-op" aria-hidden="true">×</span>
+                      <div class="rt"><span class="rt-l">Capaian</span><span class="rt-v">{{ capV }}</span></div>
+                      <span class="rt-op" aria-hidden="true">×</span>
+                      <div class="rt"><span class="rt-l">Penyelenggara</span><span class="rt-v">0,40</span></div>
+                      <span class="rt-op" aria-hidden="true">=</span>
+                      <div class="rt rt-gold"><span class="rt-l">Total</span><span class="rt-v">{{ capPoin }} <span style="font-size:13px;font-weight:700">poin</span></span></div>
+                    </div>
+                  </div>
+                  <div style="display:flex;flex-direction:column;border-top:1px solid #E7E9F3;padding-top:16px">
+                    <div style="display:flex;align-items:center;justify-content:space-between;gap:16px">
+                      <label for="asli-desk" style="display:flex;align-items:center;gap:10px;min-height:40px;font-size:14px;font-weight:600;cursor:pointer">
+                        <input id="asli-desk" type="checkbox" checked="{{ asli }}" onChange="{{ toggleAsli }}" style="width:20px;height:20px;margin:0;accent-color:#3148D6;flex-shrink:0">
+                        Dokumen ini asli dan sesuai hasil lomba.
+                      </label>
+                      <button type="button" class="btn btn-primary" onClick="{{ kirim }}">Kirim laporan</button>
+                    </div>
+                    <sc-if value="{{ err }}" hint-placeholder-val="{{ false }}">
+                      <p role="alert" style="margin:8px 0 0;font-size:13.5px;font-weight:600;color:#B42318">Centang pernyataan keaslian dokumen dulu.</p>
+                    </sc-if>
+                  </div>
+                </div>
+              </sc-if>
+              </div>
+            </section>
+          </sc-if>
+
+          <sc-if value="{{ terkirim }}" hint-placeholder-val="{{ false }}">
+            <section class="card" aria-labelledby="lapor-ok" style="padding:20px 22px;display:flex;align-items:center;gap:16px">
+              <span aria-hidden="true" style="width:48px;height:48px;border-radius:14px;background:#E4F5EA;color:#1B6B45;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"></path></svg></span>
+              <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:4px">
+                <div style="display:flex;align-items:center;gap:10px">
+                  <h3 id="lapor-ok" style="margin:0;font-size:18px;line-height:24px;font-weight:700">Laporan terkirim</h3>
+                  <span class="chip c-blue">Laporan dikirim</span>
+                </div>
+                <p class="muted" style="margin:0;font-size:14px;line-height:20px">{{ capLabel }} · perkiraan {{ capPoin }} poin untuk setiap anggota. Kesiswaan akan memverifikasi laporanmu.</p>
+              </div>
+            </section>
+          </sc-if>
+
+          <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;align-items:start;margin-top:18px">
+            <section class="card" aria-labelledby="surat-judul" style="padding:20px;display:flex;flex-direction:column;gap:14px">
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+                <h3 id="surat-judul" style="margin:0;font-size:18px;line-height:24px;font-weight:700">Surat tugas</h3>
+                <span class="chip c-green"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"></path></svg>Terbit 8 Sep</span>
+              </div>
+              <ul style="list-style:none;margin:0;padding:0;display:flex;flex-direction:column">
+                <li style="display:flex;align-items:center;gap:12px;padding:0 0 12px">
+                  <span aria-hidden="true" style="width:40px;height:40px;border-radius:12px;background:#ECEFFF;color:#2A3CB8;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"></path><path d="M14 3v5h5"></path></svg></span>
+                  <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px">
+                    <span style="font-size:14.5px;line-height:20px;font-weight:700">Surat tugas siswa</span>
+                    <span class="muted num" style="font-size:13px;line-height:18px">400.3.8/312/MRD/IX/2026 · PDF</span>
+                    <span class="muted" style="font-size:13px;line-height:18px">1 surat untuk 3 anggota</span>
+                  </div>
+                  <a class="icon-btn" href="#" aria-label="Unduh surat tugas siswa (PDF)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v12M7 11l5 5 5-5M4 20h16"></path></svg></a>
+                </li>
+                <li style="display:flex;align-items:center;gap:12px;padding:12px 0 0;border-top:1px solid #E7E9F3">
+                  <span aria-hidden="true" style="width:40px;height:40px;border-radius:12px;background:#ECEFFF;color:#2A3CB8;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"></path><path d="M14 3v5h5"></path></svg></span>
+                  <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px">
+                    <span style="font-size:14.5px;line-height:20px;font-weight:700">Surat perintah tugas guru pendamping</span>
+                    <span class="muted" style="font-size:13px;line-height:18px">PDF · Bu Retno Wulandari, S.Pd.</span>
+                  </div>
+                  <a class="icon-btn" href="#" aria-label="Unduh surat perintah tugas guru pendamping (PDF)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v12M7 11l5 5 5-5M4 20h16"></path></svg></a>
+                </li>
+              </ul>
+            </section>
+
+            <section class="card" aria-labelledby="tim-judul" style="padding:20px;display:flex;flex-direction:column;gap:14px">
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+                <h3 id="tim-judul" style="margin:0;font-size:18px;line-height:24px;font-weight:700">Tim</h3>
+                <span class="muted" style="font-size:13px;font-weight:600">3 anggota</span>
+              </div>
+              <ul style="list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:14px">
+                <li style="display:flex;align-items:flex-start;gap:12px">
+                  <span class="avatar" aria-hidden="true" style="width:38px;height:38px;font-size:13.5px">NA</span>
+                  <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
+                    <span style="font-size:14.5px;line-height:20px;font-weight:700">Nadia Putri Anindya</span>
+                    <span class="muted" style="font-size:13px;line-height:18px">XI-4 · Ketua</span>
+                    <span class="chip c-green" style="align-self:flex-start;margin-top:4px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"></path></svg>Sudah konfirmasi</span>
+                  </div>
+                </li>
+                <li style="display:flex;align-items:flex-start;gap:12px">
+                  <span class="avatar" aria-hidden="true" style="width:38px;height:38px;font-size:13.5px">DN</span>
+                  <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
+                    <span style="font-size:14.5px;line-height:20px;font-weight:700">Dimas Arya Nugroho</span>
+                    <span class="muted" style="font-size:13px;line-height:18px">XI-4 · Anggota</span>
+                    <span class="chip c-green" style="align-self:flex-start;margin-top:4px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"></path></svg>Sudah konfirmasi</span>
+                  </div>
+                </li>
+                <li style="display:flex;align-items:flex-start;gap:12px">
+                  <span class="avatar" aria-hidden="true" style="width:38px;height:38px;font-size:13.5px">KL</span>
+                  <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
+                    <span style="font-size:14.5px;line-height:20px;font-weight:700">Keisha Larasati</span>
+                    <span class="muted" style="font-size:13px;line-height:18px">XI-6 · Anggota</span>
+                    <span class="chip c-green" style="align-self:flex-start;margin-top:4px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"></path></svg>Sudah konfirmasi</span>
+                  </div>
+                </li>
+              </ul>
+              <div style="border-top:1px solid #E7E9F3;padding-top:14px;display:flex;flex-direction:column;gap:10px">
+                <span class="label">Guru pembimbing</span>
+                <div style="display:flex;align-items:center;gap:12px">
+                  <span class="avatar" aria-hidden="true" style="width:38px;height:38px;font-size:13.5px">RW</span>
+                  <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
+                    <span style="font-size:14.5px;line-height:20px;font-weight:700">Bu Retno Wulandari, S.Pd.</span>
+                    <span class="muted" style="font-size:13px;line-height:18px">Pembimbing riset</span>
+                  </div>
+                </div>
+              </div>
+            </section>
+          </div>
+         </div>
+        </sc-if>
+
+        <sc-if value="{{ isLpb }}" hint-placeholder-val="{{ false }}">
+         <div style="display:flex;flex-direction:column;gap:18px;margin-top:18px">
+          <section class="card" aria-labelledby="setuju-judul" style="padding:20px 22px;display:flex;align-items:center;gap:16px">
+            <span aria-hidden="true" style="width:48px;height:48px;border-radius:14px;background:#EEF0F6;color:#4A5068;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg></span>
+            <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:4px">
+              <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+                <h3 id="setuju-judul" style="margin:0;font-size:18px;line-height:24px;font-weight:700">Persetujuan</h3>
+                <span class="chip c-gray"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg>Menunggu Kepala Sekolah</span>
+              </div>
+              <p class="muted" style="margin:0;font-size:14px;line-height:20px">Didaftarkan 29 Sep 2026. Semua anggota sudah konfirmasi.</p>
+            </div>
+            <button type="button" class="btn btn-danger btn-sm">Batalkan pendaftaran</button>
+          </section>
+
+          <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;align-items:start">
+            <section class="card" aria-labelledby="surat-lpb" style="padding:20px;display:flex;flex-direction:column;gap:14px">
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+                <h3 id="surat-lpb" style="margin:0;font-size:18px;line-height:24px;font-weight:700">Surat tugas</h3>
+                <span class="chip c-gray">Belum terbit</span>
+              </div>
+              <div style="display:flex;flex-direction:column;align-items:center;text-align:center;gap:10px;padding:22px 18px;border:1.5px dashed #DCDFEC;border-radius:16px;background:#FAFBFE">
+                <span aria-hidden="true" style="width:44px;height:44px;border-radius:14px;background:#EEF0F6;color:#666C84;display:flex;align-items:center;justify-content:center"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"></path><path d="M14 3v5h5"></path></svg></span>
+                <p style="margin:0;font-size:14px;line-height:20px;font-weight:500;color:#4A5068">Surat tugas dibuat setelah Kepala Sekolah menyetujui.</p>
+              </div>
+            </section>
+
+            <section class="card" aria-labelledby="tim-lpb" style="padding:20px;display:flex;flex-direction:column;gap:14px">
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+                <h3 id="tim-lpb" style="margin:0;font-size:18px;line-height:24px;font-weight:700">Tim</h3>
+                <span class="muted" style="font-size:13px;font-weight:600">2 anggota</span>
+              </div>
+              <ul style="list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:14px">
+                <li style="display:flex;align-items:flex-start;gap:12px">
+                  <span class="avatar" aria-hidden="true" style="width:38px;height:38px;font-size:13.5px">NA</span>
+                  <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
+                    <span style="font-size:14.5px;line-height:20px;font-weight:700">Nadia Putri Anindya</span>
+                    <span class="muted" style="font-size:13px;line-height:18px">XI-4 · Ketua</span>
+                  </div>
+                </li>
+                <li style="display:flex;align-items:flex-start;gap:12px">
+                  <span class="avatar" aria-hidden="true" style="width:38px;height:38px;font-size:13.5px">DN</span>
+                  <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
+                    <span style="font-size:14.5px;line-height:20px;font-weight:700">Dimas Arya Nugroho</span>
+                    <span class="muted" style="font-size:13px;line-height:18px">XI-4 · Anggota</span>
+                    <span class="chip c-green" style="align-self:flex-start;margin-top:4px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"></path></svg>Sudah konfirmasi</span>
+                  </div>
+                </li>
+              </ul>
+              <div style="border-top:1px solid #E7E9F3;padding-top:14px;display:flex;flex-direction:column;gap:10px">
+                <span class="label">Guru pembimbing</span>
+                <div style="display:flex;align-items:center;gap:12px">
+                  <span class="avatar" aria-hidden="true" style="width:38px;height:38px;font-size:13.5px">RW</span>
+                  <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
+                    <span style="font-size:14.5px;line-height:20px;font-weight:700">Bu Retno Wulandari, S.Pd.</span>
+                    <span class="muted" style="font-size:13px;line-height:18px">Pembimbing riset</span>
+                  </div>
+                </div>
+              </div>
+            </section>
+          </div>
+         </div>
+        </sc-if>
+
+        <sc-if value="{{ isDone }}" hint-placeholder-val="{{ false }}">
+         <div style="display:flex;flex-direction:column;gap:18px;margin-top:18px">
+          <section class="card" aria-labelledby="capaian-judul" style="padding:20px 22px;display:flex;flex-direction:column;gap:16px">
+            <div style="display:flex;align-items:center;gap:16px">
+              <span aria-hidden="true" style="width:48px;height:48px;border-radius:999px;background:#FFF3D1;color:#6B4E00;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:inset 0 0 0 3px #F2B63A"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="9" r="6"></circle><path d="m8.5 14-1.5 7 5-3 5 3-1.5-7"></path></svg></span>
+              <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:4px">
+                <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+                  <h3 id="capaian-judul" style="margin:0;font-size:18px;line-height:24px;font-weight:700">Capaian</h3>
+                  <span class="chip c-gold"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="9" r="6"></circle><path d="m8.5 14-1.5 7 5-3 5 3-1.5-7"></path></svg>{{ d.capaian }}</span>
+                  <span class="chip c-green"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"></path></svg>Poin diberikan</span>
+                </div>
+                <p class="muted" style="margin:0;font-size:14px;line-height:20px">{{ d.verif }}</p>
+              </div>
+            </div>
+            <div role="group" aria-label="Rumus poin" style="display:flex;align-items:center;gap:10px">
+              <div class="rt"><span class="rt-l">Tingkat</span><span class="rt-v">{{ d.tingkat }}</span></div>
+              <span class="rt-op" aria-hidden="true">×</span>
+              <div class="rt"><span class="rt-l">Capaian</span><span class="rt-v">{{ d.capVal }}</span></div>
+              <span class="rt-op" aria-hidden="true">×</span>
+              <div class="rt"><span class="rt-l">Penyelenggara</span><span class="rt-v">{{ d.pen }}</span></div>
+              <span class="rt-op" aria-hidden="true">=</span>
+              <div class="rt rt-gold"><span class="rt-l">Total</span><span class="rt-v">{{ d.poin }} <span style="font-size:13px;font-weight:700">poin</span></span></div>
+            </div>
+          </section>
+
+          <section class="card" aria-labelledby="sert-judul" style="padding:20px 22px;display:flex;align-items:center;gap:20px">
+            <div aria-hidden="true" style="width:168px;height:118px;flex-shrink:0;border-radius:12px;background:#FFFFFF;border:1px solid #E7E9F3;box-shadow:0 8px 20px -14px rgba(20,24,60,.35);padding:8px">
+              <div style="height:100%;border:1px solid #F2E3B5;border-radius:6px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px">
+                <span style="width:64px;height:5px;border-radius:999px;background:#DCDFEC"></span>
+                <span style="width:96px;height:7px;border-radius:999px;background:#C9CEE2"></span>
+                <span style="width:72px;height:5px;border-radius:999px;background:#E7E9F3"></span>
+                <span style="width:22px;height:22px;border-radius:999px;background:#F2B63A;margin-top:4px"></span>
+              </div>
+            </div>
+            <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:4px">
+              <h3 id="sert-judul" style="margin:0;font-size:18px;line-height:24px;font-weight:700">Sertifikat</h3>
+              <p class="muted" style="margin:0;font-size:14px;line-height:20px">{{ d.sert }}</p>
+            </div>
+            <a class="btn btn-quiet" href="#"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v12M7 11l5 5 5-5M4 20h16"></path></svg>Unduh sertifikat</a>
+          </section>
+         </div>
+        </sc-if>
+
+      </section>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1000}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { tab: 'berjalan', sel: 'wice', lapor: false, hasil: 'emas', asli: false, err: false, terkirim: false };
+  }
+  renderVals() {
+    const s = this.state;
+    const sent = s.terkirim;
+    const CAP = [
+      { id: 'emas', label: 'Medali emas', v: '1,00', poin: 40 },
+      { id: 'perak', label: 'Medali perak', v: '0,85', poin: 34 },
+      { id: 'perunggu', label: 'Medali perunggu', v: '0,70', poin: 28 },
+      { id: 'j1', label: 'Juara 1', v: '1,00', poin: 40 },
+      { id: 'j2', label: 'Juara 2', v: '0,85', poin: 34 },
+      { id: 'j3', label: 'Juara 3', v: '0,70', poin: 28 },
+      { id: 'finalis', label: 'Finalis', v: '0,50', poin: 20 },
+      { id: 'semifinalis', label: 'Semifinalis', v: '0,30', poin: 12 },
+      { id: 'khusus', label: 'Penghargaan khusus', v: '0,30', poin: 12 },
+      { id: 'peserta', label: 'Peserta', v: '0,10', poin: 4 }
+    ];
+    const cap = CAP.find((c) => c.id === s.hasil) || CAP[0];
+    const LABELS = ['Daftar', 'Persetujuan', 'Surat tugas', 'Lomba', 'Laporan hasil', 'Poin & apresiasi'];
+    const SR = { done: 'selesai', cur: 'tahap saat ini', act: 'tahap saat ini, perlu tindakan', up: 'belum dimulai' };
+    const phases = (states, dates) => states.map((st, i) => ({
+      n: i + 1,
+      label: LABELS[i],
+      date: dates[i] || '',
+      cls: 'trk-step s-' + st + (i === 5 ? ' trk-last' : ''),
+      done: st === 'done',
+      notDone: st !== 'done',
+      sr: SR[st]
+    }));
+    const segs = (arr) => arr.map((k) => ({ cls: k ? 'sg sg-' + k : 'sg' }));
+    const ALL = ['done', 'done', 'done', 'done', 'done', 'done'];
+    const chipsOf = (tingkat, bidang, bidangCls, peserta) => [
+      { label: tingkat, cls: 'chip c-gray' },
+      { label: bidang, cls: 'chip ' + bidangCls },
+      { label: peserta, cls: 'chip c-gray' }
+    ];
+
+    const ITEMS = {
+      berjalan: [
+        { id: 'wice', title: 'WICE 2026', meta: 'Internasional · Riset · Tim 3', bidang: 'riset',
+          segs: segs(['done', 'done', 'done', 'done', sent ? 'cur' : 'act', '']),
+          tahap: 'Tahap 5 dari 6 · Laporan hasil',
+          chip: sent ? 'Laporan dikirim' : 'Laporan · 24 hari lagi',
+          chipCls: sent ? 'chip c-blue' : 'chip c-orange',
+          icon: sent ? 'check' : 'clock' },
+        { id: 'lpb', title: 'LPB 2026', meta: 'Nasional · Riset · Tim 2', bidang: 'riset',
+          segs: segs(['done', 'cur', '', '', '', '']),
+          tahap: 'Tahap 2 dari 6 · Persetujuan',
+          chip: 'Menunggu Kepala Sekolah', chipCls: 'chip c-gray', icon: 'clock' }
+      ],
+      selesai: [
+        { id: 'opsi', title: 'OPSI 2026', meta: 'Nasional · Riset · Individu', bidang: 'riset',
+          segs: segs(ALL), tahap: 'Tahap 6 dari 6 · Poin & apresiasi',
+          chip: 'Juara II · 68 poin', chipCls: 'chip c-gold', icon: 'award' },
+        { id: 'krenova', title: 'KRENOVA Kota 2026', meta: 'Kota/Kab · Riset · Individu', bidang: 'riset',
+          segs: segs(ALL), tahap: 'Tahap 6 dari 6 · Poin & apresiasi',
+          chip: 'Juara I · 32 poin', chipCls: 'chip c-gold', icon: 'award' },
+        { id: 'o2sn', title: 'O2SN Kota 2026', meta: 'Kota/Kab · Olahraga · Individu', bidang: 'olahraga',
+          segs: segs(ALL), tahap: 'Tahap 6 dari 6 · Poin & apresiasi',
+          chip: 'Peserta · 4 poin', chipCls: 'chip c-gold', icon: 'award' }
+      ]
+    };
+
+    const DET = {
+      wice: { title: 'WICE 2026', sub: 'World Invention Competition and Exhibition · IYSA · Kategori D', bidang: 'riset',
+        chips: chipsOf('Internasional', 'Riset', 'b-riset', 'Tim · 3'),
+        date: '21–24 Sep 2026', place: 'SEGi University, Kuala Lumpur',
+        phases: phases(['done', 'done', 'done', 'done', sent ? 'cur' : 'act', 'up'],
+          ['2 Sep', '5 Sep', '8 Sep', '21–24 Sep', sent ? 'Laporan dikirim' : 'Batas 24 Okt', '']) },
+      lpb: { title: 'LPB 2026', sub: 'Lomba Peneliti Belia · Center for Young Scientists · Kategori C', bidang: 'riset',
+        chips: chipsOf('Nasional', 'Riset', 'b-riset', 'Tim · 2'),
+        date: '17 Okt 2026', place: 'Daring',
+        phases: phases(['done', 'cur', 'up', 'up', 'up', 'up'],
+          ['29 Sep', 'Menunggu Kepala Sekolah', '', '17 Okt', '', '']) },
+      opsi: { title: 'OPSI 2026', sub: 'Olimpiade Penelitian Siswa Indonesia · Puspresnas · Kategori A', bidang: 'riset',
+        chips: chipsOf('Nasional', 'Riset', 'b-riset', 'Individu'),
+        date: '4–7 Agu 2026', place: 'Jakarta',
+        phases: phases(ALL, ['6 Jul', '8 Jul', '10 Jul', '4–7 Agu', '12 Agu', '15 Agu']),
+        capaian: 'Juara II', tingkat: '80', capVal: '0,85', pen: '1,00', poin: '68',
+        verif: 'Diverifikasi Kesiswaan 15 Agu 2026 · Pembimbing Bu Retno Wulandari, S.Pd.',
+        sert: 'sertifikat-opsi-2026.pdf · PDF · 1,2 MB' },
+      krenova: { title: 'KRENOVA Kota 2026', sub: 'Kreativitas dan Inovasi Kota Semarang · Pemerintah Kota Semarang · Kategori B', bidang: 'riset',
+        chips: chipsOf('Kota/Kab', 'Riset', 'b-riset', 'Individu'),
+        date: '24 Feb 2026', place: 'Kota Semarang',
+        phases: phases(ALL, ['2 Feb', '4 Feb', '6 Feb', '24 Feb', '3 Mar', '6 Mar']),
+        capaian: 'Juara I', tingkat: '40', capVal: '1,00', pen: '0,80', poin: '32',
+        verif: 'Diverifikasi Kesiswaan 6 Mar 2026 · Pembimbing Bu Retno Wulandari, S.Pd.',
+        sert: 'sertifikat-krenova-2026.pdf · PDF · 0,9 MB' },
+      o2sn: { title: 'O2SN Kota 2026', sub: 'Olimpiade Olahraga Siswa Nasional · Atletik · Puspresnas · Kategori A', bidang: 'olahraga',
+        chips: chipsOf('Kota/Kab', 'Olahraga', 'b-olahraga', 'Individu'),
+        date: '29 Agu 2026', place: 'Kota Semarang',
+        phases: phases(ALL, ['3 Agu', '5 Agu', '7 Agu', '29 Agu', '2 Sep', '10 Sep']),
+        capaian: 'Peserta', tingkat: '40', capVal: '0,10', pen: '1,00', poin: '4',
+        verif: 'Diverifikasi Kesiswaan 10 Sep 2026 · Pembimbing Pak Agus Setiawan, S.Or.',
+        sert: 'piagam-o2sn-2026.pdf · PDF · 0,8 MB' }
+    };
+
+    const base = { capaian: '', tingkat: '', capVal: '', pen: '', poin: '', verif: '', sert: '' };
+    const det = Object.assign({}, base, DET[s.sel] || DET.wice);
+    det.coverCls = 'cover-' + det.bidang;
+    det.isRiset = det.bidang === 'riset';
+    det.isOlahraga = det.bidang === 'olahraga';
+
+    const items = ITEMS[s.tab].map((it) => ({
+      title: it.title,
+      meta: it.meta,
+      segs: it.segs,
+      tahap: it.tahap,
+      chip: it.chip,
+      chipCls: it.chipCls,
+      cls: it.id === s.sel ? 'reg reg-on' : 'reg',
+      pressed: it.id === s.sel ? 'true' : 'false',
+      coverCls: 'cover-' + it.bidang,
+      isRiset: it.bidang === 'riset',
+      isOlahraga: it.bidang === 'olahraga',
+      icClock: it.icon === 'clock',
+      icCheck: it.icon === 'check',
+      icAward: it.icon === 'award',
+      pick: () => this.setState({ sel: it.id, lapor: false, err: false })
+    }));
+
+    const hasilOpts = CAP.map((c) => ({
+      label: c.label,
+      cls: c.id === s.hasil ? 'pick pk pick-on' : 'pick pk',
+      pressed: c.id === s.hasil ? 'true' : 'false',
+      pick: () => this.setState({ hasil: c.id })
+    }));
+
+    return {
+      segBerjalan: s.tab === 'berjalan' ? 'seg seg-on' : 'seg',
+      segSelesai: s.tab === 'selesai' ? 'seg seg-on' : 'seg',
+      pBerjalan: s.tab === 'berjalan' ? 'true' : 'false',
+      pSelesai: s.tab === 'selesai' ? 'true' : 'false',
+      toBerjalan: () => this.setState({ tab: 'berjalan', sel: 'wice', lapor: false, err: false }),
+      toSelesai: () => this.setState({ tab: 'selesai', sel: 'opsi', lapor: false, err: false }),
+      items: items,
+      d: det,
+      isWice: s.sel === 'wice',
+      isLpb: s.sel === 'lpb',
+      isDone: s.sel === 'opsi' || s.sel === 'krenova' || s.sel === 'o2sn',
+      laporPending: !sent,
+      terkirim: sent,
+      showLaporBtn: !s.lapor && !sent,
+      lapor: s.lapor && !sent,
+      openLapor: () => this.setState({ lapor: true }),
+      closeLapor: () => this.setState({ lapor: false, err: false }),
+      hasilOpts: hasilOpts,
+      capV: cap.v,
+      capPoin: cap.poin,
+      capLabel: cap.label,
+      asli: s.asli,
+      toggleAsli: () => this.setState((p) => ({ asli: !p.asli, err: false })),
+      err: s.err,
+      kirim: () => {
+        if (this.state.asli) {
+          this.setState({ terkirim: true, lapor: false, err: false });
+        } else {
+          this.setState({ err: true });
+        }
+      }
+    };
+  }
+}
+</script>
+</body>
+</html>

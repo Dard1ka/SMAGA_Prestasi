@@ -1,0 +1,75 @@
+# SMAGA Talent Hub — local development stack.
+# Start: docker compose up -d   ·   App: http://127.0.0.1:8080   ·   Mail: http://127.0.0.1:8025
+# All ports bind to 127.0.0.1 only.
+x-php: &php
+  build:
+    context: .
+    dockerfile: docker/php/Dockerfile
+    target: dev
+  image: sth-php:dev
+  volumes:
+    - .:/var/www/html
+  # No env_file here on purpose: Laravel reads the bind-mounted .env itself. Injecting it as process env
+  # would override phpunit.xml and make the test suite run against (and wipe) the dev MySQL database.
+  depends_on:
+    mysql:
+      condition: service_healthy
+
+services:
+  app:
+    <<: *php
+
+  web:
+    image: nginx:1.27-alpine
+    ports:
+      - "127.0.0.1:8080:80"
+    volumes:
+      - .:/var/www/html:ro
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - app
+
+  queue:
+    <<: *php
+    command: php artisan queue:work --queue=otp,mail,default --tries=3 --backoff=10
+    restart: unless-stopped
+
+  scheduler:
+    <<: *php
+    command: php artisan schedule:work
+    restart: unless-stopped
+
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_DATABASE: sth
+      MYSQL_USER: sth
+      MYSQL_PASSWORD: sth_dev_password
+      MYSQL_ROOT_PASSWORD: sth_dev_root
+    ports:
+      - "127.0.0.1:3307:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-psth_dev_root"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  mailpit:
+    image: axllent/mailpit:latest
+    ports:
+      - "127.0.0.1:8025:8025"
+
+  node:
+    image: node:22-alpine
+    working_dir: /app
+    volumes:
+      - .:/app
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
+    ports:
+      - "127.0.0.1:5173:5173"
+    profiles: ["frontend"]
+
+volumes:
+  mysql-data:

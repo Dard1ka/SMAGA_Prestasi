@@ -1,0 +1,202 @@
+# SMAGA Talent Hub CI (docs/SECURITY.md §3k). Every job must pass before merge, except the npm audit step,
+# which only warns. Actions are pinned to major versions; Dependabot (.github/dependabot.yml) keeps them current.
+# Pin to full commit SHAs once the repository is public or handles secrets in CI (none are used here).
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PHP_VERSION: "8.4"
+  PHP_EXTENSIONS: mbstring, intl, zip, gd, bcmath, exif, pcntl, pdo_sqlite, sqlite3, pdo_mysql
+  NODE_VERSION: "24"
+
+jobs:
+  php:
+    name: PHP · validate, Pint, Pest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          extensions: ${{ env.PHP_EXTENSIONS }}
+          coverage: none
+          tools: composer:v2
+
+      - name: composer validate
+        run: composer validate --strict --no-check-publish
+
+      - name: Composer cache directory
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/cache@v6
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: composer-${{ runner.os }}-${{ hashFiles('composer.lock') }}
+          restore-keys: composer-${{ runner.os }}-
+
+      - name: composer install
+        run: composer install --no-interaction --no-progress --prefer-dist
+
+      - name: Pint
+        run: vendor/bin/pint --test
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      # Blade layouts reference the Vite manifest, so feature tests need built assets.
+      - name: Build assets
+        run: |
+          npm ci --ignore-scripts --no-audit --no-fund
+          npm run build
+
+      - name: Prepare .env
+        run: |
+          cp .env.example .env
+          php artisan key:generate --ansi
+
+      - name: Pest (SQLite in memory, phpunit.xml)
+        run: vendor/bin/pest
+
+      # SECURITY §3b / D-15: the OTP test mode must make the app refuse to boot outside APP_ENV=local.
+      - name: Boot guard for OTP test mode
+        env:
+          APP_ENV: production
+          APP_DEBUG: "false"
+          MAIL_MAILER: smtp
+        run: |
+          STH_OTP_TEST_MODE=false php artisan about --only=environment > /dev/null
+          if STH_OTP_TEST_MODE=true php artisan about --only=environment > /dev/null 2>&1; then
+            echo "::error::the app booted with APP_ENV=production and STH_OTP_TEST_MODE=true"
+            exit 1
+          fi
+          echo "boot guard OK"
+
+  frontend:
+    name: Frontend · build, npm audit
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: npm ci
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: vite build
+        run: |
+          npm run build
+          test -f public/build/manifest.json
+
+      # Non-blocking on purpose: all frontend packages are build-time only (assets are compiled into the image).
+      - name: npm audit (production dependencies, warning only)
+        run: |
+          if ! npm audit --omit=dev --audit-level=high; then
+            echo "::warning::npm audit found high/critical advisories in production dependencies"
+          fi
+
+  audit:
+    name: Composer audit
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          coverage: none
+          tools: composer:v2
+
+      # Reads composer.lock only; fails on any security advisory. Abandoned packages are reported, not fatal.
+      - name: composer audit
+        run: composer audit --locked --no-interaction --abandoned=report
+
+  docker:
+    name: Docker · production images + compose
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: docker/setup-buildx-action@v4
+
+      - name: Build app image (docker/Dockerfile.prod, target app)
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: docker/Dockerfile.prod
+          target: app
+          tags: sth-app:ci
+          load: true
+          push: false
+          cache-from: type=gha,scope=sth-app
+          cache-to: type=gha,mode=max,scope=sth-app
+
+      - name: Build web image (target web)
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: docker/Dockerfile.prod
+          target: web
+          tags: sth-web:ci
+          load: true
+          push: false
+          cache-from: |
+            type=gha,scope=sth-app
+            type=gha,scope=sth-web
+          cache-to: type=gha,mode=max,scope=sth-web
+
+      - name: Image checks (non-root, no .env, OPcache timestamps off)
+        run: |
+          test "$(docker run --rm --entrypoint id sth-app:ci -un)" = www-data
+          test "$(docker run --rm --entrypoint id sth-web:ci -un)" = nginx
+          if docker run --rm --entrypoint test sth-app:ci -e /var/www/html/.env; then
+            echo "::error::.env is baked into the image"; exit 1
+          fi
+          docker run --rm --entrypoint php sth-app:ci -r 'exit(ini_get("opcache.validate_timestamps") === "0" ? 0 : 1);'
+          docker run --rm --entrypoint php-fpm sth-app:ci -t
+
+      - name: Validate docker/compose.prod.yaml
+        run: |
+          mkdir -p "$RUNNER_TEMP/secrets"
+          for s in db_root_password db_migrate_password db_app_password; do echo ci > "$RUNNER_TEMP/secrets/$s.txt"; done
+          cp docker/env.production.example "$RUNNER_TEMP/env"
+          STH_ENV_FILE="$RUNNER_TEMP/env" STH_SECRETS_DIR="$RUNNER_TEMP/secrets" \
+            docker compose -f docker/compose.prod.yaml config --quiet
+
+      # CLAUDE.md rule 7: the OTP flag never appears in production env/compose files.
+      - name: No OTP test flag in production files
+        run: |
+          if grep -nE '^\s*STH_OTP_(TEST_MODE|DEV_BYPASS)\s*[:=]' docker/compose.prod.yaml docker/env.production.example; then
+            echo "::error::OTP test flag found in production files"
+            exit 1
+          fi

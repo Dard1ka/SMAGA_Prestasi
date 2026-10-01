@@ -1,0 +1,410 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Livewire\Kesiswaan\Lomba;
+
+use App\Actions\Competitions\CloseCompetition;
+use App\Actions\Competitions\VerifyCompetition;
+use App\Enums\CompetitionStatus;
+use App\Enums\Participation;
+use App\Enums\RegistrationStatus;
+use App\Enums\RoleName;
+use App\Livewire\Kesiswaan\Concerns\WithKesiswaanBadges;
+use App\Models\Competition;
+use App\Models\RegistrationMember;
+use App\Models\User;
+use Carbon\CarbonImmutable;
+use Illuminate\Contracts\View\View;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Route;
+use Illuminate\Validation\ValidationException;
+use Livewire\Attributes\Layout;
+use Livewire\Attributes\Locked;
+use Livewire\Attributes\On;
+use Livewire\Attributes\Title;
+use Livewire\Attributes\Url;
+use Livewire\Component;
+
+/**
+ * Kelola lomba & antrean verifikasi (UI-MAP #16, board Kesiswaan-Kelola-Lomba). Kesiswaan + Admin.
+ * Tab "katalog" lists every lomba (all statuses); tab "verifikasi" lists every `menunggu_verifikasi`
+ * upload from any role, Kesiswaan's own included (D-27). The drawer form is the child Lomba\Form.
+ */
+#[Title('Kelola lomba')]
+#[Layout('layouts::app', ['subtitle' => 'Lomba yang dipublikasikan tampil di katalog siswa.'])]
+class Index extends Component
+{
+    use WithKesiswaanBadges;
+
+    private const PAGE = 25;
+
+    #[Url(as: 'tab', except: 'katalog')]
+    public string $tab = 'katalog';
+
+    #[Url(as: 'q', except: '')]
+    public string $q = '';
+
+    #[Url(as: 'status', except: '')]
+    public string $status = '';
+
+    public int $limit = self::PAGE;
+
+    #[Locked]
+    public ?string $rejectingId = null;
+
+    public string $rejectNote = '';
+
+    public function mount(): void
+    {
+        $this->authorize('manage', Competition::class);
+
+        if (! in_array($this->tab, ['katalog', 'verifikasi'], true)) {
+            $this->tab = 'katalog';
+        }
+
+        if ($this->status !== '' && CompetitionStatus::tryFrom($this->status) === null) {
+            $this->status = '';
+        }
+    }
+
+    public function setTab(string $tab): void
+    {
+        $this->tab = in_array($tab, ['katalog', 'verifikasi'], true) ? $tab : 'katalog';
+        $this->cancelReject();
+    }
+
+    public function setStatus(string $status): void
+    {
+        $this->status = CompetitionStatus::tryFrom($status) !== null ? $status : '';
+        $this->limit = self::PAGE;
+    }
+
+    public function updatedQ(): void
+    {
+        $this->q = mb_substr(trim($this->q), 0, 100);
+        $this->limit = self::PAGE;
+    }
+
+    public function showMore(): void
+    {
+        $this->limit += self::PAGE;
+    }
+
+    public function create(): void
+    {
+        $this->authorize('manage', Competition::class);
+        $this->dispatch('lomba-form-open', id: null, mode: 'create');
+    }
+
+    public function edit(string $id): void
+    {
+        $competition = $this->find($id);
+        $this->authorize('update', $competition);
+        $this->dispatch('lomba-form-open', id: $competition->getKey(), mode: $competition->status === CompetitionStatus::MenungguVerifikasi ? 'verify' : 'edit');
+    }
+
+    public function publish(string $id, VerifyCompetition $verify): void
+    {
+        $competition = $this->find($id);
+
+        try {
+            $verify->handle($this->actor(), $competition, CompetitionStatus::Dipublikasikan);
+        } catch (ValidationException $e) {
+            $this->dispatch('sth-toast', message: collect($e->errors())->flatten()->first() ?? 'Lomba belum bisa dipublikasikan.', tone: 'error');
+
+            return;
+        }
+
+        $this->dispatch('sth-toast', message: 'Lomba dipublikasikan ke katalog.', tone: 'success');
+    }
+
+    public function startReject(string $id): void
+    {
+        $competition = $this->find($id);
+        $this->authorize('verify', $competition);
+
+        $this->rejectingId = $competition->getKey();
+        $this->rejectNote = '';
+        $this->resetErrorBag();
+    }
+
+    public function cancelReject(): void
+    {
+        $this->rejectingId = null;
+        $this->rejectNote = '';
+        $this->resetErrorBag();
+    }
+
+    public function reject(VerifyCompetition $verify): void
+    {
+        $this->resetErrorBag();
+
+        if ($this->rejectingId === null) {
+            return;
+        }
+
+        $competition = $this->find($this->rejectingId);
+
+        try {
+            $verify->handle($this->actor(), $competition, CompetitionStatus::Ditolak, $this->rejectNote);
+        } catch (ValidationException $e) {
+            $this->addError('rejectNote', collect($e->errors())->flatten()->first() ?? 'Tulis alasan penolakan.');
+
+            return;
+        }
+
+        $this->cancelReject();
+        $this->dispatch('sth-toast', message: 'Lomba ditolak. Pengirim menerima alasannya.', tone: 'success');
+    }
+
+    public function close(string $id, CloseCompetition $close): void
+    {
+        $competition = $this->find($id);
+
+        try {
+            $close->handle($this->actor(), $competition);
+        } catch (ValidationException $e) {
+            $this->dispatch('sth-toast', message: collect($e->errors())->flatten()->first() ?? 'Lomba tidak bisa ditutup.', tone: 'error');
+
+            return;
+        }
+
+        $this->dispatch('sth-toast', message: 'Lomba ditutup dan tidak tampil lagi di katalog.', tone: 'success');
+    }
+
+    #[On('lomba-saved')]
+    public function refreshAfterSave(): void
+    {
+        // Re-render only; the form child already showed its toast.
+    }
+
+    public function render(): View
+    {
+        $now = CarbonImmutable::now();
+        $pending = Competition::query()->pendingVerification()->count();
+
+        return view('livewire.kesiswaan.lomba.index', [
+            'stats' => $this->stats($now, $pending),
+            'pendingCount' => $pending,
+            'catalogCount' => Competition::query()->count(),
+            'rows' => $this->tab === 'katalog' ? $this->catalogRows($now) : collect(),
+            'hasMore' => $this->tab === 'katalog' && $this->catalogQuery()->count() > $this->limit,
+            'queue' => $this->tab === 'verifikasi' ? $this->queueCards() : collect(),
+            'statusFilters' => ['' => 'Semua'] + CompetitionStatus::options(),
+        ])->layoutData(['badges' => $this->kesiswaanBadges()]);
+    }
+
+    /** @return Builder<Competition> */
+    private function catalogQuery(): Builder
+    {
+        return Competition::query()
+            ->when($this->status !== '', fn (Builder $q) => $q->where('status', $this->status))
+            ->when($this->q !== '', function (Builder $q): void {
+                $term = '%'.addcslashes($this->q, '%_\\').'%';
+                $q->where(fn (Builder $w) => $w->where('name', 'like', $term)->orWhere('organizer_name', 'like', $term));
+            });
+    }
+
+    /** @return Collection<int, array<string, mixed>> */
+    private function catalogRows(CarbonImmutable $now): Collection
+    {
+        $competitions = $this->catalogQuery()
+            ->orderByRaw('case when status = ? and registration_closes_at >= ? then 0 when status = ? then 1 when status = ? then 2 else 3 end', [
+                CompetitionStatus::Dipublikasikan->value, $now->toDateTimeString(),
+                CompetitionStatus::MenungguVerifikasi->value, CompetitionStatus::Dipublikasikan->value,
+            ])
+            ->orderByRaw('case when registration_closes_at is null then 1 else 0 end')
+            ->orderBy('registration_closes_at')
+            ->orderByDesc('created_at')
+            ->limit($this->limit)
+            ->get();
+
+        $counts = $this->studentCounts($competitions->modelKeys());
+        $user = $this->actor();
+
+        return $competitions->map(function (Competition $c) use ($now, $counts, $user): array {
+            $closes = $c->registration_closes_at;
+            $daysLeft = $closes !== null ? (int) $now->startOfDay()->diffInDays($closes->startOfDay(), false) : null;
+
+            [$tone, $icon, $label] = match (true) {
+                $c->status === CompetitionStatus::Dipublikasikan && $c->registration_opens_at !== null && $c->registration_opens_at > $now => ['blue', 'clock', 'Segera dibuka'],
+                $c->status === CompetitionStatus::Dipublikasikan && $closes !== null && $closes < $now => ['gray', 'check', 'Pendaftaran selesai'],
+                $c->status === CompetitionStatus::Dipublikasikan => ['green', 'check', 'Dipublikasikan'],
+                $c->status === CompetitionStatus::MenungguVerifikasi => ['gray', 'clock', 'Menunggu verifikasi'],
+                $c->status === CompetitionStatus::Ditolak => ['red', 'x', 'Ditolak'],
+                default => ['gray', 'archive', $c->status->label()],
+            };
+
+            return [
+                'id' => $c->getKey(),
+                'name' => $c->name,
+                'sub' => self::subline($c),
+                'bidang' => $c->bidang,
+                'tingkat' => $c->level?->shortLabel() ?? '–',
+                'batas' => $c->registration_opens_at !== null && $c->registration_opens_at > $now
+                    ? 'Dibuka '.self::shortDate($c->registration_opens_at)
+                    : self::shortDate($closes),
+                'soon' => $c->status === CompetitionStatus::Dipublikasikan && $daysLeft !== null && $daysLeft >= 0 && $daysLeft <= 3
+                    ? ($daysLeft === 0 ? 'Hari ini' : $daysLeft.' hari lagi')
+                    : null,
+                'count' => (int) ($counts[$c->getKey()] ?? 0),
+                'status' => [$tone, $icon, $label],
+                'canEdit' => $user->can('update', $c),
+                'canClose' => $user->can('close', $c),
+            ];
+        });
+    }
+
+    /** @return Collection<int, array<string, mixed>> */
+    private function queueCards(): Collection
+    {
+        $user = $this->actor();
+
+        return Competition::query()
+            ->pendingVerification()
+            ->with(['submitter.roles', 'submitter.student.classroom', 'juknisFile'])
+            ->oldest()
+            ->get()
+            ->map(function (Competition $c) use ($user): array {
+                $submitter = $c->submitter;
+                $missing = VerifyCompetition::missingFields($c);
+
+                return [
+                    'id' => $c->getKey(),
+                    'name' => $c->name,
+                    'bidang' => $c->bidang,
+                    'organizer' => $c->organizer_name,
+                    'submitter' => $submitter?->name ?? 'Akun dihapus',
+                    'submitterMeta' => self::submitterMeta($submitter),
+                    'source' => self::sourceLabel($submitter, $user),
+                    'when' => self::whenLabel($c->created_at),
+                    'website' => $c->website_url,
+                    'websiteHost' => $c->website_url !== null ? (parse_url($c->website_url, PHP_URL_HOST) ?: $c->website_url) : null,
+                    'juknis' => $c->juknisFile !== null ? [
+                        'name' => $c->juknisFile->original_name,
+                        'size' => self::fileSize($c->juknisFile->size),
+                        'url' => Route::has('files.show') ? route('files.show', $c->juknisFile) : null,
+                    ] : null,
+                    'missing' => $missing,
+                    'canVerify' => $user->can('verify', $c),
+                    'canEdit' => $user->can('update', $c),
+                ];
+            });
+    }
+
+    /**
+     * @param  list<string>  $competitionIds
+     * @return array<string, int> competition id → distinct students in live registrations
+     */
+    private function studentCounts(array $competitionIds): array
+    {
+        if ($competitionIds === []) {
+            return [];
+        }
+
+        return RegistrationMember::query()
+            ->join('registrations', 'registrations.id', '=', 'registration_members.registration_id')
+            ->whereIn('registrations.competition_id', $competitionIds)
+            ->whereNull('registrations.deleted_at')
+            ->whereNotIn('registrations.status', [RegistrationStatus::Dibatalkan->value, RegistrationStatus::Ditolak->value])
+            ->whereNull('registration_members.declined_at')
+            ->groupBy('registrations.competition_id')
+            ->selectRaw('registrations.competition_id as competition_id, count(distinct registration_members.student_id) as n')
+            ->pluck('n', 'competition_id')
+            ->map(fn ($n): int => (int) $n)
+            ->all();
+    }
+
+    /** @return list<array<string, mixed>> */
+    private function stats(CarbonImmutable $now, int $pending): array
+    {
+        $active = Competition::query()->openForRegistration($now)->count();
+
+        $monthRegistrations = RegistrationMember::query()
+            ->join('registrations', 'registrations.id', '=', 'registration_members.registration_id')
+            ->whereNull('registrations.deleted_at')
+            ->whereNotIn('registrations.status', [RegistrationStatus::Dibatalkan->value])
+            ->whereNull('registration_members.declined_at')
+            ->where('registrations.created_at', '>=', $now->subDays(30)->startOfDay()->toDateTimeString());
+        $students = (clone $monthRegistrations)->distinct()->count('registration_members.student_id');
+        $competitions = (clone $monthRegistrations)->distinct()->count('registrations.competition_id');
+
+        $closingSoon = Competition::query()
+            ->published()
+            ->whereBetween('registration_closes_at', [$now->toDateTimeString(), $now->addDays(7)->endOfDay()->toDateTimeString()])
+            ->orderBy('registration_closes_at')
+            ->get(['id', 'name', 'registration_closes_at']);
+        $next = $closingSoon->first();
+
+        return [
+            ['icon' => 'trophy', 'tone' => 'blue', 'label' => 'Lomba aktif', 'value' => (string) $active, 'note' => 'pendaftaran dibuka', 'href' => null],
+            ['icon' => 'users', 'tone' => 'green', 'label' => 'Pendaftar 30 hari', 'value' => (string) $students, 'note' => 'siswa di '.$competitions.' lomba', 'href' => null],
+            ['icon' => 'inbox', 'tone' => 'orange', 'label' => 'Menunggu verifikasi', 'value' => (string) $pending, 'note' => 'upload lomba', 'href' => route('kesiswaan.lomba.index', ['tab' => 'verifikasi'])],
+            ['icon' => 'clock', 'tone' => 'red', 'label' => 'Tutup minggu ini', 'value' => (string) $closingSoon->count(),
+                'note' => $next !== null ? mb_strimwidth($next->name, 0, 22, '…').' · '.self::shortDate($next->registration_closes_at, false) : 'tidak ada', 'href' => null],
+        ];
+    }
+
+    private static function subline(Competition $c): string
+    {
+        $parts = array_filter([
+            $c->organizer_name,
+            $c->weight_category?->label(),
+            match ($c->participation) {
+                Participation::Tim => $c->max_team_size !== null ? 'Tim maks '.$c->max_team_size : 'Tim',
+                Participation::Keduanya => 'Individu/Tim',
+                Participation::Individu => 'Individu',
+                default => null,
+            },
+        ]);
+
+        return $parts === [] ? 'Data belum lengkap' : implode(' · ', $parts);
+    }
+
+    private static function submitterMeta(?User $user): string
+    {
+        if ($user === null) {
+            return '';
+        }
+
+        if ($user->student !== null) {
+            return 'Siswa'.($user->student->classroom !== null ? ' · '.$user->student->classroom->name : '');
+        }
+
+        $role = $user->roles->first()?->name;
+
+        return $role !== null && RoleName::tryFrom($role) !== null ? RoleName::from($role)->label() : 'Staf';
+    }
+
+    /** @return array{0: string, 1: string} tone, label */
+    private static function sourceLabel(?User $submitter, User $viewer): array
+    {
+        return match (true) {
+            $submitter === null => ['gray', 'Upload'],
+            $submitter->is($viewer) => ['blue', 'Upload kamu'],
+            $submitter->student !== null => ['blue', 'Usulan siswa'],
+            $submitter->hasRole(RoleName::Guru->value) => ['blue', 'Upload guru'],
+            default => ['blue', 'Upload staf'],
+        };
+    }
+
+    private function find(string $id): Competition
+    {
+        $competition = Competition::query()->find($id);
+
+        abort_if($competition === null, 404);
+
+        return $competition;
+    }
+
+    private function actor(): User
+    {
+        /** @var User $user */
+        $user = Auth::user();
+
+        return $user;
+    }
+}

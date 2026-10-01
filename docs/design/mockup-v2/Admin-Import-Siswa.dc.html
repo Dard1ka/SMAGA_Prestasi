@@ -1,0 +1,389 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Import data siswa · Admin</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Urbanist:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F4F5FB;font-family:"Plus Jakarta Sans",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;color:#151A33;-webkit-font-smoothing:antialiased}
+*{box-sizing:border-box}
+a{color:#3148D6}a:hover{color:#2638B0}
+h1,h2,h3,.display{font-family:"Urbanist","Plus Jakarta Sans",system-ui,sans-serif;letter-spacing:-0.01em}
+.page{background:radial-gradient(900px 320px at 88% -8%,#ECE8FF 0%,rgba(236,232,255,0) 70%),radial-gradient(760px 300px at 28% -14%,#E2F0FF 0%,rgba(226,240,255,0) 70%),#F4F5FB}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:44px;padding:0 18px;border-radius:12px;font:600 15px/1 "Plus Jakarta Sans",system-ui,sans-serif;border:1px solid transparent;cursor:pointer;text-decoration:none;white-space:nowrap}
+.btn-primary{background:#3148D6;color:#FFFFFF;box-shadow:0 8px 18px -10px rgba(49,72,214,.65)}
+.btn-primary:hover{background:#2638B0;color:#FFFFFF}
+.btn-quiet{background:#FFFFFF;color:#151A33;border-color:#DCDFEC}
+.btn-quiet:hover{background:#F4F5FB;color:#151A33}
+.btn-soft{background:#ECEFFF;color:#2A3CB8}
+.btn-soft:hover{background:#DFE4FF;color:#2A3CB8}
+.btn-danger{background:#FFFFFF;color:#B42318;border-color:#F3C4BE}
+.btn-danger:hover{background:#FDECEA;color:#B42318}
+.btn-sm{height:36px;padding:0 14px;font-size:14px;border-radius:10px}
+.btn:focus-visible,.nav:focus-visible,.input:focus-visible,.icon-btn:focus-visible,.tab:focus-visible,.pick:focus-visible{outline:3px solid #A9B6F5;outline-offset:2px}
+.icon-btn{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:12px;border:1px solid #E7E9F3;background:#FFFFFF;color:#4A5068;cursor:pointer;position:relative;text-decoration:none}
+.icon-btn:hover{background:#F4F5FB;color:#151A33}
+.dot{position:absolute;top:8px;right:9px;width:8px;height:8px;border-radius:999px;background:#3148D6;border:2px solid #FFFFFF}
+.card{background:#FFFFFF;border:1px solid #E7E9F3;border-radius:20px;box-shadow:0 1px 2px rgba(20,24,60,.04),0 10px 28px -18px rgba(20,24,60,.18)}
+.chip{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 10px;border-radius:999px;font-size:12.5px;font-weight:600;white-space:nowrap}
+.c-blue{background:#ECEFFF;color:#2A3CB8}
+.c-green{background:#E4F5EA;color:#1B6B45}
+.c-orange{background:#FFEEDD;color:#9A3F00}
+.c-red{background:#FDECEA;color:#B42318}
+.c-gray{background:#EEF0F6;color:#4A5068}
+.c-gold{background:#FFF3D1;color:#6B4E00}
+.c-glass{background:rgba(255,255,255,.82);color:#151A33}
+.b-sains{background:#E6F0FF;color:#1D56AD}
+.b-riset{background:#F0EBFF;color:#5534B8}
+.b-seni{background:#FDE8F0;color:#A61F54}
+.b-olahraga{background:#E0F4F8;color:#0B6577}
+.cover-sains{background:linear-gradient(135deg,#DCE9FF,#C3D8FF);color:#1D56AD}
+.cover-riset{background:linear-gradient(135deg,#EEE7FF,#D9CCFF);color:#5534B8}
+.cover-seni{background:linear-gradient(135deg,#FFE6EF,#FFCFE0);color:#A61F54}
+.cover-olahraga{background:linear-gradient(135deg,#DDF4F8,#BFE8F0);color:#0B6577}
+.label{font-size:13px;font-weight:600;color:#4A5068}
+.input{height:46px;width:100%;border:1px solid #DCDFEC;border-radius:12px;padding:0 14px;font:500 15px "Plus Jakarta Sans",system-ui,sans-serif;color:#151A33;background:#FFFFFF}
+.input::placeholder{color:#8A90A6}
+textarea.input{height:auto;padding:12px 14px;line-height:1.5;resize:vertical}
+.nav{display:flex;align-items:center;gap:12px;height:44px;padding:0 14px;border-radius:12px;color:#4A5068;text-decoration:none;font-size:14.5px;font-weight:600}
+.nav:hover{background:#F1F2FA;color:#151A33}
+.nav-on{background:#3148D6;color:#FFFFFF;box-shadow:0 8px 18px -10px rgba(49,72,214,.7)}
+.nav-on:hover{background:#2638B0;color:#FFFFFF}
+.nav-sec{font-size:11.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#8A90A6;padding:8px 14px 2px}
+.badge{margin-left:auto;min-width:22px;height:22px;padding:0 7px;border-radius:999px;background:#ECEFFF;color:#2A3CB8;font-size:12px;font-weight:700;display:inline-flex;align-items:center;justify-content:center}
+.nav-on .badge{background:#FFFFFF;color:#2A3CB8}
+.avatar{display:inline-flex;align-items:center;justify-content:center;border-radius:999px;background:#ECEFFF;color:#2A3CB8;font-weight:700;flex-shrink:0}
+.stack{display:flex}.stack .avatar{border:2px solid #FFFFFF;margin-left:-8px}.stack .avatar:first-child{margin-left:0}
+.pick{cursor:pointer;border:1px solid #DCDFEC;background:#FFFFFF;border-radius:14px;font:600 14.5px "Plus Jakarta Sans",system-ui,sans-serif;color:#151A33}
+.pick-on{border:2px solid #3148D6;background:#ECEFFF;color:#2A3CB8}
+.tabbar{position:absolute;left:0;right:0;bottom:0;height:80px;background:#FFFFFF;border-top:1px solid #E7E9F3;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));padding:8px 6px 16px}
+.tab{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:52px;border-radius:14px;color:#666C84;text-decoration:none;font-size:11.5px;font-weight:600}
+.tab-ic{width:48px;height:28px;border-radius:999px;display:flex;align-items:center;justify-content:center}
+.tab-on{color:#3148D6}.tab-on .tab-ic{background:#ECEFFF}
+.muted{color:#666C84}
+.num{font-variant-numeric:tabular-nums}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.step-btn{display:flex;align-items:center;gap:12px;background:transparent;border:0;padding:4px 10px 4px 4px;border-radius:14px;cursor:pointer;font:inherit;color:#151A33;text-align:left;min-height:44px;flex-shrink:0}
+.step-btn:hover{background:#F4F5FB}
+.step-btn:focus-visible,.seg-btn:focus-visible{outline:3px solid #A9B6F5;outline-offset:2px}
+.sd{width:30px;height:30px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;flex-shrink:0}
+.sd-done{background:#3148D6;color:#FFFFFF}
+.sd-cur{background:#FFFFFF;box-shadow:inset 0 0 0 3px #3148D6;color:#3148D6}
+.sd-up{background:#EEF0F6;color:#666C84}
+.sl{flex:1;height:3px;border-radius:999px;background:#DCDFEC;min-width:24px}
+.sl-done{background:#3148D6}
+.st-lbl{font-size:14px;font-weight:600;line-height:1.3}
+.st-lbl-cur{font-size:14px;font-weight:800;line-height:1.3}
+.snum{width:28px;height:28px;border-radius:9px;background:#ECEFFF;color:#2A3CB8;display:inline-flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;flex-shrink:0}
+.scard-cur{box-shadow:0 0 0 2px #3148D6,0 10px 28px -18px rgba(20,24,60,.18)}
+.drop{border:1.5px dashed #C9CFE3;border-radius:14px;background:#FAFBFE;padding:10px 12px;display:flex;align-items:center;gap:12px;min-height:62px}
+.seg{display:inline-flex;padding:4px;border-radius:12px;background:#F1F2F8;gap:4px}
+.seg-btn{height:34px;padding:0 14px;border-radius:9px;border:0;background:transparent;font:600 13.5px "Plus Jakarta Sans",system-ui,sans-serif;color:#4A5068;cursor:pointer;white-space:nowrap}
+.seg-on{background:#FFFFFF;color:#151A33;box-shadow:0 1px 3px rgba(20,24,60,.14)}
+.tbl{width:100%;border-collapse:collapse}
+.tbl th{font-size:12.5px;font-weight:700;color:#666C84;text-align:left;padding:10px 10px;background:#F8F9FD;border-bottom:1px solid #E7E9F3;white-space:nowrap}
+.tbl th:first-child{border-top-left-radius:12px}.tbl th:last-child{border-top-right-radius:12px}
+.tbl td{padding:0 10px;height:46px;border-bottom:1px solid #F0F1F7;font-size:14px;white-space:nowrap}
+.tbl tr:last-child td{border-bottom:0}
+.row-bad td{background:#FFFBF7}
+.tile{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:16px;background:#F8F9FD;border:1px solid #EEF0F6}
+.tile-ic{width:40px;height:40px;border-radius:12px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
+</style>
+</helmet>
+<div class="page" style="width:1440px;height:1000px;display:flex;overflow:hidden">
+  <aside style="width:264px;flex-shrink:0;background:#FFFFFF;border-right:1px solid #E7E9F3;padding:22px 16px;display:flex;flex-direction:column;gap:18px">
+    <div style="display:flex;align-items:center;gap:12px;padding:0 4px">
+      <span role="img" aria-label="Logo SMAGA Talent Hub" style="width:40px;height:40px;border-radius:12px;background:#3148D6;color:#FFFFFF;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 4 6v6c0 4.5 3.4 8.2 8 9 4.6-.8 8-4.5 8-9V6z"></path><path d="m8.5 12 2.5 2.5 4.5-5"></path></svg></span>
+      <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
+        <span class="display" style="font-size:17px;font-weight:800;line-height:1.15">SMAGA Talent Hub</span>
+        <span class="muted" style="font-size:12px;line-height:1.3">SMA Negeri 3 Semarang</span>
+      </div>
+    </div>
+    <nav aria-label="Menu utama" style="display:flex;flex-direction:column;gap:4px">
+      <div class="nav-sec">Menu</div>
+      <a class="nav" href="Dashboard-Sekolah.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 20V11M12 20V5M18 20v-6M3 20h18"></path></svg>Dashboard</a>
+      <a class="nav" href="Kesiswaan-Kelola-Lomba.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z"></path><path d="M17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3"></path></svg>Kelola lomba</a>
+      <div class="nav-sec" style="margin-top:10px">Data</div>
+      <a class="nav nav-on" href="Admin-Import-Siswa.dc.html" aria-current="page"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5M4 20h16"></path></svg>Import siswa</a>
+      <a class="nav" href="#"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"></circle><path d="M2.5 20a6.5 6.5 0 0 1 13 0"></path><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14a6 6 0 0 1 3.5 6"></path></svg>Pengguna &amp; peran</a>
+      <a class="nav" href="#"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="5" rx="1"></rect><path d="M5 9v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9M10 13h4"></path></svg>Arsip otomatis</a>
+      <div class="nav-sec" style="margin-top:10px">Sistem</div>
+      <a class="nav" href="Admin-Pengaturan.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12"></path><circle cx="16" cy="6" r="2"></circle><circle cx="10" cy="12" r="2"></circle><circle cx="18" cy="18" r="2"></circle></svg>Pengaturan</a>
+    </nav>
+    <div style="margin-top:auto;padding:12px;border-radius:16px;background:#F4F5FB;display:flex;align-items:center;gap:10px">
+      <span class="avatar" style="width:38px;height:38px;font-size:14px" aria-hidden="true">OS</span>
+      <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
+        <span style="font-size:14px;font-weight:700;line-height:1.3">Operator STH</span>
+        <span class="muted" style="font-size:12.5px;line-height:1.3">Admin</span>
+      </div>
+    </div>
+  </aside>
+
+  <main style="flex:1;min-width:0;padding:26px 36px;display:flex;flex-direction:column;gap:18px">
+    <header style="display:flex;align-items:center;justify-content:space-between;gap:24px">
+      <div style="display:flex;flex-direction:column;gap:4px;min-width:0">
+        <h1 style="margin:0;font-size:30px;font-weight:800;line-height:1.15">Import data siswa</h1>
+        <p class="muted" style="margin:0;font-size:15px">Akun siswa dibuat otomatis dari file Excel.</p>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;flex-shrink:0">
+        <div style="position:relative;width:300px">
+          <label class="sr-only" for="cari-atas">Cari siswa</label>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="position:absolute;left:14px;top:13px;color:#8A90A6"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+          <input class="input" id="cari-atas" type="search" placeholder="Cari nama, NIS, atau NISN" style="padding-left:44px">
+        </div>
+        <button class="icon-btn" type="button" aria-label="Notifikasi, 2 baru"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 16v-5a6 6 0 1 1 12 0v5l1.5 2h-15z"></path><path d="M10 20a2 2 0 0 0 4 0"></path></svg><span class="dot"></span></button>
+        <span class="avatar" role="img" aria-label="Operator STH" style="width:40px;height:40px;font-size:14px">OS</span>
+      </div>
+    </header>
+
+    <nav class="card" aria-label="Langkah import" style="padding:12px 18px">
+      <ol style="list-style:none;margin:0;padding:0;display:flex;align-items:center;gap:14px">
+        <li style="display:flex;align-items:center;gap:14px;flex:1;min-width:0">
+          <button class="step-btn" type="button" onClick="{{ s1.go }}" aria-current="{{ s1.aria }}">
+            <span class="{{ s1.dotCls }}"><sc-if value="{{ s1.done }}" hint-placeholder-val="{{ true }}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"></path></svg></sc-if><sc-if value="{{ s1.notDone }}" hint-placeholder-val="{{ false }}">1</sc-if></span>
+            <span style="display:flex;flex-direction:column;gap:1px"><span class="{{ s1.lblCls }}">Unduh template</span><span class="muted" style="font-size:12.5px">{{ s1.sub }}</span></span>
+          </button>
+          <span class="{{ s1.lineCls }}" aria-hidden="true"></span>
+        </li>
+        <li style="display:flex;align-items:center;gap:14px;flex:1;min-width:0">
+          <button class="step-btn" type="button" onClick="{{ s2.go }}" aria-current="{{ s2.aria }}">
+            <span class="{{ s2.dotCls }}"><sc-if value="{{ s2.done }}" hint-placeholder-val="{{ true }}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"></path></svg></sc-if><sc-if value="{{ s2.notDone }}" hint-placeholder-val="{{ false }}">2</sc-if></span>
+            <span style="display:flex;flex-direction:column;gap:1px"><span class="{{ s2.lblCls }}">Unggah file</span><span class="muted" style="font-size:12.5px">{{ s2.sub }}</span></span>
+          </button>
+          <span class="{{ s2.lineCls }}" aria-hidden="true"></span>
+        </li>
+        <li style="display:flex;align-items:center;flex-shrink:0">
+          <button class="step-btn" type="button" onClick="{{ s3.go }}" aria-current="{{ s3.aria }}">
+            <span class="{{ s3.dotCls }}"><sc-if value="{{ s3.done }}" hint-placeholder-val="{{ false }}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"></path></svg></sc-if><sc-if value="{{ s3.notDone }}" hint-placeholder-val="{{ true }}">3</sc-if></span>
+            <span style="display:flex;flex-direction:column;gap:1px"><span class="{{ s3.lblCls }}">Periksa &amp; impor</span><span class="muted" style="font-size:12.5px">{{ s3.sub }}</span></span>
+          </button>
+        </li>
+      </ol>
+    </nav>
+
+    <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px">
+      <section class="{{ c1Cls }}" aria-labelledby="s1-title" style="padding:16px 20px;display:flex;flex-direction:column;gap:12px">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+          <div style="display:flex;align-items:center;gap:10px">
+            <span class="snum" aria-hidden="true">1</span>
+            <h2 id="s1-title" style="margin:0;font-size:18px;font-weight:700">Unduh template</h2>
+          </div>
+          <button class="btn btn-quiet btn-sm" type="button" onClick="{{ unduhTemplate }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v12M7 11l5 5 5-5M4 20h16"></path></svg>Unduh template Excel</button>
+        </div>
+        <ul aria-label="Kolom template" style="list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:8px">
+          <li class="chip c-gray">Nama lengkap</li>
+          <li class="chip c-gray">NIS</li>
+          <li class="chip c-gray">NISN</li>
+          <li class="chip c-gray">Tanggal lahir</li>
+          <li class="chip c-gray">Kelas saat pendaftaran</li>
+          <li class="chip c-gray">No HP (opsional)</li>
+        </ul>
+      </section>
+
+      <section class="{{ c2Cls }}" aria-labelledby="s2-title" style="padding:16px 20px;display:flex;flex-direction:column;gap:12px">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+          <div style="display:flex;align-items:center;gap:10px">
+            <span class="snum" aria-hidden="true">2</span>
+            <h2 id="s2-title" style="margin:0;font-size:18px;font-weight:700">Unggah file</h2>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <label class="label" for="tahun-data">Tahun ajaran data</label>
+            <select class="input" id="tahun-data" style="width:132px;height:36px;border-radius:10px;font-size:14px;padding:0 10px">
+              <option>2026/2027</option>
+              <option>2025/2026</option>
+            </select>
+          </div>
+        </div>
+        <sc-if value="{{ hasFile }}" hint-placeholder-val="{{ true }}">
+          <div class="drop">
+            <span class="tile-ic" style="background:#E4F5EA;color:#1B6B45"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"></path><path d="M14 3v5h5"></path></svg></span>
+            <span style="display:flex;flex-direction:column;gap:2px;min-width:0;flex:1">
+              <span style="font-size:14.5px;font-weight:700">data-siswa-2026-2027.xlsx</span>
+              <span class="muted num" style="font-size:12.5px">250 baris · terbaca</span>
+            </span>
+            <button class="btn btn-quiet btn-sm" type="button" onClick="{{ gantiFile }}">Ganti file</button>
+          </div>
+        </sc-if>
+        <sc-if value="{{ noFile }}" hint-placeholder-val="{{ false }}">
+          <div class="drop">
+            <span class="tile-ic" style="background:#ECEFFF;color:#2A3CB8"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5M4 20h16"></path></svg></span>
+            <span style="display:flex;flex-direction:column;gap:2px;min-width:0;flex:1">
+              <span style="font-size:14.5px;font-weight:700">Tarik file .xlsx ke sini</span>
+              <span class="muted" style="font-size:12.5px">Pakai template dari langkah 1.</span>
+            </span>
+            <button class="btn btn-soft btn-sm" type="button" onClick="{{ pilihFile }}">Pilih file</button>
+          </div>
+        </sc-if>
+      </section>
+    </div>
+
+    <section class="{{ c3Cls }}" aria-labelledby="s3-title" style="padding:18px 20px;display:flex;flex-direction:column;gap:14px;flex:1;min-height:0">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:16px">
+        <div style="display:flex;align-items:center;gap:10px;min-width:0">
+          <span class="snum" aria-hidden="true">3</span>
+          <h2 id="s3-title" style="margin:0;font-size:18px;font-weight:700">Periksa &amp; impor</h2>
+          <sc-if value="{{ hasFile }}" hint-placeholder-val="{{ true }}"><span class="muted" style="font-size:13.5px">data-siswa-2026-2027.xlsx · Tahun ajaran 2026/2027</span></sc-if>
+        </div>
+        <sc-if value="{{ hasFile }}" hint-placeholder-val="{{ true }}">
+          <div class="seg" role="group" aria-label="Tampilkan baris">
+            <button type="button" class="{{ fAll.cls }}" aria-pressed="{{ fAll.pressed }}" onClick="{{ fAll.pick }}">Semua baris</button>
+            <button type="button" class="{{ fBad.cls }}" aria-pressed="{{ fBad.pressed }}" onClick="{{ fBad.pick }}">Perlu diperbaiki · 2</button>
+          </div>
+        </sc-if>
+      </div>
+
+      <sc-if value="{{ hasFile }}" hint-placeholder-val="{{ true }}">
+       <div style="display:flex;flex-direction:column;gap:14px;flex:1;min-height:0">
+        <sc-if value="{{ notImported }}" hint-placeholder-val="{{ true }}">
+          <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px">
+            <div class="tile">
+              <span class="tile-ic" style="background:#E4F5EA;color:#1B6B45"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="m8 12 3 3 5-6"></path></svg></span>
+              <span style="display:flex;flex-direction:column;gap:0"><span class="display" style="font-size:24px;font-weight:800;line-height:1.1">248</span><span class="muted" style="font-size:13px;font-weight:600">Siap diimpor</span></span>
+            </div>
+            <div class="tile">
+              <span class="tile-ic" style="background:#FFEEDD;color:#9A3F00"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 11v5M12 8h.01"></path></svg></span>
+              <span style="display:flex;flex-direction:column;gap:0"><span class="display" style="font-size:24px;font-weight:800;line-height:1.1">2</span><span class="muted" style="font-size:13px;font-weight:600">Perlu diperbaiki</span></span>
+            </div>
+            <div class="tile">
+              <span class="tile-ic" style="background:#EEF0F6;color:#4A5068"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"></rect><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"></path></svg></span>
+              <span style="display:flex;flex-direction:column;gap:0"><span class="display" style="font-size:24px;font-weight:800;line-height:1.1">0</span><span class="muted" style="font-size:13px;font-weight:600">Duplikat dalam file</span></span>
+            </div>
+          </div>
+        </sc-if>
+        <sc-if value="{{ imported }}" hint-placeholder-val="{{ false }}">
+          <div role="status" style="display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:16px;background:#E4F5EA;color:#1B6B45;min-height:66px">
+            <span class="tile-ic" style="background:#FFFFFF;color:#1B6B45"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"></path></svg></span>
+            <span style="display:flex;flex-direction:column;gap:2px">
+              <span class="display" style="font-size:18px;font-weight:800">248 akun siswa dibuat</span>
+              <span style="font-size:13.5px;font-weight:500">2 baris bermasalah belum diimpor. Perbaiki lalu unggah ulang.</span>
+            </span>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ showAll }}" hint-placeholder-val="{{ true }}">
+          <table class="tbl">
+            <caption class="sr-only">Pratinjau 5 dari 250 baris</caption>
+            <thead>
+              <tr><th scope="col">Nama</th><th scope="col">NIS</th><th scope="col">NISN</th><th scope="col">Kelas awal</th><th scope="col">Angkatan</th><th scope="col">Kelas XII mulai</th><th scope="col">Arsip otomatis</th><th scope="col">Status</th></tr>
+            </thead>
+            <tbody>
+              <tr><td style="font-weight:700">Aurelia Maharani</td><td class="num">226227031</td><td class="num">0101••••57</td><td>X-3</td><td class="num">2026</td><td>Jul 2028</td><td>Jan 2030</td><td><span class="chip c-green"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"></path></svg>Siap</span></td></tr>
+              <tr><td style="font-weight:700">Hana Safira</td><td class="num">226227088</td><td class="num">0103••••14</td><td>X-8</td><td class="num">2026</td><td>Jul 2028</td><td>Jan 2030</td><td><span class="chip c-green"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"></path></svg>Siap</span></td></tr>
+              <tr class="row-bad"><td style="font-weight:700">Galang Putra Mahendra</td><td class="num">226227004</td><td class="num">0102••••86</td><td>X-1</td><td class="num">2026</td><td>Jul 2028</td><td>Jan 2030</td><td><span class="chip c-orange"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 11v5M12 8h.01"></path></svg>Tanggal lahir tidak valid</span></td></tr>
+              <tr class="row-bad"><td style="font-weight:700">Nabila Zahra Ramadhani</td><td class="num">226227142</td><td class="num">0098••••32</td><td>X-5</td><td class="num">2026</td><td>Jul 2028</td><td>Jan 2030</td><td><span class="chip c-orange"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 11v5M12 8h.01"></path></svg>NISN sudah dipakai</span></td></tr>
+              <tr><td style="font-weight:700">Rafi Aditya Pratama</td><td class="num">225226245</td><td class="num">0097••••61</td><td>XI-6</td><td class="num">2025</td><td>Jul 2027</td><td>Jan 2029</td><td><span class="chip c-green"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"></path></svg>Siap</span></td></tr>
+            </tbody>
+          </table>
+        </sc-if>
+        <sc-if value="{{ showBad }}" hint-placeholder-val="{{ false }}">
+          <table class="tbl">
+            <caption class="sr-only">2 baris yang perlu diperbaiki</caption>
+            <thead>
+              <tr><th scope="col">Nama</th><th scope="col">NIS</th><th scope="col">NISN</th><th scope="col">Kelas awal</th><th scope="col">Angkatan</th><th scope="col">Kelas XII mulai</th><th scope="col">Arsip otomatis</th><th scope="col">Status</th></tr>
+            </thead>
+            <tbody>
+              <tr class="row-bad"><td style="font-weight:700">Galang Putra Mahendra</td><td class="num">226227004</td><td class="num">0102••••86</td><td>X-1</td><td class="num">2026</td><td>Jul 2028</td><td>Jan 2030</td><td><span class="chip c-orange"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 11v5M12 8h.01"></path></svg>Tanggal lahir tidak valid</span></td></tr>
+              <tr class="row-bad"><td style="font-weight:700">Nabila Zahra Ramadhani</td><td class="num">226227142</td><td class="num">0098••••32</td><td>X-5</td><td class="num">2026</td><td>Jul 2028</td><td>Jan 2030</td><td><span class="chip c-orange"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 11v5M12 8h.01"></path></svg>NISN sudah dipakai</span></td></tr>
+            </tbody>
+          </table>
+        </sc-if>
+
+        <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px">
+          <div class="c-blue" style="grid-column:span 2;display:flex;align-items:flex-start;gap:10px;padding:12px 14px;border-radius:14px;font-size:13.5px;font-weight:500;line-height:1.45">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink:0"><rect x="3" y="4" width="18" height="5" rx="1"></rect><path d="M5 9v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9M10 13h4"></path></svg>
+            <span>Arsip otomatis = 18 bulan setelah awal kelas XII. Akun yang diarsipkan tidak bisa menerima input baru.</span>
+          </div>
+          <div class="c-gray" style="display:flex;align-items:flex-start;gap:10px;padding:12px 14px;border-radius:14px;font-size:13.5px;font-weight:500;line-height:1.45">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink:0"><circle cx="12" cy="12" r="9"></circle><path d="M12 11v5M12 8h.01"></path></svg>
+            <span>Kata sandi awal dibuat otomatis sesuai pola sekolah.</span>
+          </div>
+        </div>
+
+        <div style="margin-top:auto;display:flex;align-items:center;justify-content:space-between;gap:16px;padding-top:14px;border-top:1px solid #EEF0F6">
+          <span class="muted" style="font-size:13.5px">{{ footNote }}</span>
+          <div style="display:flex;align-items:center;gap:10px">
+            <button class="btn btn-quiet" type="button"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v12M7 11l5 5 5-5M4 20h16"></path></svg>Unduh baris bermasalah</button>
+            <sc-if value="{{ notImported }}" hint-placeholder-val="{{ true }}">
+              <button class="btn btn-primary" type="button" onClick="{{ impor }}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5M4 20h16"></path></svg>Impor 248 siswa</button>
+            </sc-if>
+            <sc-if value="{{ imported }}" hint-placeholder-val="{{ false }}">
+              <button class="btn btn-soft" type="button" onClick="{{ gantiFile }}">Impor file lain</button>
+            </sc-if>
+          </div>
+        </div>
+       </div>
+      </sc-if>
+
+      <sc-if value="{{ noFile }}" hint-placeholder-val="{{ false }}">
+        <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;border-radius:16px;background:#F8F9FD;border:1px solid #EEF0F6">
+          <span class="tile-ic" style="width:52px;height:52px;border-radius:16px;background:#EEF0F6;color:#4A5068"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"></path><path d="M14 3v5h5"></path></svg></span>
+          <span class="display" style="font-size:18px;font-weight:700">Belum ada file untuk diperiksa</span>
+          <span class="muted" style="font-size:14px">Unggah file Excel di langkah 2.</span>
+        </div>
+      </sc-if>
+    </section>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1000}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { step: 3, imported: false, filter: 'all' };
+  }
+  renderVals() {
+    const step = this.state.step;
+    const imported = this.state.imported;
+    const filter = this.state.filter;
+    const mk = (n) => {
+      const done = n < step || (n === 3 && imported);
+      const cur = !done && n === step;
+      return {
+        done: done,
+        notDone: !done,
+        aria: cur ? 'step' : 'false',
+        dotCls: 'sd ' + (done ? 'sd-done' : (cur ? 'sd-cur' : 'sd-up')),
+        lblCls: cur ? 'st-lbl-cur' : 'st-lbl',
+        lineCls: 'sl' + (n < step ? ' sl-done' : ''),
+        sub: done ? 'Selesai' : (cur ? 'Sedang berjalan' : 'Berikutnya'),
+        go: () => this.setState({ step: n, imported: false })
+      };
+    };
+    const seg = (id) => ({
+      cls: 'seg-btn' + (filter === id ? ' seg-on' : ''),
+      pressed: filter === id ? 'true' : 'false',
+      pick: () => this.setState({ filter: id })
+    });
+    const cardCls = (n) => 'card' + (step === n && !imported ? ' scard-cur' : '');
+    return {
+      s1: mk(1),
+      s2: mk(2),
+      s3: mk(3),
+      c1Cls: cardCls(1),
+      c2Cls: cardCls(2),
+      c3Cls: cardCls(3),
+      hasFile: step === 3,
+      noFile: step !== 3,
+      imported: imported,
+      notImported: !imported,
+      showAll: filter === 'all',
+      showBad: filter === 'bad',
+      fAll: seg('all'),
+      fBad: seg('bad'),
+      footNote: imported ? '248 dari 250 baris diimpor.' : (filter === 'all' ? 'Menampilkan 5 dari 250 baris.' : 'Menampilkan 2 baris bermasalah.'),
+      unduhTemplate: () => { if (this.state.step === 1) this.setState({ step: 2 }); },
+      pilihFile: () => this.setState({ step: 3, imported: false, filter: 'all' }),
+      gantiFile: () => this.setState({ step: 2, imported: false, filter: 'all' }),
+      impor: () => this.setState({ imported: true })
+    };
+  }
+}
+</script>
+</body>
+</html>

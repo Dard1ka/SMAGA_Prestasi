@@ -1,0 +1,64 @@
+# Build context filter for docker/Dockerfile.prod and docker/php/Dockerfile (SECURITY.md §3j/§3k).
+# Secrets, local state and dev-only files never enter an image.
+
+# Secrets & environment
+.env
+.env.*
+/secrets
+/backups
+*.pem
+*.key
+auth.json
+
+# VCS, CI, editors, agents
+.git
+.github
+.idea
+.vscode
+.zed
+.nova
+.cursor
+.codex
+.claude
+*.swp
+.DS_Store
+Thumbs.db
+
+# Dependencies and build output (rebuilt inside the image)
+/vendor
+/node_modules
+/public/build
+/public/hot
+/public/storage
+/public/fonts-manifest.dev.json
+
+# Runtime state (the image creates an empty storage/ skeleton; production data lives in volumes)
+/storage
+/bootstrap/cache/*.php
+*.log
+*.sql
+*.sql.gz
+*.sqlite
+*.sqlite-journal
+*.dump
+*.age
+*.gpg
+
+# Tests and tooling not needed at runtime
+/tests
+/.phpunit.cache
+.phpunit.result.cache
+phpunit.xml
+/docs
+/scripts
+/*.md
+/compose.yaml
+/.dockerignore
+docker-compose.override.yml
+compose.override.yaml
+
+# Deploy-only files inside docker/ (the Dockerfiles still COPY docker/php/* and docker/nginx/*)
+/docker/apache
+/docker/compose*.yaml
+/docker/env.*
+/docker/mysql

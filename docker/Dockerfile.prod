@@ -1,0 +1,127 @@
+# syntax=docker/dockerfile:1
+# SMAGA Talent Hub: production images (docs/DEPLOY.md, docs/SECURITY.md §3j/§3k).
+#
+#   docker build -f docker/Dockerfile.prod -t sth-app:prod .              php-fpm app (last stage = default target)
+#   docker build -f docker/Dockerfile.prod --target web -t sth-web:prod .  nginx + public/ assets
+#
+# docker/compose.prod.yaml builds both. Stages: php-ext (extensions) → vendor (composer, no dev) →
+# assets (npm ci + vite build) → web (nginx) → app (php-fpm runtime, non-root, read-only friendly).
+# Base images are pinned by digest; Dependabot (.github/dependabot.yml) proposes digest bumps.
+# No .env, secrets or storage data ever enter the image (.dockerignore); configuration arrives at runtime.
+
+########################################################################################################
+# php-ext: same extensions as the dev image (docker/php/Dockerfile, stage base), compiled once.
+########################################################################################################
+FROM php:8.4-fpm-bookworm@sha256:43e1ac38217031dbbecae60e84ccf8593722031559178d199bf56adb0145d5d0 AS php-ext
+
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends \
+      libicu-dev libzip-dev libpng-dev libjpeg62-turbo-dev libwebp-dev libfreetype6-dev \
+ && docker-php-ext-configure gd --with-jpeg --with-webp --with-freetype \
+ && docker-php-ext-install -j"$(nproc)" pdo_mysql intl zip gd bcmath exif opcache pcntl \
+ && rm -rf /var/lib/apt/lists/*
+
+########################################################################################################
+# vendor: production Composer dependencies + authoritative classmap over the application source.
+########################################################################################################
+FROM php-ext AS vendor
+
+COPY --from=composer:2@sha256:af98f42dfff7c68ba8d53c2164fd9fde1087b7d449514baa38c418b1f6bc4bac /usr/bin/composer /usr/bin/composer
+ENV COMPOSER_ALLOW_SUPERUSER=1 \
+    COMPOSER_NO_INTERACTION=1
+WORKDIR /app
+
+# Dependencies first (layer cache survives source-only changes). Scripts are skipped: artisan does not exist yet.
+COPY composer.json composer.lock ./
+RUN --mount=type=cache,target=/root/.composer/cache \
+    composer install --no-dev --no-scripts --no-autoloader --prefer-dist --no-progress
+
+COPY . .
+RUN composer dump-autoload --no-dev --classmap-authoritative --no-scripts \
+ && composer check-platform-reqs --no-dev \
+ && rm -rf docker
+
+########################################################################################################
+# assets: Vite/Tailwind build. Node exists only in this stage (the Ubuntu 18.04 host never runs Node).
+########################################################################################################
+FROM node:24-bookworm-slim@sha256:0e0ff40c39bc087845bfb27465a0df4ea419520094bc35842ff83dd8cbe6f9b6 AS assets
+
+WORKDIR /app
+COPY package.json package-lock.json .npmrc ./
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci --ignore-scripts --no-audit --no-fund
+
+# Full source + vendor: Tailwind scans Blade/PHP files for class names (and @source paths into vendor/).
+COPY --from=vendor /app/ ./
+RUN npm run build \
+ && test -f public/build/manifest.json
+
+########################################################################################################
+# web: nginx serving public/ and forwarding /index.php to app:9000 (docker/nginx/prod.conf).
+########################################################################################################
+FROM nginxinc/nginx-unprivileged:1.30-alpine@sha256:ed04ec1ff34502c339ee5c3ae3f855442398edc1d05591e2b98981dcbbd20b1e AS web
+
+COPY docker/nginx/prod.conf /etc/nginx/conf.d/default.conf
+COPY --from=vendor /app/public/ /var/www/html/public/
+COPY --from=assets /app/public/build/ /var/www/html/public/build/
+RUN nginx -t
+
+EXPOSE 8080
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD wget -q -O /dev/null http://127.0.0.1:8080/nginx-health || exit 1
+
+########################################################################################################
+# app: php-fpm runtime. Code is root-owned and read-only for www-data; only storage/ and bootstrap/cache
+# are writable (a volume and a tmpfs in compose). Runs with read_only: true.
+########################################################################################################
+FROM php:8.4-fpm-bookworm@sha256:43e1ac38217031dbbecae60e84ccf8593722031559178d199bf56adb0145d5d0 AS app
+
+# Runtime libraries of the compiled extensions (no -dev packages, no compilers) + cgi-fcgi for the healthcheck.
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends \
+      libicu72 libzip4 libpng16-16 libjpeg62-turbo libwebp7 libfreetype6 libfcgi-bin \
+ && rm -rf /var/lib/apt/lists/*
+
+COPY --from=php-ext /usr/local/lib/php/extensions/ /usr/local/lib/php/extensions/
+COPY --from=php-ext /usr/local/etc/php/conf.d/ /usr/local/etc/php/conf.d/
+
+RUN cp "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini"
+COPY docker/php/php.ini /usr/local/etc/php/conf.d/zz-sth.ini
+COPY docker/php/php.prod.ini /usr/local/etc/php/conf.d/zzz-sth-prod.ini
+COPY docker/php/fpm-pool.prod.conf /usr/local/etc/php-fpm.d/zzz-sth-pool.conf
+COPY --chmod=0755 docker/php/entrypoint.prod.sh /usr/local/bin/sth-entrypoint
+COPY --chmod=0755 docker/php/healthcheck.sh /usr/local/bin/sth-healthcheck
+
+# Fail the build if an extension lost a shared library or did not load.
+RUN ! ldd /usr/local/lib/php/extensions/*/*.so | grep -q 'not found' \
+ && for ext in pdo_mysql intl zip gd bcmath exif pcntl "Zend OPcache"; do \
+      php -m | grep -qix "$ext" || { echo "missing PHP extension: $ext" >&2; exit 1; }; \
+    done \
+ && php-fpm -t
+
+WORKDIR /var/www/html
+
+COPY --from=vendor /app/ ./
+COPY --from=assets /app/public/build/ ./public/build/
+
+# The base image ships /var/www/html as www-data:1777; make the code root directory root-owned and read-only.
+RUN chown root:root /var/www/html && chmod 0755 /var/www/html \
+ && mkdir -p storage/app/private storage/app/public \
+             storage/framework/cache/data storage/framework/sessions storage/framework/views \
+             storage/logs bootstrap/cache \
+ && chown -R www-data:www-data storage bootstrap/cache \
+ && chmod -R u=rwX,g=rX,o= storage bootstrap/cache
+
+USER www-data
+
+# Smoke test: the application boots without any .env (all config comes from the environment at runtime).
+# APP_ENV=build only for this step: with the framework default (production) AppServiceProvider rightly refuses
+# to boot because MAIL_MAILER falls back to "log".
+RUN APP_ENV=build php artisan package:discover --ansi \
+ && APP_ENV=build php artisan --version
+
+ENTRYPOINT ["sth-entrypoint"]
+CMD ["php-fpm"]
+EXPOSE 9000
+STOPSIGNAL SIGQUIT
+HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 CMD ["sth-healthcheck"]

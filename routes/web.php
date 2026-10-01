@@ -1,0 +1,99 @@
+<?php
+
+declare(strict_types=1);
+
+use App\Http\Controllers\FileController;
+use App\Http\Controllers\LetterVerificationController;
+use App\Http\Middleware\PublicPageHeaders;
+use App\Livewire\Auth\Activation;
+use App\Livewire\Auth\ForgotPassword;
+use App\Livewire\Auth\TwoFactorSetup;
+use App\Livewire\Publik\Beranda;
+use App\Livewire\Publik\PemenangLomba;
+use App\Livewire\Publik\Peringkat;
+use App\Livewire\Publik\PrestasiBidang;
+use App\Livewire\Publik\PrestasiSiswa;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Route;
+
+/*
+| Public pages + authentication (owner of the auth part: W1-C). Fortify registers:
+| GET/POST /login (login, login.store), POST /logout (logout), GET/POST /user/confirm-password
+| (password.confirm, password.confirm.store), GET/POST /two-factor-challenge (two-factor.login[.store])
+| and the /user/two-factor-* JSON endpoints. Area routes live in routes/{siswa,staff,admin}.php.
+*/
+
+// --- W2-D: public pages (no login, D-16/D-31; throttle 60/min/IP, SECURITY §3m-7) ---
+// Data only through App\Livewire\Publik\Data\PublicAchievements (column allowlist, consent, cache).
+// PublicPageHeaders adds X-Robots-Tag: noindex unless Admin allowed indexing (student pages: always).
+Route::middleware(['throttle:60,1', PublicPageHeaders::class])->group(function (): void {
+    Route::livewire('/', Beranda::class)->name('public.home');
+    Route::livewire('/prestasi', PrestasiBidang::class)->name('public.prestasi');
+    Route::livewire('/prestasi/siswa/{slug}', PrestasiSiswa::class)
+        ->where('slug', '[a-f0-9]{20}')
+        ->name('public.prestasi.siswa');
+    Route::livewire('/prestasi/lomba/{competition}', PemenangLomba::class)
+        ->where('competition', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}')
+        ->name('public.lomba.pemenang');
+    Route::livewire('/peringkat', Peringkat::class)->name('public.peringkat');
+});
+// --- end W2-D ---
+
+// --- W2-C: public letter verification (QR on every surat tugas, SECURITY §3g; 30/min/IP, noindex) ---
+Route::get('/verifikasi-surat/{code}', LetterVerificationController::class)
+    ->where('code', '[A-Za-z0-9]{1,64}')
+    ->middleware('throttle:30,1')
+    ->name('public.surat.verifikasi');
+// --- end W2-C ---
+
+Route::middleware('guest')->group(function (): void {
+    Route::livewire('/lupa-kata-sandi', ForgotPassword::class)->name('password.request');
+});
+
+Route::middleware(['auth', 'active'])->group(function (): void {
+    // First login: new password → email → 6-digit code (the only screen until activation is done).
+    Route::livewire('/aktivasi', Activation::class)->name('aktivasi');
+
+    // Staff TOTP setup; `staff.2fa` sends staff here until 2FA is confirmed.
+    Route::livewire('/akun/2fa', TwoFactorSetup::class)
+        ->middleware(['activated', 'password.confirm'])
+        ->name('two-factor.setup');
+
+    // Fortify `home`: forwards each role to its area once wave 2 defines it; placeholder until then.
+    Route::get('/beranda', function (Request $request) {
+        $user = $request->user();
+
+        $areas = [
+            'admin' => 'admin.beranda',
+            'kepala_sekolah' => 'kepsek.beranda',
+            'kesiswaan' => 'kesiswaan.beranda',
+            'tata_usaha' => 'tu.beranda',
+            'humas' => 'humas.beranda',
+            'guru' => 'guru.beranda',
+            'siswa' => 'siswa.beranda',
+        ];
+
+        foreach ($areas as $role => $routeName) {
+            if ($user->hasRole($role) && Route::has($routeName)) {
+                return redirect()->route($routeName);
+            }
+        }
+
+        return view('auth.placeholder', [
+            'title' => 'Beranda',
+            'message' => 'Halaman beranda sedang disiapkan.',
+        ]);
+    })->middleware(['activated', 'staff.2fa'])->name('home');
+
+    // W2-A1: after activation (and from Bantuan) → Tur-Menu overlay on siswa.beranda (docs/UI-MAP.md #6/#7).
+    Route::get('/siswa/tur', fn () => redirect()->route('siswa.beranda', ['tur' => 1]))
+        ->middleware(['activated', 'role:siswa'])->name('siswa.tour');
+
+    // W2-A1: policy-checked file download (SECURITY §3d); purposes → App\Policies\FilePolicy.
+    Route::get('/berkas/{file}', [FileController::class, 'show'])
+        ->middleware(['activated', 'staff.2fa', 'throttle:60,1'])->name('files.show');
+});
+
+// W2-A1: public certificate link (guests too) — FilePolicy::viewPublic only (consent + Admin switch), else 404.
+Route::get('/berkas/publik/{file}', [FileController::class, 'publik'])
+    ->middleware('throttle:30,1')->name('files.public');

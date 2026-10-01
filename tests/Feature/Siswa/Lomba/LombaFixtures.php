@@ -1,0 +1,87 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Tests\Feature\Siswa\Lomba;
+
+use App\Enums\Bidang;
+use App\Enums\CompetitionStatus;
+use App\Enums\Level;
+use App\Enums\Participation;
+use App\Enums\RoleName;
+use App\Enums\UserStatus;
+use App\Enums\WeightCategory;
+use App\Models\Classroom;
+use App\Models\Competition;
+use App\Models\Student;
+use App\Models\User;
+use Tests\Feature\Auth\AuthTestHelpers;
+
+/**
+ * W2-A1 fixtures (fictional names from DESIGN-SPEC-v2 §5 or Faker only).
+ */
+final class LombaFixtures
+{
+    public static function roles(): void
+    {
+        AuthTestHelpers::seedRoles();
+    }
+
+    /** Staff routes need confirmed TOTP outside APP_ENV=local; the file tests are not about 2FA. */
+    public static function withoutStaffTwoFactor(): void
+    {
+        config(['fortify.sth.require_staff_2fa' => false]);
+    }
+
+    /** Active, activated student (role siswa). Returned fresh so every column is loaded (strict models). */
+    public static function student(string $name = 'Nadia Putri Anindya', string $kelas = 'XI-4', array $user = []): Student
+    {
+        $classroom = Classroom::query()->where('name', $kelas)->first()
+            ?? Classroom::factory()->level(str_starts_with($kelas, 'XII') ? 12 : (str_starts_with($kelas, 'XI') ? 11 : 10))->create(['name' => $kelas]);
+
+        $student = Student::factory()->activated()->create(['classroom_id' => $classroom->getKey()]);
+        $student->user->forceFill(array_merge(['name' => $name, 'status' => UserStatus::Active], $user))->save();
+
+        return $student->fresh(['user', 'classroom']);
+    }
+
+    public static function user(Student $student): User
+    {
+        return User::query()->findOrFail($student->user_id);
+    }
+
+    public static function staff(RoleName $role, string $name = 'Hendra Kusuma, S.Pd., M.Si.'): User
+    {
+        return User::factory()->staff($role)->create(['name' => $name])->fresh();
+    }
+
+    /** Published lomba, registration open now. */
+    public static function openCompetition(array $attributes = []): Competition
+    {
+        return Competition::factory()->published()->create(array_merge([
+            'name' => 'National Science and Invention Fair (NSIF) 2026',
+            'bidang' => Bidang::Riset,
+            'level' => Level::Nasional,
+            'weight_category' => WeightCategory::D,
+            'participation' => Participation::Individu,
+            'registration_opens_at' => now()->subDays(10),
+            'registration_closes_at' => now()->addDays(20),
+            'starts_on' => now()->addDays(35)->format('Y-m-d'),
+            'final_on' => now()->addDays(37)->format('Y-m-d'),
+        ], $attributes))->fresh();
+    }
+
+    public static function teamCompetition(int $max = 3, array $attributes = []): Competition
+    {
+        return self::openCompetition(array_merge(['participation' => Participation::Tim, 'max_team_size' => $max], $attributes));
+    }
+
+    public static function pendingCompetition(User $submitter, array $attributes = []): Competition
+    {
+        return Competition::factory()->proposal()->create(array_merge([
+            'name' => 'ISPO 2027',
+            'submitted_by' => $submitter->getKey(),
+            'status' => CompetitionStatus::MenungguVerifikasi,
+        ], $attributes))->fresh();
+    }
+}

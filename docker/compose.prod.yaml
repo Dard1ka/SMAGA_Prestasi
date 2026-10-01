@@ -1,0 +1,178 @@
+# SMAGA Talent Hub: production stack (docs/DEPLOY.md, docs/SECURITY.md §3e/§3j).
+# Used by scripts/deploy/*.sh from the repo root:  docker compose -f docker/compose.prod.yaml <cmd>
+# Relative paths resolve against this directory (docker/). Nothing here is a secret:
+#   ../.env               Laravel env for app/queue/scheduler (chmod 600, never in git or the image)
+#   ../secrets/*.txt      MySQL passwords as Docker secrets (dir 700, files 644, see DEPLOY.md)
+# Interpolation (shell env of the deploy user; defaults are the production values):
+#   STH_IMAGE_TAG         image tag, set by deploy.sh to the git commit (rollback = previous tag)
+#   STH_HTTP_PORT         loopback port Apache proxies to (ARCHITECTURE §9: 8080)
+#   STH_EDGE_SUBNET/GW    fixed subnet of the `edge` network; the gateway is the ONLY TrustProxies address
+#   STH_ENV_FILE, STH_SECRETS_DIR   alternative locations (CI validation)
+# RAM budget for the shared 8 GB host (SECURITY §3j): db 2 GB + app 1.5 GB + queue 512 MB + scheduler 256 MB
+# + web 256 MB ≈ 4.5 GB, leaving ~3.5 GB for the OS, Apache and the WordPress site.
+name: sth
+
+x-hardening: &hardening
+  restart: unless-stopped
+  security_opt: ["no-new-privileges:true"]
+  cap_drop: ["ALL"]
+  logging:
+    driver: json-file
+    options: { max-size: "10m", max-file: "5" }
+
+# Forced over .env: the OTP test mode can only ever be active with APP_ENV=local (D-15, SECURITY §3b).
+x-app-env: &app-env
+  APP_ENV: production
+  APP_DEBUG: "false"
+
+x-app: &app
+  <<: *hardening
+  image: sth-app:${STH_IMAGE_TAG:-latest}
+  pull_policy: never            # local build only; never pull an "sth-app" from a registry
+  env_file:
+    - path: ${STH_ENV_FILE:-../.env}
+      required: true
+  read_only: true
+  tmpfs:
+    - /tmp:size=128m,mode=1777,noexec,nosuid,nodev
+    - /var/www/html/bootstrap/cache:size=16m,uid=33,gid=33,mode=0700,noexec,nosuid,nodev
+  volumes:
+    - storage:/var/www/html/storage
+  networks: [backend, egress]
+  depends_on:
+    db:
+      condition: service_healthy
+  pids_limit: 256
+
+services:
+  app:
+    <<: *app
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.prod
+      target: app
+    environment:
+      <<: *app-env
+      STH_CACHE_VIEWS: "1"
+    healthcheck:
+      test: ["CMD", "sth-healthcheck"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 40s
+    mem_limit: 1536m
+    cpus: 1.5
+
+  queue:
+    <<: *app
+    command: ["php", "artisan", "queue:work", "--queue=otp,mail,default", "--tries=3", "--backoff=10",
+              "--max-time=3600", "--memory=256", "--sleep=3"]
+    environment:
+      <<: *app-env
+    init: true
+    stop_signal: SIGTERM
+    stop_grace_period: 60s
+    healthcheck:
+      disable: true
+    mem_limit: 512m
+    cpus: 1.0
+
+  scheduler:
+    <<: *app
+    command: ["php", "artisan", "schedule:work"]
+    environment:
+      <<: *app-env
+    init: true
+    stop_signal: SIGTERM
+    healthcheck:
+      disable: true
+    mem_limit: 256m
+    cpus: 0.5
+
+  web:
+    <<: *hardening
+    image: sth-web:${STH_IMAGE_TAG:-latest}
+    pull_policy: never
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.prod
+      target: web
+    read_only: true
+    tmpfs:
+      - /tmp:size=128m,mode=1777,noexec,nosuid,nodev   # pid file + client body buffers (uploads ≤ 25 MB)
+    ports:
+      - "127.0.0.1:${STH_HTTP_PORT:-8080}:8080"        # loopback only: Apache on the host, NEVER 0.0.0.0
+    networks:
+      edge:
+        gw_priority: 1                                  # published port + default route via `edge`
+      backend: {}
+    depends_on:
+      app:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/nginx-health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    mem_limit: 256m
+    cpus: 0.5
+    pids_limit: 64
+
+  db:
+    <<: *hardening
+    image: mysql:8.4@sha256:6ea90827b1100f8f2ae306a539f86d2c264a26ed435a2a9f75551dd5c3aeb242
+    user: "999:999"                                     # image's mysql user: entrypoint needs no capabilities
+    command:
+      - --innodb-buffer-pool-size=1G                    # raise to 1536M if `free -m` leaves room (SECURITY §3j)
+      - --max-connections=60
+      - --skip-name-resolve
+      - --local-infile=0
+      - --disable-log-bin                               # no replication; daily dumps instead (backup.sh)
+    environment:
+      MYSQL_DATABASE: sth
+      MYSQL_ROOT_PASSWORD_FILE: /run/secrets/db_root_password
+      MYSQL_USER: sth_migrate
+      MYSQL_PASSWORD_FILE: /run/secrets/db_migrate_password
+      STH_DB_APP_USER: sth_app
+    secrets: [db_root_password, db_migrate_password, db_app_password]
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./mysql/initdb:/docker-entrypoint-initdb.d:ro
+    networks: [backend]                                 # no `ports:` — 3306 is never published
+    healthcheck:
+      # TCP on purpose: the temporary init server runs with --skip-networking, so "healthy" = real server up.
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "--silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 90s
+    stop_grace_period: 60s
+    mem_limit: 2g
+    cpus: 1.5
+    pids_limit: 512
+
+networks:
+  edge:                                                 # the only network with a published port
+    driver: bridge
+    driver_opts:
+      com.docker.network.bridge.name: br-sth-edge
+    ipam:
+      config:
+        - subnet: ${STH_EDGE_SUBNET:-172.30.10.0/24}
+          gateway: ${STH_EDGE_GATEWAY:-172.30.10.1}    # = STH_TRUSTED_PROXY in .env (TrustProxies)
+  backend:
+    internal: true                                      # app ↔ db ↔ web, no internet
+  egress: {}                                            # outbound for app/queue/scheduler (SMTP, HIBP)
+
+volumes:
+  storage: {}                                           # sth_storage: storage/app/private uploads, logs, views
+  mysql-data: {}                                        # sth_mysql-data
+
+secrets:
+  db_root_password:
+    file: ${STH_SECRETS_DIR:-../secrets}/db_root_password.txt
+  db_migrate_password:
+    file: ${STH_SECRETS_DIR:-../secrets}/db_migrate_password.txt
+  db_app_password:
+    file: ${STH_SECRETS_DIR:-../secrets}/db_app_password.txt
