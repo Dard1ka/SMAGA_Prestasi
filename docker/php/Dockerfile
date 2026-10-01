@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 # SMAGA Talent Hub — PHP runtime (dev target). Production stages live in docker/Dockerfile.prod.
-FROM php:8.5-fpm-bookworm AS base
+FROM php:8.4-fpm-bookworm AS base
 
 RUN apt-get update \
  && apt-get install -y --no-install-recommends \

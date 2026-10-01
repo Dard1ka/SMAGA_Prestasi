@@ -34,10 +34,14 @@ updates:
       - dependency-name: php
         update-types: ["version-update:semver-major", "version-update:semver-minor"]
 
-  # mysql digest in docker/compose.prod.yaml.
+  # mysql digest in docker/compose.prod.yaml. Stays on the 8.4 LTS line (dev compose.yaml and CI E2E use 8.4 too);
+  # 9.x Innovation releases are short-lived and a MySQL data directory upgrade cannot be rolled back.
   - package-ecosystem: docker-compose
     directory: /docker
     schedule: { interval: weekly, day: monday, timezone: Asia/Jakarta }
+    ignore:
+      - dependency-name: mysql
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
 
   - package-ecosystem: github-actions
     directory: /
