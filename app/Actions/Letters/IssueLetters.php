@@ -5,14 +5,8 @@ declare(strict_types=1);
 namespace App\Actions\Letters;
 
 use App\Domain\Letters\LetterNumber;
-use App\Domain\Letters\PdfDocument;
-use App\Domain\Letters\PdfQrCode;
-use App\Domain\Letters\PdfRenderer;
-use App\Enums\FilePurpose;
 use App\Enums\LetterType;
 use App\Enums\RegistrationStatus;
-use App\Enums\SettingKey;
-use App\Models\File;
 use App\Models\Letter;
 use App\Models\Registration;
 use App\Models\Setting;
@@ -23,10 +17,7 @@ use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
-use InvalidArgumentException;
 use Throwable;
 
 /**
@@ -34,8 +25,9 @@ use Throwable;
  * both numbers typed by TU (unique per type + year, DB index is the final guard), one siswa letter for the
  * whole team + one Surat Perintah Tugas for the guru pembimbing (skipped when the registration has no
  * mentor), each rendered to PDF with the signature + stamp image from settings and a verification QR.
- * PDFs go to the private disk (files rows, SHA-256), letters are immutable afterwards. The registration
- * stays `disetujui` until SendLetters (TU reviews the PDFs first, mockup step 3).
+ * PDFs go to the private disk (files rows, SHA-256), letters are immutable afterwards (a correction is
+ * RevokeLetter: cabut + new version). Each letter stores the signature file id and the printed schedule
+ * (B3, §3m-5). The registration stays `disetujui` until SendLetters (TU reviews the PDFs first, step 3).
  *
  * Validation errors use the keys `siswa_sequence`, `guru_sequence`, `issued_on`, `basis_number`,
  * `basis_date`, `schedule_day`, `schedule_time`, `place`, `registration`, `signature`.
@@ -44,15 +36,11 @@ final class IssueLetters
 {
     public const MSG_TAKEN = 'Nomor ini sudah dipakai.';
 
-    public const TEMPLATES = [
-        'siswa' => 'surat-tugas-siswa',
-        'guru' => 'surat-perintah-tugas-guru',
-    ];
+    public const TEMPLATES = LetterPdf::TEMPLATES;
 
     public function __construct(
         private readonly LetterNumber $numbers,
-        private readonly PdfRenderer $renderer,
-        private readonly PdfQrCode $qr,
+        private readonly LetterPdf $pdf,
     ) {}
 
     /**
@@ -68,7 +56,7 @@ final class IssueLetters
         $hasMentor = $registration->mentor_id !== null;
         self::validateDraft($draft, $hasMentor);
 
-        $signature = $this->signatureImage();
+        $signature = $this->pdf->signature();
         $written = [];
 
         try {
@@ -119,11 +107,19 @@ final class IssueLetters
                         'issued_on' => $draft->issuedOn->toDateString(),
                         'basis_number' => $content->basisNumber,
                         'basis_date' => $draft->basisDate?->toDateString(),
+                        'schedule_day' => $content->scheduleDay,
+                        'schedule_time' => $content->scheduleTime,
+                        'place' => $content->place,
                     ]);
-                    $letter->forceFill(['generated_by' => $actor->getKey(), 'generated_at' => $now])->save();
+                    $letter->forceFill([
+                        'version' => 1,
+                        'signature_file_id' => $signature['file_id'],
+                        'generated_by' => $actor->getKey(),
+                        'generated_at' => $now,
+                    ])->save();
 
-                    $document = $this->render($type, $content, $letter, $signature['bytes']);
-                    $file = $this->store($document, $type, $locked, $actor, $written);
+                    $document = $this->pdf->render($type, $content, $letter, $signature['bytes']);
+                    $file = $this->pdf->store($document, $type, $locked, $actor, $written);
                     $letter->forceFill(['file_id' => $file->getKey()])->save();
 
                     $letters->push($letter->setRelation('file', $file));
@@ -150,10 +146,10 @@ final class IssueLetters
                 return $letters;
             });
         } catch (UniqueConstraintViolationException) {
-            $this->cleanup($written);
+            $this->pdf->cleanup($written);
             $this->throwTaken($draft, $hasMentor);
         } catch (Throwable $e) {
-            $this->cleanup($written);
+            $this->pdf->cleanup($written);
 
             throw $e;
         }
@@ -205,6 +201,22 @@ final class IssueLetters
             $errors['guru_sequence'] = 'Isi nomor urut 1–99999.';
         }
 
+        $errors += self::draftFieldErrors($draft);
+
+        if ($errors !== []) {
+            throw ValidationException::withMessages($errors);
+        }
+    }
+
+    /**
+     * Errors of the shared letter data (date, basis, schedule), without the sequences. Also used by
+     * RevokeLetter for the new version.
+     *
+     * @return array<string, string>
+     */
+    public static function draftFieldErrors(LetterDraft $draft): array
+    {
+        $errors = [];
         $today = CarbonImmutable::today();
 
         if ($draft->issuedOn->lt($today->subYear()) || $draft->issuedOn->gt($today->addMonths(3))) {
@@ -229,79 +241,7 @@ final class IssueLetters
             }
         }
 
-        if ($errors !== []) {
-            throw ValidationException::withMessages($errors);
-        }
-    }
-
-    /**
-     * The one signature + stamp image (settings.signature_file_id, private disk). TU never downloads it;
-     * it only travels into the render sandbox (SECURITY §3m-5).
-     *
-     * @return array{bytes: string, file_id: string, sha256: string}
-     */
-    private function signatureImage(): array
-    {
-        $fileId = Setting::get(SettingKey::SignatureFileId);
-        $file = is_string($fileId) && $fileId !== '' ? File::query()->find($fileId) : null;
-        $bytes = $file !== null && $file->purpose === FilePurpose::Signature ? $file->storage()->get($file->path) : null;
-
-        if (! is_string($bytes) || $bytes === '') {
-            throw ValidationException::withMessages(['signature' => 'Tanda tangan dan stempel belum diunggah Admin.']);
-        }
-
-        return ['bytes' => $bytes, 'file_id' => (string) $file->getKey(), 'sha256' => hash('sha256', $bytes)];
-    }
-
-    private function render(LetterType $type, LetterContent $content, Letter $letter, string $signature): PdfDocument
-    {
-        $url = route('public.surat.verifikasi', ['code' => $letter->verification_code]);
-
-        try {
-            return $this->renderer->render(self::TEMPLATES[$type->value], [
-                'content' => $content,
-                'number' => $letter->full_number,
-                'verification' => ['code' => $letter->verification_code, 'url' => $url],
-            ], [
-                'ttd.png' => $signature,
-                'qr.png' => $this->qr->png($url, 6),
-            ]);
-        } catch (InvalidArgumentException $e) {
-            throw ValidationException::withMessages(['signature' => 'Gambar tanda tangan tidak bisa dipakai. Minta Admin mengunggah ulang.']);
-        }
-    }
-
-    /** @param list<array{disk: string, path: string}> $written */
-    private function store(PdfDocument $document, LetterType $type, Registration $registration, User $actor, array &$written): File
-    {
-        $path = sprintf('surat/%s/%s.pdf', now()->format('Y'), Str::lower((string) Str::ulid()));
-        Storage::disk('local')->put($path, $document->bytes);
-        $written[] = ['disk' => 'local', 'path' => $path];
-
-        $slug = Str::limit(Str::slug((string) $registration->competition?->name), 60, '');
-        $prefix = $type === LetterType::Siswa ? 'surat-tugas-siswa-' : 'surat-perintah-tugas-guru-';
-
-        $file = new File;
-        $file->forceFill([
-            'disk' => 'local',
-            'path' => $path,
-            'original_name' => $prefix.($slug !== '' ? $slug : 'lomba').'.pdf',
-            'mime' => 'application/pdf',
-            'size' => $document->size(),
-            'sha256' => $document->sha256(),
-            'purpose' => FilePurpose::Letter,
-            'owner_user_id' => $actor->getKey(),
-        ])->save();
-
-        return $file;
-    }
-
-    /** @param list<array{disk: string, path: string}> $written */
-    private function cleanup(array $written): void
-    {
-        foreach ($written as $item) {
-            rescue(fn () => Storage::disk($item['disk'])->delete($item['path']), null, false);
-        }
+        return $errors;
     }
 
     /** @throws ValidationException */

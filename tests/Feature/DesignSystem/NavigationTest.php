@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Enums\RoleName;
 use App\Support\Navigation;
+use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -34,7 +35,7 @@ it('builds the siswa menu from the spec with disabled items for missing routes',
     $items = sthNavItems($nav);
 
     expect(array_column($nav['sections'], 'label'))->toBe(['Menu', 'Akun'])
-        ->and(array_keys($items))->toBe(['beranda', 'cari-lomba', 'lomba-saya', 'portofolio', 'peringkat', 'profil-talenta', 'bantuan'])
+        ->and(array_keys($items))->toBe(['beranda', 'cari-lomba', 'lomba-saya', 'portofolio', 'peringkat', 'profil-talenta', 'notifikasi', 'keamanan', 'bantuan'])
         // Wave 2 created real routes: an item is disabled exactly while its route is missing.
         ->and($items['beranda']['disabled'])->toBe(! Route::has('siswa.beranda'))
         ->and($items['beranda']['href'])->toBe(Route::has('siswa.beranda') ? route('siswa.beranda') : '#')
@@ -103,6 +104,49 @@ it('never invents badge counts and uses the registered resolver', function (): v
 
     expect($items['verifikasi']['badge'])->toBe(4)
         ->and($items['usulan']['badge'])->toBeNull();
+});
+
+it('links the backlog screens from the role menus (W4)', function (string $role, array $expected): void {
+    $items = sthNavItems(Navigation::for(['name' => 'X', 'roles' => [$role]], $role, [], 'none'));
+
+    foreach ($expected as $key => $route) {
+        expect($items)->toHaveKey($key)
+            ->and($items[$key]['route'])->toBe($route)
+            ->and($items[$key]['href'])->toBe(route($route))
+            ->and($items[$key]['disabled'])->toBeFalse();
+    }
+})->with([
+    'siswa' => ['siswa', ['peringkat' => 'siswa.peringkat', 'notifikasi' => 'notifikasi.index', 'keamanan' => 'akun.keamanan']],
+    'guru' => ['guru', ['binaan' => 'guru.beranda', 'lomba' => 'guru.lomba.index']],
+    'kesiswaan' => ['kesiswaan', ['prestasi' => 'kesiswaan.prestasi.index', 'aktivasi' => 'kesiswaan.aktivasi.index']],
+    'kepala sekolah' => ['kepala_sekolah', ['prestasi' => 'kepsek.prestasi', 'surat' => 'kepsek.surat.index', 'laporan' => 'kepsek.laporan']],
+    'tata usaha' => ['tata_usaha', ['template' => 'tu.surat.template']],
+    'admin' => ['admin', ['aktivasi' => 'admin.aktivasi.index', 'arsip' => 'admin.arsip.index', 'audit' => 'admin.audit.index']],
+]);
+
+it('marks the backlog screens current on their own routes', function (string $role, string $route, string $key): void {
+    $items = sthNavItems(Navigation::for(['name' => 'X', 'roles' => [$role]], $role, [], $route));
+
+    expect($items[$key]['current'])->toBeTrue()
+        ->and(collect($items)->where('current', true))->toHaveCount(1);
+})->with([
+    ['kesiswaan', 'kesiswaan.aktivasi.index', 'aktivasi'],
+    ['admin', 'admin.aktivasi.index', 'aktivasi'],
+    ['admin', 'admin.arsip.index', 'arsip'],
+    ['admin', 'admin.audit.index', 'audit'],
+    ['kepala_sekolah', 'kepsek.surat.index', 'surat'],
+    ['siswa', 'akun.keamanan', 'keamanan'],
+    ['siswa', 'notifikasi.index', 'notifikasi'],
+]);
+
+it('puts Notifikasi and Keamanan akun in the avatar menu of every role', function (): void {
+    $html = Blade::render('<x-sth.topbar :nav="$nav" title="Beranda" />', [
+        'nav' => Navigation::for(['name' => 'Ibu Dwi Rahayu', 'roles' => ['kesiswaan']], 'kesiswaan', [], 'none'),
+    ]);
+
+    expect($html)->toContain('href="'.route('notifikasi.index').'"')
+        ->and($html)->toContain('href="'.route('akun.keamanan').'"')
+        ->and($html)->toContain('Keamanan akun');
 });
 
 it('covers exactly the roles of App\Enums\RoleName', function (): void {

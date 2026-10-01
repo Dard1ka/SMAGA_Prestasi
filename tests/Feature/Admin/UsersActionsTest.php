@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Actions\Accounts\ResetStudentAccount;
 use App\Actions\Users\ApplyPrincipalReplacement;
 use App\Actions\Users\CancelPrincipalReplacement;
 use App\Actions\Users\ChangeStaffRole;
@@ -14,7 +15,9 @@ use App\Enums\UserStatus;
 use App\Livewire\Admin\Pengaturan\Pengguna;
 use App\Models\PrincipalReplacement;
 use App\Models\Setting;
+use App\Models\Student;
 use App\Models\User;
+use App\Notifications\Accounts\AccountAlert;
 use App\Notifications\Admin\PrincipalReplacementNotice;
 use App\Notifications\Admin\StaffAccountChanged;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -51,9 +54,10 @@ function sthStaffData(array $override = []): array
 // Staff accounts ------------------------------------------------------------------------------------
 
 it('creates a staff account that must change its temporary password at first login', function (): void {
-    $user = app(CreateStaffAccount::class)->handle($this->admin, sthStaffData());
+    // Non-privileged role → given at once. Privileged roles wait for a second Admin: Admin/RoleChange/PrivilegedStaffAccountTest (W4).
+    $user = app(CreateStaffAccount::class)->handle($this->admin, sthStaffData(['role' => RoleName::Guru->value]));
 
-    expect($user->hasRole(RoleName::Kesiswaan->value))->toBeTrue()
+    expect($user->hasRole(RoleName::Guru->value))->toBeTrue()
         ->and($user->status)->toBe(UserStatus::PendingActivation)
         ->and($user->must_change_password)->toBeTrue()
         ->and(Hash::check('Sementara-2026!x', $user->password))->toBeTrue()
@@ -130,6 +134,25 @@ it('resets a staff account: temporary password, 2FA removed, email to re-verify,
 
     expect(fn () => app(ResetStaffAccount::class)->handle($this->admin, H::activeStudent()->user->fresh(), 'Sementara-2026!y', 'x'))
         ->toThrow(ValidationException::class);
+});
+
+it('counts staff resets towards the K10 alert of more than 10 resets per Admin and hour (W4)', function (): void {
+    $second = A::admin(['name' => 'Ibu Ratna Sari', 'username' => 'operator2']);
+
+    foreach (Student::factory()->count(10)->create() as $student) {
+        app(ResetStudentAccount::class)->handle($this->admin, User::query()->findOrFail($student->user_id), 'Reset massal uji.');
+    }
+
+    Notification::assertNotSentTo($second, AccountAlert::class);
+
+    app(ResetStaffAccount::class)->handle($this->admin, A::staff(RoleName::Humas), 'Sementara-2026!y', 'HP hilang.');
+
+    Notification::assertSentTo($second, AccountAlert::class, fn (AccountAlert $n): bool => $n->kind === 'account.reset_volume');
+    expect(Activity::query()->where('event', 'security.reset_volume')->sole()->properties['resets_last_hour'])->toBe(11);
+
+    // Once per Admin per hour: the 12th reset (staff again) does not alert a second time.
+    app(ResetStaffAccount::class)->handle($this->admin, A::staff(RoleName::Guru), 'Sementara-2026!z', 'HP hilang.');
+    expect(Activity::query()->where('event', 'security.reset_volume')->count())->toBe(1);
 });
 
 // Ganti Kepala Sekolah ------------------------------------------------------------------------------
@@ -265,7 +288,12 @@ it('resets a student account from the Pengguna tab with a reason', function (): 
         ->assertHasErrors('studentReason')
         ->set('studentReason', 'Siswa datang ke TU.')
         ->call('resetStudent')
-        ->assertHasNoErrors();
+        ->assertHasNoErrors()
+        // B1 — K10: the random temporary password is shown once, then forgotten.
+        ->assertDispatched('sth-modal-open', id: 'siswa-sandi')
+        ->assertSet('issuedPassword', fn (?string $pw) => is_string($pw) && strlen($pw) === 12 && Hash::check($pw, $student->user->fresh()->password))
+        ->call('forgetIssuedPassword')
+        ->assertSet('issuedPassword', null);
 
     expect($student->user->fresh()->status)->toBe(UserStatus::PendingActivation)
         ->and($student->user->fresh()->email)->toBeNull();

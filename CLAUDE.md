@@ -31,7 +31,7 @@ achievements, gated by consent flags (D-16, SECURITY §3m-7).
 ## 2. Sources of truth (read before changing behaviour)
 | file | content |
 |---|---|
-| `docs/DECISIONS.md` | decision log D-01…D-44, U-01…U-06, open questions §F. **Wins over everything.** |
+| `docs/DECISIONS.md` | decision log D-01…D-65 (D-45…D-61 = backlog wave + W4 product choices, *sementara*; D-62…D-65 = security hardening, *final*), U-01…U-06, open questions §F. **Wins over everything.** |
 | `docs/ARCHITECTURE.md` | binding contract: data model, enums, state machine, domain rules |
 | `docs/SECURITY.md` | threat model, top-10 risks §1, controls §3a–§3m (K1–K12), pre-release checklist §4 |
 | `docs/TALENT-FORM.md` | talent types/branches (seed source for `talent_types`, `talent_branches`) |
@@ -125,13 +125,16 @@ drop `force="true"`.
 | logs | `docker compose logs -f app queue scheduler` |
 | validate compose | `docker compose config -q` · prod: `docker compose -f docker/compose.prod.yaml config -q` |
 | prod image | `docker build -f docker/Dockerfile.prod -t sth-app:local .` (`--target web` for nginx) |
+| E2E smoke (Playwright, isolated project `sth-e2e`) | `docker compose -f compose.yaml -f tests/E2E/compose.e2e.yaml up -d --wait mysql app web` → `… exec -T app sh tests/E2E/support/setup-app.sh` → `… run --rm e2e` → `… down -v` (DEPLOY §18) |
+| mail check | `docker compose exec app php artisan sth:mail-test you@example.test` (dev: Mailpit; prod: DEPLOY §9) |
 
 Notes: tests stay SQLite-compatible (MySQL-only behaviour gets its own marked test). Git Bash rewrites
 paths like `/var/www/html`: prefix `MSYS_NO_PATHCONV=1` or use PowerShell. On Linux, container-created
 files are root-owned: `sudo chown -R "$USER": .`. Keep LF line endings.
 Production (image, `docker/compose.prod.yaml`, Apache vhost, deploy/backup/restore, CI) is documented in
 **`docs/DEPLOY.md`** (owner I). Prod facts that affect code: queues `otp`, `mail`, `default`; the runtime
-DB user `sth_app` has DML only (no DDL, no `TRUNCATE`: use `delete()`); web on `127.0.0.1:8080`.
+DB user `sth_app` has per-table DML only (no DDL, no `TRUNCATE`: use `delete()`; `activity_log` and `audit_seals` are
+INSERT/SELECT only, `migrations` SELECT; `scripts/deploy/grants.sh` grants new tables after each migrate); web on `127.0.0.1:8080`.
 
 ## 5. Architecture map (details: ARCHITECTURE.md)
 Installed (composer.lock): Laravel 13.34, PHP 8.4.26, Livewire **4.4**, Fortify 1.40, spatie/permission
@@ -217,11 +220,16 @@ the first existing `<area>.beranda` route of the user's role (`siswa`, `kesiswaa
   `RoleName::defaultPermissions()`; Admin has everything **except** `registration.approve`.
 - **Talent**: 6 types mapped to 4 bidang (OSN, OLPAIN → sains; Riset → riset; FLS3N, Debat →
   seni_budaya; O2SN → olahraga, D-22); a student may pick several; all active classes incl. XII (D-23).
-- **Settings**: `Setting::get(SettingKey::…)` / `Setting::put()` (defaults in `SettingKey::defaultValue()`):
-  `report_deadline_days` (45), `archive_months_after_grade12` (18), `signature_file_id`, signer
-  name/rank/NIP, letter formats, `public_indexing` / `public_certificates` (both false, D-38/D-39). The
-  password pattern is never a setting. Resolve `app(ReportDeadline::class)` / `app(GraduationCalculator::class)`
+- **Settings**: `Setting::get(SettingKey::…)` / `Setting::put()` (defaults in `SettingKey::defaultValue()`,
+  seeded by `SettingSeeder`), exactly these keys: `report_deadline_days` (45), `archive_months_after_grade12` (18),
+  `signature_file_id`, `signer_name` / `signer_rank` / `signer_nip`, `letter_format_siswa` / `letter_format_guru`,
+  `public_indexing` / `public_certificates` (both false, D-38/D-39), `activation_window_days` (14, 1–30, D-54),
+  `letter_template` (null = built-in texts, D-60). The password pattern and the OTP test mode are never settings
+  (env flag only, D-62). Resolve `app(ReportDeadline::class)` / `app(GraduationCalculator::class)`
   (bound to the settings in `AppServiceProvider`); never `new ReportDeadline(…)` outside previews.
+- **Staff roles**: Admin, Kesiswaan, Tata Usaha are granted only through `App\Actions\Roles\RequestRoleChange`
+  (second Admin approves, or +24 h when the requester is the only Admin, D-46); a new account with one of these
+  roles is created without a role + a pending request (D-61); Kepala Sekolah only via "Ganti Kepala Sekolah" (D-40).
 - **Consent**: `students.photo_consent` / `publish_consent` change only through
   `App\Actions\Students\UpdateConsent` (Admin › Pengguna, audited; revoking publish consent rotates
   `public_slug`). Call `App\Livewire\Publik\Data\PublicAchievements::flush()` after anything that changes
@@ -229,7 +237,8 @@ the first existing `<area>.beranda` route of the user's role (`siswa`, `kesiswaa
 - **Seeders** (`DatabaseSeeder`): roles + permissions, 36 classrooms, talent types/branches, default
   weight version, settings, sample signature (not in production), and `DemoSeeder` **only when
   `APP_ENV=local`** (fictional data matching the mockup queues and leaderboard).
-- **Audit & jobs**: activitylog on every state change/Admin action (hash chain planned, SECURITY §3m-9);
+- **Audit & jobs**: activitylog on every state change/Admin action, sealed after commit in a hash chain
+  (`audit_seals` + `audit_chain_heads`, `sth:audit:verify` daily, D-63; app code only INSERTs into `activity_log`/`audit_seals`, D-51);
   notifications = queued mail + database; queues `otp`, `mail`, `default`.
 
 ## 6. Coding conventions
@@ -269,7 +278,8 @@ the first existing `<area>.beranda` route of the user's role (`siswa`, `kesiswaa
   chip, card, stat-tile, form fields that forward `wire:model` + `$errors`, table, tabs, tracker,
   rumus-poin, lomba-card, modal, toast, …), each documented at the top of its file; contracts in
   `docs/dev-notes/W1-D.md`. **No `style=""` and no inline JS** (CSP nonce): use tokens/`w-pct-*`,
-  `data-sth-*` hooks and Livewire events `sth-modal-open|close`, `sth-toast`.
+  `data-sth-*` hooks and Livewire events `sth-modal-open|close`, `sth-toast`. The CSP never allows
+  `'unsafe-eval'` (D-65): keep `wire:*` expressions simple (method calls with literal arguments; `CspSafeTest` scans every view).
 - Showcase (local only): `/_dev/components` (`?role=kesiswaan`), `/_dev/components/{public,auth,mobile}`.
   A screen PR includes screenshots next to its mockup board (desktop 1440, mobile 390 where drawn).
 
@@ -293,13 +303,17 @@ certificate links only with consent + Admin switch; Kepsek replacement after 24 
 prints NIS; `users.id` bigint, domain tables ULID. Also binding: W1-A's schema additions
 (`docs/dev-notes/W1-A.md`) accepted; prod web port **8080**; the OTP flag is **`STH_OTP_TEST_MODE`** (read
 via `config('fortify.sth.otp_test_mode')`).
+Backlog/W4 decisions D-45…D-65 (DECISIONS §D3–§D4): D-61 new Admin/Kesiswaan/TU accounts start without a role until a
+second Admin approves (or 24 h); **final** security hardening D-62 OTP test mode env-only, D-63 audit seals after commit,
+D-64 queued-import spreadsheet deleted when the job ends, D-65 no `'unsafe-eval'`.
 
 Known stale text (do not "fix" code to match it): SECURITY.md §0/§3a still say `sm4g4_DD-MM-YYYY`;
 DESIGN-SPEC-v2 §1 and the Admin-Pengaturan mockup still show 30 days (and the mockup's WICE deadline
 24 Okt is now **8 Nov 2026**); SECURITY/DECISIONS call the OTP flag `STH_OTP_DEV_BYPASS`; SECURITY says
-port 8081; ARCHITECTURE §1 says Livewire 3 / Intervention v3 (v4 of both is installed); ARCHITECTURE §2
-cites D-11 (read D-01) and U-02 (read U-03) for 2FA; SECURITY §3e's vhost sample has inline `#`
-comments Apache rejects (use `docker/apache/*.conf`).
+port 8081; SECURITY §3e's vhost sample has inline `#` comments Apache rejects (use `docker/apache/*.conf`);
+SECURITY §3h's grant sample names `audit_logs` (the table is `activity_log`, DEPLOY §8.2); SECURITY §3f keeps import
+files 7 days (queued-import files are deleted when the job ends, D-64). ARCHITECTURE §1–§8 were
+brought up to date on 2026-10-01 (backlog #20; §4 settings/staff accounts after W4).
 
 ## 9. Open questions (answers come from the school; don't guess in code)
 From DECISIONS §F and SECURITY §5: letter template columns, one team letter for all members?, meaning
@@ -310,7 +324,7 @@ server/DNS admins; Kepsek consent for the signature image, TTE?; hijack recovery
 signature (D-14); per-class activation schedule; SMTP provider; off-site backups + key holder; DPO.
 
 ## 10. Status
-Last updated: 2026-10-01 (waves 1–2 done, W3-A integration pass). Update this section whenever a milestone moves.
+Last updated: 2026-10-01 (waves 1–2 done, W3-A integration pass, backlog wave B1–B6, W4 integration, D1 docs sync). Update this section whenever a milestone moves.
 
 | area | owner | state (details in `docs/dev-notes/<ID>.md`) |
 |---|---|---|
@@ -328,42 +342,42 @@ Last updated: 2026-10-01 (waves 1–2 done, W3-A integration pass). Update this 
 | W2-C kepsek persetujuan + dashboard, TU surat tugas (dompdf + QR, issue → send), Humas publikasi/jadwal/apresiasi/arsip, `/verifikasi-surat` | → S + user | done |
 | W2-D public pages, Admin pengaturan (6 tabs) + pengguna + ringkasan, archive job, `sth:create-admin`, `lang/id` | → S + user | done |
 | W3-A integration: settings-bound `ReportDeadline`/`GraduationCalculator`, `SettingKey::Public*`, `PersonalRank` (D-37), `UpdateConsent`, public certificate links, `ExternalUrl` for lomba URLs, per-test disks, UI fixes, nginx headers, Pint, D-32…D-44 | – | done |
+| B1 accounts: Akun › Keamanan, Notifikasi (bell count), Status aktivasi (K9 + CSV, K2 reopen), K1 window, K3 freeze, K8 "Bukan saya?" (`email_notices`), K10 temporary password | → user + S | done (backlog #1, #5, #15) |
+| B2 security: upload limits, `security` log channel, OTP cleanup, audit hash chain (`audit_seals`, `sth:audit:verify`), CSP-safe Livewire (no `'unsafe-eval'`), Livewire update throttle, queued import (`student_imports`) | → user | done (#10, #16, #17, #18, #19) |
+| B3 registrations/letters: `InviteMembers` + invitation expiry, letter correction (`RevokeLetter`, versions), Humas auto-publish, timeline Actions | → user | done (#9, #11, #12, #14) |
+| B4 screens: Siswa Peringkat (active only), Guru Siswa binaan + detail + Lomba, Kesiswaan Database prestasi + export | → S | done (#2, #3, #4) |
+| B5 kepsek/TU/admin: Prestasi per bidang, Laporan (export), Surat atas nama saya, TU Template surat, Admin Arsip otomatis + Log audit, role change approval (`role_change_requests`) | → S + user | done (#6, #7, #8, #13) |
+| B6 devops/docs: CI (SHA pins, gitleaks, Trivy, E2E Playwright), per-table DB grants (`grants.sh`), `sth:mail-test` + DEPLOY §9 SMTP, favicon, PANDUAN-PENGGUNA, Bantuan text, ARCHITECTURE §4 ratified, D-45…D-60, UI-MAP | → I | done (#20, #22, #23, #24, #25) |
+| W4 integration: scheduler `sth:peran-tertunda`, menus (Status aktivasi, Surat atas nama saya, Log audit, Arsip otomatis, account items), new privileged staff accounts via role request (second Admin / 24 h), `SettingKey::ActivationWindowDays`/`LetterTemplate` (`OtpTestMode` removed), `User` casts, staff resets in K10 alert, signature upload via `StoreUpload`, Ringkasan events, per-process compiled views in tests | – | done (#27, #28, #29, #30, #31) |
+| D1 docs sync: DECISIONS D-61…D-65, ARCHITECTURE §4 (settings = `SettingKey`, `account.staff_created`), UI-MAP menus, PANDUAN-PENGGUNA (Admin, Notifikasi/Keamanan akun), this file §2/§5/§7/§8/§10 | – | done |
 
 Verified 2026-10-01 (W3-A, details in `docs/dev-notes/W3-A.md`): `php artisan test` → **925 passed (3726 assertions)** twice in a
 row (SQLite; `--parallel --processes=4` also 925 passed twice); `pint --test` clean; `npm run build` OK; `composer audit` clean; prod compose `config -q` OK;
 `docker build -f docker/Dockerfile.prod` OK. Local MySQL migrated; dev `queue` drains `otp,mail,default`.
+Backlog wave (`docs/dev-notes/B1.md`…`B6.md`): full suite `--parallel --processes=4` with all B code → **1253 passed (5606
+assertions)**, exit 0 (B5); a concurrent B6 run had 1252 passed + 1 `Akun\KeamananTest` error from a Blade compile `tempnam()` race
+in the shared compiled-view folder (11/11 pass alone). Prod image with all B migrations + `grants.sh` on a throwaway prod stack:
+`activity_log`/`audit_seals` UPDATE/DELETE denied, app + audit chain OK; E2E smoke 2 passed; gitleaks/Trivy clean; actionlint/shellcheck clean.
+W4 (`docs/dev-notes/W4.md`): full suite `--parallel --processes=4` → **1283 passed (5861 assertions)** twice in a row, exit 0 (467 s / 457 s);
+`pint --test` clean (567 files); `composer audit` clean; `npm run build` OK; `docker build -f docker/Dockerfile.prod -t sth-app:prod .` OK.
+Local MySQL migrated (W4 migration), `RoleSeeder` + `SettingSeeder` re-run, `scheduler` + `queue` recreated (`schedule:list` shows `sth:peran-tertunda`).
 
-### Backlog (not built yet; collected from all dev-notes and UI-MAP)
+### Backlog (open; collected from all dev-notes and UI-MAP)
 Owner: **S** = frontend/screens, **I** = deploy/QA, **user** = lead/backend core (also asks the school).
+Done in the backlog wave B1–B6 (details in the B dev-notes): former #1–#20, #22–#25; in W4 (`docs/dev-notes/W4.md`): #27–#31
+(scheduler `sth:peran-tertunda`, menus, privileged staff accounts, settings/model tidy-up, K10 staff resets, signature upload via
+`StoreUpload`). The optional `OtpPurpose::ChangeEmail` of #30 was not done (now #35). Kept numbers for the open items.
 
 | # | item | source | owner |
 |---|---|---|---|
-| 1 | Akun › Keamanan (`akun.keamanan`: change password/email) and Notifikasi (`notifikasi.index`, bell) | UI-MAP §2 | S |
-| 2 | Siswa Peringkat (`siswa.peringkat`, highlight "kamu"; reuse `PublicAchievements::ranking()`) | UI-MAP §3, W2-D | S |
-| 3 | Guru area: `guru.beranda` (Binaan) + `guru.lomba.index` with `Lomba\UsulanForm`; guru accounts now land on the `/beranda` placeholder | UI-MAP §4e | S (+ user policies) |
-| 4 | Kesiswaan Database prestasi (`kesiswaan.prestasi.index` + export) | W2-B | S + user |
-| 5 | Status aktivasi (`kesiswaan.aktivasi.index`, `admin.aktivasi.index`): K9 report, K2 reopen | UI-MAP, W1-C | S + user |
-| 6 | Kepsek prestasi per bidang + laporan (`kepsek.prestasi`, `kepsek.laporan`, logged/watermarked export); Kepsek list of letters issued in their name (§3m-5) | W2-C | S + user |
-| 7 | TU template surat (`tu.surat.template`) | W2-C | S |
-| 8 | Admin arsip otomatis screen (`admin.arsip.index`, unarchive/change date) and audit log viewer (`admin.audit.index`) | W2-D | S + user |
-| 9 | `InviteMembers` (replace a declined member, D-36) + invitation expiry at `registration_closes_at` | W2-A1 | user |
-| 10 | Upload limits: 30 uploads/hour/user, 200 MB per student (SECURITY §3d) | W2-A1 | user |
-| 11 | Letters: correction flow (cabut + versi baru); store signature file id + schedule on `letters` (§3m-5) | W2-C | user |
-| 12 | Humas: auto-publish at `scheduled_at`; flyer to the public disk after publication (decide) | W2-C | user |
-| 13 | Staff role change: second approval (UI-MAP §5) | W2-D | user |
-| 14 | Move the registration timeline transitions (scheduler commands) into `app/Actions` | W2-A2 | user |
-| 15 | Accounts: K1 activation window, K3 freeze (columns), K8 "Bukan saya?", K10 random 72 h temporary password vs initial password, alert on > 10 resets/hour | W1-C | user |
-| 16 | `security` log channel, OTP rows cleanup job (> 24 h), audit hash chain (§3m-9) | W1-C, SECURITY | user |
-| 17 | `livewire.csp_safe = true` (drop `'unsafe-eval'`) once no screen needs Alpine expressions | W1-C, W1-D | user + S |
-| 18 | Throttle Livewire's `/livewire-*/update` endpoint for the public pages | W2-D | user |
-| 19 | Student import: queue 1 000+ rows; decide reject vs strip formula cells (§3f) | W1-C | user |
-| 20 | ARCHITECTURE §4: ratify W1-A additions + `students.public_slug`, `principal_replacements`, `reports.late`, `talent_profile_files`, `registration_reminders`, `users.tour_seen_at`; fix the stale refs in §8 | W1-A, W2 | user |
-| 21 | Staging on a real Ubuntu 18.04 / Apache 2.4.29 host (static Docker binaries, cgroup v1) | W1-E | I |
-| 22 | CI: Trivy + gitleaks, actions pinned to SHAs; E2E tests | W1-E | I |
-| 23 | Per-table DB grants so `sth_app` cannot UPDATE/DELETE `activity_log` (§3h; table list from user) | W1-E | I + user |
-| 24 | SMTP noreply (D-15, DEPLOY §9); favicon/brand SVG; user guide + final Bantuan text | W1-E, W1-D | I (+ S) |
-| 25 | When the repo is put under git: mark `scripts/deploy/*.sh`, `docker/php/*.sh` executable (`git update-index --chmod=+x`) | W1-E | I |
-| 26 | School answers (§9): parental consent process (then `public_indexing`/`public_certificates`), letter template details, U-01…U-06 | DECISIONS §F | user |
+| 21 | Staging on a real Ubuntu 18.04 / Apache 2.4.29 host (static Docker binaries, cgroup v1); first real CI run on GitHub (workflow only linted locally) | W1-E, B6 | I |
+| 26 | School answers (§9): parental consent process (then `public_indexing`/`public_certificates`), letter template details, SMTP relay + DNS records (DEPLOY §9), activation window/school hours (D-54), U-01…U-06 | DECISIONS §F | user |
+| 32 | Queued achievement export + signed URL (D-53 follow-up) if exports grow; sort options on Database prestasi | B4 | user + S |
+| 33 | K9 extra flags (activation outside the school network: needs the school CIDR; ≥ 3 activations per browser session/hour); K10 items 4–5 (block the hijacker's email, hijack-period timeline) | B1 | user |
+| 34 | Never schedule `activitylog:clean` without pruning `audit_seals` the same way; consider HMAC for the audit chain (D-63) | B2 | user |
+| 35 | Optional `OtpPurpose::ChangeEmail` (change-email OTP still uses `verify_email`): touches `ChangeEmail`, `CompleteActivation`, `OtpCodeMail` texts, Keamanan tests | B1, W4 | user |
+| 36 | Status sistem: attention item "N perubahan peran menunggu" (today only the panel in Pengguna & peran shows pending role requests) | W4 | S + user |
+| 37 | Browser check of the W4 menus (Status aktivasi, Surat atas nama saya, Log audit, Arsip otomatis, avatar Notifikasi) and "Tambah pengguna" with a privileged role (render-tested only) | W4 | I |
 
 ## 11. Team, ownership and agent protocol
 - **user** (lead, backend core, 40%): `app/{Enums,Models,Domain,Actions,Policies,Http,Providers,

@@ -256,6 +256,10 @@ final class Index extends Component
                 && $status === RegistrationStatus::MenungguKonfirmasi,
             'inviteUrl' => Route::has('siswa.undangan.show') ? route('siswa.undangan.show', $registration) : null,
             'canCancel' => Gate::allows('cancel', $registration),
+            // B3 (#9): the ketua invites replacements in the registration panel of the lomba.
+            'inviteHref' => Gate::allows('invite', $registration) && Route::has('siswa.lomba.show')
+                ? route('siswa.lomba.show', $registration->competition_id).'#h-daftar'
+                : null,
             'canReport' => Gate::allows('create', [Report::class, $registration]),
             'reportUrl' => route('siswa.lapor', $registration),
             'report' => $report,

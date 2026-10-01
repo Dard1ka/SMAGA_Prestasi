@@ -5,6 +5,8 @@
 @extends('pdf::layout', ['title' => 'Surat Tugas '.$number])
 
 @section('content')
+    {{-- B5: fixed texts from the TU letter template (App\Actions\Templates\LetterTemplate, plain text, escaped). --}}
+    @php($tpl ??= $letterTemplate ?? \App\Actions\Templates\LetterTemplate::current())
     @include('pdf::partials.kop')
 
     <p class="judul"><span class="judul-spasi">SURAT TUGAS</span></p>
@@ -14,7 +16,7 @@
         <tr>
             <td class="k">Dasar</td>
             <td class="s">:</td>
-            <td>Surat dari {{ $content->organizer }}</td>
+            <td>{{ $tpl->siswaBasis($content->organizer) }}</td>
         </tr>
         @if ($content->basisNumber !== null)
             <tr>
@@ -32,7 +34,7 @@
         @endif
     </table>
 
-    <p class="mt">Kepala {{ \App\Actions\Letters\LetterContent::SCHOOL }} memberikan tugas kepada :</p>
+    <p class="mt">{{ $tpl->siswaIntro() }}</p>
 
     <table class="grid">
         <thead>
@@ -75,7 +77,7 @@
         </tr>
     </table>
 
-    <p class="justify mt">Demikian surat tugas ini dibuat dan diberikan kepada yang bersangkutan untuk dapat dilaksanakan sebagaimana mestinya dengan penuh tanggung jawab.</p>
+    <p class="justify mt">{{ $tpl->siswaClosing() }}</p>
 
     @include('pdf::partials.ttd')
 @endsection

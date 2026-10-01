@@ -24,7 +24,8 @@ use Spatie\Permission\Traits\HasRoles;
  * Students sign in with NIS/NISN (via `student`), staff with username or email.
  *
  * Not mass-assignable on purpose (CLAUDE.md §3.6): status, must_change_password, password_changed_at,
- * last_login_at, email_verified_at. Set them with forceFill() inside Actions.
+ * last_login_at, email_verified_at and the B1 account-control columns (initial_password_expires_at,
+ * failed_activation_attempts, frozen_at, frozen_reason, activated_at). Set them with forceFill() inside Actions.
  */
 class User extends Authenticatable
 {
@@ -60,6 +61,11 @@ class User extends Authenticatable
             'password_changed_at' => 'datetime',
             'last_login_at' => 'datetime',
             'two_factor_confirmed_at' => 'datetime',
+            // B1 account controls (K1/K3/K8/K9); App\Actions\Accounts\AccountControls reads them either way.
+            'initial_password_expires_at' => 'immutable_datetime',
+            'failed_activation_attempts' => 'integer',
+            'frozen_at' => 'immutable_datetime',
+            'activated_at' => 'immutable_datetime',
         ];
     }
 

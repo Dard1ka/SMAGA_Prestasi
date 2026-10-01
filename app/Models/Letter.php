@@ -11,13 +11,17 @@ use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Spatie\Activitylog\Models\Concerns\LogsActivity;
 use Spatie\Activitylog\Support\LogOptions;
 
 /**
- * Surat tugas. Unique (type, year, sequence) and (registration_id, type); immutable after issue.
+ * Surat tugas. Unique (type, year, sequence) and (registration_id, type, version); immutable after issue.
  * verification_code is filled with 32 random hex chars on create when empty (public /verifikasi-surat/{code}).
- * Not mass-assignable: verification_code, generated_by, generated_at, sent_at.
+ * Correction (B3, backlog #11): the old row gets revoked_at/revoked_by/revoke_reason, the new row has
+ * version + 1, a NEW number and replaces_letter_id → the old row. "Current" = revoked_at IS NULL.
+ * Not mass-assignable: verification_code, generated_by, generated_at, sent_at, version, replaces_letter_id,
+ * signature_file_id, revoked_at, revoked_by, revoke_reason.
  */
 class Letter extends Model
 {
@@ -36,6 +40,9 @@ class Letter extends Model
         'basis_number',
         'basis_date',
         'file_id',
+        'schedule_day',
+        'schedule_time',
+        'place',
     ];
 
     /** @return array<string, string> */
@@ -50,6 +57,8 @@ class Letter extends Model
             'basis_date' => 'immutable_date',
             'generated_at' => 'immutable_datetime',
             'sent_at' => 'immutable_datetime',
+            'version' => 'integer',
+            'revoked_at' => 'immutable_datetime',
         ];
     }
 
@@ -100,6 +109,45 @@ class Letter extends Model
     {
         $query->where('type', $type);
     }
+
+    // --- B3: versions (backlog #11) ---
+
+    /** Not revoked (the version that counts). @param Builder<Letter> $query */
+    public function scopeCurrent(Builder $query): void
+    {
+        $query->whereNull('revoked_at');
+    }
+
+    /** @return BelongsTo<Letter, $this> */
+    public function replaces(): BelongsTo
+    {
+        return $this->belongsTo(Letter::class, 'replaces_letter_id');
+    }
+
+    /** The version issued to correct this one. @return HasOne<Letter, $this> */
+    public function replacement(): HasOne
+    {
+        return $this->hasOne(Letter::class, 'replaces_letter_id');
+    }
+
+    /** @return BelongsTo<User, $this> */
+    public function revoker(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'revoked_by');
+    }
+
+    /** @return BelongsTo<File, $this> */
+    public function signatureFile(): BelongsTo
+    {
+        return $this->belongsTo(File::class, 'signature_file_id');
+    }
+
+    public function isRevoked(): bool
+    {
+        return $this->revoked_at !== null;
+    }
+
+    // --- end B3 ---
 
     /** Highest sequence used for a type/year ("Terakhir dipakai" hint for TU). */
     public static function lastSequence(LetterType $type, int $year): ?int

@@ -38,7 +38,8 @@ final class SendLetters
         $locked = DB::transaction(function () use ($actor, $registration): Registration {
             /** @var Registration $locked */
             $locked = Registration::query()->whereKey($registration->getKey())->lockForUpdate()->firstOrFail();
-            $letters = Letter::query()->where('registration_id', $locked->getKey())->lockForUpdate()->get();
+            // Current versions only: a letter revoked before sending is never sent (B3, RevokeLetter).
+            $letters = Letter::query()->where('registration_id', $locked->getKey())->current()->lockForUpdate()->get();
 
             if ($locked->status !== RegistrationStatus::Disetujui || $letters->isEmpty() || $letters->contains(fn (Letter $l): bool => $l->sent_at !== null)) {
                 throw ValidationException::withMessages(['registration' => 'Surat ini sudah dikirim atau belum dibuat.']);

@@ -151,7 +151,12 @@ log "maintenance mode on, stopping queue and scheduler"
 compose exec -T app php artisan down --retry=60 || true
 compose stop queue scheduler
 
-[ "$DO_DB" = 0 ] || restore_db
+if [ "$DO_DB" = 1 ]; then
+    restore_db
+    # Table privileges survive DROP DATABASE in MySQL, but a dump from another schema version may add tables.
+    log "re-applying per-table grants for the runtime DB user"
+    bash "$APP_DIR/scripts/deploy/grants.sh"
+fi
 [ "$DO_FILES" = 0 ] || restore_files
 
 log "restarting services"

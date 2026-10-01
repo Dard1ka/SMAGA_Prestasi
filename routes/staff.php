@@ -1,18 +1,27 @@
 <?php
 
 use App\Livewire\Akun\ImportSiswa;
+use App\Livewire\Akun\StatusAktivasi;
+use App\Livewire\Guru\Binaan;
+use App\Livewire\Guru\BinaanDetail;
+use App\Livewire\Guru\Lomba as GuruLomba;
 use App\Livewire\Humas\Apresiasi;
 use App\Livewire\Humas\Arsip;
 use App\Livewire\Humas\Jadwal;
 use App\Livewire\Humas\Publikasi;
+use App\Livewire\Kepsek\Laporan;
 use App\Livewire\Kepsek\Persetujuan;
+use App\Livewire\Kepsek\PrestasiBidang as KepsekPrestasiBidang;
+use App\Livewire\Kepsek\SuratSaya;
 use App\Livewire\Kesiswaan\Beranda;
+use App\Livewire\Kesiswaan\DatabasePrestasi;
 use App\Livewire\Kesiswaan\Lomba\Index;
 use App\Livewire\Kesiswaan\Talenta;
 use App\Livewire\Kesiswaan\VerifikasiHasil;
 use App\Livewire\Sekolah\Dashboard;
 use App\Livewire\TataUsaha\ArsipSurat;
 use App\Livewire\TataUsaha\SuratTugas;
+use App\Livewire\TataUsaha\TemplateSurat;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -71,3 +80,50 @@ Route::middleware(['area.staff', 'role:admin'])->prefix('admin')->name('admin.')
 });
 
 // --- end W2-B ---
+
+// --- B4: guru area (backlog #3, UI-MAP §4e) + Kesiswaan database prestasi (backlog #4, UI-MAP §4a) ---
+// Guru screens show the guru's own binaan only (RegistrationPolicy::viewBinaan/viewAsMentor; others → 404).
+// `/beranda` already forwards role guru to guru.beranda (routes/web.php). Database prestasi: AchievementPolicy::viewDatabase/export.
+
+Route::middleware(['area.staff', 'role:guru'])->prefix('guru')->name('guru.')->group(function (): void {
+    Route::livewire('/', Binaan::class)->name('beranda');
+    Route::livewire('/binaan/{registration}', BinaanDetail::class)
+        ->whereUlid('registration')
+        ->name('binaan.show');
+    Route::livewire('/lomba', GuruLomba::class)->name('lomba.index');
+});
+
+Route::middleware(['area.staff', 'role:kesiswaan|admin'])->prefix('kesiswaan')->name('kesiswaan.')->group(function (): void {
+    Route::livewire('/prestasi', DatabasePrestasi::class)->name('prestasi.index');
+});
+
+// --- end B4 ---
+
+// --- B1: Status aktivasi (backlog #5, UI-MAP §4a, SECURITY K9/K2; Admin uses admin.aktivasi.index) ---
+// App\Livewire\Akun\StatusAktivasi authorizes student.view on mount and the action permission in every action.
+
+Route::middleware(['area.staff', 'role:kesiswaan|admin'])->prefix('kesiswaan')->name('kesiswaan.')->group(function (): void {
+    Route::livewire('/aktivasi', StatusAktivasi::class)->name('aktivasi.index');
+});
+
+// --- end B1 ---
+
+// --- B5: Kepala Sekolah prestasi/laporan/surat (backlog #6, UI-MAP §4b) + TU template surat (backlog #7, UI-MAP §4c) ---
+// Every screen authorizes again inside the component: AchievementPolicy::viewSchoolReport/exportSchoolReport,
+// LetterPolicy::viewAny, SettingPolicy::viewLetterTemplate/manageLetterTemplate. kepsek.laporan is also open to Admin
+// (the shared dashboard at admin.beranda links "Unduh laporan" there).
+
+Route::middleware(['area.staff', 'role:kepala_sekolah'])->prefix('kepsek')->name('kepsek.')->group(function (): void {
+    Route::livewire('/prestasi', KepsekPrestasiBidang::class)->name('prestasi');
+    Route::livewire('/surat', SuratSaya::class)->name('surat.index');
+});
+
+Route::middleware(['area.staff', 'role:kepala_sekolah|admin'])->prefix('kepsek')->name('kepsek.')->group(function (): void {
+    Route::livewire('/laporan', Laporan::class)->name('laporan');
+});
+
+Route::middleware(['area.staff', 'role:tata_usaha'])->prefix('tu')->name('tu.')->group(function (): void {
+    Route::livewire('/surat/template', TemplateSurat::class)->name('surat.template');
+});
+
+// --- end B5 ---

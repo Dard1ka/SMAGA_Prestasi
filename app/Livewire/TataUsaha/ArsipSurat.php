@@ -21,6 +21,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 /**
  * Tata Usaha · Arsip surat (UI-MAP "Arsip surat"): every issued letter, read-only (letters are immutable),
  * newest first, search by number or lomba, filter by type. `letter.view`; downloads are audited.
+ * Revoked versions stay listed with "Dicabut" (B3); TU opens tu.surat.show to correct a current letter.
  */
 #[Title('Arsip surat')]
 class ArsipSurat extends Component
@@ -73,7 +74,7 @@ class ArsipSurat extends Component
         $type = LetterType::tryFrom($this->jenis);
 
         $letters = Letter::query()
-            ->with(['file', 'registration' => fn ($q) => $q->withTrashed(), 'registration.competition', 'registration.mentor', 'registration.members.student.user'])
+            ->with(['file', 'replacement:id,replaces_letter_id,full_number', 'registration' => fn ($q) => $q->withTrashed(), 'registration.competition', 'registration.mentor', 'registration.members.student.user'])
             ->when($type !== null, fn (Builder $q) => $q->where('type', $type))
             ->when($term !== '', fn (Builder $q) => $q->where(fn (Builder $w) => $w
                 ->where('full_number', 'like', '%'.self::escapeLike($term).'%')
@@ -85,6 +86,8 @@ class ArsipSurat extends Component
         return view('livewire.tata-usaha.arsip-surat', [
             'letters' => $letters,
             'typeOptions' => ['' => 'Semua jenis'] + LetterType::options(),
+            // B3 (#11): TU opens the registration's letter page to correct (cabut + versi baru).
+            'canCorrect' => Gate::allows('viewQueue', Letter::class),
         ])->layoutData([
             'subtitle' => 'Surat yang sudah terbit. Nomor dan isi tidak bisa diubah.',
         ]);

@@ -35,10 +35,18 @@ final class Ringkasan extends Component
     public const EVENTS = [
         'account.staff_created' => 'Akun staf dibuat',
         'account.role_changed' => 'Peran diubah',
+        // B5 (backlog #13): privileged role changes need a second Admin or the 24 h delay.
+        'role.change_requested' => 'Perubahan peran diminta',
+        'role.change_approved' => 'Perubahan peran disetujui',
+        'role.change_cancelled' => 'Perubahan peran dibatalkan',
         'account.staff_reset' => 'Akun staf direset',
         'account.reset' => 'Akun siswa direset',
         'account.disabled' => 'Akun dinonaktifkan',
         'account.archived' => 'Akun diarsipkan',
+        // B5 (backlog #8): Arsip otomatis + Log audit.
+        'account.unarchived' => 'Akun dipulihkan dari arsip',
+        'student.archive_date_changed' => 'Tanggal arsip diubah',
+        'audit.exported' => 'Log audit diunduh',
         'account.admin_created' => 'Admin dibuat (CLI)',
         'principal.requested' => 'Ganti Kepala Sekolah diminta',
         'principal.cancelled' => 'Ganti Kepala Sekolah dibatalkan',

@@ -2,7 +2,7 @@
 # SMAGA Talent Hub: deploy on the production host (docs/DEPLOY.md §8, §14).
 #
 #   deploy.sh [--ref <git-ref>] [--first] [--skip-backup]   fetch + checkout <ref> (default origin/main), build,
-#                                                          backup, migrate --force, recreate containers, smoke test
+#                                                          backup, migrate --force, grants.sh, recreate, smoke test
 #   deploy.sh --rollback <image-tag>                       run older, still-present images (no build, no migrate)
 #
 # Run as the `sth` service user (member of group docker), never as root:
@@ -211,6 +211,10 @@ main() {
         compose run --rm --no-deps -T \
             -e STH_SKIP_OPTIMIZE=1 -e DB_USERNAME=sth_migrate -e DB_PASSWORD \
             app php artisan migrate --force --no-interaction
+
+    # Per-table privileges for sth_app (new tables included; activity_log stays SELECT/INSERT only).
+    log "applying per-table grants for the runtime DB user"
+    bash "$APP_DIR/scripts/deploy/grants.sh"
 
     recreate_services
     record "${REF}"

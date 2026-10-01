@@ -99,8 +99,17 @@ class Registration extends Model
             ->withTimestamps();
     }
 
-    /** @return HasMany<Letter, $this> */
+    /**
+     * Current letters only (not revoked; B3 letter correction, backlog #11). Every version, incl. the
+     * revoked ones, is in letterHistory(). @return HasMany<Letter, $this>
+     */
     public function letters(): HasMany
+    {
+        return $this->hasMany(Letter::class)->whereNull('revoked_at');
+    }
+
+    /** All versions (revoked included), for TU/audit screens. @return HasMany<Letter, $this> */
+    public function letterHistory(): HasMany
     {
         return $this->hasMany(Letter::class);
     }
@@ -108,13 +117,13 @@ class Registration extends Model
     /** @return HasOne<Letter, $this> */
     public function studentLetter(): HasOne
     {
-        return $this->hasOne(Letter::class)->where('type', LetterType::Siswa);
+        return $this->hasOne(Letter::class)->where('type', LetterType::Siswa)->whereNull('revoked_at');
     }
 
     /** @return HasOne<Letter, $this> */
     public function guruLetter(): HasOne
     {
-        return $this->hasOne(Letter::class)->where('type', LetterType::Guru);
+        return $this->hasOne(Letter::class)->where('type', LetterType::Guru)->whereNull('revoked_at');
     }
 
     /** @return HasOne<Report, $this> */

@@ -8,6 +8,7 @@ use App\Actions\Settings\UpdateLetterFormats;
 use App\Actions\Settings\UpdateLimits;
 use App\Actions\Settings\UpdatePublicSettings;
 use App\Actions\Settings\UpdateSigner;
+use App\Domain\Files\UploadLimits;
 use App\Enums\FilePurpose;
 use App\Enums\RoleName;
 use App\Enums\SettingKey;
@@ -24,6 +25,7 @@ use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
@@ -111,6 +113,27 @@ it('replaces the signature with a re-encoded private PNG, keeps the old one and 
     expect($log->properties['previous_file_id'])->toBe($first->id)
         ->and($log->properties['sha256'])->toBe($second->sha256);
     Notification::assertSentTo($kepsek, SignatureReplaced::class);
+});
+
+it('stores the signature through StoreUpload: ttd/Y/m path, hourly upload limit, 3000 px limit (W4)', function (): void {
+    Notification::fake();
+
+    $file = app(ReplaceSignatureImage::class)->handle($this->admin, sthPngUpload());
+    expect($file->path)->toMatch('~^ttd/\d{4}/\d{2}/[0-9a-z]{26}\.png$~')
+        ->and($file->owner_user_id)->toBe($this->admin->id)
+        ->and(RateLimiter::attempts(UploadLimits::key($this->admin)))->toBe(1);
+
+    expect(fn () => app(ReplaceSignatureImage::class)->handle($this->admin, sthPngUpload('lebar.png', 3001, 8)))
+        ->toThrow(ValidationException::class, 'Ukuran gambar maksimal 3000 × 3000 piksel.');
+
+    foreach (range(1, UploadLimits::MAX_PER_HOUR) as $ignored) {
+        RateLimiter::hit(UploadLimits::key($this->admin), UploadLimits::DECAY_SECONDS);
+    }
+
+    expect(fn () => app(ReplaceSignatureImage::class)->handle($this->admin, sthPngUpload('baru.png')))
+        ->toThrow(ValidationException::class, 'Batas unggah tercapai')
+        ->and(Setting::get(SettingKey::SignatureFileId))->toBe($file->id)
+        ->and(File::query()->where('purpose', FilePurpose::Signature)->count())->toBe(1);
 });
 
 it('refuses non-PNG, fake PNG and oversized signature files', function (UploadedFile $file): void {

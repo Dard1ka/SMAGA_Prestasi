@@ -73,6 +73,23 @@ return [
             'replace_placeholders' => true,
         ],
 
+        // Security events (SECURITY §3l): logins, lockouts, OTP abuse, Admin resets, archive, consent, audit chain.
+        // Written only through App\Support\Audit\SecurityLog (never passwords, OTPs, tokens or session ids).
+        // The test suite (APP_ENV=testing) sends them to `null` so test runs never fill storage/logs.
+        'security' => [
+            'driver' => 'stack',
+            'channels' => explode(',', (string) env('LOG_SECURITY_STACK', env('APP_ENV') === 'testing' ? 'null' : 'security_daily')),
+            'ignore_exceptions' => false,
+        ],
+
+        'security_daily' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/security.log'),
+            'level' => env('LOG_SECURITY_LEVEL', 'info'),
+            'max_files' => (int) env('LOG_SECURITY_DAYS', 90),
+            'replace_placeholders' => true,
+        ],
+
         'monthly' => [
             'driver' => 'monthly',
             'path' => storage_path('logs/laravel.log'),

@@ -106,7 +106,10 @@ it('reports valid and invalid rows in a dry run without creating anything', func
         ->and($byRow[12]['errors'])->toContain('Kelas tidak ditemukan.');
 
     // The report never carries birth dates, phones or passwords.
-    expect(array_keys($report->rows[0]))->toBe(['row', 'name', 'nis', 'classroom', 'errors', 'grade12_start_date', 'archive_at']);
+    // B2 (#19): `sanitized` flags rows whose cells lost a leading = + - @ ("Sel dibersihkan").
+    expect(array_keys($report->rows[0]))->toBe(['row', 'name', 'nis', 'classroom', 'errors', 'grade12_start_date', 'archive_at', 'sanitized'])
+        ->and($byRow[4]['sanitized'])->toBeTrue()
+        ->and($byRow[2]['sanitized'])->toBeFalse();
 });
 
 it('creates only the valid rows as pending students with a hashed initial password', function (): void {

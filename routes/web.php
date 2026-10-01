@@ -5,6 +5,9 @@ declare(strict_types=1);
 use App\Http\Controllers\FileController;
 use App\Http\Controllers\LetterVerificationController;
 use App\Http\Middleware\PublicPageHeaders;
+use App\Livewire\Akun\BukanSaya;
+use App\Livewire\Akun\Keamanan;
+use App\Livewire\Akun\Notifikasi;
 use App\Livewire\Auth\Activation;
 use App\Livewire\Auth\ForgotPassword;
 use App\Livewire\Auth\TwoFactorSetup;
@@ -79,9 +82,12 @@ Route::middleware(['auth', 'active'])->group(function (): void {
             }
         }
 
+        // W4: a new privileged staff account has no role until a second Admin approves it (or 24 h pass).
         return view('auth.placeholder', [
             'title' => 'Beranda',
-            'message' => 'Halaman beranda sedang disiapkan.',
+            'message' => $user->roles()->doesntExist()
+                ? 'Akunmu belum punya peran. Peran dari Admin berlaku setelah disetujui. Coba masuk lagi nanti.'
+                : 'Halaman beranda sedang disiapkan.',
         ]);
     })->middleware(['activated', 'staff.2fa'])->name('home');
 
@@ -97,3 +103,17 @@ Route::middleware(['auth', 'active'])->group(function (): void {
 // W2-A1: public certificate link (guests too) — FilePolicy::viewPublic only (consent + Admin switch), else 404.
 Route::get('/berkas/publik/{file}', [FileController::class, 'publik'])
     ->middleware('throttle:30,1')->name('files.public');
+
+// --- B1: Akun › Keamanan, Notifikasi (every role), K8 "Bukan saya?" (docs/dev-notes/B1.md, UI-MAP §2) ---
+// Keamanan/Notifikasi act only on the signed-in user (no ids in the URL). `staff.2fa` only affects staff.
+Route::middleware(['auth', 'active', 'activated', 'staff.2fa'])->group(function (): void {
+    Route::livewire('/akun/keamanan', Keamanan::class)->name('akun.keamanan');
+    Route::livewire('/notifikasi', Notifikasi::class)->name('notifikasi.index');
+});
+
+// Signed, single-use link from the email-binding notice (7 days). Guests too; GET only shows the page.
+Route::livewire('/akun/bukan-saya/{notice}', BukanSaya::class)
+    ->whereUlid('notice')
+    ->middleware(['signed', 'throttle:20,1'])
+    ->name('akun.bukan-saya');
+// --- end B1 ---

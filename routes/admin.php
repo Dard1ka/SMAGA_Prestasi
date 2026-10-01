@@ -2,9 +2,12 @@
 
 declare(strict_types=1);
 
+use App\Livewire\Admin\ArsipOtomatis;
+use App\Livewire\Admin\AuditLog;
 use App\Livewire\Admin\Pengaturan;
 use App\Livewire\Admin\Pengguna;
 use App\Livewire\Admin\Ringkasan;
+use App\Livewire\Akun\StatusAktivasi;
 use App\Livewire\Sekolah\Dashboard;
 use Illuminate\Support\Facades\Route;
 
@@ -28,3 +31,18 @@ Route::middleware(['area.staff', 'role:admin'])->prefix('admin')->name('admin.')
         Route::livewire('/pengguna', Pengguna::class)->name('pengguna.index');
     });
 });
+
+// --- B1: Status aktivasi for Admin (backlog #5, UI-MAP §5, SECURITY K9/K2/K3/K8; same component as kesiswaan.aktivasi.index) ---
+Route::middleware(['area.staff', 'role:admin'])->prefix('admin')->name('admin.')->group(function (): void {
+    Route::livewire('/aktivasi', StatusAktivasi::class)->name('aktivasi.index');
+});
+// --- end B1 ---
+
+// --- B5: Arsip otomatis + Log audit (backlog #8, UI-MAP §5, SECURITY §3m-8/§3m-9; owner B5) ---
+// Both screens authorize again inside the component (user.archive / audit.view); restore, archive-date changes
+// and the CSV export need a password confirmation from the last 15 minutes inside the action.
+Route::middleware(['area.staff', 'role:admin'])->prefix('admin')->name('admin.')->group(function (): void {
+    Route::livewire('/arsip', ArsipOtomatis::class)->name('arsip.index');
+    Route::livewire('/audit', AuditLog::class)->name('audit.index');
+});
+// --- end B5 ---

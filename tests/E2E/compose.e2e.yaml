@@ -1,0 +1,56 @@
+# E2E smoke tests (backlog #22): the dev stack of compose.yaml as an ISOLATED compose project "sth-e2e" (own MySQL
+# volume, own storage volume, no published ports, so it never touches the dev database or clashes with the dev stack)
+# plus a Playwright container. Used by .github/workflows/ci.yml (job e2e) and locally.
+#
+# Local run, from the repo root (PowerShell or Git Bash), after the normal first run of CLAUDE.md §4 (vendor/,
+# public/build and .env with APP_ENV=local exist):
+#   docker compose -f compose.yaml -f tests/E2E/compose.e2e.yaml up -d --wait mysql app web
+#   docker compose -f compose.yaml -f tests/E2E/compose.e2e.yaml exec -T app sh tests/E2E/support/setup-app.sh
+#   docker compose -f compose.yaml -f tests/E2E/compose.e2e.yaml run --rm e2e
+#   docker compose -f compose.yaml -f tests/E2E/compose.e2e.yaml down -v
+# Report: tests/E2E/playwright-report/index.html; traces/screenshots of failures in tests/E2E/test-results/.
+# E2E_STUDENT_PASSWORD: CI sets a random one per run; the local default below only exists in this throwaway project.
+name: sth-e2e
+
+x-e2e-password: &e2e-password ${E2E_STUDENT_PASSWORD:-e2e-Lokal-Sandi-2026}
+
+services:
+  app:
+    environment:
+      STH_E2E: "1"
+      E2E_STUDENT_PASSWORD: *e2e-password
+    volumes:
+      - e2e-storage:/var/www/html/storage
+
+  web:
+    ports: !reset []
+
+  mysql:
+    ports: !reset []
+
+  mailpit:
+    ports: !reset []
+
+  e2e:
+    image: mcr.microsoft.com/playwright:v1.63.0-noble@sha256:eff16c30e6f3f4af0a03fa4b706120d5e9b0891c344a27d64559aff5900a4a27
+    profiles: ["e2e"]
+    working_dir: /e2e
+    init: true
+    shm_size: 1gb
+    environment:
+      CI: ${CI:-}
+      E2E_BASE_URL: http://web
+      E2E_STUDENT_NIS: "225226201"
+      E2E_STUDENT_PASSWORD: *e2e-password
+      npm_config_update_notifier: "false"
+    volumes:
+      - ./tests/E2E:/e2e
+      - e2e-node-modules:/e2e/node_modules
+    command: ["sh", "-c", "npm ci --no-audit --no-fund && npx playwright test"]
+    depends_on:
+      web:
+        condition: service_started
+
+volumes:
+  e2e-storage: {}
+  e2e-node-modules: {}

@@ -9,6 +9,7 @@ use App\Models\File;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Intervention\Image\Drivers\Gd\Driver as GdDriver;
 use Intervention\Image\Format;
 use Intervention\Image\ImageManager;
@@ -22,6 +23,7 @@ use Throwable;
  *    EXIF orientation applied, scaled down to ≤ 2048 px;
  * 4. stored on the private `local` disk under a random path ("lampiran/Y/m/<ulid>.<ext>", extension from the
  *    sniffed MIME) and recorded as an App\Models\File (sha256 + size of the stored bytes).
+ * 5. UploadLimits (B2): 30 stored uploads per user per hour, 200 MB stored per student; refused as InvalidUpload.
  * Files are served only by App\Http\Controllers\FileController after App\Policies\FilePolicy.
  *
  * Usage: $file = app(StoreUpload::class)->store($upload, FilePurpose::Juknis, $actor);
@@ -29,6 +31,8 @@ use Throwable;
  */
 final class StoreUpload
 {
+    public function __construct(private readonly UploadLimits $limits = new UploadLimits) {}
+
     public const DISK = 'local';
 
     public const MAX_DECODE_SIDE = 8000;
@@ -67,6 +71,8 @@ final class StoreUpload
         ?UploadRules $rules = null,
         string $directory = 'lampiran',
     ): File {
+        $this->limits->ensureCanUpload($owner);
+
         $rules ??= self::rulesFor($purpose);
         $path = (string) $upload->getRealPath();
         $originalName = $upload->getClientOriginalName();
@@ -83,11 +89,13 @@ final class StoreUpload
             ? $this->checkedPdf($path)
             : $this->reencodedImage($path, $mime);
 
+        $this->limits->ensureFitsQuota($owner, strlen($bytes));
+
         $storagePath = $rules->storagePath($mime, now(), $directory);
         Storage::disk(self::DISK)->put($storagePath, $bytes);
 
         try {
-            return File::query()->create([
+            $file = File::query()->create([
                 'disk' => self::DISK,
                 'path' => $storagePath,
                 'original_name' => $rules->sanitizeOriginalName($originalName),
@@ -102,6 +110,69 @@ final class StoreUpload
 
             throw $e;
         }
+
+        $this->limits->recordUpload($owner);
+
+        return $file;
+    }
+
+    /** Sniffed MIME types accepted for import spreadsheets, per extension (storeSpreadsheet()). */
+    public const SPREADSHEET_MIMES = [
+        'xlsx' => ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/zip'],
+        'csv' => ['text/plain', 'text/csv', 'application/csv', 'text/x-csv'],
+    ];
+
+    public const MSG_SPREADSHEET_TYPE = 'Pilih file .xlsx atau .csv.';
+
+    /**
+     * B2 (backlog #19): keep an import spreadsheet (.xlsx/.csv) privately until the queued import has read it.
+     * Extension AND sniffed MIME must match, size ≤ $maxBytes, same hourly upload limit as every upload. The bytes
+     * are stored unchanged (data for the importer, never displayed or served inline) under "impor/Y/m/<ulid>.<ext>",
+     * recorded as a File with purpose `import` (FilePolicy: student.import). Delete it with discard() when done.
+     *
+     * @throws InvalidUpload
+     */
+    public function storeSpreadsheet(UploadedFile $upload, User $owner, int $maxBytes = 2 * 1024 * 1024): File
+    {
+        $this->limits->ensureCanUpload($owner);
+
+        $path = (string) $upload->getRealPath();
+        $extension = strtolower((string) pathinfo($upload->getClientOriginalName(), PATHINFO_EXTENSION));
+        $size = $path !== '' && is_file($path) ? (int) filesize($path) : 0;
+        $mime = $size > 0 ? (new UploadRules)->sniffMime($path) : null;
+
+        if (! isset(self::SPREADSHEET_MIMES[$extension]) || $mime === null || ! in_array($mime, self::SPREADSHEET_MIMES[$extension], true)) {
+            throw new InvalidUpload([self::MSG_SPREADSHEET_TYPE]);
+        }
+
+        if ($size > $maxBytes) {
+            throw new InvalidUpload(['Ukuran file maksimal '.intdiv($maxBytes, 1024 * 1024).' MB.']);
+        }
+
+        $bytes = (string) file_get_contents($path);
+        $storagePath = sprintf('impor/%s/%s.%s', now()->format('Y/m'), strtolower((string) Str::ulid()), $extension);
+        Storage::disk(self::DISK)->put($storagePath, $bytes);
+
+        try {
+            $file = File::query()->create([
+                'disk' => self::DISK,
+                'path' => $storagePath,
+                'original_name' => (new UploadRules)->sanitizeOriginalName($upload->getClientOriginalName()),
+                'mime' => $mime,
+                'size' => strlen($bytes),
+                'sha256' => hash('sha256', $bytes),
+                'purpose' => FilePurpose::Import,
+                'owner_user_id' => $owner->getKey(),
+            ]);
+        } catch (Throwable $e) {
+            Storage::disk(self::DISK)->delete($storagePath);
+
+            throw $e;
+        }
+
+        $this->limits->recordUpload($owner);
+
+        return $file;
     }
 
     /** Remove a stored file (e.g. when the surrounding transaction failed). */

@@ -36,16 +36,29 @@
                     <td>{{ $registration?->competition?->name }}</td>
                     <td class="max-w-64">{{ $names }}</td>
                     <td>
-                        @if ($letter->sent_at)
+                        @if ($letter->revoked_at)
+                            <x-sth.chip tone="red" size="sm">Dicabut</x-sth.chip>
+                            @if ($letter->replacement)
+                                <span class="muted block text-[12px]">diganti {{ $letter->replacement->full_number }}</span>
+                            @endif
+                        @elseif ($letter->sent_at)
                             <x-sth.chip tone="green" size="sm">Terkirim</x-sth.chip>
                         @else
                             <x-sth.chip tone="orange" size="sm">Belum dikirim</x-sth.chip>
                         @endif
+                        @if ($letter->version > 1)
+                            <span class="muted block text-[12px]">versi {{ $letter->version }}</span>
+                        @endif
                     </td>
-                    <td class="text-right">
+                    <td class="text-right whitespace-nowrap">
                         @if ($letter->file_id)
                             <x-sth.button variant="quiet" size="sm" icon="download" wire:click="download('{{ $letter->id }}')">
                                 Unduh<span class="sr-only"> {{ $letter->full_number }}</span>
+                            </x-sth.button>
+                        @endif
+                        @if ($canCorrect && ! $letter->revoked_at && $registration)
+                            <x-sth.button variant="quiet" size="sm" icon="edit" href="{{ route('tu.surat.show', $registration) }}">
+                                Koreksi<span class="sr-only"> {{ $letter->full_number }}</span>
                             </x-sth.button>
                         @endif
                     </td>

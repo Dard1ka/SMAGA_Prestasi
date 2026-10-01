@@ -63,4 +63,32 @@ final class UserPolicy
     {
         return $actor->checkPermissionTo(Permission::UserReplacePrincipal->value);
     }
+
+    // --- B5: Admin › Arsip otomatis (SECURITY §3m-8) ---
+
+    /** Archive overview (due soon, archived, history). */
+    public function viewArchive(User $actor): bool
+    {
+        return $actor->checkPermissionTo(Permission::UserArchive->value);
+    }
+
+    /** Restore an archived student account (with a new archive date and a reason). */
+    public function unarchive(User $actor, User $target): bool
+    {
+        return $actor->checkPermissionTo(Permission::UserArchive->value)
+            && ! $actor->is($target)
+            && $target->isArchived()
+            && $target->student()->exists();
+    }
+
+    /** Move a not-yet-archived student's archive date (e.g. tinggal kelas). */
+    public function changeArchiveDate(User $actor, User $target): bool
+    {
+        return $actor->checkPermissionTo(Permission::UserArchive->value)
+            && ! $actor->is($target)
+            && ! $target->isArchived()
+            && $target->student()->exists();
+    }
+
+    // --- end B5 ---
 }

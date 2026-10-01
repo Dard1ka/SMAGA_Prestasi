@@ -23,7 +23,7 @@ class MemberResponded extends RegistrationNotification
             ->line($this->message());
 
         if (! $this->accepted) {
-            $mail->line('Tim tetap lanjut bila anggota lain sudah konfirmasi. Kalau tim jadi kurang orang, batalkan lalu daftar ulang.');
+            $mail->line('Tim tetap lanjut bila anggota lain sudah konfirmasi. Kalau tim jadi kurang orang, undang anggota pengganti sebelum batas pendaftaran, atau batalkan pendaftaran.');
         }
 
         return $mail->action('Lihat pendaftaran', $this->url())->salutation('SMAGA Talent Hub');

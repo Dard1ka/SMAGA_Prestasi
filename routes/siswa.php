@@ -8,6 +8,7 @@ use App\Livewire\Siswa\Lomba\Detail as LombaDetail;
 use App\Livewire\Siswa\Lomba\Katalog as LombaKatalog;
 use App\Livewire\Siswa\LombaSaya\Index as LombaSayaIndex;
 use App\Livewire\Siswa\LombaSaya\LaporHasil;
+use App\Livewire\Siswa\Peringkat as SiswaPeringkat;
 use App\Livewire\Siswa\Portofolio;
 use App\Livewire\Siswa\ProfilTalenta;
 use Illuminate\Support\Facades\Route;
@@ -35,4 +36,8 @@ Route::middleware('area.siswa')->prefix('siswa')->name('siswa.')->group(function
     Route::livewire('/portofolio', Portofolio::class)->name('portofolio');
     Route::livewire('/talenta', ProfilTalenta::class)->name('talenta');
     // --- end W2-A2 ---
+
+    // --- B4: peringkat (backlog #2; same data rules as public.peringkat, active students only, "Kamu" row) ---
+    Route::livewire('/peringkat', SiswaPeringkat::class)->name('peringkat');
+    // --- end B4 ---
 });

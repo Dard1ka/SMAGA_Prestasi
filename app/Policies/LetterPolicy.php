@@ -42,7 +42,8 @@ class LetterPolicy
             return true;
         }
 
-        if ($letter->sent_at === null) {
+        // B3: a revoked version is history for staff only; members/mentor get the replacement.
+        if ($letter->sent_at === null || $letter->revoked_at !== null) {
             return false;
         }
 
@@ -93,6 +94,21 @@ class LetterPolicy
         return $letters->contains(fn (Letter $letter): bool => $letter->type === LetterType::Siswa && $letter->file_id !== null)
             && $letters->every(fn (Letter $letter): bool => $letter->sent_at === null);
     }
+
+    // --- B3: correction (backlog #11) ---
+
+    /**
+     * Cabut + issue the next version (RevokeLetter): `letter.generate` (Tata Usaha; Admin holds every
+     * permission), only the current version of an issued letter. Allowed at any stage, always audited.
+     */
+    public function revoke(User $user, Letter $letter): bool
+    {
+        return $this->viewQueue($user)
+            && $letter->revoked_at === null
+            && $letter->file_id !== null;
+    }
+
+    // --- end B3 ---
 
     public function update(User $user, Letter $letter): bool
     {

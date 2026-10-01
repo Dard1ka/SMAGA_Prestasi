@@ -24,6 +24,9 @@
             </li>
         @endforeach
     </ul>
+    @if ($d['inviteHref'] ?? null)
+        <x-sth.button variant="soft" size="sm" icon="plus" :href="$d['inviteHref']" class="self-start">Undang anggota pengganti</x-sth.button>
+    @endif
     @if ($d['mentor'])
         <div class="flex flex-col gap-2 border-t border-line pt-3">
             <span class="label">Guru pembimbing</span>

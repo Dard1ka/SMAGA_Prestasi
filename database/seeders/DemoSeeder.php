@@ -386,6 +386,9 @@ final class DemoSeeder extends Seeder
                 'status' => UserStatus::Active,
                 'must_change_password' => false,
                 'password_changed_at' => '2026-07-01 08:00:00',
+                // Same as B1's backfill for active accounts. Demo students all start pending_activation
+                // (CompleteActivation sets activated_at when they activate; alumni are archived).
+                'activated_at' => '2026-07-01 08:00:00',
             ]);
             $user->assignRole($role->value);
 

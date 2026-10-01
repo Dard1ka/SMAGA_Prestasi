@@ -5,6 +5,8 @@
 @extends('pdf::layout', ['title' => 'Surat Perintah Tugas '.$number])
 
 @section('content')
+    {{-- B5: fixed texts from the TU letter template (App\Actions\Templates\LetterTemplate, plain text, escaped). --}}
+    @php($tpl ??= $letterTemplate ?? \App\Actions\Templates\LetterTemplate::current())
     @include('pdf::partials.kop')
 
     <p class="judul">SURAT PERINTAH TUGAS</p>
@@ -16,7 +18,7 @@
             <td class="s">:</td>
             <td>
                 <table class="ol">
-                    <tr><td class="n">1.</td><td>Program kerja {{ \App\Actions\Letters\LetterContent::SCHOOL }} tahun pelajaran {{ $content->schoolYear }}.</td></tr>
+                    <tr><td class="n">1.</td><td>{{ $tpl->guruBasis($content->schoolYear) }}</td></tr>
                     <tr><td class="n">2.</td><td>{{ $content->guruBasis() }}</td></tr>
                 </table>
             </td>
@@ -37,8 +39,8 @@
             <td>
                 <table class="ol">
                     <tr><td class="n">1.</td><td class="justify">{{ $content->guruTask() }}</td></tr>
-                    <tr><td class="n">2.</td><td>Melaporkan hasil pelaksanaan tugas kepada pejabat pemberi tugas.</td></tr>
-                    <tr><td class="n">3.</td><td>Perintah ini dilaksanakan dengan penuh tanggung jawab.</td></tr>
+                    <tr><td class="n">2.</td><td>{{ $tpl->guruReport() }}</td></tr>
+                    <tr><td class="n">3.</td><td>{{ $tpl->guruClosing() }}</td></tr>
                 </table>
             </td>
         </tr>

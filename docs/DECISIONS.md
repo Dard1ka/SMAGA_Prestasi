@@ -1,7 +1,7 @@
 # DECISIONS.md — Log keputusan SMAGA Talent Hub (STH)
 
 > Log keputusan produk & teknis STH untuk SMA Negeri 3 Semarang. Dirujuk dari `CLAUDE.md` proyek.
-> Diperbarui: **1 Oktober 2026** (D-32…D-44) · Sumber: keputusan pengguna 30 Sep 2026, keputusan lead 1 Okt 2026, `DESIGN-SPEC-v2.md` §1–§5, `docs/SECURITY.md`.
+> Diperbarui: **1 Oktober 2026** (D-32…D-44; backlog D-45…D-60; integrasi W4 D-61…D-65) · Sumber: keputusan pengguna 30 Sep 2026, keputusan lead 1 Okt 2026, `DESIGN-SPEC-v2.md` §1–§5, `docs/SECURITY.md`.
 > **Status:** `final` = dipakai untuk implementasi · `sementara` = dipakai sekarang, akan ditinjau · `menunggu jawaban sekolah` = butuh konfirmasi sebelum dibangun.
 > **Aturan log:** entri tidak dihapus atau ditimpa. Keputusan yang berubah → entri baru dengan catatan "menggantikan D-xx", lalu status entri lama diubah menjadi `digantikan`.
 
@@ -53,6 +53,27 @@
 | D-42 | Staf login dengan **username atau email**, siswa dengan **NIS atau NISN** | Lead (1 Okt 2026) | final |
 | D-43 | Surat tugas: **Terbitkan** (nomor + PDF) dan **Kirim** adalah dua langkah; surat siswa mencetak NIS seperti template sekolah | Lead (1 Okt 2026) | final |
 | D-44 | `users.id` tetap bigint; tabel domain memakai ULID | Lead (1 Okt 2026) | final |
+| D-45 | Reset akun siswa oleh Admin memberi **kata sandi sementara acak, berlaku 72 jam** (K10), bukan pola kata sandi awal | Lead / B1 (1 Okt 2026) | sementara — bisa diubah user |
+| D-46 | Pemberian peran staf penting (Admin, Kepala Sekolah, Kesiswaan, Tata Usaha) butuh **persetujuan Admin kedua**, atau berlaku **24 jam** kemudian (bisa dibatalkan) bila hanya ada satu Admin; penurunan peran langsung berlaku | Lead / B5 (1 Okt 2026) | sementara — bisa diubah user |
+| D-47 | E-flyer Humas **tetap di disk privat**; publikasi terjadwal hanya mengubah status pada waktunya, memberi tahu siswa, dan mengingatkan Humas untuk mengunggah | Lead / B3 (1 Okt 2026) | sementara — bisa diubah user |
+| D-48 | Import siswa tetap **membersihkan** awalan `=`, `+`, `-`, `@` di sel dan **menandai** baris itu (tidak menolak barisnya) | Lead / B2 (1 Okt 2026) | sementara — bisa diubah user |
+| D-49 | Koreksi surat tugas = **satu langkah** (cabut + terbitkan versi baru dengan nomor baru; nomor lama tidak dipakai lagi), boleh di tahap mana pun, tanpa persetujuan kedua, **Kepala Sekolah selalu diberi tahu**; alasan hanya di log audit dan riwayat TU | Lead / B3 (1 Okt 2026) | sementara — bisa diubah user |
+| D-50 | Selama `menunggu_konfirmasi`, ketua boleh mengundang anggota tambahan/pengganti; siswa yang menolak tidak bisa diundang lagi ke tim yang sama; undangan kedaluwarsa di batas pendaftaran | Lead / B3 (1 Okt 2026) | sementara — bisa diubah user |
+| D-51 | User DB runtime `sth_app` memakai **hak per tabel**: `activity_log` dan `audit_seals` hanya `SELECT/INSERT`, `migrations` hanya `SELECT` | B6 (SECURITY §3h) (1 Okt 2026) | sementara — bisa diubah user |
+| D-52 | Peringkat di dalam aplikasi (`siswa.peringkat`) hanya **siswa aktif**; alumni hanya di peringkat publik | Lead / B4 (1 Okt 2026) | sementara — bisa diubah user |
+| D-53 | Ekspor Database prestasi = **unduhan langsung** setelah konfirmasi kata sandi (≤ 10 000 baris, bertanda air, teraudit); ekspor antre + tautan bertanda tangan menyusul bila perlu | Lead / B4 (1 Okt 2026) | sementara — bisa diubah user |
+| D-54 | Kontrol akun siswa: jendela aktivasi **14 hari** (Admin bisa ubah 1–30), salah kata sandi ke-**10** membekukan akun belum aktif, tautan "Bukan saya?" berlaku **7 hari** sekali pakai | B1 (1 Okt 2026) | sementara — bisa diubah user |
+| D-55 | Import siswa **> 50 baris** valid berjalan di antrean (potongan 100 baris); berkas import dihapus saat job selesai | B2 (1 Okt 2026) | sementara — bisa diubah user (penghapusan berkas: final di D-64) |
+| D-56 | Hash chain audit di tabel terpisah `audit_seals` (disegel setelah commit, SHA-256 biasa); `'unsafe-eval'` dihapus dari CSP | B2 (1 Okt 2026) | digantikan D-63 (hash chain) dan D-65 (CSP), keduanya final |
+| D-57 | Kepala Sekolah boleh mengekspor laporan prestasi (PDF/XLSX, bertanda air, teraudit, nama siswa tanpa NIS/NISN) | Lead / B5 (1 Okt 2026) | sementara — bisa diubah user |
+| D-58 | Ubah tanggal arsip siswa ikut menggeser `grade12_start_date`; memulihkan akun arsip wajib memakai tanggal arsip baru di masa depan | B5 (1 Okt 2026) | sementara — bisa diubah user |
+| D-59 | "Surat atas nama saya" (Kepala Sekolah) = surat yang terbit sejak penggantian Kepala Sekolah terakhir ke akun itu | B5 (1 Okt 2026) | sementara — bisa diubah user |
+| D-60 | Template surat TU = teks tetap + penanda `{sekolah}`, `{penyelenggara}`, `{tahun_ajaran}`; format nomor surat tetap hanya Admin | B5 (1 Okt 2026) | sementara — bisa diubah user |
+| D-61 | Akun staf baru dengan peran Admin, Kesiswaan, atau Tata Usaha dibuat **tanpa peran** + permintaan peran: **persetujuan Admin kedua**, atau **24 jam** (bisa dibatalkan) bila hanya ada satu Admin; Kepala Sekolah hanya lewat "Ganti Kepala Sekolah" | Lead / W4 (1 Okt 2026) | sementara — bisa diubah user |
+| D-62 | Mode uji OTP **hanya dari environment** (`APP_ENV=local` **dan** `STH_OTP_TEST_MODE=true`); setting `otp_test_mode` dihapus | W4 (1 Okt 2026) | final |
+| D-63 | Segel hash chain audit di tabel samping `audit_seals` + `audit_chain_heads`, ditulis **setelah commit** (SHA-256 biasa) | B2 / W4 (1 Okt 2026) | final (menggantikan bagian hash chain D-56) |
+| D-64 | Berkas spreadsheet import antre **dihapus saat job selesai** (SHA-256 tetap tercatat), bukan disimpan 7 hari | B2 / W4 (1 Okt 2026) | final (menetapkan bagian berkas D-55) |
+| D-65 | `'unsafe-eval'` **dihapus permanen** dari CSP (`livewire.csp_safe = true`) | B2 / W4 (1 Okt 2026) | final (menggantikan bagian CSP D-56) |
 | U-01…U-06 | Usulan keamanan yang belum diputuskan | Agent H (keamanan) | menunggu jawaban sekolah / sementara |
 
 ---
@@ -262,6 +283,138 @@ Dicatat oleh W3-A dari keputusan lead (CLAUDE.md §8, catatan `docs/dev-notes/`)
 
 ### D-44 · Kunci tabel · 1 Okt 2026
 - **Keputusan:** `users.id` tetap bigint (Fortify, sesi, spatie); tabel domain memakai ULID dan hanya ULID yang muncul di URL.
+- **Status:** final.
+
+## D3. Keputusan backlog B1–B6 (1 Okt 2026)
+
+Dicatat oleh B6 dari arahan lead dan catatan `docs/dev-notes/B1.md`…`B6.md`. Semua berstatus **sementara — bisa diubah
+user**: dipakai sekarang, lead/sekolah boleh menggantinya dengan entri baru. Tidak menggantikan entri lama kecuali disebut.
+
+### D-45 · Reset akun siswa oleh Admin · 1 Okt 2026
+- **Keputusan:** "Reset kata sandi & email" membuat **kata sandi sementara acak** 12 karakter (tanpa 0/O/1/l/I) yang berlaku **72 jam**, ditampilkan satu kali kepada Admin untuk diberikan langsung ke siswa (setelah cek identitas tatap muka). Email dilepas, semua sesi dicabut, pembekuan dicabut, siswa mengulang aktivasi. Pola kata sandi awal (D-24) tidak dipakai lagi untuk reset. Lebih dari 10 reset oleh satu Admin dalam 1 jam → peringatan ke semua Admin.
+- **Alasan:** Pola awal mudah ditebak oleh siapa pun yang tahu tanggal lahir; reset biasanya dipakai justru saat akun diambil alih (SECURITY §3a K10).
+- **Dampak:** `ResetStudentAccount` + `GenerateTemporaryPassword`; `users.initial_password_expires_at` (B1). Kata sandi sementara tidak pernah dicatat di log.
+- **Status:** sementara — bisa diubah user.
+
+### D-46 · Perubahan peran staf penting · 1 Okt 2026
+- **Keputusan:** Memberi peran Admin, Kepala Sekolah, Kesiswaan, atau Tata Usaha butuh **persetujuan Admin lain** (tidak pernah berlaku otomatis selama ada Admin lain). Bila peminta adalah satu-satunya Admin, perubahan berlaku **24 jam** setelah disimpan, Kepala Sekolah diberi tahu, dan Admin mana pun bisa membatalkan. Permintaan peran Admin yang menunggu ikut dihitung dalam batas 3 Admin (D-41). Menurunkan/mencabut peran langsung berlaku.
+- **Alasan:** Peran ini bisa menerbitkan surat atas nama Kepala Sekolah, mengubah poin, atau mengelola akun (SECURITY §3h maker-checker, §3m-9).
+- **Dampak:** Tabel `role_change_requests`, Actions `app/Actions/Roles/*` (`RequestRoleChange` satu-satunya pintu), layar persetujuan di Pengguna & peran (B5). Semua langkah teraudit. Terbuka: apakah **akun baru** berperan penting (`CreateStaffAccount`) juga perlu Admin kedua (dijawab di D-61: ya).
+- **Status:** sementara — bisa diubah user.
+
+### D-47 · E-flyer dan publikasi terjadwal · 1 Okt 2026
+- **Keputusan:** E-flyer tetap di disk privat (tidak ada URL publik). Saat `scheduled_at` tiba, sistem hanya mengubah status ke `dipublikasikan` (`published_at` = waktu jadwal), memberi tahu siswa, dan mengingatkan semua akun Humas untuk mengunggah ke kanal. Publikasi dilewati bila izin publikasi siswa dicabut.
+- **Alasan:** Aplikasi tidak memposting ke media sosial; menaruh flyer di disk publik membuka data anak tanpa kontrol (SECURITY §3d, D-16).
+- **Dampak:** `AutoPublishPublication`, job `AutoPublishPublications` (tiap 5 menit), notifikasi `PublicationDue` (B3).
+- **Status:** sementara — bisa diubah user.
+
+### D-48 · Sel formula saat import siswa · 1 Okt 2026
+- **Keputusan:** Import tetap **membersihkan** awalan `=`, `+`, `-`, `@` dari sel (bukan menolak baris) dan **menandai** baris itu ("Sel dibersihkan") di pratinjau dan laporan import.
+- **Alasan:** Data TU sering berisi nomor HP berawalan `+` atau tanda hubung; menolak baris akan menghambat import. Formula tidak pernah dievaluasi (OpenSpout), dan penandaan membuat perubahan terlihat (SECURITY §3f).
+- **Dampak:** `ImportStudents` / `StudentImportReport` (flag `sanitized`), tabel `student_imports.sanitized_rows` (B2).
+- **Status:** sementara — bisa diubah user.
+
+### D-49 · Koreksi surat tugas · 1 Okt 2026
+- **Keputusan:** Koreksi adalah **satu langkah**: surat lama dicabut dan versi baru terbit dengan **nomor baru** (nomor lama tidak pernah dipakai ulang). Boleh di tahap mana pun, tanpa persetujuan kedua, tetapi **Kepala Sekolah selalu diberi tahu**. Alasan (5–500 karakter) hanya tersimpan di log audit dan riwayat TU, tidak di email ke siswa/guru. Halaman verifikasi menampilkan "Dicabut" dan nomor penggantinya.
+- **Alasan:** Kesalahan surat perlu cepat dibetulkan; pemberitahuan ke Kepala Sekolah memenuhi SECURITY §3m-5 tanpa memperlambat TU.
+- **Dampak:** Kolom versi/pencabutan di `letters`, `RevokeLetter`, notifikasi `LetterRevised` (B3); pemberitahuan ke Kepala Sekolah dan daftar "Surat atas nama saya" (B5).
+- **Status:** sementara — bisa diubah user.
+
+### D-50 · Undangan anggota tim · 1 Okt 2026
+- **Keputusan:** Selama `menunggu_konfirmasi` dan pendaftaran lomba masih buka, ketua boleh mengundang anggota tambahan atau pengganti (≤ maks. anggota). Siswa yang menolak tidak bisa diundang lagi ke tim yang sama. Undangan yang belum dijawab kedaluwarsa di `registration_closes_at` (tercatat sebagai menolak); tim yang tersisa < 2 orang tetap menunggu sampai ketua membatalkan.
+- **Alasan:** Melengkapi D-36 tanpa membuka jalan "menitipkan" anggota setelah disetujui.
+- **Dampak:** `InviteMembers`, `ExpirePendingInvitations`, job `ExpireInvitations`, notifikasi `InvitationsExpired` (B3).
+- **Status:** sementara — bisa diubah user.
+
+### D-51 · Hak akses database per tabel · 1 Okt 2026
+- **Keputusan:** User DB runtime `sth_app` tidak punya hak tingkat database. `scripts/deploy/grants.sh` (dijalankan setelah setiap migrasi) memberi `SELECT/INSERT/UPDATE/DELETE` per tabel, kecuali `activity_log` dan `audit_seals` (hanya `SELECT/INSERT`) dan `migrations` (hanya `SELECT`).
+- **Alasan:** Audit log harus append-only bagi aplikasi (SECURITY §3h); hash chain (`audit_seals`) mendeteksi perubahan oleh akun DB lain.
+- **Dampak:** Kode aplikasi tidak boleh `UPDATE/DELETE` kedua tabel itu atau `TRUNCATE` apa pun; retensi audit (bila diputuskan) dijalankan operator. Detail: DEPLOY §8.2.
+- **Status:** sementara — bisa diubah user.
+
+### D-52 · Peringkat di dalam aplikasi · 1 Okt 2026
+- **Keputusan:** Layar **Peringkat** siswa (`siswa.peringkat`) hanya memuat **siswa aktif**, tanpa tombol "Tampilkan alumni", sehingga baris "Kamu" sama dengan peringkat di Beranda/Portofolio. Alumni tetap di peringkat publik (ditautkan dari layar itu). Nama siswa lain mengikuti aturan izin publikasi (D-38).
+- **Alasan:** Satu angka peringkat pribadi di semua layar (D-37).
+- **Dampak:** `Siswa\Peringkat` memakai `Ranker` yang sama dengan `PersonalRank` (B4).
+- **Status:** sementara — bisa diubah user.
+
+### D-53 · Ekspor Database prestasi · 1 Okt 2026
+- **Keputusan:** Ekspor Excel Database prestasi langsung diunduh setelah kata sandi dikonfirmasi dalam 15 menit terakhir; maks. 10 000 baris, setiap baris bertanda air "Diekspor oleh … waktu", sel aman dari formula, tanpa NISN/HP/email/tanggal lahir, tercatat `achievement.exported`.
+- **Alasan:** Data sekolah kecil; antrean + tautan bertanda tangan 15 menit (SECURITY §3m) menambah kerumitan tanpa manfaat besar sekarang.
+- **Dampak:** `ExportAchievements` (B4). Ekspor antre + signed URL menjadi tindak lanjut bila ekspor membesar (backlog).
+- **Status:** sementara — bisa diubah user.
+
+### D-54 · Parameter kontrol akun siswa · 1 Okt 2026
+- **Keputusan:** Kata sandi awal hanya berlaku dalam **jendela aktivasi 14 hari** sejak import (Admin bisa ubah 1–30 hari di Status aktivasi; berlaku untuk import berikutnya). Salah kata sandi ke-**10** pada akun siswa yang belum aktif membekukan akun dan memberi tahu Admin + Kesiswaan; Kesiswaan/Admin bisa membuka ulang 72 jam (K2). Email "Bukan saya?" dikirim saat aktivasi dan saat ganti email; tautannya sekali pakai, berlaku **7 hari**, dan pembekuan karena "Bukan saya?" hanya bisa dibuka Admin. Laporan aktivasi CSV memakai `;` + BOM UTF-8; tanda "di luar jam sekolah" = Senin–Jumat 06.30–15.30 WIB (asumsi).
+- **Alasan:** Kontrol kompensasi wajib untuk penerimaan risiko D-14 (SECURITY §3a K1–K3, K8, K9).
+- **Dampak:** Kolom kontrol di `users`, tabel `email_notices`, Actions `app/Actions/Accounts/*` (B1).
+- **Status:** sementara — bisa diubah user (jam sekolah dan jendela aktivasi perlu konfirmasi sekolah).
+
+### D-55 · Import siswa di antrean · 1 Okt 2026
+- **Keputusan:** Pratinjau (dry-run) tetap langsung untuk semua ukuran (maks. 3 000 baris). Import dengan **> 50 baris valid** berjalan di antrean dalam potongan 100 baris (satu transaksi per potongan; unggah ulang berkas yang sama melanjutkan). Berkas spreadsheet import antre dihapus saat job selesai (SHA-256 tetap tercatat), bukan disimpan 7 hari.
+- **Alasan:** Hash kata sandi ±180 ms/baris; 1 000 baris sinkron melewati batas waktu PHP/nginx production. Antrean tunggal tetap bisa mengirim OTP.
+- **Dampak:** `ImportStudentsJob`, tabel `student_imports` (B2).
+- **Status:** sementara — bisa diubah user (batas 50 baris dan potongan 100 baris). Penghapusan berkas ditetapkan final di D-64.
+
+### D-56 · Desain hash chain audit dan CSP · 1 Okt 2026
+- **Keputusan:** Hash chain audit disimpan di tabel terpisah `audit_seals` (SHA-256 biasa seperti SECURITY §3m-9, disegel setelah commit dalam transaksi pendek), bukan kolom di `activity_log`; verifikasi harian `sth:audit:verify`. `'unsafe-eval'` dihapus dari CSP untuk semua halaman (Livewire build CSP-safe).
+- **Alasan:** Tanpa kunci global di transaksi bisnis, `activity_log` tetap INSERT/SELECT saja (D-51). HMAC dengan kunci terpisah bisa jadi peningkatan berikutnya.
+- **Dampak:** `App\Support\Audit\AuditChain`, `config/livewire.php` (B2). Jangan menjadwalkan `activitylog:clean` tanpa memangkas `audit_seals` dengan cara yang sama.
+- **Status:** digantikan oleh D-63 (hash chain) dan D-65 (CSP); isinya sama, statusnya kini final.
+
+### D-57 · Laporan prestasi untuk Kepala Sekolah · 1 Okt 2026
+- **Keputusan:** Kepala Sekolah mendapat izin `achievement.export` untuk layar **Laporan** (PDF/XLSX per periode/bidang). Laporan internal memuat nama semua siswa, tidak pernah NIS/NISN; setiap berkas bertanda air "Diunduh oleh … · waktu · dokumen internal", butuh konfirmasi kata sandi, dan tercatat `school_report.exported`.
+- **Dampak:** `ExportPrestasiReport`, `RoleName::defaultPermissions()` (B5). Database prestasi tetap hanya Kesiswaan/Admin.
+- **Status:** sementara — bisa diubah user.
+
+### D-58 · Ubah tanggal arsip dan pulihkan akun · 1 Okt 2026
+- **Keputusan:** Mengubah tanggal arsip seorang siswa (alasan wajib) juga menggeser `grade12_start_date` (= tanggal − N bulan), agar perubahan pengaturan bulan arsip nanti tetap menghormati pergeseran itu. Memulihkan akun arsip (D-29) wajib memakai tanggal arsip baru setelah hari ini.
+- **Dampak:** `ChangeArchiveDate`, `UnarchiveStudent`, layar Arsip otomatis (B5).
+- **Status:** sementara — bisa diubah user.
+
+### D-59 · Daftar surat atas nama Kepala Sekolah · 1 Okt 2026
+- **Keputusan:** Layar "Surat atas nama saya" menampilkan semua surat tugas yang terbit sejak penggantian Kepala Sekolah terakhir yang diterapkan ke akun itu (semua surat bila belum pernah ada penggantian), termasuk yang dicabut (chip "Dicabut"). Setiap pencabutan surat memberi tahu Kepala Sekolah (D-49).
+- **Dampak:** `Kepsek\SuratSaya`, `LetterRevokedNotice` (B5); SECURITY §3m-5.
+- **Status:** sementara — bisa diubah user.
+
+### D-60 · Template surat oleh Tata Usaha · 1 Okt 2026
+- **Keputusan:** TU mengubah teks tetap surat (dasar, pembuka, penutup, kop, jabatan penanda tangan, kota) di layar **Template surat** dengan penanda `{sekolah}`, `{penyelenggara}`, `{tahun_ajaran}`; disimpan sebagai JSON di setting `letter_template`, berversi di log audit, Admin diberi tahu. Format nomor surat tetap hanya bisa diubah Admin (D-06).
+- **Dampak:** `LetterTemplate`, `UpdateLetterTemplate`, `TataUsaha\TemplateSurat` (B5). Template resmi sekolah tetap pertanyaan terbuka (§F-2).
+- **Status:** sementara — bisa diubah user.
+
+## D4. Keputusan integrasi W4 (1 Okt 2026)
+
+Dicatat oleh D1 dari `docs/dev-notes/W4.md` dan `B2.md`. Pilihan produk berstatus **sementara — bisa diubah user**;
+pengerasan keamanan berstatus **final** (mengubahnya butuh entri baru dan alasan keamanan).
+
+### D-61 · Akun staf baru berperan penting · 1 Okt 2026
+- **Keputusan:** "Tambah pengguna" dengan peran **Admin, Kesiswaan, atau Tata Usaha** membuat akun **tanpa peran** dan, dalam transaksi yang sama, permintaan perubahan peran (alasan "Peran awal akun staf baru."). Aturannya sama dengan D-46: Admin kedua menyetujui; bila pembuat adalah satu-satunya Admin, peran berlaku **24 jam** kemudian (Kepala Sekolah diberi tahu, Admin mana pun bisa membatalkan). Permintaan Admin yang menunggu ikut dihitung dalam batas 3 Admin (D-41); bila permintaan ditolak sistem (mis. batas tercapai), akun juga tidak jadi dibuat. Guru dan Humas langsung mendapat perannya. Kepala Sekolah tetap hanya lewat "Ganti Kepala Sekolah" (D-40).
+- **Alasan:** Tanpa aturan ini, membuat akun baru adalah jalan pintas melewati persetujuan Admin kedua untuk peran penting (SECURITY §3h maker-checker).
+- **Dampak:** `CreateStaffAccount` memanggil `RequestRoleChange::open()`; satu pemberitahuan per penerima (`RoleChangeNotice`, teks akun baru). Selama menunggu, akun hanya bisa aktivasi dan membuka halaman akunnya; `/beranda` menulis "Akunmu belum punya peran. …". Daftar Pengguna & peran menampilkan "Tanpa peran" + "Menunggu: <peran>". Audit `account.staff_created`: `role` (null untuk peran penting), `requested_role`, `username`. Peran dijalankan oleh jadwal `sth:peran-tertunda` (tiap 5 menit).
+- **Status:** sementara — bisa diubah user.
+
+### D-62 · Mode uji OTP hanya dari environment · 1 Okt 2026
+- **Keputusan:** Mode uji OTP (kode 6 digit apa pun diterima) hanya aktif bila `APP_ENV=local` **dan** `STH_OTP_TEST_MODE=true`. Tidak ada setting untuk itu: `SettingKey::OtpTestMode` dihapus dan migrasi W4 menghapus baris `otp_test_mode` yang tidak pernah dibaca. Admin › Pengaturan › Email dan Status sistem hanya menampilkan statusnya.
+- **Alasan:** Saklar di database bisa dinyalakan dari aplikasi; flag env tidak, dan aplikasi menolak boot bila flag menyala di luar `local` (D-15, SECURITY §3b). Nama flag yang berlaku adalah `STH_OTP_TEST_MODE` (D-15 masih menulis `STH_OTP_DEV_BYPASS`).
+- **Dampak:** `VerifyOtpCode::testModeActive()`, migrasi `2026_10_01_600000_w4_remove_otp_test_mode_setting.php`.
+- **Status:** final.
+
+### D-63 · Segel hash chain audit · 1 Okt 2026
+- **Keputusan:** Hash chain audit disimpan di tabel samping `audit_seals` (satu segel per baris `activity_log`, SHA-256 biasa atas hash sebelumnya + isi baris) dan `audit_chain_heads` (satu baris kepala rantai). Penyegelan berjalan **setelah commit** dalam transaksi pendek sendiri, jadi tidak ada kunci global di transaksi bisnis dan baris yang di-rollback tidak pernah disegel. `sth:audit:verify` harian; `sth:audit:seal` tiap 10 menit sebagai jaring pengaman.
+- **Alasan:** Deteksi perubahan sama kuatnya dengan kolom di `activity_log`, sementara `activity_log` tetap INSERT/SELECT saja (D-51).
+- **Dampak:** `App\Support\Audit\AuditChain` (B2). Menggantikan bagian hash chain D-56 (isi sama, status final). HMAC dengan kunci terpisah tetap peningkatan yang mungkin (backlog #34).
+- **Status:** final.
+
+### D-64 · Berkas import antre dihapus · 1 Okt 2026
+- **Keputusan:** Berkas spreadsheet import antre (berisi tanggal lahir) dihapus saat job selesai, berhasil atau gagal. SHA-256 berkas tetap tercatat di `student_imports` dan log audit. SECURITY §3f ("hapus setelah 7 hari") tidak berlaku lagi untuk import ini.
+- **Alasan:** Minimisasi data anak (UU PDP); setelah import selesai berkas tidak dibutuhkan lagi.
+- **Dampak:** `ImportStudentsJob` (B2). Menetapkan bagian berkas D-55 sebagai final; batas 50 baris dan potongan 100 baris tetap sementara (D-55).
+- **Status:** final.
+
+### D-65 · CSP tanpa `'unsafe-eval'` · 1 Okt 2026
+- **Keputusan:** `'unsafe-eval'` dihapus permanen dari Content-Security-Policy semua halaman, tidak bergantung pada konfigurasi lain. Livewire memakai build CSP-safe (`config/livewire.php` `csp_safe => true`).
+- **Alasan:** `'unsafe-eval'` membuka jalan eksekusi skrip bila ada celah XSS; semua ekspresi `wire:*` yang ada sudah CSP-safe.
+- **Dampak:** `SecurityHeaders` tidak pernah mengirim `'unsafe-eval'`; `tests/Feature/Security/CspSafeTest.php` memindai setiap view. Layar baru wajib memakai ekspresi sederhana (panggilan method dengan argumen literal). Menggantikan bagian CSP D-56.
 - **Status:** final.
 
 ## E. Usulan keamanan yang belum diputuskan

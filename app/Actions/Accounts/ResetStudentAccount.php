@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Actions\Accounts;
 
 use App\Actions\Fortify\LoginLockout;
-use App\Domain\Accounts\InitialPassword;
 use App\Enums\Permission;
 use App\Enums\UserStatus;
 use App\Models\OtpCode;
@@ -16,23 +15,30 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Admin "Reset akun siswa" (D-14 recovery, SECURITY K10 — see deviation note in docs/dev-notes/W1-C.md):
- * back to the initial password (hashed, must_change_password), bound email removed, open OTPs cancelled,
- * every session + remember token revoked, login lockout cleared, audited with the Admin's reason.
- * A disabled/archived account keeps its status (resetting never re-opens it).
+ * Admin "Reset kata sandi & email" for a student (D-14 recovery, SECURITY K10 — lead decision, B1):
+ * a RANDOM temporary password (12 characters, GenerateTemporaryPassword) is returned once for the Admin to
+ * hand over face to face; it is stored only as a hash, valid 72 hours (`initial_password_expires_at`) and must
+ * be changed at the next login (must_change_password). The initial birth-date pattern is no longer used here.
+ * Also: bound email removed, open OTPs cancelled, a K3/K8 freeze lifted, every session + remember token
+ * revoked, login lockout cleared, audited with the Admin's reason (never the password). A disabled/archived
+ * account keeps its status (resetting never re-opens it). More than 10 resets by one Admin within an hour
+ * alerts every Admin.
  */
 final class ResetStudentAccount
 {
     public function __construct(
-        private readonly InitialPassword $initialPassword,
+        private readonly GenerateTemporaryPassword $temporaryPassword,
         private readonly RevokeUserSessions $revokeSessions,
         private readonly LoginLockout $lockout,
+        private readonly SecurityAlerts $alerts,
     ) {}
 
     /**
+     * @return string the temporary password — display it once, never store or log it
+     *
      * @throws ValidationException
      */
-    public function handle(User $actor, User $student, string $reason): void
+    public function handle(User $actor, User $student, string $reason): string
     {
         Gate::forUser($actor)->authorize(Permission::UserResetPassword->value);
 
@@ -46,19 +52,28 @@ final class ResetStudentAccount
             throw ValidationException::withMessages(['user' => 'Tidak bisa me-reset akun sendiri.']);
         }
 
-        DB::transaction(function () use ($actor, $student, $reason): void {
+        $password = $this->temporaryPassword->handle();
+        $expiresAt = now()->addHours(AccountControls::TEMPORARY_PASSWORD_HOURS);
+
+        DB::transaction(function () use ($actor, $student, $reason, $password, $expiresAt): void {
             /** @var User $locked */
             $locked = User::query()->whereKey($student->getKey())->lockForUpdate()->firstOrFail();
-            $profile = $locked->student()->first();
 
-            if ($profile === null || $profile->birth_date === null) {
+            if (! $locked->student()->exists()) {
                 throw ValidationException::withMessages(['user' => 'Akun ini bukan akun siswa.']);
             }
 
+            $wasFrozen = AccountControls::frozenReason($locked);
+
             $locked->forceFill([
-                'password' => Hash::make($this->initialPassword->make($profile->birth_date)),
+                'password' => Hash::make($password),
                 'must_change_password' => true,
                 'password_changed_at' => null,
+                'initial_password_expires_at' => $expiresAt,
+                'failed_activation_attempts' => 0,
+                'frozen_at' => null,
+                'frozen_reason' => null,
+                'activated_at' => null,
                 'email' => null,
                 'email_verified_at' => null,
                 'status' => $locked->status?->canLogIn() ? UserStatus::PendingActivation : $locked->status,
@@ -73,7 +88,11 @@ final class ResetStudentAccount
                 ->performedOn($locked)
                 ->causedBy($actor)
                 ->event('account.reset')
-                ->withProperties(['reason' => $reason])
+                ->withProperties([
+                    'reason' => $reason,
+                    'temporary_password_expires_at' => $expiresAt->toIso8601String(),
+                    'unfrozen' => $wasFrozen,
+                ])
                 ->log('account.reset');
 
             $student->setRawAttributes($locked->getAttributes(), true);
@@ -81,5 +100,8 @@ final class ResetStudentAccount
 
         $this->revokeSessions->handle($student);
         $this->lockout->clear('u:'.$student->getKey());
+        $this->alerts->resetPerformed($actor);
+
+        return $password;
     }
 }

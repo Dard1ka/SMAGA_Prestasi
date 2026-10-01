@@ -46,8 +46,31 @@
                 @endif
             </div>
 
+            {{-- B2 (#19): queued import of many rows; polls while it runs. --}}
+            @if ($job)
+                <div class="flex flex-col gap-2" @if ($job->isActive()) wire:poll.2s @endif>
+                    @if ($job->isActive())
+                        <x-sth.alert :title="$job->status->label()">
+                            {{ $job->total_rows > 0 ? $job->processed_rows.' dari '.$job->total_rows.' baris diproses' : 'Menunggu giliran' }} · {{ $job->created_count }} akun dibuat.
+                            Halaman ini diperbarui otomatis dan boleh ditinggalkan.
+                        </x-sth.alert>
+                        <span class="block h-2 w-full overflow-hidden rounded-full bg-subtle" aria-hidden="true">
+                            <span class="block h-full rounded-full bg-primary w-pct-{{ $job->progressPercent() }}"></span>
+                        </span>
+                    @elseif ($job->status === \App\Enums\StudentImportStatus::Done)
+                        <x-sth.alert tone="success" :title="$job->created_count.' akun siswa dibuat'">
+                            {{ $job->total_rows - $job->created_count > 0 ? ($job->total_rows - $job->created_count).' baris tidak diimpor (bermasalah atau sudah terdaftar).' : 'Semua baris diimpor.' }}
+                        </x-sth.alert>
+                    @else
+                        <x-sth.alert tone="error" title="Impor gagal">{{ $job->error }} {{ $job->created_count > 0 ? $job->created_count.' akun sudah dibuat.' : '' }}</x-sth.alert>
+                    @endif
+                </div>
+            @endif
+
             @if ($preview === null)
-                <x-sth.empty-state icon="file" title="Belum ada file untuk diperiksa" :card="false">Unggah file Excel di langkah 2.</x-sth.empty-state>
+                @unless ($job)
+                    <x-sth.empty-state icon="file" title="Belum ada file untuk diperiksa" :card="false">Unggah file Excel di langkah 2.</x-sth.empty-state>
+                @endunless
             @else
                 @if ($imported)
                     <x-sth.alert tone="success" :title="$imported['created'].' akun siswa dibuat'">
@@ -63,6 +86,9 @@
                         <x-sth.stat-tile icon="alert" tone="red" label="Perlu diperbaiki" :value="(string) $invalidCount" />
                         <x-sth.stat-tile icon="users" tone="orange" label="Duplikat dalam file" :value="(string) $duplicateCount" />
                     </div>
+                @endif
+                @if ($sanitizedCount > 0)
+                    <p class="m-0 text-[13px] text-muted">{{ $sanitizedCount }} baris berisi sel yang diawali = + - @. Karakter itu dibuang (tanda "Sel dibersihkan"); periksa datanya sebelum mengimpor.</p>
                 @endif
 
                 <div class="seg self-start" role="group" aria-label="Tampilkan baris">
@@ -99,6 +125,9 @@
                                     @else
                                         <span class="text-[13px] font-semibold text-red">{{ implode(' ', $row['errors']) }}</span>
                                     @endif
+                                    @if ($row['sanitized'] ?? false)
+                                        <x-sth.chip tone="orange" size="sm">Sel dibersihkan</x-sth.chip>
+                                    @endif
                                 </td>
                             </tr>
                         @endforeach
@@ -113,8 +142,8 @@
                 @error('file')<x-sth.alert tone="error">{{ $message }}</x-sth.alert>@enderror
 
                 <div class="flex flex-wrap gap-2">
-                    @if ($imported)
-                        <x-sth.button variant="soft" icon="upload" wire:click="startOver">Impor file lain</x-sth.button>
+                    @if ($imported || $job)
+                        <x-sth.button variant="soft" icon="upload" wire:click="startOver" :disabled="$job?->isActive() ?? false">Impor file lain</x-sth.button>
                     @else
                         <x-sth.button icon="check" wire:click="import" wire:loading.attr="disabled" :disabled="$validCount === 0"
                             wire:confirm="Buat {{ $validCount }} akun siswa sekarang?">Impor {{ $validCount }} siswa</x-sth.button>

@@ -7,6 +7,7 @@ namespace App\Livewire\TataUsaha;
 use App\Actions\Letters\IssueLetters;
 use App\Actions\Letters\LetterContent;
 use App\Actions\Letters\LetterDraft;
+use App\Actions\Letters\RevokeLetter;
 use App\Actions\Letters\SendLetters;
 use App\Domain\Support\Dates;
 use App\Enums\FilePurpose;
@@ -74,6 +75,12 @@ class SuratTugas extends Component
 
     public string $tab = 'siswa';
 
+    /** B3: the current letter being corrected (cabut + new version), set only by startRevision(). */
+    #[Locked]
+    public ?string $revisingId = null;
+
+    public string $alasan = '';
+
     public function mount(?Registration $registration = null): void
     {
         Gate::authorize('viewQueue', Letter::class);
@@ -91,18 +98,134 @@ class SuratTugas extends Component
             $target->loadMissing('competition');
             $this->fill(LetterDraft::defaults($target));
 
-            // Already issued: show what was printed (date + basis are stored on the letter).
+            // Already issued: show what was printed (date, basis and — since B3 — schedule are stored on the letter).
             $issued = $target->letters()->orderBy('type', 'desc')->first();
 
             if ($issued !== null) {
-                $this->fill([
-                    'tanggalSurat' => $issued->issued_on->format('Y-m-d'),
-                    'dasarNomor' => (string) $issued->basis_number,
-                    'dasarTanggal' => $issued->basis_date?->format('Y-m-d') ?? '',
-                ]);
+                $this->fillFromLetter($issued);
             }
         }
     }
+
+    // --- B3: correction = cabut + new version (backlog #11) ---
+
+    /** Open the correction form for one current letter of the selected registration. */
+    public function startRevision(string $letterId): void
+    {
+        $letter = $this->currentLetter($letterId);
+        Gate::authorize('revoke', $letter);
+
+        $this->resetErrorBag();
+        $this->revisingId = (string) $letter->getKey();
+        $this->fillFromLetter($letter);
+        $this->tanggalSurat = CarbonImmutable::today()->format('Y-m-d');
+        $this->nomorSiswa = '';
+        $this->nomorGuru = '';
+        $this->alasan = '';
+        $this->tab = $letter->type === LetterType::Guru ? 'guru' : 'siswa';
+    }
+
+    public function cancelRevision(): void
+    {
+        $this->resetErrorBag();
+        $this->reset('revisingId', 'alasan', 'nomorSiswa', 'nomorGuru');
+
+        $current = $this->selected()->letters()->orderBy('type', 'desc')->first();
+
+        if ($current !== null) {
+            $this->fillFromLetter($current);
+        }
+    }
+
+    public function revise(RevokeLetter $revoke): void
+    {
+        $letter = $this->currentLetter((string) $this->revisingId);
+        $field = $letter->type === LetterType::Guru ? 'nomorGuru' : 'nomorSiswa';
+
+        $this->validate([
+            $field => ['required', 'regex:/^\d{1,5}$/'],
+            'alasan' => ['required', 'string', 'min:'.RevokeLetter::MIN_REASON, 'max:'.RevokeLetter::MAX_REASON],
+            'tanggalSurat' => ['required', 'date_format:Y-m-d'],
+            'dasarNomor' => ['nullable', 'string', 'max:150'],
+            'dasarTanggal' => ['nullable', 'date_format:Y-m-d'],
+            'hariTanggal' => ['required', 'string', 'max:150'],
+            'pukul' => ['required', 'string', 'max:150'],
+            'tempat' => ['required', 'string', 'max:150'],
+        ], [
+            'required' => 'Wajib diisi.',
+            'regex' => 'Isi nomor urut 1–99999.',
+            'alasan.min' => 'Tulis alasan pencabutan.',
+            'date_format' => 'Tanggal tidak valid.',
+            'max' => 'Maksimal :max karakter.',
+        ]);
+
+        try {
+            $new = $revoke->handle($this->user(), $letter, $this->alasan, (int) $this->$field, $this->draft());
+        } catch (ValidationException $e) {
+            $this->showActionErrors($e, ['sequence' => $field, 'reason' => 'alasan']);
+
+            return;
+        }
+
+        $this->reset('revisingId', 'alasan', 'nomorSiswa', 'nomorGuru');
+        $this->fillFromLetter($new);
+        $this->dispatch('sth-toast', tone: 'success', message: $new->sent_at !== null
+            ? 'Surat lama dicabut. Versi baru '.$new->full_number.' terkirim.'
+            : 'Surat lama dicabut. Versi baru '.$new->full_number.' siap dikirim.');
+    }
+
+    /**
+     * Revoked versions of the selected registration, newest first (view model).
+     *
+     * @return list<array{id: string, number: string, type: string, version: int, revokedOn: string, reason: string, by: string, replacement: ?string}>
+     */
+    private function history(Registration $registration): array
+    {
+        return $registration->letterHistory()
+            ->whereNotNull('revoked_at')
+            ->with(['replacement:id,replaces_letter_id,full_number', 'revoker:id,name'])
+            ->orderByDesc('revoked_at')
+            ->get()
+            ->map(fn (Letter $l): array => [
+                'id' => (string) $l->getKey(),
+                'number' => (string) $l->full_number,
+                'type' => $l->type->label(),
+                'version' => (int) $l->version,
+                'revokedOn' => (string) $l->revoked_at?->locale('id')->translatedFormat('j M Y, H.i'),
+                'reason' => (string) $l->revoke_reason,
+                'by' => (string) ($l->revoker?->name ?? '-'),
+                'replacement' => $l->replacement?->full_number,
+            ])
+            ->all();
+    }
+
+    private function currentLetter(string $letterId): Letter
+    {
+        $registration = $this->selected();
+
+        /** @var Letter $letter */
+        $letter = Letter::query()->where('registration_id', $registration->getKey())->current()->whereKey($letterId)->firstOrFail();
+
+        return $letter;
+    }
+
+    /** Form fields from what a letter printed (date, basis; schedule when stored). */
+    private function fillFromLetter(Letter $letter): void
+    {
+        $this->fill([
+            'tanggalSurat' => $letter->issued_on->format('Y-m-d'),
+            'dasarNomor' => (string) $letter->basis_number,
+            'dasarTanggal' => $letter->basis_date?->format('Y-m-d') ?? '',
+        ]);
+
+        foreach (['hariTanggal' => $letter->schedule_day, 'pukul' => $letter->schedule_time, 'tempat' => $letter->place] as $field => $value) {
+            if (is_string($value) && $value !== '') {
+                $this->$field = $value;
+            }
+        }
+    }
+
+    // --- end B3 ---
 
     public function setTab(string $tab): void
     {
@@ -228,6 +351,10 @@ class SuratTugas extends Component
         if ($registration !== null) {
             $hasMentor = $registration->mentor_id !== null;
             $content = LetterContent::build($registration, $this->draft(lenient: true));
+            // B3 (#11): correction mode — the corrected type gets a new number in the form and the preview.
+            $revising = $this->revisingId !== null ? $letters->firstWhere('id', $this->revisingId) : null;
+            $revisingType = $revising?->type;
+            $revisingField = $revisingType === LetterType::Guru ? 'nomorGuru' : 'nomorSiswa';
 
             $data += [
                 'hasMentor' => $hasMentor,
@@ -236,10 +363,15 @@ class SuratTugas extends Component
                 'guruParts' => $issue->numberParts(LetterType::Guru, $issuedOn),
                 'lastSiswa' => Letter::lastSequence(LetterType::Siswa, $issuedOn->year),
                 'lastGuru' => Letter::lastSequence(LetterType::Guru, $issuedOn->year),
-                'siswaNumber' => $letters->firstWhere('type', LetterType::Siswa)?->full_number,
-                'guruNumber' => $letters->firstWhere('type', LetterType::Guru)?->full_number,
+                'siswaNumber' => $revisingType === LetterType::Siswa ? null : $letters->firstWhere('type', LetterType::Siswa)?->full_number,
+                'guruNumber' => $revisingType === LetterType::Guru ? null : $letters->firstWhere('type', LetterType::Guru)?->full_number,
                 'ready' => $this->nomorSiswa !== '' && (! $hasMentor || $this->nomorGuru !== '')
                     && ! $this->getErrorBag()->hasAny(['nomorSiswa', 'nomorGuru']),
+                'revising' => $revising,
+                'revisingField' => $revisingField,
+                'reviseReady' => $revising !== null && $this->$revisingField !== '' && trim($this->alasan) !== ''
+                    && ! $this->getErrorBag()->has($revisingField),
+                'history' => $this->history($registration),
             ];
         }
 
@@ -324,12 +456,13 @@ class SuratTugas extends Component
         }
     }
 
-    private function showActionErrors(ValidationException $e): void
+    /** @param array<string, string> $extra more action key → form field mappings */
+    private function showActionErrors(ValidationException $e, array $extra = []): void
     {
         $general = [];
 
         foreach ($e->errors() as $key => $messages) {
-            $field = self::ERROR_MAP[$key] ?? null;
+            $field = $extra[$key] ?? self::ERROR_MAP[$key] ?? null;
 
             if ($field !== null) {
                 $this->addError($field, (string) $messages[0]);

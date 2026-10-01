@@ -166,7 +166,7 @@ it('returns only name and class from the member search, with exact NIS/NISN matc
     $form->set('q', 'Dimas');
     $hasil = $form->get('hasil');
     expect($hasil)->toHaveCount(1)
-        ->and(array_keys($hasil[0]))->toBe(['id', 'name', 'kelas', 'busy'])
+        ->and(array_keys($hasil[0]))->toBe(['id', 'name', 'kelas', 'busy', 'declined']) // B3: declined = refused this team before
         ->and($hasil[0]['name'])->toBe('Dimas Arya Nugroho'); // archived student excluded
 
     $form->set('q', substr($this->keisha->nis, 0, 5))->assertSet('hasil', []);

@@ -7,6 +7,7 @@
         <span class="-rotate-[30deg] text-[64px] font-bold tracking-[0.2em] text-line-soft">PRATINJAU</span>
     </div>
 
+    @php($tpl ??= $letterTemplate ?? \App\Actions\Templates\LetterTemplate::current()) {{-- B5: TU letter template --}}
     @include('livewire.tata-usaha.partials.kop')
 
     <div class="relative flex flex-col items-center gap-0.5">
@@ -15,12 +16,12 @@
     </div>
 
     <div class="relative grid grid-cols-[88px_10px_1fr] gap-y-0.5">
-        <span>Dasar</span><span>:</span><span>Surat dari {{ $content->organizer }}</span>
+        <span>Dasar</span><span>:</span><span>{{ $tpl->siswaBasis($content->organizer) }}</span>
         <span>Nomor</span><span>:</span><span>{{ $content->basisNumber ?? '[nomor surat undangan]' }}</span>
         <span>Tanggal</span><span>:</span><span>{{ $content->basisDateText ?? '[tanggal surat undangan]' }}</span>
     </div>
 
-    <p class="relative m-0">Kepala {{ \App\Actions\Letters\LetterContent::SCHOOL }} memberikan tugas kepada :</p>
+    <p class="relative m-0">{{ $tpl->siswaIntro() }}</p>
 
     <table class="relative w-full border-collapse text-[12px]">
         <thead>
@@ -51,7 +52,7 @@
         <span>Tempat</span><span>:</span><span>{{ $content->place !== '' ? $content->place : '[tempat]' }}</span>
     </div>
 
-    <p class="relative m-0 text-justify">Demikian surat tugas ini dibuat dan diberikan kepada yang bersangkutan untuk dapat dilaksanakan sebagaimana mestinya dengan penuh tanggung jawab.</p>
+    <p class="relative m-0 text-justify">{{ $tpl->siswaClosing() }}</p>
 
     @include('livewire.tata-usaha.partials.ttd')
 </div>

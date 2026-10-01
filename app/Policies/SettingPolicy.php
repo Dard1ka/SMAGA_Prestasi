@@ -35,4 +35,22 @@ final class SettingPolicy
     {
         return $actor->checkPermissionTo(Permission::SignatureManage->value);
     }
+
+    // --- B5: TU › Template surat (backlog #7) ---
+
+    /** Read the letter template (TU, Kepala Sekolah, Kesiswaan via `letter.view`; Admin). */
+    public function viewLetterTemplate(User $actor): bool
+    {
+        return $actor->checkPermissionTo(Permission::LetterView->value)
+            || $actor->checkPermissionTo(Permission::SettingManage->value);
+    }
+
+    /** Change it (TU via `letter.generate`; Admin via `setting.manage`). */
+    public function manageLetterTemplate(User $actor): bool
+    {
+        return $actor->checkPermissionTo(Permission::LetterGenerate->value)
+            || $actor->checkPermissionTo(Permission::SettingManage->value);
+    }
+
+    // --- end B5 ---
 }

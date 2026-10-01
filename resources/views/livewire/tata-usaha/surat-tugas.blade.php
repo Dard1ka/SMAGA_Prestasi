@@ -33,16 +33,23 @@
         </x-sth.empty-state>
     @else
         @php
-            $locked = $issued;
+            // B3 (#11): while correcting a letter the form opens again for that letter only.
+            $locked = $issued && ! $revising;
             $n = $content->studentCount();
         @endphp
         <div class="grid items-start gap-[22px] xl:grid-cols-[minmax(0,1fr)_minmax(0,560px)]">
             <div class="flex min-w-0 flex-col gap-[22px]">
                 <x-sth.card as="section" class="flex flex-col gap-5" aria-labelledby="langkah-1">
                     <div class="flex flex-wrap items-baseline justify-between gap-2">
-                        <h2 id="langkah-1" class="title-card">1. Isi nomor surat</h2>
-                        <span class="muted text-[13px]">{{ $locked ? 'Nomor sudah terbit, tidak bisa diubah' : 'Wajib sebelum membuat PDF' }}</span>
+                        <h2 id="langkah-1" class="title-card">{{ $revising ? '1. Koreksi surat' : '1. Isi nomor surat' }}</h2>
+                        <span class="muted text-[13px]">{{ $revising ? 'Versi baru memakai nomor baru' : ($locked ? 'Nomor sudah terbit, tidak bisa diubah' : 'Wajib sebelum membuat PDF') }}</span>
                     </div>
+
+                    @if ($revising)
+                        <x-sth.alert tone="warning" title="Surat {{ $revising->full_number }} akan dicabut">
+                            Nomor lama tetap tercatat dan tidak dipakai lagi. Periksa data di bawah, isi nomor baru, lalu tulis alasannya di langkah 3.
+                        </x-sth.alert>
+                    @endif
 
                     @if ($locked)
                         <dl class="m-0 grid gap-3 sm:grid-cols-[180px_1fr]">
@@ -56,7 +63,9 @@
                     @else
                         <div class="grid gap-4 md:grid-cols-2">
                             @foreach ([['nomorSiswa', 'Nomor surat siswa', $siswaParts, $lastSiswa, true], ['nomorGuru', 'Nomor surat guru pendamping', $guruParts, $lastGuru, $hasMentor]] as [$field, $label, $parts, $last, $enabled])
-                                @if ($enabled)
+                                @if ($revising && $field !== $revisingField)
+                                    @continue
+                                @elseif ($enabled)
                                     <x-sth.field :for="'f-'.$field" :label="$label" :hint="'Terakhir dipakai: '.($last ?? 'belum ada').'.'" :error="$errors->first($field)">
                                         <div @class(['flex items-stretch overflow-hidden rounded-control border bg-surface', 'border-red' => $errors->has($field), 'border-line-input' => ! $errors->has($field)])>
                                             <span class="num inline-flex items-center bg-subtle px-2.5 text-sm font-semibold text-ink-2">{{ $parts[0] }}</span>
@@ -116,7 +125,23 @@
                         @endif
                     </div>
 
-                    @if (! $issued)
+                    @if ($revising)
+                        {{-- B3 (#11): cabut + versi baru. --}}
+                        <form wire:submit="revise" class="flex flex-col gap-3" novalidate>
+                            <x-sth.textarea wire:model.live.debounce.400ms="alasan" label="Alasan pencabutan" rows="3" maxlength="500"
+                                            hint="Tercatat di riwayat surat. Contoh: tanggal pelaksanaan salah ketik." />
+                            <div class="flex flex-wrap items-center gap-3">
+                                <x-sth.button type="submit" variant="danger" icon="file" wire:loading.attr="disabled" wire:target="revise" :disabled="! $reviseReady || ! $signature">
+                                    Cabut dan terbitkan ulang
+                                </x-sth.button>
+                                <x-sth.button variant="quiet" wire:click="cancelRevision" wire:loading.attr="disabled">Batal</x-sth.button>
+                                <span wire:loading wire:target="revise" class="muted text-[13px]">Membuat PDF…</span>
+                            </div>
+                            <p class="muted m-0 text-[12.5px]">
+                                {{ $revising->sent_at ? 'Versi baru langsung dikirim, penerima diberi tahu.' : 'Versi baru menunggu dikirim bersama surat lain.' }}
+                            </p>
+                        </form>
+                    @elseif (! $issued)
                         <div class="flex flex-wrap items-center gap-3">
                             <x-sth.button icon="file" wire:click="generate" wire:loading.attr="disabled" wire:target="generate" :disabled="! $ready || ! $signature">
                                 Buat {{ $hasMentor ? '2 PDF' : 'PDF' }}
@@ -142,6 +167,11 @@
                                         <span class="muted text-[12.5px]">{{ $letter->type->label() }} · {{ \Illuminate\Support\Number::fileSize((int) $letter->file?->size, 0) }}{{ $letter->type === \App\Enums\LetterType::Siswa ? ' · '.$n.' siswa' : ' · dengan lampiran' }}</span>
                                     </span>
                                     <x-sth.button variant="quiet" size="sm" icon="download" wire:click="download('{{ $letter->id }}')">Unduh</x-sth.button>
+                                    @if ($letter->file_id)
+                                        <x-sth.button variant="quiet" size="sm" icon="edit" wire:click="startRevision('{{ $letter->id }}')">
+                                            Koreksi<span class="sr-only"> {{ $letter->full_number }}</span>
+                                        </x-sth.button>
+                                    @endif
                                 </li>
                             @endforeach
                         </ul>
@@ -156,6 +186,26 @@
                         </div>
                     @endif
                 </x-sth.card>
+
+                @if ($history !== [])
+                    {{-- B3 (#11): revoked versions stay on record (number never reused). --}}
+                    <x-sth.card as="section" class="flex flex-col gap-3" aria-labelledby="riwayat-surat">
+                        <h2 id="riwayat-surat" class="title-card">Riwayat pencabutan</h2>
+                        <ul class="m-0 flex list-none flex-col gap-2 p-0">
+                            @foreach ($history as $row)
+                                <li wire:key="riwayat-{{ $row['id'] }}" class="flex flex-col gap-1 rounded-tile border border-line p-3">
+                                    <span class="flex flex-wrap items-center gap-2">
+                                        <span class="num text-sm font-bold">{{ $row['number'] }}</span>
+                                        <x-sth.chip tone="red" size="sm">Dicabut</x-sth.chip>
+                                        <span class="muted text-[12.5px]">{{ $row['type'] }} · versi {{ $row['version'] }}</span>
+                                    </span>
+                                    <span class="text-[13px] text-ink-2">{{ $row['revokedOn'] }} oleh {{ $row['by'] }}{{ $row['replacement'] ? ' · diganti '.$row['replacement'] : '' }}</span>
+                                    <span class="text-[13px] text-ink-2">Alasan: {{ $row['reason'] }}</span>
+                                </li>
+                            @endforeach
+                        </ul>
+                    </x-sth.card>
+                @endif
             </div>
 
             <x-sth.card as="section" class="flex min-w-0 flex-col gap-4" aria-labelledby="langkah-2">

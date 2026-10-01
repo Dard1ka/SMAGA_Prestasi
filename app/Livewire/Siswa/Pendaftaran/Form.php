@@ -6,6 +6,7 @@ namespace App\Livewire\Siswa\Pendaftaran;
 
 use App\Actions\Registrations\CancelRegistration;
 use App\Actions\Registrations\CreateRegistration;
+use App\Actions\Registrations\InviteMembers;
 use App\Enums\MemberRole;
 use App\Enums\Participation;
 use App\Enums\RegistrationStatus;
@@ -22,6 +23,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
 
@@ -52,7 +54,7 @@ class Form extends Component
 
     public string $q = '';
 
-    /** @var list<array{id: string, name: string, kelas: string, busy: bool}> */
+    /** @var list<array{id: string, name: string, kelas: string, busy: bool, declined: bool}> */
     public array $hasil = [];
 
     public ?string $searchNote = null;
@@ -128,6 +130,8 @@ class Form extends Component
             ->get();
 
         $busy = Student::query()->whereKey($found->modelKeys())->busyIn($competition)->pluck('id')->all();
+        // B3 (#9): people who declined the running team cannot be invited again.
+        $declined = $this->current()?->members->whereNotNull('declined_at')->pluck('student_id')->all() ?? [];
 
         $this->hasil = $found
             ->sortBy(fn (Student $s): string => (string) $s->user?->name)
@@ -136,6 +140,7 @@ class Form extends Component
                 'name' => (string) $s->user?->name,
                 'kelas' => (string) $s->classroom?->name,
                 'busy' => in_array($s->getKey(), $busy, true),
+                'declined' => in_array($s->getKey(), $declined, true),
             ])
             ->values()
             ->all();
@@ -166,6 +171,34 @@ class Form extends Component
     public function hapus(string $studentId): void
     {
         $this->members = array_values(array_filter($this->members, fn (string $id): bool => $id !== $studentId));
+    }
+
+    /** B3 (#9): the ketua invites a (replacement) anggota from the search results while the team waits. */
+    public function undang(string $studentId, InviteMembers $invite): void
+    {
+        $registration = $this->current();
+        $candidate = collect($this->hasil)->firstWhere('id', $studentId);
+
+        if ($registration === null || Gate::denies('invite', $registration)) {
+            $this->addError('members', 'Anggota tidak bisa diundang lagi untuk pendaftaran ini.');
+
+            return;
+        }
+
+        if ($candidate === null || $candidate['busy'] || ($candidate['declined'] ?? false)) {
+            return;
+        }
+
+        try {
+            $invite->handle(auth()->user(), $registration, [$studentId]);
+        } catch (ValidationException $e) {
+            $this->addError('members', (string) collect($e->errors())->flatten()->first());
+
+            return;
+        }
+
+        $this->reset('q', 'hasil', 'searchNote');
+        $this->dispatch('sth-toast', message: 'Undangan terkirim ke '.$candidate['name'].'.', tone: 'success');
     }
 
     public function kirim(CreateRegistration $create): void
@@ -263,7 +296,7 @@ class Form extends Component
             ->where('competition_id', $this->competitionId)
             ->nonFinal()
             ->whereHas('members', fn (Builder $m) => $m->where('student_id', $me->getKey())->whereNull('declined_at'))
-            ->with(['members.student.user:id,name', 'members.student.classroom:id,name', 'mentor.staffProfile'])
+            ->with(['competition', 'members.student.user:id,name', 'members.student.classroom:id,name', 'mentor.staffProfile'])
             ->latest()
             ->first();
     }
@@ -313,6 +346,11 @@ class Form extends Component
         $confirmed = $anggota->whereNotNull('confirmed_at')->count();
         $mentor = $registration->mentor;
 
+        // B3 (#9): the ketua sees the whole team (incl. who declined) and may invite replacements.
+        $canInvite = Gate::allows('invite', $registration);
+        $max = $registration->competition?->max_team_size;
+        $active = $members->whereNull('declined_at')->count();
+
         $lombaSaya = Route::has('siswa.lomba-saya.show')
             ? route('siswa.lomba-saya.show', $registration)
             : (Route::has('siswa.lomba-saya.index') ? route('siswa.lomba-saya.index') : null);
@@ -331,6 +369,18 @@ class Form extends Component
             'phase' => $registration->status->phase(),
             'lombaSaya' => $lombaSaya,
             'undangan' => route('siswa.undangan.show', $registration),
+            'canInvite' => $canInvite,
+            'slotsLeft' => $max !== null && $max > 0 ? max(0, $max - $active) : null,
+            'team' => ! $canInvite ? [] : $members
+                ->sortBy(fn (RegistrationMember $m): string => ($m->role === MemberRole::Ketua ? '0' : '1').($m->invited_at?->format('YmdHis') ?? ''))
+                ->map(fn (RegistrationMember $m): array => [
+                    'id' => (string) $m->getKey(),
+                    'name' => (string) $m->student?->user?->name,
+                    'meta' => trim(($m->student?->classroom?->name ?? '').' · '.$m->role?->label(), ' ·'),
+                    'state' => $m->declined_at !== null ? 'declined' : ($m->confirmed_at !== null ? 'confirmed' : 'pending'),
+                ])
+                ->values()
+                ->all(),
         ];
     }
 }

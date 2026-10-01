@@ -25,11 +25,13 @@ Browser ──HTTPS──> Apache 2.4.29 (host, TLS, vhost prestasi.*) ──> 1
 | `docker/Dockerfile.prod` | image `sth-app` (php-fpm) dan `sth-web` (nginx + aset Vite) |
 | `docker/compose.prod.yaml` | stack production: app, queue, scheduler, web, db + batas RAM/CPU |
 | `docker/nginx/prod.conf`, `docker/php/*.prod.*`, `docker/php/{entrypoint.prod,healthcheck}.sh` | konfigurasi di dalam image |
-| `docker/mysql/initdb/10-app-user.sh` | membuat user DB runtime `sth_app` (hanya DML) saat DB pertama kali dibuat |
+| `docker/mysql/initdb/10-app-user.sh` | membuat user DB runtime `sth_app` (tanpa hak akses) saat DB pertama kali dibuat |
 | `docker/apache/prestasi.sman3-smg.sch.id.conf` | contoh vhost Apache host |
 | `docker/env.production.example` | template `.env` production |
 | `scripts/deploy/{deploy,backup,restore}.sh` | deploy, backup terenkripsi, restore |
-| `.github/workflows/ci.yml`, `.github/dependabot.yml` | CI + update dependensi |
+| `scripts/deploy/grants.sh` | hak akses `sth_app` per tabel (dijalankan otomatis setelah migrasi, §8.2) |
+| `.github/workflows/ci.yml`, `.github/dependabot.yml`, `.github/gitleaks.toml`, `.github/trivy/` | CI + update dependensi (§18) |
+| `tests/E2E/` | uji E2E Playwright (smoke) untuk CI dan lokal (§18) |
 
 Keputusan teknis yang perlu diketahui:
 - **Port proxy = `127.0.0.1:8080`** (ARCHITECTURE §9). SECURITY.md menulis 8081; bila 8080 sudah dipakai di
@@ -37,8 +39,10 @@ Keputusan teknis yang perlu diketahui:
 - **Subnet `edge` = `172.30.10.0/24`, gateway `172.30.10.1`.** Gateway ini satu-satunya IP yang dipercaya
   TrustProxies (`STH_TRUSTED_PROXY` di `.env`). Bila bentrok dengan jaringan sekolah, ganti `STH_EDGE_SUBNET`,
   `STH_EDGE_GATEWAY` dan `STH_TRUSTED_PROXY` bersamaan.
-- Tiga user DB: `root` (hanya backup/restore), `sth_migrate` (hanya migrasi saat deploy), `sth_app` (runtime,
-  hanya `SELECT/INSERT/UPDATE/DELETE`). Akibatnya kode aplikasi tidak bisa `TRUNCATE`/DDL saat runtime.
+- Tiga user DB: `root` (hanya backup/restore/`grants.sh`), `sth_migrate` (hanya migrasi saat deploy), `sth_app`
+  (runtime, hak akses **per tabel**: `SELECT/INSERT/UPDATE/DELETE`, kecuali `activity_log` dan `audit_seals` hanya
+  `SELECT/INSERT` dan `migrations` hanya `SELECT`). Akibatnya kode aplikasi tidak bisa `TRUNCATE`/DDL saat runtime dan tidak bisa mengubah
+  atau menghapus audit log (SECURITY §3h).
 - **Jangan pernah** menulis `STH_OTP_TEST_MODE` (atau `STH_OTP_DEV_BYPASS`) di `.env` production, bahkan `=false`
   (CLAUDE.md aturan 7). Nilai bawaannya sudah `false`; `deploy.sh` menolak jalan bila baris itu ada, dan compose
   memaksa `APP_ENV=production` + `APP_DEBUG=false`.
@@ -361,8 +365,9 @@ sudo -u sth -H bash /opt/sth/app/scripts/deploy/deploy.sh --first
 ```
 Urutan kerja skrip: cek `.env`/secrets → `git fetch` + checkout `origin/main` → build `sth-app:<commit>` dan
 `sth-web:<commit>` → start `db` (pertama kali: user `sth_migrate` + `sth_app` dibuat) → `php artisan migrate --force`
-sebagai `sth_migrate` → start app/queue/scheduler/web (entrypoint menjalankan `config:cache`, `route:cache`,
-`event:cache`, `view:cache`) → smoke test `/up` → catat ke `/opt/sth/deploy-history.log`.
+sebagai `sth_migrate` → `grants.sh` (hak akses `sth_app` per tabel, §8.2) → start app/queue/scheduler/web
+(entrypoint menjalankan `config:cache`, `route:cache`, `event:cache`, `view:cache`) → smoke test `/up` → catat ke
+`/opt/sth/deploy-history.log`.
 
 Deploy berikutnya cukup `sudo -u sth -H bash /opt/sth/app/scripts/deploy/deploy.sh` (tambahan otomatis: backup
 `pre-deploy-<commit>` dan mode maintenance selama migrasi). Tag/commit tertentu: `--ref v1.2.0`.
@@ -404,15 +409,98 @@ sthc exec app php artisan sth:create-admin             # interaktif: nama, nama 
 - Scheduler menjalankan `sth:arsip-otomatis` setiap hari 01.00 WIB dan menerapkan penggantian Kepala Sekolah yang
   sudah lewat masa tunda 24 jam (tiap 5 menit). Cek: `sthc exec scheduler php artisan schedule:list`.
 
-## 9. Email noreply (menyusul, D-15)
-Sampai relay/SMTP sekolah tersedia, `MAIL_*` tetap placeholder dan job email gagal di `failed_jobs`.
-**Go-live menunggu langkah ini** (SECURITY §4: OTP nyata diuji end-to-end). Saat siap:
-1. Pilih relay (mis. Google Workspace SMTP relay `smtp-relay.gmail.com:587` bila domain memakai Workspace, atau
-   penyedia email transaksional). Buat akun/kredensial khusus `noreply@sman3-smg.sch.id`.
-2. DNS: SPF, DKIM, DMARC untuk domain pengirim (koordinasi pengelola DNS).
-3. Isi `MAIL_HOST`, `MAIL_PORT`, `MAIL_SCHEME`, `MAIL_USERNAME`, `MAIL_PASSWORD` di `.env`, lalu
-   `sthc up -d --force-recreate app queue scheduler`.
-4. Uji kirim email OTP ke akun uji; `sthc exec app php artisan queue:failed` harus kosong.
+### 8.2 Hak akses database per tabel (`grants.sh`, SECURITY §3h)
+`sth_app` dibuat tanpa hak akses (`10-app-user.sh`); `deploy.sh` menjalankan `scripts/deploy/grants.sh` setelah setiap
+migrasi, dan `restore.sh --target production` setelah impor. Skrip membaca daftar tabel dari `information_schema`, jadi
+tabel baru dari migrasi baru otomatis ikut:
+
+| Tabel | Hak `sth_app` |
+|---|---|
+| `activity_log` (audit), `audit_seals` (hash chain audit) | `SELECT, INSERT` saja: tidak bisa `UPDATE`, `DELETE`, `TRUNCATE` |
+| `migrations` | `SELECT` (hanya `sth_migrate` yang menulis) |
+| semua tabel lain | `SELECT, INSERT, UPDATE, DELETE` |
+
+Tidak ada hak tingkat database (`sth.*`) atau global: hak seperti itu menimpa aturan per tabel, jadi skrip mencabutnya
+(setelah hak per tabel terpasang). Skrip juga mencabut hak berlebih, misalnya `UPDATE` pada `activity_log`.
+```bash
+sudo -u sth -H bash /opt/sth/app/scripts/deploy/grants.sh --check   # hanya cek; exit 1 bila tidak sesuai
+sudo -u sth -H bash /opt/sth/app/scripts/deploy/grants.sh           # terapkan (aman diulang)
+```
+Diuji 1 Okt 2026 di stack production sementara: sebagai `sth_app`, `UPDATE`/`DELETE`/`TRUNCATE activity_log`, `INSERT`
+ke `migrations` dan `CREATE TABLE` ditolak (error 1142); seeder, `sth:create-admin`, audit log, cache, dan halaman
+`/`, `/login`, `/prestasi`, `/peringkat` tetap jalan (`docs/dev-notes/B6.md`).
+Akibat untuk kode: aplikasi tidak pernah mengubah/menghapus baris `activity_log` dan `audit_seals` (segel hash chain
+hanya di-`INSERT`; satu-satunya baris yang di-`UPDATE` ada di `audit_chain_heads`); retensi audit (bila nanti
+diputuskan) dijalankan operator sebagai `sth_migrate`, bukan oleh scheduler.
+
+## 9. Email noreply (D-15) — syarat go-live
+Sampai SMTP siap, `MAIL_*` tetap placeholder dan job email (OTP, notifikasi) gagal di `failed_jobs`.
+**Go-live menunggu langkah ini** (SECURITY §3b, §4: OTP nyata diuji end-to-end). Penyedia SMTP masih pertanyaan
+terbuka untuk sekolah (CLAUDE.md §9).
+
+### 9.1 Pilih jalur kirim
+| Jalur | Kapan | `.env` |
+|---|---|---|
+| **A. Google Workspace SMTP relay** (disarankan bila domain sekolah memakai Google Workspace for Education) | admin Workspace sekolah bersedia mengatur relay | `MAIL_HOST=smtp-relay.gmail.com`, `MAIL_PORT=587`, `MAIL_SCHEME=smtp` (STARTTLS) |
+| **B. Mail server domain** (hosting/cPanel/Postfix sekolah) | sekolah sudah punya server email untuk `sman3-smg.sch.id` | `MAIL_HOST=<server SMTP>`, `MAIL_PORT=587` + `MAIL_SCHEME=smtp`, atau `465` + `smtps` |
+
+Jalur A, di Admin console Google (oleh admin Workspace): *Apps › Google Workspace › Gmail › Routing › SMTP relay
+service* → tambah aturan: pengirim yang diizinkan **hanya alamat di domain saya**, autentikasi **hanya dari IP berikut**
+(IP publik server STH) dan/atau **wajib autentikasi SMTP**, **wajib enkripsi TLS**. Buat pengguna/alias
+`noreply@sman3-smg.sch.id`. Dengan autentikasi IP: `MAIL_USERNAME=null`, `MAIL_PASSWORD=null`. Google sudah mematikan
+login kata sandi biasa (sejak Mar 2025); bila memakai autentikasi SMTP, gunakan *app password* akun noreply.
+
+Jalur B: minta kotak `noreply@sman3-smg.sch.id` dengan kata sandi khusus (bukan kata sandi orang), isi
+`MAIL_USERNAME`/`MAIL_PASSWORD`. Reputasi IP server hosting sering buruk: cek hasil uji §9.4 (spam atau tidak).
+
+Opsi lebih aman untuk reputasi domain utama (SECURITY §3b): subdomain pengirim terpisah, mis.
+`noreply@notif.sman3-smg.sch.id`, dengan SPF/DKIM/DMARC sendiri. Bila dipilih, ganti `MAIL_FROM_ADDRESS` dan nama domain
+di §9.2.
+
+### 9.2 DNS pengirim (oleh pengelola DNS `sman3-smg.sch.id`)
+Domain yang sama dipakai email guru/staf, jadi **gabungkan** dengan record yang sudah ada, jangan menambah record SPF
+kedua (dua record `v=spf1` = SPF gagal untuk semua email sekolah). Cek dulu:
+```bash
+dig +short TXT sman3-smg.sch.id | grep spf1
+dig +short TXT _dmarc.sman3-smg.sch.id
+```
+| Record | Nama | Isi (contoh) |
+|---|---|---|
+| SPF (TXT, gabungkan) | `sman3-smg.sch.id` | jalur A: `v=spf1 include:_spf.google.com ~all` · jalur B: tambahkan `ip4:<IP server mail>` atau `mx` ke record yang ada |
+| DKIM (TXT) | jalur A: `google._domainkey.sman3-smg.sch.id` · jalur B: selector dari panel hosting (mis. `default._domainkey`) | `v=DKIM1; k=rsa; p=<kunci publik 2048-bit dari Admin console/panel>` |
+| DMARC (TXT) | `_dmarc.sman3-smg.sch.id` | `v=DMARC1; p=none; rua=mailto:<kotak-laporan>@sman3-smg.sch.id; adkim=r; aspf=r` |
+
+Jalur A: DKIM dibuat di *Apps › Google Workspace › Gmail › Authenticate email* (2048 bit), pasang record, tunggu DNS
+menyebar, lalu klik **Start authentication**. DMARC: mulai `p=none` 2–4 minggu, baca laporan `rua`, lalu naikkan ke
+`p=quarantine` (koordinasikan: berlaku untuk semua email domain sekolah). Bila DMARC sudah ada, jangan buat yang kedua.
+
+### 9.3 Isi `.env` dan muat ulang
+```
+MAIL_MAILER=smtp
+MAIL_SCHEME=smtp                         # smtps untuk port 465
+MAIL_HOST=smtp-relay.gmail.com           # jalur B: server SMTP sekolah
+MAIL_PORT=587
+MAIL_USERNAME=null                       # jalur A dengan autentikasi IP; selain itu akun noreply
+MAIL_PASSWORD=null
+MAIL_EHLO_DOMAIN=prestasi.sman3-smg.sch.id
+MAIL_FROM_ADDRESS=noreply@sman3-smg.sch.id
+MAIL_FROM_NAME="SMAGA Talent Hub"
+```
+Lalu `sthc up -d --force-recreate app queue scheduler` (config di-cache ulang oleh entrypoint). `MAIL_MAILER=log/array`
+ditolak saat boot di production. Kontainer app/queue keluar lewat network `egress`; firewall host tidak boleh memblokir
+port 587/465 keluar.
+
+### 9.4 Uji
+```bash
+sthc exec app php artisan sth:mail-test <alamat-uji-anda>@sman3-smg.sch.id
+```
+Perintah mencetak mailer, server, dan pengirim (tanpa kata sandi), lalu mengirim satu email langsung (tanpa antrean).
+`Email uji diterima server` = SMTP benar; pesan `Gagal mengirim: …` menunjukkan masalah host/port/TLS/kredensial/jaringan.
+Di kotak masuk (Gmail: *Tampilkan asli*), **SPF, DKIM, dan DMARC harus `PASS`** dan email tidak masuk spam. Kirim juga ke
+satu alamat di luar domain (mis. Gmail pribadi petugas).
+
+Lalu uji alur nyata: login akun siswa uji → aktivasi → kode OTP masuk email (antrean `otp`), juga *Lupa kata sandi*.
+`sthc exec app php artisan queue:failed` harus kosong. Catat tanggal uji di checklist §17.
 
 ## 10. Operasional
 ```bash
@@ -467,8 +555,8 @@ sudo -u sth -H bash /opt/sth/app/scripts/deploy/restore.sh \
   --from /opt/sth/backups/sth-<tanggal-jam> --identity /media/<usb>/sth-backup-key.txt --target production
 ```
 Skrip meminta ketik `RESTORE`, membuat backup pengaman `pre-restore-*`, menyalakan maintenance, menghentikan
-queue/scheduler, `DROP` + impor database, memindahkan `storage/app/private` lama ke
-`private.before-restore-<stamp>` (hapus manual setelah dicek), lalu menyalakan layanan lagi.
+queue/scheduler, `DROP` + impor database, menerapkan ulang hak akses per tabel (`grants.sh`, §8.2), memindahkan
+`storage/app/private` lama ke `private.before-restore-<stamp>` (hapus manual setelah dicek), lalu menyalakan layanan lagi.
 `--db-only` / `--files-only` untuk restore sebagian.
 
 ## 13. Rutinitas bulanan (minggu ke-2, di luar jam sekolah)
@@ -478,6 +566,9 @@ queue/scheduler, `DROP` + impor database, memindahkan `storage/app/private` lama
       → pasang `/opt/docker/<ver>` + ganti symlink `current` + symlink `/usr/local/bin` → start → `sthc up -d` →
       smoke test → catat di `/opt/docker/CHANGELOG`. Simpan 2 versi terakhir untuk rollback.
 - [ ] Merge PR Dependabot (composer/npm/digest image/actions) yang CI-nya hijau, lalu `deploy.sh`.
+- [ ] Image alat CI yang tidak diurus Dependabot (§18): `TRIVY_IMAGE`, `GITLEAKS_IMAGE` di `ci.yml` dan Playwright di
+      `tests/E2E/compose.e2e.yaml` + `tests/E2E/package.json` (versi harus sama). Cek entri `.github/trivy/trivyignore.yaml`.
+- [ ] `bash scripts/deploy/grants.sh --check` → `OK` (§8.2).
 - [ ] `certbot renew --dry-run`; sisa masa sertifikat > 14 hari.
 - [ ] Uji restore (§12) + cek `/opt/sth/logs/backup.log` dan salinan off-site.
 - [ ] `df -h`, `docker system df`; bersihkan build cache lama: `docker builder prune --filter until=720h -f`.
@@ -513,6 +604,8 @@ Migrasi production hanya maju (CLAUDE.md aturan 8): jangan menjalankan `migrate:
 | Login rate limit mengunci satu sekolah | TrustProxies belum aktif / `STH_TRUSTED_PROXY` ≠ gateway `edge` (`docker network inspect sth_edge`) |
 | `Pool overlaps with other one on this address space` | subnet `edge` bentrok; ganti `STH_EDGE_SUBNET`/`STH_EDGE_GATEWAY`/`STH_TRUSTED_PROXY` |
 | Disk penuh | `docker system df`, `/opt/sth/backups`, log di volume `sth_storage` |
+| Log app: `SQLSTATE[42000] … 1142 … command denied to user 'sth_app'` | tabel baru tanpa hak akses (jalankan `grants.sh`, §8.2) atau kode mencoba `UPDATE/DELETE activity_log`/`TRUNCATE` (bug: laporkan) |
+| `sth:mail-test`: `Gagal mengirim` | host/port/`MAIL_SCHEME` salah, kredensial/app password, IP server belum diizinkan di relay, port 587/465 keluar diblokir (§9) |
 
 ## 17. Checklist go-live (infrastruktur, dari SECURITY §4)
 - [ ] Ubuntu Pro ter-attach **atau** risiko tanpa Pro ditandatangani Kepsek.
@@ -522,6 +615,35 @@ Migrasi production hanya maju (CLAUDE.md aturan 8): jangan menjalankan `migrate:
 - [ ] `sthc exec app id` = www-data; tanpa docker.sock/privileged; `APP_DEBUG=false`; `about` = semua CACHED.
 - [ ] `/.env`, `/.git/HEAD`, `/storage/logs/laravel.log`, `/composer.lock` → 404.
 - [ ] Cookie `__Host-`, HSTS tanpa `includeSubDomains`, Host asing ditolak, `X-Forwarded-Host` palsu tidak mengubah link.
-- [ ] SMTP noreply (§9) berjalan; `STH_OTP_TEST_MODE` tidak ada di `.env`.
+- [ ] SMTP noreply (§9): `sth:mail-test` OK, SPF/DKIM/DMARC `PASS`, OTP nyata diterima; `STH_OTP_TEST_MODE` tidak ada di `.env`.
+- [ ] `grants.sh --check` = OK: `sth_app` tidak bisa `UPDATE/DELETE activity_log` (§8.2).
+- [ ] CI hijau di commit yang dirilis: Pest, Pint, audit, gitleaks, Trivy, E2E (§18).
 - [ ] Backup harian terenkripsi + salinan off-site + **uji restore berhasil** (tanggal & bukti dicatat).
 - [ ] Kontak insiden (SECURITY §3l) terisi.
+
+## 18. CI dan uji E2E
+`.github/workflows/ci.yml` berjalan di setiap push ke `main` dan setiap PR; semua job wajib hijau sebelum merge:
+
+| Job | Isi |
+|---|---|
+| `php` | `composer validate`, Pint, Pest (SQLite), boot guard OTP |
+| `frontend` | `npm ci` + `vite build`; `npm audit` hanya peringatan |
+| `audit` | `composer audit --locked` |
+| `secrets` | gitleaks atas seluruh riwayat git (`.github/gitleaks.toml`: allowlist sempit untuk data fiktif) |
+| `docker` | build image production, cek non-root/.env/OPcache, **Trivy**: gagal bila ada kerentanan HIGH/CRITICAL yang sudah ada perbaikannya (pengecualian hanya di `.github/trivy/trivyignore.yaml` dengan alasan + tanggal kedaluwarsa ≤ 30 hari), validasi compose production |
+| `e2e` | stack dev di Docker sebagai project terpisah `sth-e2e` + Playwright: beranda publik 200, login siswa demo (Nadia), "Halo, Nadia" di Beranda, keluar |
+
+Semua action dipin ke commit SHA (komentar = versi); Dependabot memperbaruinya. Temuan gitleaks: **rotasi** rahasianya
+dulu, baru bersihkan riwayat; jangan masukkan rahasia asli ke allowlist.
+
+Uji E2E di komputer sendiri (PowerShell atau Git Bash, dari root repo, setelah first run CLAUDE.md §4). Project
+`sth-e2e` punya MySQL dan storage sendiri, tanpa port terbuka, jadi database dev tidak tersentuh:
+```bash
+docker compose -f compose.yaml -f tests/E2E/compose.e2e.yaml up -d --wait mysql app web
+docker compose -f compose.yaml -f tests/E2E/compose.e2e.yaml exec -T app sh tests/E2E/support/setup-app.sh
+docker compose -f compose.yaml -f tests/E2E/compose.e2e.yaml run --rm e2e
+docker compose -f compose.yaml -f tests/E2E/compose.e2e.yaml down -v
+```
+Laporan: `tests/E2E/playwright-report/index.html`. `setup-app.sh` membuat ulang DB project E2E (demo seeder) dan
+menyiapkan akun Nadia dengan kata sandi khusus E2E (`prepare-student.php`); kata sandi awal tidak pernah dipakai. Kedua
+skrip menolak jalan di luar project `sth-e2e` (`STH_E2E=1`). Tes baru: `tests/E2E/specs/*.spec.js`.

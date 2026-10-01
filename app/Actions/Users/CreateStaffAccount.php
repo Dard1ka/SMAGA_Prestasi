@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace App\Actions\Users;
 
+use App\Actions\Roles\PrivilegedRoles;
+use App\Actions\Roles\RequestRoleChange;
 use App\Enums\RoleName;
 use App\Enums\UserStatus;
+use App\Models\RoleChangeRequest;
 use App\Models\StaffProfile;
 use App\Models\User;
 use App\Notifications\Admin\StaffAccountChanged;
@@ -24,11 +27,23 @@ use Illuminate\Validation\ValidationException;
  * shown again, never logged); the account starts `pending_activation` + must_change_password, so the owner
  * changes it, binds an email and sets up 2FA on first login. Audited; Admins are notified.
  *
+ * Lead decision (W4, same rule as role changes, backlog #13/#29): a PRIVILEGED role (admin, tata_usaha, kesiswaan)
+ * is never given at creation. The account is created WITHOUT a role plus a pending RoleChangeRequest in the same
+ * transaction (RequestRoleChange::open): a second Admin approves it, or — when the creator is the only Admin — it
+ * applies after 24 h unless cancelled. Until then the account can only activate and use its account pages.
+ * Non-privileged roles (guru, humas) are given at once.
+ *
  * @phpstan-type StaffData array{name: string, username: string, email?: ?string, role: string, password: string, honorific?: ?string, nip?: ?string, rank?: ?string, position?: ?string}
  */
 final class CreateStaffAccount
 {
-    public function __construct(private readonly AdminRecipients $recipients) {}
+    /** Reason stored on the role request of a new privileged account (shown to the approving Admin). */
+    public const NEW_ACCOUNT_REASON = 'Peran awal akun staf baru.';
+
+    public function __construct(
+        private readonly AdminRecipients $recipients,
+        private readonly RequestRoleChange $roleRequests,
+    ) {}
 
     /**
      * @param  array<string, mixed>  $data
@@ -60,17 +75,10 @@ final class CreateStaffAccount
         ])->validate();
 
         $role = RoleName::from($valid['role']);
+        $privileged = PrivilegedRoles::isPrivileged($role);
 
-        $user = DB::transaction(function () use ($actor, $valid, $role): User {
-            if ($role === RoleName::Admin) {
-                // Lock the admin accounts so two parallel requests cannot pass the limit together.
-                User::query()->role(RoleName::Admin->value)->lockForUpdate()->get();
-
-                if (StaffRoles::adminCount() >= StaffRoles::MAX_ADMINS) {
-                    throw ValidationException::withMessages(['role' => 'Sudah ada '.StaffRoles::MAX_ADMINS.' akun Admin.']);
-                }
-            }
-
+        /** @var array{0: User, 1: ?RoleChangeRequest} $result */
+        $result = DB::transaction(function () use ($actor, $valid, $role, $privileged): array {
             $user = new User;
             $user->forceFill([
                 'name' => trim((string) $valid['name']),
@@ -83,7 +91,9 @@ final class CreateStaffAccount
                 'password_changed_at' => null,
             ])->save();
 
-            $user->assignRole($role->value);
+            if (! $privileged) {
+                $user->assignRole($role->value);
+            }
 
             StaffProfile::query()->create([
                 'user_id' => $user->getKey(),
@@ -97,11 +107,28 @@ final class CreateStaffAccount
                 ->performedOn($user)
                 ->causedBy($actor)
                 ->event('account.staff_created')
-                ->withProperties(['role' => $role->value, 'username' => $user->username])
+                ->withProperties([
+                    'role' => $privileged ? null : $role->value,
+                    'requested_role' => $privileged ? $role->value : null,
+                    'username' => $user->username,
+                ])
                 ->log('account.staff_created');
 
-            return $user;
+            // Same checks as "Ubah peran": one pending request, 3-Admin limit incl. pending, delay when alone.
+            $request = $privileged
+                ? $this->roleRequests->open($actor, $user, $role, self::NEW_ACCOUNT_REASON)
+                : null;
+
+            return [$user, $request];
         });
+
+        [$user, $request] = $result;
+
+        if ($request !== null) {
+            $this->roleRequests->notifyRequested($actor, $user, $request, newAccount: true);
+
+            return $user;
+        }
 
         Notification::send(
             $this->recipients->admins(),

@@ -7,6 +7,7 @@
         <span class="-rotate-[30deg] text-[64px] font-bold tracking-[0.2em] text-line-soft">PRATINJAU</span>
     </div>
 
+    @php($tpl ??= $letterTemplate ?? \App\Actions\Templates\LetterTemplate::current()) {{-- B5: TU letter template --}}
     @include('livewire.tata-usaha.partials.kop')
 
     <div class="relative flex flex-col items-center gap-0.5">
@@ -17,7 +18,7 @@
     <div class="relative grid grid-cols-[60px_10px_1fr] gap-y-0.5">
         <span>Dasar</span><span>:</span>
         <ol class="m-0 flex list-decimal flex-col gap-0.5 pl-4">
-            <li>Program kerja {{ \App\Actions\Letters\LetterContent::SCHOOL }} tahun pelajaran {{ $content->schoolYear }}.</li>
+            <li>{{ $tpl->guruBasis($content->schoolYear) }}</li>
             <li>{{ $content->guruBasis() }}</li>
         </ol>
     </div>
@@ -29,8 +30,8 @@
         <span>Untuk</span><span>:</span>
         <ol class="m-0 flex list-decimal flex-col gap-0.5 pl-4">
             <li class="text-justify">{{ $content->guruTask() }}</li>
-            <li>Melaporkan hasil pelaksanaan tugas kepada pejabat pemberi tugas.</li>
-            <li>Perintah ini dilaksanakan dengan penuh tanggung jawab.</li>
+            <li>{{ $tpl->guruReport() }}</li>
+            <li>{{ $tpl->guruClosing() }}</li>
         </ol>
     </div>
 

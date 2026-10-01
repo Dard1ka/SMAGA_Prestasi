@@ -6,8 +6,13 @@ namespace App\Livewire\Akun;
 
 use App\Actions\Accounts\ImportStudents;
 use App\Domain\Archive\SchoolYear;
+use App\Domain\Files\InvalidUpload;
+use App\Domain\Files\StoreUpload;
 use App\Enums\Permission;
+use App\Enums\StudentImportStatus;
+use App\Jobs\ImportStudentsJob;
 use App\Livewire\Kesiswaan\Concerns\WithKesiswaanBadges;
+use App\Models\StudentImport;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\View\View;
@@ -29,6 +34,8 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
  * template (generated on the fly), upload + choose the tahun ajaran → dry run with ImportStudents,
  * review valid/invalid rows, then import. The preview rows stay server-side in the cache (keyed per user),
  * never in the Livewire payload. The initial password pattern (D-24) is never shown or described.
+ * B2 (backlog #19): more than ImportStudentsJob::SYNC_MAX_ROWS valid rows → the commit is queued (StudentImport row,
+ * progress polled with wire:poll); rows whose cells lost a leading = + - @ show "Sel dibersihkan".
  */
 #[Title('Import data siswa')]
 #[Layout('layouts::app', ['subtitle' => 'Akun siswa dibuat otomatis dari file Excel.'])]
@@ -56,10 +63,15 @@ class ImportSiswa extends Component
     #[Locked]
     public ?array $imported = null;
 
+    /** B2 (#19): the queued import (StudentImport id) whose progress is polled. */
+    #[Locked]
+    public ?string $importId = null;
+
     public function mount(): void
     {
         $this->authorize(Permission::StudentImport->value);
         $this->schoolYear = SchoolYear::containing(CarbonImmutable::now())->toString();
+        $this->importId = StudentImport::query()->activeFor($this->actor())->latest()->value('id');
     }
 
     public function downloadTemplate(): BinaryFileResponse
@@ -129,6 +141,21 @@ class ImportSiswa extends Component
             return;
         }
 
+        $preview = $this->preview();
+
+        if ($preview === null) {
+            $this->addError('file', 'Pratinjau sudah kedaluwarsa. Unggah file lagi.');
+
+            return;
+        }
+
+        // B2 (#19): many rows → queued job with progress (password hashing would outlast the request timeout).
+        if (count(array_filter($preview['rows'], fn (array $r): bool => $r['errors'] === [])) > ImportStudentsJob::SYNC_MAX_ROWS) {
+            $this->queueImport(app(StoreUpload::class));
+
+            return;
+        }
+
         try {
             $report = $import->handle($this->actor(), (string) $this->file->getRealPath(), $this->extension(), $this->schoolYear, dryRun: false);
         } catch (ValidationException $e) {
@@ -144,8 +171,46 @@ class ImportSiswa extends Component
     public function startOver(): void
     {
         $this->forgetPreview();
-        $this->reset(['file', 'imported', 'filter']);
+        $this->reset(['file', 'imported', 'filter', 'importId']);
         $this->resetErrorBag();
+    }
+
+    /**
+     * B2 (#19): keep the spreadsheet privately (StoreUpload::storeSpreadsheet), record a StudentImport and queue
+     * ImportStudentsJob; render() then shows its progress (wire:poll). One active import per person at a time.
+     */
+    private function queueImport(StoreUpload $store): void
+    {
+        $actor = $this->actor();
+        $this->authorize('create', StudentImport::class);
+
+        if (StudentImport::query()->activeFor($actor)->exists()) {
+            $this->addError('file', 'Masih ada impor yang berjalan. Tunggu sampai selesai.');
+
+            return;
+        }
+
+        try {
+            $file = $store->storeSpreadsheet($this->file, $actor, ImportStudents::MAX_BYTES);
+        } catch (InvalidUpload $e) {
+            $this->addError('file', $e->getMessage());
+
+            return;
+        }
+
+        $import = new StudentImport([
+            'user_id' => $actor->getKey(),
+            'extension' => $this->extension(),
+            'school_year' => $this->preview()['schoolYear'] ?? $this->schoolYear,
+            'file_name' => $file->original_name,
+            'file_sha256' => $file->sha256,
+        ]);
+        $import->forceFill(['status' => StudentImportStatus::Queued, 'file_id' => $file->getKey()])->save();
+
+        $this->importId = $import->getKey();
+        ImportStudentsJob::dispatch($import->getKey());
+
+        $this->dispatch('sth-toast', message: 'Impor berjalan di latar belakang. Kemajuannya tampil di sini.', tone: 'info');
     }
 
     /** "Unduh baris bermasalah": row number, name, NIS, class and the errors (formula-safe). */
@@ -187,8 +252,10 @@ class ImportSiswa extends Component
         $invalid = array_values(array_filter($rows, fn (array $r): bool => $r['errors'] !== []));
         $duplicates = count(array_filter($invalid, fn (array $r): bool => collect($r['errors'])->contains(fn (string $e): bool => str_contains($e, 'dobel di file'))));
         $list = $this->filter === 'bad' ? $invalid : $rows;
+        $job = $this->importId !== null ? StudentImport::query()->find($this->importId) : null;
+        $job = $job !== null && $this->actor()->can('view', $job) ? $job : null;
         $step = match (true) {
-            $preview !== null || $this->imported !== null => 3,
+            $preview !== null || $this->imported !== null || $job !== null => 3,
             default => 2,
         };
 
@@ -199,6 +266,8 @@ class ImportSiswa extends Component
             'validCount' => count($rows) - count($invalid),
             'invalidCount' => count($invalid),
             'duplicateCount' => $duplicates,
+            'sanitizedCount' => count(array_filter($rows, fn (array $r): bool => $r['sanitized'] ?? false)),
+            'job' => $job,
             'list' => array_map(fn (array $r): array => [
                 ...$r,
                 'grade12' => self::monthLabel($r['grade12_start_date']),

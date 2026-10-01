@@ -3,6 +3,8 @@
 declare(strict_types=1);
 
 use App\Enums\RoleName;
+use App\Livewire\Admin\AuditLog;
+use App\Livewire\Admin\Ringkasan;
 use App\Support\Navigation;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Feature\Admin\AdminTestHelpers as A;
@@ -25,6 +27,9 @@ dataset('admin screens', [
     'pengaturan email' => ['admin.pengaturan', ['tab' => 'email']],
     'pengaturan publik' => ['admin.pengaturan', ['tab' => 'publik']],
     'pengguna' => ['admin.pengguna.index', []],
+    'status aktivasi' => ['admin.aktivasi.index', []],
+    'arsip otomatis' => ['admin.arsip.index', []],
+    'log audit' => ['admin.audit.index', []],
 ]);
 
 it('opens every admin screen for an Admin with a confirmed password', function (string $route, array $query): void {
@@ -43,7 +48,7 @@ it('asks for the password again before the sensitive admin screens', function (s
 it('denies admin screens to every other role', function (RoleName $role): void {
     $user = $role === RoleName::Siswa ? H::activeStudent()->user->fresh() : A::staff($role);
 
-    foreach (['admin.ringkasan', 'admin.pengaturan', 'admin.pengguna.index'] as $route) {
+    foreach (['admin.ringkasan', 'admin.pengaturan', 'admin.pengguna.index', 'admin.aktivasi.index', 'admin.arsip.index', 'admin.audit.index'] as $route) {
         $this->actingAs($user)->withSession(A::passwordConfirmed())->get(route($route))->assertForbidden();
     }
 })->with([RoleName::Siswa, RoleName::Guru, RoleName::Kesiswaan, RoleName::KepalaSekolah, RoleName::TataUsaha, RoleName::Humas]);
@@ -74,6 +79,24 @@ it('shows blockers on the status page when nothing is configured', function (): 
         ->assertSee('Belum ada akun Kepala Sekolah');
 });
 
+it('shows the backlog audit events on the status page with the Log audit labels (W4)', function (): void {
+    $admin = A::admin();
+
+    foreach (['role.change_requested', 'role.change_approved', 'role.change_cancelled', 'account.unarchived', 'student.archive_date_changed', 'audit.exported'] as $event) {
+        expect(Ringkasan::EVENTS)->toHaveKey($event);
+    }
+
+    expect(AuditLog::EVENT_LABELS)->toMatchArray(Ringkasan::EVENTS);
+
+    activity('account')->causedBy($admin)->event('role.change_requested')->log('role.change_requested');
+    activity('account')->causedBy($admin)->event('account.unarchived')->log('account.unarchived');
+
+    $this->actingAs($admin)->get(route('admin.ringkasan'))
+        ->assertOk()
+        ->assertSee('Perubahan peran diminta')
+        ->assertSee('Akun dipulihkan dari arsip');
+});
+
 it('links the role landings from the menus (UI-MAP .beranda names first)', function (): void {
     $sections = Navigation::for(['name' => 'Operator', 'roles' => ['admin']], 'admin', [], 'admin.beranda')['sections'];
     $items = collect($sections)->flatMap(fn (array $s) => $s['items'])->keyBy('key');
@@ -83,7 +106,15 @@ it('links the role landings from the menus (UI-MAP .beranda names first)', funct
         ->and($items['pengaturan']['route'])->toBe('admin.pengaturan')
         ->and($items['pengguna']['route'])->toBe('admin.pengguna.index')
         ->and($items['ringkasan']['route'])->toBe('admin.ringkasan')
-        ->and($items['arsip']['href'])->toBe(route('admin.pengaturan', ['tab' => 'batas']));
+        ->and($items['arsip']['route'])->toBe('admin.arsip.index') // B5/W4: no Pengaturan › Batas & arsip fallback any more
+        ->and($items['arsip']['href'])->toBe(route('admin.arsip.index'))
+        ->and($items['aktivasi']['route'])->toBe('admin.aktivasi.index')
+        ->and($items['audit']['route'])->toBe('admin.audit.index')
+        ->and(collect($sections)->pluck('label')->all())->toBe(['Menu', 'Data', 'Sistem']);
+
+    $definition = collect(Navigation::definitions()['admin']['sections'])->flatMap(fn (array $s) => $s['items'])->keyBy('key');
+    expect($definition['arsip']['route'])->toBe(['admin.arsip.index'])
+        ->and($definition['arsip'])->not->toHaveKey('query');
 
     foreach (['kepala_sekolah' => ['dashboard', 'kepsek.beranda'], 'tata_usaha' => ['surat', 'tu.beranda'], 'humas' => ['publikasi', 'humas.beranda']] as $role => [$key, $route]) {
         $roleItems = collect(Navigation::for(['name' => 'X', 'roles' => [$role]], $role)['sections'])->flatMap(fn (array $s) => $s['items'])->keyBy('key');

@@ -2,6 +2,7 @@
     Base of every surat tugas PDF (rendered by App\Domain\Letters\PdfRenderer with dompdf: no remote, no JS,
     no PHP, file:// inside the sandbox only). Data is printed with {{ }} only. Core font Times (no font files).
     Vars: $title · $verification (['code' => …, 'url' => …]) · $pdfImages['qr.png'] (sandbox path)
+          · $replaces (optional, B3: full number of the revoked letter this version replaces)
 --}}
 <!DOCTYPE html>
 <html lang="id">
@@ -64,6 +65,7 @@
                 <td>
                     Keaslian surat ini dapat diperiksa dengan memindai kode QR atau membuka {{ $verification['url'] }}<br>
                     Kode verifikasi: {{ $verification['code'] }}
+                    @if (! empty($replaces))<br>Surat ini menggantikan surat nomor {{ $replaces }} yang telah dicabut.@endif
                 </td>
             </tr>
         </table>

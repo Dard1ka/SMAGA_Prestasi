@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Actions\Settings;
 
 use App\Actions\Users\AdminRecipients;
+use App\Domain\Files\InvalidUpload;
+use App\Domain\Files\StoreUpload;
 use App\Domain\Files\UploadRules;
 use App\Enums\FilePurpose;
 use App\Enums\SettingKey;
@@ -16,21 +18,17 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Notification;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
-use Intervention\Image\Drivers\Gd\Driver;
-use Intervention\Image\Encoders\PngEncoder;
-use Intervention\Image\ImageManager;
 use Throwable;
 
 /**
  * The single signature + stamp image printed on every surat tugas (SECURITY §3m-5, UI-MAP #24):
- * Admin only (`signature.manage`), PNG ≤ 1 MB, checked with App\Domain\Files\UploadRules (extension +
- * sniffed MIME), re-encoded with Intervention Image (metadata dropped), stored privately under
- * `ttd/<ulid>.png` on the `local` disk. Versioned: old files stay (evidence), `signature_file_id` points to
- * the new one. Audited with both ids + SHA-256; Kepala Sekolah and Admins are notified.
- * The file is never web-served directly; TU only uses it through letter generation.
+ * Admin only (`signature.manage`), PNG ≤ 1 MB and ≤ 3000 × 3000 px. Stored through App\Domain\Files\StoreUpload
+ * like every user upload (CLAUDE.md §3.4; W4): extension + sniffed MIME, re-encoded with GD (metadata dropped,
+ * scaled to ≤ 2048 px), private `local` disk under `ttd/Y/m/<ulid>.png`, and B2's hourly upload limit.
+ * Versioned: old files stay (evidence), `signature_file_id` points to the new one. Audited with both ids +
+ * SHA-256; Kepala Sekolah and Admins are notified. The file is never web-served directly; TU only uses it
+ * through letter generation.
  */
 final class ReplaceSignatureImage
 {
@@ -38,7 +36,12 @@ final class ReplaceSignatureImage
 
     public const MAX_SIDE = 3000;
 
-    public function __construct(private readonly AdminRecipients $recipients) {}
+    public const DIRECTORY = 'ttd';
+
+    public function __construct(
+        private readonly AdminRecipients $recipients,
+        private readonly StoreUpload $store,
+    ) {}
 
     /**
      * @throws ValidationException
@@ -55,39 +58,27 @@ final class ReplaceSignatureImage
             throw ValidationException::withMessages(['signature' => $errors[0]]);
         }
 
-        try {
-            $image = ImageManager::usingDriver(Driver::class)->decodePath($path);
+        // Stricter than StoreUpload's 8000 px decode limit: refuse before anything is decoded or stored.
+        $size = @getimagesize($path);
 
-            if ($image->width() > self::MAX_SIDE || $image->height() > self::MAX_SIDE) {
-                throw ValidationException::withMessages(['signature' => 'Ukuran gambar maksimal 3000 × 3000 piksel.']);
-            }
-
-            $bytes = $image->encode(new PngEncoder)->toString();
-        } catch (ValidationException $e) {
-            throw $e;
-        } catch (Throwable) {
+        if ($size === false) {
             throw ValidationException::withMessages(['signature' => UploadRules::MSG_CONTENT]);
         }
 
-        $storagePath = 'ttd/'.Str::lower((string) Str::ulid()).'.png';
-        Storage::disk('local')->put($storagePath, $bytes);
+        if ($size[0] > self::MAX_SIDE || $size[1] > self::MAX_SIDE) {
+            throw ValidationException::withMessages(['signature' => 'Ukuran gambar maksimal 3000 × 3000 piksel.']);
+        }
 
         try {
-            $file = DB::transaction(function () use ($actor, $upload, $rules, $storagePath, $bytes): File {
+            $file = $this->store->store($upload, FilePurpose::Signature, $actor, $rules, self::DIRECTORY);
+        } catch (InvalidUpload $e) {
+            throw $e->toValidationException('signature');
+        }
+
+        try {
+            DB::transaction(function () use ($actor, $file): void {
                 $setting = Setting::query()->whereKey(SettingKey::SignatureFileId->value)->lockForUpdate()->first();
                 $previous = $setting?->value;
-
-                $file = new File;
-                $file->forceFill([
-                    'disk' => 'local',
-                    'path' => $storagePath,
-                    'original_name' => $rules->sanitizeOriginalName((string) $upload->getClientOriginalName()),
-                    'mime' => 'image/png',
-                    'size' => strlen($bytes),
-                    'sha256' => hash('sha256', $bytes),
-                    'purpose' => FilePurpose::Signature,
-                    'owner_user_id' => $actor->getKey(),
-                ])->save();
 
                 Setting::put(SettingKey::SignatureFileId, $file->getKey());
 
@@ -97,11 +88,9 @@ final class ReplaceSignatureImage
                     ->event('signature.replaced')
                     ->withProperties(['previous_file_id' => $previous, 'file_id' => $file->getKey(), 'sha256' => $file->sha256])
                     ->log('signature.replaced');
-
-                return $file;
             });
         } catch (Throwable $e) {
-            Storage::disk('local')->delete($storagePath);
+            $this->store->discard($file);
 
             throw $e;
         }

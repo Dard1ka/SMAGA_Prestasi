@@ -38,4 +38,38 @@ class AchievementPolicy
     }
 
     // --- W2-B: Kesiswaan abilities below this line ---
+
+    // --- B4: Database prestasi (backlog #4, UI-MAP §4a `kesiswaan.prestasi.index`) ---
+
+    /** Every verified achievement with all filters, totals and the detail drawer (`achievement.view_all`). */
+    public function viewDatabase(User $user): bool
+    {
+        return $user->canLogIn() && $user->can(Permission::AchievementViewAll->value);
+    }
+
+    /** Excel export of the filtered list (`achievement.export`; audited by ExportAchievements, SECURITY §3f). */
+    public function export(User $user): bool
+    {
+        return $this->viewDatabase($user) && $user->can(Permission::AchievementExport->value);
+    }
+
+    // --- end B4 ---
+
+    // --- B5: Kepala Sekolah prestasi per bidang + laporan (backlog #6, UI-MAP §4b) ---
+
+    /** Internal drill-down and period report: all names, no NIS/NISN (`achievement.view_all` + `dashboard.view`). */
+    public function viewSchoolReport(User $user): bool
+    {
+        return $user->canLogIn()
+            && $user->can(Permission::AchievementViewAll->value)
+            && $user->can(Permission::DashboardView->value);
+    }
+
+    /** Watermarked, audited PDF/XLSX export of the period report (`achievement.export`, SECURITY §3m-9). */
+    public function exportSchoolReport(User $user): bool
+    {
+        return $this->viewSchoolReport($user) && $user->can(Permission::AchievementExport->value);
+    }
+
+    // --- end B5 ---
 }

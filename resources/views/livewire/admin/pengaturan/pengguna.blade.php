@@ -51,8 +51,11 @@
                         @forelse ($roles as $roleName)
                             <span class="block font-semibold">{{ \App\Enums\RoleName::tryFrom($roleName)?->label() ?? $roleName }}</span>
                         @empty
-                            <span class="muted">Tanpa peran</span>
+                            <span class="block muted">Tanpa peran</span>
                         @endforelse
+                        @isset($pendingRoles[$member->id])
+                            <span class="block text-sm muted">Menunggu: {{ $pendingRoles[$member->id] }}</span>
+                        @endisset
                     </td>
                     <td>
                         <span class="flex items-center gap-2.5">
@@ -99,6 +102,9 @@
             <span class="mt-2 block"><x-sth.button variant="quiet" size="sm" wire:click="openPrincipal">Tetapkan Kepala Sekolah</x-sth.button></span>
         </x-sth.alert>
     @endif
+
+    {{-- B5 (backlog #13): privileged role changes waiting for a second Admin or the 24 h delay. --}}
+    <livewire:admin.role-change-requests :key="'peran-menunggu'" />
 
     {{-- Bantuan akun siswa (exact NIS/NISN only, SECURITY §3m-3) --}}
     <x-sth.card as="section" aria-labelledby="h-bantuan-siswa" class="flex flex-col gap-4">
@@ -154,9 +160,11 @@
             <x-sth.input wire:model="new.name" label="Nama lengkap" autocomplete="off" />
             <div class="grid gap-4 sm:grid-cols-2">
                 <x-sth.input wire:model="new.username" label="Nama pengguna" hint="Huruf kecil, contoh: dwi.rahayu" autocomplete="off" />
-                <x-sth.select wire:model="new.role" label="Peran" :options="$roleOptions" />
+                <x-sth.input wire:model="new.email" type="email" label="Email" optional autocomplete="off" />
             </div>
-            <x-sth.input wire:model="new.email" type="email" label="Email" optional autocomplete="off" />
+            {{-- W4 (lead decision): privileged roles follow the "Ubah peran" approval rule. --}}
+            <x-sth.select wire:model="new.role" label="Peran" :options="$roleOptions"
+                          hint="Admin, Kesiswaan, dan Tata Usaha: akun dibuat tanpa peran dulu. Perannya perlu persetujuan Admin lain, atau berlaku 24 jam kemudian bila hanya ada satu Admin." />
             <div class="grid gap-4 sm:grid-cols-3">
                 <x-sth.input wire:model="new.honorific" label="Sapaan" placeholder="Bu / Pak" optional autocomplete="off" />
                 <x-sth.input wire:model="new.nip" label="NIP" inputmode="numeric" optional autocomplete="off" class="sm:col-span-2" />
@@ -176,7 +184,8 @@
 
     <x-sth.modal id="staf-peran" title="Ubah peran" :description="$target ? 'Akun '.$target->name.'. Pengguna perlu login ulang.' : null" size="sm">
         <form id="staf-peran-form" wire:submit="changeRole" class="flex flex-col gap-4" novalidate>
-            <x-sth.select wire:model="role" label="Peran baru" :options="$roleOptions" />
+            <x-sth.select wire:model="role" label="Peran baru" :options="$roleOptions"
+                          hint="Admin, Kesiswaan, dan Tata Usaha perlu persetujuan Admin lain, atau berlaku 24 jam kemudian bila hanya ada satu Admin." />
             <x-sth.textarea wire:model="reason" label="Alasan" rows="2" />
         </form>
         <x-slot:footer>
@@ -234,13 +243,32 @@
         </x-slot:footer>
     </x-sth.modal>
 
-    <x-sth.modal id="siswa-reset" title="Reset kata sandi & email?" description="Siswa login lagi dengan kata sandi awal, lalu mengganti kata sandi dan menghubungkan email. Semua perangkat dikeluarkan." size="sm">
+    {{-- B1 — K10: reset issues a random temporary password (72 h), shown once in "siswa-sandi". --}}
+    <x-sth.modal id="siswa-reset" title="Reset kata sandi & email?" description="Pastikan identitas siswa sudah dicek tatap muka. Sistem membuat kata sandi sementara (berlaku 72 jam), melepas email, dan mengeluarkan semua perangkat." size="sm">
         <form id="siswa-reset-form" wire:submit="resetStudent" class="flex flex-col gap-4" novalidate>
             <x-sth.textarea wire:model="studentReason" label="Alasan" rows="2" hint="Contoh: siswa datang ke TU, akun diambil alih." />
         </form>
         <x-slot:footer>
             <x-sth.button variant="quiet" data-sth-close>Batal</x-sth.button>
             <x-sth.button type="submit" form="siswa-reset-form" wire:loading.attr="disabled" wire:target="resetStudent">Reset akun</x-sth.button>
+        </x-slot:footer>
+    </x-sth.modal>
+
+    <x-sth.modal id="siswa-sandi" title="Kata sandi sementara" description="Tampil sekali ini saja. Berikan langsung ke siswa, jangan difoto atau dikirim lewat chat." size="sm">
+        @if ($issuedPassword)
+            <div class="flex flex-col gap-3">
+                <p class="m-0 rounded-tile border border-line bg-subtle px-4 py-3 text-center font-mono text-2xl font-bold tracking-[0.12em] select-all">{{ $issuedPassword }}</p>
+                <ul class="m-0 flex list-disc flex-col gap-1 pl-5 text-[13.5px] text-ink-2">
+                    <li>Berlaku 72 jam. Setelah itu siswa perlu reset lagi.</li>
+                    <li>Siswa masuk dengan NIS/NISN dan kata sandi ini, lalu wajib menggantinya dan menghubungkan email.</li>
+                    <li>Huruf besar dan kecil dibedakan.</li>
+                </ul>
+            </div>
+        @else
+            <p class="m-0 text-[13.5px] text-muted">Kata sandi sementara sudah ditutup.</p>
+        @endif
+        <x-slot:footer>
+            <x-sth.button wire:click="forgetIssuedPassword">Sudah saya berikan</x-sth.button>
         </x-slot:footer>
     </x-sth.modal>
 

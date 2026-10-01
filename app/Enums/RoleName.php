@@ -80,6 +80,7 @@ enum RoleName: string
                 Permission::RegistrationViewAll,
                 Permission::LetterView,
                 Permission::AchievementViewAll,
+                Permission::AchievementExport, // B5: kepsek.laporan export (UI-MAP §4b; watermarked + audited)
                 Permission::StudentView,
                 Permission::DashboardView,
             ],

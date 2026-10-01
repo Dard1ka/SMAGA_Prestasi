@@ -7,9 +7,9 @@ namespace App\Livewire\Admin\Pengaturan;
 use App\Actions\Accounts\ArchiveAccount;
 use App\Actions\Accounts\DisableAccount;
 use App\Actions\Accounts\ResetStudentAccount;
+use App\Actions\Roles\RequestRoleChange;
 use App\Actions\Students\UpdateConsent;
 use App\Actions\Users\CancelPrincipalReplacement;
-use App\Actions\Users\ChangeStaffRole;
 use App\Actions\Users\CreateStaffAccount;
 use App\Actions\Users\RequestPrincipalReplacement;
 use App\Actions\Users\ResetStaffAccount;
@@ -18,6 +18,7 @@ use App\Enums\RoleName;
 use App\Enums\UserStatus;
 use App\Livewire\Admin\Concerns\RequiresRecentPassword;
 use App\Models\PrincipalReplacement;
+use App\Models\RoleChangeRequest;
 use App\Models\Student;
 use App\Models\User;
 use Illuminate\Contracts\View\View;
@@ -78,6 +79,10 @@ final class Pengguna extends Component
 
     public string $studentStatus = 'disabled';
 
+    /** B1 — K10: temporary password of the last student reset, shown once; cleared by forgetIssuedPassword(). */
+    #[Locked]
+    public ?string $issuedPassword = null;
+
     /** Consent toggles of the found student (D-16), saved through App\Actions\Students\UpdateConsent. */
     public bool $photoConsent = false;
 
@@ -123,16 +128,28 @@ final class Pengguna extends Component
         $data = $this->new;
 
         try {
-            $create->handle($this->actor(), $data);
+            $user = $create->handle($this->actor(), $data);
         } catch (ValidationException $e) {
             throw ValidationException::withMessages(
                 collect($e->errors())->mapWithKeys(fn (array $messages, string $key) => ['new.'.$key => $messages])->all(),
             );
         }
 
+        // W4: a privileged role (Admin, Kesiswaan, Tata Usaha) waits as a RoleChangeRequest like "Ubah peran".
+        $request = RoleChangeRequest::query()->pending()->where('user_id', $user->getKey())->first();
+
         $this->resetNewForm();
         $this->dispatch('sth-modal-close', id: 'staf-baru');
-        $this->dispatch('sth-toast', message: 'Akun staf dibuat. Berikan kata sandi sementara langsung ke pemiliknya.', tone: 'success');
+
+        if ($request !== null) {
+            $this->dispatch('role-change-requested');
+        }
+
+        $this->dispatch('sth-toast', message: match (true) {
+            $request === null => 'Akun staf dibuat. Berikan kata sandi sementara langsung ke pemiliknya.',
+            $request->usesDelay() => 'Akun staf dibuat tanpa peran. Peran '.$request->to_role->label().' berlaku '.$request->effective_at?->translatedFormat('j M Y H:i').' bila tidak dibatalkan.',
+            default => 'Akun staf dibuat tanpa peran. Peran '.$request->to_role->label().' menunggu persetujuan Admin lain.',
+        }, tone: 'success');
     }
 
     public function openStaff(int $userId, string $modal): void
@@ -152,7 +169,8 @@ final class Pengguna extends Component
         $this->dispatch('sth-modal-open', id: in_array($modal, ['staf-peran', 'staf-reset', 'staf-nonaktif'], true) ? $modal : 'staf-nonaktif');
     }
 
-    public function changeRole(ChangeStaffRole $change): void
+    /** B5 (backlog #13): privileged roles become a RoleChangeRequest (second Admin or 24 h delay). */
+    public function changeRole(RequestRoleChange $change): void
     {
         $target = $this->staffUser((int) $this->targetId);
         Gate::authorize('updateRole', $target);
@@ -168,8 +186,13 @@ final class Pengguna extends Component
             return;
         }
 
-        $change->handle($this->actor(), $target, RoleName::from($this->role), $this->reason);
-        $this->closeModal('staf-peran', 'Peran diubah. Pengguna perlu login ulang.');
+        $request = $change->handle($this->actor(), $target, RoleName::from($this->role), $this->reason);
+        $this->dispatch('role-change-requested');
+        $this->closeModal('staf-peran', match (true) {
+            $request === null => 'Peran diubah. Pengguna perlu login ulang.',
+            $request->usesDelay() => 'Perubahan peran berlaku '.$request->effective_at?->translatedFormat('j M Y H:i').' bila tidak dibatalkan.',
+            default => 'Perubahan peran menunggu persetujuan Admin lain.',
+        });
     }
 
     public function resetStaff(ResetStaffAccount $reset): void
@@ -363,8 +386,19 @@ final class Pengguna extends Component
             return;
         }
 
-        $reset->handle($this->actor(), $target, $this->studentReason);
-        $this->closeModal('siswa-reset', 'Akun direset. Siswa login ulang dengan kata sandi awal lalu aktivasi lagi.');
+        // B1 — K10: random temporary password (72 h), shown once in the "siswa-sandi" dialog, never stored in plaintext.
+        $this->issuedPassword = $reset->handle($this->actor(), $target, $this->studentReason);
+        $this->reset('studentReason');
+        $this->dispatch('sth-modal-close', id: 'siswa-reset');
+        $this->dispatch('sth-modal-open', id: 'siswa-sandi');
+    }
+
+    /** B1 — K10: the Admin confirms the temporary password was handed over; it disappears from the page. */
+    public function forgetIssuedPassword(): void
+    {
+        $this->issuedPassword = null;
+        $this->dispatch('sth-modal-close', id: 'siswa-sandi');
+        $this->dispatch('sth-toast', message: 'Akun direset. Siswa masuk dengan kata sandi sementara lalu aktivasi lagi.', tone: 'success');
     }
 
     public function disableStudent(DisableAccount $disable, ArchiveAccount $archive): void
@@ -408,6 +442,9 @@ final class Pengguna extends Component
                 ->mapWithKeys(fn (User $u) => [(string) $u->getKey() => $u->name.' ('.$u->username.')'])
                 ->all(),
             'roleOptions' => collect(StaffRoles::assignable())->mapWithKeys(fn (RoleName $r) => [$r->value => $r->label()])->all(),
+            // W4: user id => label of the privileged role still waiting (new accounts have no role until then).
+            'pendingRoles' => RoleChangeRequest::query()->pending()->get(['id', 'user_id', 'to_role'])
+                ->mapWithKeys(fn (RoleChangeRequest $r) => [(int) $r->user_id => $r->to_role->label()])->all(),
             'studentAccount' => $this->studentUserId !== null ? $this->studentSummary() : null,
             'canCreate' => Gate::allows('create', User::class),
             'canReplace' => Gate::allows('create', PrincipalReplacement::class),

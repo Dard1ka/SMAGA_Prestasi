@@ -1,0 +1,13 @@
+# Trivy allowlist for the CI image scan (.github/workflows/ci.yml, job docker; docs/SECURITY.md §3k).
+# CI fails on HIGH/CRITICAL vulnerabilities that already have a fixed version (--ignore-unfixed). Usually the fix is
+# a rebuild (Dependabot bumps the base image digests) or a package update, NOT an entry here.
+# Add an entry only when the fix cannot be taken yet, reviewed by I + lead in the PR. Every entry needs:
+#   id          CVE/GHSA id from the Trivy report
+#   statement   why it is not exploitable in STH (or the plan) and who decided
+#   expired_at  at most 30 days ahead: the exception expires and the job fails again, forcing a new review
+# Example:
+#   - id: CVE-2026-12345
+#     paths: ["usr/lib/x86_64-linux-gnu/libexample.so.1"]
+#     statement: "libexample is not reachable from PHP/nginx; fixed in bookworm point release, rebuild planned (I, 2026-10-01)"
+#     expired_at: 2026-10-31
+vulnerabilities: []

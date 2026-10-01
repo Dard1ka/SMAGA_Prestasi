@@ -255,6 +255,8 @@ final class Navigation
     {
         $cariLomba = ['key' => 'cari-lomba', 'label' => 'Cari lomba', 'icon' => 'search', 'route' => ['siswa.lomba.index', 'siswa.katalog'], 'match' => ['siswa.lomba.*', 'siswa.katalog*']];
         $kelolaLomba = ['key' => 'kelola-lomba', 'label' => 'Kelola lomba', 'icon' => 'trophy', 'route' => ['kesiswaan.lomba.index', 'kesiswaan.lomba'], 'match' => ['kesiswaan.lomba.*']];
+        $notifikasi = ['key' => 'notifikasi', 'label' => 'Notifikasi', 'icon' => 'bell', 'route' => ['notifikasi.index']];
+        $keamanan = ['key' => 'keamanan', 'label' => 'Keamanan akun', 'icon' => 'lock', 'route' => ['akun.keamanan']];
 
         return [
             'siswa' => [
@@ -270,6 +272,9 @@ final class Navigation
                     ]],
                     ['label' => 'Akun', 'items' => [
                         ['key' => 'profil-talenta', 'label' => 'Profil talenta', 'icon' => 'user', 'route' => ['siswa.talenta', 'siswa.profil-talenta']],
+                        // B1/W4: account pages of every role (staff reach them from the avatar menu and the bell).
+                        $notifikasi,
+                        $keamanan,
                         ['key' => 'bantuan', 'label' => 'Bantuan', 'icon' => 'help', 'route' => ['siswa.bantuan', 'bantuan']],
                     ]],
                 ],
@@ -301,6 +306,8 @@ final class Navigation
                         ['key' => 'apresiasi', 'label' => 'Apresiasi', 'icon' => 'award', 'route' => ['kesiswaan.apresiasi.index', 'kesiswaan.apresiasi']],
                         // D-26: Kesiswaan may import students too.
                         ['key' => 'import', 'label' => 'Import siswa', 'icon' => 'upload', 'route' => ['kesiswaan.import']],
+                        // B1 (K9/K2): activation report, reopen windows.
+                        ['key' => 'aktivasi', 'label' => 'Status aktivasi', 'icon' => 'check-circle', 'route' => ['kesiswaan.aktivasi.index'], 'match' => ['kesiswaan.aktivasi*']],
                     ]],
                 ],
             ],
@@ -312,6 +319,8 @@ final class Navigation
                         ['key' => 'dashboard', 'label' => 'Dashboard', 'icon' => 'bars', 'route' => ['kepsek.beranda', 'kepsek.dashboard']],
                         ['key' => 'persetujuan', 'label' => 'Persetujuan', 'icon' => 'check-circle', 'route' => ['kepsek.persetujuan.index', 'kepsek.persetujuan'], 'match' => ['kepsek.persetujuan*'], 'badge' => 'kepsek.persetujuan'],
                         ['key' => 'prestasi', 'label' => 'Prestasi per bidang', 'icon' => 'chart-pie', 'route' => ['kepsek.prestasi', 'public.prestasi', 'prestasi']],
+                        // B5 (SECURITY §3m-5): every letter generated in the principal's name, revocations included.
+                        ['key' => 'surat', 'label' => 'Surat atas nama saya', 'icon' => 'mail', 'route' => ['kepsek.surat.index'], 'match' => ['kepsek.surat*']],
                     ]],
                     ['label' => 'Laporan', 'items' => [
                         ['key' => 'laporan', 'label' => 'Laporan', 'icon' => 'file', 'route' => ['kepsek.laporan']],
@@ -352,11 +361,15 @@ final class Navigation
                     ['label' => 'Data', 'items' => [
                         ['key' => 'import', 'label' => 'Import siswa', 'icon' => 'upload', 'route' => ['admin.import']],
                         ['key' => 'pengguna', 'label' => 'Pengguna & peran', 'icon' => 'users', 'route' => ['admin.pengguna.index', 'admin.pengguna'], 'match' => ['admin.pengguna*']],
-                        // Until an Admin\ArsipOtomatis screen exists this opens Pengaturan › Batas & arsip (W2-D).
-                        ['key' => 'arsip', 'label' => 'Arsip otomatis', 'icon' => 'archive', 'route' => ['admin.arsip.index', 'admin.arsip', ['admin.pengaturan', ['tab' => 'batas']]], 'match' => ['admin.arsip*'], 'query' => ['tab' => 'batas']],
+                        // B1 (K9/K2/K1): activation report + activation window setting.
+                        ['key' => 'aktivasi', 'label' => 'Status aktivasi', 'icon' => 'check-circle', 'route' => ['admin.aktivasi.index'], 'match' => ['admin.aktivasi*']],
+                        // B5: Admin\ArsipOtomatis (the Pengaturan › Batas & arsip fallback is gone).
+                        ['key' => 'arsip', 'label' => 'Arsip otomatis', 'icon' => 'archive', 'route' => ['admin.arsip.index'], 'match' => ['admin.arsip*']],
                     ]],
                     ['label' => 'Sistem', 'items' => [
                         ['key' => 'ringkasan', 'label' => 'Status sistem', 'icon' => 'shield', 'route' => ['admin.ringkasan']],
+                        // B5: filterable audit log + export.
+                        ['key' => 'audit', 'label' => 'Log audit', 'icon' => 'clipboard', 'route' => ['admin.audit.index'], 'match' => ['admin.audit*']],
                         ['key' => 'pengaturan', 'label' => 'Pengaturan', 'icon' => 'sliders', 'route' => ['admin.pengaturan'], 'match' => ['admin.pengaturan*']],
                     ]],
                 ],

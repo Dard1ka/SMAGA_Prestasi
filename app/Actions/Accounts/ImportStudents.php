@@ -31,7 +31,8 @@ use Throwable;
  * - Columns (header row, case-insensitive): Nama lengkap, NIS, NISN, Tanggal lahir, Kelas saat pendaftaran,
  *   No HP (optional). Max 2 MB, 3 000 rows.
  * - Formulas are never evaluated: formula cells are read as their text, and every text cell has leading
- *   = + - @ (and tab/CR/LF) stripped before validation (names must then consist of letters only).
+ *   = + - @ (and tab/CR/LF) stripped before validation (names must then consist of letters only). Rows where
+ *   that happened carry `sanitized = true` in the report ("Sel dibersihkan", lead decision, backlog #19).
  * - Per row: name ≤ 150, NIS 4–20 digits, NISN exactly 10 digits, birth date valid and age 13–21, class exists
  *   (active), phone ^(\+62|0)8\d{7,12}$, NIS/NISN unique within the file and against every existing student
  *   (a NIS may not equal another student's NISN either, because login accepts both).
@@ -40,7 +41,8 @@ use Throwable;
  * - $dryRun = true only validates; otherwise valid rows are created in one transaction and invalid rows are
  *   skipped (they stay in the report). Committed imports are audited with the file's SHA-256.
  *
- * For 1 000+ rows call this from a queued job (hashing is the slow part) — wave 2 UI.
+ * Large imports (B2, backlog #19): App\Jobs\ImportStudentsJob commits the file in slices with importSlice()
+ * (password hashing is the slow part, ~0,2 s per row) and writes the single audit entry with recordImport().
  */
 final class ImportStudents
 {
@@ -82,6 +84,69 @@ final class ImportStudents
      */
     public function handle(User $actor, string $path, string $extension, string $schoolYear, bool $dryRun = true): StudentImportReport
     {
+        [$rows, $year] = $this->checkedRows($actor, $path, $extension, $schoolYear);
+
+        $created = $dryRun ? 0 : $this->commit($actor, $rows, $year, (string) hash_file('sha256', $path));
+
+        return new StudentImportReport(
+            rows: array_map(fn (array $r): array => $r['report'], $rows),
+            dryRun: $dryRun,
+            created: $created,
+            schoolYear: $year->toString(),
+        );
+    }
+
+    /**
+     * B2 (backlog #19): create the valid rows among file rows $offset … $offset + $length - 1 (file order), in one
+     * transaction, for App\Jobs\ImportStudentsJob. The whole file is read and validated again each time, so rows
+     * created by an earlier slice (or a retry) count as "sudah terdaftar" and are never created twice. No audit
+     * entry here: the job calls recordImport() once when every slice is done.
+     *
+     * @return array{rows: int, valid: int, invalid: int, sanitized: int, created: int} counts of the whole file
+     *                                                                                  (valid/invalid as of now) + created in this slice
+     *
+     * @throws ValidationException for file-level problems
+     */
+    public function importSlice(User $actor, string $path, string $extension, string $schoolYear, int $offset, int $length): array
+    {
+        [$rows, $year] = $this->checkedRows($actor, $path, $extension, $schoolYear);
+
+        $valid = self::validOnly($rows);
+
+        return [
+            'rows' => count($rows),
+            'valid' => count($valid),
+            'invalid' => count($rows) - count($valid),
+            'sanitized' => count(array_filter($rows, fn (array $r): bool => $r['report']['sanitized'])),
+            'created' => $this->insertRows(self::validOnly(array_slice($rows, max(0, $offset), max(0, $length))), $year),
+        ];
+    }
+
+    /** The audit entry of a committed import (also used by ImportStudentsJob after its last slice). */
+    public function recordImport(User $actor, string $schoolYear, int $rows, int $created, int $invalid, string $sha256): void
+    {
+        activity('import')
+            ->causedBy($actor)
+            ->event('student.import')
+            ->withProperties([
+                'school_year' => $schoolYear,
+                'rows' => $rows,
+                'created' => $created,
+                'invalid' => $invalid,
+                'file_sha256' => $sha256,
+            ])
+            ->log('student.import');
+    }
+
+    /**
+     * Authorize, check the file and return the validated rows.
+     *
+     * @return array{0: list<array{data: array<string, mixed>, report: array<string, mixed>}>, 1: SchoolYear}
+     *
+     * @throws ValidationException
+     */
+    private function checkedRows(User $actor, string $path, string $extension, string $schoolYear): array
+    {
         Gate::forUser($actor)->authorize(Permission::StudentImport->value);
 
         $year = $this->schoolYear($schoolYear);
@@ -95,16 +160,16 @@ final class ImportStudents
             throw ValidationException::withMessages(['file' => 'Ukuran file maksimal 2 MB.']);
         }
 
-        $rows = $this->validateRows($this->readRows($path, $extension), $year);
+        return [$this->validateRows($this->readRows($path, $extension), $year), $year];
+    }
 
-        $created = $dryRun ? 0 : $this->commit($actor, $rows, $year, (string) hash_file('sha256', $path));
-
-        return new StudentImportReport(
-            rows: array_map(fn (array $r): array => $r['report'], $rows),
-            dryRun: $dryRun,
-            created: $created,
-            schoolYear: $year->toString(),
-        );
+    /**
+     * @param  list<array{data: array<string, mixed>, report: array<string, mixed>}>  $rows
+     * @return list<array{data: array<string, mixed>, report: array<string, mixed>}>
+     */
+    private static function validOnly(array $rows): array
+    {
+        return array_values(array_filter($rows, fn (array $r): bool => $r['report']['errors'] === []));
     }
 
     /**
@@ -201,6 +266,7 @@ final class ImportStudents
             'birth_date' => $row['birth_date'] ?? null,
             'classroom' => mb_strtoupper(str_replace(' ', '', self::sanitize($row['classroom'] ?? ''))),
             'phone' => self::phone($row['phone'] ?? null),
+            'sanitized' => self::hadFormulaPrefix($row),
         ], $rows);
 
         // Every NIS/NISN already used by a student (incl. soft-deleted rows, the unique index still holds them).
@@ -304,6 +370,7 @@ final class ImportStudents
                     'errors' => $errors,
                     'grade12_start_date' => $dates?->grade12StartDate->format('Y-m-d'),
                     'archive_at' => $dates?->archiveAt->format('Y-m-d'),
+                    'sanitized' => $row['sanitized'],
                 ],
             ];
         }
@@ -312,11 +379,56 @@ final class ImportStudents
     }
 
     /**
+     * True when sanitize() will strip a leading = + - @ (after whitespace) from one of the row's text cells, i.e. the
+     * row is shown as "Sel dibersihkan". A real "+62…" phone number is not a formula.
+     *
+     * @param  array<string, mixed>  $row
+     */
+    private static function hadFormulaPrefix(array $row): bool
+    {
+        foreach (['name', 'nis', 'nisn', 'birth_date', 'classroom', 'phone'] as $field) {
+            $value = $row[$field] ?? null;
+
+            if (! is_string($value) || ($value = trim($value)) === '') {
+                continue;
+            }
+
+            if ($field === 'phone' && preg_match('/^\+62[\d\s.\-()]*$/', $value) === 1) {
+                continue;
+            }
+
+            if (str_contains('=+-@', $value[0])) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * @param  list<array{data: array<string, mixed>, report: array<string, mixed>}>  $rows
      */
     private function commit(User $actor, array $rows, SchoolYear $year, string $sha256): int
     {
-        $valid = array_values(array_filter($rows, fn (array $r): bool => $r['report']['errors'] === []));
+        $valid = self::validOnly($rows);
+
+        $this->insertRows($valid, $year);
+
+        $this->recordImport($actor, $year->toString(), count($rows), count($valid), count($rows) - count($valid), $sha256);
+
+        return count($valid);
+    }
+
+    /**
+     * Create the given (valid) rows in one transaction; returns how many were created.
+     *
+     * @param  list<array{data: array<string, mixed>, report: array<string, mixed>}>  $valid
+     */
+    private function insertRows(array $valid, SchoolYear $year): int
+    {
+        if ($valid === []) {
+            return 0;
+        }
 
         DB::transaction(function () use ($valid, $year): void {
             foreach ($valid as $row) {
@@ -328,6 +440,8 @@ final class ImportStudents
                     'password' => Hash::make($this->initialPassword->make($data['birth_date'])),
                     'status' => UserStatus::PendingActivation,
                     'must_change_password' => true,
+                    // B1 — K1: the initial password works only during the activation window (setting, default 14 days).
+                    'initial_password_expires_at' => app(AccountControls::class)->initialWindowEnd(),
                 ])->save();
 
                 $user->assignRole(RoleName::Siswa->value);
@@ -345,18 +459,6 @@ final class ImportStudents
                 ]);
             }
         });
-
-        activity('import')
-            ->causedBy($actor)
-            ->event('student.import')
-            ->withProperties([
-                'school_year' => $year->toString(),
-                'rows' => count($rows),
-                'created' => count($valid),
-                'invalid' => count($rows) - count($valid),
-                'file_sha256' => $sha256,
-            ])
-            ->log('student.import');
 
         return count($valid);
     }

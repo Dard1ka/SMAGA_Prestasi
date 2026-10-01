@@ -48,9 +48,10 @@ class StudentFactory extends Factory
         });
     }
 
+    /** Student who finished the first-login activation (active, email bound, `activated_at` set for the K9 report). */
     public function activated(): static
     {
-        return $this->state(fn (array $attributes) => ['user_id' => User::factory()]);
+        return $this->state(fn (array $attributes) => ['user_id' => User::factory()->state(['activated_at' => now()])]);
     }
 
     public function archived(): static

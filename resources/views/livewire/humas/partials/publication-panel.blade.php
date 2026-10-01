@@ -69,6 +69,8 @@
             <x-sth.input type="date" wire:model="date" :value="$date" label="Tanggal publikasi" class="num" />
             <x-sth.input type="time" wire:model="time" :value="$time" label="Jam" class="num" />
         </div>
+        {{-- B3 (#12): AutoPublishPublications flips terjadwal → dipublikasikan at this time and reminds Humas. --}}
+        <p class="m-0 text-[13px] text-muted">Pada waktu ini status berubah otomatis menjadi Dipublikasikan dan Humas mendapat pengingat untuk mengunggah ke kanal yang dipilih.</p>
         <div class="flex flex-wrap gap-2">
             @if ($panel['canSchedule'])
                 <x-sth.button type="submit" icon="calendar" class="flex-1" wire:loading.attr="disabled" wire:target="schedule">{{ $panel['scheduleLabel'] }}</x-sth.button>

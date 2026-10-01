@@ -361,3 +361,23 @@ if (document.readyState === 'loading') {
 document.addEventListener('livewire:navigated', boot);
 
 window.sth = { announce, openDialog, showToast };
+
+/* ---------------------------------------------------------------- B2: throttled Livewire requests */
+
+// The Livewire update endpoint is rate limited (AppServiceProvider::configureLivewireEndpoint). A 429 shows a
+// short toast with the server's Indonesian text instead of Livewire's full-screen error modal.
+function watchThrottledRequests() {
+    if (!window.Livewire?.interceptRequest || window.sth.throttleWatched) return;
+    window.sth.throttleWatched = true;
+    window.Livewire.interceptRequest(({ onError }) => {
+        onError(({ response, body, preventDefault }) => {
+            if (response?.status !== 429) return;
+            preventDefault();
+            const text = typeof body === 'string' && body.length < 200 ? body.trim() : '';
+            showToast(text || 'Terlalu banyak permintaan. Tunggu sebentar lalu coba lagi.', 'error');
+        });
+    });
+}
+
+watchThrottledRequests();
+document.addEventListener('livewire:init', watchThrottledRequests);

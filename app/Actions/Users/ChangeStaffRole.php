@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Actions\Users;
 
 use App\Actions\Accounts\RevokeUserSessions;
+use App\Actions\Roles\PrivilegedRoles;
 use App\Enums\RoleName;
 use App\Models\User;
 use App\Notifications\Admin\StaffAccountChanged;
@@ -17,8 +18,8 @@ use Illuminate\Validation\ValidationException;
  * Admin › Pengguna & peran › "Ubah peran": replaces a staff member's role with one of StaffRoles::assignable()
  * (not for students, not for the Kepala Sekolah, never your own account — UserPolicy::updateRole). The
  * member's sessions are revoked so the new menu/permissions apply at the next login. Audited (from/to +
- * reason); Admins and the member are notified. (UI-MAP mentions a second approval for staff role changes:
- * not built yet, see docs/dev-notes/W2-D.md.)
+ * reason); Admins and the member are notified. Privileged roles (admin, tata_usaha, kesiswaan) are refused
+ * here: they go through App\Actions\Roles\RequestRoleChange (second Admin or 24 h delay, backlog #13, B5).
  */
 final class ChangeStaffRole
 {
@@ -38,6 +39,11 @@ final class ChangeStaffRole
 
         if (! StaffRoles::isAssignable($role)) {
             throw ValidationException::withMessages(['role' => 'Peran ini tidak bisa diberikan dari sini.']);
+        }
+
+        // B5 (backlog #13): a privileged role needs a second Admin or the 24 h delay → App\Actions\Roles\RequestRoleChange.
+        if (PrivilegedRoles::needsApproval($target, $role)) {
+            throw ValidationException::withMessages(['role' => 'Peran ini perlu persetujuan Admin lain.']);
         }
 
         if ($reason === '' || mb_strlen($reason) > 500) {

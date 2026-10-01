@@ -15,7 +15,8 @@ use Symfony\Component\HttpFoundation\Response;
  * - script-src / style-src use a per-request nonce (Vite::useCspNonce(); Livewire picks the same nonce up for
  *
  *   @livewireScripts/@livewireStyles). No inline <script>/onclick, no style="" attributes (they are blocked).
- * - 'unsafe-eval' is added only while config('livewire.csp_safe') is false (Alpine's standard build needs it).
+ * - Never 'unsafe-eval' (backlog #17): config/livewire.php sets `csp_safe`, so Livewire ships its CSP build whose Alpine
+ *   parses directive expressions without eval(). Keep it on; tests/Feature/Security/CspSafeTest.php guards both.
  * - Local + Vite dev server (public/hot): the dev origin is allowed and styles fall back to 'unsafe-inline'
  *   because Vite injects <style> tags without a nonce.
  * - HSTS is NOT set here: the host Apache vhost owns it (§3e).
@@ -61,10 +62,6 @@ class SecurityHeaders
         $style = ["'self'", "'nonce-{$nonce}'"];
         $connect = ["'self'"];
         $font = ["'self'", 'data:'];
-
-        if (! config('livewire.csp_safe', false)) {
-            $script[] = "'unsafe-eval'";
-        }
 
         // Vite dev server (npm run dev) — local only.
         if (app()->environment('local') && ($hot = $this->viteDevServer()) !== null) {

@@ -57,6 +57,70 @@
                 </li>
             </ol>
 
+            @if ($status['canInvite'])
+                {{-- B3 (#9): ketua sees the team and invites a replacement while members still confirm. --}}
+                <div class="flex flex-col gap-2 border-t border-line pt-4">
+                    <div class="flex items-center justify-between gap-2">
+                        <span class="label" id="lbl-tim-kamu">Anggota tim</span>
+                        @if ($status['slotsLeft'] !== null)
+                            <span class="num text-[13px] text-muted">sisa {{ $status['slotsLeft'] }} tempat</span>
+                        @endif
+                    </div>
+                    <ul aria-labelledby="lbl-tim-kamu" class="m-0 flex list-none flex-col gap-2 p-0">
+                        @foreach ($status['team'] as $row)
+                            <li wire:key="tim-{{ $row['id'] }}" class="flex items-center gap-3 rounded-tile border border-line p-2.5">
+                                <x-sth.avatar :name="$row['name']" size="sm" />
+                                <div class="flex min-w-0 flex-1 flex-col">
+                                    <span class="ellip font-semibold">{{ $row['name'] }}</span>
+                                    <span class="text-[13px] text-muted">{{ $row['meta'] }}</span>
+                                </div>
+                                @if ($row['state'] === 'confirmed')
+                                    <x-sth.chip tone="green" size="sm" icon="check">Konfirmasi</x-sth.chip>
+                                @elseif ($row['state'] === 'declined')
+                                    <x-sth.chip tone="red" size="sm">Menolak</x-sth.chip>
+                                @else
+                                    <x-sth.chip size="sm" icon="clock">Menunggu</x-sth.chip>
+                                @endif
+                            </li>
+                        @endforeach
+                    </ul>
+                    @error('members')
+                        <p class="field-error m-0"><x-sth.icon name="alert" :size="16" />{{ $message }}</p>
+                    @enderror
+
+                    @if ($status['slotsLeft'] === 0)
+                        <p class="m-0 text-[13px] text-muted">Tim sudah penuh.</p>
+                    @else
+                        <x-sth.input wire:model.live.debounce.500ms="q" id="undang-anggota" type="search" label="Undang anggota pengganti" icon="search"
+                                     placeholder="Cari nama, NIS, atau NISN" autocomplete="off" maxlength="60"
+                                     hint="Undangan berlaku sampai batas pendaftaran." />
+                        @if ($hasil !== [])
+                            <ul aria-label="Akun siswa yang cocok" class="m-0 flex list-none flex-col gap-1.5 p-0">
+                                @foreach ($hasil as $row)
+                                    <li wire:key="undang-{{ $row['id'] }}" class="flex items-center gap-3 rounded-tile p-2 hover:bg-hover">
+                                        <x-sth.avatar :name="$row['name']" size="sm" />
+                                        <div class="flex min-w-0 flex-1 flex-col">
+                                            <span class="ellip font-semibold">{{ $row['name'] }}</span>
+                                            <span class="text-[13px] text-muted">{{ $row['kelas'] }}</span>
+                                        </div>
+                                        @if ($row['declined'] ?? false)
+                                            <x-sth.chip tone="gray" size="sm">Sudah menolak</x-sth.chip>
+                                        @elseif ($row['busy'])
+                                            <x-sth.chip tone="gray" size="sm">Sudah terdaftar</x-sth.chip>
+                                        @else
+                                            <x-sth.button variant="soft" size="sm" icon="send" wire:click="undang('{{ $row['id'] }}')" wire:loading.attr="disabled" wire:target="undang" :aria-label="'Undang '.$row['name']">Undang</x-sth.button>
+                                        @endif
+                                    </li>
+                                @endforeach
+                            </ul>
+                        @endif
+                        @if ($searchNote)
+                            <p class="m-0 text-[13px] text-muted" role="status">{{ $searchNote }}</p>
+                        @endif
+                    @endif
+                </div>
+            @endif
+
             <p class="m-0 text-sm text-muted">Pembimbing: <span class="font-semibold text-ink">{{ $status['mentor'] }}</span></p>
 
             <div class="flex flex-wrap gap-2">

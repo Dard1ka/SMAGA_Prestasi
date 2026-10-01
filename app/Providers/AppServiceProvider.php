@@ -10,17 +10,26 @@ use App\Domain\Archive\GraduationCalculator;
 use App\Domain\Deadlines\ReportDeadline;
 use App\Enums\SettingKey;
 use App\Models\Setting;
+use App\Support\Audit\AuditChain;
+use App\Support\Audit\SecurityEventSubscriber;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
+use Livewire\Livewire;
+use Livewire\Mechanisms\HandleRequests\EndpointResolver;
 use RuntimeException;
 
 class AppServiceProvider extends ServiceProvider
 {
     public const MIN_PASSWORD_LENGTH = 10;
+
+    /** Body of a throttled Livewire request (backlog #18; shown as a toast by resources/js/app.js). */
+    public const LIVEWIRE_THROTTLED_MESSAGE = 'Terlalu banyak permintaan. Tunggu sebentar lalu coba lagi.';
 
     /**
      * Register any application services.
@@ -66,6 +75,11 @@ class AppServiceProvider extends ServiceProvider
             : Password::min(self::MIN_PASSWORD_LENGTH)->max(64));
 
         $this->configureRateLimiting();
+
+        // B2 (backlog #16, #18): security log feeds + audit hash chain; throttled Livewire update endpoint.
+        Event::subscribe(SecurityEventSubscriber::class);
+        AuditChain::register();
+        $this->configureLivewireEndpoint();
     }
 
     /**
@@ -138,5 +152,38 @@ class AppServiceProvider extends ServiceProvider
         return $seconds >= 60
             ? 'Terlalu banyak percobaan. Coba lagi dalam '.(int) ceil($seconds / 60).' menit.'
             : 'Terlalu banyak percobaan. Coba lagi dalam '.$seconds.' detik.';
+    }
+
+    /**
+     * B2 (backlog #18): Livewire's update endpoint (`/livewire-<hash>/update`) is re-registered with the named
+     * limiter `livewire-update`: per user when logged in, per client IP for guests (public pages, auth screens).
+     * Limits: config('livewire.sth_throttle.*'). A blocked request gets 429 + Retry-After and a short Indonesian
+     * body; resources/js/app.js turns it into a toast instead of Livewire's error modal.
+     */
+    protected function configureLivewireEndpoint(): void
+    {
+        RateLimiter::for('livewire-update', function (Request $request) {
+            $userId = $request->user()?->getAuthIdentifier();
+
+            $limit = $userId !== null
+                ? Limit::perMinute((int) config('livewire.sth_throttle.user_per_minute', 180))->by('lw-user:'.$userId)
+                : Limit::perMinute((int) config('livewire.sth_throttle.guest_per_minute', 120))->by('lw-ip:'.$request->ip());
+
+            return $limit->response(fn (Request $request, array $headers) => response(
+                self::LIVEWIRE_THROTTLED_MESSAGE,
+                429,
+                $headers + ['Content-Type' => 'text/plain; charset=UTF-8', 'Cache-Control' => 'no-store'],
+            ));
+        });
+
+        Livewire::setUpdateRoute(fn (array $handle, string $path) => Route::post($path, $handle)
+            ->middleware(['web', 'throttle:livewire-update']));
+
+        // Backlog #17: Livewire serves its CSP build under the same URL and ?id= as the standard build, which browsers
+        // cache for a year. A distinct query string makes them fetch the CSP build instead of running a cached
+        // standard build (that one needs eval, which the CSP no longer allows).
+        if (config('livewire.csp_safe') && blank(config('livewire.asset_url'))) {
+            config(['livewire.asset_url' => EndpointResolver::scriptPath().'?build=csp']);
+        }
     }
 }

@@ -1,7 +1,7 @@
 {{--
     App top bar (DESIGN-SPEC-v2 §4): left = page title (h1 30px Urbanist) + one-line subtitle, or the
     `lead` slot (breadcrumb); right = actions slot, search (GET ?q= to the role's list page), bell with
-    unread dot, avatar button with the account menu (Keamanan akun, Keluar). Below lg a menu button
+    unread dot, avatar button with the account menu (Notifikasi, Keamanan akun, Keluar). Below lg a menu button
     opens the drawer <dialog id="sth-nav"> rendered by the app layout.
 
     Rendered by <x-layouts::app>; use directly only for custom shells.
@@ -54,13 +54,18 @@
             <x-sth.icon-button icon="search" :label="$search['placeholder']" :href="$search['action']" class="lg:hidden" />
         @endif
 
-        <x-sth.icon-button
-            icon="bell"
-            :label="$count > 0 ? 'Notifikasi, '.$count.' baru' : 'Notifikasi'"
-            :dot="$count > 0"
-            :href="$notifUrl"
-            :disabled="$notifUrl === null"
-        />
+        {{-- B1: bell → notifikasi.index; unread count badge (99+) instead of the plain dot. --}}
+        <span class="relative inline-flex">
+            <x-sth.icon-button
+                icon="bell"
+                :label="$count > 0 ? 'Notifikasi, '.$count.' belum dibaca' : 'Notifikasi'"
+                :href="$notifUrl"
+                :disabled="$notifUrl === null"
+            />
+            @if ($count > 0)
+                <span class="pointer-events-none absolute -top-1 -right-1 min-w-5 rounded-full border-2 border-white bg-primary px-1 text-center text-[11px] leading-4 font-bold text-white" aria-hidden="true">{{ $count > 99 ? '99+' : $count }}</span>
+            @endif
+        </span>
 
         <div class="relative" data-sth-menu>
             <button type="button" class="flex rounded-full" aria-expanded="false" aria-controls="sth-user-menu" data-sth-menu-button>
@@ -72,6 +77,10 @@
                     <p class="m-0 text-sm font-bold">{{ $user['name'] }}</p>
                     <p class="m-0 text-[12.5px] text-muted">{{ $user['meta'] }}</p>
                 </div>
+                {{-- W4: account items of every role (siswa also has them in the sidebar "Akun" section). --}}
+                @if ($notifUrl)
+                    <a class="menu-item" href="{{ $notifUrl }}"><x-sth.icon name="bell" :size="18" />Notifikasi</a>
+                @endif
                 @if ($securityUrl)
                     <a class="menu-item" href="{{ $securityUrl }}"><x-sth.icon name="lock" :size="18" />Keamanan akun</a>
                 @endif

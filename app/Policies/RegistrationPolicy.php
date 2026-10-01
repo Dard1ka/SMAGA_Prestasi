@@ -7,6 +7,7 @@ namespace App\Policies;
 use App\Enums\MemberRole;
 use App\Enums\Permission;
 use App\Enums\RegistrationStatus;
+use App\Enums\RoleName;
 use App\Models\Competition;
 use App\Models\Registration;
 use App\Models\RegistrationMember;
@@ -105,6 +106,58 @@ class RegistrationPolicy
         return $this->viewApprovalQueue($user)
             && $registration->status === RegistrationStatus::MenungguKepsek;
     }
+
+    // --- B3: invite (replacement) members, backlog #9 ---
+
+    /**
+     * The ketua invites more anggota (e.g. a replacement for one who declined, D-36) while the team still
+     * waits for confirmations and the lomba accepts registrations. InviteMembers re-checks under a lock.
+     */
+    public function invite(User $user, Registration $registration): bool
+    {
+        if (! $user->canLogIn() || ! $user->can(Permission::RegistrationCreate->value)) {
+            return false;
+        }
+
+        if ($registration->status !== RegistrationStatus::MenungguKonfirmasi || ! $registration->isTeam()) {
+            return false;
+        }
+
+        $student = $this->student($user);
+
+        if ($student === null || $registration->leader_student_id !== $student->getKey()) {
+            return false;
+        }
+
+        $competition = $registration->relationLoaded('competition')
+            ? $registration->competition
+            : Competition::withTrashed()->find($registration->competition_id);
+
+        return $competition !== null && $competition->isOpenForRegistration();
+    }
+
+    // --- end B3 ---
+
+    // --- B4: guru pembimbing area (backlog #3, UI-MAP §4e; own binaan only, callers answer 404) ---
+
+    /** Guru area (Siswa binaan): an active guru account. The list itself is scoped to mentor_id = the user. */
+    public function viewBinaan(User $user): bool
+    {
+        return $user->canLogIn() && $user->hasRoleName(RoleName::Guru);
+    }
+
+    /**
+     * One registration in the guru area: only its own guru pembimbing (SECURITY §3c "R binaan"). Staff with
+     * registration.view_all use their own screens; this ability deliberately ignores that permission.
+     */
+    public function viewAsMentor(User $user, Registration $registration): bool
+    {
+        return $this->viewBinaan($user)
+            && $registration->mentor_id !== null
+            && (int) $registration->mentor_id === (int) $user->getKey();
+    }
+
+    // --- end B4 ---
 
     protected function student(User $user): ?Student
     {

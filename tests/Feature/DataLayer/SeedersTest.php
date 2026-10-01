@@ -52,7 +52,9 @@ it('seeds the settings defaults and never the initial-password pattern', functio
 
     expect(Setting::get(SettingKey::ReportDeadlineDays))->toBe(45)
         ->and(Setting::get(SettingKey::ArchiveMonthsAfterGrade12))->toBe(18)
-        ->and(Setting::get(SettingKey::OtpTestMode))->toBeFalse()
+        ->and(Setting::get(SettingKey::ActivationWindowDays))->toBe(14)
+        ->and(Setting::query()->whereKey(SettingKey::LetterTemplate->value)->exists())->toBeTrue()
+        ->and(Setting::query()->whereKey('otp_test_mode')->exists())->toBeFalse() // env flag only (D-15), never a setting
         ->and(Setting::get(SettingKey::LetterFormatSiswa))->toBe('400.3.8/{seq}/MRD/{roman_month}/{year}')
         ->and(Setting::query()->find(SettingKey::PublicIndexing->value)?->value)->toBeFalse()
         ->and(Setting::query()->find(SettingKey::PublicCertificates->value)?->value)->toBeFalse()

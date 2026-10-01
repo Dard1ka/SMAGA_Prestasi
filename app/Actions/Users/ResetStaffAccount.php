@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Actions\Users;
 
 use App\Actions\Accounts\RevokeUserSessions;
+use App\Actions\Accounts\SecurityAlerts;
 use App\Actions\Fortify\LoginLockout;
 use App\Enums\RoleName;
 use App\Enums\UserStatus;
@@ -23,7 +24,8 @@ use Illuminate\Validation\ValidationException;
  * a temporary password typed by the Admin (never shown or logged), must_change_password, email marked
  * unverified (re-confirmed with OTP at the next login), TOTP 2FA removed (lost phone / hijack recovery,
  * set up again at the next login), every session revoked, login lockout cleared. A disabled/archived account
- * keeps its status. Audited with the reason; Admins and the member are notified.
+ * keeps its status. Audited with the reason; Admins and the member are notified. Counts towards the K10 alert
+ * (> 10 student + staff resets by one Admin within an hour, App\Actions\Accounts\SecurityAlerts, W4).
  */
 final class ResetStaffAccount
 {
@@ -31,6 +33,7 @@ final class ResetStaffAccount
         private readonly AdminRecipients $recipients,
         private readonly RevokeUserSessions $revokeSessions,
         private readonly LoginLockout $lockout,
+        private readonly SecurityAlerts $alerts,
     ) {}
 
     /**
@@ -89,5 +92,7 @@ final class ResetStaffAccount
             $this->recipients->admins()->push($target)->unique(fn (User $u) => $u->getKey()),
             new StaffAccountChanged(StaffAccountChanged::RESET, (string) $actor->name, (string) $target->name),
         );
+
+        $this->alerts->resetPerformed($actor);
     }
 }
