@@ -56,6 +56,11 @@ jobs:
           key: composer-${{ runner.os }}-${{ hashFiles('composer.lock') }}
           restore-keys: composer-${{ runner.os }}-
 
+      # Before composer install: without .env Laravel falls back to APP_ENV=production + MAIL_MAILER=log, and the
+      # production boot guard (AppServiceProvider::guardUnsafeConfiguration) aborts `artisan package:discover`.
+      - name: Prepare .env
+        run: cp .env.example .env
+
       - name: composer install
         run: composer install --no-interaction --no-progress --prefer-dist
 
@@ -73,10 +78,8 @@ jobs:
           npm ci --ignore-scripts --no-audit --no-fund
           npm run build
 
-      - name: Prepare .env
-        run: |
-          cp .env.example .env
-          php artisan key:generate --ansi
+      - name: App key
+        run: php artisan key:generate --ansi
 
       - name: Pest (SQLite in memory, phpunit.xml)
         run: vendor/bin/pest

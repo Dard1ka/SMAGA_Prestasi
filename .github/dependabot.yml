@@ -14,14 +14,25 @@ updates:
     schedule: { interval: weekly, day: monday, timezone: Asia/Jakarta }
     open-pull-requests-limit: 5
 
-  # Base image digests in docker/Dockerfile.prod and docker/php/Dockerfile.
+  # Base image digests in docker/Dockerfile.prod and docker/php/Dockerfile. Only digest/patch updates come in
+  # automatically: PHP stays on 8.4 and Node on 24 (same as CI PHP_VERSION/NODE_VERSION and composer platform).
+  # A PHP minor or Node major upgrade is a planned task: dev + prod image, CI, composer platform, full test run
+  # (PHP 8.5 e.g. has OPcache built in, so `docker-php-ext-install opcache` fails).
   - package-ecosystem: docker
     directory: /docker
     schedule: { interval: weekly, day: monday, timezone: Asia/Jakarta }
+    ignore:
+      - dependency-name: php
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+      - dependency-name: node
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: docker
     directory: /docker/php
     schedule: { interval: weekly, day: monday, timezone: Asia/Jakarta }
+    ignore:
+      - dependency-name: php
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
 
   # mysql digest in docker/compose.prod.yaml.
   - package-ecosystem: docker-compose
