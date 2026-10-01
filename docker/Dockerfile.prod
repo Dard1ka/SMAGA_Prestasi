@@ -12,7 +12,7 @@
 ########################################################################################################
 # php-ext: same extensions as the dev image (docker/php/Dockerfile, stage base), compiled once.
 ########################################################################################################
-FROM php:8.4-fpm-bookworm@sha256:43e1ac38217031dbbecae60e84ccf8593722031559178d199bf56adb0145d5d0 AS php-ext
+FROM php:8.5-fpm-bookworm@sha256:53eab56a8f43f51a92119f6c29b3448af98eec288ff17f92829354a4b4c9ca05 AS php-ext
 
 RUN apt-get update \
  && apt-get install -y --no-install-recommends \
@@ -74,7 +74,7 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
 # app: php-fpm runtime. Code is root-owned and read-only for www-data; only storage/ and bootstrap/cache
 # are writable (a volume and a tmpfs in compose). Runs with read_only: true.
 ########################################################################################################
-FROM php:8.4-fpm-bookworm@sha256:43e1ac38217031dbbecae60e84ccf8593722031559178d199bf56adb0145d5d0 AS app
+FROM php:8.5-fpm-bookworm@sha256:53eab56a8f43f51a92119f6c29b3448af98eec288ff17f92829354a4b4c9ca05 AS app
 
 # Runtime libraries of the compiled extensions (no -dev packages, no compilers) + cgi-fcgi for the healthcheck.
 RUN apt-get update \
