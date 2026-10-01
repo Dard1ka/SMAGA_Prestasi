@@ -15,9 +15,9 @@ updates:
     open-pull-requests-limit: 5
 
   # Base image digests in docker/Dockerfile.prod and docker/php/Dockerfile. Only digest/patch updates come in
-  # automatically: PHP stays on 8.4 and Node on 24 (same as CI PHP_VERSION/NODE_VERSION and composer platform).
-  # A PHP minor or Node major upgrade is a planned task: dev + prod image, CI, composer platform, full test run
-  # (PHP 8.5 e.g. has OPcache built in, so `docker-php-ext-install opcache` fails).
+  # automatically. A PHP minor or Node major upgrade is a planned task that changes the dev + prod image, CI
+  # PHP_VERSION/NODE_VERSION and the composer platform together, with a full test run (PHP 8.5 e.g. has OPcache
+  # built in, so `docker-php-ext-install opcache` fails).
   - package-ecosystem: docker
     directory: /docker
     schedule: { interval: weekly, day: monday, timezone: Asia/Jakarta }
