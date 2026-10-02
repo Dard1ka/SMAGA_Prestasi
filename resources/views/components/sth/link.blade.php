@@ -6,9 +6,15 @@
 
     Props: href · icon (leading) · icon-right (trailing) · external (user/third-party URL: new tab +
            rel="nofollow noopener noreferrer ugc", SECURITY §3f; show the host in the text next to it)
+           navigate (default: auto — SPA page swap for in-app pages; :navigate="false" opts out)
 --}}
-@props(['href' => '#', 'icon' => null, 'iconRight' => null, 'external' => false])
-<a href="{{ $href }}" {{ $attributes->class('lnk') }} @if ($external) target="_blank" rel="nofollow noopener noreferrer ugc" @endif>
+@props(['href' => '#', 'icon' => null, 'iconRight' => null, 'external' => false, 'navigate' => null])
+@php
+    $navAttr = $navigate === false || $external || $attributes->whereStartsWith('wire:navigate')->isNotEmpty()
+        ? null
+        : \App\Support\Links::navigateAttribute($href);
+@endphp
+<a href="{{ $href }}" @if ($navAttr) {{ $navAttr }} @endif {{ $attributes->class('lnk') }} @if ($external) target="_blank" rel="nofollow noopener noreferrer ugc" @endif>
     @if ($icon)<x-sth.icon :name="$icon" :size="18" />@endif
     {{ $slot }}
     @if ($external)

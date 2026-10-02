@@ -79,10 +79,10 @@
                 </div>
                 {{-- W4: account items of every role (siswa also has them in the sidebar "Akun" section). --}}
                 @if ($notifUrl)
-                    <a class="menu-item" href="{{ $notifUrl }}"><x-sth.icon name="bell" :size="18" />Notifikasi</a>
+                    <a class="menu-item" href="{{ $notifUrl }}" @if ($navAttr = \App\Support\Links::navigateAttribute($notifUrl)) {{ $navAttr }} @endif><x-sth.icon name="bell" :size="18" />Notifikasi</a>
                 @endif
                 @if ($securityUrl)
-                    <a class="menu-item" href="{{ $securityUrl }}"><x-sth.icon name="lock" :size="18" />Keamanan akun</a>
+                    <a class="menu-item" href="{{ $securityUrl }}" @if ($navAttr = \App\Support\Links::navigateAttribute($securityUrl)) {{ $navAttr }} @endif><x-sth.icon name="lock" :size="18" />Keamanan akun</a>
                 @endif
                 @if ($canLogout)
                     <form method="POST" action="{{ route('logout') }}">

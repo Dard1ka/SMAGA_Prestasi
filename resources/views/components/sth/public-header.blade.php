@@ -18,7 +18,7 @@
     <x-sth.brand size="sm" :href="$homeUrl" />
     <nav class="pub-nav" aria-label="Navigasi publik">
         @foreach ($public['links'] as $link)
-            <a class="pub-link" @if ($link['disabled']) role="link" aria-disabled="true" @else href="{{ $link['href'] }}" @endif @if ($link['current']) aria-current="page" @endif>{{ $link['label'] }}</a>
+            <a class="pub-link" @if ($link['disabled']) role="link" aria-disabled="true" @else href="{{ $link['href'] }}" @if ($navAttr = \App\Support\Links::navigateAttribute($link['href'])) {{ $navAttr }} @endif @endif @if ($link['current']) aria-current="page" @endif>{{ $link['label'] }}</a>
         @endforeach
     </nav>
     <div class="justify-self-end">
@@ -31,6 +31,6 @@
 </header>
 <nav class="pub-nav-m md:hidden" aria-label="Navigasi publik">
     @foreach ($public['links'] as $link)
-        <a class="pub-link" @if ($link['disabled']) role="link" aria-disabled="true" @else href="{{ $link['href'] }}" @endif @if ($link['current']) aria-current="page" @endif>{{ $link['label'] }}</a>
+        <a class="pub-link" @if ($link['disabled']) role="link" aria-disabled="true" @else href="{{ $link['href'] }}" @if ($navAttr = \App\Support\Links::navigateAttribute($link['href'])) {{ $navAttr }} @endif @endif @if ($link['current']) aria-current="page" @endif>{{ $link['label'] }}</a>
     @endforeach
 </nav>
