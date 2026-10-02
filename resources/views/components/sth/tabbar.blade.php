@@ -15,7 +15,7 @@
     @foreach ($items as $item)
         <a
             @class(['tab', 'tab-on' => $item['current']])
-            @if ($item['disabled']) role="link" aria-disabled="true" @else href="{{ $item['href'] }}" @endif
+            @if ($item['disabled']) role="link" aria-disabled="true" @else href="{{ $item['href'] }}" @if ($navAttr = \App\Support\Links::navigateAttribute($item['href'])) {{ $navAttr }} @endif @endif
             @if ($item['current']) aria-current="page" @endif
         >
             <span class="tab-ic"><x-sth.icon :name="$item['icon']" :size="22" /></span>

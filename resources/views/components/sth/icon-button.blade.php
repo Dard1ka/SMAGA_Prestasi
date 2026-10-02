@@ -7,6 +7,7 @@
 
     Props: icon · label (required) · href (renders <a>) · size md (40px) | sm (36px) · dot (unread dot)
            ghost (no border) · type (button) · disabled
+           navigate (default: auto — SPA page swap for in-app pages; :navigate="false" opts out)
 --}}
 @props([
     'icon',
@@ -17,13 +18,17 @@
     'ghost' => false,
     'type' => 'button',
     'disabled' => false,
+    'navigate' => null,
 ])
 @php
+    $navAttr = $navigate === false || $disabled || $attributes->whereStartsWith('wire:navigate')->isNotEmpty()
+        ? null
+        : \App\Support\Links::navigateAttribute($href);
     $classes = ['icon-btn', 'icon-btn-sm' => $size === 'sm', 'icon-btn-ghost' => $ghost];
     $iconSize = $size === 'sm' ? 18 : 20;
 @endphp
 @if ($href !== null)
-    <a @unless ($disabled) href="{{ $href }}" @else role="link" aria-disabled="true" @endunless aria-label="{{ $label }}" {{ $attributes->class($classes) }}>
+    <a @unless ($disabled) href="{{ $href }}" @if ($navAttr) {{ $navAttr }} @endif @else role="link" aria-disabled="true" @endunless aria-label="{{ $label }}" {{ $attributes->class($classes) }}>
         <x-sth.icon :name="$icon" :size="$iconSize" />
         @if ($dot)<span class="dot" aria-hidden="true"></span>@endif
     </a>

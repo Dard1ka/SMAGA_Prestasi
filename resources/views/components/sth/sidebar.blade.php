@@ -35,7 +35,7 @@
                 @foreach ($section['items'] as $item)
                     <a
                         @class(['nav', 'nav-on' => $item['current']])
-                        @if ($item['disabled']) role="link" aria-disabled="true" @else href="{{ $item['href'] }}" @endif
+                        @if ($item['disabled']) role="link" aria-disabled="true" @else href="{{ $item['href'] }}" @if ($navAttr = \App\Support\Links::navigateAttribute($item['href'])) {{ $navAttr }} @endif @endif
                         @if ($item['current']) aria-current="page" @endif
                     >
                         <x-sth.icon :name="$item['icon']" />

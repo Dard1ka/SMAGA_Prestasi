@@ -9,6 +9,9 @@ x-php: &php
   image: sth-php:dev
   volumes:
     - .:/var/www/html
+    # Dev-only PHP tuning (opcache/realpath). Loaded after zz-sth.ini from the image. See the file header:
+    # it explains the Windows bind-mount cost and the one line to change after moving to a Linux filesystem.
+    - ./docker/php/php.dev.ini:/usr/local/etc/php/conf.d/zzz-sth-dev.ini:ro
   # No env_file here on purpose: Laravel reads the bind-mounted .env itself. Injecting it as process env
   # would override phpunit.xml and make the test suite run against (and wipe) the dev MySQL database.
   depends_on:

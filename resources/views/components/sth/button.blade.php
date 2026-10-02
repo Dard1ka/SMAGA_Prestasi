@@ -14,6 +14,7 @@
     - type        button (default) | submit | reset — ignored for links
     - disabled    <button disabled> / <a aria-disabled="true"> without href
     - block       full width
+    - navigate    default: auto — SPA page swap for in-app pages; :navigate="false" opts out
 --}}
 @props([
     'variant' => 'primary',
@@ -24,14 +25,18 @@
     'type' => 'button',
     'disabled' => false,
     'block' => false,
+    'navigate' => null,
 ])
 @php
+    $navAttr = $navigate === false || $disabled || $attributes->whereStartsWith('wire:navigate')->isNotEmpty()
+        ? null
+        : \App\Support\Links::navigateAttribute($href);
     $variant = in_array($variant, ['primary', 'quiet', 'soft', 'danger', 'white'], true) ? $variant : 'primary';
     $classes = ['btn', 'btn-'.$variant, 'btn-sm' => $size === 'sm', 'btn-lg' => $size === 'lg', 'w-full' => $block];
     $iconSize = $size === 'sm' ? 18 : 20;
 @endphp
 @if ($href !== null)
-    <a @unless ($disabled) href="{{ $href }}" @else role="link" aria-disabled="true" @endunless {{ $attributes->class($classes) }}>
+    <a @unless ($disabled) href="{{ $href }}" @if ($navAttr) {{ $navAttr }} @endif @else role="link" aria-disabled="true" @endunless {{ $attributes->class($classes) }}>
         @if ($icon)<x-sth.icon :name="$icon" :size="$iconSize" />@endif
         {{ $slot }}
         @if ($iconRight)<x-sth.icon :name="$iconRight" :size="$iconSize" />@endif

@@ -9,12 +9,15 @@
     Props: size md|sm · inverse · href (whole brand becomes one link named "SMAGA Talent Hub, beranda")
            wordmark (default true)
 --}}
-@props(['size' => 'md', 'inverse' => false, 'href' => null, 'wordmark' => true])
+@props(['size' => 'md', 'inverse' => false, 'href' => null, 'wordmark' => true, 'navigate' => null])
 @php
+    $navAttr = $navigate === false || $attributes->whereStartsWith('wire:navigate')->isNotEmpty()
+        ? null
+        : \App\Support\Links::navigateAttribute($href);
     $mark = $size === 'sm' ? 'size-9' : 'size-10';
     $tag = $href !== null ? 'a' : 'div';
 @endphp
-<{{ $tag }} @if ($href !== null) href="{{ $href }}" aria-label="SMAGA Talent Hub, beranda" @endif {{ $attributes->class(['flex min-w-0 items-center gap-3 no-underline', 'rounded-control' => $href !== null]) }}>
+<{{ $tag }} @if ($href !== null) href="{{ $href }}" @if ($navAttr) {{ $navAttr }} @endif aria-label="SMAGA Talent Hub, beranda" @endif {{ $attributes->class(['flex min-w-0 items-center gap-3 no-underline', 'rounded-control' => $href !== null]) }}>
     <span @if ($href === null) role="img" aria-label="Logo SMAGA Talent Hub" @else aria-hidden="true" @endif @class([
         'inline-flex shrink-0 items-center justify-center rounded-control',
         $mark,
