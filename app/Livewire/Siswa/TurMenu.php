@@ -87,7 +87,7 @@ class TurMenu extends Component
             3 => ['title' => 'Portofolio', 'text' => 'Semua prestasi dan sertifikatmu.', 'icon' => 'award', 'label' => 'Portofolio', 'cta' => '', 'spot' => 'top-[317px]', 'pop' => 'top-[297px]'],
             4 => ['title' => 'Peringkat', 'text' => 'Lihat poin dan posisimu.', 'icon' => 'bars', 'label' => 'Peringkat', 'cta' => '', 'spot' => 'top-[365px]', 'pop' => 'top-[345px]'],
             5 => ['title' => 'Profil talenta', 'text' => 'Atur minat dan bakatmu.', 'icon' => 'user', 'label' => 'Profil talenta', 'cta' => '', 'spot' => 'top-[455px]', 'pop' => 'top-[435px]'],
-            self::DONE => ['title' => 'Siap dipakai!', 'text' => 'Tur ini bisa dibuka lagi di menu Bantuan.', 'icon' => 'help', 'label' => 'Bantuan', 'cta' => '', 'spot' => 'top-[503px]', 'pop' => 'top-[394px]'],
+            self::DONE => ['title' => 'Siap dipakai!', 'text' => 'Tour ini bisa dibuka lagi di menu Bantuan.', 'icon' => 'help', 'label' => 'Bantuan', 'cta' => '', 'spot' => 'top-[503px]', 'pop' => 'top-[394px]'],
         ];
     }
 

@@ -1,11 +1,11 @@
 {{--
-    Tur singkat menu (boards Tur-Menu-Desktop + Tur-Menu-Mobile). One native modal <dialog> (opened on load by
+    Tour singkat menu (boards Tur-Menu-Desktop + Tur-Menu-Mobile). One native modal <dialog> (opened on load by
     data-sth-autoopen, resources/js/app.js); the page behind is inert. Desktop tips sit next to the sidebar,
     mobile tips above the tab bar; each tip draws a replica of its menu item above the scrim.
 --}}
 <div>
     @if ($show)
-        <dialog id="tur-menu" data-sth-autoopen wire:ignore.self aria-label="Tur singkat menu"
+        <dialog id="tur-menu" data-sth-autoopen wire:ignore.self aria-label="Tour singkat menu"
                 class="fixed inset-0 m-0 h-dvh max-h-none w-full max-w-none overflow-hidden border-0 bg-transparent p-0 text-ink backdrop:bg-ink/55">
             @if ($step === 0)
                 <div class="flex h-full items-end justify-center p-4 sm:items-center">
@@ -21,7 +21,7 @@
                         </div>
                         <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                             <x-sth.button variant="quiet" wire:click="selesai">Lewati</x-sth.button>
-                            <x-sth.button wire:click="mulai" autofocus>Mulai tur</x-sth.button>
+                            <x-sth.button wire:click="mulai" autofocus>Mulai tour</x-sth.button>
                         </div>
                     </div>
                 </div>
@@ -105,7 +105,7 @@
                             <div class="flex w-full max-w-[440px] flex-col items-center gap-3 rounded-[24px] bg-surface p-6 text-center shadow-pop">
                                 <span class="inline-flex size-14 items-center justify-center rounded-full bg-green-bg text-green" aria-hidden="true"><x-sth.icon name="check" :size="28" /></span>
                                 <h2 class="m-0 font-display text-2xl font-extrabold">Siap dipakai!</h2>
-                                <p class="m-0 text-ink-2">Tur ini bisa dibuka lagi di menu Bantuan.</p>
+                                <p class="m-0 text-ink-2">Tour ini bisa dibuka lagi di menu Bantuan.</p>
                                 <x-sth.button block wire:click="selesai">Mulai</x-sth.button>
                                 <x-sth.button variant="quiet" size="sm" wire:click="kembali({{ \App\Livewire\Siswa\TurMenu::MOBILE_TIPS }})">Kembali</x-sth.button>
                             </div>

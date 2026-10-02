@@ -22,9 +22,9 @@
 
         <div class="flex flex-col gap-[18px]">
             <x-sth.card as="aside" aria-labelledby="h-tur" class="flex flex-col gap-3">
-                <h2 id="h-tur" class="title-card m-0">Tur singkat menu</h2>
+                <h2 id="h-tur" class="title-card m-0">Tour singkat menu</h2>
                 <p class="m-0 text-sm text-ink-2">Lihat lagi penjelasan setiap menu, sebentar saja.</p>
-                <x-sth.button icon="arrow-right" :href="route('siswa.tour')" class="self-start">Buka tur</x-sth.button>
+                <x-sth.button icon="arrow-right" :href="route('siswa.tour')" class="self-start">Buka tour</x-sth.button>
             </x-sth.card>
 
             <x-sth.card as="aside" aria-labelledby="h-kontak" class="flex flex-col gap-2">
