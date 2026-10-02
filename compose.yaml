@@ -51,7 +51,9 @@ services:
     volumes:
       - mysql-data:/var/lib/mysql
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-psth_dev_root"]
+      # TCP on purpose (127.0.0.1, not localhost = socket): on a fresh volume the image first runs a temporary init
+      # server with --skip-networking; over the socket it already answers, so "healthy" came before port 3306 was up.
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-psth_dev_root"]
       interval: 5s
       timeout: 5s
       retries: 20
