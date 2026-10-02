@@ -111,6 +111,49 @@ Transitions happen only in `app/Actions/Registrations/*`, which assert the sourc
 - Public pages expose only name, class and achievements; names only with `publish_consent` (else "Siswa kelas X"), photos only with `photo_consent`, certificate links only with the consent of every team member **and** the Admin switch `public_certificates`; pages are `noindex` while `public_indexing` is off (D-38, D-39).
 - Audit: every state change and Admin action writes `activity_log`; rows are sealed in a hash chain (`audit_seals`) and the runtime DB user cannot UPDATE/DELETE either table (SECURITY §3h, §3m-9).
 
+### 8a. Rules added by the Q1 pass (D-66…D-77)
+- **TOTP is staff only**: `RestrictTwoFactorToStaff` (web group) answers 404 for a student account on every
+  `two-factor.*` management route; a student login is never sent to the challenge; `ResetStudentAccount` clears TOTP.
+- **Password confirmation**: `POST /user/confirm-password` allows 5 tries per minute per account; Fortify's 2FA events
+  are written to the activity log (`two_factor.*`).
+- **Uploads**: PDFs go through `App\Domain\Files\PdfScanner`; a file it cannot read completely is refused.
+- **Free-text names**: a lomba name must not contain a web address (`App\Rules\NoWebAddress`).
+- **Lists** that can grow render in steps (`$limit` with `STEP`/`MAX`, clamped), never all rows.
+- **Withdrawn publish consent**: viewers without `student.view` (Humas) get the neutral label and no flyer
+  (`AchievementFacts::visibleTo()`, `FilePolicy::viaPublication()`); holders of `student.view` keep both.
+
+### 8b. Notifications and mail
+Notifications are queued (`mail` + `database` channels unless noted) and sent after the transaction commits. Mails are
+built with `App\Notifications\Support\PlainMailMessage` (user text is never Markdown). `User::routeNotificationForMail()`
+skips the mail (the bell entry is still stored) for a frozen account, and for an address nobody verified unless the
+notification is an `AdminNotice`. A frozen account gets no reset code. Proven end to end by
+`tests/E2E/support/email-scenario.php`.
+
+| event (Action) | recipients |
+|---|---|
+| OTP for activation, email change, password reset (`IssueOtpCode`) | the address being verified / the bound address (mail only) |
+| Email bound or changed (`CompleteActivation`, `ChangeEmail`) | bound address; on a change the old and the new address, with a "Bukan saya?" link (mail only) |
+| Password changed / reset (`ChangePassword`, `ResetPasswordWithCode`) | the account owner |
+| Lomba submitted or added (`SubmitCompetition`, `CreateCompetition`) | every holder of `competition.verify` except the actor |
+| Lomba published / rejected (`VerifyCompetition`) | the submitter (not when the verifier is the submitter) |
+| Team invitation (`CreateRegistration`, `InviteMembers`) | the invited students |
+| Member accepted / declined (`ConfirmMembership`, `DeclineMembership`), invitations expired | the ketua |
+| Registration waiting for approval (individual: at once; team: when complete) | holders of `registration.approve` (Kepala Sekolah) |
+| Registration approved (`ApproveRegistration`) | all members, the guru pembimbing, every Tata Usaha |
+| Registration rejected (`RejectRegistration`) | all members, the guru pembimbing |
+| Registration cancelled (`CancelRegistration`) | the other members, the guru pembimbing; the Kepala Sekolah only if it had reached `menunggu_kepsek` |
+| Letters sent / revised (`SendLetters`, `RevokeLetter`) | members (siswa letter), guru pembimbing (guru letter); a revocation also goes to the Kepala Sekolah |
+| Report window opened, reminders 14 and 3 days before the deadline | the ketua |
+| Report submitted / resubmitted (`SubmitReport`) | every Kesiswaan |
+| Report verified / revision requested / rejected | all confirmed members; on verification also every Humas ("ready for publication") |
+| Publication published, appreciation scheduled | the student; a scheduled publication that became due also every Humas |
+| Talent stage changed / application rejected | the student (a new application notifies nobody, backlog #40) |
+| Account frozen (failed logins before activation / "Bukan saya?") | Admins (+ Kesiswaan for failed logins) |
+| Staff account created | Admins |
+| Staff account reset / role changed, role change requested / applied / cancelled, Kepala Sekolah replacement | Admins and the account concerned (+ Kepala Sekolah where the 24 h delay applies) |
+| Weight version published, signature replaced, letter template changed | Kepala Sekolah and Admins (not the actor for the template) |
+| Archive job report, large export | Admins |
+
 ## 9. Environments
 - Dev: `docker compose up` → app (php-fpm 8.4 + nginx on 127.0.0.1:8080), mysql 8.4 (127.0.0.1:3307), mailpit (127.0.0.1:8025), vite, scheduler, queue worker.
 - Prod: image from `docker/Dockerfile.prod` (multi-stage: composer → node build → php-fpm runtime, non-root), behind the host Apache 2.4.29 vhost `prestasi.sman3-smg.sch.id` → 127.0.0.1:8080. See SECURITY.md §3e/§3j.

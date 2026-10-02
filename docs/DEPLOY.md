@@ -636,6 +636,18 @@ Migrasi production hanya maju (CLAUDE.md aturan 8): jangan menjalankan `migrate:
 Semua action dipin ke commit SHA (komentar = versi); Dependabot memperbaruinya. Temuan gitleaks: **rotasi** rahasianya
 dulu, baru bersihkan riwayat; jangan masukkan rahasia asli ke allowlist.
 
+**Bila job `docker` merah karena Trivy** (kerentanan baru di image dasar, bukan karena kode; contoh 2 Okt 2026:
+`pcre2` CVE-2026-103111 di image nginx):
+1. Baca temuannya: `gh run view <id> --log-failed` → nama paket, versi terpasang, versi perbaikan, image (`sth-app`/`sth-web`).
+2. Cek apakah tag image dasar sudah dibangun ulang (`docker pull <tag>` lalu bandingkan digest). Bila sudah, ganti
+   digest di `docker/Dockerfile.prod` (atau merge PR digest dari Dependabot).
+3. Bila belum: tambahkan paket itu ke baris `apk upgrade --no-cache …` di stage `web` (`docker/Dockerfile.prod`),
+   dengan komentar CVE dan tanggal. Untuk stage `app` (Debian) pakai `apt-get install --only-upgrade <paket>`.
+   Hapus lagi dari daftar setelah digest baru sudah memuat perbaikannya.
+4. Uji di komputer sendiri sebelum push: build kedua image, lalu jalankan perintah Trivy yang sama dengan `ci.yml`
+   (image `TRIVY_IMAGE`, opsi `--scanners vuln --severity HIGH,CRITICAL --ignore-unfixed`). Harus 0 temuan.
+5. Pengecualian di `.github/trivy/trivyignore.yaml` hanya bila tidak ada perbaikan, dengan alasan dan tanggal kedaluwarsa.
+
 Uji E2E di komputer sendiri (PowerShell atau Git Bash, dari root repo, setelah first run CLAUDE.md §4). Project
 `sth-e2e` punya MySQL dan storage sendiri, tanpa port terbuka, jadi database dev tidak tersentuh:
 ```bash

@@ -138,6 +138,9 @@ digest/patch updates for the `php`, `node` and `mysql` images, and nginx stays o
 Dependabot PR with red checks.** A PHP minor, Node major or MySQL upgrade is a planned task that changes the dev + prod
 image, CI `PHP_VERSION`/`NODE_VERSION` and the composer platform together, with a full test run (PHP 8.5 has OPcache
 built in, so `docker-php-ext-install opcache` fails; MySQL 9.x are short-lived Innovation releases).
+When the `docker` job fails on Trivy because a base image has a new fixable CVE that upstream has not rebuilt yet, add
+the package to the `apk upgrade` line in the `web` stage of `docker/Dockerfile.prod` (or bump the digest) and run the
+same Trivy command locally before pushing (steps: DEPLOY §18).
 Production (image, `docker/compose.prod.yaml`, Apache vhost, deploy/backup/restore, CI) is documented in
 **`docs/DEPLOY.md`** (owner I). Prod facts that affect code: queues `otp`, `mail`, `default`; the runtime
 DB user `sth_app` has per-table DML only (no DDL, no `TRUNCATE`: use `delete()`; `activity_log` and `audit_seals` are
@@ -403,6 +406,8 @@ Q1 2026-10-02 (`docs/dev-notes/Q1.md`): full suite `--parallel --processes=4` �
 demo data (no N+1), largest pages after the list limits ≈ 190 kB.
 After the follow-up D-75…D-77 (same day): full suite → **1515 passed (6962 assertions)**, exit 0; `pint --test` clean (588 files);
 email scenario → **122 mails, 0 missing, 0 unexpected, 0 leaks**; upload check on 19 locally made PDFs → 14 accepted, 5 refused as expected.
+GitHub CI on `a148fd8` (after the `pcre2` upgrade in the web image, CVE-2026-103111): all six jobs green. Docs brought in line the same
+day: PANDUAN-PENGGUNA, ARCHITECTURE §8a/§8b (notification recipients), UI-MAP §6a, DEPLOY §18 (Trivy procedure).
 
 ### Backlog (open; collected from all dev-notes and UI-MAP)
 Owner: **S** = frontend/screens, **I** = deploy/QA, **user** = lead/backend core (also asks the school).

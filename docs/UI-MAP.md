@@ -146,6 +146,19 @@ Conventions
 |---|---|---|---|
 | `dev.components` · `/_dev/components` (`?role=…`), `dev.components.public` · `/_dev/components/public`, `dev.components.auth` · `/_dev/components/auth`, `dev.components.mobile` · `/_dev/components/mobile` | design-system showcase of every `<x-sth.*>` component and layout | S (built by W1-D) | M0 · W1 (built) |
 
+## 6a. List limits and screen changes of the Q1 pass (D-71, D-72, D-75, D-76)
+Not drawn in the mockup; added after the check with school-sized data (1,171 students):
+
+| screen | change |
+|---|---|
+| Publik › Prestasi per bidang (#2), Kepala Sekolah › Prestasi per bidang | student list in steps of 20, "Tampilkan lebih banyak" (max 200), line "Menampilkan N dari M siswa" |
+| Kepala Sekolah › Persetujuan (#19) | queue in steps of 20; "Pilih semua" and bulk approve cover the visible rows only |
+| Humas › Publikasi (#22) | 20 cards per lane, "Tampilkan lebih banyak (N lagi)"; the chip shows the lane total |
+| Status aktivasi (Kesiswaan, Admin) | 40 rows per step |
+| Kesiswaan › Kelola lomba (#16), Talenta (#18) | at most 250 / 300 rows with a hint to narrow the filter; Talenta export asks for the password again |
+| Kesiswaan › Kelola lomba (#16), usulan forms (siswa, guru) | a lomba name with a web address is refused; a submitted link that fails the URL rule shows "Tautan tidak valid" |
+| Humas › Arsip, Apresiasi, Jadwal | after a withdrawn publish consent: neutral name, chip "Izin dicabut", no flyer link (Admin keeps name and link) |
+
 ## 7. Board checklist (24/24 mapped)
 Main (#1) · Prestasi-Bidang (#2) · Peringkat (#3) · Masuk (#4) · Aktivasi (#5) · Tur-Menu-Mobile (#6) ·
 Tur-Menu-Desktop (#7) · Beranda-Siswa (#8) · Beranda-Mobile (#9) · Katalog-Lomba (#10) ·
