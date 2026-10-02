@@ -33,7 +33,9 @@
     $current = ($wireModel || $name === null) ? $value : (request()->hasSession() ? old($name, $value) : $value);
     $current = $current instanceof \BackedEnum ? $current->value : $current;
 @endphp
-<fieldset {{ $attributes->whereDoesntStartWith('wire:model')->class('min-w-0') }} @if ($hint || $error) aria-describedby="{{ trim(($hint ? $groupId.'-hint ' : '').($error ? $groupId.'-error' : '')) }}" @endif>
+{{-- aria-invalid on the group, not the buttons: it is what marks the control as wrong for assistive tech
+     and what the "jump to the first error" helper in app.js looks for. --}}
+<fieldset {{ $attributes->whereDoesntStartWith('wire:model')->class('min-w-0') }} @if ($error) aria-invalid="true" @endif @if ($hint || $error) aria-describedby="{{ trim(($hint ? $groupId.'-hint ' : '').($error ? $groupId.'-error' : '')) }}" @endif>
     @if ($label)
         <legend @class(['label mb-2', 'sr-only' => $hideLabel])>{{ $label }}</legend>
     @endif

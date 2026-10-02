@@ -8,6 +8,7 @@
  | Hooks (see the component docs in resources/views/components/sth):
  |   data-sth-open="<dialog id>" · data-sth-close · data-sth-autoopen        <x-sth.modal>, mobile menu
  |   window events: sth-modal-open / sth-modal-close {id} · sth-toast {message, tone}
+ |                  sth-form-invalid {form} — bring the first validation error into view
  |   data-sth-toast / data-sth-toast-close / data-announce                    <x-sth.toast>, <x-sth.flash>
  |   data-sth-tabs / data-sth-tab / data-sth-panel                            <x-sth.tabs panels>
  |   data-sth-reveal="<input id>"                                             <x-sth.input revealable>
@@ -133,11 +134,41 @@ function svgIcon(path, withCircle) {
     return svg;
 }
 
+/*
+ | A modal <dialog> renders in the top layer, which paints above the entire normal stacking context, so no
+ | z-index on .toast-region can reach it -- a toast raised while a drawer is open was simply invisible.
+ | Showing the region as a popover puts it in the top layer as well, and re-showing it lifts it back above
+ | a dialog that was opened later. Browsers without the Popover API keep the old, normal-layer behaviour.
+ */
+function liftToastRegion(region) {
+    if (typeof region.showPopover !== 'function') return;
+    try {
+        if (!region.hasAttribute('popover')) region.setAttribute('popover', 'manual');
+        if (region.matches(':popover-open')) region.hidePopover();
+        region.showPopover();
+    } catch {
+        // Leave the region in the normal layer rather than risk hiding it behind a half-applied popover.
+        region.removeAttribute('popover');
+    }
+}
+
+function dropToastRegion(region) {
+    if (!region || region.querySelector('[data-sth-toast]')) return;
+    try {
+        if (region.matches(':popover-open')) region.hidePopover();
+    } catch {
+        // Already closed.
+    }
+    region.removeAttribute('popover');
+}
+
 function dismissToast(toast) {
     if (!toast || toast.dataset.leaving) return;
+    const region = toast.parentElement;
     toast.dataset.leaving = '1';
     window.clearTimeout(Number(toast.dataset.timer || 0));
     toast.remove();
+    dropToastRegion(region);
 }
 
 function armToast(toast) {
@@ -159,10 +190,25 @@ function showToast(message, tone = 'success') {
     if (!region || !message) return;
     const [iconClass, path] = TONES[tone] || TONES.success;
 
+    // Error and warning toasts never time out, so without this a form that is submitted twice leaves two
+    // identical notices on the pile. Re-arm the one already on screen instead of stacking a copy.
+    const existing = [...region.querySelectorAll('[data-sth-toast]')].find(
+        (node) => node.dataset.tone === tone && node.dataset.message === String(message),
+    );
+
+    if (existing) {
+        liftToastRegion(region);
+        armToast(existing);
+        announce(String(message), tone === 'error');
+
+        return;
+    }
+
     const toast = document.createElement('div');
     toast.className = 'toast';
     toast.dataset.sthToast = '';
     toast.dataset.tone = TONES[tone] ? tone : 'success';
+    toast.dataset.message = String(message);
 
     const icon = document.createElement('span');
     icon.className = `toast-ic ${iconClass}`;
@@ -181,6 +227,7 @@ function showToast(message, tone = 'success') {
 
     toast.append(icon, text, close);
     region.appendChild(toast);
+    liftToastRegion(region);
     armToast(toast);
     announce(text.textContent, tone === 'error');
 }
@@ -193,6 +240,46 @@ document.addEventListener('click', (event) => {
 window.addEventListener('sth-toast', (event) => {
     const detail = event.detail || {};
     showToast(detail.message, detail.tone);
+});
+
+/* ---------------------------------------------------------------- form errors */
+
+/*
+ | A form inside a drawer scrolls inside .dlg-body, and the submit buttons sit in the sticky footer, so
+ | after a failed submit the error is typically hundreds of pixels above the fold and nothing moved the
+ | user there. Scroll the first problem into view and focus it.
+ |
+ | The summary alert wins over the first marked field: it names every missing field at once, so it is the
+ | more useful thing to land on when both are present.
+ */
+function revealFirstError(scope) {
+    const root = scope instanceof Element ? scope : document;
+    const target = root.querySelector('[data-sth-error-summary]') || root.querySelector('[aria-invalid="true"]');
+    if (!target) return false;
+
+    // 'instant', not 'smooth': a smooth scroll is driven by animation frames and silently does nothing in a
+    // tab that is not drawing, which would leave the user staring at an unchanged form. Moving focus below
+    // is what orients them, so the jump does not need to be animated.
+    target.scrollIntoView({ block: 'center', behavior: 'instant' });
+
+    // preventScroll so focus does not jump-cut past the smooth scroll we just started.
+    const field = target.matches('input, select, textarea') ? target : target.querySelector('input, select, textarea');
+    (field || target).focus({ preventScroll: true });
+
+    return true;
+}
+
+window.addEventListener('sth-form-invalid', (event) => {
+    const id = event.detail?.form;
+    const scope = id ? document.getElementById(id) : null;
+
+    // Livewire has already morphed the error markers in by the time it dispatches this, so look now. No
+    // requestAnimationFrame: a backgrounded tab never runs those callbacks, and the jump would be lost.
+    if (revealFirstError(scope)) return;
+
+    // Only if the markers somehow are not in yet, give the DOM one more turn. setTimeout still fires when
+    // frames do not.
+    window.setTimeout(() => revealFirstError(scope), 50);
 });
 
 /* ---------------------------------------------------------------- tabs (client panels) */

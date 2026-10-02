@@ -215,6 +215,7 @@ class Form extends Component
             ]);
         } catch (ValidationException $e) {
             $this->setErrorBag($e->validator->errors());
+            $this->dispatch('sth-form-invalid', form: self::DIALOG);
 
             return false;
         }
@@ -230,10 +231,9 @@ class Form extends Component
             $this->addError(in_array($key, self::FIELDS, true) ? 'form.'.$key : $key, (string) ($messages[0] ?? 'Periksa isian ini.'));
         }
 
-        // The alert sits at the top of the scrolling drawer body; announce it too.
-        $message = collect($e->errors())->only(['decision', 'status'])->flatten()->first()
-            ?? 'Periksa isian yang ditandai.';
-        $this->dispatch('sth-toast', message: (string) $message, tone: 'error');
+        // The alert and the marked fields sit in the scrolling drawer body, usually well above the footer
+        // the user just clicked, so ask the browser to bring the first one into view.
+        $this->dispatch('sth-form-invalid', form: self::DIALOG);
     }
 
     private function finish(string $message): void

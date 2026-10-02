@@ -73,9 +73,11 @@ final class UpdateCompetition
                 $missing = VerifyCompetition::missingFields($locked);
 
                 if ($missing !== []) {
-                    throw ValidationException::withMessages([
-                        'status' => 'Lomba yang sudah tampil di katalog harus lengkap: '.implode(', ', $missing).'.',
-                    ]);
+                    throw ValidationException::withMessages(VerifyCompetition::blockingMessages(
+                        $missing,
+                        'status',
+                        'Lomba yang sudah tampil di katalog harus lengkap: '.implode(', ', $missing).'.',
+                    ));
                 }
             }
 
