@@ -67,9 +67,11 @@ final class VerifyCompetition
                 $missing = self::missingFields($locked);
 
                 if ($missing !== []) {
-                    throw ValidationException::withMessages([
-                        'decision' => 'Lengkapi dulu: '.implode(', ', $missing).'.',
-                    ]);
+                    throw ValidationException::withMessages(self::blockingMessages(
+                        $missing,
+                        'decision',
+                        'Lengkapi dulu: '.implode(', ', $missing).'.',
+                    ));
                 }
             }
 
@@ -110,9 +112,10 @@ final class VerifyCompetition
     }
 
     /**
-     * Labels of the fields that still block publishing (empty = ready).
+     * Fields that still block publishing, as field => label (empty = ready). Keyed so the caller can mark
+     * each input, not just name it in a sentence the reader then has to match against the form by eye.
      *
-     * @return list<string>
+     * @return array<string, string>
      */
     public static function missingFields(Competition $competition): array
     {
@@ -122,17 +125,34 @@ final class VerifyCompetition
             $value = $competition->getAttribute($field);
 
             if ($value === null || (is_string($value) && trim($value) === '')) {
-                $missing[] = $label;
+                $missing[$field] = $label;
             }
         }
 
         if ($competition->participation instanceof Participation
             && $competition->participation !== Participation::Individu
             && ($competition->max_team_size === null || $competition->max_team_size < 2)) {
-            $missing[] = 'Maks anggota';
+            $missing['max_team_size'] = 'Maks anggota';
         }
 
         return $missing;
+    }
+
+    /**
+     * Summary message plus one message per missing field, so the form can mark every input it names.
+     *
+     * @param  array<string, string>  $missing
+     * @return array<string, string>
+     */
+    public static function blockingMessages(array $missing, string $summaryKey, string $summary): array
+    {
+        $messages = [$summaryKey => $summary];
+
+        foreach ($missing as $field => $label) {
+            $messages[$field] = 'Wajib diisi sebelum tampil di katalog.';
+        }
+
+        return $messages;
     }
 
     private static function cleanNote(?string $note): ?string

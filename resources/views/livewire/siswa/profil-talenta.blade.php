@@ -139,7 +139,7 @@
                             @include('livewire.siswa.lomba-saya.partials.upload-row', ['name' => $bukti->getClientOriginalName(), 'size' => $bukti->getSize(), 'remove' => 'hapusBukti', 'removeLabel' => 'Hapus bukti dukung'])
                             @error('bukti')<p class="field-error m-0 mt-1"><x-sth.icon name="alert" :size="16" />{{ $message }}</p>@enderror
                         @else
-                            <x-sth.file-drop wire:model="bukti" id="talenta-bukti" title="Unggah sertifikat"
+                            <x-sth.file-drop wire:model="bukti" :file="$bukti" id="talenta-bukti" title="Unggah sertifikat"
                                 hint="PDF, JPG, atau PNG · maks. 5 MB" accept=".pdf,.jpg,.jpeg,.png,.webp" />
                         @endif
                     </div>
@@ -224,7 +224,7 @@
                         </div>
                     @endforeach
                     @if ($slotsLeft > 0)
-                        <x-sth.file-drop wire:model="sertifikatPilih" id="sertifikat-pilih" title="Unggah sertifikat" hint="PDF, JPG, atau PNG · maks. 5 MB"
+                        <x-sth.file-drop wire:model="sertifikatPilih" :file="$sertifikatPilih" id="sertifikat-pilih" title="Unggah sertifikat" hint="PDF, JPG, atau PNG · maks. 5 MB"
                             accept=".pdf,.jpg,.jpeg,.png,.webp" />
                     @endif
                     @error('sertifikat')<p class="field-error m-0"><x-sth.icon name="alert" :size="16" />{{ $message }}</p>@enderror

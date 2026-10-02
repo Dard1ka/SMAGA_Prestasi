@@ -306,7 +306,7 @@ class Index extends Component
                         'size' => self::fileSize($c->juknisFile->size),
                         'url' => Route::has('files.show') ? route('files.show', $c->juknisFile) : null,
                     ] : null,
-                    'missing' => $missing,
+                    'missing' => array_values($missing),
                     'canVerify' => $user->can('verify', $c),
                     'canEdit' => $user->can('update', $c),
                 ];

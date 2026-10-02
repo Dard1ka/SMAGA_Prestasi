@@ -206,7 +206,7 @@ final class Navigation
         ];
     }
 
-    /** URL of the first reachable menu item of a role (brand link, "Buka dasbor"). */
+    /** URL of the first reachable menu item of a role (brand link, "Buka dashboard"). */
     public static function homeUrl(?string $role): string
     {
         if ($role === null) {

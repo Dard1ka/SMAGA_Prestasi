@@ -4,7 +4,7 @@
         description="{{ $formMode === 'create' ? 'Lomba baru masuk antrean verifikasi dulu, termasuk yang kamu buat.' : ($submitterName ? 'Dikirim oleh '.$submitterName.'.' : null) }}">
         <form id="lomba-form-el" wire:submit="save" class="flex flex-col gap-5" novalidate>
             @if ($errors->has('decision') || $errors->has('status'))
-                <x-sth.alert tone="error">{{ $errors->first('decision') ?: $errors->first('status') }}</x-sth.alert>
+                <x-sth.alert tone="error" data-sth-error-summary tabindex="-1">{{ $errors->first('decision') ?: $errors->first('status') }}</x-sth.alert>
             @endif
 
             <x-sth.input wire:model="form.name" label="Nama lomba" placeholder="Contoh: OSN Tingkat Kota Semarang 2026" maxlength="200" required />

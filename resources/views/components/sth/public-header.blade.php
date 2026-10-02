@@ -1,6 +1,6 @@
 {{--
     Public header (DESIGN-SPEC-v2 §4): brand · Beranda / Prestasi / Peringkat (current = ink + 2px blue
-    underline) · "Masuk" (or "Buka dasbor" when logged in). Sticky, 72px; on phones the links move to a
+    underline) · "Masuk" (or "Buka dashboard" when logged in). Sticky, 72px; on phones the links move to a
     row under the header.
 
     <x-sth.public-header current="prestasi" />
@@ -23,7 +23,7 @@
     </nav>
     <div class="justify-self-end">
         @if ($user)
-            <x-sth.button size="sm" :href="$dashboardUrl">Buka dasbor</x-sth.button>
+            <x-sth.button size="sm" :href="$dashboardUrl">Buka dashboard</x-sth.button>
         @else
             <x-sth.button size="sm" :href="$public['login']['href']" :disabled="$public['login']['disabled']">Masuk</x-sth.button>
         @endif

@@ -24,7 +24,7 @@ test('demo student logs in, sees the beranda and logs out', async ({ page }) => 
     await expect(page).toHaveURL(/\/siswa\/?$/);
 
     // First visit: the menu tour (Siswa\TurMenu) opens as a modal; "Lewati" stores tour_seen_at via Livewire.
-    const tour = page.getByRole('dialog', { name: 'Tur singkat menu' });
+    const tour = page.getByRole('dialog', { name: 'Tour singkat menu' });
     await expect(tour).toBeVisible();
     await tour.getByRole('button', { name: 'Lewati' }).click();
     await expect(tour).toBeHidden();

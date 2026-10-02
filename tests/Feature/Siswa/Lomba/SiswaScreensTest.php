@@ -58,7 +58,7 @@ it('renders every W2-A1 siswa page', function (): void {
     $this->get(route('siswa.beranda'))->assertOk()->assertSee('Halo, Nadia');
     $this->get(route('siswa.lomba.index'))->assertOk()->assertSee($lomba->name)->assertSee('Usulkan lomba');
     $this->get(route('siswa.lomba.show', $lomba))->assertOk()->assertSee('Daftar lomba')->assertSee('Kirim pendaftaran');
-    $this->get(route('siswa.bantuan'))->assertOk()->assertSee('Tur singkat menu');
+    $this->get(route('siswa.bantuan'))->assertOk()->assertSee('Tour singkat menu');
 });
 
 // --- katalog -----------------------------------------------------------------------------------
@@ -250,7 +250,7 @@ it('shows the tour until it is skipped, and again from /siswa/tur', function ():
     $user->forceFill(['tour_seen_at' => null])->save();
     $this->actingAs($user);
 
-    $this->get(route('siswa.beranda'))->assertSee('Tur singkat menu')->assertSee('Mulai tur');
+    $this->get(route('siswa.beranda'))->assertSee('Tour singkat menu')->assertSee('Mulai tour');
 
     Livewire::test(TurMenu::class)
         ->assertSet('show', true)
@@ -261,8 +261,8 @@ it('shows the tour until it is skipped, and again from /siswa/tur', function ():
         ->call('selesai')->assertSet('show', false);
 
     expect($user->fresh()->tour_seen_at)->not->toBeNull();
-    $this->get(route('siswa.beranda'))->assertDontSee('Mulai tur');
+    $this->get(route('siswa.beranda'))->assertDontSee('Mulai tour');
 
     $this->get(route('siswa.tour'))->assertRedirect(route('siswa.beranda', ['tur' => 1]));
-    $this->get(route('siswa.beranda', ['tur' => 1]))->assertSee('Mulai tur');
+    $this->get(route('siswa.beranda', ['tur' => 1]))->assertSee('Mulai tour');
 });

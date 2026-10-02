@@ -1528,6 +1528,10 @@
     .dlg {
         max-width: none;
         max-height: none;
+        /* Tailwind preflight sets margin:0 on every element, which kills the UA
+           stylesheet's margin:auto that a native <dialog> uses to centre itself.
+           Variants below (drawer/start/sheet) override this with their own margin. */
+        margin: auto;
         padding: 0;
         border: 0;
         background: transparent;
@@ -1627,7 +1631,10 @@
 
     @media (min-width: 40rem) {
         .dlg-sheet {
-            width: auto;
+            /* fit-content, not auto: a fixed-position box with inset-inline:0 and width:auto
+               stretches to the viewport and forces auto margins to 0, so the panel would hug
+               the left edge. A definite width lets margin:auto split the leftover space. */
+            width: fit-content;
             margin: auto;
         }
 
@@ -1652,6 +1659,9 @@
     /* ---------- Toasts ---------- */
     .toast-region {
         position: fixed;
+        /* inset:auto first: the region is shown as a popover (app.js) so it can clear a modal <dialog>,
+           and the UA popover rules would otherwise pin its top and left edges to the viewport. */
+        inset: auto;
         right: 24px;
         bottom: 24px;
         z-index: 60;
@@ -1660,6 +1670,20 @@
         align-items: flex-end;
         gap: 10px;
         pointer-events: none;
+    }
+
+    /* Strip the rest of the UA popover chrome. No position values here: the breakpoint below owns those. */
+    .toast-region[popover] {
+        width: auto;
+        height: auto;
+        max-width: none;
+        max-height: none;
+        margin: 0;
+        padding: 0;
+        border: 0;
+        background: transparent;
+        color: inherit;
+        overflow: visible;
     }
 
     @media (max-width: 63.99rem) {

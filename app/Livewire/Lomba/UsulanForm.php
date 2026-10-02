@@ -54,11 +54,13 @@ class UsulanForm extends Component
 
         return [
             'name' => ['required', 'string', 'min:3', 'max:200'],
-            'organizer_name' => ['nullable', 'string', 'max:200'],
-            'website_url' => ['nullable', 'string', new ExternalUrl],
+            // Kesiswaan verifies a proposal against the organizer, the official link and the invitation,
+            // so a proposal without them cannot be decided. Only the note stays optional.
+            'organizer_name' => ['required', 'string', 'max:200'],
+            'website_url' => ['required', 'string', new ExternalUrl],
             'description' => ['nullable', 'string', 'max:1000'],
             'brosur' => [
-                'nullable', 'file', 'max:'.$upload->maxKilobytes(),
+                'required', 'file', 'max:'.$upload->maxKilobytes(),
                 'extensions:'.implode(',', $upload->extensions()),
                 'mimetypes:'.implode(',', $upload->mimeTypes()),
             ],
@@ -72,7 +74,10 @@ class UsulanForm extends Component
             'name.required' => 'Isi nama lomba dulu.',
             'name.min' => 'Nama lomba minimal 3 karakter.',
             'name.max' => 'Nama lomba maks. 200 karakter.',
+            'organizer_name.required' => 'Isi nama penyelenggara dulu.',
             'organizer_name.max' => 'Nama penyelenggara maks. 200 karakter.',
+            'website_url.required' => 'Isi tautan resmi lomba dulu.',
+            'brosur.required' => 'Unggah brosur atau juknis dulu.',
             'description.max' => 'Catatan maks. 1000 karakter.',
             'brosur.max' => 'Ukuran file maksimal 5 MB.',
             'brosur.extensions' => 'Pakai file PDF, JPG, PNG, atau WEBP.',
@@ -85,7 +90,15 @@ class UsulanForm extends Component
     {
         Gate::authorize('create', Competition::class);
 
-        $this->validate();
+        try {
+            $this->validate();
+        } catch (ValidationException $e) {
+            // The sheet scrolls inside .dlg-body and the send button sits in its sticky footer, so a
+            // field error can land out of sight. Let app.js jump to the first one.
+            $this->dispatch('sth-form-invalid', form: 'usul');
+
+            throw $e;
+        }
 
         $key = 'usulan:'.auth()->id();
 
