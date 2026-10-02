@@ -23,7 +23,7 @@
             @endif
 
             <form wire:submit="uploadSignature" class="flex flex-col gap-3" novalidate>
-                <x-sth.file-drop wire:model="signature" label="{{ $signatureFile ? 'Ganti file' : 'Unggah file' }}" accept=".png,image/png"
+                <x-sth.file-drop wire:model="signature" :file="$signature" label="{{ $signatureFile ? 'Ganti file' : 'Unggah file' }}" accept=".png,image/png"
                                  hint="PNG transparan, maks. 1 MB. Versi lama tetap disimpan sebagai bukti." icon="image" />
                 <div class="flex justify-end">
                     <x-sth.button type="submit" icon="upload" wire:loading.attr="disabled" wire:target="signature,uploadSignature">Unggah tanda tangan</x-sth.button>

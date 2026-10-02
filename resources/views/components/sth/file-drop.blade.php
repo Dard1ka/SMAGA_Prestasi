@@ -8,14 +8,22 @@
     <x-sth.file-drop wire:model="brosur" label="Brosur atau juknis" accept=".pdf" hint="PDF · maks. 10 MB" optional />
     <x-sth.file-drop name="foto[]" multiple label="Foto dokumentasi" accept=".jpg,.jpeg,.png,.webp" icon="image" />
 
-    Props: name · id · label · title ("Pilih file") · hint ("PDF, JPG, atau PNG · maks. 10 MB")
-           accept · multiple · icon (upload) · error · optional
+    With wire:model, pass the bound property as :file so the chosen name survives a Livewire re-render:
+
+    <x-sth.file-drop wire:model="brosur" :file="$brosur" title="Pilih file PDF atau gambar" />
+
+    Without it the name is only ever written to the DOM by app.js on `change`, and the next morph paints
+    the placeholder back over it -- the upload looks like it was rejected when it actually succeeded.
+
+    Props: name · id · label · title ("Pilih file") · file (chosen upload, or an array of them)
+           hint ("PDF, JPG, atau PNG · maks. 10 MB") · accept · multiple · icon (upload) · error · optional
 --}}
 @props([
     'name' => null,
     'id' => null,
     'label' => null,
     'title' => 'Pilih file atau seret ke sini',
+    'file' => null,
     'hint' => 'PDF, JPG, atau PNG · maks. 10 MB',
     'accept' => null,
     'multiple' => false,
@@ -30,12 +38,21 @@
     $error ??= $errorKey !== null ? (($errors ?? null)?->first($errorKey) ?: ($errors ?? null)?->first($errorKey.'.*')) : null;
     $error = $error ?: null;
     $describedBy = trim(($hint ? $id.'-hint ' : '').($error ? $id.'-error' : ''));
+    // A chosen upload names itself. $placeholder keeps the empty-state wording, which app.js restores
+    // through data-empty when the picker is cleared.
+    $placeholder = $title;
+    $chosen = collect(is_array($file) ? $file : [$file])
+        ->filter()
+        ->map(fn ($f) => is_object($f) && method_exists($f, 'getClientOriginalName') ? $f->getClientOriginalName() : (string) $f)
+        ->filter()
+        ->implode(', ');
+    $title = $chosen !== '' ? $chosen : $title;
 @endphp
 <x-sth.field :for="$id" :label="$label" :error="$error" :optional="$optional" class="{{ $attributes->get('class') }}">
     <label for="{{ $id }}" class="drop" data-sth-drop @if ($error) aria-invalid="true" @endif>
         <span class="drop-ic"><x-sth.icon :name="$icon" /></span>
         <span class="flex min-w-0 flex-col gap-0.5">
-            <span class="ellip text-[14.5px] font-bold text-ink" data-sth-file-name data-empty="{{ $title }}">{{ $title }}</span>
+            <span class="ellip text-[14.5px] font-bold text-ink" data-sth-file-name data-empty="{{ $placeholder }}">{{ $title }}</span>
             @if ($hint)
                 <span id="{{ $id }}-hint" class="text-[13px] text-muted">{{ $hint }}</span>
             @endif

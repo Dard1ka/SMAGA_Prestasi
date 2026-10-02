@@ -49,7 +49,7 @@
                         <span class="label">Sertifikat/piagam</span>
                         @include('livewire.siswa.lomba-saya.partials.upload-row', ['name' => $sertifikat->getClientOriginalName(), 'size' => $sertifikat->getSize(), 'remove' => "removeFile('sertifikat')", 'removeLabel' => 'Hapus sertifikat'])
                     @else
-                        <x-sth.file-drop wire:model="sertifikat" id="{{ $formId }}-sertifikat" label="Sertifikat/piagam" title="Unggah sertifikat"
+                        <x-sth.file-drop wire:model="sertifikat" :file="$sertifikat" id="{{ $formId }}-sertifikat" label="Sertifikat/piagam" title="Unggah sertifikat"
                             hint="PDF, JPG, atau PNG · maks. 5 MB" accept=".pdf,.jpg,.jpeg,.png,.webp" :optional="isset($existing['sertifikat'])" />
                     @endif
                     @isset($existing['sertifikat'])
@@ -68,7 +68,7 @@
                         </div>
                     @endforeach
                     @if (count($foto) < \App\Actions\Reports\SubmitReport::MAX_PHOTOS)
-                        <x-sth.file-drop wire:model="fotoBaru" id="{{ $formId }}-foto" multiple icon="image" title="Tambah foto"
+                        <x-sth.file-drop wire:model="fotoBaru" :file="$fotoBaru" id="{{ $formId }}-foto" multiple icon="image" title="Tambah foto"
                             hint="JPG atau PNG · maks. 5 MB per foto" accept=".jpg,.jpeg,.png,.webp" />
                     @endif
                     @isset($existing['foto'])
@@ -85,7 +85,7 @@
                     @include('livewire.siswa.lomba-saya.partials.upload-row', ['name' => $pengumuman->getClientOriginalName(), 'size' => $pengumuman->getSize(), 'remove' => "removeFile('pengumuman')", 'removeLabel' => 'Hapus pengumuman'])
                     @error('pengumuman')<p class="field-error m-0"><x-sth.icon name="alert" :size="16" />{{ $message }}</p>@enderror
                 @else
-                    <x-sth.file-drop wire:model="pengumuman" id="{{ $formId }}-pengumuman" label="Pengumuman resmi" title="Unggah pengumuman"
+                    <x-sth.file-drop wire:model="pengumuman" :file="$pengumuman" id="{{ $formId }}-pengumuman" label="Pengumuman resmi" title="Unggah pengumuman"
                         hint="Tangkapan layar atau PDF · maks. 5 MB" accept=".pdf,.jpg,.jpeg,.png,.webp" optional />
                 @endif
             </div>
@@ -107,7 +107,7 @@
                         @include('livewire.siswa.lomba-saya.partials.upload-row', ['name' => $laporan->getClientOriginalName(), 'size' => $laporan->getSize(), 'remove' => "removeFile('laporan')", 'removeLabel' => 'Hapus laporan penelitian'])
                         @error('laporan')<p class="field-error m-0"><x-sth.icon name="alert" :size="16" />{{ $message }}</p>@enderror
                     @else
-                        <x-sth.file-drop wire:model="laporan" id="{{ $formId }}-laporan" label="Laporan penelitian" title="Unggah laporan"
+                        <x-sth.file-drop wire:model="laporan" :file="$laporan" id="{{ $formId }}-laporan" label="Laporan penelitian" title="Unggah laporan"
                             hint="PDF · maks. 10 MB" accept=".pdf" icon="file" :optional="isset($existing['laporan_riset'])" />
                     @endif
                     @isset($existing['laporan_riset'])
@@ -122,7 +122,7 @@
                             @include('livewire.siswa.lomba-saya.partials.upload-row', ['name' => $artikel->getClientOriginalName(), 'size' => $artikel->getSize(), 'remove' => "removeFile('artikel')", 'removeLabel' => 'Hapus artikel'])
                             @error('artikel')<p class="field-error m-0"><x-sth.icon name="alert" :size="16" />{{ $message }}</p>@enderror
                         @else
-                            <x-sth.file-drop wire:model="artikel" id="{{ $formId }}-artikel" label="Artikel ilmiah" title="Unggah artikel"
+                            <x-sth.file-drop wire:model="artikel" :file="$artikel" id="{{ $formId }}-artikel" label="Artikel ilmiah" title="Unggah artikel"
                                 hint="PDF · maks. 10 MB" accept=".pdf" icon="file" optional />
                         @endif
                     </div>
@@ -132,7 +132,7 @@
                             @include('livewire.siswa.lomba-saya.partials.upload-row', ['name' => $poster->getClientOriginalName(), 'size' => $poster->getSize(), 'remove' => "removeFile('poster')", 'removeLabel' => 'Hapus poster'])
                             @error('poster')<p class="field-error m-0"><x-sth.icon name="alert" :size="16" />{{ $message }}</p>@enderror
                         @else
-                            <x-sth.file-drop wire:model="poster" id="{{ $formId }}-poster" label="Poster" title="Unggah poster"
+                            <x-sth.file-drop wire:model="poster" :file="$poster" id="{{ $formId }}-poster" label="Poster" title="Unggah poster"
                                 hint="JPG atau PDF · maks. 5 MB" accept=".pdf,.jpg,.jpeg,.png,.webp" icon="image" optional />
                         @endif
                     </div>
