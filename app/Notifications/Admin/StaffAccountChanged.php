@@ -44,7 +44,8 @@ final class StaffAccountChanged extends AdminNotice
         return match ($this->event) {
             self::CREATED => ["{$this->actorName} membuat akun {$this->targetName} dengan peran {$this->roleLabel}."],
             self::ROLE_CHANGED => ["{$this->actorName} mengubah peran {$this->targetName} menjadi {$this->roleLabel}."],
-            default => ["{$this->actorName} mereset kata sandi dan verifikasi dua langkah akun {$this->targetName}.", 'Jika bukan atas permintaan Anda, hubungi Admin sekarang.'],
+            // A name may end with a degree ("…, S.Or."): no second full stop.
+            default => ["{$this->actorName} mereset kata sandi dan verifikasi dua langkah akun ".rtrim($this->targetName, '.').'.', 'Jika bukan atas permintaan Anda, hubungi Admin sekarang.'],
         };
     }
 }

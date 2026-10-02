@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Notifications\Registrations;
 
+use App\Notifications\Support\PlainMailMessage;
 use Illuminate\Notifications\Messages\MailMessage;
 
 /** To the Kepala Sekolah when a registration enters menunggu_kepsek (individu sent, or all members confirmed). */
@@ -11,7 +12,7 @@ class RegistrationAwaitingPrincipal extends RegistrationNotification
 {
     public function toMail(object $notifiable): MailMessage
     {
-        return (new MailMessage)
+        return (new PlainMailMessage)
             ->subject('Pendaftaran lomba menunggu persetujuan')
             ->greeting('Yth. '.trim((string) ($notifiable->name ?? 'Kepala Sekolah')).',')
             ->line($this->summary())

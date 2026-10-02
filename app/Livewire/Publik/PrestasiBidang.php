@@ -19,6 +19,11 @@ use Livewire\Component;
  */
 final class PrestasiBidang extends Component
 {
+    /** Students shown per step: the full list of a bidang can be hundreds of rows (page weight on mobile). */
+    public const STEP = 20;
+
+    public const MAX = 200;
+
     #[Url(except: '')]
     public string $bidang = '';
 
@@ -31,13 +36,19 @@ final class PrestasiBidang extends Component
     #[Url(except: '')]
     public string $siswa = '';
 
+    public int $limit = self::STEP;
+
     public function mount(): void
     {
         $this->normalize();
     }
 
-    public function updated(): void
+    public function updated(string $property): void
     {
+        if (in_array($property, ['bidang', 'tahun', 'tingkat'], true)) {
+            $this->limit = self::STEP;
+        }
+
         $this->normalize();
     }
 
@@ -45,9 +56,16 @@ final class PrestasiBidang extends Component
     {
         if ($bidang !== $this->bidang) {
             $this->siswa = '';
+            $this->limit = self::STEP;
         }
 
         $this->bidang = $bidang;
+        $this->normalize();
+    }
+
+    public function tampilkanLebih(): void
+    {
+        $this->limit += self::STEP;
         $this->normalize();
     }
 
@@ -71,12 +89,15 @@ final class PrestasiBidang extends Component
         $tahun = $this->tahun !== '' ? $this->tahun : null;
         $tingkat = $this->tingkat !== '' ? $this->tingkat : null;
         $summary = $data->bidangSummary($tahun, $tingkat);
+        $students = $data->studentsInBidang($bidang, $tahun, $tingkat);
 
         return view('livewire.publik.prestasi-bidang', [
             'summary' => $summary,
             'selected' => collect($summary['bidang'])->firstWhere('value', $bidang->value),
             'years' => $summary['years'][$bidang->value] ?? [],
-            'students' => $data->studentsInBidang($bidang, $tahun, $tingkat),
+            'students' => array_slice($students, 0, $this->limit),
+            'studentTotal' => count($students),
+            'hasMore' => count($students) > $this->limit && $this->limit < self::MAX,
             'detail' => $this->siswa !== '' ? $data->studentDetail($this->siswa) : null,
             'yearOptions' => $data->schoolYearOptions(),
             'levelOptions' => $data->levelOptions(),
@@ -104,6 +125,8 @@ final class PrestasiBidang extends Component
         if ($this->siswa !== '' && $data->studentDetail($this->siswa) === null) {
             $this->siswa = '';
         }
+
+        $this->limit = max(self::STEP, min(self::MAX, $this->limit));
     }
 
     private function data(): PublicAchievements

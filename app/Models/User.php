@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Actions\Accounts\VerifyOtpCode;
 use App\Enums\RoleName;
 use App\Enums\UserStatus;
+use App\Notifications\Admin\AdminNotice;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -14,6 +16,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Notifications\Notification;
 use Laravel\Fortify\TwoFactorAuthenticatable;
 use Spatie\Activitylog\Models\Concerns\LogsActivity;
 use Spatie\Activitylog\Support\LogOptions;
@@ -144,6 +147,23 @@ class User extends Authenticatable
     }
 
     // Helpers --------------------------------------------------------------------------------
+
+    /**
+     * Mail channel address, or null to skip the mail (the in-app notification is still stored).
+     * - A frozen account (K3 / "Bukan saya?", K8) gets no mail: its address may be the one the owner disputes.
+     * - An address nobody verified yet (new or reset staff account, typed by an Admin) only gets account
+     *   notices (AdminNotice), never work mail with student names. OTP test mode (local) counts as verified.
+     */
+    public function routeNotificationForMail(Notification $notification): ?string
+    {
+        if (blank($this->email) || $this->frozen_at !== null) {
+            return null;
+        }
+
+        $verified = $this->email_verified_at !== null || VerifyOtpCode::testModeActive();
+
+        return $verified || $notification instanceof AdminNotice ? (string) $this->email : null;
+    }
 
     public function canLogIn(): bool
     {

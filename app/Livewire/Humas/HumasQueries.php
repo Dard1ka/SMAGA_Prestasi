@@ -37,8 +37,14 @@ final class HumasQueries
         return array_map(fn (string $relation): string => 'achievement.'.$relation, AchievementFacts::RELATIONS);
     }
 
-    /** Case-insensitive filter on student name or competition name. @param Builder<Publication> $query */
-    public static function search(Builder $query, string $term): void
+    /**
+     * Case-insensitive filter on student name or competition name. With $consentingNamesOnly a student
+     * without publish consent is not found by name (Arsip shows such a row without the name, so the search
+     * must not confirm it either).
+     *
+     * @param  Builder<Publication>  $query
+     */
+    public static function search(Builder $query, string $term, bool $consentingNamesOnly = false): void
     {
         $term = trim($term);
 
@@ -49,7 +55,9 @@ final class HumasQueries
         $like = '%'.addcslashes($term, '%_\\').'%';
 
         $query->whereHas('achievement', fn (Builder $a) => $a->where(fn (Builder $w) => $w
-            ->whereHas('student.user', fn (Builder $u) => $u->where('name', 'like', $like))
+            ->whereHas('student', fn (Builder $s) => $s
+                ->when($consentingNamesOnly, fn (Builder $c) => $c->where('publish_consent', true))
+                ->whereHas('user', fn (Builder $u) => $u->where('name', 'like', $like)))
             ->orWhereHas('competition', fn (Builder $c) => $c->where('name', 'like', $like))));
     }
 

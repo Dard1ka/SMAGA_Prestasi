@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Notifications\Accounts;
 
+use App\Notifications\Support\PlainMailMessage;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -42,7 +43,7 @@ final class EmailBindingNotice extends Notification implements ShouldQueue
 
     public function toMail(object $notifiable): MailMessage
     {
-        $message = (new MailMessage)
+        $message = (new PlainMailMessage)
             ->subject($this->subject())
             ->greeting('Halo '.$this->firstName.',');
 

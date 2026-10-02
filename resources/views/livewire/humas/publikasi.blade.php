@@ -34,6 +34,10 @@
                         @empty
                             <p class="m-0 rounded-card border border-dashed border-line-dashed px-4 py-6 text-center text-sm text-muted">{{ $lane['empty'] }}</p>
                         @endforelse
+
+                        @if ($lane['more'] > 0)
+                            <x-sth.button variant="quiet" size="sm" block icon="chevron-down" wire:click="tampilkanLebih">Tampilkan lebih banyak ({{ $lane['more'] }} lagi)</x-sth.button>
+                        @endif
                     </div>
                 @endforeach
 

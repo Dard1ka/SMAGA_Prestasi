@@ -6,6 +6,7 @@ namespace App\Notifications\Publications;
 
 use App\Actions\Publications\PublicationInput;
 use App\Models\Publication;
+use App\Notifications\Support\PlainMailMessage;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -67,7 +68,7 @@ final class AchievementPublished extends Notification implements ShouldQueue
     {
         $firstName = strtok(trim((string) ($notifiable->name ?? '')), ' ') ?: null;
 
-        return (new MailMessage)
+        return (new PlainMailMessage)
             ->subject($this->title())
             ->greeting($firstName !== null ? 'Halo '.$firstName.',' : 'Halo,')
             ->line($this->body())

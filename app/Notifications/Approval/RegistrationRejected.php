@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Notifications\Approval;
 
 use App\Notifications\Registrations\RegistrationNotification;
+use App\Notifications\Support\PlainMailMessage;
 use Illuminate\Notifications\Messages\MailMessage;
 
 /**
@@ -15,7 +16,7 @@ class RegistrationRejected extends RegistrationNotification
 {
     public function toMail(object $notifiable): MailMessage
     {
-        return (new MailMessage)
+        return (new PlainMailMessage)
             ->subject('Pendaftaran lomba tidak disetujui')
             ->greeting('Halo '.self::firstName($notifiable).',')
             ->line('Kepala Sekolah tidak menyetujui pendaftaranmu di '.$this->competitionName().'.')

@@ -39,7 +39,10 @@ final class StatusAktivasi extends Component
 {
     use RequiresRecentPassword;
 
-    public const PAGE = 100;
+    /** Rows per step: one full class fits; 100 rows made the first page about 300 kB. */
+    public const PAGE = 40;
+
+    public const MAX = 1000;
 
     public const ACTION_REOPEN = 'buka';
 
@@ -204,6 +207,7 @@ final class StatusAktivasi extends Component
 
     public function render(ActivationReport $report): View
     {
+        $this->limit = max(self::PAGE, min(self::MAX, $this->limit));
         $all = $report->rows();
         $filtered = $report->rows($this->kelas ?: null, $this->status ?: null, $this->q);
         $isAdmin = Gate::allows(Permission::UserResetPassword->value);

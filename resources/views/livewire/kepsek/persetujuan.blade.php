@@ -137,6 +137,12 @@
                 </x-sth.empty-state>
             </div>
         @endforelse
+
+        @if ($more > 0)
+            <div class="p-4">
+                <x-sth.button variant="quiet" size="sm" block icon="chevron-down" wire:click="tampilkanLebih">Tampilkan lebih banyak ({{ $more }} lagi)</x-sth.button>
+            </div>
+        @endif
     </section>
 
     <div class="flex w-full shrink-0 flex-col gap-[18px] lg:w-[300px]">

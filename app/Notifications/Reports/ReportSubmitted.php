@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Notifications\Reports;
 
 use App\Models\Report;
+use App\Notifications\Support\PlainMailMessage;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -53,7 +54,7 @@ class ReportSubmitted extends Notification implements ShouldQueue
 
     public function toMail(object $notifiable): MailMessage
     {
-        $message = (new MailMessage)
+        $message = (new PlainMailMessage)
             ->subject($this->title())
             ->line($this->body())
             ->salutation('SMAGA Talent Hub');

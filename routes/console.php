@@ -5,6 +5,7 @@ use App\Actions\Users\ApplyPrincipalReplacement;
 use App\Jobs\AutoPublishPublications;
 use App\Jobs\CleanupOtpCodes;
 use App\Jobs\ExpireInvitations;
+use App\Jobs\PruneExpiredCache;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
@@ -72,6 +73,13 @@ Schedule::command('sth:audit:seal')
 // Verify the whole chain daily; the result and the chain head go to the `security` log (off-site backup).
 Schedule::command('sth:audit:verify')
     ->dailyAt('02:30')
+    ->timezone('Asia/Jakarta')
+    ->withoutOverlapping()
+    ->onOneServer();
+
+// Expired rows of the database cache (old versioned public-page keys, rate-limiter counters) are deleted daily.
+Schedule::job(new PruneExpiredCache)
+    ->dailyAt('03:10')
     ->timezone('Asia/Jakarta')
     ->withoutOverlapping()
     ->onOneServer();

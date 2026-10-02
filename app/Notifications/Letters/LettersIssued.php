@@ -8,6 +8,7 @@ use App\Enums\LetterType;
 use App\Models\Letter;
 use App\Models\Registration;
 use App\Notifications\Registrations\RegistrationNotification;
+use App\Notifications\Support\PlainMailMessage;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Support\Facades\Route;
 
@@ -30,7 +31,7 @@ class LettersIssued extends RegistrationNotification
 
     public function toMail(object $notifiable): MailMessage
     {
-        $mail = (new MailMessage)
+        $mail = (new PlainMailMessage)
             ->subject($this->subject())
             ->greeting($this->audience === 'siswa' ? 'Halo '.self::firstName($notifiable).',' : 'Yth. '.trim((string) ($notifiable->name ?? '')).',')
             ->line($this->message());

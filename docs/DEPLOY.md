@@ -647,3 +647,15 @@ docker compose -f compose.yaml -f tests/E2E/compose.e2e.yaml down -v
 Laporan: `tests/E2E/playwright-report/index.html`. `setup-app.sh` membuat ulang DB project E2E (demo seeder) dan
 menyiapkan akun Nadia dengan kata sandi khusus E2E (`prepare-student.php`); kata sandi awal tidak pernah dipakai. Kedua
 skrip menolak jalan di luar project `sth-e2e` (`STH_E2E=1`). Tes baru: `tests/E2E/specs/*.spec.js`.
+
+**Skenario email** (`tests/E2E/support/email-scenario.php`, tidak ikut CI, sekitar 3 menit): menjalankan seluruh alur
+sekolah lewat Action yang sebenarnya (impor siswa → aktivasi → unggah dan verifikasi lomba → pendaftaran tim →
+persetujuan Kepala Sekolah → surat tugas → laporan → verifikasi → publikasi Humas, juga akun, peran, dan talenta), lalu
+membaca Mailpit dan mencetak email yang benar-benar diterima tiap peran. Keluar dengan kode 1 bila ada email yang hilang,
+bocoran data, atau job gagal. Butuh database baru (`setup-app.sh`) sebelum setiap kali jalan:
+```bash
+docker compose -f compose.yaml -f tests/E2E/compose.e2e.yaml up -d --no-build --wait mysql app web mailpit
+docker compose -f compose.yaml -f tests/E2E/compose.e2e.yaml exec -T app sh tests/E2E/support/setup-app.sh
+docker compose -f compose.yaml -f tests/E2E/compose.e2e.yaml exec -T app php tests/E2E/support/email-scenario.php
+docker compose -f compose.yaml -f tests/E2E/compose.e2e.yaml down -v
+```

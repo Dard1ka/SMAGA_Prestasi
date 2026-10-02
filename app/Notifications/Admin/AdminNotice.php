@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Notifications\Admin;
 
+use App\Notifications\Support\PlainMailMessage;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -44,7 +45,7 @@ abstract class AdminNotice extends Notification implements ShouldQueue
 
     public function toMail(object $notifiable): MailMessage
     {
-        $message = (new MailMessage)->subject($this->subject());
+        $message = (new PlainMailMessage)->subject($this->subject());
 
         foreach ($this->lines() as $line) {
             $message->line($line);

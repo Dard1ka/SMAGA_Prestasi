@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Livewire\Auth;
 
+use App\Http\Middleware\RestrictTwoFactorToStaff;
 use App\Models\User;
 use BaconQrCode\Renderer\Color\Rgb;
 use BaconQrCode\Renderer\Image\SvgImageBackEnd;
@@ -26,6 +27,7 @@ use Livewire\Component;
  * Minimal TOTP setup for staff (docs/SECURITY.md §3a, §3m-9), reached through `staff.2fa`. Route requires a
  * fresh password confirmation. Uses Fortify's own actions: enable (secret + 8 recovery codes) → scan QR →
  * confirm with a 6-digit code → show recovery codes once. Wave 2 moves this into `akun.keamanan`.
+ * Student accounts get 404 (RestrictTwoFactorToStaff on the route and again in user()).
  */
 #[Layout('layouts::auth', ['variant' => 'simple'])]
 #[Title('Verifikasi dua langkah')]
@@ -60,7 +62,7 @@ class TwoFactorSetup extends Component
 
         session()->regenerate();
 
-        activity('auth')->performedOn($user)->causedBy($user)->event('two_factor.confirmed')->log('two_factor.confirmed');
+        // Audit row `two_factor.confirmed`: App\Support\Audit\TwoFactorAuditSubscriber (Fortify's event).
 
         $this->code = '';
         $this->showRecoveryCodes = true;
@@ -108,6 +110,9 @@ class TwoFactorSetup extends Component
     {
         /** @var User $user */
         $user = Auth::user();
+
+        // Staff only, also on Livewire update requests (they do not pass the route's middleware): 404 for students.
+        abort_unless(RestrictTwoFactorToStaff::allows($user), 404);
 
         return $user;
     }

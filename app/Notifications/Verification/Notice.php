@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Notifications\Verification;
 
+use App\Notifications\Support\PlainMailMessage;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -50,7 +51,7 @@ abstract class Notice extends Notification implements ShouldQueue
     {
         $firstName = strtok(trim((string) ($notifiable->name ?? '')), ' ') ?: null;
 
-        $message = (new MailMessage)
+        $message = (new PlainMailMessage)
             ->subject($this->title)
             ->greeting($firstName !== null ? 'Halo '.$firstName.',' : 'Halo,')
             ->line($this->body)

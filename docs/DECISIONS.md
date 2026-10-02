@@ -417,6 +417,66 @@ pengerasan keamanan berstatus **final** (mengubahnya butuh entri baru dan alasan
 - **Dampak:** `SecurityHeaders` tidak pernah mengirim `'unsafe-eval'`; `tests/Feature/Security/CspSafeTest.php` memindai setiap view. Layar baru wajib memakai ekspresi sederhana (panggilan method dengan argumen literal). Menggantikan bagian CSP D-56.
 - **Status:** final.
 
+## D5. Keputusan uji menyeluruh Q1 (2 Okt 2026)
+
+Dicatat dari `docs/dev-notes/Q1.md` (skenario email end-to-end, pemeriksaan kerentanan, uji performa dengan data
+seukuran sekolah). Pengerasan keamanan berstatus **final** (mengubahnya butuh entri baru dan alasan keamanan); pilihan
+produk berstatus **sementara — bisa diubah user**.
+
+### D-66 · Verifikasi dua langkah (TOTP) hanya untuk staf · 2 Okt 2026
+- **Keputusan:** Akun siswa tidak pernah punya TOTP. Semua route pengelolaan 2FA Fortify (`two-factor.*`) dan `/akun/2fa` menjawab 404 untuk akun siswa; login siswa tidak pernah diarahkan ke `/two-factor-challenge`; "Reset kata sandi & email" (K10) juga menghapus TOTP. Akun staf baru yang perannya masih menunggu persetujuan (D-61) tetap boleh menyiapkan TOTP.
+- **Alasan:** Route Fortify hanya meminta login + konfirmasi kata sandi. Orang yang tahu password awal siswa bisa memasang TOTP sebelum pemiliknya aktivasi, lalu pemilik terkunci di layar tantangan dan reset Admin tidak bisa membukanya (temuan HIGH-1).
+- **Dampak:** `App\Http\Middleware\RestrictTwoFactorToStaff` (grup `web`), `FortifyServiceProvider` (pipeline login), `ResetStudentAccount` (audit `two_factor_removed`), `TwoFactorSetup`. Tes: `tests/Feature/Security/StudentTwoFactorTest.php`.
+- **Status:** final.
+
+### D-67 · Batas konfirmasi kata sandi dan audit 2FA · 2 Okt 2026
+- **Keputusan:** `POST /user/confirm-password` dibatasi **5 percobaan per menit per akun** (dihitung sebelum kata sandi dicek; kata sandi benar menghapus hitungan). Saat batas tercapai tercatat `security.password_confirm_locked`. Peristiwa 2FA Fortify masuk log audit: `two_factor.enabled`, `two_factor.confirmed`, `two_factor.disabled`, `two_factor.recovery_codes_regenerated` (maks. 10 baris per akun per jenis per menit).
+- **Alasan:** Konfirmasi kata sandi adalah gerbang semua aksi sensitif Admin dan pengelolaan 2FA, tetapi tidak punya pembatas; sesi staf yang dicuri bisa menebak kata sandi tanpa batas (temuan MEDIUM-3).
+- **Dampak:** `FortifyServiceProvider::CONFIRM_PASSWORD_ATTEMPTS`, `App\Support\Audit\TwoFactorAuditSubscriber`, label di Admin › Log audit. Batas per jam belum ada (backlog #42).
+- **Status:** final.
+
+### D-68 · Email untuk akun beku dan alamat yang belum diverifikasi · 2 Okt 2026
+- **Keputusan:** Akun yang dibekukan (K3, "Bukan saya?" K8) tidak menerima email apa pun dan tidak bisa meminta atau memakai kode reset kata sandi (jawaban tetap generik). Alamat email yang belum pernah diverifikasi (akun staf baru atau yang baru direset, diketik Admin) hanya menerima pemberitahuan akun (`AdminNotice`), bukan email kerja yang memuat nama siswa. Mode uji OTP lokal dianggap terverifikasi. Notifikasi dalam aplikasi tetap tersimpan.
+- **Alasan:** Setelah "Bukan saya?", alamat yang terikat mungkin milik pembajak, tetapi masih menerima kode reset dan notifikasi prestasi (temuan skenario email). Salah ketik email staf oleh Admin mengirim nama siswa ke orang lain sampai akun diaktivasi.
+- **Dampak:** `User::routeNotificationForMail()`, `RequestPasswordResetCode::eligibleUser()`. Tes: `tests/Feature/Security/MailRoutingTest.php`. Menjawab sebagian backlog #33 (K10 butir 4).
+- **Status:** final.
+
+### D-69 · Teks dari pengguna di email selalu teks polos · 2 Okt 2026
+- **Keputusan:** Semua notifikasi email dibuat dengan `App\Notifications\Support\PlainMailMessage`: salam dan baris tidak pernah dibaca sebagai Markdown. `Markdown::withSecuredEncoding()` menyala sebagai lapisan kedua. Markup yang disengaja hanya lewat `HtmlString` yang tidak dibangun dari teks pengguna.
+- **Alasan:** Nama lomba, nama orang, dan catatan staf masuk ke email. Nama lomba berisi sintaks tautan/gambar Markdown menghasilkan tautan dan gambar jarak jauh di email verifikator (temuan MEDIUM-2, SECURITY §3m-1). Saklar bawaan Laravel saja bisa dilewati dengan garis miring terbalik.
+- **Dampak:** 22 notifikasi; `tests/Feature/Security/MailInjectionTest.php` menolak `new MailMessage` di `app/`. URL yang diketik sebagai teks tetap tampil sebagai teks (klien email bisa menautkannya sendiri): validasi nama lomba masih terbuka (backlog #38).
+- **Status:** final.
+
+### D-70 · Pemindai PDF menolak yang tidak bisa dibaca penuh · 2 Okt 2026
+- **Keputusan:** Unggahan PDF dipindai oleh `App\Domain\Files\PdfScanner`: nama aksi aktif dicari di seluruh berkas dan di dalam object stream; object stream yang tidak bisa dibuka penuh (filter selain satu FlateDecode, `/DecodeParms`, gagal inflate, lebih dari 16 MB hasil inflate) membuat berkas **ditolak**; kata `stream` di dalam string/komentar dan objek di dalam badan stream juga ditolak.
+- **Alasan:** Pemindai lama bisa dilewati dengan nama ber-escape `#xx`, kamus bersarang, tanpa `/Type`, filter ganda, dan lain-lain (temuan MEDIUM-1 dan perluasannya).
+- **Dampak:** `StoreUpload::pdfHasActiveContent()` mendelegasikan ke `PdfScanner`. PDF buatan aplikasi (dompdf) dan 137 PDF contoh tetap diterima. Perlu dicoba dengan PDF asli sekolah sebelum rilis (backlog #43).
+- **Status:** final.
+
+### D-71 · Izin publikasi yang dicabut berlaku juga di layar Humas · 2 Okt 2026
+- **Keputusan:** Setelah `publish_consent` dicabut, pengguna tanpa izin `student.view` (Humas) melihat label netral ("Siswa kelas XI", "Alumni") tanpa kelas di Arsip, Apresiasi, dan Jadwal, dengan chip "Izin dicabut"; pencarian nama tidak menemukan siswa itu; e-flyer tidak bisa diunduh lagi oleh siapa pun (404), termasuk pembuatnya dan Admin. Kesiswaan dan Admin tetap melihat nama.
+- **Alasan:** Data yang sudah dipublikasikan harus hilang setelah izin dicabut (SECURITY §3i, §3m-7, UU PDP); sebelumnya Humas masih melihat nama dan bisa mengunduh flyer (temuan MEDIUM-4).
+- **Dampak:** `AchievementFacts::visibleTo()`, `FilePolicy::viaPublication()`, `Humas\{Arsip,Apresiasi,Jadwal}`. Berkas flyer dan caption lama belum dihapus otomatis (backlog #39). Pemblokiran untuk Admin berstatus sementara.
+- **Status:** final (bagian Admin: sementara — bisa diubah user).
+
+### D-72 · Daftar panjang ditampilkan bertahap · 2 Okt 2026
+- **Keputusan:** Daftar yang bisa tumbuh ditampilkan 20 baris per langkah dengan tombol "Tampilkan lebih banyak" (maks. 200): siswa di Publik › Prestasi per bidang, Kepala Sekolah › Prestasi per bidang, antrean Kepala Sekolah › Persetujuan ("Pilih semua" dan setujui massal hanya untuk baris yang tampil), dan tiap lajur papan Humas. Status aktivasi 40 baris per langkah. Kelola lomba maks. 250 dan Talenta maks. 300 baris; ekspor Talenta meminta konfirmasi kata sandi dan dibatasi 10.000 baris.
+- **Alasan:** Dengan data seukuran sekolah (1.171 siswa, 1.420 prestasi) halaman-halaman itu menjadi 300–600 kB HTML; HTML sengaja tidak dikompresi (BREACH).
+- **Dampak:** properti `$limit` yang dijepit di tiap komponen; `tests/Feature/Performance/ListLimitsTest.php`.
+- **Status:** sementara — bisa diubah user (angka per langkah dan batas).
+
+### D-73 · "Tambah lomba" memberi tahu verifikator lain · 2 Okt 2026
+- **Keputusan:** Lomba yang dibuat lewat formulir lengkap (Kesiswaan/Admin) mengirim "Usulan lomba baru" ke semua pemegang `competition.verify` selain pembuatnya, sama seperti usulan siswa/guru.
+- **Alasan:** Lomba itu tetap menunggu di antrean verifikasi (D-27), tetapi Kesiswaan tidak diberi tahu saat Admin yang menambahkannya (temuan skenario email; sketsa alur: unggah lomba → Kesiswaan diberi tahu).
+- **Dampak:** `CreateCompetition`. Tes: `tests/Feature/Kesiswaan/CreateCompetitionNotifyTest.php`.
+- **Status:** sementara — bisa diubah user.
+
+### D-74 · Kompresi skrip Livewire dan pembersihan cache · 2 Okt 2026
+- **Keputusan:** nginx produksi meng-gzip skrip Livewire (`/livewire-<hash>/livewire.min.js`, sekitar 300 kB → 100 kB); HTML dinamis tetap tidak dikompresi. Baris cache database yang kedaluwarsa dihapus harian oleh `App\Jobs\PruneExpiredCache`.
+- **Alasan:** Skrip itu statis tanpa rahasia, jadi aman dikompresi, dan merupakan aset terbesar pada kunjungan pertama. Kunci cache halaman publik berversi tidak pernah dibaca lagi setelah di-flush, sehingga barisnya menumpuk.
+- **Dampak:** `docker/nginx/prod.conf`, `routes/console.php` (03.10 WIB).
+- **Status:** final.
+
 ## E. Usulan keamanan yang belum diputuskan
 
 | ID | Usulan | Alasan singkat | Status |

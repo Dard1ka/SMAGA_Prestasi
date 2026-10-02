@@ -45,6 +45,11 @@ class Publikasi extends Component
 {
     public const PUBLISHED_PREVIEW = 2;
 
+    /** Cards per lane and step of "Tampilkan lebih banyak". */
+    public const LANE_STEP = 20;
+
+    public const LANE_MAX = 200;
+
     /** Flyer preview colours per template (literal classes for Tailwind; tokens only). */
     private const PREVIEW = [
         'biru' => [
@@ -85,6 +90,14 @@ class Publikasi extends Component
     public string $template = FlyerRenderer::DEFAULT_TEMPLATE;
 
     public string $eventId = '';
+
+    public int $laneLimit = self::LANE_STEP;
+
+    public function tampilkanLebih(): void
+    {
+        $this->authorize('viewAny', Publication::class);
+        $this->laneLimit = min(self::LANE_MAX, $this->laneLimit + self::LANE_STEP);
+    }
 
     public function mount(): void
     {
@@ -216,8 +229,12 @@ class Publikasi extends Component
     {
         $user = $this->actor();
 
-        $siap = $this->lane(PublicationStatus::Siap)->oldest()->get();
-        $terjadwal = $this->lane(PublicationStatus::Terjadwal)->orderBy('scheduled_at')->oldest()->get();
+        // A lane renders at most $laneLimit cards (a long backlog made the page several hundred kB); the chip shows the total.
+        $this->laneLimit = max(self::LANE_STEP, min(self::LANE_MAX, $this->laneLimit));
+        $siapCount = $this->lane(PublicationStatus::Siap)->count();
+        $terjadwalCount = $this->lane(PublicationStatus::Terjadwal)->count();
+        $siap = $this->lane(PublicationStatus::Siap)->oldest()->limit($this->laneLimit)->get();
+        $terjadwal = $this->lane(PublicationStatus::Terjadwal)->orderBy('scheduled_at')->oldest()->limit($this->laneLimit)->get();
         $publishedCount = $this->lane(PublicationStatus::Dipublikasikan)->count();
         $published = $this->lane(PublicationStatus::Dipublikasikan)
             ->latest('published_at')
@@ -236,9 +253,11 @@ class Publikasi extends Component
 
         return view('livewire.humas.publikasi', [
             'lanes' => [
-                ['key' => 'siap', 'title' => 'Siap publikasi', 'dot' => 'bg-orange', 'tone' => 'orange', 'count' => $siap->count(),
+                ['key' => 'siap', 'title' => 'Siap publikasi', 'dot' => 'bg-orange', 'tone' => 'orange', 'count' => $siapCount,
+                    'more' => $this->laneLimit < self::LANE_MAX ? max(0, $siapCount - $siap->count()) : 0,
                     'cards' => $siap->map(fn (Publication $p): array => $this->card($p))->all(), 'empty' => $this->q !== '' ? 'Tidak ada yang cocok.' : 'Belum ada prestasi baru.'],
-                ['key' => 'terjadwal', 'title' => 'Terjadwal', 'dot' => 'bg-primary', 'tone' => 'blue', 'count' => $terjadwal->count(),
+                ['key' => 'terjadwal', 'title' => 'Terjadwal', 'dot' => 'bg-primary', 'tone' => 'blue', 'count' => $terjadwalCount,
+                    'more' => $this->laneLimit < self::LANE_MAX ? max(0, $terjadwalCount - $terjadwal->count()) : 0,
                     'cards' => $terjadwal->map(fn (Publication $p): array => $this->card($p))->all(), 'empty' => $this->q !== '' ? 'Tidak ada yang cocok.' : 'Belum ada yang dijadwalkan.'],
             ],
             'published' => $published->map(fn (Publication $p): array => $this->card($p))->all(),

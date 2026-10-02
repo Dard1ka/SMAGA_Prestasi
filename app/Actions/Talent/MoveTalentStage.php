@@ -73,7 +73,13 @@ final class MoveTalentStage
         $application->loadMissing(['talentType', 'talentBranch']);
 
         $type = $application->talentType?->code?->label() ?? $application->talentType?->name ?? 'Talenta';
+        $branch = (string) ($application->talentBranch?->name ?? '');
 
-        return trim($type.' '.($application->talentBranch?->name ?? ''));
+        // Branches of Debat are named "Debat Bahasa …": do not repeat the type ("Debat Debat Bahasa …").
+        if ($branch !== '' && str_starts_with(mb_strtolower($branch), mb_strtolower($type))) {
+            return $branch;
+        }
+
+        return trim($type.' '.$branch);
     }
 }

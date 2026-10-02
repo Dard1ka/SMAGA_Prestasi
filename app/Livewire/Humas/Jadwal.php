@@ -65,7 +65,7 @@ class Jadwal extends Component
             'overdue' => $overdue->map(fn (Publication $p): array => $this->item($p))->values()->all(),
             'days' => $days,
             'canEvents' => $canEvents,
-            'events' => $canEvents ? $this->events() : [],
+            'events' => $canEvents ? $this->events($user) : [],
         ])->layoutData(['badges' => HumasQueries::badges($user)]);
     }
 
@@ -88,7 +88,7 @@ class Jadwal extends Component
     }
 
     /** @return list<array<string, mixed>> */
-    private function events(): array
+    private function events(User $user): array
     {
         return AppreciationEvent::query()
             ->whereDate('held_on', '>=', CarbonImmutable::today()->toDateString())
@@ -103,13 +103,15 @@ class Jadwal extends Component
                 'count' => $event->appreciations->count(),
                 'items' => $event->appreciations
                     ->filter(fn (Appreciation $a): bool => $a->achievement !== null)
-                    ->map(function (Appreciation $a): array {
-                        $facts = AchievementFacts::of($a->achievement);
+                    ->map(function (Appreciation $a) use ($user): array {
+                        // Consent withdrawn after the row was added: no name/class without `student.view`.
+                        $facts = AchievementFacts::of($a->achievement)->visibleTo($user);
 
                         return [
                             'id' => (string) $a->getKey(),
                             'student' => $facts->studentName.($facts->className !== null ? ' · '.$facts->className : ''),
                             'headline' => $facts->headline().' · '.$facts->competitionName,
+                            'consentWithdrawn' => ! $facts->publishConsent,
                             'done' => $a->status === AppreciationStatus::Selesai,
                         ];
                     })

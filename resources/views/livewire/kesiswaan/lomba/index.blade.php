@@ -81,6 +81,8 @@
                 <div class="flex justify-center">
                     <x-sth.button variant="quiet" size="sm" wire:click="showMore">Tampilkan lebih banyak</x-sth.button>
                 </div>
+            @elseif ($capped)
+                <p class="m-0 text-center text-[13px] text-muted">Menampilkan {{ $rows->count() }} lomba pertama. Persempit filter untuk melihat lainnya.</p>
             @endif
         @endif
     @else
@@ -110,6 +112,8 @@
                             <div class="flex flex-wrap items-center gap-x-4 gap-y-1">
                                 @if ($item['website'])
                                     <x-sth.link :href="$item['website']" icon="link" external>{{ $item['websiteHost'] }}</x-sth.link>
+                                @elseif ($item['websiteInvalid'])
+                                    <span class="text-[13px] font-semibold text-orange">Tautan tidak valid</span>
                                 @else
                                     <span class="text-[13px] text-muted">Tanpa tautan</span>
                                 @endif

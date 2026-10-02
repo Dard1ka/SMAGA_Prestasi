@@ -15,6 +15,7 @@ use App\Support\Audit\SecurityEventSubscriber;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
+use Illuminate\Mail\Markdown;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Route;
@@ -68,6 +69,10 @@ class AppServiceProvider extends ServiceProvider
         $this->guardUnsafeConfiguration();
 
         Model::shouldBeStrict(! $this->app->isProduction());
+
+        // Markdown mails: text printed with {{ }} cannot open a link, an image or HTML (SECURITY §3m-1; second layer
+        // under App\Notifications\Support\PlainMailMessage).
+        Markdown::withSecuredEncoding();
 
         // Staff passwords (students additionally go through App\Domain\Accounts\PasswordPolicy).
         Password::defaults(fn () => $this->app->isProduction()

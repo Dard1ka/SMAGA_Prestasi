@@ -45,14 +45,25 @@ final class PrestasiBidang extends Component
     #[Url(except: '')]
     public string $siswa = '';
 
+    /** Students shown per step (the full list of a bidang can be hundreds of rows). */
+    public const STEP = 20;
+
+    public const MAX = 200;
+
+    public int $limit = self::STEP;
+
     public function mount(): void
     {
         Gate::authorize('viewSchoolReport', Achievement::class);
         $this->normalize();
     }
 
-    public function updated(): void
+    public function updated(string $property): void
     {
+        if (in_array($property, ['bidang', 'tahun', 'tingkat'], true)) {
+            $this->limit = self::STEP;
+        }
+
         $this->normalize();
     }
 
@@ -60,9 +71,17 @@ final class PrestasiBidang extends Component
     {
         if ($bidang !== $this->bidang) {
             $this->siswa = '';
+            $this->limit = self::STEP;
         }
 
         $this->bidang = $bidang;
+        $this->normalize();
+    }
+
+    public function tampilkanLebih(): void
+    {
+        Gate::authorize('viewSchoolReport', Achievement::class);
+        $this->limit += self::STEP;
         $this->normalize();
     }
 
@@ -105,7 +124,9 @@ final class PrestasiBidang extends Component
             'total' => $total,
             'tiles' => $tiles,
             'selected' => $bidang,
-            'students' => $students,
+            'students' => array_slice($students, 0, $this->limit),
+            'studentTotal' => count($students),
+            'hasMore' => count($students) > $this->limit && $this->limit < self::MAX,
             'detail' => $detail,
             'yearOptions' => collect($data->schoolYears())->mapWithKeys(fn (string $y) => [$y => $y])->all(),
             'levelOptions' => collect([Level::Internasional, Level::Nasional, Level::Provinsi, Level::Kota, Level::Sekolah])
@@ -185,5 +206,6 @@ final class PrestasiBidang extends Component
         $this->tahun = SchoolYear::isValid($this->tahun) ? $this->tahun : '';
         $this->tingkat = Level::tryFrom($this->tingkat)?->value ?? '';
         $this->siswa = preg_match('/^[0-9a-hjkmnp-tv-z]{26}$/i', $this->siswa) === 1 ? strtolower($this->siswa) : '';
+        $this->limit = max(self::STEP, min(self::MAX, $this->limit));
     }
 }

@@ -7,6 +7,7 @@ namespace App\Notifications\Publications;
 use App\Actions\Publications\AchievementFacts;
 use App\Actions\Publications\PublicationInput;
 use App\Models\Publication;
+use App\Notifications\Support\PlainMailMessage;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -74,7 +75,7 @@ final class PublicationDue extends Notification implements ShouldQueue
 
     public function toMail(object $notifiable): MailMessage
     {
-        return (new MailMessage)
+        return (new PlainMailMessage)
             ->subject($this->title())
             ->line($this->body())
             ->action('Buka publikasi', $this->url())

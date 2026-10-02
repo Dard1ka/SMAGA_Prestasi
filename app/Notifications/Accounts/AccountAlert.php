@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Notifications\Accounts;
 
 use App\Enums\RoleName;
+use App\Notifications\Support\PlainMailMessage;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -44,7 +45,7 @@ final class AccountAlert extends Notification implements ShouldQueue
 
     public function toMail(object $notifiable): MailMessage
     {
-        $message = (new MailMessage)->subject($this->title);
+        $message = (new PlainMailMessage)->subject($this->title);
 
         foreach ($this->lines as $line) {
             $message->line($line);

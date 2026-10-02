@@ -6,6 +6,7 @@ namespace App\Notifications\Letters;
 
 use App\Models\Registration;
 use App\Notifications\Registrations\RegistrationNotification;
+use App\Notifications\Support\PlainMailMessage;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Support\Facades\Route;
 
@@ -29,7 +30,7 @@ class LetterRevised extends RegistrationNotification
 
     public function toMail(object $notifiable): MailMessage
     {
-        return (new MailMessage)
+        return (new PlainMailMessage)
             ->subject($this->subject())
             ->greeting($this->audience === 'siswa' ? 'Halo '.self::firstName($notifiable).',' : 'Yth. '.trim((string) ($notifiable->name ?? '')).',')
             ->line($this->message())

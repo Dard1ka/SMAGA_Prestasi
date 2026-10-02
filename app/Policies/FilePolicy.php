@@ -30,10 +30,11 @@ use Illuminate\Support\Facades\DB;
  * - talent_evidence      → application evidence: TalentApplicationPolicy::view (W2-A2) or talent.manage;
  *                          Riwayat talenta certificates (talent_profile_files): the student, talent.manage,
  *                          or a guru with talent.assess who mentors one of that student's applications
- * - flyer                → publication.manage (public use only after publication, W2-C/W2-D)
+ * - flyer                → publication.manage while its publication is eligible (verified + publish consent,
+ *                          PublicationPolicy::eligible(); SECURITY §3i, §3m-7)
  * - signature            → signature.manage only (TU never downloads it, SECURITY §3m-5)
  * - import               → the uploader or student.import
- * The uploader may always fetch their own file, except the signature image.
+ * The uploader may always fetch their own file, except the signature image and a flyer.
  * Guests: only viewPublic() below (verified certificates with consent, Admin switch on).
  */
 class FilePolicy
@@ -48,6 +49,12 @@ class FilePolicy
             return $user->can(Permission::SignatureManage->value);
         }
 
+        // Before the uploader shortcut: the "owner" of a flyer is the Humas user who generated it, and a
+        // withdrawn publish consent must win over that.
+        if ($file->purpose === FilePurpose::Flyer) {
+            return $this->viaPublication($user, $file);
+        }
+
         if ($file->owner_user_id !== null && (int) $file->owner_user_id === (int) $user->getKey()) {
             return true;
         }
@@ -57,7 +64,6 @@ class FilePolicy
             FilePurpose::Letter => $this->viaLetter($user, $file),
             FilePurpose::ReportEvidence => $this->viaReport($user, $file),
             FilePurpose::TalentEvidence => $this->viaTalentEvidence($user, $file),
-            FilePurpose::Flyer => $user->can(Permission::PublicationManage->value) && Publication::query()->where('flyer_file_id', $file->getKey())->exists(),
             FilePurpose::Import => $user->can(Permission::StudentImport->value),
             default => false,
         };
@@ -107,6 +113,21 @@ class FilePolicy
         $letter = Letter::query()->where('file_id', $file->getKey())->first();
 
         return $letter !== null && $user->can('view', $letter);
+    }
+
+    /**
+     * A flyer carries the student's name and class: `publication.manage` AND a publication that uses it
+     * and is still publishable (verified achievement + publish consent, PublicationPolicy::eligible()).
+     * Consent withdrawn → nobody downloads it any more, the user who generated it included.
+     */
+    private function viaPublication(User $user, File $file): bool
+    {
+        return $user->can(Permission::PublicationManage->value)
+            && Publication::query()
+                ->where('flyer_file_id', $file->getKey())
+                ->with('achievement.student')
+                ->get()
+                ->contains(fn (Publication $publication): bool => PublicationPolicy::eligible($publication));
     }
 
     private function viaReport(User $user, File $file): bool

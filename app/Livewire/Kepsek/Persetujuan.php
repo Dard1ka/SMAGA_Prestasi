@@ -52,6 +52,19 @@ class Persetujuan extends Component
     #[Locked]
     public array $recent = [];
 
+    public const STEP = 20;
+
+    public const MAX = 200;
+
+    /** Rows on screen (clamped to STEP…MAX in visibleQuery()). */
+    public int $limit = self::STEP;
+
+    public function tampilkanLebih(): void
+    {
+        Gate::authorize('viewApprovalQueue', Registration::class);
+        $this->limit = min(self::MAX, $this->limit + self::STEP);
+    }
+
     public function mount(): void
     {
         Gate::authorize('viewApprovalQueue', Registration::class);
@@ -182,9 +195,11 @@ class Persetujuan extends Component
         $rows = $this->rows();
         $pendingIds = $rows->where('status', RegistrationStatus::MenungguKepsek)->modelKeys();
         $waiting = Registration::query()->awaitingPrincipal()->count();
+        $matching = $this->filtered(Registration::query()->awaitingPrincipal())->count();
 
         return view('livewire.kepsek.persetujuan', [
             'rows' => $rows,
+            'more' => $this->limit < self::MAX ? max(0, $matching - count($pendingIds)) : 0,
             'pendingIds' => $pendingIds,
             'allChecked' => $pendingIds !== [] && array_diff($pendingIds, $this->selected) === [],
             'checkedCount' => count(array_intersect($this->selected, $pendingIds)),
@@ -200,13 +215,7 @@ class Persetujuan extends Component
     /** @return Collection<int, Registration> */
     private function rows(): Collection
     {
-        $recent = array_keys($this->recent);
-
-        return $this->filtered(
-            Registration::query()->where(fn (Builder $q) => $q
-                ->where('status', RegistrationStatus::MenungguKepsek)
-                ->when($recent !== [], fn (Builder $q) => $q->orWhereIn('id', $recent)))
-        )
+        return $this->visibleQuery()
             ->with([
                 'competition',
                 'mentor.staffProfile',
@@ -214,8 +223,28 @@ class Persetujuan extends Component
                 'members.student.user',
                 'members.student.classroom',
             ])
-            ->orderBy('created_at')
             ->get();
+    }
+
+    /**
+     * The rows on screen: waiting (or decided during this visit), oldest first, at most $limit. A long queue made
+     * the page several hundred kB, so the rest comes with "Tampilkan lebih banyak".
+     *
+     * @return Builder<Registration>
+     */
+    private function visibleQuery(): Builder
+    {
+        $recent = array_keys($this->recent);
+        $this->limit = max(self::STEP, min(self::MAX, $this->limit));
+
+        return $this->filtered(
+            Registration::query()->where(fn (Builder $q) => $q
+                ->where('status', RegistrationStatus::MenungguKepsek)
+                ->when($recent !== [], fn (Builder $q) => $q->orWhereIn('id', $recent)))
+        )
+            ->orderBy('created_at')
+            ->orderBy('id')
+            ->limit($this->limit);
     }
 
     /**
@@ -239,8 +268,11 @@ class Persetujuan extends Component
     /** @return list<string> */
     private function pendingIds(): array
     {
+        // Only rows that are on screen: "pilih semua" and bulk approve never touch a registration the Kepsek has not seen.
         /** @var list<string> $ids */
-        $ids = $this->filtered(Registration::query()->awaitingPrincipal())->pluck('id')->map(fn ($id): string => (string) $id)->all();
+        $ids = $this->filtered(Registration::query()->awaitingPrincipal())
+            ->whereIn('id', $this->visibleQuery()->pluck('id'))
+            ->pluck('id')->map(fn ($id): string => (string) $id)->all();
 
         return $ids;
     }

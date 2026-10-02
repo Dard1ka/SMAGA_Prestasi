@@ -9,6 +9,9 @@
 #   docker compose -f compose.yaml -f tests/E2E/compose.e2e.yaml run --rm e2e
 #   docker compose -f compose.yaml -f tests/E2E/compose.e2e.yaml down -v
 # Report: tests/E2E/playwright-report/index.html; traces/screenshots of failures in tests/E2E/test-results/.
+# Email scenario (who gets which mail in the whole workflow; real Actions + real queue → this project's Mailpit): add
+# `mailpit` to the `up` line, run setup-app.sh (fresh database, needed before every run), then
+#   docker compose -f compose.yaml -f tests/E2E/compose.e2e.yaml exec -T app php tests/E2E/support/email-scenario.php
 # E2E_STUDENT_PASSWORD: CI sets a random one per run; the local default below only exists in this throwaway project.
 name: sth-e2e
 

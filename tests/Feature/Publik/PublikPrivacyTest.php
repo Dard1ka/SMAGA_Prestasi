@@ -95,7 +95,8 @@ it('keeps the Livewire snapshot free of data (filters only)', function (): void 
     preg_match('/wire:snapshot="([^"]+)"/', $html, $match);
     $snapshot = json_decode(html_entity_decode($match[1] ?? ''), true);
 
-    expect(array_keys($snapshot['data'] ?? []))->toEqualCanonicalizing(['bidang', 'tahun', 'tingkat', 'siswa']);
+    // `limit` is the "Tampilkan lebih banyak" row count (a number, no personal data).
+    expect(array_keys($snapshot['data'] ?? []))->toEqualCanonicalizing(['bidang', 'tahun', 'tingkat', 'siswa', 'limit']);
 });
 
 it('returns 404 for an unknown slug and for a student without consent', function (): void {

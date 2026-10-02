@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Notifications\Registrations;
 
+use App\Notifications\Support\PlainMailMessage;
 use Illuminate\Notifications\Messages\MailMessage;
 
 /** To the other team members (and the mentor) when the leader cancels. */
@@ -11,7 +12,7 @@ class RegistrationCancelled extends RegistrationNotification
 {
     public function toMail(object $notifiable): MailMessage
     {
-        return (new MailMessage)
+        return (new PlainMailMessage)
             ->subject('Pendaftaran dibatalkan: '.$this->competitionName())
             ->greeting('Halo '.self::firstName($notifiable).',')
             ->line($this->message())

@@ -16,7 +16,12 @@
                         <span class="text-[13.5px] font-semibold">{{ $row['student'] }}@if ($row['class'])<span class="font-medium text-muted"> · {{ $row['class'] }}</span>@endif</span>
                         <span class="text-[12.5px] text-muted">{{ $row['headline'] }} · {{ $row['competition'] }}</span>
                     </div>
-                    <x-sth.chip :tone="$row['status'][0]" size="sm">{{ $row['status'][1] }}</x-sth.chip>
+                    <div class="flex flex-wrap items-center gap-1.5">
+                        @if ($row['consentWithdrawn'])
+                            <x-sth.chip tone="orange" size="sm">Izin dicabut</x-sth.chip>
+                        @endif
+                        <x-sth.chip :tone="$row['status'][0]" size="sm">{{ $row['status'][1] }}</x-sth.chip>
+                    </div>
                 </li>
             @endforeach
         </ul>

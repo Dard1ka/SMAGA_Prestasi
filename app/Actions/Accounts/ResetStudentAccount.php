@@ -19,7 +19,8 @@ use Illuminate\Validation\ValidationException;
  * a RANDOM temporary password (12 characters, GenerateTemporaryPassword) is returned once for the Admin to
  * hand over face to face; it is stored only as a hash, valid 72 hours (`initial_password_expires_at`) and must
  * be changed at the next login (must_change_password). The initial birth-date pattern is no longer used here.
- * Also: bound email removed, open OTPs cancelled, a K3/K8 freeze lifted, every session + remember token
+ * Also: bound email removed, open OTPs cancelled, a K3/K8 freeze lifted, TOTP 2FA removed (students never have
+ * it; `two_factor_removed` in the audit row tells whether there was one), every session + remember token
  * revoked, login lockout cleared, audited with the Admin's reason (never the password). A disabled/archived
  * account keeps its status (resetting never re-opens it). More than 10 resets by one Admin within an hour
  * alerts every Admin.
@@ -64,6 +65,7 @@ final class ResetStudentAccount
             }
 
             $wasFrozen = AccountControls::frozenReason($locked);
+            $hadTwoFactor = $locked->two_factor_secret !== null || $locked->two_factor_confirmed_at !== null;
 
             $locked->forceFill([
                 'password' => Hash::make($password),
@@ -76,6 +78,10 @@ final class ResetStudentAccount
                 'activated_at' => null,
                 'email' => null,
                 'email_verified_at' => null,
+                // Students never have TOTP; one enrolled by a hijacker must not survive the recovery.
+                'two_factor_secret' => null,
+                'two_factor_recovery_codes' => null,
+                'two_factor_confirmed_at' => null,
                 'status' => $locked->status?->canLogIn() ? UserStatus::PendingActivation : $locked->status,
             ])->save();
 
@@ -92,6 +98,7 @@ final class ResetStudentAccount
                     'reason' => $reason,
                     'temporary_password_expires_at' => $expiresAt->toIso8601String(),
                     'unfrozen' => $wasFrozen,
+                    'two_factor_removed' => $hadTwoFactor,
                 ])
                 ->log('account.reset');
 

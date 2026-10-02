@@ -102,6 +102,8 @@
                     <div class="flex justify-center p-4">
                         <x-sth.button variant="quiet" size="sm" wire:click="showMore">Tampilkan lebih banyak</x-sth.button>
                     </div>
+                @elseif ($capped)
+                    <p class="m-0 p-4 text-center text-[13px] text-muted">Menampilkan {{ $rows->count() }} baris pertama. Persempit filter untuk melihat lainnya.</p>
                 @endif
             @endif
         </x-sth.card>

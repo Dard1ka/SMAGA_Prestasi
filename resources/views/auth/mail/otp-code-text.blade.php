@@ -1,4 +1,4 @@
-Halo {{ $firstName }},
+Halo {{ $firstNameText }},
 
 {{ $intro }} Masukkan kode ini:
 

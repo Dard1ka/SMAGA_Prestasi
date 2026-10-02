@@ -6,6 +6,7 @@ namespace App\Notifications\Approval;
 
 use App\Models\Registration;
 use App\Notifications\Registrations\RegistrationNotification;
+use App\Notifications\Support\PlainMailMessage;
 use Illuminate\Notifications\Messages\MailMessage;
 
 /**
@@ -29,7 +30,7 @@ class RegistrationApproved extends RegistrationNotification
 
     public function toMail(object $notifiable): MailMessage
     {
-        $mail = (new MailMessage)
+        $mail = (new PlainMailMessage)
             ->subject($this->subject())
             ->greeting($this->audience === 'siswa' ? 'Halo '.self::firstName($notifiable).',' : 'Yth. '.trim((string) ($notifiable->name ?? '')).',')
             ->line($this->message());

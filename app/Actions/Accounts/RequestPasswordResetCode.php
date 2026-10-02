@@ -41,6 +41,12 @@ final class RequestPasswordResetCode
             return null;
         }
 
+        // A frozen account (K3 / "Bukan saya?", K8) gets no reset code: its bound address may be the one the owner
+        // disputes. Same generic answer as for an unknown identifier; an Admin reset is the way back (K10).
+        if (AccountControls::isFrozen($user)) {
+            return null;
+        }
+
         if ($user->email_verified_at === null && ! VerifyOtpCode::testModeActive()) {
             return null;
         }

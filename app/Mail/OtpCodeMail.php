@@ -12,6 +12,7 @@ use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\HtmlString;
 
 /**
  * 6-digit OTP e-mail (docs/SECURITY.md §3b). Queued and ENCRYPTED on the queue because the payload holds the
@@ -52,6 +53,8 @@ class OtpCodeMail extends Mailable implements ShouldBeEncrypted, ShouldQueue
                 'intro' => $this->purpose === self::PURPOSE_RESET_PASSWORD
                     ? 'Kamu meminta atur ulang kata sandi SMAGA Talent Hub.'
                     : 'Kamu sedang menghubungkan email ke akun SMAGA Talent Hub.',
+                // The text/plain part must not HTML-escape the name ("Ma'ruf", not "Ma&#039;ruf").
+                'firstNameText' => new HtmlString($this->firstName),
             ],
         );
     }

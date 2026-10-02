@@ -62,6 +62,9 @@
                                 <li wire:key="apr-{{ $row['id'] }}" class="flex flex-col rounded-tile bg-subtle px-3 py-2">
                                     <span class="text-[13.5px] font-semibold">{{ $row['student'] }}</span>
                                     <span class="text-[12.5px] text-muted">{{ $row['headline'] }}</span>
+                                    @if ($row['consentWithdrawn'])
+                                        <x-sth.chip tone="orange" size="sm" class="mt-1 self-start">Izin dicabut</x-sth.chip>
+                                    @endif
                                 </li>
                             @endforeach
                         </ul>

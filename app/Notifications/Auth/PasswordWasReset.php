@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Notifications\Auth;
 
+use App\Notifications\Support\PlainMailMessage;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -31,7 +32,7 @@ class PasswordWasReset extends Notification implements ShouldQueue
     {
         $firstName = strtok(trim((string) ($notifiable->name ?? '')), ' ') ?: 'Siswa';
 
-        return (new MailMessage)
+        return (new PlainMailMessage)
             ->subject('Kata sandi kamu sudah diganti')
             ->greeting('Halo '.$firstName.',')
             ->line('Kata sandi akun SMAGA Talent Hub kamu baru saja diganti lewat "Lupa kata sandi". Semua perangkat sudah dikeluarkan.')

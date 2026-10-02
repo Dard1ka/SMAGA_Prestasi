@@ -208,6 +208,7 @@ it('filters talent rows by stage and needs a note for tidak lolos in the panel',
 });
 
 it('exports the talent list as Excel', function (): void {
+    session()->put('auth.password_confirmed_at', time()); // gate + cap + audit: KesiswaanHardeningTest
     F::application();
 
     Livewire::actingAs($this->kesiswaan)->test(Talenta::class)

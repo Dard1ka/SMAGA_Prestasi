@@ -31,7 +31,7 @@ achievements, gated by consent flags (D-16, SECURITY §3m-7).
 ## 2. Sources of truth (read before changing behaviour)
 | file | content |
 |---|---|
-| `docs/DECISIONS.md` | decision log D-01…D-65 (D-45…D-61 = backlog wave + W4 product choices, *sementara*; D-62…D-65 = security hardening, *final*), U-01…U-06, open questions §F. **Wins over everything.** |
+| `docs/DECISIONS.md` | decision log D-01…D-74 (D-45…D-61 = backlog wave + W4 product choices, *sementara*; D-62…D-65 = security hardening, *final*; D-66…D-74 = Q1 security/performance pass), U-01…U-06, open questions §F. **Wins over everything.** |
 | `docs/ARCHITECTURE.md` | binding contract: data model, enums, state machine, domain rules |
 | `docs/SECURITY.md` | threat model, top-10 risks §1, controls §3a–§3m (K1–K12), pre-release checklist §4 |
 | `docs/TALENT-FORM.md` | talent types/branches (seed source for `talent_types`, `talent_branches`) |
@@ -127,6 +127,7 @@ drop `force="true"`.
 | prod image | `docker build -f docker/Dockerfile.prod -t sth-app:local .` (`--target web` for nginx) |
 | E2E smoke (Playwright, isolated project `sth-e2e`) | `docker compose -f compose.yaml -f tests/E2E/compose.e2e.yaml up -d --wait mysql app web` → `… exec -T app sh tests/E2E/support/setup-app.sh` → `… run --rm e2e` → `… down -v` (DEPLOY §18) |
 | mail check | `docker compose exec app php artisan sth:mail-test you@example.test` (dev: Mailpit; prod: DEPLOY §9) |
+| email scenario (every role's mails end to end, isolated project `sth-e2e`, ~3 min, not in CI) | E2E `up … mysql app web mailpit` → `… exec -T app sh tests/E2E/support/setup-app.sh` → `… exec -T app php tests/E2E/support/email-scenario.php` → `… down -v` (DEPLOY §18) |
 
 Notes: tests stay SQLite-compatible (MySQL-only behaviour gets its own marked test). Git Bash rewrites
 paths like `/var/www/html`: prefix `MSYS_NO_PATHCONV=1` or use PowerShell. On Linux, container-created
@@ -171,6 +172,9 @@ same file. Middleware (bootstrap/app.php): aliases `active` (disabled/archived u
 **`area.siswa`** = auth, active, activated, role:siswa and **`area.staff`** = auth, active, activated,
 staff.2fa (add `role:…` per area). Every route also authorizes through a policy. `staff.2fa` is
 enforced everywhere except `APP_ENV=local` (`STH_REQUIRE_STAFF_2FA`, `config('fortify.sth.*')`).
+TOTP is staff only (D-66): `RestrictTwoFactorToStaff` (in the `web` group) answers 404 for a student account on
+every `two-factor.*` management route, and a student login never goes to `/two-factor-challenge`.
+`POST /user/confirm-password` allows 5 tries per minute per account (D-67).
 Auth routes (routes/web.php, Fortify + Livewire `App\Livewire\Auth\*`): `/login`, `/logout`,
 `/two-factor-challenge`, `/user/confirm-password`, `/aktivasi` (`aktivasi`), `/lupa-kata-sandi`
 (`password.request`), `/akun/2fa` (`two-factor.setup`). Fortify `home` = `/beranda`, which redirects to
@@ -264,6 +268,12 @@ the first existing `<area>.beranda` route of the user's role (`siswa`, `kesiswaa
   route names `<area>.<resource>.<action>`; URL segments Indonesian (`/siswa/lomba-saya`).
 - Livewire 4: full-page components registered with `Route::livewire('/uri', Component::class)`; class
   in `app/Livewire/<Role>/…`, view in `resources/views/livewire/<role>/…`.
+- Lists that can grow never render every row: paginate, or use the `$limit` pattern (`STEP`/`MAX` constants,
+  clamp the public `$limit` in `render()`, button "Tampilkan lebih banyak"; see `Publik\Peringkat`, D-72).
+  HTML is not gzipped in production (BREACH), so page weight is real.
+- Notification mails: build them with `App\Notifications\Support\PlainMailMessage`, never `new MailMessage`
+  (user text must not become Markdown links/images, D-69; `MailInjectionTest` checks it). Recipients: a frozen
+  account gets no mail and an unverified address only gets `AdminNotice` mails (`User::routeNotificationForMail()`, D-68).
 - Tests: Pest, `tests/Unit/Domain/<Area>`, `tests/Feature/<Area>`; factories produce fictional data
   only. Format with Pint (Laravel preset) before every hand-off. `Tests\TestCase` gives every Feature
   test its own empty `local` + `public` disk and PDF sandbox (`Tests\Support\TestDisks`): never use
@@ -312,6 +322,12 @@ via `config('fortify.sth.otp_test_mode')`).
 Backlog/W4 decisions D-45…D-65 (DECISIONS §D3–§D4): D-61 new Admin/Kesiswaan/TU accounts start without a role until a
 second Admin approves (or 24 h); **final** security hardening D-62 OTP test mode env-only, D-63 audit seals after commit,
 D-64 queued-import spreadsheet deleted when the job ends, D-65 no `'unsafe-eval'`.
+Q1 pass D-66…D-74 (DECISIONS §D5), **final** unless noted: D-66 TOTP is staff only and a student reset clears it;
+D-67 confirm-password limit + 2FA audit events; D-68 no mail and no reset code for a frozen account, unverified address
+gets account notices only; D-69 user text in mails is plain text (`PlainMailMessage`); D-70 `PdfScanner` refuses PDFs it
+cannot read completely; D-71 a withdrawn publish consent also hides the name and the flyer from Humas; D-72 long lists
+come in steps (*sementara*); D-73 "Tambah lomba" notifies the other verifiers (*sementara*); D-74 gzip for the
+Livewire script in the prod nginx + daily prune of expired cache rows.
 
 Known stale text (do not "fix" code to match it): SECURITY.md §0/§3a still say `sm4g4_DD-MM-YYYY`;
 DESIGN-SPEC-v2 §1 and the Admin-Pengaturan mockup still show 30 days (and the mockup's WICE deadline
@@ -336,7 +352,7 @@ IPs, which breaks the per-IP login/OTP limits). The noreply mailbox would then b
 SMTP host must not be `mail.<domain>` (proxied) and its hourly send limit needs asking.
 
 ## 10. Status
-Last updated: 2026-10-02 (waves 1–2 done, W3-A integration pass, backlog wave B1–B6, W4 integration, D1 docs sync, CI green on GitHub). Update this section whenever a milestone moves.
+Last updated: 2026-10-02 (waves 1–2 done, W3-A integration pass, backlog wave B1–B6, W4 integration, D1 docs sync, CI green on GitHub, Q1 end-to-end/security/performance pass). Update this section whenever a milestone moves.
 
 | area | owner | state (details in `docs/dev-notes/<ID>.md`) |
 |---|---|---|
@@ -363,6 +379,7 @@ Last updated: 2026-10-02 (waves 1–2 done, W3-A integration pass, backlog wave 
 | W4 integration: scheduler `sth:peran-tertunda`, menus (Status aktivasi, Surat atas nama saya, Log audit, Arsip otomatis, account items), new privileged staff accounts via role request (second Admin / 24 h), `SettingKey::ActivationWindowDays`/`LetterTemplate` (`OtpTestMode` removed), `User` casts, staff resets in K10 alert, signature upload via `StoreUpload`, Ringkasan events, per-process compiled views in tests | – | done (#27, #28, #29, #30, #31) |
 | D1 docs sync: DECISIONS D-61…D-65, ARCHITECTURE §4 (settings = `SettingKey`, `account.staff_created`), UI-MAP menus, PANDUAN-PENGGUNA (Admin, Notifikasi/Keamanan akun), this file §2/§5/§7/§8/§10 | – | done |
 | CI on GitHub: `.env` before `composer install` (the production boot guard stopped `package:discover`), dev MySQL healthcheck over TCP (`compose.yaml`; "healthy" came before port 3306 was up), Dependabot bumps PHP 8.5 / MySQL 9.6 / Node 26 reverted + ignore rules, `start.bat` / `stop.bat` | → I | done (first green run 2026-10-02; CI half of #21) |
+| Q1 full check (`docs/dev-notes/Q1.md`, D-66…D-74): email scenario for every role (`tests/E2E/support/email-scenario.php`), security review + fixes (student TOTP lockout, confirm-password limit, PDF scanner, Markdown in mails, mail to frozen/unverified accounts, Humas after withdrawn consent, Talenta export), performance with school-sized data (list limits, gzip for the Livewire script, cache prune) | – | done |
 
 Verified 2026-10-01 (W3-A, details in `docs/dev-notes/W3-A.md`): `php artisan test` → **925 passed (3726 assertions)** twice in a
 row (SQLite; `--parallel --processes=4` also 925 passed twice); `pint --test` clean; `npm run build` OK; `composer audit` clean; prod compose `config -q` OK;
@@ -376,6 +393,15 @@ W4 (`docs/dev-notes/W4.md`): full suite `--parallel --processes=4` → **1283 pa
 Local MySQL migrated (W4 migration), `RoleSeeder` + `SettingSeeder` re-run, `scheduler` + `queue` recreated (`schedule:list` shows `sth:peran-tertunda`).
 GitHub CI 2026-10-02 (push to `main`, commit `33c039b`): PHP (validate, Pint, Pest), Frontend, Composer audit, gitleaks (full history),
 Docker (prod images, Trivy, prod compose) and E2E (Playwright smoke, 2 tests) → all green, the first fully green run.
+Q1 2026-10-02 (`docs/dev-notes/Q1.md`): full suite `--parallel --processes=4` → **1486 passed (6855 assertions)**, exit 0 (677 s);
+`pint --test` clean (585 files); `composer audit` and `npm audit --omit=dev` clean; `npm run build` OK; prod images `app` + `web` build,
+`nginx -t` OK inside the web image; email scenario on the isolated `sth-e2e` project → **114 mails, 0 missing, 0 unexpected, 0 leaks,
+0 failed jobs**; page profile with 1,171 students / 1,393 registrations / 1,420 achievements: query count per page unchanged from the
+demo data (no N+1), largest pages after the list limits ≈ 190 kB.
+Q1 2026-10-02 (`docs/dev-notes/Q1.md`): full suite `--parallel --processes=4` → **1486 passed (6855 assertions)**, exit 0 (677 s);
+`pint --test` clean (585 files); `composer audit` and `npm audit --omit=dev` clean; email scenario on the isolated `sth-e2e` project →
+**114 mails, 0 missing, 0 unexpected, 0 leaks, 0 failed jobs**; page profile with 1,171 students / 1,393 registrations / 1,420
+achievements: query count per page unchanged from the demo data (no N+1), largest pages after the list limits ≈ 190 kB.
 
 ### Backlog (open; collected from all dev-notes and UI-MAP)
 Owner: **S** = frontend/screens, **I** = deploy/QA, **user** = lead/backend core (also asks the school).
@@ -393,6 +419,13 @@ Done in the backlog wave B1–B6 (details in the B dev-notes): former #1–#20, 
 | 35 | Optional `OtpPurpose::ChangeEmail` (change-email OTP still uses `verify_email`): touches `ChangeEmail`, `CompleteActivation`, `OtpCodeMail` texts, Keamanan tests | B1, W4 | user |
 | 36 | Status sistem: attention item "N perubahan peran menunggu" (today only the panel in Pengguna & peran shows pending role requests) | W4 | S + user |
 | 37 | Browser check of the W4 menus (Status aktivasi, Surat atas nama saya, Log audit, Arsip otomatis, avatar Notifikasi) and "Tambah pengguna" with a privileged role (render-tested only) | W4 | I |
+| 38 | A URL typed into a lomba name still shows as plain text in mails and subjects (mail clients may auto-link it): validate `name` in `SubmitCompetition`/`CreateCompetition` or drop it from the verifier mail (D-69, SECURITY §3m-1) | Q1 | user |
+| 39 | Takedown after a withdrawn publish consent: the stored flyer file, the old caption and scheduled appreciation rows stay (access is blocked, D-71); SECURITY §3i asks for removal within 3×24 h | Q1 | user + S |
+| 40 | Workflow gaps found by the email scenario: guru pembimbing is not told about a rejected or cancelled registration, Kepala Sekolah is not told about a cancel, a talent application notifies nobody, the guru's "Pendaftaran binaan disetujui" button opens `/guru` instead of the registration | Q1 | user |
+| 41 | Humas holds `achievement.view_all`; only the route middleware keeps Humas out of Database prestasi: tighten `AchievementPolicy::viewDatabase` or the Humas permission set. Unify the neutral-name rule (`PublicAchievements` + `AchievementFacts`) | Q1 | user |
+| 42 | Staff 2FA follow-ups: hourly ceiling for confirm-password (D-67 is 5 per minute), staff can still disable their own TOTP after confirming the password (audited; `staff.2fa` forces setup again) | Q1 | user |
+| 43 | Try real school PDFs (Word, scanner/copier, Canva, phone scans) against `PdfScanner` before release (D-70 was checked with 137 sample files, none from the school) | Q1 | I |
+| 44 | A staff account reset by an Admin only gets account notices until its owner verifies the email again (D-68): add this to PANDUAN-PENGGUNA (Admin). Dev stack: after a Docker restart `queue`/`scheduler` come up before MySQL and fill `laravel.log` with connection errors until `start.bat` runs | Q1 | I |
 
 ## 11. Team, ownership and agent protocol
 - **user** (lead, backend core, 40%): `app/{Enums,Models,Domain,Actions,Policies,Http,Providers,

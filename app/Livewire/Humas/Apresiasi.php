@@ -27,7 +27,9 @@ use Livewire\Component;
 /**
  * Apresiasi (UI-MAP §4d; shared: humas.apresiasi.index and kesiswaan.apresiasi.index). Authorized by
  * `appreciation.manage` through AppreciationEventPolicy, never by role. Create an event, put verified
- * achievements (student with publish consent) on an upcoming event, mark a past event done.
+ * achievements (student with publish consent) on an upcoming event, mark a past event done. A row whose
+ * student later withdrew consent stays with the chip "Izin dicabut"; its name and class are shown only to
+ * a viewer with `student.view` (Kesiswaan, Admin), Humas sees "Siswa kelas XI" (SECURITY §3i, §3m-7).
  */
 #[Title('Apresiasi')]
 #[Layout('layouts::app', ['subtitle' => 'Acara apresiasi untuk prestasi siswa.'])]
@@ -188,9 +190,9 @@ class Apresiasi extends Component
             'canAdd' => $isUpcoming && $canUpdate,
             'canComplete' => $canUpdate && ! $event->held_on->greaterThan($today) && $pending > 0,
             'items' => $rows
-                ->sortBy(fn (Appreciation $a): string => mb_strtolower((string) $a->achievement->student?->user?->name))
-                ->map(function (Appreciation $a): array {
-                    $facts = AchievementFacts::of($a->achievement);
+                ->map(function (Appreciation $a) use ($user): array {
+                    // Consent withdrawn after the row was added: no name/class without `student.view`.
+                    $facts = AchievementFacts::of($a->achievement)->visibleTo($user);
 
                     return [
                         'id' => (string) $a->getKey(),
@@ -198,9 +200,11 @@ class Apresiasi extends Component
                         'class' => $facts->className,
                         'headline' => $facts->headline(),
                         'competition' => $facts->competitionName,
+                        'consentWithdrawn' => ! $facts->publishConsent,
                         'status' => $a->status === AppreciationStatus::Selesai ? ['green', 'Selesai'] : ['blue', 'Dijadwalkan'],
                     ];
                 })
+                ->sortBy(fn (array $row): string => mb_strtolower($row['student']))
                 ->values()
                 ->all(),
         ];

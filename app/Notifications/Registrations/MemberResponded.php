@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Notifications\Registrations;
 
 use App\Models\Registration;
+use App\Notifications\Support\PlainMailMessage;
 use Illuminate\Notifications\Messages\MailMessage;
 
 /** To the team leader when an invited member confirms or declines. */
@@ -17,7 +18,7 @@ class MemberResponded extends RegistrationNotification
 
     public function toMail(object $notifiable): MailMessage
     {
-        $mail = (new MailMessage)
+        $mail = (new PlainMailMessage)
             ->subject(($this->accepted ? 'Anggota ikut tim: ' : 'Anggota menolak: ').$this->competitionName())
             ->greeting('Halo '.self::firstName($notifiable).',')
             ->line($this->message());

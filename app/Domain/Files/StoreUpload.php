@@ -18,7 +18,8 @@ use Throwable;
 /**
  * The only way user uploads reach storage (CLAUDE.md §3.4, SECURITY §3d):
  * 1. UploadRules: extension + sniffed-MIME allowlist, size limit, `%PDF-` magic;
- * 2. PDFs: heuristic scan for active content (/JavaScript, /JS, /OpenAction, /Launch, /EmbeddedFile, /AA) → refused;
+ * 2. PDFs: heuristic scan for active content (/JavaScript, /JS, /OpenAction, /Launch, /EmbeddedFile, /AA), also
+ *    inside compressed object streams; found or not scannable → refused (PdfScanner);
  * 3. images: dimensions checked before decoding (≤ 8000 px), re-encoded with GD (EXIF/GPS dropped),
  *    EXIF orientation applied, scaled down to ≤ 2048 px;
  * 4. stored on the private `local` disk under a random path ("lampiran/Y/m/<ulid>.<ext>", extension from the
@@ -40,7 +41,7 @@ final class StoreUpload
     public const MAX_IMAGE_SIDE = 2048;
 
     /** PDF names that trigger scripts, auto actions, launches or embedded files. */
-    public const PDF_ACTIVE_NAMES = ['javascript', 'js', 'openaction', 'launch', 'embeddedfile', 'embeddedfiles', 'aa'];
+    public const PDF_ACTIVE_NAMES = PdfScanner::ACTIVE_NAMES;
 
     public const MSG_PDF_ACTIVE = 'PDF berisi skrip atau lampiran tersembunyi. Simpan ulang sebagai PDF biasa.';
 
@@ -183,64 +184,12 @@ final class StoreUpload
     }
 
     /**
-     * True when the PDF's object syntax contains an active-content name (hex-escaped names like
-     * /J#61vaScript included). Binary stream bodies are skipped (random bytes would give false alarms);
-     * compressed object streams (/ObjStm, where dictionaries can hide) are inflated and scanned too.
+     * True when the PDF contains an active-content name (hex-escaped names like /J#61vaScript included), also
+     * inside compressed object streams, or when part of it cannot be scanned. Details: PdfScanner.
      */
     public static function pdfHasActiveContent(string $bytes): bool
     {
-        $syntax = self::pdfObjectSyntax($bytes);
-
-        if (preg_match_all('~/([A-Za-z0-9#]{2,40})~', $syntax, $matches) === false) {
-            return true;
-        }
-
-        foreach (array_unique($matches[1]) as $name) {
-            $decoded = preg_replace_callback('~#([0-9A-Fa-f]{2})~', fn (array $m): string => chr((int) hexdec($m[1])), $name);
-
-            if (in_array(strtolower((string) $decoded), self::PDF_ACTIVE_NAMES, true)) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    /** Everything outside stream bodies, plus the (inflated) bodies of object streams. */
-    private static function pdfObjectSyntax(string $bytes): string
-    {
-        $syntax = '';
-        $offset = 0;
-
-        while (preg_match('~(?<!end)stream\r?\n~', $bytes, $match, PREG_OFFSET_CAPTURE, $offset) === 1) {
-            $keywordAt = $match[0][1];
-            $before = substr($bytes, $offset, $keywordAt - $offset);
-            $syntax .= $before;
-
-            $dataStart = $keywordAt + strlen($match[0][0]);
-            $dataEnd = strpos($bytes, 'endstream', $dataStart);
-
-            if ($dataEnd === false) {
-                // Unterminated stream: scan the rest as syntax (errs on the safe side).
-                $syntax .= substr($bytes, $dataStart);
-                $offset = strlen($bytes);
-                break;
-            }
-
-            $dictionaryAt = strrpos($before, '<<');
-            $dictionary = $dictionaryAt === false ? '' : substr($before, $dictionaryAt);
-
-            if (str_contains($dictionary, '/ObjStm')) {
-                $data = rtrim(substr($bytes, $dataStart, $dataEnd - $dataStart), "\r\n");
-                $inflated = str_contains($dictionary, '/FlateDecode') ? @gzuncompress($data, 20 * 1024 * 1024) : $data;
-                // An object stream we cannot read might hide anything: keep a marker that fails the scan.
-                $syntax .= "\n".($inflated === false ? '/JavaScript' : $inflated)."\n";
-            }
-
-            $offset = $dataEnd + strlen('endstream');
-        }
-
-        return $syntax.substr($bytes, $offset);
+        return PdfScanner::hasActiveContent($bytes);
     }
 
     private function checkedPdf(string $path): string

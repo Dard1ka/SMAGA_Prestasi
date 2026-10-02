@@ -7,10 +7,12 @@ namespace App\Livewire\Kesiswaan;
 use App\Actions\Talent\MoveTalentStage;
 use App\Actions\Talent\RejectTalentApplication;
 use App\Actions\Talent\UpdateTalentAssessment;
+use App\Actions\Users\AdminRecipients;
 use App\Domain\Points\PointFormatter;
 use App\Enums\RoleName;
 use App\Enums\TalentStatus;
 use App\Enums\TalentTypeCode;
+use App\Livewire\Admin\Concerns\RequiresRecentPassword;
 use App\Livewire\Kesiswaan\Concerns\WithKesiswaanBadges;
 use App\Models\Achievement;
 use App\Models\Classroom;
@@ -18,10 +20,12 @@ use App\Models\TalentApplication;
 use App\Models\TalentBranch;
 use App\Models\TalentType;
 use App\Models\User;
+use App\Notifications\Admin\LargeExportNotice;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
@@ -36,15 +40,21 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
  * Talenta siswa (UI-MAP #18, board Kesiswaan-Talenta): pipeline tabs, filters (jenis → cabang, kelas,
  * nama/NIS), table with bulk moves, detail panel (pembina, jadwal asesmen, catatan). Every change goes
  * through MoveTalentStage / RejectTalentApplication / UpdateTalentAssessment (one call per row for bulk
- * moves), which notify the student. NIS is masked in the table; the Excel export escapes formulas.
+ * moves), which notify the student. NIS is masked in the table; the Excel export escapes formulas, needs
+ * a password from the last 15 minutes, is capped and audited with its filters.
  */
 #[Title('Talenta siswa')]
 #[Layout('layouts::app', ['subtitle' => 'Penjaringan, pemetaan, dan seleksi peserta pembinaan.'])]
 class Talenta extends Component
 {
-    use WithKesiswaanBadges;
+    use RequiresRecentPassword, WithKesiswaanBadges;
+
+    public const EXPORT_MAX_ROWS = 10000;
 
     private const PAGE = 30;
+
+    /** Upper bound of `$limit` (a public property the browser can set): beyond it the user narrows the filter. */
+    private const MAX = 300;
 
     private const TABS = ['semua', 'terdaftar', 'pemetaan', 'seleksi', 'pembinaan', 'tidak_lolos'];
 
@@ -99,6 +109,10 @@ class Talenta extends Component
 
     public function updated(string $property): void
     {
+        if ($property === 'limit') {
+            $this->clampLimit();
+        }
+
         if (in_array($property, ['tahap', 'jenis', 'cabang', 'kelas', 'q'], true)) {
             if ($property === 'jenis') {
                 $this->cabang = '';
@@ -126,6 +140,7 @@ class Talenta extends Component
     public function showMore(): void
     {
         $this->limit += self::PAGE;
+        $this->clampLimit();
     }
 
     public function showPanel(string $id): void
@@ -290,9 +305,27 @@ class Talenta extends Component
         $this->afterBulk($done.' pilihan talenta ditandai tidak lolos.', $skipped);
     }
 
-    public function export(): BinaryFileResponse
+    /**
+     * Excel download of the filtered list (full NIS, names, notes): password from the last 15 minutes, at
+     * most EXPORT_MAX_ROWS, audited with its filters, Admins alerted above LargeExportNotice::LIMIT rows
+     * (SECURITY §3i, §3m-9; same gates as Database prestasi).
+     */
+    public function export(AdminRecipients $recipients): ?BinaryFileResponse
     {
         $this->authorize('manage', TalentApplication::class);
+
+        if (! $this->passwordRecentlyConfirmed()) {
+            return null;
+        }
+
+        $count = $this->filteredQuery()->count();
+
+        if ($count > self::EXPORT_MAX_ROWS) {
+            $this->dispatch('sth-toast', message: 'Terlalu banyak baris ('.number_format($count, 0, ',', '.').'). Persempit filter, maks. '
+                .number_format(self::EXPORT_MAX_ROWS, 0, ',', '.').' baris.', tone: 'error');
+
+            return null;
+        }
 
         $base = (string) tempnam(sys_get_temp_dir(), 'talenta');
         @unlink($base);
@@ -320,27 +353,41 @@ class Talenta extends Component
 
         $writer->close();
 
-        activity('talent')->causedBy($this->actor())->event('talent.exported')
-            ->withProperties(['filters' => array_filter(['tahap' => $this->tahap, 'jenis' => $this->jenis, 'kelas' => $this->kelas])])
+        $actor = $this->actor();
+
+        activity('talent')->causedBy($actor)->event('talent.exported')
+            ->withProperties([
+                'filters' => $this->activeFilters(),
+                'rows' => $count,
+                'large' => $count > LargeExportNotice::LIMIT,
+                'format' => 'xlsx',
+            ])
             ->log('talent.exported');
+
+        if ($count > LargeExportNotice::LIMIT) {
+            Notification::send($recipients->admins(), new LargeExportNotice((string) $actor->name, 'data talenta siswa', $count, now()->translatedFormat('j F Y H:i')));
+        }
 
         return response()->download($path, 'talenta-siswa-'.now()->format('Ymd').'.xlsx')->deleteFileAfterSend();
     }
 
     public function render(PointFormatter $formatter): View
     {
+        $this->clampLimit();
+
         $rows = $this->orderedQuery()
             ->with(['student.user', 'student.classroom', 'talentType', 'talentBranch'])
             ->limit($this->limit + 1)
             ->get();
-        $hasMore = $rows->count() > $this->limit;
+        $more = $rows->count() > $this->limit;
         $rows = $rows->take($this->limit);
         $prestasi = $this->prestasi($rows->pluck('student_id')->unique()->values()->all());
 
         return view('livewire.kesiswaan.talenta', [
             'counts' => $this->counts(),
             'rows' => $rows->map(fn (TalentApplication $a): array => $this->row($a, $prestasi, $formatter)),
-            'hasMore' => $hasMore,
+            'hasMore' => $more && $this->limit < self::MAX,
+            'capped' => $more && $this->limit >= self::MAX,
             'shownText' => $this->shownText($rows->count()),
             'types' => TalentType::query()->ordered()->get(),
             'branches' => $this->branchOptions(),
@@ -351,7 +398,25 @@ class Talenta extends Component
         ])->layoutData(['badges' => $this->kesiswaanBadges()]);
     }
 
+    /** Where Fortify sends the user back after the password confirmation (RequiresRecentPassword). */
+    protected function returnUrl(): string
+    {
+        return route('kesiswaan.talenta.index', $this->activeFilters());
+    }
+
     // Queries --------------------------------------------------------------------------------
+
+    /** @return array<string, string> the filters that are set, by their URL key (also the audit properties) */
+    private function activeFilters(): array
+    {
+        return array_filter([
+            'tahap' => $this->tahap === 'semua' ? '' : $this->tahap,
+            'jenis' => $this->jenis,
+            'cabang' => $this->cabang,
+            'kelas' => $this->kelas,
+            'q' => $this->q,
+        ], fn (string $value): bool => $value !== '');
+    }
 
     /** @return Builder<TalentApplication> */
     private function baseQuery(): Builder
@@ -582,6 +647,11 @@ class Talenta extends Component
             })
             ->map(fn (Collection $group): array => $group->pluck('name', 'id')->all())
             ->all();
+    }
+
+    private function clampLimit(): void
+    {
+        $this->limit = max(self::PAGE, min(self::MAX, $this->limit));
     }
 
     private function sanitizeFilters(): void

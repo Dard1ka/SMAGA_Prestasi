@@ -116,6 +116,12 @@
                         </li>
                     @endforeach
                 </ul>
+                @if ($hasMore)
+                    <div class="flex flex-wrap items-center justify-between gap-2">
+                        <span class="text-[12.5px] text-muted">Menampilkan {{ count($students) }} dari {{ $studentTotal }} siswa</span>
+                        <x-sth.button variant="quiet" size="sm" icon="chevron-down" wire:click="tampilkanLebih">Tampilkan lebih banyak</x-sth.button>
+                    </div>
+                @endif
                 <p class="m-0 text-[12.5px] text-muted">Nama siswa tampil bila ada persetujuan publikasi.</p>
             @endif
         </x-sth.card>

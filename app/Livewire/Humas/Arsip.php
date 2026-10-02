@@ -6,9 +6,11 @@ namespace App\Livewire\Humas;
 
 use App\Actions\Publications\AchievementFacts;
 use App\Actions\Publications\PublicationInput;
+use App\Enums\Permission;
 use App\Enums\PublicationStatus;
 use App\Models\Publication;
 use App\Models\User;
+use App\Policies\PublicationPolicy;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
@@ -21,7 +23,8 @@ use Livewire\WithPagination;
 /**
  * Humas · Arsip (UI-MAP §4d): every published publication, newest first, 20 per page, search on
  * student or competition name. Rows whose student later withdrew publish consent stay listed (Humas has
- * to take the post down) and carry the chip "Izin dicabut".
+ * to take the post down) and carry the chip "Izin dicabut": no flyer link for anyone, and no student
+ * name or class (nor a match on the name) unless the viewer has `student.view` (SECURITY §3i, §3m-7).
  */
 #[Title('Arsip publikasi')]
 #[Layout('layouts::app', ['subtitle' => 'Prestasi yang sudah dipublikasikan.'])]
@@ -63,13 +66,13 @@ class Arsip extends Component
             ->orderByDesc('published_at')
             ->orderByDesc('id');
 
-        HumasQueries::search($query, $this->q);
+        HumasQueries::search($query, $this->q, ! $user->can(Permission::StudentView->value));
 
         $page = $query->paginate(self::PER_PAGE);
         $canDownload = Route::has('files.show');
 
-        $rows = $page->getCollection()->map(function (Publication $p) use ($canDownload): array {
-            $facts = AchievementFacts::of($p->achievement);
+        $rows = $page->getCollection()->map(function (Publication $p) use ($canDownload, $user): array {
+            $facts = AchievementFacts::of($p->achievement)->visibleTo($user);
 
             return [
                 'id' => (string) $p->getKey(),
@@ -80,7 +83,10 @@ class Arsip extends Component
                 'channels' => PublicationInput::channelLabels($p->channels) ?: '–',
                 'published' => HumasQueries::shortDate($p->published_at, true),
                 'consentWithdrawn' => ! $facts->publishConsent,
-                'flyerUrl' => $canDownload && $p->flyerFile !== null ? route('files.show', $p->flyerFile) : null,
+                // Same rule as FilePolicy (flyer): no link once the publication is no longer eligible.
+                'flyerUrl' => $canDownload && $p->flyerFile !== null && PublicationPolicy::eligible($p)
+                    ? route('files.show', $p->flyerFile)
+                    : null,
             ];
         })->all();
 

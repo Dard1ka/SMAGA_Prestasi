@@ -14,6 +14,7 @@ use App\Livewire\Kesiswaan\Concerns\WithKesiswaanBadges;
 use App\Models\Competition;
 use App\Models\RegistrationMember;
 use App\Models\User;
+use App\Rules\ExternalUrl;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
@@ -40,6 +41,9 @@ class Index extends Component
     use WithKesiswaanBadges;
 
     private const PAGE = 25;
+
+    /** Upper bound of `$limit` (a public property the browser can set): beyond it the user narrows the filter. */
+    private const MAX = 250;
 
     #[Url(as: 'tab', except: 'katalog')]
     public string $tab = 'katalog';
@@ -88,9 +92,15 @@ class Index extends Component
         $this->limit = self::PAGE;
     }
 
+    public function updatedLimit(): void
+    {
+        $this->clampLimit();
+    }
+
     public function showMore(): void
     {
         $this->limit += self::PAGE;
+        $this->clampLimit();
     }
 
     public function create(): void
@@ -183,15 +193,19 @@ class Index extends Component
 
     public function render(): View
     {
+        $this->clampLimit();
+
         $now = CarbonImmutable::now();
         $pending = Competition::query()->pendingVerification()->count();
+        $more = $this->tab === 'katalog' && $this->catalogQuery()->count() > $this->limit;
 
         return view('livewire.kesiswaan.lomba.index', [
             'stats' => $this->stats($now, $pending),
             'pendingCount' => $pending,
             'catalogCount' => Competition::query()->count(),
             'rows' => $this->tab === 'katalog' ? $this->catalogRows($now) : collect(),
-            'hasMore' => $this->tab === 'katalog' && $this->catalogQuery()->count() > $this->limit,
+            'hasMore' => $more && $this->limit < self::MAX,
+            'capped' => $more && $this->limit >= self::MAX,
             'queue' => $this->tab === 'verifikasi' ? $this->queueCards() : collect(),
             'statusFilters' => ['' => 'Semua'] + CompetitionStatus::options(),
         ])->layoutData(['badges' => $this->kesiswaanBadges()]);
@@ -271,6 +285,9 @@ class Index extends Component
             ->map(function (Competition $c) use ($user): array {
                 $submitter = $c->submitter;
                 $missing = VerifyCompetition::missingFields($c);
+                // Submitter-supplied link (SECURITY §3m-1): linked only while it still passes the rule, and
+                // shown by its punycode host so a look-alike IDN domain is visible to the verifier.
+                $website = is_string($c->website_url) && ExternalUrl::passes($c->website_url) ? $c->website_url : null;
 
                 return [
                     'id' => $c->getKey(),
@@ -281,8 +298,9 @@ class Index extends Component
                     'submitterMeta' => self::submitterMeta($submitter),
                     'source' => self::sourceLabel($submitter, $user),
                     'when' => self::whenLabel($c->created_at),
-                    'website' => $c->website_url,
-                    'websiteHost' => $c->website_url !== null ? (parse_url($c->website_url, PHP_URL_HOST) ?: $c->website_url) : null,
+                    'website' => $website,
+                    'websiteHost' => $website !== null ? ExternalUrl::host($website) : null,
+                    'websiteInvalid' => $website === null && (string) $c->website_url !== '',
                     'juknis' => $c->juknisFile !== null ? [
                         'name' => $c->juknisFile->original_name,
                         'size' => self::fileSize($c->juknisFile->size),
@@ -389,6 +407,11 @@ class Index extends Component
             $submitter->hasRole(RoleName::Guru->value) => ['blue', 'Upload guru'],
             default => ['blue', 'Upload staf'],
         };
+    }
+
+    private function clampLimit(): void
+    {
+        $this->limit = max(self::PAGE, min(self::MAX, $this->limit));
     }
 
     private function find(string $id): Competition

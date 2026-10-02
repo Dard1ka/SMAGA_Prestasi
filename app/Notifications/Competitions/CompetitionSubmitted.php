@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Notifications\Competitions;
 
 use App\Models\Competition;
+use App\Notifications\Support\PlainMailMessage;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -44,7 +45,7 @@ class CompetitionSubmitted extends Notification implements ShouldQueue
 
     public function toMail(object $notifiable): MailMessage
     {
-        return (new MailMessage)
+        return (new PlainMailMessage)
             ->subject('Usulan lomba baru: '.$this->competition->name)
             ->greeting('Halo,')
             ->line($this->message())

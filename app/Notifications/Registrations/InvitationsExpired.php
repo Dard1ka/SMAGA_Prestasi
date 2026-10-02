@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Notifications\Registrations;
 
 use App\Models\Registration;
+use App\Notifications\Support\PlainMailMessage;
 use Illuminate\Notifications\Messages\MailMessage;
 
 /**
@@ -21,7 +22,7 @@ class InvitationsExpired extends RegistrationNotification
 
     public function toMail(object $notifiable): MailMessage
     {
-        return (new MailMessage)
+        return (new PlainMailMessage)
             ->subject(($this->ready ? 'Tim diteruskan ke Kepala Sekolah: ' : 'Tim kurang anggota: ').$this->competitionName())
             ->greeting('Halo '.self::firstName($notifiable).',')
             ->line($this->message())

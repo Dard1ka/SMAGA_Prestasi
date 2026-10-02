@@ -14,15 +14,18 @@ use App\Enums\FilePurpose;
 use App\Enums\Level;
 use App\Enums\OrganizerType;
 use App\Enums\Participation;
+use App\Enums\Permission;
 use App\Enums\RoleName;
 use App\Enums\WeightCategory;
 use App\Models\Competition;
 use App\Models\File;
 use App\Models\User;
+use App\Notifications\Competitions\CompetitionSubmitted;
 use App\Rules\ExternalUrl;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 
@@ -47,7 +50,7 @@ final class CreateCompetition
         $juknisFile = $juknis !== null ? self::storeFile($actor, $juknis, FilePurpose::Juknis) : null;
         $coverFile = $cover !== null ? self::storeFile($actor, $cover, FilePurpose::Cover) : null;
 
-        return DB::transaction(function () use ($actor, $data, $juknisFile, $coverFile): Competition {
+        $competition = DB::transaction(function () use ($actor, $data, $juknisFile, $coverFile): Competition {
             $competition = new Competition([
                 ...$data,
                 'juknis_file_id' => $juknisFile?->getKey(),
@@ -72,6 +75,18 @@ final class CreateCompetition
 
             return $competition;
         });
+
+        // Same as a siswa/guru usulan (SubmitCompetition): the entry waits in the queue, so the other verifiers
+        // hear about it (e.g. Kesiswaan when the Admin adds a lomba). The actor is not mailed.
+        $verifiers = User::query()
+            ->canLogIn()
+            ->permission(Permission::CompetitionVerify->value)
+            ->whereKeyNot($actor->getKey())
+            ->get();
+
+        Notification::send($verifiers, new CompetitionSubmitted($competition, (string) $actor->name));
+
+        return $competition;
     }
 
     /**

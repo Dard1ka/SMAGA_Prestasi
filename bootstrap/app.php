@@ -3,6 +3,7 @@
 use App\Http\Middleware\EnsureAccountActive;
 use App\Http\Middleware\EnsureActivated;
 use App\Http\Middleware\EnsureStaffTwoFactor;
+use App\Http\Middleware\RestrictTwoFactorToStaff;
 use App\Http\Middleware\SecurityHeaders;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -48,7 +49,8 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->append(SecurityHeaders::class);
 
         // Disabled/archived accounts lose their session on the next request (D-29, D-30).
-        $middleware->web(append: [EnsureAccountActive::class]);
+        // TOTP management (Fortify's two-factor.* routes, /akun/2fa) is staff only: 404 for student accounts.
+        $middleware->web(append: [EnsureAccountActive::class, RestrictTwoFactorToStaff::class]);
 
         $middleware->alias([
             'active' => EnsureAccountActive::class,
