@@ -131,6 +131,12 @@ drop `force="true"`.
 Notes: tests stay SQLite-compatible (MySQL-only behaviour gets its own marked test). Git Bash rewrites
 paths like `/var/www/html`: prefix `MSYS_NO_PATHCONV=1` or use PowerShell. On Linux, container-created
 files are root-owned: `sudo chown -R "$USER": .`. Keep LF line endings.
+CI (`.github/workflows/ci.yml`: PHP, Frontend, Composer audit, gitleaks, Docker + Trivy, E2E) must be green before a
+merge; read a failed run with `gh run view <id> --log-failed`. Dependabot (`.github/dependabot.yml`) only brings
+digest/patch updates for the `php`, `node` and `mysql` images, and nginx stays on the stable (even) line. **Never merge a
+Dependabot PR with red checks.** A PHP minor, Node major or MySQL upgrade is a planned task that changes the dev + prod
+image, CI `PHP_VERSION`/`NODE_VERSION` and the composer platform together, with a full test run (PHP 8.5 has OPcache
+built in, so `docker-php-ext-install opcache` fails; MySQL 9.x are short-lived Innovation releases).
 Production (image, `docker/compose.prod.yaml`, Apache vhost, deploy/backup/restore, CI) is documented in
 **`docs/DEPLOY.md`** (owner I). Prod facts that affect code: queues `otp`, `mail`, `default`; the runtime
 DB user `sth_app` has per-table DML only (no DDL, no `TRUNCATE`: use `delete()`; `activity_log` and `audit_seals` are
@@ -322,9 +328,15 @@ certificates on public pages (U-04); go-live date + team hours; Ubuntu Pro (U-01
 binaries (U-02); mandatory staff TOTP + break-glass (U-03); letter QR (U-05); WordPress isolation (U-06);
 server/DNS admins; Kepsek consent for the signature image, TTE?; hijack recovery owner + risk-acceptance
 signature (D-14); per-class activation schedule; SMTP provider; off-site backups + key holder; DPO.
+Public DNS check of 2026-10-01 (not yet confirmed with the school): the domain's DNS is on Cloudflare (`www`, `mail`,
+`webmail` proxied); the main website and the school mail are on Desnet shared hosting (SPF, DKIM and DMARC `p=none`
+exist), so apparently **not** on the Ubuntu server (§1 assumes the same host: confirm). No `prestasi` record exists
+yet: add an A record to the Ubuntu server as "DNS only" (behind the Cloudflare proxy the app would only see Cloudflare
+IPs, which breaks the per-IP login/OTP limits). The noreply mailbox would then be DEPLOY §9 path B on that hosting; its
+SMTP host must not be `mail.<domain>` (proxied) and its hourly send limit needs asking.
 
 ## 10. Status
-Last updated: 2026-10-01 (waves 1–2 done, W3-A integration pass, backlog wave B1–B6, W4 integration, D1 docs sync). Update this section whenever a milestone moves.
+Last updated: 2026-10-02 (waves 1–2 done, W3-A integration pass, backlog wave B1–B6, W4 integration, D1 docs sync, CI green on GitHub). Update this section whenever a milestone moves.
 
 | area | owner | state (details in `docs/dev-notes/<ID>.md`) |
 |---|---|---|
@@ -350,6 +362,7 @@ Last updated: 2026-10-01 (waves 1–2 done, W3-A integration pass, backlog wave 
 | B6 devops/docs: CI (SHA pins, gitleaks, Trivy, E2E Playwright), per-table DB grants (`grants.sh`), `sth:mail-test` + DEPLOY §9 SMTP, favicon, PANDUAN-PENGGUNA, Bantuan text, ARCHITECTURE §4 ratified, D-45…D-60, UI-MAP | → I | done (#20, #22, #23, #24, #25) |
 | W4 integration: scheduler `sth:peran-tertunda`, menus (Status aktivasi, Surat atas nama saya, Log audit, Arsip otomatis, account items), new privileged staff accounts via role request (second Admin / 24 h), `SettingKey::ActivationWindowDays`/`LetterTemplate` (`OtpTestMode` removed), `User` casts, staff resets in K10 alert, signature upload via `StoreUpload`, Ringkasan events, per-process compiled views in tests | – | done (#27, #28, #29, #30, #31) |
 | D1 docs sync: DECISIONS D-61…D-65, ARCHITECTURE §4 (settings = `SettingKey`, `account.staff_created`), UI-MAP menus, PANDUAN-PENGGUNA (Admin, Notifikasi/Keamanan akun), this file §2/§5/§7/§8/§10 | – | done |
+| CI on GitHub: `.env` before `composer install` (the production boot guard stopped `package:discover`), dev MySQL healthcheck over TCP (`compose.yaml`; "healthy" came before port 3306 was up), Dependabot bumps PHP 8.5 / MySQL 9.6 / Node 26 reverted + ignore rules, `start.bat` / `stop.bat` | → I | done (first green run 2026-10-02; CI half of #21) |
 
 Verified 2026-10-01 (W3-A, details in `docs/dev-notes/W3-A.md`): `php artisan test` → **925 passed (3726 assertions)** twice in a
 row (SQLite; `--parallel --processes=4` also 925 passed twice); `pint --test` clean; `npm run build` OK; `composer audit` clean; prod compose `config -q` OK;
@@ -361,6 +374,8 @@ in the shared compiled-view folder (11/11 pass alone). Prod image with all B mig
 W4 (`docs/dev-notes/W4.md`): full suite `--parallel --processes=4` → **1283 passed (5861 assertions)** twice in a row, exit 0 (467 s / 457 s);
 `pint --test` clean (567 files); `composer audit` clean; `npm run build` OK; `docker build -f docker/Dockerfile.prod -t sth-app:prod .` OK.
 Local MySQL migrated (W4 migration), `RoleSeeder` + `SettingSeeder` re-run, `scheduler` + `queue` recreated (`schedule:list` shows `sth:peran-tertunda`).
+GitHub CI 2026-10-02 (push to `main`, commit `33c039b`): PHP (validate, Pint, Pest), Frontend, Composer audit, gitleaks (full history),
+Docker (prod images, Trivy, prod compose) and E2E (Playwright smoke, 2 tests) → all green, the first fully green run.
 
 ### Backlog (open; collected from all dev-notes and UI-MAP)
 Owner: **S** = frontend/screens, **I** = deploy/QA, **user** = lead/backend core (also asks the school).
@@ -370,7 +385,7 @@ Done in the backlog wave B1–B6 (details in the B dev-notes): former #1–#20, 
 
 | # | item | source | owner |
 |---|---|---|---|
-| 21 | Staging on a real Ubuntu 18.04 / Apache 2.4.29 host (static Docker binaries, cgroup v1); first real CI run on GitHub (workflow only linted locally) | W1-E, B6 | I |
+| 21 | Staging on a real Ubuntu 18.04 / Apache 2.4.29 host (static Docker binaries, cgroup v1). The first real CI run on GitHub is done (2026-10-02, all six jobs green) | W1-E, B6 | I |
 | 26 | School answers (§9): parental consent process (then `public_indexing`/`public_certificates`), letter template details, SMTP relay + DNS records (DEPLOY §9), activation window/school hours (D-54), U-01…U-06 | DECISIONS §F | user |
 | 32 | Queued achievement export + signed URL (D-53 follow-up) if exports grow; sort options on Database prestasi | B4 | user + S |
 | 33 | K9 extra flags (activation outside the school network: needs the school CIDR; ≥ 3 activations per browser session/hour); K10 items 4–5 (block the hijacker's email, hijack-period timeline) | B1 | user |
