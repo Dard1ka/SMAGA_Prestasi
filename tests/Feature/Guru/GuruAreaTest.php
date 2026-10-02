@@ -23,6 +23,7 @@ use App\Models\ReportFile;
 use App\Models\User;
 use App\Support\Navigation;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Notification;
 use Livewire\Livewire;
 use Tests\Feature\Guru\GuruFixtures;
@@ -234,9 +235,14 @@ it('opens the detail drawer for a visible lomba and 404 for an invisible one', f
 });
 
 it('uploads lomba info through the shared usulan form into the verification queue', function (): void {
+    // The sheet is shared with the siswa usulan, so a guru owes the same evidence.
     Livewire::actingAs($this->retno)->test(UsulanForm::class)
         ->set('name', 'Olimpiade Guru Penggerak 2026')
         ->set('organizer_name', 'Dinas Pendidikan')
+        ->call('kirim')
+        ->assertHasErrors(['website_url' => 'required', 'brosur' => 'required'])
+        ->set('website_url', 'https://olimpiade.example.id')
+        ->set('brosur', UploadedFile::fake()->createWithContent('juknis.pdf', "%PDF-1.4\n1 0 obj << /Type /Catalog >> endobj\ntrailer << /Root 1 0 R >>\n%%EOF"))
         ->call('kirim')
         ->assertHasNoErrors()
         ->assertDispatched('usulan-terkirim');

@@ -124,14 +124,25 @@ it('refuses a PDF with active content and leaves nothing behind', function (): v
 it('submits through the Usulkan lomba sheet', function (): void {
     $this->actingAs(F::user($this->nadia));
 
+    // Kesiswaan verifies a proposal against the organizer, the official link and the invitation
+    // (concept doc section 5), so the sheet asks for all three; only the note stays optional.
     Livewire::test(UsulanForm::class)
         ->call('kirim')
-        ->assertHasErrors(['name' => 'required'])
+        ->assertHasErrors([
+            'name' => 'required',
+            'organizer_name' => 'required',
+            'website_url' => 'required',
+            'brosur' => 'required',
+        ])
+        ->assertHasNoErrors('description')
         ->set('name', 'ISPO 2027')
+        ->set('organizer_name', 'Yayasan Contoh')
         ->set('website_url', 'http://ispo.example.id')
         ->call('kirim')
         ->assertHasErrors(['website_url'])
         ->set('website_url', 'https://ispo.example.id')
+        ->call('kirim')
+        ->assertHasErrors(['brosur' => 'required'])
         ->set('brosur', UploadedFile::fake()->image('poster.jpg', 1200, 800))
         ->call('kirim')
         ->assertHasNoErrors()
