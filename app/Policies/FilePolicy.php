@@ -122,12 +122,19 @@ class FilePolicy
      */
     private function viaPublication(User $user, File $file): bool
     {
-        return $user->can(Permission::PublicationManage->value)
-            && Publication::query()
-                ->where('flyer_file_id', $file->getKey())
-                ->with('achievement.student')
-                ->get()
-                ->contains(fn (Publication $publication): bool => PublicationPolicy::eligible($publication));
+        if (! $user->can(Permission::PublicationManage->value)) {
+            return false;
+        }
+
+        // D-75: whoever may see student data anyway (`student.view`: Admin) keeps the download after a withdrawal,
+        // e.g. to check what has to be taken down. Humas has no `student.view`.
+        $seesStudents = $user->can(Permission::StudentView->value);
+
+        return Publication::query()
+            ->where('flyer_file_id', $file->getKey())
+            ->with('achievement.student')
+            ->get()
+            ->contains(fn (Publication $publication): bool => $seesStudents || PublicationPolicy::eligible($publication));
     }
 
     private function viaReport(User $user, File $file): bool

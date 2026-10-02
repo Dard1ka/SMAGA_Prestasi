@@ -31,7 +31,7 @@ achievements, gated by consent flags (D-16, SECURITY §3m-7).
 ## 2. Sources of truth (read before changing behaviour)
 | file | content |
 |---|---|
-| `docs/DECISIONS.md` | decision log D-01…D-74 (D-45…D-61 = backlog wave + W4 product choices, *sementara*; D-62…D-65 = security hardening, *final*; D-66…D-74 = Q1 security/performance pass), U-01…U-06, open questions §F. **Wins over everything.** |
+| `docs/DECISIONS.md` | decision log D-01…D-77 (D-45…D-61 = backlog wave + W4 product choices, *sementara*; D-62…D-65 = security hardening, *final*; D-66…D-77 = Q1 security/performance pass and the lead's follow-up choices), U-01…U-06, open questions §F. **Wins over everything.** |
 | `docs/ARCHITECTURE.md` | binding contract: data model, enums, state machine, domain rules |
 | `docs/SECURITY.md` | threat model, top-10 risks §1, controls §3a–§3m (K1–K12), pre-release checklist §4 |
 | `docs/TALENT-FORM.md` | talent types/branches (seed source for `talent_types`, `talent_branches`) |
@@ -327,7 +327,10 @@ D-67 confirm-password limit + 2FA audit events; D-68 no mail and no reset code f
 gets account notices only; D-69 user text in mails is plain text (`PlainMailMessage`); D-70 `PdfScanner` refuses PDFs it
 cannot read completely; D-71 a withdrawn publish consent also hides the name and the flyer from Humas; D-72 long lists
 come in steps (*sementara*); D-73 "Tambah lomba" notifies the other verifiers (*sementara*); D-74 gzip for the
-Livewire script in the prod nginx + daily prune of expired cache rows.
+Livewire script in the prod nginx + daily prune of expired cache rows. Lead's choices of 2026-10-02, **final**: D-75 the
+flyer file stays after a withdrawn consent, Humas cannot download it, Admin (`student.view`) still can; D-76 a lomba
+name must not contain a web address (`App\Rules\NoWebAddress`); D-77 the guru pembimbing is told about a rejected or
+cancelled registration, the Kepala Sekolah about a cancel once it had reached `menunggu_kepsek`.
 
 Known stale text (do not "fix" code to match it): SECURITY.md §0/§3a still say `sm4g4_DD-MM-YYYY`;
 DESIGN-SPEC-v2 §1 and the Admin-Pengaturan mockup still show 30 days (and the mockup's WICE deadline
@@ -379,7 +382,7 @@ Last updated: 2026-10-02 (waves 1–2 done, W3-A integration pass, backlog wave 
 | W4 integration: scheduler `sth:peran-tertunda`, menus (Status aktivasi, Surat atas nama saya, Log audit, Arsip otomatis, account items), new privileged staff accounts via role request (second Admin / 24 h), `SettingKey::ActivationWindowDays`/`LetterTemplate` (`OtpTestMode` removed), `User` casts, staff resets in K10 alert, signature upload via `StoreUpload`, Ringkasan events, per-process compiled views in tests | – | done (#27, #28, #29, #30, #31) |
 | D1 docs sync: DECISIONS D-61…D-65, ARCHITECTURE §4 (settings = `SettingKey`, `account.staff_created`), UI-MAP menus, PANDUAN-PENGGUNA (Admin, Notifikasi/Keamanan akun), this file §2/§5/§7/§8/§10 | – | done |
 | CI on GitHub: `.env` before `composer install` (the production boot guard stopped `package:discover`), dev MySQL healthcheck over TCP (`compose.yaml`; "healthy" came before port 3306 was up), Dependabot bumps PHP 8.5 / MySQL 9.6 / Node 26 reverted + ignore rules, `start.bat` / `stop.bat` | → I | done (first green run 2026-10-02; CI half of #21) |
-| Q1 full check (`docs/dev-notes/Q1.md`, D-66…D-74): email scenario for every role (`tests/E2E/support/email-scenario.php`), security review + fixes (student TOTP lockout, confirm-password limit, PDF scanner, Markdown in mails, mail to frozen/unverified accounts, Humas after withdrawn consent, Talenta export), performance with school-sized data (list limits, gzip for the Livewire script, cache prune) | – | done |
+| Q1 full check (`docs/dev-notes/Q1.md`, D-66…D-74): email scenario for every role (`tests/E2E/support/email-scenario.php`), security review + fixes (student TOTP lockout, confirm-password limit, PDF scanner, Markdown in mails, mail to frozen/unverified accounts, Humas after withdrawn consent, Talenta export), performance with school-sized data (list limits, gzip for the Livewire script, cache prune); follow-up D-75…D-77 (Admin flyer access, no web address in lomba names, reject/cancel notices for guru and Kepala Sekolah) | – | done |
 
 Verified 2026-10-01 (W3-A, details in `docs/dev-notes/W3-A.md`): `php artisan test` → **925 passed (3726 assertions)** twice in a
 row (SQLite; `--parallel --processes=4` also 925 passed twice); `pint --test` clean; `npm run build` OK; `composer audit` clean; prod compose `config -q` OK;
@@ -398,10 +401,8 @@ Q1 2026-10-02 (`docs/dev-notes/Q1.md`): full suite `--parallel --processes=4` �
 `nginx -t` OK inside the web image; email scenario on the isolated `sth-e2e` project → **114 mails, 0 missing, 0 unexpected, 0 leaks,
 0 failed jobs**; page profile with 1,171 students / 1,393 registrations / 1,420 achievements: query count per page unchanged from the
 demo data (no N+1), largest pages after the list limits ≈ 190 kB.
-Q1 2026-10-02 (`docs/dev-notes/Q1.md`): full suite `--parallel --processes=4` → **1486 passed (6855 assertions)**, exit 0 (677 s);
-`pint --test` clean (585 files); `composer audit` and `npm audit --omit=dev` clean; email scenario on the isolated `sth-e2e` project →
-**114 mails, 0 missing, 0 unexpected, 0 leaks, 0 failed jobs**; page profile with 1,171 students / 1,393 registrations / 1,420
-achievements: query count per page unchanged from the demo data (no N+1), largest pages after the list limits ≈ 190 kB.
+After the follow-up D-75…D-77 (same day): full suite → **1515 passed (6962 assertions)**, exit 0; `pint --test` clean (588 files);
+email scenario → **122 mails, 0 missing, 0 unexpected, 0 leaks**; upload check on 19 locally made PDFs → 14 accepted, 5 refused as expected.
 
 ### Backlog (open; collected from all dev-notes and UI-MAP)
 Owner: **S** = frontend/screens, **I** = deploy/QA, **user** = lead/backend core (also asks the school).
@@ -419,12 +420,11 @@ Done in the backlog wave B1–B6 (details in the B dev-notes): former #1–#20, 
 | 35 | Optional `OtpPurpose::ChangeEmail` (change-email OTP still uses `verify_email`): touches `ChangeEmail`, `CompleteActivation`, `OtpCodeMail` texts, Keamanan tests | B1, W4 | user |
 | 36 | Status sistem: attention item "N perubahan peran menunggu" (today only the panel in Pengguna & peran shows pending role requests) | W4 | S + user |
 | 37 | Browser check of the W4 menus (Status aktivasi, Surat atas nama saya, Log audit, Arsip otomatis, avatar Notifikasi) and "Tambah pengguna" with a privileged role (render-tested only) | W4 | I |
-| 38 | A URL typed into a lomba name still shows as plain text in mails and subjects (mail clients may auto-link it): validate `name` in `SubmitCompetition`/`CreateCompetition` or drop it from the verifier mail (D-69, SECURITY §3m-1) | Q1 | user |
-| 39 | Takedown after a withdrawn publish consent: the stored flyer file, the old caption and scheduled appreciation rows stay (access is blocked, D-71); SECURITY §3i asks for removal within 3×24 h | Q1 | user + S |
-| 40 | Workflow gaps found by the email scenario: guru pembimbing is not told about a rejected or cancelled registration, Kepala Sekolah is not told about a cancel, a talent application notifies nobody, the guru's "Pendaftaran binaan disetujui" button opens `/guru` instead of the registration | Q1 | user |
+| 39 | After a withdrawn publish consent the flyer file, the old caption and scheduled appreciation rows stay on purpose (D-75: Humas blocked, Admin keeps the download); SECURITY §3i asks for removal within 3×24 h, which is still a manual task | Q1 | user + S |
+| 40 | A talent application (SaveTalentProfile / ApplyTalent) notifies nobody; Kesiswaan only sees it on the pipeline screen. (Reject/cancel notices for guru and Kepala Sekolah are done, D-77; #38 lomba names with a web address is done, D-76) | Q1 | user |
 | 41 | Humas holds `achievement.view_all`; only the route middleware keeps Humas out of Database prestasi: tighten `AchievementPolicy::viewDatabase` or the Humas permission set. Unify the neutral-name rule (`PublicAchievements` + `AchievementFacts`) | Q1 | user |
 | 42 | Staff 2FA follow-ups: hourly ceiling for confirm-password (D-67 is 5 per minute), staff can still disable their own TOTP after confirming the password (audited; `staff.2fa` forces setup again) | Q1 | user |
-| 43 | Try real school PDFs (Word, scanner/copier, Canva, phone scans) against `PdfScanner` before release (D-70 was checked with 137 sample files, none from the school) | Q1 | I |
+| 43 | `PdfScanner` (D-70): PDFs made on the lead's laptop with Word, Excel, PowerPoint, "Microsoft Print to PDF", Edge, Chrome and photo/scan images are accepted, hostile and oversized ones refused (19 files; results and a rerun script are in `uji-pdf/` next to the repo, not in git). Still to try: Canva downloads, the school's copier/scanner, phone scan apps, organizers' original certificates | Q1 | I |
 | 44 | A staff account reset by an Admin only gets account notices until its owner verifies the email again (D-68): add this to PANDUAN-PENGGUNA (Admin). Dev stack: after a Docker restart `queue`/`scheduler` come up before MySQL and fill `laravel.log` with connection errors until `start.bat` runs | Q1 | I |
 
 ## 11. Team, ownership and agent protocol

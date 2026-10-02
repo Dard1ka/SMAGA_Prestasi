@@ -19,7 +19,9 @@ use Illuminate\Validation\ValidationException;
 /**
  * The leader cancels while the registration waits for members (`menunggu_konfirmasi`) or for the
  * Kepala Sekolah (`menunggu_kepsek`) → `dibatalkan` + cancelled_at (ARCHITECTURE §6, lead 2026-10-01).
- * Other (not declined) members are notified. Everyone becomes free to register for the lomba again.
+ * Other (not declined) members and the guru pembimbing are notified, and the Kepala Sekolah when the
+ * registration was already waiting for their decision (lead, 2026-10-02). Everyone becomes free to register
+ * for the lomba again.
  */
 final class CancelRegistration
 {
@@ -33,7 +35,7 @@ final class CancelRegistration
         /** @var Student $student */
         $student = $actor->loadMissing('student')->getRelation('student');
 
-        $locked = DB::transaction(function () use ($actor, $registration, $student): Registration {
+        [$locked, $from] = DB::transaction(function () use ($actor, $registration, $student): array {
             /** @var Registration $locked */
             $locked = Registration::query()->whereKey($registration->getKey())->lockForUpdate()->firstOrFail();
 
@@ -58,7 +60,7 @@ final class CancelRegistration
                 ->withProperties(['from' => $from->value])
                 ->log('registration.cancelled');
 
-            return $locked;
+            return [$locked, $from];
         });
 
         $others = User::query()->canLogIn()
@@ -68,7 +70,21 @@ final class CancelRegistration
                 ->where('student_id', '!=', $student->getKey()))
             ->get();
 
-        Notification::send($others, new RegistrationCancelled($locked));
+        Notification::send($others, RegistrationCancelled::for($locked, 'siswa'));
+
+        $mentor = $locked->mentor_id !== null ? User::query()->find($locked->mentor_id) : null;
+
+        if ($mentor !== null && $mentor->canLogIn() && ! $mentor->is($actor)) {
+            $mentor->notify(RegistrationCancelled::for($locked, 'guru'));
+        }
+
+        // Only when they were asked to approve it: before menunggu_kepsek the Kepala Sekolah never heard of it.
+        if ($from === RegistrationStatus::MenungguKepsek) {
+            Notification::send(
+                CreateRegistration::principals()->reject(fn (User $principal): bool => $principal->is($actor))->values(),
+                RegistrationCancelled::for($locked, 'kepsek'),
+            );
+        }
 
         return $locked;
     }

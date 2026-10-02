@@ -71,7 +71,9 @@ class Arsip extends Component
         $page = $query->paginate(self::PER_PAGE);
         $canDownload = Route::has('files.show');
 
-        $rows = $page->getCollection()->map(function (Publication $p) use ($canDownload, $user): array {
+        $seesStudents = $user->can(Permission::StudentView->value);
+
+        $rows = $page->getCollection()->map(function (Publication $p) use ($canDownload, $seesStudents, $user): array {
             $facts = AchievementFacts::of($p->achievement)->visibleTo($user);
 
             return [
@@ -83,8 +85,9 @@ class Arsip extends Component
                 'channels' => PublicationInput::channelLabels($p->channels) ?: '–',
                 'published' => HumasQueries::shortDate($p->published_at, true),
                 'consentWithdrawn' => ! $facts->publishConsent,
-                // Same rule as FilePolicy (flyer): no link once the publication is no longer eligible.
-                'flyerUrl' => $canDownload && $p->flyerFile !== null && PublicationPolicy::eligible($p)
+                // Same rule as FilePolicy (flyer): no link once the publication is no longer eligible, except for
+                // a viewer with `student.view` (Admin, D-75).
+                'flyerUrl' => $canDownload && $p->flyerFile !== null && ($seesStudents || PublicationPolicy::eligible($p))
                     ? route('files.show', $p->flyerFile)
                     : null,
             ];

@@ -80,7 +80,7 @@ it('approves a team registration and notifies members, mentor and Tata Usaha', f
     expect(Activity::query()->where('event', 'registration.approved')->where('subject_id', $registration->getKey())->exists())->toBeTrue();
 });
 
-it('rejects with a required reason and tells only the students', function (): void {
+it('rejects with a required reason and tells the students and the guru pembimbing', function (): void {
     Notification::fake();
     $mentor = F::mentor();
     $registration = F::registration(mentor: $mentor);
@@ -95,8 +95,9 @@ it('rejects with a required reason and tells only the students', function (): vo
     expect($registration->status)->toBe(RegistrationStatus::Ditolak)
         ->and($registration->principal_note)->toBe('Jadwal bentrok dengan penilaian tengah semester.');
 
-    Notification::assertSentTo(ApproveRegistration::memberUsers($registration), RegistrationRejected::class);
-    Notification::assertNotSentTo($mentor, RegistrationRejected::class);
+    Notification::assertSentTo(ApproveRegistration::memberUsers($registration), RegistrationRejected::class, fn (RegistrationRejected $n) => $n->audience === 'siswa');
+    Notification::assertSentTo($mentor, RegistrationRejected::class, fn (RegistrationRejected $n) => $n->audience === 'guru');
+    Notification::assertNotSentTo($this->kepsek, RegistrationRejected::class);
     expect(Activity::query()->where('event', 'registration.rejected')->exists())->toBeTrue();
 });
 

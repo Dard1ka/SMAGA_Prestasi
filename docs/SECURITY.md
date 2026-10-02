@@ -1043,7 +1043,7 @@ Uji payload ada di §4.
   - setiap login memicu alert ke Kepala Sekolah + semua Admin
   - setelah dipakai, password & seed diganti, amplop disegel ulang, dan pemakaian dicatat di buku log
 - **Konfirmasi ulang password** (`password.confirm`, 15 menit) untuk: ubah peran, reset akun, **ganti akun Kepala Sekolah**, unggah ttd, ubah bobot/batas laporan, export, import, unarchive. `POST /user/confirm-password` dibatasi **5 percobaan per menit per akun** (D-67).
-- **Email keluar (D-68, D-69):** akun yang dibekukan tidak menerima email apa pun dan tidak bisa meminta kode reset; alamat yang belum diverifikasi hanya menerima pemberitahuan akun (`AdminNotice`). Semua notifikasi dibuat dengan `PlainMailMessage`, sehingga teks dari pengguna (nama lomba, nama orang, catatan) tidak pernah menjadi tautan atau gambar di email.
+- **Email keluar (D-68, D-69):** akun yang dibekukan tidak menerima email apa pun dan tidak bisa meminta kode reset; alamat yang belum diverifikasi hanya menerima pemberitahuan akun (`AdminNotice`). Semua notifikasi dibuat dengan `PlainMailMessage`, sehingga teks dari pengguna (nama lomba, nama orang, catatan) tidak pernah menjadi tautan atau gambar di email. Nama lomba yang memuat alamat web ditolak saat diisi (`NoWebAddress`, D-76), karena klien email menautkan sendiri teks yang mirip alamat.
 - **Ganti akun Kepala Sekolah:**
   - notifikasi dikirim ke email Kepsek lama & baru dan ke semua Admin
   - berlaku setelah **tunda 24 jam**, dan bisa dibatalkan Kepsek lama atau Admin lain

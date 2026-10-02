@@ -15,7 +15,8 @@ declare(strict_types=1);
  *
  * Steps: 0 setup (second Humas) · 1 import + activation · 2 lomba uploads + verification (incl. a lomba name and a
  * note written as Markdown: no link or image may reach the HTML part) · 3 registration (team, invitations,
- * individual, decline, cancel) · 4 Kepala Sekolah · 5 Tata Usaha letters + corrections · 6 timeline commands ·
+ * individual, decline, cancel before and after the team reached the Kepala Sekolah) · 4 Kepala Sekolah (approve,
+ * reject: the guru pembimbing is told too) · 5 Tata Usaha letters + corrections · 6 timeline commands ·
  * 7 laporan hasil + verification · 8 Humas · 9 talent · 10 account + Admin events (a frozen account gets no mail
  * and no reset code) · 11 the production mail rule, with OTP test mode switched off inside this process for those
  * steps only: an address nobody verified gets account notices but no work mail.
@@ -616,8 +617,11 @@ $importCsv = implode("\n", [
     "Ma'ruf Hidayat,226227204,0109900004,19-06-2010,X-4",
 ])."\n";
 
-/** A lomba name and a staff note typed as Markdown: both must reach the reader as plain text (SECURITY §3m-1). */
-$hostileName = '[Masuk](https://evil.example/login) ![x](https://evil.example/p.png)';
+/**
+ * A lomba name and a staff note typed as Markdown: both must reach the reader as plain text (SECURITY §3m-1).
+ * The name carries no web address: a name with one is refused at input (D-76, checked in step 2g).
+ */
+$hostileName = '[Masuk di sini](evil-masuk) ![x](evil-gambar) **Lomba Tebal**';
 $hostileNote = 'Bukan lomba resmi. Lihat [daftar resmi](https://evil.example/daftar) **segera**.';
 
 $lomba = [
@@ -940,16 +944,16 @@ $scenario->step('2f', 'Kesiswaan publishes the Admin\'s lomba (VerifyCompetition
     app(VerifyCompetition::class)->handle($staff('kesiswaan'), Competition::query()->findOrFail($state['l3']), CompetitionStatus::Dipublikasikan);
 }, [[$at('operator'), 'Lomba dipublikasikan: '.$lomba['l3']]]);
 
-/** No link to evil.example and no image in the HTML part, while the reader still sees the text as typed. */
+/** No link made from the typed text and no image in the HTML part, while the reader still sees the text as typed. */
 $assertPlain = function (string $step, array $message, string $typed) use ($scenario): void {
     $html = (string) ($message['HTML'] ?? '');
-    $links = preg_match_all('~<a\b[^>]*href="[^"]*evil\.example~i', $html);
+    $links = preg_match_all('~<a\b[^>]*href="[^"]*evil~i', $html);
     $images = preg_match_all('~<img\b~i', $html);
 
     $checks = [
-        'HTML part has no <a href> to evil.example ('.$links.' found)' => $links === 0,
+        'HTML part has no <a href> made from the typed text ('.$links.' found)' => $links === 0,
         'HTML part has no <img> ('.$images.' found)' => $images === 0,
-        'HTML part has no <strong>/<em> made from the typed text' => preg_match('~<(strong|em)>\s*segera~i', $html) !== 1,
+        'HTML part has no <strong>/<em> made from the typed text' => preg_match('~<(strong|em)>\s*(segera|Lomba Tebal)~i', $html) !== 1,
         'HTML part shows the text as typed' => str_contains(EmailScenario::visible($html), $typed),
         'text part shows the text as typed' => str_contains((string) preg_replace('/\s+/u', ' ', (string) ($message['Text'] ?? '')), $typed),
     ];
@@ -963,7 +967,15 @@ $assertPlain = function (string $step, array $message, string $typed) use ($scen
     }
 };
 
-$scenario->step('2g', 'Guru proposes a lomba whose NAME is Markdown (a link + a remote image): mails must show it as plain text', function () use ($state, $staff, $hostileName, $scenario, $assertPlain, $at): void {
+$scenario->step('2g', 'Guru proposes a lomba whose NAME is Markdown (a link + an image): mails must show it as plain text; a name with a web address is refused', function () use ($state, $staff, $hostileName, $scenario, $assertPlain, $at): void {
+    // D-76: a web address in the name never gets as far as a mail.
+    try {
+        app(SubmitCompetition::class)->handle($staff('retno.w'), ['name' => 'Lomba Sains, daftar ulang di www.situs-palsu.example']);
+        $scenario->problem('2g', 'a lomba name with a web address was accepted');
+    } catch (ValidationException $e) {
+        $scenario->note('name with a web address refused: "'.(string) ($e->errors()['name'][0] ?? '?').'"');
+    }
+
     $state['l4'] = app(SubmitCompetition::class)->handle($staff('retno.w'), [
         'name' => $hostileName,
         'organizer_name' => 'Panitia Fiktif',
@@ -1037,10 +1049,14 @@ $scenario->step('3f', 'Galang invites a replacement, Wulan (InviteMembers)', fun
     app(InviteMembers::class)->handle($siswa('galang'), $registration('r2'), [$studentId('wulan')]);
 }, [[$mail('wulan'), 'Undangan tim: '.$lomba['l1']]]);
 
-$scenario->step('3g', 'Galang (ketua) cancels the team registration (CancelRegistration)', function () use ($siswa, $registration, $scenario): void {
+$scenario->step('3g', 'Galang (ketua) cancels the team while it still waits for members (CancelRegistration): member + guru, NOT the Kepala Sekolah', function () use ($siswa, $registration, $scenario, $state, $at, $lomba): void {
     $result = app(CancelRegistration::class)->handle($siswa('galang'), $registration('r2'));
-    $scenario->note('registration status: '.$result->status->value.' (Sekar declined earlier, so only Wulan is told)');
-}, [[$mail('wulan'), 'Pendaftaran dibatalkan: '.$lomba['l1']]]);
+    $scenario->note('registration status: '.$result->status->value.' (Sekar declined earlier, so of the members only Wulan is told; the Kepala Sekolah never heard of this team)');
+    $scenario->assertRendered('3g', $at('hendra.k'), 'Pendaftaran binaan dibatalkan', 'Yth. Hendra Kusuma, S.Pd., M.Si.,', 'Galang Putra Mahendra membatalkan pendaftaran binaan di '.$lomba['l1'].'.', 'Lihat pendaftaran', '/guru/binaan/'.$state['r2']);
+}, [
+    [$mail('wulan'), 'Pendaftaran dibatalkan: '.$lomba['l1']],
+    [$at('hendra.k'), 'Pendaftaran binaan dibatalkan'],
+]);
 
 $scenario->step('3h', 'Sekar registers INDIVIDUALLY (CreateRegistration): straight to the Kepala Sekolah', function () use ($state, $siswa, $staff, $l1): void {
     $state['r3'] = app(CreateRegistration::class)->handle($siswa('sekar'), $l1(), RegistrationType::Individu, [], (int) $staff('hendra.k')->getKey())->getKey();
@@ -1050,6 +1066,30 @@ $scenario->step('3i', 'Wulan registers INDIVIDUALLY (CreateRegistration)', funct
     $state['r4'] = app(CreateRegistration::class)->handle($siswa('wulan'), $l1(), RegistrationType::Individu, [], (int) $staff('hendra.k')->getKey())->getKey();
 }, [[$at('kepsek'), 'Pendaftaran lomba menunggu persetujuan']]);
 
+$scenario->step('3j', 'Galang registers a new TEAM with Ma\'ruf, who accepts: the team now waits for the Kepala Sekolah (CreateRegistration + ConfirmMembership)', function () use ($state, $siswa, $staff, $studentId, $l1, $scenario): void {
+    $created = app(CreateRegistration::class)->handle($siswa('galang'), $l1(), RegistrationType::Tim, [$studentId('maruf')], (int) $staff('hendra.k')->getKey());
+    $state['r5'] = $created->getKey();
+    $scenario->drain();
+
+    $result = app(ConfirmMembership::class)->handle($siswa('maruf'), $created);
+    $scenario->note('registration status: '.$result->status->value);
+}, [
+    [$mail('maruf'), 'Undangan tim: '.$lomba['l1']],
+    [$mail('galang'), 'Anggota ikut tim: '.$lomba['l1']],
+    [$at('kepsek'), 'Pendaftaran lomba menunggu persetujuan'],
+]);
+
+$scenario->step('3k', 'Galang (ketua) cancels the team that already waits for approval (CancelRegistration): member + guru + Kepala Sekolah', function () use ($siswa, $registration, $scenario, $state, $at, $lomba): void {
+    $result = app(CancelRegistration::class)->handle($siswa('galang'), $registration('r5'));
+    $scenario->note('registration status: '.$result->status->value.' (it was menunggu_kepsek: the Kepala Sekolah had been asked to decide)');
+    $scenario->assertRendered('3k', $at('kepsek'), 'Pendaftaran lomba dibatalkan', 'Yth. Drs. Bambang Hartono, M.Pd.,', 'Galang Putra Mahendra membatalkan pendaftaran '.$lomba['l1'].' (tim). Pendaftaran ini tidak perlu diputuskan lagi.', 'Buka persetujuan', '/kepsek/persetujuan');
+    $scenario->assertRendered('3k', $at('hendra.k'), 'Pendaftaran binaan dibatalkan', 'Yth. Hendra Kusuma, S.Pd., M.Si.,', 'Galang Putra Mahendra membatalkan pendaftaran binaan di '.$lomba['l1'].'.', 'Lihat pendaftaran', '/guru/binaan/'.$state['r5']);
+}, [
+    [$mail('maruf'), 'Pendaftaran dibatalkan: '.$lomba['l1']],
+    [$at('hendra.k'), 'Pendaftaran binaan dibatalkan'],
+    [$at('kepsek'), 'Pendaftaran lomba dibatalkan'],
+]);
+
 // =================================================================================================================
 // 4. Kepala Sekolah decides
 // =================================================================================================================
@@ -1058,6 +1098,7 @@ $scenario->step('4a', 'Kepala Sekolah approves the team of Galuh (ApproveRegistr
     app(ApproveRegistration::class)->handle($staff('kepsek'), $registration('r1'), 'Semoga sukses.');
 
     $scenario->assertRendered('4a', $at('tu'), 'Surat tugas perlu dibuat', 'Yth. Sri Handayani,', 'Isi nomor surat lalu buat PDF-nya.', 'Buka antrean surat', '/tu/surat/');
+    $scenario->assertRendered('4a', $at('hendra.k'), 'Pendaftaran binaan disetujui', 'Yth. Hendra Kusuma, S.Pd., M.Si.,', 'disetujui Kepala Sekolah.', 'Lihat pendaftaran', '/guru/binaan/'.$registration('r1')->getKey());
 }, [
     [$mail('galuh'), 'Pendaftaran lomba disetujui'],
     [$mail('bayu'), 'Pendaftaran lomba disetujui'],
@@ -1066,9 +1107,15 @@ $scenario->step('4a', 'Kepala Sekolah approves the team of Galuh (ApproveRegistr
     [$at('tu'), 'Surat tugas perlu dibuat'],
 ]);
 
-$scenario->step('4b', 'Kepala Sekolah rejects Sekar\'s registration with a note (RejectRegistration)', function () use ($staff, $registration): void {
-    app(RejectRegistration::class)->handle($staff('kepsek'), $registration('r3'), 'Jadwal bentrok dengan kegiatan wajib kelas X. Coba lomba berikutnya.');
-}, [[$mail('sekar'), 'Pendaftaran lomba tidak disetujui']]);
+$scenario->step('4b', 'Kepala Sekolah rejects Sekar\'s registration with a note (RejectRegistration): the student and the guru pembimbing', function () use ($staff, $registration, $scenario, $state, $at, $lomba): void {
+    $note = 'Jadwal bentrok dengan kegiatan wajib kelas X. Coba lomba berikutnya.';
+    app(RejectRegistration::class)->handle($staff('kepsek'), $registration('r3'), $note);
+
+    $scenario->assertRendered('4b', $at('hendra.k'), 'Pendaftaran binaan tidak disetujui', 'Yth. Hendra Kusuma, S.Pd., M.Si.,', 'Pendaftaran binaan di '.$lomba['l1'].' (Sekar Ayu Pramesti) tidak disetujui Kepala Sekolah. Alasan: '.$note, 'Lihat pendaftaran', '/guru/binaan/'.$state['r3']);
+}, [
+    [$mail('sekar'), 'Pendaftaran lomba tidak disetujui'],
+    [$at('hendra.k'), 'Pendaftaran binaan tidak disetujui'],
+]);
 
 $scenario->step('4c', 'Kepala Sekolah approves Wulan\'s registration (ApproveRegistration)', function () use ($staff, $registration): void {
     app(ApproveRegistration::class)->handle($staff('kepsek'), $registration('r4'));

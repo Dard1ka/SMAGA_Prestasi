@@ -22,6 +22,7 @@ use App\Models\File;
 use App\Models\User;
 use App\Notifications\Competitions\CompetitionSubmitted;
 use App\Rules\ExternalUrl;
+use App\Rules\NoWebAddress;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -112,7 +113,7 @@ final class CreateCompetition
     public static function rules(): array
     {
         return [
-            'name' => ['required', 'string', 'max:200'],
+            'name' => ['required', 'string', 'max:200', new NoWebAddress],
             'description' => ['nullable', 'string', 'max:5000'],
             'bidang' => ['required', Rule::enum(Bidang::class)],
             'organizer_name' => ['nullable', 'string', 'max:200'],

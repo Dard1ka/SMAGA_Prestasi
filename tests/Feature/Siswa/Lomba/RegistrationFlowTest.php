@@ -197,8 +197,15 @@ it('lets the leader cancel while waiting for members or the Kepala Sekolah', fun
 
     $fresh = $registration->fresh();
     expect($fresh->status)->toBe(RegistrationStatus::Dibatalkan)->and($fresh->cancelled_at)->not->toBeNull();
-    Notification::assertSentTo(F::user($this->dimas), RegistrationCancelled::class);
+    Notification::assertSentTo(F::user($this->dimas), RegistrationCancelled::class, fn (RegistrationCancelled $n) => $n->audience === 'siswa');
+    Notification::assertSentTo($this->guru, RegistrationCancelled::class, fn (RegistrationCancelled $n) => $n->audience === 'guru');
     Notification::assertNotSentTo(F::user($this->nadia), RegistrationCancelled::class);
+    Notification::assertNotSentTo($this->admin, RegistrationCancelled::class);
+
+    // The Kepala Sekolah only hears about a cancel of something they were asked to approve.
+    $status === RegistrationStatus::MenungguKepsek
+        ? Notification::assertSentTo($this->kepsek, RegistrationCancelled::class, fn (RegistrationCancelled $n) => $n->audience === 'kepsek')
+        : Notification::assertNotSentTo($this->kepsek, RegistrationCancelled::class);
 
     // Everyone may register again afterwards.
     expect(w2a1Register($this, $this->nadia, $registration->competition, RegistrationType::Tim, [$this->dimas])->status)

@@ -14,6 +14,7 @@ use App\Models\File;
 use App\Models\User;
 use App\Notifications\Competitions\CompetitionSubmitted;
 use App\Rules\ExternalUrl;
+use App\Rules\NoWebAddress;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -136,6 +137,9 @@ final class SubmitCompetition
 
         if ($clean['name'] === null || mb_strlen($clean['name']) < 3 || mb_strlen($clean['name']) > 200) {
             $errors['name'] = 'Isi nama lomba (3–200 karakter).';
+        } elseif (NoWebAddress::found($clean['name'])) {
+            // D-76: the name goes into mails; a web address there is auto-linked by mail clients.
+            $errors['name'] = NoWebAddress::MESSAGE;
         }
 
         if ($clean['organizer_name'] !== null && mb_strlen($clean['organizer_name']) > 200) {

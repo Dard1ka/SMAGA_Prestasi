@@ -18,7 +18,7 @@ use Illuminate\Validation\ValidationException;
 /**
  * Kepala Sekolah rejects one registration with a required reason (D-05, UI-MAP #19):
  * menunggu_kepsek → ditolak (final). The reason is stored as principal_note and sent to the team members
- * (queued, after commit).
+ * and to the guru pembimbing (queued, after commit).
  */
 final class RejectRegistration
 {
@@ -80,7 +80,14 @@ final class RejectRegistration
         $members = ApproveRegistration::memberUsers($locked);
 
         if ($members->isNotEmpty()) {
-            Notification::send($members, new RegistrationRejected($locked));
+            Notification::send($members, RegistrationRejected::for($locked, 'siswa'));
+        }
+
+        // The guru pembimbing hears about it too (lead, 2026-10-02); the Kepala Sekolah is the actor.
+        $mentor = $locked->mentor_id !== null ? User::query()->find($locked->mentor_id) : null;
+
+        if ($mentor !== null && $mentor->canLogIn() && ! $mentor->is($actor)) {
+            $mentor->notify(RegistrationRejected::for($locked, 'guru'));
         }
 
         return $registration;

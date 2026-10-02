@@ -477,6 +477,24 @@ produk berstatus **sementara — bisa diubah user**.
 - **Dampak:** `docker/nginx/prod.conf`, `routes/console.php` (03.10 WIB).
 - **Status:** final.
 
+### D-75 · Admin tetap bisa mengunduh e-flyer setelah izin dicabut · 2 Okt 2026
+- **Keputusan:** Setelah `publish_consent` dicabut, file e-flyer tetap tersimpan (tidak dihapus otomatis). Humas tidak bisa mengunduhnya lagi; pemegang `student.view` yang juga punya `publication.manage` (Admin) tetap bisa, dan tautan flyer tetap tampil untuknya di Humas › Arsip. Menggantikan bagian Admin di D-71.
+- **Alasan:** Pilihan user (2 Okt 2026): Admin perlu melihat apa yang sudah beredar untuk mengurus penurunan publikasi.
+- **Dampak:** `FilePolicy::viaPublication()`, `Humas\Arsip`. Tes: `tests/Feature/Humas/ConsentWithdrawnTest.php`. Penghapusan file dalam 3×24 jam (SECURITY §3i) tetap pekerjaan manual (backlog #39).
+- **Status:** final (keputusan user).
+
+### D-76 · Nama lomba tidak boleh berisi alamat web · 2 Okt 2026
+- **Keputusan:** Nama lomba yang memuat alamat web ditolak saat diisi, di usulan siswa/guru dan di formulir lengkap (buat dan ubah): skema (`https://…`), `www.…`, dan host dengan domain umum (`situs.com`, `lomba.sch.id`, `bit.ly/x`). Pesan: "Nama lomba tidak boleh berisi alamat web. Tulis alamatnya di kolom situs web." Singkatan bertitik ("Tk. Prov.", "Vol.2") tetap boleh.
+- **Alasan:** Nama lomba tampil di email dari alamat sekolah. Aplikasi tidak menjadikannya tautan (D-69), tetapi klien email menautkan sendiri teks yang mirip alamat, sehingga usulan bisa dipakai untuk phishing (SECURITY §3m-1). Alamat yang sah punya kolom sendiri yang divalidasi `ExternalUrl`.
+- **Dampak:** `App\Rules\NoWebAddress`, `CreateCompetition::rules()`, `SubmitCompetition`. Tes: `tests/Feature/Kesiswaan/LombaNameWebAddressTest.php`. Menutup backlog #38.
+- **Status:** final (keputusan user).
+
+### D-77 · Guru pembimbing dan Kepala Sekolah dikabari saat pendaftaran ditolak atau dibatalkan · 2 Okt 2026
+- **Keputusan:** Saat Kepala Sekolah menolak pendaftaran, guru pembimbingnya ikut diberi tahu (dengan alasan). Saat ketua membatalkan pendaftaran, guru pembimbing diberi tahu; Kepala Sekolah diberi tahu hanya bila pendaftaran itu sudah berstatus `menunggu_kepsek` (ia sudah pernah diminta memutuskan). Pelaku tidak pernah dikabari. Tombol email guru "Pendaftaran binaan disetujui" kini membuka pendaftaran itu.
+- **Alasan:** Permintaan user (2 Okt 2026); temuan skenario email: guru hanya mendengar persetujuan, dan Kepala Sekolah tidak tahu antreannya berubah.
+- **Dampak:** `RejectRegistration`, `CancelRegistration`, `RegistrationRejected`, `RegistrationCancelled`, `RegistrationApproved`. Tes: `tests/Feature/Registrations/DecisionNotificationsTest.php`. Pengajuan talenta masih tidak memberi tahu siapa pun (backlog #40).
+- **Status:** final (keputusan user).
+
 ## E. Usulan keamanan yang belum diputuskan
 
 | ID | Usulan | Alasan singkat | Status |

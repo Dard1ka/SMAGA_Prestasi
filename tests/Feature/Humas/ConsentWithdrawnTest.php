@@ -66,7 +66,7 @@ it('serves the flyer to publication.manage holders while consent stands', functi
     $this->actingAs(AuthTestHelpers::staff(RoleName::Guru))->get(route('files.show', $this->flyer))->assertNotFound();
 });
 
-it('answers 404 for the flyer once consent is withdrawn, also for the Humas user who generated it', function (): void {
+it('answers 404 for the flyer once consent is withdrawn, also for the Humas user who generated it; Admin keeps it (D-75)', function (): void {
     ($this->withdraw)();
 
     $file = File::query()->findOrFail($this->flyer->getKey());
@@ -75,11 +75,12 @@ it('answers 404 for the flyer once consent is withdrawn, also for the Humas user
     expect((int) $file->owner_user_id)->toBe((int) $this->humas->getKey())
         ->and($this->humas->can('view', $file))->toBeFalse()
         ->and($otherHumas->can('view', $file))->toBeFalse()
-        ->and($this->admin->can('view', $file))->toBeFalse();
+        ->and($this->admin->can('view', $file))->toBeTrue();
 
     $this->actingAs($this->humas)->get(route('files.show', $file))->assertNotFound();
     $this->actingAs($otherHumas)->get(route('files.show', $file))->assertNotFound();
-    $this->actingAs($this->admin)->get(route('files.show', $file))->assertNotFound();
+    $this->actingAs($this->admin)->get(route('files.show', $file))->assertOk();
+    $this->actingAs(AuthTestHelpers::staff(RoleName::Kesiswaan))->get(route('files.show', $file))->assertNotFound();
 });
 
 it('serves the flyer again when consent is given back', function (): void {
@@ -92,7 +93,8 @@ it('serves the flyer again when consent is given back', function (): void {
 it('does not serve a flyer that no publication uses, even to its uploader', function (): void {
     Publication::query()->whereKey($this->publication->getKey())->update(['flyer_file_id' => null]);
 
-    expect($this->humas->can('view', $this->flyer->fresh()))->toBeFalse();
+    expect($this->humas->can('view', $this->flyer->fresh()))->toBeFalse()
+        ->and($this->admin->can('view', $this->flyer->fresh()))->toBeFalse();
     $this->actingAs($this->humas)->get(route('files.show', $this->flyer))->assertNotFound();
 });
 
@@ -135,7 +137,7 @@ it('does not find a withdrawn student by name on Arsip, only by lomba', function
         ->assertDontSee('Hana Lestari');
 });
 
-it('keeps the name on Arsip for Admin (student.view), with the chip and without the flyer link', function (): void {
+it('keeps the name and the flyer link on Arsip for Admin (student.view), with the chip (D-75)', function (): void {
     ($this->withdraw)();
 
     Livewire::actingAs($this->admin)
@@ -144,7 +146,7 @@ it('keeps the name on Arsip for Admin (student.view), with the chip and without 
         ->assertSee('XI-4')
         ->assertSee('Izin dicabut')
         ->assertDontSee('Siswa kelas XI')
-        ->assertDontSee(route('files.show', $this->flyer), false)
+        ->assertSee(route('files.show', $this->flyer), false)
         ->set('q', 'hana')
         ->assertSee('Kimia Jateng 2026');
 });

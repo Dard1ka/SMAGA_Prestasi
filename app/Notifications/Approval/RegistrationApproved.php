@@ -83,7 +83,7 @@ class RegistrationApproved extends RegistrationNotification
     {
         return match ($this->audience) {
             'tu' => self::link([['tu.surat.show', ['registration' => $this->registration->getKey()]], 'tu.beranda']),
-            'guru' => self::link(['guru.beranda']),
+            'guru' => self::link([['guru.binaan.show', ['registration' => $this->registration->getKey()]], 'guru.beranda']),
             default => self::link([['siswa.lomba-saya.show', ['registration' => $this->registration->getKey()]], 'siswa.lomba-saya.index', 'siswa.beranda']),
         };
     }
