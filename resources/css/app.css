@@ -1528,6 +1528,10 @@
     .dlg {
         max-width: none;
         max-height: none;
+        /* Tailwind preflight sets margin:0 on every element, which kills the UA
+           stylesheet's margin:auto that a native <dialog> uses to centre itself.
+           Variants below (drawer/start/sheet) override this with their own margin. */
+        margin: auto;
         padding: 0;
         border: 0;
         background: transparent;
@@ -1627,7 +1631,10 @@
 
     @media (min-width: 40rem) {
         .dlg-sheet {
-            width: auto;
+            /* fit-content, not auto: a fixed-position box with inset-inline:0 and width:auto
+               stretches to the viewport and forces auto margins to 0, so the panel would hug
+               the left edge. A definite width lets margin:auto split the leftover space. */
+            width: fit-content;
             margin: auto;
         }
 
