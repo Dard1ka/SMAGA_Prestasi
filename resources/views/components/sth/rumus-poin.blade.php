@@ -17,7 +17,9 @@
         if ($value === null || $value === '') {
             return '–';
         }
-        if (! is_numeric($value)) {
+        // Not is_numeric(): it accepts "0.", ".5", "+5" and "1e5", which the formatter then rejects with
+        // an exception. A half-typed weight on Pengaturan > Bobot arrives here, so ask Decimal itself.
+        if (! \App\Domain\Support\Decimal::isValid((string) $value)) {
             return (string) $value;
         }
 
