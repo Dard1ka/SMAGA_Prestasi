@@ -66,7 +66,7 @@
                         <th scope="col">Siswa</th>
                         <th scope="col" class="w-40">Talenta</th>
                         <th scope="col" class="w-20">Prestasi</th>
-                        <th scope="col" class="w-28">Status</th>
+                        <th scope="col" class="w-40">Status</th>
                         <th scope="col" class="w-24"><span class="sr-only">Aksi</span></th>
                     </x-slot:head>
                     @foreach ($rows as $row)
