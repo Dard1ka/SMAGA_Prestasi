@@ -29,3 +29,19 @@ it('rounds half away from zero', function (string $input, int $scale, string $ex
     ['7', 2, '7.00'],
     ['2.5', 0, '3'],
 ]);
+
+it('tells callers which values it can normalise, so guards stop guessing with is_numeric', function (string $value, bool $valid): void {
+    // is_numeric() accepts forms this class rejects. A caller that guards with is_numeric and then calls
+    // normalize() crashes on exactly these, which is what broke the live example on Pengaturan > Bobot.
+    expect(Decimal::isValid($value))->toBe($valid);
+})->with([
+    ['0.85', true],
+    ['80', true],
+    ['-1.5', true],
+    ['0.', false],
+    ['.5', false],
+    ['+5', false],
+    ['1e5', false],
+    ['abc', false],
+    ['', false],
+]);

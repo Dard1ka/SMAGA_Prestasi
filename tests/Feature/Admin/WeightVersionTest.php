@@ -171,3 +171,14 @@ it('forbids the Bobot tab to Kesiswaan', function (): void {
 
     Livewire::test(Bobot::class)->assertForbidden();
 });
+
+it('survives a half-typed decimal weight instead of throwing from the live example', function (string $typed): void {
+    session(A::passwordConfirmed());
+    $this->actingAs($this->admin);
+
+    // UI copy uses a decimal comma (CLAUDE.md section 9) and the input is wire:model.live.debounce.400ms,
+    // so pausing mid-number sends "0," to the server. That reached rumus-poin and threw from Decimal.
+    Livewire::test(Bobot::class)
+        ->set('weights.level.nasional', $typed)
+        ->assertOk();
+})->with([['0,'], ['0.'], [',5'], ['+5'], ['1e5'], ['abc']]);

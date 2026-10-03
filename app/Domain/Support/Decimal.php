@@ -37,6 +37,22 @@ final class Decimal
         return $value === '-0' ? '0' : $value;
     }
 
+    /**
+     * Can normalize() handle this value? Callers that format user input must ask here rather than guess
+     * with is_numeric(), which accepts "0.", ".5", "+5" and "1e5" -- all of which normalize() rejects.
+     * Delegates to normalize() so the two can never drift apart.
+     */
+    public static function isValid(string|int|float $value): bool
+    {
+        try {
+            self::normalize($value);
+        } catch (InvalidArgumentException) {
+            return false;
+        }
+
+        return true;
+    }
+
     /** Normalise and reject negative values. */
     public static function nonNegative(string|int|float $value): string
     {
