@@ -15,8 +15,8 @@
         <x-sth.alert tone="success">Semua perangkat yang masuk ke akun itu sudah dikeluarkan.</x-sth.alert>
     @else
         <div class="flex flex-col gap-2">
-            <h1 class="title-page">Tautan tidak berlaku</h1>
-            <p class="muted">Tautan ini sudah dipakai atau sudah lewat 7 hari. Jika akunmu bermasalah, hubungi Admin atau Kesiswaan.</p>
+            <h1 class="title-page">Link tidak berlaku</h1>
+            <p class="muted">Link ini sudah dipakai atau sudah lewat 7 hari. Jika akunmu bermasalah, hubungi Admin atau Kesiswaan.</p>
         </div>
     @endif
 </div>

@@ -4,7 +4,8 @@ use Laravel\Fortify\Features;
 
 /*
 | SMAGA Talent Hub auth configuration (owner: W1-C).
-| Login is custom: students use NIS or NISN, staff use their email (see App\Actions\Fortify\AuthenticateUser).
+| Login is custom: students use NIS or NISN (or their bound email once activation is finished), staff use their
+| username or email (see App\Actions\Fortify\AuthenticateUser, LoginIdentifier).
 | Registration, Fortify's link-based password reset, profile/password update endpoints and passkeys are OFF:
 | accounts come from the student import / Admin, and password recovery uses a 6-digit OTP (Livewire).
 */
@@ -15,7 +16,7 @@ return [
 
     'passwords' => 'users',
 
-    // Name of the login form field. It holds a NIS, a NISN (digits) or a staff email.
+    // Name of the login form field. It holds a NIS, a NISN (digits), an email or a staff username.
     'username' => 'identifier',
 
     'email' => 'email',

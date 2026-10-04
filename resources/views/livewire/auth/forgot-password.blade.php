@@ -1,4 +1,4 @@
-{{-- Lupa kata sandi: 1 NIS/NISN → 2 kode dari email + kata sandi baru. Same message whether or not the account exists. --}}
+{{-- Lupa kata sandi: 1 NIS/NISN atau email → 2 kode dari email + kata sandi baru. Same message whether or not the account exists. --}}
 <div class="flex flex-col gap-6">
     <div class="flex flex-col gap-2">
         <h1 class="title-page">Lupa kata sandi</h1>
@@ -19,8 +19,8 @@
         <form wire:submit="sendCode" class="flex flex-col gap-4" novalidate>
             <x-sth.input
                 wire:model="identifier"
-                label="NIS / NISN"
-                hint="Guru dan staf: pakai username atau email."
+                label="NIS, NISN, atau email"
+                hint="Guru dan staf: username atau email."
                 autocomplete="username"
                 autocapitalize="none"
                 spellcheck="false"
@@ -67,7 +67,7 @@
 
         <div class="flex flex-wrap items-center justify-between gap-2">
             <button type="button" class="lnk" wire:click="resendCode">Kirim ulang kode</button>
-            <button type="button" class="lnk" wire:click="startOver">Ganti NIS/NISN</button>
+            <button type="button" class="lnk" wire:click="startOver">Ulangi dari awal</button>
         </div>
     @endif
 

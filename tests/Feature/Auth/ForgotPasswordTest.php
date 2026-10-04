@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Actions\Accounts\CompleteActivation;
 use App\Actions\Accounts\RequestPasswordResetCode;
 use App\Enums\UserStatus;
 use App\Livewire\Auth\ForgotPassword;
@@ -12,6 +13,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Notification;
 use Livewire\Livewire;
+use Spatie\Activitylog\Models\Activity;
 use Tests\Feature\Auth\AuthTestHelpers as H;
 
 uses(RefreshDatabase::class);
@@ -96,6 +98,86 @@ it('does not reset archived accounts', function (): void {
     H::activeStudent(['status' => UserStatus::Archived]);
 
     w1cRequestCode(H::NIS);
+    w1cRequestCode('nadia.anindya@example.test');
 
     Mail::assertNothingQueued();
+});
+
+// M1-B (lead, 2026-10-04): the student's own email is accepted here as well, same neutral answer.
+
+it('resets a student password when the bound email is typed instead of the NIS', function (): void {
+    $user = H::activeStudent()->user;
+
+    $component = w1cRequestCode(' Nadia.Anindya@example.test')->assertSee(RequestPasswordResetCode::GENERIC_STATUS);
+
+    $code = null;
+    Mail::assertQueued(OtpCodeMail::class, function (OtpCodeMail $mail) use (&$code): bool {
+        $code = $mail->code;
+
+        return $mail->hasTo('nadia.anindya@example.test') && $mail->purpose === 'reset_password';
+    });
+
+    $component->set('code', $code)
+        ->set('password', 'Hujan-bulan-juni-26')
+        ->set('password_confirmation', 'Hujan-bulan-juni-26')
+        ->call('resetPassword')
+        ->assertHasNoErrors()
+        ->assertRedirect(route('login'));
+
+    expect(Hash::check('Hujan-bulan-juni-26', $user->fresh()->password))->toBeTrue();
+});
+
+it('gives the neutral answer and sends nothing for a student email before the activation is finished', function (): void {
+    // Email bound and verified, password step still open: the address is not a login identifier yet.
+    $student = H::pendingStudent();
+    $student->user->forceFill(['email' => 'nadia.anindya@example.test', 'email_verified_at' => now()])->save();
+
+    w1cRequestCode('nadia.anindya@example.test')->assertSee(RequestPasswordResetCode::GENERIC_STATUS);
+    w1cRequestCode('tidak.ada@example.test')->assertSee(RequestPasswordResetCode::GENERIC_STATUS);
+
+    Mail::assertNothingQueued();
+});
+
+it('closes a half-finished activation when the password is reset with the NIS', function (): void {
+    // The student bound the email, left before the password step and then used "Lupa kata sandi".
+    $student = H::pendingStudent();
+    $user = $student->user;
+    $user->forceFill([
+        'email' => 'nadia.anindya@example.test',
+        'email_verified_at' => now(),
+        'initial_password_expires_at' => now()->subDay(),
+    ])->save();
+
+    $component = w1cRequestCode(H::NIS);
+
+    $code = null;
+    Mail::assertQueued(OtpCodeMail::class, function (OtpCodeMail $mail) use (&$code): bool {
+        $code = $mail->code;
+
+        return $mail->hasTo('nadia.anindya@example.test');
+    });
+
+    $component->set('code', $code)
+        ->set('password', 'Hujan-bulan-juni-26')
+        ->set('password_confirmation', 'Hujan-bulan-juni-26')
+        ->call('resetPassword')
+        ->assertHasNoErrors();
+
+    $user->refresh();
+    expect($user->status)->toBe(UserStatus::Active)
+        ->and($user->must_change_password)->toBeFalse()
+        ->and($user->activated_at)->not->toBeNull()
+        ->and($user->initial_password_expires_at)->toBeNull()
+        ->and(Activity::query()->where('event', 'account.activated')->sole()->properties['password_changed'])->toBeTrue();
+
+    // Now the email is a login identifier, and the first-login screen is over.
+    $this->from('/login')->post('/login', ['identifier' => 'nadia.anindya@example.test', 'password' => 'Hujan-bulan-juni-26'])
+        ->assertRedirect(route('home'));
+});
+
+it('leaves an account without a verified email pending after nothing was reset', function (): void {
+    $user = H::pendingStudent()->user;
+
+    expect(app(CompleteActivation::class)->whenPasswordAlreadyChosen($user))->toBeFalse()
+        ->and($user->fresh()->status)->toBe(UserStatus::PendingActivation);
 });

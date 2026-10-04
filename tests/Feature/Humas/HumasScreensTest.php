@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Actions\Publications\CompleteAppreciationEvent;
+use App\Actions\Publications\RecordAppreciation;
 use App\Enums\AppreciationStatus;
 use App\Enums\PublicationStatus;
 use App\Enums\RoleName;
@@ -10,6 +12,7 @@ use App\Livewire\Humas\Arsip;
 use App\Livewire\Humas\Jadwal;
 use App\Models\Appreciation;
 use App\Models\AppreciationEvent;
+use App\Notifications\Publications\AppreciationCancelled;
 use App\Notifications\Publications\AppreciationScheduled;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
@@ -106,13 +109,16 @@ it('shows event form errors', function (): void {
     expect(AppreciationEvent::query()->count())->toBe(0);
 });
 
-it('adds a verified achievement to an event and marks a held event done', function (): void {
+it('adds a verified achievement to an event and confirms a held event through the dialog', function (): void {
     $achievement = HumasFixtures::achievement();
     HumasFixtures::achievement(['publish_consent' => false], studentName: 'Fajar Ramadhan');
     $event = HumasFixtures::event('Upacara hari ini', now()->toDateString());
 
     $component = Livewire::actingAs($this->humas)
         ->test(Apresiasi::class)
+        ->assertSee('Hari ini')
+        ->assertSee('Belum bisa ditandai sudah dilaksanakan: belum ada prestasi di acara ini.')
+        ->assertDontSeeHtml("confirmComplete('".$event->getKey()."')")
         ->call('startAdding', $event->getKey())
         ->assertSet('addingEventId', $event->getKey())
         ->assertSee('Nadia Putri Anindya (XI-4)')
@@ -124,37 +130,214 @@ it('adds a verified achievement to an event and marks a held event done', functi
         ->assertHasNoErrors()
         ->assertSet('addingEventId', null)
         ->assertDispatched('sth-toast', tone: 'success')
-        ->assertSee('Dijadwalkan');
+        ->assertSee('Dijadwalkan')
+        ->assertSeeHtml("confirmComplete('".$event->getKey()."')");
 
     Notification::assertSentTo($achievement->student->user, AppreciationScheduled::class);
 
-    $component->call('complete', $event->getKey())
-        ->assertDispatched('sth-toast', message: '1 apresiasi ditandai selesai.', tone: 'success');
+    // The button only opens the dialog; nothing changes before the confirmation.
+    $component->call('confirmComplete', $event->getKey())
+        ->assertSet('confirmEventId', $event->getKey())
+        ->assertDispatched('sth-modal-open', id: 'apresiasi-konfirmasi')
+        ->assertSee('Tandai sudah dilaksanakan?')
+        ->assertSee('1 prestasi ditandai sudah diapresiasi.');
 
-    expect(Appreciation::query()->sole()->status)->toBe(AppreciationStatus::Selesai);
+    expect(Appreciation::query()->sole()->status)->toBe(AppreciationStatus::Dijadwalkan)
+        ->and($event->fresh()->isCompleted())->toBeFalse();
+
+    $component->call('runConfirmed')
+        ->assertDispatched('sth-modal-close', id: 'apresiasi-konfirmasi')
+        ->assertDispatched('sth-toast', message: 'Acara ditandai sudah dilaksanakan. 1 prestasi sudah diapresiasi.', tone: 'success')
+        ->assertSet('confirmEventId', null)
+        ->assertSee('Belum ada acara apresiasi')
+        ->assertSeeInOrder(['Sudah dilaksanakan', 'Upacara hari ini', 'Dikonfirmasi', 'Sudah diapresiasi'])
+        ->assertDontSee('Tambah prestasi')
+        ->assertDontSee('Hapus acara');
+
+    expect(Appreciation::query()->sole()->status)->toBe(AppreciationStatus::Selesai)
+        ->and($event->fresh()->isCompleted())->toBeTrue();
 });
 
-it('keeps the adding event id locked and 404s unknown events', function (): void {
+it('deletes an event through the dialog and tells the scheduled students', function (): void {
+    $achievement = HumasFixtures::achievement();
+    $event = HumasFixtures::event();
+    $trial = HumasFixtures::event('Acara uji coba', now()->addDays(9)->toDateString());
+    app(RecordAppreciation::class)->handle($this->humas, $event, $achievement);
+
+    $component = Livewire::actingAs($this->humas)
+        ->test(Apresiasi::class)
+        ->assertSee('Acara uji coba')
+        ->assertSee('Hapus acara')
+        ->call('confirmDelete', $trial->getKey())
+        ->assertSet('confirmEventId', $trial->getKey())
+        ->assertDispatched('sth-modal-open', id: 'apresiasi-konfirmasi')
+        ->assertSee('Hapus acara ini?')
+        ->assertSee('tidak ada siswa yang perlu diberi tahu');
+
+    expect(AppreciationEvent::query()->count())->toBe(2);
+
+    $component->call('runConfirmed')
+        ->assertDispatched('sth-modal-close', id: 'apresiasi-konfirmasi')
+        ->assertDispatched('sth-toast', message: 'Acara dihapus.', tone: 'success')
+        ->assertDontSee('Acara uji coba')
+        ->assertSee('Upacara Senin, 5 Oktober 2026');
+
+    Notification::assertNotSentTo($achievement->student->user, AppreciationCancelled::class);
+
+    $component->call('confirmDelete', $event->getKey())
+        ->assertSee('Siswanya diberi tahu bahwa acara dibatalkan.')
+        ->call('runConfirmed')
+        ->assertDispatched('sth-toast', message: 'Acara dihapus. 1 prestasi dilepas dari acara ini dan siswanya diberi tahu.', tone: 'success')
+        ->assertSee('Belum ada acara apresiasi');
+
+    expect(AppreciationEvent::query()->count())->toBe(0)
+        ->and(Appreciation::query()->count())->toBe(0);
+    Notification::assertSentTo($achievement->student->user, AppreciationCancelled::class);
+});
+
+it('shows the reason instead of a dead confirm button and refuses a forged confirmation', function (): void {
+    $future = HumasFixtures::event('Upacara depan', now()->addDays(4)->toDateString());
+    app(RecordAppreciation::class)->handle($this->humas, $future, HumasFixtures::achievement());
+
+    Livewire::actingAs($this->humas)
+        ->test(Apresiasi::class)
+        ->assertSee('Akan datang')
+        ->assertSee('Bisa ditandai sudah dilaksanakan mulai '.now()->addDays(4)->locale('id')->translatedFormat('l, j F Y').'.')
+        ->assertDontSeeHtml("confirmComplete('".$future->getKey()."')")
+        ->assertSeeHtml("confirmDelete('".$future->getKey()."')")
+        ->call('confirmComplete', $future->getKey())
+        ->assertNotDispatched('sth-modal-open')
+        ->assertDispatched('sth-toast', message: 'Acara ini belum berlangsung.', tone: 'error')
+        ->assertSet('confirmEventId', null);
+
+    expect($future->fresh()->isCompleted())->toBeFalse()
+        ->and(Appreciation::query()->sole()->status)->toBe(AppreciationStatus::Dijadwalkan);
+});
+
+it('answers with the reason when the event changed while the dialog was open', function (): void {
+    $event = HumasFixtures::event('Upacara hari ini', now()->toDateString());
+    app(RecordAppreciation::class)->handle($this->humas, $event, HumasFixtures::achievement());
+
+    $complete = Livewire::actingAs($this->humas)->test(Apresiasi::class)->call('confirmComplete', $event->getKey());
+    $delete = Livewire::actingAs($this->humas)->test(Apresiasi::class)->call('confirmDelete', $event->getKey());
+
+    // A colleague confirms the event in the meantime.
+    app(CompleteAppreciationEvent::class)->handle(AuthTestHelpers::staff(RoleName::Kesiswaan), $event);
+
+    $complete->call('runConfirmed')
+        ->assertDispatched('sth-modal-close', id: 'apresiasi-konfirmasi')
+        ->assertDispatched('sth-toast', message: 'Acara ini sudah ditandai dilaksanakan.', tone: 'error')
+        ->assertSet('confirmEventId', null);
+    $delete->call('runConfirmed')
+        ->assertDispatched('sth-modal-close', id: 'apresiasi-konfirmasi')
+        ->assertDispatched('sth-toast', message: 'Acara yang sudah dilaksanakan tidak bisa dihapus.', tone: 'error')
+        ->assertSet('confirmEventId', null);
+
+    expect(AppreciationEvent::query()->completed()->count())->toBe(1)
+        ->and(Appreciation::query()->sole()->status)->toBe(AppreciationStatus::Selesai);
+    Notification::assertNotSentTo(Appreciation::query()->sole()->achievement->student->user, AppreciationCancelled::class);
+});
+
+it('lists past unconfirmed events first and keeps confirmed events as a record', function (): void {
+    $overdue = HumasFixtures::event('Upacara lalu', now()->subDays(3)->toDateString());
+    $row = new Appreciation(['achievement_id' => HumasFixtures::achievement()->getKey(), 'appreciation_event_id' => $overdue->getKey()]);
+    $row->forceFill(['status' => AppreciationStatus::Dijadwalkan])->save();
+    $emptyPast = HumasFixtures::event('Acara kosong', now()->subDays(5)->toDateString());
+    $done = HumasFixtures::event('Upacara bulan lalu', now()->subDays(30)->toDateString());
+    $done->forceFill(['completed_at' => now()->subDays(29), 'completed_by' => $this->humas->getKey()])->save();
+
+    Livewire::actingAs($this->humas)
+        ->test(Apresiasi::class)
+        ->assertSeeInOrder(['Perlu dikonfirmasi', 'Acara kosong', 'Upacara lalu', 'Acara mendatang', 'Belum ada acara apresiasi', 'Upacara bulan lalu'])
+        ->assertSee('Belum dikonfirmasi')
+        ->assertSee('Acara ini kosong, jadi tidak bisa ditandai sudah dilaksanakan. Hapus kalau tidak jadi.')
+        ->assertSee('Dikonfirmasi '.now()->subDays(29)->locale('id')->translatedFormat('j M Y').' oleh '.$this->humas->name)
+        ->assertSeeHtml("confirmComplete('".$overdue->getKey()."')")
+        ->assertSeeHtml("confirmDelete('".$overdue->getKey()."')")
+        ->assertDontSeeHtml("confirmComplete('".$emptyPast->getKey()."')")
+        ->assertSeeHtml("confirmDelete('".$emptyPast->getKey()."')")
+        ->assertDontSeeHtml("startAdding('".$overdue->getKey()."')")
+        ->assertDontSeeHtml("confirmDelete('".$done->getKey()."')")
+        // A stale list: the event was confirmed meanwhile, "Hapus acara" answers with the reason.
+        ->call('confirmDelete', $done->getKey())
+        ->assertNotDispatched('sth-modal-open')
+        ->assertDispatched('sth-toast', message: 'Acara yang sudah dilaksanakan tidak bisa dihapus.', tone: 'error')
+        ->assertSet('confirmEventId', null);
+
+    expect(AppreciationEvent::query()->count())->toBe(3);
+});
+
+it('shows confirmed events in steps of 10', function (): void {
+    for ($i = 1; $i <= 11; $i++) {
+        HumasFixtures::event(sprintf('Upacara ke-%02d', $i), now()->subDays($i)->toDateString())
+            ->forceFill(['completed_at' => now()->subDays($i)])
+            ->save();
+    }
+
+    expect(fn () => Livewire::actingAs($this->humas)->test(Apresiasi::class)->set('doneLimit', 500))->toThrow(Exception::class);
+
+    Livewire::actingAs($this->humas)
+        ->test(Apresiasi::class)
+        ->assertSee('11 acara, terbaru di atas.')
+        ->assertSee('Upacara ke-10')
+        ->assertDontSee('Upacara ke-11')
+        ->assertSee('Tampilkan lebih banyak')
+        ->call('showMoreDone')
+        ->assertSee('Upacara ke-11')
+        ->assertDontSee('Tampilkan lebih banyak');
+});
+
+it('keeps the event ids of the screen locked and 404s unknown events', function (): void {
     expect(fn () => Livewire::actingAs($this->humas)->test(Apresiasi::class)->set('addingEventId', 'x'))
+        ->toThrow(Exception::class);
+    expect(fn () => Livewire::actingAs($this->humas)->test(Apresiasi::class)->set('confirmEventId', 'x'))
+        ->toThrow(Exception::class);
+    expect(fn () => Livewire::actingAs($this->humas)->test(Apresiasi::class)->set('confirmAction', 'hapus'))
         ->toThrow(Exception::class);
 
     Livewire::actingAs($this->humas)
         ->test(Apresiasi::class)
         ->call('startAdding', '01JZZZZZZZZZZZZZZZZZZZZZZZ')
         ->assertNotFound();
+    Livewire::actingAs($this->humas)
+        ->test(Apresiasi::class)
+        ->call('confirmDelete', '01JZZZZZZZZZZZZZZZZZZZZZZZ')
+        ->assertNotFound();
+    Livewire::actingAs($this->humas)
+        ->test(Apresiasi::class)
+        ->call('confirmComplete', '01JZZZZZZZZZZZZZZZZZZZZZZZ')
+        ->assertNotFound();
+    // No dialog was opened: there is nothing to confirm.
+    Livewire::actingAs($this->humas)
+        ->test(Apresiasi::class)
+        ->call('runConfirmed')
+        ->assertNotFound();
+
+    expect(AppreciationEvent::query()->count())->toBe(0);
 });
 
 it('works for Kesiswaan (appreciation.manage) and not for other roles', function (): void {
-    HumasFixtures::event();
+    $event = HumasFixtures::event();
 
     Livewire::actingAs(AuthTestHelpers::staff(RoleName::Kesiswaan))
         ->test(Apresiasi::class)
         ->assertOk()
         ->assertSee('Upacara Senin, 5 Oktober 2026')
-        ->assertSee('Buat acara apresiasi');
+        ->assertSee('Buat acara apresiasi')
+        ->assertSeeHtml("confirmDelete('".$event->getKey()."')")
+        ->call('confirmDelete', $event->getKey())
+        ->call('runConfirmed')
+        ->assertDispatched('sth-toast', message: 'Acara dihapus.', tone: 'success');
+
+    expect(AppreciationEvent::query()->count())->toBe(0);
+
+    HumasFixtures::event();
 
     Livewire::actingAs(AuthTestHelpers::staff(RoleName::Guru))->test(Apresiasi::class)->assertForbidden();
     Livewire::actingAs(AuthTestHelpers::staff(RoleName::TataUsaha))->test(Apresiasi::class)->assertForbidden();
+    Livewire::actingAs(AuthTestHelpers::staff(RoleName::KepalaSekolah))->test(Apresiasi::class)->assertForbidden();
+
+    expect(AppreciationEvent::query()->count())->toBe(1);
 });
 
 // --- Arsip ---------------------------------------------------------------------------------

@@ -10,7 +10,8 @@ use App\Models\User;
 
 /**
  * "Lupa kata sandi" step 1 (docs/SECURITY.md §3b). Sends a reset OTP to the account's bound email when the
- * identifier (NIS/NISN, staff email/username) belongs to an account that may log in and has a usable email.
+ * identifier belongs to an account that may log in and has a usable email. The identifier is resolved exactly as
+ * at login (LoginIdentifier): NIS/NISN, a student's own email once the activation is finished, staff email/username.
  * Callers always show the same message, whatever happened here (no user enumeration).
  */
 final class RequestPasswordResetCode

@@ -12,10 +12,17 @@ use Illuminate\Validation\ValidationException;
  * Structured, versioned text of the surat tugas letters (TU › Template surat, backlog #7, owner B5).
  *
  * NOT a free-form template: a fixed list of plain-text fields (kop lines, school name, city, signer title, the
- * siswa letter's Dasar/intro/closing, the guru letter's Dasar 1 and closing points) stored as JSON in the
- * `settings` row `letter_template` ({version, values, updated_at, updated_by, updated_by_name}). Only the codes in
- * PLACEHOLDERS are replaced, with strtr(); the PDF views (resources/pdf) and the TU HTML preview print the
- * results with {{ }} (escaped). Nothing here is ever compiled or rendered as Blade (SSTI, CLAUDE.md).
+ * siswa letter's Dasar/intro/closing, the guru letter's three regulation texts under "Dasar" and its closing
+ * points) stored as JSON in the `settings` row `letter_template` ({version, values, updated_at, updated_by,
+ * updated_by_name}). Only the codes in PLACEHOLDERS are replaced, with strtr(); the PDF views (resources/pdf) and
+ * the TU HTML preview print the results with {{ }} (escaped). Nothing here is ever compiled or rendered as Blade
+ * (SSTI, CLAUDE.md).
+ *
+ * M1-A (lead, 2026-10-04): the built-in texts are the ones of the school's own files ("ST PENGUKUHAN KEG OPSI"
+ * for the guru letter, "ST_LOMBA … TIM" for the student letter): the kop has three address lines, and the guru
+ * letter's "Dasar" starts with three regulation texts that Tata Usaha replaces every budget year (an empty one
+ * is skipped and the list renumbers; the invitation always comes last). A template saved before M1-A keeps its
+ * values; fields it does not have (`kop_6`, `guru_basis_1…3`) use the built-in text.
  *
  * Version 0 = the built-in defaults below (no row yet, or the seeded null row); every saved change is a new version
  * (UpdateLetterTemplate, audited `letter_template.updated` with a full snapshot of the values).
@@ -27,9 +34,11 @@ final readonly class LetterTemplate
     /** code => meaning (shown to TU). */
     public const PLACEHOLDERS = [
         '{sekolah}' => 'nama sekolah',
-        '{penyelenggara}' => 'penyelenggara lomba',
+        '{penyelenggara}' => 'isi "Surat dari" yang diketik saat membuat surat',
         '{tahun_ajaran}' => 'tahun pelajaran surat',
     ];
+
+    private const GURU_BASIS_HINT = 'Peraturan yang berlaku tahun ini. Boleh kosong: nomor berikutnya naik. Surat undangan selalu jadi nomor terakhir.';
 
     /**
      * field => [label, max length, required, allowed placeholders, default, hint].
@@ -37,18 +46,21 @@ final readonly class LetterTemplate
      * @var array<string, array{0: string, 1: int, 2: bool, 3: list<string>, 4: string, 5: string}>
      */
     public const FIELDS = [
-        'kop_1' => ['Kop baris 1', 100, true, [], 'PEMERINTAH PROVINSI JAWA TENGAH', 'Huruf tebal.'],
+        'kop_1' => ['Kop baris 1', 100, true, [], 'PEMERINTAH PROVINSI JAWA TENGAH', 'Huruf biasa.'],
         'kop_2' => ['Kop baris 2', 100, false, [], 'DINAS PENDIDIKAN', 'Huruf tebal. Boleh kosong.'],
-        'kop_3' => ['Kop baris 3 (nama sekolah)', 100, true, [], 'SEKOLAH MENENGAH ATAS NEGERI 3 SEMARANG', 'Huruf tebal, paling besar.'],
-        'kop_4' => ['Kop baris 4 (alamat)', 150, false, [], 'Jalan Pemuda Nomor 149, Kota Semarang, Jawa Tengah 50132', 'Huruf kecil. Boleh kosong.'],
-        'kop_5' => ['Kop baris 5 (kontak)', 150, false, [], '', 'Contoh: telepon, email, laman. Boleh kosong.'],
+        'kop_3' => ['Kop baris 3 (nama sekolah)', 100, true, [], 'SEKOLAH MENENGAH ATAS NEGERI 3 SEMARANG', 'Huruf tebal.'],
+        'kop_4' => ['Kop baris 4 (alamat)', 150, false, [], 'Jalan Pemuda Nomor 149, Kota Semarang, Semarang Tengah, Kota Semarang, Jawa Tengah', 'Huruf kecil. Boleh kosong.'],
+        'kop_5' => ['Kop baris 5 (kode pos, telepon)', 150, false, [], 'Kode Pos 50132, Telepon 3544287, Faksimile 024-3544291', 'Huruf kecil. Boleh kosong.'],
+        'kop_6' => ['Kop baris 6 (laman, pos-el)', 150, false, [], 'Laman https://sman3-smg.sch.id, Pos-el smanegeri3semarang149@gmail.com', 'Huruf kecil. Boleh kosong.'],
         'school_name' => ['Nama sekolah di isi surat', 100, true, [], 'SMA Negeri 3 Semarang', 'Dipakai untuk kode {sekolah}.'],
         'city' => ['Tempat surat', 60, true, [], 'Semarang', 'Tertulis sebelum tanggal surat.'],
         'signer_title' => ['Jabatan penandatangan', 60, true, [], 'Kepala Sekolah', 'Di atas tanda tangan.'],
         'siswa_basis' => ['Surat siswa: Dasar', 200, true, ['{penyelenggara}', '{sekolah}'], 'Surat dari {penyelenggara}', 'Nomor dan tanggal surat undangan ditulis TU saat membuat surat.'],
         'siswa_intro' => ['Surat siswa: kalimat pembuka', 200, true, ['{sekolah}'], 'Kepala {sekolah} memberikan tugas kepada :', ''],
         'siswa_closing' => ['Surat siswa: kalimat penutup', 500, true, ['{sekolah}'], 'Demikian surat tugas ini dibuat dan diberikan kepada yang bersangkutan untuk dapat dilaksanakan sebagaimana mestinya dengan penuh tanggung jawab.', ''],
-        'guru_basis' => ['Surat guru: Dasar nomor 1', 300, true, ['{sekolah}', '{tahun_ajaran}'], 'Program kerja {sekolah} tahun pelajaran {tahun_ajaran}.', 'Dasar nomor 2 (surat penyelenggara) diisi otomatis.'],
+        'guru_basis_1' => ['Surat guru: Dasar nomor 1', 600, false, ['{sekolah}', '{tahun_ajaran}'], 'Peraturan Daerah Provinsi Jawa Tengah Nomor 11 Tahun 2025 tentang Anggaran Pendapatan Daerah dan Belanja Daerah Tahun Anggaran 2026 (Lembaran Daerah Provinsi Jawa Tengah Tahun 2025 Nomor 11, Tambahan Lembaran Provinsi Jawa Tengah Nomor 173) (tanggal 30 Desember 2025);', self::GURU_BASIS_HINT],
+        'guru_basis_2' => ['Surat guru: Dasar nomor 2', 600, false, ['{sekolah}', '{tahun_ajaran}'], 'Peraturan Gubernur Jawa Tengah Nomor 58 Tahun 2023 tentang Perubahan Atas Peraturan Gubernur Nomor 45 Tahun 2022 tentang pedoman Perjalanan Dinas Dalam Negeri di Lingkungan Pemerintah Provinsi Jawa Tengah (Berita Daerah Provinsi Jawa Tengah Tahun 2023 Nomor 58);', self::GURU_BASIS_HINT],
+        'guru_basis_3' => ['Surat guru: Dasar nomor 3', 600, false, ['{sekolah}', '{tahun_ajaran}'], 'Peraturan Gubernur Jawa Tengah Nomor 36 Tahun 2025 tentang Penjabaran Anggaran Pendapatan Dan Belanja Daerah Tahun Anggaran 2026 (Berita Daerah Provinsi Jawa Tengah Tahun 2025 Nomor 36) (tanggal 30 Desember 2025);', self::GURU_BASIS_HINT],
         'guru_report' => ['Surat guru: Untuk nomor 2', 300, true, ['{sekolah}'], 'Melaporkan hasil pelaksanaan tugas kepada pejabat pemberi tugas.', ''],
         'guru_closing' => ['Surat guru: Untuk nomor 3', 300, true, ['{sekolah}'], 'Perintah ini dilaksanakan dengan penuh tanggung jawab.', ''],
     ];
@@ -139,10 +151,10 @@ final readonly class LetterTemplate
         return array_values(array_filter([$this->get('kop_1'), $this->get('kop_2'), $this->get('kop_3')], fn (string $l): bool => $l !== ''));
     }
 
-    /** @return list<string> non-empty kop lines 4–5 (small) */
+    /** @return list<string> non-empty kop lines 4–6 (small: address, phone, website) */
     public function kopDetailLines(): array
     {
-        return array_values(array_filter([$this->get('kop_4'), $this->get('kop_5')], fn (string $l): bool => $l !== ''));
+        return array_values(array_filter([$this->get('kop_4'), $this->get('kop_5'), $this->get('kop_6')], fn (string $l): bool => $l !== ''));
     }
 
     public function school(): string
@@ -160,9 +172,10 @@ final readonly class LetterTemplate
         return $this->get('signer_title');
     }
 
-    public function siswaBasis(string $organizer): string
+    /** @param string $from what Tata Usaha typed as "Surat dari" (prefilled with the penyelenggara) */
+    public function siswaBasis(string $from): string
     {
-        return $this->fill('siswa_basis', ['{penyelenggara}' => $organizer]);
+        return $this->fill('siswa_basis', ['{penyelenggara}' => $from]);
     }
 
     public function siswaIntro(): string
@@ -175,9 +188,25 @@ final readonly class LetterTemplate
         return $this->fill('siswa_closing');
     }
 
-    public function guruBasis(string $schoolYear): string
+    /**
+     * The fixed regulation texts under "Dasar" of the guru letter (empty ones skipped). The invitation
+     * (LetterContent::guruBasis()) is printed after them.
+     *
+     * @return list<string>
+     */
+    public function guruBasisItems(string $schoolYear): array
     {
-        return $this->fill('guru_basis', ['{tahun_ajaran}' => $schoolYear]);
+        $items = [];
+
+        foreach (['guru_basis_1', 'guru_basis_2', 'guru_basis_3'] as $field) {
+            $text = $this->fill($field, ['{tahun_ajaran}' => $schoolYear]);
+
+            if ($text !== '') {
+                $items[] = $text;
+            }
+        }
+
+        return $items;
     }
 
     public function guruReport(): string

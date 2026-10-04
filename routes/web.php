@@ -54,7 +54,8 @@ Route::middleware('guest')->group(function (): void {
 });
 
 Route::middleware(['auth', 'active'])->group(function (): void {
-    // First login: new password → email → 6-digit code (the only screen until activation is done).
+    // First login: email → 6-digit code → password (student: change or keep; staff: change). The only screen
+    // until activation is done.
     Route::livewire('/aktivasi', Activation::class)->name('aktivasi');
 
     // Staff TOTP setup; `staff.2fa` sends staff here until 2FA is confirmed.

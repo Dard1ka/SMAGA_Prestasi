@@ -65,7 +65,7 @@
                         <p class="muted m-0 text-sm">Kode verifikasi ini tidak cocok dengan surat mana pun.</p>
                     </div>
                 </div>
-                <p class="m-0 text-sm">Periksa kembali tautan atau kode QR. Jika ragu, hubungi Tata Usaha SMA Negeri 3 Semarang.</p>
+                <p class="m-0 text-sm">Periksa kembali link atau kode QR. Jika ragu, hubungi Tata Usaha SMA Negeri 3 Semarang.</p>
             </x-sth.card>
         @endif
     </div>

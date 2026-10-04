@@ -12,7 +12,7 @@
                 Izinkan mesin pencari mengindeks halaman publik
             </x-sth.checkbox>
             <x-sth.checkbox wire:model="certificates" hint="Hanya untuk siswa dengan izin publikasi. Mati: hanya tampil lencana Terverifikasi.">
-                Tampilkan tautan sertifikat di halaman siswa
+                Tampilkan link sertifikat di halaman siswa
             </x-sth.checkbox>
         </x-sth.card>
         <p class="text-sm muted">Nyalakan setelah sekolah memastikan persetujuan orang tua (U-04).</p>

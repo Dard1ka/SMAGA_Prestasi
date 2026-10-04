@@ -14,7 +14,7 @@ use Tests\Feature\Auth\AuthTestHelpers;
 use Tests\Feature\Humas\HumasFixtures;
 
 /*
-| PublicationPolicy, AppreciationPolicy, AppreciationEventPolicy: deny by default (W2-C).
+| PublicationPolicy, AppreciationPolicy, AppreciationEventPolicy: deny by default (W2-C; `delete` M1-E).
 */
 
 uses(RefreshDatabase::class);
@@ -107,6 +107,7 @@ it('gives appreciation abilities to appreciation.manage holders only', function 
         ->and($user->can('view', $event))->toBe($allowed)
         ->and($user->can('create', AppreciationEvent::class))->toBe($allowed)
         ->and($user->can('update', $event))->toBe($allowed)
+        ->and($user->can('delete', $event))->toBe($allowed)
         ->and($user->can('viewAny', Appreciation::class))->toBe($allowed)
         ->and($user->can('view', $appreciation))->toBe($allowed)
         ->and($user->can('create', Appreciation::class))->toBe($allowed)
@@ -119,3 +120,26 @@ it('gives appreciation abilities to appreciation.manage holders only', function 
     'kepala_sekolah' => [RoleName::KepalaSekolah, false],
     'tata_usaha' => [RoleName::TataUsaha, false],
 ]);
+
+it('lets nobody delete an event that is confirmed as held (M1-E)', function (RoleName $role): void {
+    $user = AuthTestHelpers::staff($role);
+    $event = HumasFixtures::event('Upacara lalu', now()->subWeek()->toDateString());
+
+    expect($user->can('delete', $event))->toBeTrue();
+
+    $event->forceFill(['completed_at' => now()->subDays(6)])->save();
+
+    expect($user->can('delete', $event->fresh()))->toBeFalse()
+        ->and($user->can('view', $event->fresh()))->toBeTrue()
+        ->and($user->can('update', $event->fresh()))->toBeTrue();
+})->with([RoleName::Humas, RoleName::Kesiswaan, RoleName::Admin]);
+
+it('denies deleting an event to students and disabled accounts', function (): void {
+    $event = HumasFixtures::event();
+    $student = Student::factory()->activated()->create()->user()->first()->fresh();
+    $humas = HumasFixtures::humas();
+    $humas->forceFill(['status' => UserStatus::Disabled])->save();
+
+    expect($student->can('delete', $event))->toBeFalse()
+        ->and($humas->can('delete', $event))->toBeFalse();
+});

@@ -71,7 +71,7 @@ class ReportReminder extends Notification implements ShouldQueue
     {
         $left = $this->daysLeft === 0 ? 'hari ini' : $this->daysLeft.' hari lagi';
 
-        return 'Batas laporan hasil '.$this->dueOn.' ('.$left.'). Unggah sertifikat dan foto dokumentasi.';
+        return 'Batas laporan hasil '.$this->dueOn.' ('.$left.'). Upload sertifikat dan foto dokumentasi.';
     }
 
     private function url(): ?string

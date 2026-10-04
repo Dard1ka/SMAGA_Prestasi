@@ -51,6 +51,9 @@
                                     <span class="text-[12.5px] text-muted">{{ $row['kelas'] }}</span>
                                 </div>
                             </div>
+                            @if ($row['note'])
+                                <p class="m-0 mt-1.5 text-[12.5px] break-words text-ink-2"><span class="font-bold">Catatan untuk pembina:</span> {{ $row['note'] }}</p>
+                            @endif
                         </td>
                         <td>
                             <div class="flex flex-col">
@@ -64,10 +67,7 @@
                                 @if ($row['step'])<span class="num text-[12px] text-muted">Tahap {{ $row['step'] }} dari 4</span>@endif
                             </div>
                         </td>
-                        <td class="hidden text-[13.5px] md:table-cell">
-                            {{ $row['assessment'] ?? '–' }}
-                            @if ($row['note'])<span class="block text-[12.5px] text-muted">{{ $row['note'] }}</span>@endif
-                        </td>
+                        <td class="hidden text-[13.5px] md:table-cell">{{ $row['assessment'] ?? '–' }}</td>
                     </tr>
                 @endforeach
             </x-sth.table>

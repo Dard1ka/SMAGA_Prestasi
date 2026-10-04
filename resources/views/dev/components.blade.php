@@ -21,7 +21,7 @@
     $activeKey = ['siswa' => 'beranda', 'guru' => 'binaan', 'kesiswaan' => 'kelola-lomba', 'kepala_sekolah' => 'persetujuan', 'tata_usaha' => 'surat', 'humas' => 'publikasi', 'admin' => 'dashboard'][$role];
 
     $icons = ['home', 'search', 'clipboard', 'award', 'bars', 'user', 'users', 'help', 'trophy', 'inbox', 'shield', 'check-circle',
-        'chart-pie', 'database', 'mail', 'folder', 'file', 'megaphone', 'calendar', 'pin', 'upload', 'download', 'archive', 'sliders',
+        'chart-pie', 'database', 'mail', 'folder', 'file', 'megaphone', 'calendar', 'pin', 'upload', 'download', 'archive', 'sliders', 'recycle',
         'bell', 'plus', 'check', 'x', 'chevron-right', 'chevron-left', 'chevron-down', 'clock', 'info', 'link', 'image', 'eye', 'edit',
         'trash', 'sains', 'riset', 'seni', 'olahraga', 'eye-off', 'menu', 'logout', 'arrow-right', 'arrow-left', 'alert', 'external',
         'send', 'lock', 'filter', 'dots'];
@@ -339,7 +339,7 @@
 
     {{-- Tab --}}
     <section id="tab" @unless ($show('tab')) hidden @endunless aria-labelledby="h-tab" class="flex flex-col gap-3 scroll-mt-6">
-        <x-sth.page-header id="h-tab" title="Tab" subtitle="Panel klien (←/→) · pill · tautan" />
+        <x-sth.page-header id="h-tab" title="Tab" subtitle="Panel klien (←/→) · pill · link" />
         <x-sth.card padding="none" class="overflow-hidden">
             <div class="px-6">
                 <x-sth.tabs panels id="demo-detail" label="Detail lomba" active="tentang" :items="[
@@ -362,7 +362,7 @@
                 ['key' => 'usulan', 'label' => 'Usulan lomba', 'count' => 3],
             ]" />
             <x-sth.tab-panel tabs="demo-kelola" name="katalog" active class="text-[13px] text-muted">Urut dari batas daftar terdekat</x-sth.tab-panel>
-            <x-sth.tab-panel tabs="demo-kelola" name="usulan" class="text-[13px] text-muted">Semua unggahan menunggu verifikasi</x-sth.tab-panel>
+            <x-sth.tab-panel tabs="demo-kelola" name="usulan" class="text-[13px] text-muted">Semua upload menunggu verifikasi</x-sth.tab-panel>
         </x-sth.card>
     </section>
 
@@ -483,7 +483,7 @@
             <form id="demo-usul-form" class="flex flex-col gap-4" action="#" method="GET">
                 <x-sth.input name="usul_nama" label="Nama lomba" placeholder="Contoh: International Science Project Olympiad (ISPO) 2027" />
                 <x-sth.input name="usul_penyelenggara" label="Penyelenggara" />
-                <x-sth.input name="usul_tautan" type="url" label="Tautan info" placeholder="https://" icon="link" optional />
+                <x-sth.input name="usul_tautan" type="url" label="Link info" placeholder="https://" icon="link" optional />
                 <x-sth.file-drop name="usul_brosur" label="Brosur atau juknis" accept=".pdf,.jpg,.jpeg,.png" optional />
             </form>
             <x-slot:footer>

@@ -62,7 +62,7 @@
                     </div>
                 </form>
             @endif
-            <p class="m-0 text-[13px] text-muted">Email lama dan email baru mendapat pemberitahuan dengan tautan "Bukan saya?".</p>
+            <p class="m-0 text-[13px] text-muted">Email lama dan email baru mendapat pemberitahuan dengan link "Bukan saya?".</p>
         </x-sth.card>
     </div>
 

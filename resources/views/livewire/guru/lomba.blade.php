@@ -1,4 +1,4 @@
-{{-- Guru · Lomba (backlog #3, B4): katalog (read-only) + unggahan saya. Uploads use W2-A1's Lomba\UsulanForm (<dialog id="usul">). --}}
+{{-- Guru · Lomba (backlog #3, B4): katalog (read-only) + upload saya. Uploads use W2-A1's Lomba\UsulanForm (<dialog id="usul">). --}}
 <div class="flex flex-col gap-[22px]">
     <div class="flex flex-wrap items-center justify-between gap-3">
         <div class="seg flex-wrap" role="group" aria-label="Tampilkan">
@@ -6,11 +6,11 @@
                 Katalog <span class="cnt">{{ $counts['katalog'] }}</span>
             </button>
             <button type="button" class="seg-btn" wire:click="setTab('unggahan')" aria-pressed="{{ $isCatalog ? 'false' : 'true' }}">
-                Unggahan saya <span class="cnt">{{ $counts['unggahan'] }}</span>
+                Upload saya <span class="cnt">{{ $counts['unggahan'] }}</span>
             </button>
         </div>
         @if ($canUpload)
-            <x-sth.button icon="plus" data-sth-open="usul" aria-haspopup="dialog">Unggah info lomba</x-sth.button>
+            <x-sth.button icon="plus" data-sth-open="usul" aria-haspopup="dialog">Upload info lomba</x-sth.button>
         @endif
     </div>
 
@@ -28,14 +28,14 @@
         @if ($total === 0)
             @if ($isCatalog)
                 <x-sth.empty-state icon="search" title="Belum ada lomba yang cocok">
-                    Ubah pencarian, atau unggah info lomba baru.
+                    Ubah pencarian, atau upload info lomba baru.
                 </x-sth.empty-state>
             @else
-                <x-sth.empty-state icon="upload" title="Belum ada info lomba yang kamu unggah">
-                    Kesiswaan memeriksa setiap unggahan sebelum tampil di katalog.
+                <x-sth.empty-state icon="upload" title="Belum ada info lomba yang kamu upload">
+                    Kesiswaan memeriksa setiap upload sebelum tampil di katalog.
                     @if ($canUpload)
                         <x-slot:actions>
-                            <x-sth.button variant="soft" size="sm" data-sth-open="usul" aria-haspopup="dialog">Unggah info lomba</x-sth.button>
+                            <x-sth.button variant="soft" size="sm" data-sth-open="usul" aria-haspopup="dialog">Upload info lomba</x-sth.button>
                         </x-slot:actions>
                     @endif
                 </x-sth.empty-state>
@@ -51,7 +51,7 @@
                 @endforeach
             </div>
         @else
-            <x-sth.table caption="Info lomba yang kamu unggah, {{ $total }} lomba" fixed>
+            <x-sth.table caption="Info lomba yang kamu upload, {{ $total }} lomba" fixed>
                 <x-slot:head>
                     <th scope="col">Lomba</th>
                     <th scope="col" class="hidden w-32 sm:table-cell">Dikirim</th>
@@ -121,7 +121,7 @@
                 @if ($detail['juknis'] || $detail['website'])
                     <div class="flex flex-col gap-2">
                         @if ($detail['juknis'])
-                            <x-sth.button variant="quiet" icon="download" :href="$detail['juknis']['href']">Unduh juknis · {{ $detail['juknis']['size'] }}</x-sth.button>
+                            <x-sth.button variant="quiet" icon="download" :href="$detail['juknis']['href']">Download juknis · {{ $detail['juknis']['size'] }}</x-sth.button>
                         @endif
                         @if ($detail['website'])
                             <span class="text-[13.5px]"><x-sth.link :href="$detail['website']" external icon-right="external">Website resmi</x-sth.link> <span class="text-muted">({{ $detail['websiteHost'] }})</span></span>

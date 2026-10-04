@@ -18,7 +18,17 @@ use Spatie\Activitylog\Support\LogOptions;
 /**
  * Pilihan talenta of a student (a student may have several, D-23). Unique (student, type, branch);
  * for OLPAIN (branch NULL) the Action must check duplicates itself.
- * Not mass-assignable: status, mentor_id, assessment_on, note (Kesiswaan/pembina Actions).
+ *
+ * Two notes with different readers (lead, 2026-10-04):
+ * - `note` = catatan untuk guru pembina: internal, read by the guru pembina and Kesiswaan, never by the student.
+ * - `student_note` = catatan untuk siswa: belongs to the latest decision (lolos, tidak lolos, dipulihkan); it is
+ *   sent with that notification and shown on Profil talenta. A new decision replaces it (null = no note).
+ *
+ * "Tidak lolos" can be undone: `rejected_from` keeps the stage before the rejection, `review_requested_at` +
+ * `review_message` are the student's open "Minta ditinjau ulang" (one per rejection).
+ *
+ * Not mass-assignable: status, mentor_id, assessment_on, note, student_note, rejected_from,
+ * review_requested_at, review_message (app/Actions/Talent only).
  */
 class TalentApplication extends Model
 {
@@ -44,7 +54,26 @@ class TalentApplication extends Model
         return [
             'status' => TalentStatus::class,
             'assessment_on' => 'immutable_date',
+            'rejected_from' => TalentStatus::class,
+            'review_requested_at' => 'immutable_datetime',
         ];
+    }
+
+    /**
+     * Stage a "tidak lolos" row goes back to when Kesiswaan restores it: the stage it had before the
+     * rejection, or Terdaftar when that is unknown (rows rejected before `rejected_from` existed).
+     */
+    public function restoreTarget(): TalentStatus
+    {
+        $from = $this->rejected_from;
+
+        return $from instanceof TalentStatus && ! $from->isFinal() ? $from : TalentStatus::Terdaftar;
+    }
+
+    /** The student asked for a second look and Kesiswaan has not restored the row yet. */
+    public function hasOpenReviewRequest(): bool
+    {
+        return $this->status === TalentStatus::TidakLolos && $this->review_requested_at !== null;
     }
 
     public function getActivitylogOptions(): LogOptions
@@ -91,5 +120,11 @@ class TalentApplication extends Model
     public function scopeInStatus(Builder $query, TalentStatus ...$statuses): void
     {
         $query->whereIn('status', $statuses);
+    }
+
+    /** Rejected rows whose student asked for a second look ("Minta ditinjau ulang"). @param Builder<TalentApplication> $query */
+    public function scopeReviewRequested(Builder $query): void
+    {
+        $query->where('status', TalentStatus::TidakLolos)->whereNotNull('review_requested_at');
     }
 }

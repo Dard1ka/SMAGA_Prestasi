@@ -1,5 +1,5 @@
 {{-- Local preview of layouts::public (/_dev/components/public). Fictional data, DESIGN-SPEC-v2 §5. --}}
-<x-layouts::public title="Pratinjau publik" current="beranda" robots="noindex">
+<x-layouts::public title="Preview publik" current="beranda" robots="noindex">
     <section aria-labelledby="hero-title" class="grid items-center gap-10 lg:grid-cols-[minmax(0,1fr)_480px]">
         <div class="flex flex-col items-start gap-3.5">
             <x-sth.chip tone="blue" icon="award" class="h-[30px] px-3 text-[13px]">Prestasi SMA Negeri 3 Semarang</x-sth.chip>

@@ -52,6 +52,19 @@ class TalentApplicationPolicy
             && $application->status === TalentStatus::Terdaftar;
     }
 
+    /**
+     * "Minta ditinjau ulang" (lead, 2026-10-04): the student's own rejected choice, one open request per
+     * rejection. The request never changes the status; Kesiswaan decides (restore).
+     */
+    public function requestReview(User $user, TalentApplication $application): bool
+    {
+        return $this->isStudentApplicant($user)
+            && $this->owns($user, $application)
+            && ! $application->trashed()
+            && $application->status === TalentStatus::TidakLolos
+            && $application->review_requested_at === null;
+    }
+
     private function isStudentApplicant(User $user): bool
     {
         return $user->canLogIn()
@@ -78,5 +91,14 @@ class TalentApplicationPolicy
     public function move(User $user, TalentApplication $application): bool
     {
         return $this->manage($user) && ! $application->trashed();
+    }
+
+    /**
+     * "Pulihkan" a tidak-lolos choice back into the pipeline (not the soft-delete restore: that is the
+     * student's "Urungkan" through ApplyTalent). The status is checked under the lock in RestoreTalentApplication.
+     */
+    public function restore(User $user, TalentApplication $application): bool
+    {
+        return $this->move($user, $application);
     }
 }

@@ -14,9 +14,13 @@ use Illuminate\Validation\ValidationException;
 use Throwable;
 
 /**
- * Kesiswaan saves the pembina, assessment date and note of a pilihan talenta without changing its stage
- * (detail panel "Simpan"). Only a guru account can be pembina. Final rows (pembinaan / tidak lolos) keep
- * their data editable for the pembina and note only.
+ * Kesiswaan saves the pembina, assessment date and the note for the guru pembina of a pilihan talenta without
+ * changing its stage (detail panel "Simpan"). Only a guru account can be pembina. Final rows (pembinaan /
+ * tidak lolos) keep their data editable for the pembina and note only.
+ *
+ * `note` is the internal "catatan untuk guru pembina" (optional; guru pembina + Kesiswaan read it, the student
+ * never does). The note for the student is not saved here: it belongs to a decision (MoveTalentStage,
+ * RejectTalentApplication, RestoreTalentApplication) and travels with that notification.
  */
 final class UpdateTalentAssessment
 {
@@ -78,13 +82,7 @@ final class UpdateTalentAssessment
         }
 
         if (array_key_exists('note', $details)) {
-            $note = trim((string) $details['note']);
-
-            if (mb_strlen($note) > 1000) {
-                throw ValidationException::withMessages(['note' => 'Catatan maksimal 1.000 karakter.']);
-            }
-
-            $clean['note'] = $note === '' ? null : $note;
+            $clean['note'] = TalentNote::clean($details['note'] === null ? null : (string) $details['note'], 'note');
         }
 
         return $clean;

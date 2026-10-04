@@ -20,18 +20,19 @@ Roles (spatie/laravel-permission, guard `web`). Kepala Sekolah and Admin are sep
 | `guru` | guru pembimbing / pembina | sees own *binaan*, uploads lomba info |
 | `kesiswaan` | student affairs | manage + verify lomba uploads, verify results, talent pipeline, student import |
 | `kepala_sekolah` | principal | approve/reject every registration, dashboard |
-| `tata_usaha` | school admin office (TU) | enter letter numbers, generate surat tugas PDFs |
+| `tata_usaha` | school admin office (TU) | type each letter's full number, generate, print and send the surat tugas PDFs |
 | `humas` | public relations | publication queue, e-flyer, *apresiasi* |
 | `admin` | operator | everything: users, import, settings, signature image, replace the Kepsek account (all audited) |
 
-Students log in with NIS or NISN, staff with `username` or email. Public pages (no login): prestasi
-overview, per-*bidang* drill-down, winners per lomba, cumulative ranking; only name + class + verified
-achievements, gated by consent flags (D-16, SECURITY §3m-7).
+Students log in with NIS or NISN and, once their activation is finished, also with the email they bound
+(D-78); staff with `username` or email. Public pages (no login): prestasi overview, per-*bidang*
+drill-down, winners per lomba, cumulative ranking; only name + class + verified achievements, gated by
+consent flags (D-16, SECURITY §3m-7).
 
 ## 2. Sources of truth (read before changing behaviour)
 | file | content |
 |---|---|
-| `docs/DECISIONS.md` | decision log D-01…D-77 (D-45…D-61 = backlog wave + W4 product choices, *sementara*; D-62…D-65 = security hardening, *final*; D-66…D-77 = Q1 security/performance pass and the lead's follow-up choices), U-01…U-06, open questions §F. **Wins over everything.** |
+| `docs/DECISIONS.md` | decision log D-01…D-91 (D-45…D-61 = backlog wave + W4 product choices, *sementara*; D-62…D-65 = security hardening, *final*; D-66…D-77 = Q1 security/performance pass and the lead's follow-up choices; D-78…D-91 = §D6, the lead's choices after the hand test of 2026-10-04), U-01…U-06, open questions §F. **Wins over everything.** |
 | `docs/ARCHITECTURE.md` | binding contract: data model, enums, state machine, domain rules |
 | `docs/SECURITY.md` | threat model, top-10 risks §1, controls §3a–§3m (K1–K12), pre-release checklist §4 |
 | `docs/TALENT-FORM.md` | talent types/branches (seed source for `talent_types`, `talent_branches`) |
@@ -71,8 +72,10 @@ conflict silently: write it in your dev-note and ask the lead (the user).
 8. `migrate:fresh`, `migrate:reset`, `db:wipe` and demo seeders run **only against the local Docker DB**.
    Production migrations are forward-only.
 9. **UI copy**: Bahasa Indonesia, short, sentence case, students addressed as "kamu", buttons are verbs,
-   no emoji, no dark theme, decimal comma (`1,00`). Code, identifiers, comments, commits: English
-   (Indonesian domain terms are fine).
+   no emoji, no dark theme, decimal comma (`1,00`). Everyday words, not formal ones: **upload, download,
+   link, preview** (with prefixes: di-upload, men-download), never unggah, unduh, tautan, pratinjau
+   (D-89; also in mails, validation messages and tests). Code, identifiers, comments, commits: English
+   (Indonesian domain terms are fine; existing identifiers such as the tab key `unggahan` stay).
 10. **Tests are required**: every domain rule, Action, Policy and route gets Pest tests, including the
     forbidden cases (role × route matrix). Red tests or failing Pint = not done.
 11. **AI agents never `git commit`/`push`/switch branches unless the user asks in chat.** Only edit files
@@ -84,7 +87,7 @@ Dev stack (`compose.yaml`, every port bound to 127.0.0.1):
 
 | service | what | URL / port |
 |---|---|---|
-| `app` | php-fpm 8.4, `docker/php/Dockerfile` target `dev` (root, dev only); reads the bind-mounted `.env` (no `env_file`) | – |
+| `app` | php-fpm 8.4, `docker/php/Dockerfile` target `dev` (root, dev only); reads the bind-mounted `.env` (no `env_file`); dev-only `docker/php/php.dev.ini` + pool env `docker/php/fpm.dev.conf` (see "Page speed" below) | – |
 | `web` | nginx 1.27 → `app:9000` | http://127.0.0.1:8080 |
 | `mysql` | MySQL 8.4, DB `sth` (dev credentials in `compose.yaml`) | 127.0.0.1:3307 |
 | `queue` | `php artisan queue:work --queue=otp,mail,default --tries=3 --backoff=10` | – |
@@ -108,7 +111,18 @@ MySQL: fine for composer, Pint and the test suite. For DB commands start MySQL f
 **Test safety:** compose does not inject `.env` as process env and every `<env>` in `phpunit.xml` has
 `force="true"`, so `php artisan test` always runs on in-memory SQLite (`APP_ENV=testing`) and can never
 touch or wipe the dev MySQL DB. Keep it that way: never add `env_file: .env` to `compose.yaml` and never
-drop `force="true"`.
+drop `force="true"`. Second guard (D-91): `Tests\TestCase::createApplication()` refuses to run when the
+config is cached or `APP_ENV` is not `testing`. **Never run `php artisan config:cache` or `optimize` by
+hand in the repo**: a cached config in `bootstrap/cache/` carries `APP_ENV=local` and the dev MySQL
+connection into the test process, where `phpunit.xml` can no longer override it.
+**Page speed on a Windows drive (PERF1, D-91):** the repo is bind-mounted from Windows, where every file
+check costs about 6 ms. So in dev opcache does not re-check PHP files (`docker/php/php.dev.ini`), and the
+php-fpm workers read a cached config and keep compiled Blade views in the container's own filesystem
+(`/tmp/sth-cache`; pool `env[...]` in `docker/php/fpm.dev.conf`, which only php-fpm sees, never the command
+line, the tests, `queue` or `scheduler`). The price: **after editing a `.php`, `.blade.php` or
+`config/*.php` file or `.env`, run `reload.bat`** (= `docker compose exec -T app sh
+docker/php/dev-cache.sh`; `start.bat` runs it with `--force`). It empties the compiled views, rebuilds
+the config cache when `.env` or `config/` is newer, and reloads php-fpm. CSS and JS do not need it.
 
 | task | command |
 |---|---|
@@ -122,6 +136,7 @@ drop `force="true"`.
 | reset local DB | `docker compose exec app php artisan migrate:fresh --seed` (local only) |
 | routes | `docker compose run --rm --no-deps app php artisan route:list --except-vendor` |
 | assets | `docker compose run --rm --no-deps node sh -c "npm ci && npm run build"` · HMR: `docker compose --profile frontend up -d node` |
+| reload PHP after an edit (dev) | `reload.bat` · `docker compose exec -T app sh docker/php/dev-cache.sh` (config cache for php-fpm only; never `config:cache` by hand) |
 | logs | `docker compose logs -f app queue scheduler` |
 | validate compose | `docker compose config -q` · prod: `docker compose -f docker/compose.prod.yaml config -q` |
 | prod image | `docker build -f docker/Dockerfile.prod -t sth-app:local .` (`--target web` for nginx) |
@@ -206,36 +221,59 @@ the first existing `<area>.beranda` route of the user's role (`siswa`, `kesiswaa
   Penyelenggara: A 1,00 · B 0,80 · C 0,60 · D 0,40 · E 0,20. **Every team member gets full points.**
   Server-side only, from the active weight version (snapshotted on the achievement), half-up to 2
   decimals; weight changes create a new version + audited recalculation job.
-- **Ranking**: cumulative SUM over all years. Public leaderboard: alumni included with chip "Alumni"
-  behind the "Tampilkan alumni" toggle (D-09). A student's own rank ("peringkatmu": Beranda, Portofolio,
-  public student page) is among **active** students only, always via `App\Support\Leaderboard\PersonalRank`
-  (D-37; demo Nadia = #14).
+- **Ranking**: cumulative SUM over all years (D-09). Public leaderboard (`/peringkat?status=aktif|alumni|semua`,
+  `App\Domain\Leaderboard\RankingScope`, D-80): **Siswa aktif** by default, **Alumni** (archived accounts
+  with a verified achievement) or **Semua**; ranks are computed within the shown group; an alumnus shows
+  "Alumni" where the class stands, never the last class; Kelas mode is for active students only. A
+  student's own rank ("peringkatmu": Beranda, Portofolio, public student page) is among **active** students
+  only, always via `App\Support\Leaderboard\PersonalRank` (D-37; demo Nadia = #14).
 - **Report deadline** (`App\Domain\Deadlines`): `final_on` + **45 days** (setting
   `report_deadline_days`, Admin-editable, D-25).
 - **Archive** (`App\Domain\Archive`): grade-12 start = 1 July of the year the student enters kelas XII;
   `archive_at` = +18 months (e.g. kelas X 2026/2027 → XII 2028-07-01 → archive 2030-01-01). Daily job
   01:00 Asia/Jakarta, idempotent; sessions revoked; **archived users cannot log in** (D-29); their
   achievements stay in ranking/public pages. Admin can also disable/archive manually with a reason (D-30).
-- **Letters** (`App\Domain\Letters\LetterNumber`): TU types two numbers: siswa `400.3.8/{seq}/MRD/
-  {roman_month}/{year}`, guru `400.3.8.6/{seq}/{year}`; unique (type, year, sequence), immutable, only for
-  `disetujui` registrations (server check). One siswa letter per registration lists all members + one
-  *Surat Perintah Tugas* for the pembimbing; one private signature+stamp image (Admin) on every letter;
-  dompdf remote/JS off; QR code → public `/verifikasi-surat/{code}` (SECURITY §3g, §3m-5).
-- **Accounts**: students log in by NIS or NISN (10 digits → NISN), staff by `users.username` or email.
-  First login: change password → bind email → 6-digit OTP. No activation code (D-14). Initial password
-  only via `App\Domain\Accounts\InitialPassword`. New student passwords: **min 10 characters** and
-  `App\Domain\Accounts\PasswordPolicy` rejects birth date / `sm4g4` / NIS / NISN / name (K5, lead
-  2026-10-01). Import (Excel/CSV, dry-run first) by Kesiswaan and Admin (D-12, D-26). Account Actions
-  live in `app/Actions/Accounts` (activation, OTP, reset, disable, archive, import).
+- **Letters** (`App\Domain\Letters\LetterNumber`): TU types the **complete number** of each letter, e.g.
+  `400.3.8/313/MRD/X/2026` (3–64 characters; letters, digits, `.` `/` `-`, spaces; at least one digit);
+  unique per letter type over all letters incl. revoked ones (index (type, full_number), compared without
+  case and spaces), immutable, only for `disetujui` registrations (server check). The settings formats
+  are only the example under the field (D-82). One form and one "Buat PDF" per letter
+  (`IssueLetters::handle(User, Registration, LetterType, LetterDraft)`), then one "Kirim" once every
+  required letter exists (`LetterPolicy::requiredTypes()`, D-83). One siswa letter per registration lists
+  all members + one *Surat Perintah Tugas* with a Lampiran page for the pembimbing, both laid out like the
+  school's own files, with the Pemprov and school emblems from `resources/pdf/assets` (D-84); one private
+  signature+stamp image (Admin) on every letter; dompdf remote/JS off; QR code → public
+  `/verifikasi-surat/{code}`; "Cetak" = the PDF inline via `tu.surat.cetak` (`StreamLetter`, policy-checked,
+  audited) (SECURITY §3g, §3m-5).
+- **Accounts**: students log in by NIS or NISN (10 digits → NISN) and, once activation is finished, by
+  the bound email (`LoginIdentifier`, D-78); staff by `users.username` or email. First login (D-79):
+  bind email → 6-digit OTP → password; at the password step a student may change it or keep the current
+  one (`CompleteActivation::keepPassword()`, audit `activation.password_kept`), staff must change it.
+  No activation code (D-14). Initial password only via `App\Domain\Accounts\InitialPassword`. New student
+  passwords: **min 10 characters** and `App\Domain\Accounts\PasswordPolicy` rejects birth date / `sm4g4` /
+  NIS / NISN / name (K5, lead 2026-10-01). Import (Excel/CSV, dry-run first) by Kesiswaan and Admin
+  (D-12, D-26). The yearly file may be uploaded again (D-81): a registered student (NIS **and** NISN
+  match) moves to the class in the file; only class, school year, archive dates and phone are written,
+  never name, birth date, password, email, status or consent. Account Actions live in
+  `app/Actions/Accounts` (activation, OTP, reset, disable, archive, import).
 - **Models & permissions**: status/verification/points columns are not in `$fillable`; Actions set them
   with `forceFill()`. Permissions = `App\Enums\Permission` (`competition.verify`, `registration.approve`,
   `letter.generate`, `report.verify`, `student.import`, `weight.manage`, …), matrix in
   `RoleName::defaultPermissions()`; Admin has everything **except** `registration.approve`.
 - **Talent**: 6 types mapped to 4 bidang (OSN, OLPAIN → sains; Riset → riset; FLS3N, Debat →
   seni_budaya; O2SN → olahraga, D-22); a student may pick several; all active classes incl. XII (D-23).
+  Two optional notes per application: `note` = for the guru pembina (internal), `student_note` = for the
+  student, sent with the decision (D-85). A `tidak_lolos` application can be restored to its earlier stage
+  (`RestoreTalentApplication`); the student may ask once per rejection (`RequestTalentReview`) and cannot
+  apply again for a rejected choice (D-86).
+- **Appreciation events**: confirmed as a whole (`appreciation_events.completed_at` / `completed_by`,
+  `CompleteAppreciationEvent`); deletable only while not confirmed (`DeleteAppreciationEvent`, the
+  scheduled students are told); a confirmed event takes no more prestasi (D-87). Scopes
+  `AppreciationEvent::open()` / `completed()`.
 - **Settings**: `Setting::get(SettingKey::…)` / `Setting::put()` (defaults in `SettingKey::defaultValue()`,
   seeded by `SettingSeeder`), exactly these keys: `report_deadline_days` (45), `archive_months_after_grade12` (18),
-  `signature_file_id`, `signer_name` / `signer_rank` / `signer_nip`, `letter_format_siswa` / `letter_format_guru`,
+  `signature_file_id`, `signer_name` / `signer_rank` / `signer_nip`, `letter_format_siswa` / `letter_format_guru`
+  (since D-82 only the example shown under the number field, "Contoh nomor surat" in Admin › Pengaturan),
   `public_indexing` / `public_certificates` (both false, D-38/D-39), `activation_window_days` (14, 1–30, D-54),
   `letter_template` (null = built-in texts, D-60). The password pattern and the OTP test mode are never settings
   (env flag only, D-62). Resolve `app(ReportDeadline::class)` / `app(GraduationCalculator::class)`
@@ -297,7 +335,13 @@ the first existing `<area>.beranda` route of the user's role (`siswa`, `kesiswaa
   chip, card, stat-tile, form fields that forward `wire:model` + `$errors`, table, tabs, tracker,
   rumus-poin, lomba-card, modal, toast, …), each documented at the top of its file; contracts in
   `docs/dev-notes/W1-D.md`. **No `style=""` and no inline JS** (CSP nonce): use tokens/`w-pct-*`,
-  `data-sth-*` hooks and Livewire events `sth-modal-open|close`, `sth-toast`. The CSP never allows
+  `data-sth-*` hooks and Livewire events `sth-modal-open|close`, `sth-toast`. Hooks added by M1 (all in
+  `resources/js/app.js`): event `sth-badges {badges: {key: count}}` updates `[data-sth-badge="<key>"]` in the
+  sidebar without a reload (keys from `Navigation`, e.g. `tu.surat`; dispatch it after an action that changes
+  a queue); event `sth-form-invalid {form}` brings the error summary (`data-sth-error-summary`) or the first
+  invalid field into view; `data-sth-live-search` on the top bar search form filters the list while typing
+  when the form's action is the current page (sets the Livewire property named like the input, `q`; D-90).
+  On Siswa › Cari lomba the in-page box is `lg:hidden`, so exactly one search box shows at any width. The CSP never allows
   `'unsafe-eval'` (D-65): keep `wire:*` expressions simple (method calls with literal arguments; `CspSafeTest` scans every view).
 - Showcase (local only): `/_dev/components` (`?role=kesiswaan`), `/_dev/components/{public,auth,mobile}`.
   A screen PR includes screenshots next to its mockup board (desktop 1440, mobile 390 where drawn).
@@ -316,10 +360,11 @@ Full log: `docs/DECISIONS.md` (append-only; a changed decision gets a new entry 
 Lead decisions of 2026-10-01, logged as **D-32…D-44** in DECISIONS.md: new student passwords min **10**
 characters (K5); leader cancels while `menunggu_konfirmasi` or `menunggu_kepsek`; rejected report →
 `selesai` without points; guru pembimbing required; decline rule (≥ 2 confirmed remain); personal rank among
-active students, public ranking with alumni; names only with `publish_consent`, `noindex` by default;
-certificate links only with consent + Admin switch; Kepsek replacement after 24 h; max 3 Admins +
-`sth:create-admin`; staff login username/email, students NIS/NISN; letters Issue then Send, student letter
-prints NIS; `users.id` bigint, domain tables ULID. Also binding: W1-A's schema additions
+active students, public ranking with alumni (how alumni are shown: D-80); names only with `publish_consent`,
+`noindex` by default; certificate links only with consent + Admin switch; Kepsek replacement after 24 h; max
+3 Admins + `sth:create-admin`; staff login username/email, students NIS/NISN (plus the bound email after
+activation, D-78); letters Issue then Send (issue is per letter since D-83), student letter prints NIS;
+`users.id` bigint, domain tables ULID. Also binding: W1-A's schema additions
 (`docs/dev-notes/W1-A.md`) accepted; prod web port **8080**; the OTP flag is **`STH_OTP_TEST_MODE`** (read
 via `config('fortify.sth.otp_test_mode')`).
 Backlog/W4 decisions D-45…D-65 (DECISIONS §D3–§D4): D-61 new Admin/Kesiswaan/TU accounts start without a role until a
@@ -334,6 +379,22 @@ Livewire script in the prod nginx + daily prune of expired cache rows. Lead's ch
 flyer file stays after a withdrawn consent, Humas cannot download it, Admin (`student.view`) still can; D-76 a lomba
 name must not contain a web address (`App\Rules\NoWebAddress`); D-77 the guru pembimbing is told about a rejected or
 cancelled registration, the Kepala Sekolah about a cancel once it had reached `menunggu_kepsek`.
+Lead's choices after the hand test of 2026-10-04, **D-78…D-91** (DECISIONS §D6, `docs/dev-notes/M1.md`), **final**:
+D-78 a student may log in with the bound email once activation is finished; D-79 first login = email → code → password,
+and a student may keep the school password (accepted risk: it stays guessable from the birth date for as long as it is
+kept, K7 cannot see it; staff must change theirs); D-80 public ranking filter Siswa aktif / Alumni / Semua, alumni show
+"Alumni" instead of the last class; D-81 the yearly student file updates the class of registered students (the file
+winning over a manual archive date, and leaving students who are missing from the file alone, are *sementara*); D-82 TU
+types the complete letter number, unique per letter type, the Admin format is only an example; D-83 one form and one
+"Buat PDF" per letter, one "Kirim"; D-84 letters look like the school's own files, the Pemprov and school emblems live
+in `resources/pdf/assets`, "Cetak" opens the PDF inline; D-85 two optional talent notes (guru pembina / student), a
+rejection needs no note; D-86 a rejected talent choice can be restored and the student can ask for a review, never a
+second application (restoring without a request is *sementara*); D-87 appreciation events are confirmed and deleted as
+events, a confirmed one is locked; D-88 Status aktivasi "Lihat" opens a class popup; D-89 everyday words in UI copy
+(upload, download, link, preview); D-90 sidebar counts update without a reload, the top bar search filters while typing,
+one search box per screen on Cari lomba; D-91 dev-only php-fpm config/view cache, and the tests refuse to run on a
+cached config. Do not bring back: "change password first", "NIS already registered = refused", `{seq}` number
+validation, one draft for both letters, the "Tampilkan alumni" tick, a required rejection note in Talenta.
 
 Known stale text (do not "fix" code to match it): SECURITY.md §0/§3a still say `sm4g4_DD-MM-YYYY`;
 DESIGN-SPEC-v2 §1 and the Admin-Pengaturan mockup still show 30 days (and the mockup's WICE deadline
@@ -341,15 +402,28 @@ DESIGN-SPEC-v2 §1 and the Admin-Pengaturan mockup still show 30 days (and the m
 port 8081; SECURITY §3e's vhost sample has inline `#` comments Apache rejects (use `docker/apache/*.conf`);
 SECURITY §3h's grant sample names `audit_logs` (the table is `activity_log`, DEPLOY §8.2); SECURITY §3f keeps import
 files 7 days (queued-import files are deleted when the job ends, D-64). ARCHITECTURE §1–§8 were
-brought up to date on 2026-10-01 (backlog #20; §4 settings/staff accounts after W4).
+brought up to date on 2026-10-01 (backlog #20; §4 settings/staff accounts after W4) and again for M1 (2026-10-04).
+Stale since M1 (D-78…D-91): the mockup boards `Aktivasi` (password first), `Peringkat` ("Tampilkan alumni"),
+`TU-Surat-Tugas` (two numbers in one form, "Buat 2 PDF") and every board that says unggah / unduh / pratinjau; the
+code samples in SECURITY §3g (regex per number format, unique `(jenis, tahun, nomor_urut)`) and the old texts of K4 and
+the import rule in §3f, which SECURITY keeps as history next to a dated M1 note; DECISIONS entries before D-78 that
+still say unggah / unduh / tautan / pratinjau.
 
 ## 9. Open questions (answers come from the school; don't guess in code)
-From DECISIONS §F and SECURITY §5: letter template columns, one team letter for all members?, meaning
-of "MRD", yearly reset / separate books for siswa and guru numbers; parental consent for names, photos,
+Decided by the lead on 2026-10-04, no longer open: the letter template (= the school's own files: one team
+letter with the columns NO, NAMA MURID, NIS, KELAS; guru letter + Lampiran; D-84) and the number format
+(TU types the complete number, so the meaning of "MRD", the yearly reset and separate books for siswa and
+guru numbers stay with TU's agenda book and no longer block code; D-82).
+From DECISIONS §F and SECURITY §5: parental consent for names, photos,
 certificates on public pages (U-04); go-live date + team hours; Ubuntu Pro (U-01); Docker static
 binaries (U-02); mandatory staff TOTP + break-glass (U-03); letter QR (U-05); WordPress isolation (U-06);
 server/DNS admins; Kepsek consent for the signature image, TTE?; hijack recovery owner + risk-acceptance
-signature (D-14); per-class activation schedule; SMTP provider; off-site backups + key holder; DPO.
+signature (D-14, which must now also name the D-79 risk); per-class activation schedule; SMTP provider;
+off-site backups + key holder; DPO.
+Questions for the lead from M1 (marked *sementara* in DECISIONS §D6; backlog #45, #49–#51): does the yearly
+student file win over a manual archive date, and what happens to a registered student who is missing from
+the file (D-81); may Kesiswaan restore a rejected talent choice without a student's request (D-86); the
+flag and reminder for students who kept the school password (D-79).
 Public DNS check of 2026-10-01 (not yet confirmed with the school): the domain's DNS is on Cloudflare (`www`, `mail`,
 `webmail` proxied); the main website and the school mail are on Desnet shared hosting (SPF, DKIM and DMARC `p=none`
 exist), so apparently **not** on the Ubuntu server (§1 assumes the same host: confirm). No `prestasi` record exists
@@ -358,7 +432,8 @@ IPs, which breaks the per-IP login/OTP limits). The noreply mailbox would then b
 SMTP host must not be `mail.<domain>` (proxied) and its hourly send limit needs asking.
 
 ## 10. Status
-Last updated: 2026-10-02 (waves 1–2 done, W3-A integration pass, backlog wave B1–B6, W4 integration, D1 docs sync, CI green on GitHub, Q1 end-to-end/security/performance pass). Update this section whenever a milestone moves.
+Last updated: 2026-10-04 (waves 1–2 done, W3-A integration pass, backlog wave B1–B6, W4 integration, D1 docs sync, CI green on GitHub, Q1 end-to-end/security/performance pass, PERF1 by S, M1 = the lead's 18 hand-test changes). Update this section whenever a milestone moves.
+M1 2026-10-05 (`docs/dev-notes/M1.md`, plain summary for the team in `catatan.md`; branch `feat/ui-uji-manual-m1`): full suite `--parallel --processes=4` → **1767 passed (8945 assertions)**, exit 0 (680 s); `pint --test` clean (610 files); `npm run build` OK; the four M1 migrations ran on the local MySQL. Dev page times after `reload.bat` + warm-up, all seven roles: 150–540 ms per menu, login 0.75–0.93 s (`catatan.md` §2). Not re-run after M1: the email scenario and the Playwright smoke (backlog).
 
 | area | owner | state (details in `docs/dev-notes/<ID>.md`) |
 |---|---|---|
@@ -386,6 +461,8 @@ Last updated: 2026-10-02 (waves 1–2 done, W3-A integration pass, backlog wave 
 | D1 docs sync: DECISIONS D-61…D-65, ARCHITECTURE §4 (settings = `SettingKey`, `account.staff_created`), UI-MAP menus, PANDUAN-PENGGUNA (Admin, Notifikasi/Keamanan akun), this file §2/§5/§7/§8/§10 | – | done |
 | CI on GitHub: `.env` before `composer install` (the production boot guard stopped `package:discover`), dev MySQL healthcheck over TCP (`compose.yaml`; "healthy" came before port 3306 was up), Dependabot bumps PHP 8.5 / MySQL 9.6 / Node 26 reverted + ignore rules, `start.bat` / `stop.bat` | → I | done (first green run 2026-10-02; CI half of #21) |
 | Q1 full check (`docs/dev-notes/Q1.md`, D-66…D-74): email scenario for every role (`tests/E2E/support/email-scenario.php`), security review + fixes (student TOTP lockout, confirm-password limit, PDF scanner, Markdown in mails, mail to frozen/unverified accounts, Humas after withdrawn consent, Talenta export), performance with school-sized data (list limits, gzip for the Livewire script, cache prune); follow-up D-75…D-77 (Admin flyer access, no web address in lomba names, reject/cancel notices for guru and Kepala Sekolah) | – | done |
+| PERF1 dev page speed (`docs/dev-notes/PERF1.md`): opcache without timestamp checks (`docker/php/php.dev.ini`), `reload.bat`, `wire:navigate` on the chrome links (`App\Support\Links`) | – | done (follow-up open: repo on a Linux filesystem) |
+| M1 the lead's hand test of 2026-10-04, 18 changes (`docs/dev-notes/M1.md` + `M1-A`…`M1-E`, D-78…D-91): student login by email + activation email → code → password (M1-B); public ranking filter + yearly import updates classes (M1-C); letters with a typed full number, one form per letter, the school's own templates, "Cetak" (M1-A); talent notes, Pulihkan, Minta ditinjau ulang (M1-D); appreciation events confirm/delete, Status aktivasi class popup (M1-E); sidebar counts without reload, live top bar search, everyday words, dev php-fpm config/view cache + test guard (coordinator) | – | built; four migrations run on local MySQL; email scenario + Playwright smoke not re-run (backlog #46) |
 
 Verified 2026-10-01 (W3-A, details in `docs/dev-notes/W3-A.md`): `php artisan test` → **925 passed (3726 assertions)** twice in a
 row (SQLite; `--parallel --processes=4` also 925 passed twice); `pint --test` clean; `npm run build` OK; `composer audit` clean; prod compose `config -q` OK;
@@ -408,17 +485,19 @@ After the follow-up D-75…D-77 (same day): full suite → **1515 passed (6962 a
 email scenario → **122 mails, 0 missing, 0 unexpected, 0 leaks**; upload check on 19 locally made PDFs → 14 accepted, 5 refused as expected.
 GitHub CI on `a148fd8` (after the `pcre2` upgrade in the web image, CVE-2026-103111): all six jobs green. Docs brought in line the same
 day: PANDUAN-PENGGUNA, ARCHITECTURE §8a/§8b (notification recipients), UI-MAP §6a, DEPLOY §18 (Trivy procedure).
+M1 2026-10-04 (D-78…D-91): what was built, what was checked by hand and the final suite numbers are in `docs/dev-notes/M1.md`.
 
 ### Backlog (open; collected from all dev-notes and UI-MAP)
 Owner: **S** = frontend/screens, **I** = deploy/QA, **user** = lead/backend core (also asks the school).
 Done in the backlog wave B1–B6 (details in the B dev-notes): former #1–#20, #22–#25; in W4 (`docs/dev-notes/W4.md`): #27–#31
 (scheduler `sth:peran-tertunda`, menus, privileged staff accounts, settings/model tidy-up, K10 staff resets, signature upload via
 `StoreUpload`). The optional `OtpPurpose::ChangeEmail` of #30 was not done (now #35). Kept numbers for the open items.
+Closed by M1 (2026-10-04): the "letter template details" part of #26 (decided by the lead, D-82…D-84). Added by M1: #45–#56.
 
 | # | item | source | owner |
 |---|---|---|---|
 | 21 | Staging on a real Ubuntu 18.04 / Apache 2.4.29 host (static Docker binaries, cgroup v1). The first real CI run on GitHub is done (2026-10-02, all six jobs green) | W1-E, B6 | I |
-| 26 | School answers (§9): parental consent process (then `public_indexing`/`public_certificates`), letter template details, SMTP relay + DNS records (DEPLOY §9), activation window/school hours (D-54), U-01…U-06 | DECISIONS §F | user |
+| 26 | School answers (§9): parental consent process (then `public_indexing`/`public_certificates`), SMTP relay + DNS records (DEPLOY §9), activation window/school hours (D-54), U-01…U-06. (Letter template and number format: decided by the lead, D-82…D-84) | DECISIONS §F | user |
 | 32 | Queued achievement export + signed URL (D-53 follow-up) if exports grow; sort options on Database prestasi | B4 | user + S |
 | 33 | K9 extra flags (activation outside the school network: needs the school CIDR; ≥ 3 activations per browser session/hour); K10 items 4–5 (block the hijacker's email, hijack-period timeline) | B1 | user |
 | 34 | Never schedule `activitylog:clean` without pruning `audit_seals` the same way; consider HMAC for the audit chain (D-63) | B2 | user |
@@ -431,6 +510,18 @@ Done in the backlog wave B1–B6 (details in the B dev-notes): former #1–#20, 
 | 42 | Staff 2FA follow-ups: hourly ceiling for confirm-password (D-67 is 5 per minute), staff can still disable their own TOTP after confirming the password (audited; `staff.2fa` forces setup again) | Q1 | user |
 | 43 | `PdfScanner` (D-70): PDFs made on the lead's laptop with Word, Excel, PowerPoint, "Microsoft Print to PDF", Edge, Chrome and photo/scan images are accepted, hostile and oversized ones refused (19 files; results and a rerun script are in `uji-pdf/` next to the repo, not in git). Still to try: Canva downloads, the school's copier/scanner, phone scan apps, organizers' original certificates | Q1 | I |
 | 44 | A staff account reset by an Admin only gets account notices until its owner verifies the email again (D-68): add this to PANDUAN-PENGGUNA (Admin). Dev stack: after a Docker restart `queue`/`scheduler` come up before MySQL and fill `laravel.log` with connection errors until `start.bat` runs | Q1 | I |
+| 45 | Counterweight for D-79: flag "masih pakai kata sandi dari sekolah" in Status aktivasi (active student with `password_changed_at` null, or the audit event `activation.password_kept`) + a reminder to change it; a pending row can now show a masked email (bound, password step open). Add the D-79 risk to the D-14 risk-acceptance form | M1-B | user |
+| 46 | Re-run `tests/E2E/support/email-scenario.php` and the Playwright smoke after M1 (the scenario file was adapted, not run). Add scenario steps 9d/9e: talent review request (mail to every Kesiswaan) and restore (mail to the student), and a step that deletes an appreciation event (mail to the scheduled students) | M1, M1-D, M1-E | I |
+| 47 | Optional sidebar badge on "Talenta siswa" for open review requests (`TalentApplication::query()->reviewRequested()->count()`, via `WithKesiswaanBadges` + `Navigation`) | M1-D | S |
+| 48 | `<x-sth.modal size="xl">` (≈ 960 px) so the Status aktivasi class popup can show the email as its own column (today `lg`, 760 px) | M1-E | S |
+| 49 | `student.class_changed` (about 750 rows per yearly import): should it be in `SecurityEventSubscriber::AUDITED_EVENT_PREFIXES`, and in the history of `Admin\ArsipOtomatis::EVENTS` (it can move an archive date)? | M1-C | user |
+| 50 | Confirm the *sementara* points of D-81 and D-86: the yearly file wins over a manual archive date; a registered student who is missing from the file is left alone (list or flag "siswa aktif yang tidak ada di file"?); Kesiswaan may restore a rejected talent choice without a student's request | M1-C, M1-D | user |
+| 51 | Tata Usaha and Kepala Sekolah hold `student.view`; only the route middleware keeps them out of Status aktivasi (same kind of gap as #41): tighten the policy or the permission sets | M1-E | user |
+| 52 | Every public page logs a CSP console error "Applying inline style violates … style-src" (seen by M1-C, older than M1): find the inline style | M1-C | S |
+| 53 | The TU letter screen (`tu.surat.show`) overflows sideways below about 480 px | M1 | S |
+| 54 | Print both letters on a real printer ("Cetak" was only opened on screen) and compare them with the school's paper; then confirm `resources/pdf/assets/**` is in the production image (read only so far) | M1-A | I |
+| 55 | Update `panduan-uji-manual-sth.html` (outside the repo, next to it) to the M1 screens | M1 | user |
+| 56 | Small leftovers of the M1 notes: old note text "mengganti kata sandi dan menghubungkan email" in `resources/views/dev/{auth,components}.blade.php` and the example in `components/sth/alert.blade.php`; the generic login error still says "NIS/NISN atau kata sandi salah." although it now also answers an email (`lang/id/auth.php`, `lang/id.json`, `LangIdTest`); `AppreciationEventFactory::completed()` state; demo letters without `basis_from` / `schedule_date`; no bulk "Pulihkan" and no note for the student in the bulk "Pindahkan ke …"; the guru pembina is not told when a talent choice is rejected or restored; Kepala Sekolah "Surat atas nama saya" only downloads (no "Cetak"); `<x-sth.icon>` has no printer icon ("Cetak" uses `external`) | M1-A…M1-E | S + user |
 
 ## 11. Team, ownership and agent protocol
 - **user** (lead, backend core, 40%): `app/{Enums,Models,Domain,Actions,Policies,Http,Providers,

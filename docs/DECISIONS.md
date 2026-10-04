@@ -1,7 +1,7 @@
 # DECISIONS.md — Log keputusan SMAGA Talent Hub (STH)
 
 > Log keputusan produk & teknis STH untuk SMA Negeri 3 Semarang. Dirujuk dari `CLAUDE.md` proyek.
-> Diperbarui: **1 Oktober 2026** (D-32…D-44; backlog D-45…D-60; integrasi W4 D-61…D-65) · Sumber: keputusan pengguna 30 Sep 2026, keputusan lead 1 Okt 2026, `DESIGN-SPEC-v2.md` §1–§5, `docs/SECURITY.md`.
+> Diperbarui: **4 Oktober 2026** (D-32…D-44; backlog D-45…D-60; integrasi W4 D-61…D-65; uji menyeluruh Q1 D-66…D-77; uji manual lead D-78…D-91) · Sumber: keputusan pengguna 30 Sep 2026, keputusan lead 1, 2, dan 4 Okt 2026, `DESIGN-SPEC-v2.md` §1–§5, `docs/SECURITY.md`.
 > **Status:** `final` = dipakai untuk implementasi · `sementara` = dipakai sekarang, akan ditinjau · `menunggu jawaban sekolah` = butuh konfirmasi sebelum dibangun.
 > **Aturan log:** entri tidak dihapus atau ditimpa. Keputusan yang berubah → entri baru dengan catatan "menggantikan D-xx", lalu status entri lama diubah menjadi `digantikan`.
 
@@ -14,27 +14,27 @@
 | D-03 | Pendaftaran individu/tim dari akun yang ada + konfirmasi anggota | Pengguna / spec v2 | final |
 | D-04 | Siswa boleh mengusulkan lomba | Pengguna | final |
 | D-05 | Kepala Sekolah menyetujui setiap pendaftaran | Pengguna | final |
-| D-06 | Surat tugas: nomor manual TU, PDF, satu gambar ttd+stempel, satu surat per tim | Pengguna | sementara |
+| D-06 | Surat tugas: nomor manual TU, PDF, satu gambar ttd+stempel, satu surat per tim | Pengguna | sementara (format nomor: diganti D-82; template: D-84) |
 | D-07 | Batas laporan hasil 30 hari setelah lomba (bisa diubah Admin) | Pengguna | final |
 | D-08 | Rumus poin, bobot, poin penuh untuk tiap anggota tim | Pengguna / spec v2 | final |
-| D-09 | Peringkat kumulatif semua tahun | Pengguna | final |
+| D-09 | Peringkat kumulatif semua tahun | Pengguna | final (cara menampilkan alumni: diganti D-80) |
 | D-10 | Tracker Jejak Prestasi 6 fase | Spec v2 | final |
 | D-11 | Empat bidang | Spec v2 | final |
-| D-12 | Kolom import Excel siswa | Pengguna | final |
+| D-12 | Kolom import Excel siswa | Pengguna | final (siswa yang sudah terdaftar: diganti D-81) |
 | D-13 | Arsip otomatis 18 bulan setelah mulai kelas XII | Pengguna | final |
-| D-14 | Login NIS/NISN + password berpola, tanpa Kode Aktivasi | Pengguna | final (risiko diterima) |
+| D-14 | Login NIS/NISN + password berpola, tanpa Kode Aktivasi | Pengguna | final (risiko diterima; urutan aktivasi: diganti D-79) |
 | D-15 | OTP email ditunda; dev menerima 6 digit apa pun | Pengguna | sementara |
 | D-16 | Halaman publik tanpa login | Pengguna / spec v2 | final (syarat persetujuan: menunggu jawaban sekolah) |
 | D-17 | Stack Laravel 13 + PHP 8.4 + MySQL 8.4 LTS di Docker | Pengguna | final |
 | D-18 | Subdomain `prestasi.sman3-smg.sch.id` di belakang Apache 2.4.29 host | Pengguna | final |
-| D-19 | Arah visual v2 dan gaya bahasa | Spec v2 | final (fase desain) |
+| D-19 | Arah visual v2 dan gaya bahasa | Spec v2 | final (fase desain; pilihan kata: disesuaikan D-89) |
 | D-20 | Mockup hanya memakai data fiktif | Spec v2 | final |
 | D-21 | Penjaringan talenta pindah dari Google Form ke STH (detail: `TALENT-FORM.md`) | Pengguna | final |
 | D-22 | 6 jenis talenta dipetakan ke 4 bidang: OSN & OLPAIN → Sains, Riset → Riset, FLS3N & Debat → Seni Budaya, O2SN → Olahraga | Pengguna | final |
 | D-23 | Siswa boleh memilih lebih dari satu jenis talenta; semua kelas aktif (termasuk XII) boleh ikut penjaringan | Pengguna | final |
 | D-24 | Password awal = `sm4g4_DDMMYY` dari tanggal lahir (contoh 2 Maret 2007 → `sm4g4_020307`); pola tidak pernah ditampilkan di UI | Pengguna (workflow kasar.svg) | final (menggantikan format DD-MM-YYYY) |
 | D-25 | Batas laporan hasil default **45 hari (1,5 bulan) setelah tanggal final lomba**, bisa diubah Admin | Pengguna (workflow kasar.svg) | final (menggantikan 30 hari) |
-| D-26 | Import data siswa boleh dilakukan **Kesiswaan dan Admin** | Pengguna | final |
+| D-26 | Import data siswa boleh dilakukan **Kesiswaan dan Admin** | Pengguna | final (import ulang tahunan: lihat D-81) |
 | D-27 | **Semua** upload info lomba (siswa, guru, staf, termasuk Kesiswaan sendiri) masuk antrean verifikasi Kesiswaan dulu; baru tampil di katalog siswa setelah diverifikasi; verifikator & waktu tercatat di audit log | Pengguna | final |
 | D-28 | Data lomba punya field **link registrasi** resmi penyelenggara (selain juknis/brosur/poster/website) | workflow kasar.svg | final |
 | D-29 | Alumni (diarsipkan 18 bulan setelah mulai kelas XII) **tidak bisa login**; nama & prestasinya tetap tampil di ranking/halaman publik | workflow kasar.svg | final (menggantikan "read-only") |
@@ -45,13 +45,13 @@
 | D-34 | Laporan hasil yang **ditolak** mengakhiri pendaftaran sebagai `selesai` **tanpa poin** | Lead (1 Okt 2026) | final |
 | D-35 | **Guru pembimbing wajib** dipilih saat mendaftar | Lead (1 Okt 2026) | final |
 | D-36 | Anggota menolak undangan: tim lanjut bila tersisa **≥ 2** anggota yang sudah konfirmasi; selain itu ketua membatalkan lalu mendaftar ulang | Lead (1 Okt 2026) | final |
-| D-37 | Peringkat pribadi ("peringkatmu") dihitung di antara **siswa aktif**; peringkat publik memuat alumni (ditandai "Alumni") | Lead (1 Okt 2026) | final |
+| D-37 | Peringkat pribadi ("peringkatmu") dihitung di antara **siswa aktif**; peringkat publik memuat alumni (ditandai "Alumni") | Lead (1 Okt 2026) | final (tombol "Tampilkan alumni": diganti D-80) |
 | D-38 | Halaman publik menulis nama siswa hanya dengan `publish_consent` (selain itu "Siswa kelas X"); halaman publik `noindex` sampai sekolah memastikan proses izin orang tua | Lead (1 Okt 2026) | final (izin indeks: menunggu jawaban sekolah, U-04) |
 | D-39 | Tautan sertifikat di halaman publik hanya dengan `publish_consent` **dan** saklar Admin | Lead (1 Okt 2026) | final |
 | D-40 | Penggantian akun Kepala Sekolah berlaku **24 jam** kemudian (bisa dibatalkan), gambar ttd lama dilepas, data penandatangan dari akun baru | Lead (1 Okt 2026) | final |
 | D-41 | Maksimal **3 akun Admin**; Admin pertama dibuat dengan `php artisan sth:create-admin` | Lead (1 Okt 2026) | final |
-| D-42 | Staf login dengan **username atau email**, siswa dengan **NIS atau NISN** | Lead (1 Okt 2026) | final |
-| D-43 | Surat tugas: **Terbitkan** (nomor + PDF) dan **Kirim** adalah dua langkah; surat siswa mencetak NIS seperti template sekolah | Lead (1 Okt 2026) | final |
+| D-42 | Staf login dengan **username atau email**, siswa dengan **NIS atau NISN** | Lead (1 Okt 2026) | final (siswa juga boleh email: D-78) |
+| D-43 | Surat tugas: **Terbitkan** (nomor + PDF) dan **Kirim** adalah dua langkah; surat siswa mencetak NIS seperti template sekolah | Lead (1 Okt 2026) | final (terbit per surat: D-83; nomor: D-82) |
 | D-44 | `users.id` tetap bigint; tabel domain memakai ULID | Lead (1 Okt 2026) | final |
 | D-45 | Reset akun siswa oleh Admin memberi **kata sandi sementara acak, berlaku 72 jam** (K10), bukan pola kata sandi awal | Lead / B1 (1 Okt 2026) | sementara — bisa diubah user |
 | D-46 | Pemberian peran staf penting (Admin, Kepala Sekolah, Kesiswaan, Tata Usaha) butuh **persetujuan Admin kedua**, atau berlaku **24 jam** kemudian (bisa dibatalkan) bila hanya ada satu Admin; penurunan peran langsung berlaku | Lead / B5 (1 Okt 2026) | sementara — bisa diubah user |
@@ -68,12 +68,38 @@
 | D-57 | Kepala Sekolah boleh mengekspor laporan prestasi (PDF/XLSX, bertanda air, teraudit, nama siswa tanpa NIS/NISN) | Lead / B5 (1 Okt 2026) | sementara — bisa diubah user |
 | D-58 | Ubah tanggal arsip siswa ikut menggeser `grade12_start_date`; memulihkan akun arsip wajib memakai tanggal arsip baru di masa depan | B5 (1 Okt 2026) | sementara — bisa diubah user |
 | D-59 | "Surat atas nama saya" (Kepala Sekolah) = surat yang terbit sejak penggantian Kepala Sekolah terakhir ke akun itu | B5 (1 Okt 2026) | sementara — bisa diubah user |
-| D-60 | Template surat TU = teks tetap + penanda `{sekolah}`, `{penyelenggara}`, `{tahun_ajaran}`; format nomor surat tetap hanya Admin | B5 (1 Okt 2026) | sementara — bisa diubah user |
+| D-60 | Template surat TU = teks tetap + penanda `{sekolah}`, `{penyelenggara}`, `{tahun_ajaran}`; format nomor surat tetap hanya Admin | B5 (1 Okt 2026) | sementara — bisa diubah user (format nomor kini hanya contoh: D-82) |
 | D-61 | Akun staf baru dengan peran Admin, Kesiswaan, atau Tata Usaha dibuat **tanpa peran** + permintaan peran: **persetujuan Admin kedua**, atau **24 jam** (bisa dibatalkan) bila hanya ada satu Admin; Kepala Sekolah hanya lewat "Ganti Kepala Sekolah" | Lead / W4 (1 Okt 2026) | sementara — bisa diubah user |
 | D-62 | Mode uji OTP **hanya dari environment** (`APP_ENV=local` **dan** `STH_OTP_TEST_MODE=true`); setting `otp_test_mode` dihapus | W4 (1 Okt 2026) | final |
 | D-63 | Segel hash chain audit di tabel samping `audit_seals` + `audit_chain_heads`, ditulis **setelah commit** (SHA-256 biasa) | B2 / W4 (1 Okt 2026) | final (menggantikan bagian hash chain D-56) |
 | D-64 | Berkas spreadsheet import antre **dihapus saat job selesai** (SHA-256 tetap tercatat), bukan disimpan 7 hari | B2 / W4 (1 Okt 2026) | final (menetapkan bagian berkas D-55) |
 | D-65 | `'unsafe-eval'` **dihapus permanen** dari CSP (`livewire.csp_safe = true`) | B2 / W4 (1 Okt 2026) | final (menggantikan bagian CSP D-56) |
+| D-66 | Verifikasi dua langkah (TOTP) **hanya untuk staf**; reset akun siswa ikut menghapus TOTP | Q1 (2 Okt 2026) | final |
+| D-67 | Konfirmasi kata sandi dibatasi **5 percobaan per menit per akun**; peristiwa 2FA masuk log audit | Q1 (2 Okt 2026) | final |
+| D-68 | Akun beku tidak menerima email dan kode reset; alamat yang belum diverifikasi hanya menerima pemberitahuan akun | Q1 (2 Okt 2026) | final |
+| D-69 | Teks dari pengguna di email selalu teks polos (`PlainMailMessage`) | Q1 (2 Okt 2026) | final |
+| D-70 | Pemindai PDF menolak berkas yang tidak bisa dibaca penuh | Q1 (2 Okt 2026) | final |
+| D-71 | Izin publikasi yang dicabut berlaku juga di layar Humas (nama netral, e-flyer tertutup) | Q1 (2 Okt 2026) | final (bagian Admin: diganti D-75) |
+| D-72 | Daftar panjang ditampilkan bertahap ("Tampilkan lebih banyak") | Q1 (2 Okt 2026) | sementara — bisa diubah user |
+| D-73 | "Tambah lomba" memberi tahu verifikator lain | Q1 (2 Okt 2026) | sementara — bisa diubah user |
+| D-74 | Gzip untuk skrip Livewire di nginx produksi; baris cache kedaluwarsa dihapus harian | Q1 (2 Okt 2026) | final |
+| D-75 | Admin tetap bisa mengunduh e-flyer setelah izin publikasi dicabut; Humas tidak | Lead (2 Okt 2026) | final (menggantikan bagian Admin D-71) |
+| D-76 | Nama lomba tidak boleh berisi alamat web | Lead (2 Okt 2026) | final |
+| D-77 | Guru pembimbing dan Kepala Sekolah dikabari saat pendaftaran ditolak atau dibatalkan | Lead (2 Okt 2026) | final |
+| D-78 | Siswa boleh masuk dengan **email** setelah aktivasi selesai (selain NIS/NISN) | Lead (4 Okt 2026) | final (menggantikan bagian siswa D-42) |
+| D-79 | Urutan aktivasi **email → kode → kata sandi**; ganti kata sandi **opsional untuk siswa**, wajib untuk staf | Lead (4 Okt 2026) | final (risiko diterima; menggantikan urutan D-14 dan K4) |
+| D-80 | Peringkat publik: pilihan **Siswa aktif / Alumni / Semua**; alumni ditulis "Alumni" tanpa kelas terakhir | Lead (4 Okt 2026) | final (menggantikan tombol "Tampilkan alumni" D-09/D-37) |
+| D-81 | Import siswa tahunan **memperbarui kelas** siswa yang sudah terdaftar | Lead (4 Okt 2026) | final (menggantikan "NIS terdaftar = ditolak" D-12/D-26); berkas tahunan vs tanggal arsip manual dan siswa yang tidak ada di berkas: sementara — perlu dikonfirmasi user |
+| D-82 | Nomor surat **diketik lengkap oleh TU**, unik per jenis surat; format di Admin hanya contoh | Lead (4 Okt 2026) | final (menggantikan format `{seq}` D-06/D-43) |
+| D-83 | Satu surat satu form dan satu "Buat PDF"; "Kirim" sekali setelah semua surat yang wajib ada | Lead (4 Okt 2026) | final |
+| D-84 | Template surat = berkas asli sekolah; lambang Pemprov dan sekolah di repo; QR tetap; tombol "Cetak" | Lead (4 Okt 2026) | final |
+| D-85 | Talenta: dua catatan opsional (untuk guru pembina, untuk siswa); "tidak lolos" tidak wajib bercatatan | Lead (4 Okt 2026) | final |
+| D-86 | Talenta "tidak lolos" bisa **dipulihkan**; siswa bisa "Minta ditinjau ulang"; tidak ada pengajuan kedua | Lead (4 Okt 2026) | final (pulihkan tanpa permintaan siswa: sementara — bisa diubah user) |
+| D-87 | Acara apresiasi: konfirmasi di acara, hapus acara (siswa diberi tahu), acara terkonfirmasi terkunci | Lead (4 Okt 2026) | final |
+| D-88 | Status aktivasi: "Lihat" membuka popup kelas | Lead (4 Okt 2026) | final |
+| D-89 | Kata sehari-hari di UI: upload, download, link, preview | Lead (4 Okt 2026) | final (menyesuaikan gaya bahasa D-19) |
+| D-90 | Angka menu berubah tanpa muat ulang; kotak cari atas menyaring saat diketik; satu kotak cari per layar | Lead (4 Okt 2026) | final |
+| D-91 | Kecepatan lokal: cache config + view khusus php-fpm di filesystem container; tes menolak jalan bila config ter-cache | Lead / M1 (4 Okt 2026) | final |
 | U-01…U-06 | Usulan keamanan yang belum diputuskan | Agent H (keamanan) | menunggu jawaban sekolah / sementara |
 
 ---
@@ -114,7 +140,7 @@
 - **Keputusan:** TU mengisi **dua nomor surat secara manual**: nomor surat siswa (format template Excel `400.3.8/<no>/MRD/<bulan romawi>/<tahun>`) dan nomor surat guru pendamping (format template Word `400.3.8.6/<no>/<tahun>`). Setelah itu TU menekan Generate, dan sistem menghasilkan PDF. Satu file gambar tanda tangan + stempel (diunggah Admin di Pengaturan) ditempel di semua surat. Satu tim mendapat **satu** surat siswa bersama, dan pembimbing mendapat Surat Perintah Tugas.
 - **Alasan:** Penomoran mengikuti buku agenda TU. Satu gambar ttd lebih sederhana daripada tanda tangan per surat.
 - **Dampak:** Constraint unik nomor per jenis surat + tahun, race-safe, dan immutable setelah terbit. Template dikonversi sekali ke Blade dan dirender dengan dompdf ≥ 3.1.6 (tanpa remote/JS). File ttd disimpan privat, hanya Admin yang boleh mengganti. Setiap surat memuat QR/kode verifikasi (gambar ttd mudah disalin). Detail di SECURITY §3g dan §3m-5.
-- **Status:** sementara. Template surat tugas masih dikonfirmasi sekolah, dan arti "MRD" belum diketahui.
+- **Status:** sementara. Template surat tugas masih dikonfirmasi sekolah, dan arti "MRD" belum diketahui. *(4 Okt 2026: format nomor dan keunikan per tahun digantikan D-82; pengisian per surat D-83; template D-84.)*
 
 ### D-07 · Batas laporan hasil · 30 Sep 2026
 - **Keputusan:** Siswa melaporkan hasil paling lambat **30 hari setelah lomba selesai** (nilai bisa diubah Admin), mengunggah sertifikat/dokumentasi, lalu Kesiswaan memverifikasi dan poin diberikan.
@@ -136,7 +162,7 @@
 - **Keputusan:** Peringkat menjumlahkan semua tahun. Siswa arsip tetap tampil dengan chip "Alumni".
 - **Alasan:** Menghargai konsistensi prestasi selama bersekolah.
 - **Dampak:** Query peringkat mencakup akun arsip. Di halaman publik, siswa hanya tampil sesuai flag persetujuan (D-16).
-- **Status:** final.
+- **Status:** final. *(4 Okt 2026: cara menampilkan alumni di peringkat publik digantikan D-80.)*
 
 ### D-10 · Jejak Prestasi 6 fase · 30 Sep 2026
 - **Keputusan:** Tracker punya 6 fase: 1 Daftar · 2 Persetujuan · 3 Surat tugas · 4 Lomba · 5 Laporan hasil · 6 Poin & apresiasi, masing-masing dengan sub-status (spec v2 §4).
@@ -156,7 +182,7 @@
 - **Keputusan:** Admin mengimpor Excel dengan kolom Nama lengkap, NIS, NISN, Tanggal lahir, Kelas saat pendaftaran, No HP (opsional). Admin memilih tahun ajaran data. Sistem menghitung angkatan, tahun masuk kelas XII, dan tanggal arsip otomatis (contoh: kelas X 2026/2027 → kelas XII Juli 2028 → arsip Januari 2030).
 - **Alasan:** Data bersumber dari tata usaha sekolah dan cukup untuk login serta pengarsipan.
 - **Dampak:** Import berjalan di queue dengan dry-run, validasi per baris, penolakan sel formula, dan keunikan NIS/NISN. Hash password awal dibuat di job. `birth_date`, `phone`, dan `nisn` dienkripsi per kolom (SECURITY §3f, §3i).
-- **Status:** final.
+- **Status:** final. *(4 Okt 2026: siswa yang sudah terdaftar tidak lagi ditolak, kelasnya diperbarui: D-81. Kolom "Kelas saat pendaftaran" kini bernama "Kelas".)*
 
 ### D-13 · Arsip otomatis · 30 Sep 2026
 - **Keputusan:** Akun diarsipkan otomatis **18 bulan (1,5 tahun) setelah siswa mulai kelas XII**. Akun arsip read-only dan tidak menerima input baru, tetapi prestasinya tetap ada di histori dan halaman publik.
@@ -176,7 +202,7 @@
   - laporan status aktivasi per kelas
   - "Reset kata sandi & email" oleh Admin (password sementara acak, audit)
   - pesan error generik, argon2id/bcrypt
-- **Status:** final (risiko diterima). Formulir penerimaan risiko **menunggu tanda tangan Kepala Sekolah**. Pemicu tinjau ulang: ≥ 3 kasus pembajakan dalam satu semester.
+- **Status:** final (risiko diterima). Formulir penerimaan risiko **menunggu tanda tangan Kepala Sekolah**. Pemicu tinjau ulang: ≥ 3 kasus pembajakan dalam satu semester. *(4 Okt 2026: urutan login pertama digantikan D-79, dan siswa juga boleh masuk dengan email: D-78. Formulir penerimaan risiko perlu memuat risiko tambahan D-79.)*
 
 ### D-15 · OTP email ditunda · 30 Sep 2026
 - **Keputusan:** Pengiriman OTP email ditunda. Selama pengembangan, kode 6 digit apa pun diterima. Tim deploy mengonfigurasi email noreply nyata nanti.
@@ -215,7 +241,7 @@
 - **Keputusan:** Arah visual v2 "Behance edu-soft": kartu katalog bercover per bidang, nav pill terisi, font Urbanist + Plus Jakarta Sans, warna AA dengan satu warna untuk satu makna, tanpa emoji dan tanpa tema gelap. Teks berbahasa Indonesia, sentence case, singkat, dan siswa disapa "kamu".
 - **Alasan:** Referensi Behance dari pengguna (CORSTA, Scholarship Discovery, CrioEd). Pengguna tidak suka teks panjang.
 - **Dampak:** Helmet CSS, komponen, dan ikon bersama di `DESIGN-SPEC-v2.md` §3–§6. Aksesibilitas: target sentuh ≥ 44 px di mobile, label pada semua input.
-- **Status:** final (fase desain).
+- **Status:** final (fase desain). *(4 Okt 2026: pilihan kata disesuaikan D-89: upload, download, link, preview.)*
 
 ### D-20 · Data fiktif di mockup · 30 Sep 2026
 - **Keputusan:** Mockup **tidak pernah** memakai nama, NIS, atau NISN siswa/guru yang nyata. Logo memakai placeholder (bukan lambang sekolah), tanpa foto nyata (cover bidang + avatar inisial), dan dashboard diberi chip "Data contoh".
@@ -253,7 +279,7 @@ Dicatat oleh W3-A dari keputusan lead (CLAUDE.md §8, catatan `docs/dev-notes/`)
 ### D-37 · Peringkat pribadi vs publik · 1 Okt 2026
 - **Keputusan:** Peringkat pribadi siswa (Beranda, Portofolio, halaman publik siswa) dihitung di antara **siswa aktif** saja (akun aktif/menunggu aktivasi). Peringkat publik memuat alumni dengan chip "Alumni" lewat tombol "Tampilkan alumni" (D-09 tetap berlaku untuk papan peringkat).
 - **Dampak:** Satu sumber `App\Support\Leaderboard\PersonalRank`. Data demo: Nadia #14 di semua halaman pribadi, #15 di peringkat publik dengan alumni.
-- **Status:** final.
+- **Status:** final. *(4 Okt 2026: tombol "Tampilkan alumni" digantikan pilihan Siswa aktif / Alumni / Semua, D-80; peringkat pribadi tidak berubah.)*
 
 ### D-38 · Nama di halaman publik & indeks mesin pencari · 1 Okt 2026
 - **Keputusan:** Nama siswa tampil hanya bila `publish_consent` menyala; selain itu tertulis "Siswa kelas X/XI/XII" (atau "Alumni") dan tetap dihitung. Halaman publik `noindex` (setting `public_indexing` = mati) sampai sekolah memastikan proses izin orang tua; halaman per siswa selalu `noindex`.
@@ -275,11 +301,11 @@ Dicatat oleh W3-A dari keputusan lead (CLAUDE.md §8, catatan `docs/dev-notes/`)
 
 ### D-42 · Identitas login · 1 Okt 2026
 - **Keputusan:** Staf login dengan `username` atau email; siswa dengan NIS atau NISN (10 digit = NISN).
-- **Status:** final.
+- **Status:** final. *(4 Okt 2026: siswa yang sudah selesai aktivasi juga boleh masuk dengan email, D-78.)*
 
 ### D-43 · Surat tugas dua langkah · 1 Okt 2026
 - **Keputusan:** TU **menerbitkan** surat (nomor + PDF, tidak bisa diubah) lalu **mengirim** dalam langkah terpisah; status `surat_terbit` saat dikirim. Surat siswa mencetak NIS sesuai template sekolah (menjawab §F-2 untuk kolom NIS).
-- **Status:** final.
+- **Status:** final. *(4 Okt 2026: tiap surat diterbitkan sendiri, D-83; nomor diketik lengkap, D-82. Dua langkah Terbitkan → Kirim tetap.)*
 
 ### D-44 · Kunci tabel · 1 Okt 2026
 - **Keputusan:** `users.id` tetap bigint (Fortify, sesi, spatie); tabel domain memakai ULID dan hanya ULID yang muncul di URL.
@@ -380,7 +406,7 @@ user**: dipakai sekarang, lead/sekolah boleh menggantinya dengan entri baru. Tid
 ### D-60 · Template surat oleh Tata Usaha · 1 Okt 2026
 - **Keputusan:** TU mengubah teks tetap surat (dasar, pembuka, penutup, kop, jabatan penanda tangan, kota) di layar **Template surat** dengan penanda `{sekolah}`, `{penyelenggara}`, `{tahun_ajaran}`; disimpan sebagai JSON di setting `letter_template`, berversi di log audit, Admin diberi tahu. Format nomor surat tetap hanya bisa diubah Admin (D-06).
 - **Dampak:** `LetterTemplate`, `UpdateLetterTemplate`, `TataUsaha\TemplateSurat` (B5). Template resmi sekolah tetap pertanyaan terbuka (§F-2).
-- **Status:** sementara — bisa diubah user.
+- **Status:** sementara — bisa diubah user. *(4 Okt 2026: format nomor di Admin kini hanya contoh, D-82; template resmi sekolah sudah diputuskan, D-84.)*
 
 ## D4. Keputusan integrasi W4 (1 Okt 2026)
 
@@ -495,6 +521,105 @@ produk berstatus **sementara — bisa diubah user**.
 - **Dampak:** `RejectRegistration`, `CancelRegistration`, `RegistrationRejected`, `RegistrationCancelled`, `RegistrationApproved`. Tes: `tests/Feature/Registrations/DecisionNotificationsTest.php`. Pengajuan talenta masih tidak memberi tahu siapa pun (backlog #40).
 - **Status:** final (keputusan user).
 
+## D6. Keputusan lead dari uji manual (4 Okt 2026)
+
+Dicatat dari 18 permintaan lead setelah mencoba sendiri aplikasinya pada 4 Okt 2026 (ringkasan: `docs/dev-notes/M1.md`;
+rincian: `M1-A.md`…`M1-E.md`). Semua berstatus **final (keputusan user)**, kecuali butir yang ditandai *sementara*.
+Tiap entri menyebut keputusan lama yang digantinya; entri lama tidak dihapus.
+
+### D-78 · Siswa boleh masuk pakai email setelah aktivasi · 4 Okt 2026
+- **Keputusan:** Siswa yang **sudah selesai aktivasi** boleh masuk dengan **NIS, NISN, atau email** yang sudah dihubungkan. Sebelum aktivasi selesai, email siswa tidak dikenali (jawabannya sama dengan akun yang tidak ada). Staf tidak berubah: username atau email. Siswa tidak pernah masuk dengan username. "Lupa kata sandi" memakai aturan yang sama.
+- **Alasan:** Permintaan user: "siswa juga bisa masuk menggunakan email jika sudah selesai aktivasi". Email lebih mudah diingat daripada NIS. Ini tidak membuka jalan masuk baru: email bukan rahasia, yang rahasia tetap kata sandi.
+- **Dampak:** `App\Actions\Fortify\LoginIdentifier`: email dicocokkan ke siswa hanya bila `DetermineActivationStep::finished()` (status aktif, email terverifikasi, tidak wajib ganti kata sandi). Email yang cocok memakai jatah percobaan yang sama dengan NIS/NISN akun itu (`u:<id>`); email yang tidak cocok diperlakukan seperti akun tidak dikenal (pesan generik, hash dummy, K11). Siswa yang masuk dengan email tetap tidak lewat TOTP (D-66). Label kolom login: "NIS, NISN, atau email"; pesan salah tetap "NIS/NISN atau kata sandi salah."
+- **Status:** final (keputusan user). Menggantikan bagian siswa di D-42.
+
+### D-79 · Urutan aktivasi: email → kode → kata sandi; ganti kata sandi opsional untuk siswa · 4 Okt 2026
+- **Keputusan:** Masuk pertama kali kini tiga langkah: **1 hubungkan email → 2 kode verifikasi 6 angka → 3 kata sandi**. Di langkah 3 **siswa boleh memilih**: "Ganti kata sandi" atau "Lewati, pakai kata sandi sekarang". **Staf wajib** mengganti kata sandi (tidak ada tombol lewati). Akun baru berstatus aktif setelah langkah 3. Akun yang direset Admin memakai layar yang sama; siswa yang direset juga boleh tetap memakai kata sandi sementaranya.
+- **Alasan:** Permintaan user: "saat aktivasi harusnya hubungkan email dulu lalu minta kode verifikasi baru. Untuk ubah password nya optional jadi siswa bisa milih mau ganti password atau gak".
+- **Dampak:** `DetermineActivationStep` (langkah `EMAIL` lalu `PASSWORD`), `CompleteActivation::bindEmail()` / `changePassword()` / `keepPassword()`, `Livewire\Auth\Activation`. Email "Bukan saya?" (K8) dikirim saat email terhubung (langkah 2), ketika akun masih menunggu aktivasi; langkah 3 tidak mengirim email. Kata sandi baru harus berbeda dari kata sandi yang sedang dipakai. Audit: `account.email_bound`, `account.activated` (`password_changed` ya/tidak), `activation.password_kept`.
+  - **Risiko yang diterima:** siswa yang memilih "Lewati" tetap memakai kata sandi dari sekolah. Kata sandi itu bisa ditebak dari tanggal lahir **selama masih dipakai**; dulu celah ini tertutup saat aktivasi (paling lama jendela 14 hari). Deteksi K7 tidak bisa melihatnya, karena K7 hanya menyala bila pola awal *gagal* di akun aktif. Pengambilalihan juga bisa tidak ketahuan: orang yang aktivasi lebih dulu bisa menghubungkan emailnya sendiri lalu melewati langkah 3, dan pemilik asli tetap bisa masuk dengan kata sandi sekolah.
+  - **Penyeimbang yang ada:** laporan Status aktivasi (K9: tiap siswa memeriksa email tersamar di barisnya) dan catatan audit `activation.password_kept`.
+  - **Penyeimbang yang belum ada (backlog):** tanda "masih pakai kata sandi dari sekolah" di Status aktivasi (siswa aktif dengan `password_changed_at` kosong) dan pengingat untuk mengganti kata sandi.
+- **Status:** final (keputusan user; risiko diterima). Menggantikan urutan login pertama di D-14 dan K4 (SECURITY §3a). Formulir penerimaan risiko D-14 perlu memuat risiko ini.
+
+### D-80 · Peringkat publik: Siswa aktif / Alumni / Semua · 4 Okt 2026
+- **Keputusan:** Peringkat publik punya tiga pilihan: **Siswa aktif** (bawaan), **Alumni**, **Semua**. "Alumni" hanya menampilkan alumni yang punya prestasi terverifikasi. Peringkat dihitung di dalam kelompok yang sedang tampil. Alumni ditulis **"Alumni"** di tempat kelas; kelas terakhirnya tidak ditampilkan lagi di halaman publik mana pun. Mode Kelas hanya untuk siswa aktif, karena alumni tidak punya kelas.
+- **Alasan:** Permintaan user: filter harus bekerja sesuai namanya ("jika filternya hanya alumni maka akan menampilkan siswa alumni yang berprestasi saja") dan alumni tampil sebagai alumni. Tombol lama "Tampilkan alumni" hanya *menambahkan* alumni ke daftar siswa aktif, jadi tidak ada cara melihat alumni saja.
+- **Dampak:** `App\Domain\Leaderboard\RankingScope`; URL `/peringkat?status=aktif|alumni|semua` (`?alumni=1` yang lama diabaikan); `PublicAchievements::ranking()` dan `angkatanOptions()`; daftar angkatan hanya memuat angkatan yang ada di kelompok yang tampil; kunci cache baru (`PublicAchievements::SHAPE`).
+- **Status:** final (keputusan user). Menggantikan tombol "Tampilkan alumni" (D-09, D-37). D-37 selebihnya tidak berubah: peringkat pribadi dan layar Peringkat siswa tetap hanya siswa aktif (D-52).
+
+### D-81 · Import siswa tahunan memperbarui kelas · 4 Okt 2026
+- **Keputusan:** Berkas siswa tahunan (semua angkatan, kolom **Kelas** = kelas saat berkas diupload) boleh diupload lagi tiap tahun ajaran.
+  - NIS dan NISN belum dikenal → **siswa baru**, sama seperti sebelumnya.
+  - NIS dan NISN cocok dengan **satu** siswa terdaftar → siswa itu **pindah kelas** (atau "tidak berubah"). Yang ditulis hanya kelas, tahun ajaran data, tanggal mulai kelas XII, tanggal arsip, dan No HP bila diisi. Nama, tanggal lahir, kata sandi, email, status, aktivasi, dan izin publikasi **tidak pernah** diubah oleh import.
+  - Hanya satu nomor yang cocok, atau dua nomor milik siswa berbeda → baris **ditolak**.
+  - Akun arsip dilewati; akun nonaktif diperbarui dan tetap nonaktif.
+- **Alasan:** Permintaan user: "Untuk kelasnya pastikan diupdate terus … ketika ada data baru dientry maka kelas murid yang lama juga akan berubah". Kelas di peringkat dan surat harus kelas yang sekarang.
+- **Dampak:** `ImportStudents`, `StudentImportReport` (aksi baru / pindah / tidak berubah / dilewati / ditolak), `student_imports.updated_count`. Pratinjau: Siswa baru · Pindah kelas · Tidak berubah · Ditolak, plus peringatan jumlah tanggal arsip yang akan berubah. Audit per siswa: `student.class_changed` atau `student.phone_updated` (tanpa nama, nomor, tanggal lahir, atau No HP).
+  - *Sementara — perlu dikonfirmasi user:* (a) bila kelas + tahun ajaran di berkas menghasilkan tanggal arsip yang lain, **berkas tahunan menang** atas tanggal arsip yang pernah diubah Admin secara manual (D-58); perubahannya tampil sebagai catatan baris, dan tanggal arsip baru yang tidak di masa depan membuat baris ditolak. (b) Siswa terdaftar yang **tidak ada** di berkas dibiarkan apa adanya (kelas XII tahun lalu tetap di kelasnya sampai tanggal arsip).
+- **Status:** final (keputusan user); dua butir di atas sementara. Menggantikan aturan "NIS/NISN yang sudah terdaftar = ditolak" (D-12, D-26).
+
+### D-82 · Nomor surat diketik lengkap oleh Tata Usaha · 4 Okt 2026
+- **Keputusan:** TU mengetik **nomor lengkap** tiap surat, mis. `400.3.8/313/MRD/X/2026`, untuk surat siswa maupun surat guru pendamping. Sistem tidak lagi menyusun nomor dari nomor urut. Aturan: 3–64 karakter; hanya huruf, angka, titik, garis miring, tanda hubung, dan spasi; wajib memuat angka. Satu nomor tidak boleh dipakai dua kali **untuk jenis surat yang sama**, termasuk nomor surat yang sudah dicabut; huruf besar/kecil dan spasi diabaikan saat membandingkan. Format di Admin › Pengaturan kini hanya **contoh** yang tampil di bawah kolom nomor.
+- **Alasan:** Permintaan user: "Input nomor suratnya biarkan dari mereka semua jadi mereka semua input full". Penomoran mengikuti buku agenda TU; aplikasi tidak perlu tahu arti "MRD" atau kapan nomor urut direset.
+- **Dampak:** `LetterNumber::normalize()` / `numberError()` / `key()` / `example()`; `letters.sequence` boleh kosong; indeks unik `(type, year, sequence)` diganti `(type, full_number)`; tahun dan bulan diambil dari tanggal surat. Nomor tetap tidak bisa diubah setelah PDF dibuat (koreksi = D-49, dengan nomor baru).
+- **Status:** final (keputusan user). Menggantikan bagian format `{seq}` dan keunikan nomor urut per tahun di D-06/D-43; "format nomor hanya Admin" di D-60 kini berarti contoh nomor. Menjawab §F-3.
+
+### D-83 · Satu surat satu form; "Kirim" sekali · 4 Okt 2026
+- **Keputusan:** Surat siswa dan surat guru pendamping masing-masing punya **form sendiri** (tab sendiri): nomor, tanggal surat, dasar, dan pelaksanaan diisi per surat, lalu **"Buat PDF"** per surat. **"Kirim"** tetap satu kali, dan baru bisa setelah semua surat yang wajib ada (surat siswa; ditambah surat guru bila ada guru pembimbing). Tombol tidak dibuat abu-abu: bila ada yang kurang, layar langsung menuju daftar kesalahan yang menyebut kolomnya.
+- **Alasan:** Permintaan user: "Isi entry data surat itu per surat, jangan dijadikan satu" dan, untuk koreksi, layar harus menunjukkan bagian yang perlu diisi dan yang salah.
+- **Dampak:** `LetterDraft` (satu surat), `IssueLetters::handle(User, Registration, LetterType, LetterDraft)`, `RevokeLetter`, `SendLetters::missing()`, `LetterPolicy::create()` / `send()` / `requiredTypes()`; kolom baru `letters.basis_from`, `basis_subject`, `schedule_date` ("Hari" dan "Tanggal" kini dua kolom); event browser `sth-form-invalid`; audit `letters.issued` sekali per surat.
+- **Status:** final (keputusan user). Menggantikan "satu draft untuk dua surat" dan tombol "Buat 2 PDF"; dua langkah Terbitkan → Kirim (D-43) tetap.
+
+### D-84 · Template surat = berkas asli sekolah, bisa dicetak · 4 Okt 2026
+- **Keputusan:** Kedua PDF mengikuti berkas sekolah sendiri. Surat guru = "ST PENGUKUHAN KEG OPSI.docx" (Surat Perintah Tugas + halaman Lampiran; tabel Lampiran **tanpa garis** seperti di berkas Word). Surat siswa = lembar Excel "ST_LOMBA … TIM" (satu surat untuk seluruh tim, tabel NO · NAMA MURID · NIS · KELAS). Kop memuat **lambang Pemprov Jawa Tengah dan lambang sekolah**; berkas lambang disimpan di repo (`resources/pdf/assets`). QR dan kode verifikasi tetap dicetak. Selain "Download" ada tombol **"Cetak"**: PDF dibuka di tab baru untuk di-print.
+- **Alasan:** Permintaan user: "samakan template nya persis" dan "kedua nya harus dalam bentuk pdf dan bisa di print". Lambang adalah lambang lembaga, bukan data pribadi; tanpa lambang, kop tidak sama dengan surat sekolah.
+- **Dampak:** `resources/pdf/*` dan preview TU dibangun ulang; `LetterTemplate` (`kop_6`, `guru_basis_1…3`); route `tu.surat.cetak` (PDF inline; diperiksa `LetterPolicy::view`; `Cache-Control: no-store, private`; CSP `frame-ancestors 'none'`; tercatat `letter.downloaded` dengan `inline: true`) dan `tu.surat.kop` (lambang untuk preview). Lambang ada di dalam chroot dompdf dan harus ikut di image produksi. Tanda tangan + stempel tetap satu gambar privat (D-06). "Cetak" hanya untuk TU; Kepala Sekolah tetap hanya download.
+- **Status:** final (keputusan user). Menyesuaikan D-20 (logo placeholder, bukan lambang sekolah) khusus untuk kop surat; D-20 tetap berlaku untuk mockup dan layar aplikasi. Menjawab §F-2. Belum dicoba di printer asli dan belum dicocokkan dengan kertas sekolah (backlog).
+
+### D-85 · Talenta: dua catatan opsional dengan pembaca berbeda · 4 Okt 2026
+- **Keputusan:** Tiap pilihan talenta punya dua catatan, keduanya **opsional**. **Catatan untuk guru pembina**: internal, hanya dibaca guru pembina dan Kesiswaan. **Catatan untuk siswa**: ikut di notifikasi keputusan (lolos, tidak lolos, dipulihkan) dan tampil di Profil talenta. Keputusan baru mengganti catatan siswa yang lama (dikosongkan = dihapus). "Tidak lolos" **tidak lagi wajib** bercatatan.
+- **Alasan:** Permintaan user: "catatan dibuat lebih jelas kepada siapa … Tambahkan catatan kepada siswa jika dia ditolak maupun di acc … semua catatan ini bersifat opsional".
+- **Dampak:** Kolom baru `talent_applications.student_note`; kolom `note` kini hanya catatan untuk guru pembina. Data lama: catatan baris `tidak_lolos` (dulu dikirim ke siswa) dipindah ke `student_note`. `MoveTalentStage`, `RejectTalentApplication`, `TalentNote`. Tombol "Simpan" tidak pernah menyimpan catatan untuk siswa. Ekspor Excel punya dua kolom catatan.
+- **Status:** final (keputusan user). Tidak menggantikan entri lama (aturan "penolakan wajib bercatatan" dulu hanya ada di kode).
+
+### D-86 · Talenta "tidak lolos" bisa dipulihkan; siswa bisa minta ditinjau ulang · 4 Okt 2026
+- **Keputusan:** Kesiswaan bisa **Pulihkan** pilihan yang tidak lolos: pilihan kembali ke tahap sebelum ditolak (Terdaftar bila tidak diketahui), siswa diberi tahu, catatan untuk siswa opsional. Siswa bisa **Minta ditinjau ulang**: pesan opsional (maks. 500 karakter), satu permintaan terbuka per penolakan, maks. 10 per jam; statusnya tidak berubah sampai Kesiswaan memutuskan, dan semua akun Kesiswaan diberi tahu. Siswa **tidak bisa mendaftar ulang** jenis/cabang yang sudah ditolak; ia diarahkan ke "Minta ditinjau ulang".
+- **Alasan:** Permintaan user: centang di tab tidak lolos diganti ikon recycle, karena Kesiswaan bisa berubah pikiran.
+- **Dampak:** Kolom baru `rejected_from`, `review_requested_at`, `review_message`; `RestoreTalentApplication` (izin `talent.manage`, audit `talent.restored`), `RequestTalentReview` (audit `talent.review_requested`); chip "Minta ditinjau ulang" di daftar Kesiswaan. Belum ada: pulihkan massal, dan kabar untuk guru pembina saat pilihan ditolak atau dipulihkan.
+  - *Sementara — bisa diubah user:* user menulis "bergantung dari feedback/request siswa". Yang dibangun: Kesiswaan boleh memulihkan **dengan atau tanpa** permintaan siswa.
+- **Status:** final (keputusan user); butir tafsir di atas sementara.
+
+### D-87 · Acara apresiasi: dikonfirmasi dan dihapus di tingkat acara · 4 Okt 2026
+- **Keputusan:** Yang dikonfirmasi adalah **acaranya**. "Tandai sudah dilaksanakan" menandai acara (waktu dan siapa) beserta semua prestasi terjadwal di dalamnya; tidak bisa sebelum tanggal acara, tidak bisa untuk acara tanpa prestasi, tidak bisa dua kali. Acara yang belum dikonfirmasi bisa **dihapus**: prestasinya dilepas (bisa dimasukkan ke acara lain) dan tiap siswa yang sudah dijadwalkan diberi tahu. Acara yang sudah dikonfirmasi adalah catatan: tidak bisa dihapus dan tidak bisa ditambah prestasi.
+- **Alasan:** Permintaan user: "Acara seharusnya bisa dihapus dan dikonfirmasi jika sudah dilakukan oleh Humas". Sebelumnya "selesai" hanya ada di baris prestasi, sehingga acara tanpa prestasi tidak bisa dikonfirmasi maupun dihapus.
+- **Dampak:** `appreciation_events.completed_at` / `completed_by`; `CompleteAppreciationEvent`, `DeleteAppreciationEvent` (audit `appreciation.event_deleted`, tanpa nama), notifikasi `AppreciationCancelled`, `RecordAppreciation` menolak acara terkonfirmasi. Jadwal dan pilihan "Masukkan" di Humas hanya memuat acara yang belum dikonfirmasi. Hak tetap `appreciation.manage` (Humas, Kesiswaan, Admin). Mengonfirmasi acara tidak mengirim notifikasi.
+- **Status:** final (keputusan user).
+
+### D-88 · Status aktivasi: "Lihat" membuka popup kelas · 4 Okt 2026
+- **Keputusan:** "Lihat" di tabel per kelas membuka **popup** berisi siswa kelas itu (status, email tersamar, aksi Buka ulang / Buka pembekuan), bukan lagi menyaring "Daftar siswa" di bawah halaman. Alamat `?kelas=<id>` membuka halaman langsung dengan popup itu; filter kelas "Daftar siswa" pindah ke `?kelas_daftar=`.
+- **Alasan:** Permintaan user: "Daftar siswa yang ingin dilihat status nya dibuat popup saja".
+- **Dampak:** `Akun\StatusAktivasi` (dialog `aktivasi-kelas`, 40 baris per langkah, tanpa query tambahan). Izin tidak berubah. "Daftar siswa" tetap ada untuk pencarian lintas kelas dan CSV.
+- **Status:** final (keputusan user).
+
+### D-89 · Kata sehari-hari di UI · 4 Okt 2026
+- **Keputusan:** Teks untuk pengguna memakai kata yang biasa dipakai orang awam: **upload** (bukan unggah), **download** (bukan unduh), **link** (bukan tautan), **preview** (bukan pratinjau), termasuk bentuk berimbuhan (di-upload, meng-upload, men-download, di-download). Berlaku di layar, email, pesan validasi, dan tes. Nama di kode tidak diubah (mis. kunci tab `unggahan`, partial `pratinjau-*`).
+- **Alasan:** Permintaan user: "kata kata yang normal keseharian dipakai oleh orang awam".
+- **Dampak:** Semua view, email, dan pesan. Entri lama di log ini, mockup, dan spec desain masih memakai kata lama; itu bukan alasan mengubah aplikasi kembali.
+- **Status:** final (keputusan user). Menyesuaikan gaya bahasa D-19; selebihnya D-19 tetap (Bahasa Indonesia, singkat, sentence case, siswa disapa "kamu").
+
+### D-90 · Angka menu tanpa muat ulang; kotak cari menyaring saat diketik · 4 Okt 2026
+- **Keputusan:** Angka di menu samping (Antrean surat, Persetujuan, Usulan lomba, Verifikasi hasil, Antrean publikasi) berubah langsung setelah aksi di halaman, tanpa refresh. Angka "Antrean surat" = pendaftaran berstatus `disetujui` (surat belum dikirim) dan turun saat "Kirim". Kotak cari di bar atas menyaring daftar **saat diketik** (jeda 350 ms) bila pengguna sedang di halaman daftarnya; mengosongkannya mengembalikan daftar penuh; di halaman lain, Enter tetap membuka halaman daftar. Di Siswa › Cari lomba hanya ada **satu** kotak cari pada lebar layar apa pun.
+- **Alasan:** Permintaan user: cari tanpa Enter dan kembali otomatis saat dihapus; "kenapa search bar nya ada 2"; angka Antrean surat turun tanpa refresh.
+- **Dampak:** `Navigation::item()` (`badgeKey`), atribut `data-sth-badge` di sidebar, event browser `sth-badges`; atribut `data-sth-live-search` di form bar atas; `resources/js/app.js`. Tetap tanpa `style=""` dan tanpa JS inline (CSP).
+- **Status:** final (keputusan user).
+
+### D-91 · Kecepatan di lingkungan lokal; tes menolak jalan bila config ter-cache · 4 Okt 2026
+- **Keputusan:** Di stack dev, php-fpm membaca **cache config** dan menyimpan **view terkompilasi** di filesystem container sendiri (`/tmp/sth-cache`), dan tidak lagi membandingkan view dengan sumbernya. Pengaturannya hanya lewat `env[...]` pool php-fpm (`docker/php/fpm.dev.conf`), **bukan** `environment:` di compose atau `.env`, sehingga baris perintah (artisan, tes, queue, scheduler) tidak pernah melihat config ter-cache. `tests/TestCase::createApplication()` **menolak jalan** bila config ter-cache atau `APP_ENV` bukan `testing`. Aturan developer: setelah mengubah `.php`, `.blade.php`, `config/*.php`, atau `.env`, jalankan `reload.bat`; jangan pernah menjalankan `php artisan config:cache` atau `optimize` sendiri di repo.
+- **Alasan:** Permintaan user: pindah menu harus secepat mungkin untuk semua peran. Hasil ukur di satu halaman Humas: sekitar 400 pemeriksaan berkas per request di bind mount Windows (±6 ms tiap pemeriksaan), ±165 dari Blade dan ±140 dari config. Sesudahnya 139 per request; halaman Humas 480–720 ms → 260–430 ms. Sisi keamanan: config ter-cache membawa `APP_ENV=local` dan koneksi MySQL dev ke proses tes, `phpunit.xml` tidak bisa menimpanya lagi, lalu `RefreshDatabase` akan mengosongkan database dev.
+- **Dampak:** `docker/php/fpm.dev.conf`, `docker/php/dev-cache.sh`, `config/view.php`, `compose.yaml`, `start.bat`, `reload.bat`, `tests/TestCase.php`. Hanya untuk dev; produksi tidak membaca berkas-berkas itu. Melengkapi PERF1 (`docs/dev-notes/PERF1.md`).
+- **Status:** final (menyangkut keamanan: penjaga tes terhadap database dev; mengubahnya butuh entri baru).
+
 ## E. Usulan keamanan yang belum diputuskan
 
 | ID | Usulan | Alasan singkat | Status |
@@ -509,8 +634,8 @@ produk berstatus **sementara — bisa diubah user**.
 ## F. Pertanyaan terbuka
 
 1. ~~Google Form "Pembinaan Talenta"~~ **Terjawab 30 Sep 2026**: struktur lengkap di `TALENT-FORM.md`, keputusan D-21 sampai D-23.
-2. **Template surat tugas** masih dikonfirmasi sekolah: kolom apa saja yang ada di surat siswa (NIS/NISN? kelas?), dan apakah surat tim memuat semua anggota dalam satu tabel?
-3. **Format nomor surat:** apa arti "MRD" pada `400.3.8/<no>/MRD/<bulan romawi>/<tahun>`? Apakah nomor urut direset per tahun, dan apakah buku agenda siswa dan guru terpisah?
+2. ~~**Template surat tugas** masih dikonfirmasi sekolah: kolom apa saja yang ada di surat siswa (NIS/NISN? kelas?), dan apakah surat tim memuat semua anggota dalam satu tabel?~~ **Terjawab 4 Okt 2026 (lead)**: template = berkas asli sekolah (D-84). Surat siswa: satu surat untuk seluruh tim dengan tabel NO · NAMA MURID · NIS · KELAS; surat guru: Surat Perintah Tugas + halaman Lampiran.
+3. ~~**Format nomor surat:** apa arti "MRD" pada `400.3.8/<no>/MRD/<bulan romawi>/<tahun>`? Apakah nomor urut direset per tahun, dan apakah buku agenda siswa dan guru terpisah?~~ **Tidak lagi menghambat sejak 4 Okt 2026 (lead)**: TU mengetik nomor lengkap tiap surat, dan sistem hanya menjaga nomor tidak dipakai dua kali per jenis surat (D-82). Arti "MRD" dan aturan reset tetap urusan buku agenda TU; aplikasi tidak perlu tahu.
 4. **Foto siswa di halaman publik:** bolehkah ditampilkan, dan bagaimana proses persetujuan orang tua (formulir daftar ulang? untuk siswa yang sudah ada?). Hal yang sama berlaku untuk nama dan gambar sertifikat (U-04).
 5. **Tenggat proyek & ketersediaan tim:** kapan target go-live, siapa saja anggota tim (developer, petugas deploy, Admin sekolah), dan berapa jam per minggu masing-masing tersedia?
 6. Pertanyaan keamanan lanjutan (situs utama WordPress, Ubuntu Pro, akses server, DNS, 2FA staf, backup, DPO, akun arsip) ada di `SECURITY.md` §5.

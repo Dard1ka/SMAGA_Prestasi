@@ -18,10 +18,16 @@ trait WithKesiswaanBadges
     /** @return array<string, int> */
     protected function kesiswaanBadges(): array
     {
-        return [
+        $badges = [
             'kesiswaan.usulan' => Competition::query()->pendingVerification()->count(),
             'kesiswaan.verifikasi' => Report::query()->awaitingVerification()->count(),
         ];
+
+        // The sidebar is rendered once per page load: send the counts to the browser too, so the numbers
+        // follow every verify/publish/reject without a reload (resources/js/app.js, event `sth-badges`).
+        $this->dispatch('sth-badges', badges: $badges);
+
+        return $badges;
     }
 
     protected static function shortDate(?DateTimeInterface $date, bool $withYear = true): string

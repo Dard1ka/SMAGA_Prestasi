@@ -53,8 +53,14 @@
                     <td class="text-right whitespace-nowrap">
                         @if ($letter->file_id)
                             <x-sth.button variant="quiet" size="sm" icon="download" wire:click="download('{{ $letter->id }}')">
-                                Unduh<span class="sr-only"> {{ $letter->full_number }}</span>
+                                Download<span class="sr-only"> {{ $letter->full_number }}</span>
                             </x-sth.button>
+                            @if ($canPrint)
+                                {{-- M1-A: opens the PDF inline in a new tab, to print from the browser's PDF viewer. --}}
+                                <x-sth.button variant="quiet" size="sm" icon="external" href="{{ route('tu.surat.cetak', $letter) }}" target="_blank" rel="noopener" :navigate="false">
+                                    Cetak<span class="sr-only"> {{ $letter->full_number }}, buka di tab baru</span>
+                                </x-sth.button>
+                            @endif
                         @endif
                         @if ($canCorrect && ! $letter->revoked_at && $registration)
                             <x-sth.button variant="quiet" size="sm" icon="edit" href="{{ route('tu.surat.show', $registration) }}">

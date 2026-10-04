@@ -29,7 +29,7 @@ class SignatureSeeder extends Seeder
     public function run(): void
     {
         if (app()->isProduction()) {
-            $this->command?->warn('SignatureSeeder dilewati di production: Admin mengunggah tanda tangan asli.');
+            $this->command?->warn('SignatureSeeder dilewati di production: Admin meng-upload tanda tangan asli.');
 
             return;
         }

@@ -106,12 +106,12 @@ final class ExportPrestasiReport
         ];
     }
 
-    /** "Diunduh oleh Dra. Sri Wahyuni (kepsek) · 1 Okt 2026 10.15 WIB · dokumen internal" */
+    /** "Di-download oleh Dra. Sri Wahyuni (kepsek) · 1 Okt 2026 10.15 WIB · dokumen internal" */
     public static function watermark(User $actor, CarbonImmutable $at): string
     {
         $who = (string) $actor->name.($actor->username ? ' ('.$actor->username.')' : '');
 
-        return 'Diunduh oleh '.$who.' · '.$at->locale('id')->translatedFormat('j M Y H.i').' WIB · dokumen internal';
+        return 'Di-download oleh '.$who.' · '.$at->locale('id')->translatedFormat('j M Y H.i').' WIB · dokumen internal';
     }
 
     /**
@@ -150,7 +150,7 @@ final class ExportPrestasiReport
             description: $meta['watermark'],
             category: 'Dokumen internal',
             language: 'id-ID',
-            customProperties: ['Diunduh oleh' => (string) $actor->name, 'Waktu unduh' => $meta['generatedAt']],
+            customProperties: ['Di-download oleh' => (string) $actor->name, 'Waktu download' => $meta['generatedAt']],
         ));
         $mark = str_replace('&', '&&', $meta['watermark']);
         $options->setHeaderFooter(new HeaderFooter(

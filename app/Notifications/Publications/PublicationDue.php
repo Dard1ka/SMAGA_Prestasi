@@ -62,7 +62,7 @@ final class PublicationDue extends Notification implements ShouldQueue
 
     public function title(): string
     {
-        return 'Waktunya unggah publikasi';
+        return 'Waktunya upload publikasi';
     }
 
     public function body(): string
@@ -70,7 +70,7 @@ final class PublicationDue extends Notification implements ShouldQueue
         $where = $this->channels !== '' ? ' ke '.$this->channels : '';
 
         return 'Jadwal '.$this->scheduledText.' sudah tiba: '.$this->headline.' '.$this->competitionName.' ('.$this->studentName.'). '
-            .'Statusnya kini Dipublikasikan. Unggah caption dan flyer'.$where.' sekarang.';
+            .'Statusnya kini Dipublikasikan. Upload caption dan flyer'.$where.' sekarang.';
     }
 
     public function toMail(object $notifiable): MailMessage

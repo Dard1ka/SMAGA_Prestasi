@@ -28,6 +28,9 @@ use Throwable;
  * short transaction. ImportStudents::importSlice() re-validates the whole file each time, so a retried slice never
  * creates a student twice. The student_imports row carries status + counters for the screen's polling. After the last
  * slice: one audit entry (ImportStudents::recordImport) and the stored spreadsheet is deleted.
+ *
+ * M1-C: a slice also moves registered students to the class in the file (`updated_count`, one `student.class_changed`
+ * audit entry each); the same file through this job or through the synchronous path gives the same result.
  */
 final class ImportStudentsJob implements ShouldQueue
 {
@@ -66,7 +69,7 @@ final class ImportStudentsJob implements ShouldQueue
         $path = $import->file->storage()->path($import->file->path);
 
         if (! is_file($path)) {
-            $this->finishFailed($import, $store, 'File impor tidak ditemukan. Unggah ulang file.');
+            $this->finishFailed($import, $store, 'File impor tidak ditemukan. Upload ulang file.');
 
             return;
         }
@@ -98,10 +101,13 @@ final class ImportStudentsJob implements ShouldQueue
         $changes = [
             'processed_rows' => $processed,
             'created_count' => $import->created_count + $result['created'],
+            // M1-C: registered students moved to the class in the file.
+            'updated_count' => $import->updated_count + $result['moved'],
         ];
 
         if ($this->offset === 0) {
-            // Counts of the file as validated before anything was created (later slices see their own rows as taken).
+            // Counts of the file as validated before anything was written (later slices see the rows of earlier
+            // slices as registered students who are already in their class).
             $changes += [
                 'total_rows' => $result['rows'],
                 'valid_rows' => $result['valid'],
@@ -123,8 +129,9 @@ final class ImportStudentsJob implements ShouldQueue
             $import->school_year,
             $import->total_rows,
             $import->created_count,
-            max(0, $import->total_rows - $import->created_count),
+            $import->invalid_rows,
             $import->file_sha256,
+            $import->updated_count,
         );
 
         $import->forceFill(['status' => StudentImportStatus::Done, 'finished_at' => now()])->save();
@@ -136,7 +143,7 @@ final class ImportStudentsJob implements ShouldQueue
         $import = StudentImport::query()->with('file')->find($this->importId);
 
         if ($import !== null && $import->isActive()) {
-            $this->finishFailed($import, app(StoreUpload::class), 'Impor terhenti karena gangguan sistem. Siswa yang sudah dibuat tetap tersimpan; unggah ulang file untuk melanjutkan.');
+            $this->finishFailed($import, app(StoreUpload::class), 'Impor terhenti karena gangguan sistem. Data yang sudah diproses tetap tersimpan; upload ulang file untuk melanjutkan.');
         }
     }
 

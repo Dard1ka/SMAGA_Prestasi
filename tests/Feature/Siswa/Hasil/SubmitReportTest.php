@@ -198,7 +198,7 @@ it('re-sends after "perlu revisi" on the same report row, replacing only the re-
     $oldReport = $first->files()->where('kind', ReportFileKind::LaporanRiset)->value('file_id');
 
     // What W2-B's RequestReportRevision does.
-    $first->forceFill(['status' => ReportStatus::PerluRevisi, 'note' => 'Sertifikat buram, unggah ulang.'])->save();
+    $first->forceFill(['status' => ReportStatus::PerluRevisi, 'note' => 'Sertifikat buram, upload ulang.'])->save();
     $this->registration->forceFill(['status' => RegistrationStatus::MenungguLaporan])->save();
 
     $second = app(SubmitReport::class)->handle($this->nadia->user, $this->registration->fresh(), w2a2ReportData([

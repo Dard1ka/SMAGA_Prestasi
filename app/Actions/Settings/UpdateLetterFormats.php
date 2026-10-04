@@ -14,9 +14,11 @@ use Illuminate\Validation\ValidationException;
 use InvalidArgumentException;
 
 /**
- * Admin › Pengaturan › Surat & tanda tangan › Format nomor surat (`setting.manage`). Templates are checked with
- * LetterNumber::assertValidTemplate() ({seq} exactly once, only {seq} {roman_month} {year}). Issued letters
- * keep their stored full_number (immutable), so a new format only affects new letters. Audited.
+ * Admin › Pengaturan › Surat & tanda tangan › Contoh nomor surat (`setting.manage`). Templates are checked with
+ * LetterNumber::assertValidTemplate() ({seq} exactly once, only {seq} {roman_month} {year}). Audited.
+ * M1-A (lead, 2026-10-04): Tata Usaha types the complete number of every letter, so these two formats no longer
+ * build a number; they only produce the example under TU's number field (IssueLetters::example()). Issued
+ * letters keep their stored full_number (immutable).
  */
 final class UpdateLetterFormats
 {

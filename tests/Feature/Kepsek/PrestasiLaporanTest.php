@@ -146,7 +146,7 @@ it('exports a watermarked XLSX with explicit string cells, no NIS, and audits it
 
     expect($result['rows'])->toBe(3)
         ->and($result['filename'])->toEndWith('.xlsx')
-        ->and($sheets)->toContain('Diunduh oleh Dra. Sri Wahyuni, M.Pd. (kepsek)')
+        ->and($sheets)->toContain('Di-download oleh Dra. Sri Wahyuni, M.Pd. (kepsek)')
         ->and($sheets)->toContain('Nadia Putri Anindya')
         ->and($sheets)->toContain('=HYPERLINK')
         ->and($sheets)->not->toContain('<f>')

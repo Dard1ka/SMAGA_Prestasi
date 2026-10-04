@@ -47,6 +47,10 @@ if not exist "public\build\manifest.json" (
   docker compose run --rm node sh -c "npm install && npm run build" || goto :fail
 )
 
+rem Cache khusus php-fpm di dalam container supaya pindah halaman cepat (docker/php/fpm.dev.conf).
+rem Kalau langkah ini gagal aplikasi tetap jalan, hanya lebih lambat.
+docker compose exec -T app sh docker/php/dev-cache.sh --force
+
 echo.
 echo Siap!
 echo   Aplikasi  : http://127.0.0.1:8080

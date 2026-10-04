@@ -30,7 +30,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 /**
  * Portofolio (UI-MAP #14, board Portofolio): profile header (points, rank among active students via
  * App\Support\Leaderboard\PersonalRank, counts, archive date), verified achievements with the weight snapshot
- * (rumus), own certificates through files.show, talent summary, and "Unduh portofolio (PDF)" (dompdf,
+ * (rumus), own certificates through files.show, talent summary, and "Download portofolio (PDF)" (dompdf,
  * remote/JS/PHP off). Only the signed-in student's own data (AchievementPolicy).
  */
 #[Title('Portofolio')]

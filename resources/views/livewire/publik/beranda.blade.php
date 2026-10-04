@@ -48,7 +48,7 @@
                     <div class="flex items-center gap-2.5">
                         @include('livewire.publik.partials.avatar', ['person' => $person, 'size' => 'xs'])
                         <span class="truncate text-sm font-bold">{{ $person['name'] }}</span>
-                        @if ($person['kelas'])<span class="text-[12.5px] text-muted">{{ $person['kelas'] }}</span>@endif
+                        @if ($person['kelas_label'])<span class="text-[12.5px] text-muted">{{ $person['kelas_label'] }}</span>@endif
                     </div>
                 </div>
             @endif
@@ -184,7 +184,7 @@
                             @include('livewire.publik.partials.avatar', ['person' => $row, 'size' => 'sm'])
                             <span class="flex min-w-0 flex-1 flex-col">
                                 @include('livewire.publik.partials.person-name', ['person' => $row, 'class' => 'text-sm leading-[18px]'])
-                                <span class="truncate text-xs leading-4 text-muted">{{ collect([$row['kelas'], $row['main_bidang']])->filter()->implode(' · ') }}</span>
+                                <span class="truncate text-xs leading-4 text-muted">{{ collect([$row['kelas_label'], $row['main_bidang']])->filter()->implode(' · ') }}</span>
                             </span>
                             <span class="display num shrink-0 text-[17px] font-extrabold">{{ $row['points_label'] }}<span class="font-sans text-xs font-semibold text-muted"> poin</span></span>
                         </li>
@@ -226,7 +226,7 @@
                                 <div class="mt-auto flex min-w-0 items-center gap-2.5 pt-2">
                                     @include('livewire.publik.partials.avatar', ['person' => $person, 'size' => 'sm'])
                                     @include('livewire.publik.partials.person-name', ['person' => $person, 'class' => 'text-sm'])
-                                    @if ($person['kelas'])<span class="shrink-0 text-[13px] text-muted">{{ $person['kelas'] }}</span>@endif
+                                    @if ($person['kelas_label'])<span class="shrink-0 text-[13px] text-muted">{{ $person['kelas_label'] }}</span>@endif
                                     @if ($others > 0)<span class="shrink-0 text-[13px] text-muted">+{{ $others }} anggota</span>@endif
                                 </div>
                             </div>

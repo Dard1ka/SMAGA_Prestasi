@@ -14,8 +14,8 @@ use App\Models\Student;
  * A student's own standing ("peringkatmu": siswa Beranda, Portofolio, public student page). Lead decision
  * 2026-10-01 (D-37): cumulative points of all years, ranked among ACTIVE students only — accounts that can
  * log in (`active`, `pending_activation`), not soft-deleted. Alumni (archived) and disabled accounts are not
- * ranked here. The public leaderboard (PublicAchievements::ranking) includes alumni with the "Alumni" chip
- * and its toggle (D-09). Same Ranker everywhere, so ties share a rank.
+ * ranked here. The public leaderboard (PublicAchievements::ranking) shows alumni only when asked: its status
+ * filter "Alumni" or "Semua" (RankingScope, D-09). Same Ranker everywhere, so ties share a rank.
  */
 final class PersonalRank
 {

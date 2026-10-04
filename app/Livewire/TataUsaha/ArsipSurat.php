@@ -12,6 +12,7 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Route;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
 use Livewire\Component;
@@ -88,6 +89,8 @@ class ArsipSurat extends Component
             'typeOptions' => ['' => 'Semua jenis'] + LetterType::options(),
             // B3 (#11): TU opens the registration's letter page to correct (cabut + versi baru).
             'canCorrect' => Gate::allows('viewQueue', Letter::class),
+            // M1-A: "Cetak" (inline PDF in a new tab) lives in the TU route group.
+            'canPrint' => Route::has('tu.surat.cetak'),
         ])->layoutData([
             'subtitle' => 'Surat yang sudah terbit. Nomor dan isi tidak bisa diubah.',
         ]);

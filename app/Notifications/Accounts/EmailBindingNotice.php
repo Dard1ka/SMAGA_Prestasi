@@ -53,7 +53,7 @@ final class EmailBindingNotice extends Notification implements ShouldQueue
 
         return $message
             ->action('Bukan saya, bekukan akun', $this->notMeUrl)
-            ->line('Tautan ini berlaku '.$this->validDays.' hari dan hanya bisa dipakai sekali. Jika memang kamu, abaikan email ini.')
+            ->line('Link ini berlaku '.$this->validDays.' hari dan hanya bisa dipakai sekali. Jika memang kamu, abaikan email ini.')
             ->salutation('SMAGA Talent Hub');
     }
 

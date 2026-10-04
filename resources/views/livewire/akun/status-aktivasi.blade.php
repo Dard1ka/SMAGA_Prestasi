@@ -11,7 +11,7 @@
         <div class="flex min-w-0 flex-col gap-[22px]">
             {{-- Per kelas --}}
             <section aria-labelledby="h-per-kelas" class="flex flex-col gap-3">
-                <x-sth.page-header id="h-per-kelas" title="Per kelas" subtitle="Wali kelas meminta tiap siswa memeriksa barisnya." />
+                <x-sth.page-header id="h-per-kelas" title="Per kelas" subtitle="Tekan Lihat untuk membuka daftar siswa kelas itu." />
                 @if ($summary->isEmpty())
                     <x-sth.empty-state icon="users" title="Belum ada siswa">Impor data siswa dulu.</x-sth.empty-state>
                 @else
@@ -44,7 +44,7 @@
                                 </td>
                                 <td>
                                     @if ($class['classroomId'])
-                                        <x-sth.button variant="quiet" size="sm" wire:click="showClass('{{ $class['classroomId'] }}')">Lihat</x-sth.button>
+                                        <x-sth.button variant="quiet" size="sm" aria-haspopup="dialog" wire:click="showClass('{{ $class['classroomId'] }}')">Lihat<span class="sr-only"> siswa kelas {{ $class['classroom'] }}</span></x-sth.button>
                                     @endif
                                 </td>
                             </tr>
@@ -53,11 +53,11 @@
                 @endif
             </section>
 
-            {{-- Daftar siswa --}}
+            {{-- Daftar siswa: lookups across classes + CSV. One class at a time is the dialog behind "Lihat". --}}
             <section aria-labelledby="h-siswa" class="flex flex-col gap-3">
-                <x-sth.page-header id="h-siswa" title="Daftar siswa">
+                <x-sth.page-header id="h-siswa" title="Daftar siswa" subtitle="Cari siswa di semua kelas.">
                     <x-slot:actions>
-                        <x-sth.button variant="quiet" size="sm" icon="download" wire:click="export" wire:loading.attr="disabled" wire:target="export">Unduh CSV</x-sth.button>
+                        <x-sth.button variant="quiet" size="sm" icon="download" wire:click="export" wire:loading.attr="disabled" wire:target="export">Download CSV</x-sth.button>
                     </x-slot:actions>
                 </x-sth.page-header>
 
@@ -72,7 +72,7 @@
                             @endforeach
                         </div>
                         <div class="grid grid-cols-1 gap-3 md:grid-cols-[220px_minmax(0,1fr)_auto] md:items-end">
-                            <x-sth.select wire:model.live="kelas" label="Kelas" size="sm" placeholder="Semua kelas" :options="$classes" />
+                            <x-sth.select wire:model.live="daftarKelas" label="Kelas" size="sm" placeholder="Semua kelas" :options="$classes" />
                             <x-sth.input type="search" wire:model.live.debounce.400ms="q" label="Cari" icon="search" placeholder="Nama, atau NIS/NISN lengkap" />
                             @if ($filtersActive)
                                 <x-sth.button variant="quiet" size="sm" wire:click="resetFilters">Hapus filter</x-sth.button>
@@ -196,6 +196,84 @@
             @endif
         </aside>
     </div>
+
+    {{-- Students of one class ("Lihat"). Opened by showClass(), or on page load with ?kelas=<id>. --}}
+    <x-sth.modal id="aktivasi-kelas" size="lg" :open="$openClassOnLoad"
+        :title="$classDialog ? 'Kelas '.$classDialog['name'] : 'Status aktivasi kelas'"
+        description="Email dan NIS ditampilkan tersamar.">
+        @if ($classDialog)
+            <div class="flex flex-col gap-3">
+                <div class="seg flex-wrap self-start" role="group" aria-label="Status siswa kelas {{ $classDialog['name'] }}">
+                    @foreach ($classDialog['tabs'] as $tab)
+                        <button type="button" class="seg-btn" wire:key="kelas-tab-{{ $tab['key'] ?: 'semua' }}" wire:click="setClassStatus('{{ $tab['key'] }}')" aria-pressed="{{ $kelasStatus === $tab['key'] ? 'true' : 'false' }}">
+                            {{ $tab['label'] }} <span class="cnt">{{ $tab['count'] }}</span>
+                        </button>
+                    @endforeach
+                </div>
+
+                <p class="m-0 text-[13.5px] text-muted" aria-live="polite">
+                    {{ $classDialog['count'] }} siswa{{ $classDialog['hasMore'] ? ', '.$classDialog['rows']->count().' tampil' : '' }}.
+                </p>
+
+                @if ($classDialog['rows']->isEmpty())
+                    <x-sth.empty-state icon="users" title="Tidak ada siswa dengan status ini" :card="false">Pilih status lain.</x-sth.empty-state>
+                @else
+                    <x-sth.table caption="Status aktivasi siswa kelas {{ $classDialog['name'] }}" class="overflow-hidden rounded-tile border border-line" :card="false">
+                        {{-- Four columns so the table fits the 760px dialog without sideways scrolling: NIS and email sit under the name. --}}
+                        <x-slot:head>
+                            <th scope="col" class="min-w-44">Siswa, NIS, email</th>
+                            <th scope="col" class="min-w-28">Status</th>
+                            <th scope="col" class="min-w-40">Aktivasi dan login terakhir</th>
+                            <th scope="col" class="min-w-24"><span class="sr-only">Aksi</span></th>
+                        </x-slot:head>
+                        @foreach ($classDialog['rows'] as $row)
+                            <tr wire:key="kelas-siswa-{{ $row['userId'] }}">
+                                <td>
+                                    <div class="flex min-w-0 flex-col">
+                                        <span class="font-bold">{{ $row['name'] }}</span>
+                                        <span class="text-[12.5px] text-muted">NIS <span class="num">{{ $row['nis'] }}</span></span>
+                                        <span class="text-[12.5px] text-muted">{{ $row['email'] ?? 'Belum ada email' }}</span>
+                                    </div>
+                                </td>
+                                <td>
+                                    <x-sth.chip :tone="$row['tone']" size="sm">{{ $row['stateLabel'] }}</x-sth.chip>
+                                    @if ($row['expiresAt'] && $row['state'] === 'belum')
+                                        <span class="mt-1 block text-[12px] text-muted">s.d. {{ $row['expiresAt']->translatedFormat('j M H:i') }}</span>
+                                    @endif
+                                    @foreach ($row['flags'] as $flag)
+                                        <x-sth.chip tone="orange" size="sm" class="mt-1 h-auto min-h-6 py-0.5 whitespace-normal">{{ $flag }}</x-sth.chip>
+                                    @endforeach
+                                </td>
+                                <td class="text-[13px]">
+                                    <span class="block"><span class="text-muted">Aktivasi</span> <span class="num">{{ $row['activatedAt']?->translatedFormat('j M Y H:i') ?? '–' }}</span></span>
+                                    <span class="block"><span class="text-muted">Login</span> <span class="num">{{ $row['lastLoginAt']?->translatedFormat('j M Y H:i') ?? '–' }}</span></span>
+                                </td>
+                                <td>
+                                    @if ($row['action'] === 'buka')
+                                        <x-sth.button variant="soft" size="sm" aria-haspopup="dialog" wire:click="openReopen({{ $row['userId'] }})">Buka ulang</x-sth.button>
+                                    @elseif ($row['action'] === 'cair')
+                                        <x-sth.button variant="soft" size="sm" aria-haspopup="dialog" wire:click="openUnfreeze({{ $row['userId'] }})">Buka pembekuan</x-sth.button>
+                                    @elseif ($row['action'] === 'admin')
+                                        <span class="text-[12.5px] text-muted">Hubungi Admin</span>
+                                    @endif
+                                </td>
+                            </tr>
+                        @endforeach
+                    </x-sth.table>
+                    @if ($classDialog['hasMore'])
+                        <div class="flex justify-center">
+                            <x-sth.button variant="quiet" size="sm" wire:click="showMoreClass">Tampilkan lebih banyak</x-sth.button>
+                        </div>
+                    @endif
+                @endif
+            </div>
+        @else
+            <p class="m-0 text-[14.5px] text-muted">Pilih kelas dari tabel Per kelas.</p>
+        @endif
+        <x-slot:footer>
+            <x-sth.button variant="quiet" data-sth-close wire:click="closeClass">Tutup</x-sth.button>
+        </x-slot:footer>
+    </x-sth.modal>
 
     <x-sth.modal id="aktivasi-aksi" :title="$action === 'cair' ? 'Buka pembekuan akun?' : 'Buka ulang aktivasi?'" size="sm"
         :description="$action === 'cair'

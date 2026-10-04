@@ -49,7 +49,7 @@ class CompetitionSubmitted extends Notification implements ShouldQueue
             ->subject('Usulan lomba baru: '.$this->competition->name)
             ->greeting('Halo,')
             ->line($this->message())
-            ->line('Periksa penyelenggara dan tautannya sebelum dipublikasikan.')
+            ->line('Periksa penyelenggara dan link-nya sebelum dipublikasikan.')
             ->action('Buka antrean', $this->url())
             ->salutation('SMAGA Talent Hub');
     }

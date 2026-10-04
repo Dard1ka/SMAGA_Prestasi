@@ -15,7 +15,7 @@
                 </button>
             @endforeach
         </div>
-        <x-sth.button variant="quiet" size="sm" icon="download" wire:click="export">Unduh data (Excel)</x-sth.button>
+        <x-sth.button variant="quiet" size="sm" icon="download" wire:click="export">Download data (Excel)</x-sth.button>
     </div>
 
     <div class="grid grid-cols-1 items-start gap-[22px] xl:grid-cols-[1fr_340px] 2xl:grid-cols-[1fr_392px]">
@@ -41,7 +41,7 @@
                     <span class="text-[13.5px] text-muted">{{ $shownText }} · Centang baris untuk pindah tahap sekaligus.</span>
                 @elseif ($bulkRejecting)
                     <form wire:submit="bulkReject" class="flex w-full flex-wrap items-end gap-2">
-                        <x-sth.input wire:model="bulkNote" label="Catatan untuk siswa yang tidak lolos" class="min-w-60 flex-1" placeholder="Catatan wajib diisi" />
+                        <x-sth.input wire:model="bulkNote" label="Catatan untuk siswa" optional class="min-w-60 flex-1" placeholder="Boleh dikosongkan" maxlength="1000" />
                         <x-sth.button type="submit" variant="danger" size="sm">Kirim · {{ count($checked) }} tidak lolos</x-sth.button>
                         <x-sth.button variant="quiet" size="sm" wire:click="$set('bulkRejecting', false)">Batal</x-sth.button>
                     </form>
@@ -88,11 +88,22 @@
                                 </div>
                             </td>
                             <td class="num whitespace-nowrap text-[13.5px]">{{ $row['points'] !== null ? $row['points'].' · '.$row['prestasi'] : '–' }}</td>
-                            <td><x-sth.chip :tone="$row['status']->tone()" size="sm" class="h-auto min-h-6 py-0.5 whitespace-normal">{{ $row['status']->label() }}</x-sth.chip></td>
+                            <td>
+                                <div class="flex flex-col items-start gap-1">
+                                    <x-sth.chip :tone="$row['status']->tone()" size="sm" class="h-auto min-h-6 py-0.5 whitespace-normal">{{ $row['status']->label() }}</x-sth.chip>
+                                    @if ($row['reviewRequested'])
+                                        <x-sth.chip tone="orange" size="sm" class="h-auto min-h-6 py-0.5 whitespace-normal">Minta ditinjau ulang</x-sth.chip>
+                                    @endif
+                                </div>
+                            </td>
                             <td>
                                 <div class="flex items-center gap-1.5">
                                     <x-sth.icon-button icon="eye" size="sm" :label="'Lihat '.$row['name']" wire:click="showPanel('{{ $row['id'] }}')" aria-pressed="{{ $row['selected'] ? 'true' : 'false' }}" />
-                                    <x-sth.icon-button icon="check" size="sm" :label="$row['next'] ? 'Lolos ke '.$row['next']->label() : 'Tahap final'" wire:click="advanceRow('{{ $row['id'] }}')" :disabled="$row['next'] === null" />
+                                    @if ($row['restorable'])
+                                        <x-sth.icon-button icon="recycle" size="sm" :label="'Pulihkan '.$row['name'].', '.$row['type'].' '.$row['branch']" wire:click="askRestore('{{ $row['id'] }}')" aria-haspopup="dialog" />
+                                    @else
+                                        <x-sth.icon-button icon="check" size="sm" :label="$row['next'] ? 'Lolos ke '.$row['next']->label() : 'Tahap final'" wire:click="advanceRow('{{ $row['id'] }}')" :disabled="$row['next'] === null" />
+                                    @endif
                                 </div>
                             </td>
                         </tr>
@@ -159,9 +170,23 @@
                 </dl>
 
                 @if ($panel['final'])
-                    <x-sth.alert :tone="$panel['status'] === \App\Enums\TalentStatus::Pembinaan ? 'success' : 'error'" :title="$panel['status']->label()">
-                        {{ $panel['status'] === \App\Enums\TalentStatus::Pembinaan ? 'Pembina: '.($panel['mentorName'] ?? 'belum ditentukan') : 'Catatan terkirim ke siswa.' }}
+                    <x-sth.alert :tone="$panel['restorable'] ? 'error' : 'success'" :title="$panel['status']->label()">
+                        {{ $panel['restorable'] ? 'Siswa sudah diberi tahu. Pulihkan untuk mengembalikan ke tahap '.$panel['restoreTo'].'.' : 'Pembina: '.($panel['mentorName'] ?? 'belum ditentukan') }}
                     </x-sth.alert>
+                @endif
+
+                @if ($panel['review'])
+                    <x-sth.alert tone="warning" title="Siswa minta ditinjau ulang">
+                        <span class="block text-[13px] text-muted">{{ $panel['review']['at'] }}</span>
+                        <span class="block whitespace-pre-line break-words">{{ $panel['review']['message'] ?? 'Tanpa pesan.' }}</span>
+                    </x-sth.alert>
+                @endif
+
+                @if ($panel['studentNote'])
+                    <div class="flex flex-col gap-1 rounded-tile bg-subtle p-3 text-[13.5px]">
+                        <span class="label">Catatan terakhir untuk siswa</span>
+                        <span class="whitespace-pre-line break-words">{{ $panel['studentNote'] }}</span>
+                    </div>
                 @endif
 
                 <div class="flex flex-col gap-3">
@@ -169,7 +194,12 @@
                     @unless ($panel['final'])
                         <x-sth.input type="date" wire:model="assessmentOn" label="Jadwal asesmen" />
                     @endunless
-                    <x-sth.textarea wire:model="panelNote" label="Catatan pembina" rows="3" hint="Wajib bila tidak lolos. Siswa akan menerimanya." />
+                    <x-sth.textarea wire:model="panelNote" label="Catatan untuk guru pembina" optional rows="3" maxlength="1000"
+                        hint="Hanya dibaca guru pembina dan Kesiswaan. Siswa tidak melihatnya." />
+                    @unless ($panel['final'])
+                        <x-sth.textarea wire:model="panelStudentNote" label="Catatan untuk siswa" optional rows="3" maxlength="1000"
+                            hint="Dibaca siswa di notifikasi dan Profil talenta. Terkirim saat Lolos atau Tidak lolos ditekan." />
+                    @endunless
                     @error('panel')<x-sth.alert tone="error">{{ $message }}</x-sth.alert>@enderror
                 </div>
 
@@ -180,10 +210,31 @@
                     @unless ($panel['final'])
                         <x-sth.button variant="danger" wire:click="rejectPanel" wire:loading.attr="disabled">Tidak lolos</x-sth.button>
                     @endunless
+                    @if ($panel['restorable'])
+                        <x-sth.button icon="recycle" wire:click="askRestore('{{ $panel['id'] }}')" wire:loading.attr="disabled" aria-haspopup="dialog">Pulihkan</x-sth.button>
+                    @endif
                     <x-sth.button variant="quiet" wire:click="savePanel" wire:loading.attr="disabled">Simpan</x-sth.button>
                 </div>
                 <p class="m-0 text-[13px] text-muted">{{ $panelDone ?? 'Siswa menerima notifikasi setiap perubahan tahap.' }}</p>
             @endif
         </x-sth.card>
     </div>
+
+    {{-- "Pulihkan": a tidak-lolos choice goes back to the stage it had before the rejection. --}}
+    <x-sth.modal :id="\App\Livewire\Kesiswaan\Talenta::RESTORE_DIALOG" title="Pulihkan pilihan talenta?" description="Pilihan kembali ke tahap sebelum tidak lolos. Siswa diberi tahu." size="sm">
+        <form id="pulihkan-talenta-form" wire:submit="restore" class="flex flex-col gap-4" novalidate>
+            @if ($restoring)
+                <p class="m-0 text-sm">
+                    <span class="font-bold">{{ $restoring['name'] }}</span> · {{ $restoring['talent'] }} kembali ke tahap {{ $restoring['to'] }}.
+                    @if ($restoring['requested'])Permintaan tinjau ulang siswa ikut ditutup.@endif
+                </p>
+            @endif
+            <x-sth.textarea wire:model="restoreNote" label="Catatan untuk siswa" optional rows="3" maxlength="1000"
+                hint="Dibaca siswa di notifikasi dan Profil talenta." />
+        </form>
+        <x-slot:footer>
+            <x-sth.button variant="quiet" data-sth-close>Batal</x-sth.button>
+            <x-sth.button type="submit" form="pulihkan-talenta-form" icon="recycle" wire:loading.attr="disabled" wire:target="restore">Pulihkan</x-sth.button>
+        </x-slot:footer>
+    </x-sth.modal>
 </div>

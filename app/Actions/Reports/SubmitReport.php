@@ -115,7 +115,7 @@ final class SubmitReport
         }
 
         if ($data->certificate === null && ! $hasExisting(ReportFileKind::Sertifikat)) {
-            $errors['sertifikat'] = 'Unggah sertifikat atau piagam.';
+            $errors['sertifikat'] = 'Upload sertifikat atau piagam.';
         }
 
         if ($data->photos === [] && ! $hasExisting(ReportFileKind::Foto)) {
@@ -141,7 +141,7 @@ final class SubmitReport
             }
 
             if ($data->researchReport === null && ! $hasExisting(ReportFileKind::LaporanRiset)) {
-                $errors['laporan'] = 'Unggah laporan penelitian (PDF).';
+                $errors['laporan'] = 'Upload laporan penelitian (PDF).';
             }
         }
 

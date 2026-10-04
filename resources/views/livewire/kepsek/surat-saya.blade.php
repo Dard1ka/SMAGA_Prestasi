@@ -56,7 +56,7 @@
                                     <span class="text-[12.5px]">
                                         Diganti
                                         @if ($letter->replacement->file_id)
-                                            <button type="button" class="lnk num" wire:click="download('{{ $letter->replacement->id }}')">{{ $letter->replacement->full_number }}<span class="sr-only"> (unduh surat pengganti)</span></button>
+                                            <button type="button" class="lnk num" wire:click="download('{{ $letter->replacement->id }}')">{{ $letter->replacement->full_number }}<span class="sr-only"> (download surat pengganti)</span></button>
                                         @else
                                             <span class="num">{{ $letter->replacement->full_number }}</span>
                                         @endif
@@ -75,7 +75,7 @@
                     <td class="text-right">
                         @if ($letter->file_id)
                             <x-sth.button variant="quiet" size="sm" icon="download" wire:click="download('{{ $letter->id }}')">
-                                Unduh<span class="sr-only"> {{ $letter->full_number }}</span>
+                                Download<span class="sr-only"> {{ $letter->full_number }}</span>
                             </x-sth.button>
                         @endif
                     </td>
@@ -84,6 +84,6 @@
         </x-sth.table>
 
         {{ $letters->links() }}
-        <p class="m-0 text-sm muted">Keaslian surat bisa dicek lewat kode QR di setiap surat. Setiap unduhan tercatat di log audit.</p>
+        <p class="m-0 text-sm muted">Keaslian surat bisa dicek lewat kode QR di setiap surat. Setiap download tercatat di log audit.</p>
     @endif
 </div>

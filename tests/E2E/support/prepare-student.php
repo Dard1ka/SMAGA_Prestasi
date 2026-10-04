@@ -7,6 +7,9 @@ declare(strict_types=1);
  * ever typing the initial password (CLAUDE.md rule 3). Sets the E2E password, marks the account activated with a
  * fictional email and resets the menu tour so the test sees it once.
  *
+ * "Activated" = what the first-login flow leaves behind (email → code → password, lead 2026-10-04): a verified
+ * email, no forced password change, status active (App\Actions\Accounts\DetermineActivationStep::finished()).
+ *
  * Refuses to run unless APP_ENV=local and STH_E2E=1 (set only on the app service of the isolated E2E project), so it
  * can never touch the dev database or any server.
  *

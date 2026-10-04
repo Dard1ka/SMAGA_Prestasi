@@ -59,7 +59,7 @@
                                         <span class="font-bold">{{ $file['kind'] }}</span>
                                         <span class="ellip text-[12.5px] text-muted">{{ $file['name'] }}</span>
                                     </span>
-                                    <x-sth.button variant="quiet" size="sm" icon="download" :href="$file['href']">Unduh<span class="sr-only"> {{ $file['kind'] }}</span></x-sth.button>
+                                    <x-sth.button variant="quiet" size="sm" icon="download" :href="$file['href']">Download<span class="sr-only"> {{ $file['kind'] }}</span></x-sth.button>
                                 </li>
                             @endforeach
                         </ul>
@@ -120,7 +120,7 @@
                                     <span class="font-bold">{{ $letter['title'] }}</span>
                                     <span class="num ellip text-[12.5px] text-muted">{{ $letter['meta'] }}</span>
                                 </span>
-                                <x-sth.icon-button icon="download" :label="'Unduh '.$letter['title'].' (PDF)'" :href="$letter['href']" size="sm" />
+                                <x-sth.icon-button icon="download" :label="'Download '.$letter['title'].' (PDF)'" :href="$letter['href']" size="sm" />
                             </li>
                         @endforeach
                     </ul>

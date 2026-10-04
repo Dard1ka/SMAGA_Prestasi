@@ -18,8 +18,8 @@
             </div>
             @if ($canExport)
                 <span class="flex flex-wrap gap-2">
-                    <x-sth.button variant="soft" size="sm" icon="download" wire:click="export('pdf')" wire:loading.attr="disabled" wire:target="export">Unduh PDF</x-sth.button>
-                    <x-sth.button variant="soft" size="sm" icon="download" wire:click="export('xlsx')" wire:loading.attr="disabled" wire:target="export">Unduh Excel</x-sth.button>
+                    <x-sth.button variant="soft" size="sm" icon="download" wire:click="export('pdf')" wire:loading.attr="disabled" wire:target="export">Download PDF</x-sth.button>
+                    <x-sth.button variant="soft" size="sm" icon="download" wire:click="export('xlsx')" wire:loading.attr="disabled" wire:target="export">Download Excel</x-sth.button>
                 </span>
             @endif
         </div>
@@ -32,7 +32,7 @@
             <x-sth.select wire:model.live="bidang" label="Bidang" placeholder="Semua bidang" :options="$bidangOptions" />
         </div>
         @if ($canExport)
-            <p class="m-0 text-sm muted">Unduhan memuat nama siswa (tanpa NIS/NISN), diberi tanda nama kamu dan waktu unduh, dan tercatat di log audit.</p>
+            <p class="m-0 text-sm muted">Download memuat nama siswa (tanpa NIS/NISN), diberi tanda nama kamu dan waktu download, dan tercatat di log audit.</p>
         @endif
         @if ($suratUrl)
             <x-sth.link :href="$suratUrl" icon="mail" icon-right="chevron-right">Surat atas nama saya</x-sth.link>
@@ -79,7 +79,7 @@
         <div class="flex flex-wrap items-baseline justify-between gap-2">
             <h2 id="h-rincian" class="title-card">Rincian prestasi</h2>
             <span class="muted text-[13.5px]">
-                {{ $rowCount > count($preview) ? count($preview).' terbaru dari '.$rowCount.'. Unduh untuk daftar lengkap.' : $rowCount.' prestasi' }}
+                {{ $rowCount > count($preview) ? count($preview).' terbaru dari '.$rowCount.'. Download untuk daftar lengkap.' : $rowCount.' prestasi' }}
             </span>
         </div>
         @if ($preview === [])

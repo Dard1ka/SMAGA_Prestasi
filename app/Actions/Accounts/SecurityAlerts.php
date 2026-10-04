@@ -35,7 +35,7 @@ final class SecurityAlerts
 
         $notification = $reason === AccountControls::FROZEN_NOT_ME
             ? new AccountAlert('account.reported_not_me', 'Laporan "Bukan saya": akun dibekukan', [
-                $who.' dibekukan lewat tautan "Bukan saya?" di email pemberitahuan.',
+                $who.' dibekukan lewat link "Bukan saya?" di email pemberitahuan.',
                 'Temui pemiliknya, lalu reset kata sandi & email atau buka pembekuan dari Status aktivasi.',
             ])
             : new AccountAlert('account.frozen', 'Akun dibekukan setelah '.AccountControls::MAX_FAILED_ATTEMPTS.' kali gagal masuk', [

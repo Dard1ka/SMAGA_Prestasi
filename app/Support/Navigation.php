@@ -454,6 +454,8 @@ final class Navigation
             'current' => false,
             'disabled' => $url === null && ! $preview,
             'badge' => $badge !== null && (int) $badge > 0 ? (int) $badge : null,
+            // The sidebar prints this as data-sth-badge so the browser event `sth-badges` can update the count in place.
+            'badgeKey' => isset($def['badge']) ? (string) $def['badge'] : null,
         ];
     }
 

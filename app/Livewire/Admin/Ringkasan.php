@@ -46,7 +46,7 @@ final class Ringkasan extends Component
         // B5 (backlog #8): Arsip otomatis + Log audit.
         'account.unarchived' => 'Akun dipulihkan dari arsip',
         'student.archive_date_changed' => 'Tanggal arsip diubah',
-        'audit.exported' => 'Log audit diunduh',
+        'audit.exported' => 'Log audit di-download',
         'account.admin_created' => 'Admin dibuat (CLI)',
         'principal.requested' => 'Ganti Kepala Sekolah diminta',
         'principal.cancelled' => 'Ganti Kepala Sekolah dibatalkan',
@@ -73,7 +73,7 @@ final class Ringkasan extends Component
 
         $attention = array_values(array_filter([
             Setting::get(SettingKey::SignatureFileId) === null
-                ? ['tone' => 'warning', 'text' => 'Belum ada tanda tangan + stempel. TU belum bisa membuat surat tugas.', 'href' => route('admin.pengaturan', ['tab' => 'surat']), 'link' => 'Unggah tanda tangan']
+                ? ['tone' => 'warning', 'text' => 'Belum ada tanda tangan + stempel. TU belum bisa membuat surat tugas.', 'href' => route('admin.pengaturan', ['tab' => 'surat']), 'link' => 'Upload tanda tangan']
                 : null,
             User::query()->role(RoleName::KepalaSekolah->value)->canLogIn()->doesntExist()
                 ? ['tone' => 'warning', 'text' => 'Belum ada akun Kepala Sekolah. Pendaftaran lomba tidak bisa disetujui.', 'href' => route('admin.pengaturan', ['tab' => 'pengguna']), 'link' => 'Tetapkan Kepala Sekolah']

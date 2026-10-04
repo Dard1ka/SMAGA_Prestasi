@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Actions\Accounts\AccountControls;
 use App\Actions\Fortify\AuthenticateUser;
 use App\Domain\Accounts\InitialPassword;
 use App\Enums\RoleName;
@@ -70,12 +71,139 @@ it('logs staff in with their email and username, but never with a NIS-like numbe
     $this->assertAuthenticatedAs($guru);
 });
 
-it('does not let a student log in with an email', function (): void {
-    H::activeStudent();
+// M1-B (lead, 2026-10-04): a student may also log in with the email bound and verified during activation.
+
+it('logs an activated student in with the bound email, whatever the letter case', function (): void {
+    $student = H::activeStudent();
+
+    w1cLogin('  Nadia.Anindya@Example.test ')->assertRedirect(route('home'));
+
+    $this->assertAuthenticatedAs($student->user);
+    expect($student->user->fresh()->last_login_at)->not->toBeNull();
+});
+
+it('answers a student email with the generic error until the activation is finished', function (array $state): void {
+    $student = H::pendingStudent();
+    $student->user->forceFill(array_merge(['email' => 'nadia.anindya@example.test'], $state))->save();
+
+    // The right password does not help, and the answer is the one of a wrong password or an unknown address.
+    w1cLogin('nadia.anindya@example.test')->assertSessionHasErrors(['identifier' => AuthenticateUser::GENERIC_ERROR]);
+    w1cLogin('nadia.anindya@example.test', 'salah-sekali-123')->assertSessionHasErrors(['identifier' => AuthenticateUser::GENERIC_ERROR]);
+    w1cLogin('tidak.ada@example.test')->assertSessionHasErrors(['identifier' => AuthenticateUser::GENERIC_ERROR]);
+
+    $this->assertGuest();
+
+    // A refused email never counts as a failed login on the pending account (K3) and never ends its sessions.
+    expect(AccountControls::failedAttempts($student->user->fresh()))->toBe(0);
+})->with([
+    'address typed, code not entered yet' => [['email_verified_at' => null]],
+    'email verified, password step still open' => [['email_verified_at' => '2026-10-01 08:00:00']],
+    'password chosen in the old order, email not verified' => [['email_verified_at' => null, 'must_change_password' => false]],
+    'active but the address is unverified (bound in OTP test mode)' => [['email_verified_at' => null, 'must_change_password' => false, 'status' => UserStatus::Active]],
+]);
+
+it('refuses archived and disabled accounts by email too', function (UserStatus $status): void {
+    H::activeStudent(['status' => $status]);
 
     w1cLogin('nadia.anindya@example.test')->assertSessionHasErrors(['identifier' => AuthenticateUser::GENERIC_ERROR]);
 
     $this->assertGuest();
+})->with([UserStatus::Archived, UserStatus::Disabled]);
+
+it('refuses a frozen student by email with the generic error', function (): void {
+    H::activeStudent(['frozen_at' => now(), 'frozen_reason' => AccountControls::FROZEN_NOT_ME]);
+
+    w1cLogin('nadia.anindya@example.test')->assertSessionHasErrors(['identifier' => AuthenticateUser::GENERIC_ERROR]);
+
+    $this->assertGuest();
+});
+
+it('never lets a student log in with a username', function (): void {
+    H::activeStudent(['username' => 'nadia.pa']);
+
+    w1cLogin('nadia.pa')->assertSessionHasErrors(['identifier' => AuthenticateUser::GENERIC_ERROR]);
+
+    $this->assertGuest();
+});
+
+it('counts NIS, NISN and email of one student in the same rate-limit bucket', function (): void {
+    H::activeStudent();
+
+    foreach ([H::NIS, 'nadia.anindya@example.test', H::NISN, 'NADIA.ANINDYA@example.test', H::NIS] as $identifier) {
+        w1cLogin($identifier, 'salah-sekali-123')->assertSessionHasErrors(['identifier' => AuthenticateUser::GENERIC_ERROR]);
+    }
+
+    // Sixth attempt in the same minute is blocked even with the right password, by any identifier.
+    w1cLogin('nadia.anindya@example.test')->assertSessionHasErrors('identifier');
+
+    expect(session('errors')->first('identifier'))->toStartWith('Terlalu banyak percobaan');
+    $this->assertGuest();
+});
+
+it('locks the account progressively for failures by email, also from other addresses', function (): void {
+    H::activeStudent();
+
+    // Different IPs so only the per-account lockout (not the per identifier+IP limiter) applies.
+    foreach (range(1, 5) as $i) {
+        $this->withServerVariables(['REMOTE_ADDR' => '10.0.0.'.$i])
+            ->from('/login')->post('/login', ['identifier' => 'nadia.anindya@example.test', 'password' => 'salah-sekali-123']);
+    }
+
+    // The lock holds for the NIS as well: one account, one bucket.
+    $this->withServerVariables(['REMOTE_ADDR' => '10.0.1.1'])
+        ->from('/login')->post('/login', ['identifier' => H::NIS, 'password' => H::PASSWORD])
+        ->assertSessionHasErrors('identifier');
+
+    expect(session('errors')->first('identifier'))->toStartWith('Terlalu banyak percobaan');
+    $this->assertGuest();
+
+    $this->travel(61)->seconds();
+
+    $this->withServerVariables(['REMOTE_ADDR' => '10.0.1.2'])
+        ->from('/login')->post('/login', ['identifier' => 'nadia.anindya@example.test', 'password' => H::PASSWORD])
+        ->assertRedirect(route('home'));
+});
+
+it('limits an email that resolves to nobody like any unknown identifier', function (): void {
+    // Bound, but the activation is not finished: for the limiter this address belongs to nobody.
+    $student = H::pendingStudent();
+    $student->user->forceFill(['email' => 'nadia.anindya@example.test', 'email_verified_at' => now()])->save();
+
+    foreach (range(1, 5) as $i) {
+        w1cLogin('nadia.anindya@example.test', 'salah-sekali-123')->assertSessionHasErrors(['identifier' => AuthenticateUser::GENERIC_ERROR]);
+    }
+
+    w1cLogin('nadia.anindya@example.test')->assertSessionHasErrors('identifier');
+    expect(session('errors')->first('identifier'))->toStartWith('Terlalu banyak percobaan');
+
+    // The account's own bucket is untouched: the owner still gets in with the NIS.
+    w1cLogin(H::NIS)->assertRedirect(route('aktivasi'));
+    $this->assertAuthenticatedAs($student->user);
+});
+
+it('never sends a student who logs in by email to the TOTP challenge (D-66)', function (): void {
+    $student = H::activeStudent();
+    $student->user->forceFill([
+        'two_factor_secret' => encrypt('JBSWY3DPEHPK3PXP'),
+        'two_factor_recovery_codes' => encrypt(json_encode(['aaaa-bbbb'])),
+        'two_factor_confirmed_at' => now(),
+    ])->save();
+
+    w1cLogin('nadia.anindya@example.test')->assertRedirect(route('home'));
+
+    $this->assertAuthenticatedAs($student->user);
+});
+
+it('keeps the staff login as it was: email works before activation, and leads to the activation screen', function (): void {
+    $staff = H::staff(RoleName::Guru, [
+        'username' => 'bu.dwi',
+        'status' => UserStatus::PendingActivation,
+        'must_change_password' => true,
+        'email_verified_at' => null,
+    ]);
+
+    w1cLogin('staf.guru@example.test')->assertRedirect(route('aktivasi'));
+    $this->assertAuthenticatedAs($staff);
 });
 
 it('shows one generic error for a wrong password and an unknown identifier', function (): void {

@@ -116,7 +116,6 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\URL;
-use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -610,7 +609,7 @@ $students = [
 ];
 
 $importCsv = implode("\n", [
-    'Nama lengkap,NIS,NISN,Tanggal lahir,Kelas saat pendaftaran',
+    'Nama lengkap,NIS,NISN,Tanggal lahir,Kelas',
     'Sekar Ayu Pramesti,226227201,0109900001,14-02-2011,X-1',
     'Wulan Kusumaningrum,226227202,0109900002,23-08-2010,X-2',
     'Bintang Mahardika,226227203,0109900003,05-11-2010,X-3',
@@ -694,26 +693,18 @@ $newPassword = function (User $user) use ($scenario): string {
     return $password;
 };
 
-/** Activation steps 1 + 2 (Livewire\Auth\Activation::savePassword + sendCode): new password, then OTP to the email. */
-$startActivation = function (string $key) use ($siswa, $mail, $newPassword, $passwords): void {
-    $user = $siswa($key);
-    $password = $newPassword($user);
-
-    Validator::make(
-        ['password' => $password, 'password_confirmation' => $password],
-        ['password' => app(SetNewPassword::class)->rules($user)],
-    )->validate();
-
-    app(SetNewPassword::class)->handle($user, $password, null, 'account.initial_password_changed');
-    $passwords[$key] = $password;
-
+/** Activation step 1 (M1-B order, Livewire\Auth\Activation): the student types an email, the OTP goes there. */
+$startActivation = function (string $key) use ($siswa, $mail): void {
     if (! app(IssueOtpCode::class)->handle($siswa($key), CompleteActivation::PURPOSE, $mail($key))) {
         throw new RuntimeException('OTP not sent (resend cooldown).');
     }
 };
 
-/** Activation step 3 (Activation::verifyCode): the code read from the mail, then CompleteActivation. */
-$finishActivation = function (string $key) use ($siswa, $mail, $scenario): bool {
+/**
+ * Activation steps 2 + 3: the code read from the mail binds the email (CompleteActivation::bindEmail), then the
+ * student chooses a new password (changePassword; "Lewati" would be keepPassword). Step 3 sends no mail.
+ */
+$finishActivation = function (string $key) use ($siswa, $mail, $scenario, $newPassword, $passwords): bool {
     $code = $scenario->codeFromMail($mail($key), 'Kode verifikasi email');
     $user = $siswa($key);
     $otp = app(VerifyOtpCode::class)->handle($user, CompleteActivation::PURPOSE, $code);
@@ -723,21 +714,30 @@ $finishActivation = function (string $key) use ($siswa, $mail, $scenario): bool 
     }
 
     $genuine = hash_equals((string) $otp->code_hash, VerifyOtpCode::hash($user->getKey(), CompleteActivation::PURPOSE, (string) $otp->email, $code));
-    app(CompleteActivation::class)->handle($user, $otp);
+    app(CompleteActivation::class)->bindEmail($user, $otp);
+
+    $password = $newPassword($user);
+    app(CompleteActivation::class)->changePassword($user, $password, $password);
+    $passwords[$key] = $password;
 
     return $genuine;
 };
 
-$draft = fn (?int $siswaSequence, ?int $guruSequence, string $place = 'Kota Semarang'): LetterDraft => new LetterDraft(
-    siswaSequence: $siswaSequence,
-    guruSequence: $guruSequence,
+/** One letter's data as Tata Usaha types it (M1-A: the full number is typed and every letter has its own form). */
+$draft = fn (string $number, string $place = 'Kota Semarang'): LetterDraft => new LetterDraft(
+    number: $number,
     issuedOn: $today,
+    basisFrom: 'Panitia OSPN',
     basisNumber: '012/PAN-OSPN/IX/2026',
     basisDate: $today->subDays(10),
-    scheduleDay: $today->addDays(14)->locale('id')->translatedFormat('l, j F Y'),
+    scheduleDay: $today->addDays(14)->locale('id')->translatedFormat('l'),
+    scheduleDate: $today->addDays(14)->locale('id')->translatedFormat('j F Y'),
     scheduleTime: LetterDraft::DEFAULT_TIME,
     place: $place,
 );
+
+$nomorSiswa = fn (int $n): string => sprintf('400.3.8/%d/MRD/X/%d', $n, $today->year);
+$nomorGuru = fn (int $n): string => sprintf('400.3.8.6/%d/%d', $n, $today->year);
 
 /** GET the URL as that user through the real HTTP kernel (route middleware + FileController + FilePolicy). */
 $download = function (User $user, string $url): string {
@@ -803,11 +803,11 @@ $scenario->step('1a', 'Kesiswaan imports four new students from a CSV (ImportStu
     }
 });
 
-$scenario->step('1b', 'New student (Sekar) first login: changes the initial password, enters her email (SetNewPassword + IssueOtpCode)', function () use ($startActivation): void {
+$scenario->step('1b', 'New student (Sekar) first login: enters her email, the code is mailed (IssueOtpCode)', function () use ($startActivation): void {
     $startActivation('sekar');
 }, [[$mail('sekar'), 'Kode verifikasi email']]);
 
-$scenario->step('1c', 'Sekar types the code from the mail: activation complete (VerifyOtpCode + CompleteActivation)', function () use ($finishActivation, $scenario, $siswa): void {
+$scenario->step('1c', 'Sekar types the code from the mail, then chooses a new password: activation complete (VerifyOtpCode + CompleteActivation::bindEmail + changePassword)', function () use ($finishActivation, $scenario, $siswa): void {
     $genuine = $finishActivation('sekar');
     $user = $siswa('sekar');
     $scenario->note('code in the mail matches the stored OTP hash: '.($genuine ? 'yes' : 'NO'));
@@ -1132,8 +1132,11 @@ $scenario->step('4c', 'Kepala Sekolah approves Wulan\'s registration (ApproveReg
 $currentLetter = fn (string $key, LetterType $type): Letter => Letter::query()
     ->where('registration_id', $state[$key])->where('type', $type)->whereNull('revoked_at')->firstOrFail();
 
-$scenario->step('5a', 'Tata Usaha types both letter numbers and issues the PDFs for the team (IssueLetters): not sent yet', function () use ($staff, $registration, $draft, $scenario): void {
-    $letters = app(IssueLetters::class)->handle($staff('tu'), $registration('r1'), $draft(9001, 9101));
+$scenario->step('5a', 'Tata Usaha types each letter\'s full number and issues the two PDFs for the team, one letter at a time (IssueLetters): not sent yet', function () use ($staff, $registration, $draft, $nomorSiswa, $nomorGuru, $scenario): void {
+    $letters = [
+        app(IssueLetters::class)->handle($staff('tu'), $registration('r1'), LetterType::Siswa, $draft($nomorSiswa(9001))),
+        app(IssueLetters::class)->handle($staff('tu'), $registration('r1'), LetterType::Guru, $draft($nomorGuru(9101))),
+    ];
 
     foreach ($letters as $letter) {
         $file = $letter->file;
@@ -1177,7 +1180,7 @@ $scenario->step('5b', 'Tata Usaha sends the letters (SendLetters): siswa letter 
     $text = $scenario->textOf($mail('galuh'), 'Surat tugas kamu sudah terbit');
     $scenario->note('mail to Galuh names number '.$siswaLetter->full_number.': '.(str_contains($text, (string) $siswaLetter->full_number) ? 'yes' : 'NO')
         .' · links to the PDF (login required): '.(str_contains($text, $siswaUrl) ? 'yes' : 'NO'));
-    $scenario->assertRendered('5b', (string) $staff('hendra.k')->email, 'Surat perintah tugas terbit', 'Yth. Hendra Kusuma, S.Pd., M.Si.,', '(Nomor '.$guruLetter->full_number.') sudah terbit.', 'Unduh surat', '/berkas/'.$guruLetter->file_id);
+    $scenario->assertRendered('5b', (string) $staff('hendra.k')->email, 'Surat perintah tugas terbit', 'Yth. Hendra Kusuma, S.Pd., M.Si.,', '(Nomor '.$guruLetter->full_number.') sudah terbit.', 'Download surat', '/berkas/'.$guruLetter->file_id);
 }, [
     [$mail('galuh'), 'Surat tugas kamu sudah terbit'],
     [$mail('bayu'), 'Surat tugas kamu sudah terbit'],
@@ -1185,10 +1188,11 @@ $scenario->step('5b', 'Tata Usaha sends the letters (SendLetters): siswa letter 
     [$at('hendra.k'), 'Surat perintah tugas terbit'],
 ]);
 
-$scenario->step('5c', 'TU issues Wulan\'s letters, spots a typo and corrects the siswa letter BEFORE sending (IssueLetters + RevokeLetter)', function () use ($staff, $registration, $draft, $currentLetter, $scenario): void {
-    app(IssueLetters::class)->handle($staff('tu'), $registration('r4'), $draft(9002, 9102, 'Kota Semarag'));
+$scenario->step('5c', 'TU issues Wulan\'s letters, spots a typo and corrects the siswa letter BEFORE sending (IssueLetters + RevokeLetter)', function () use ($staff, $registration, $draft, $nomorSiswa, $nomorGuru, $currentLetter, $scenario): void {
+    app(IssueLetters::class)->handle($staff('tu'), $registration('r4'), LetterType::Siswa, $draft($nomorSiswa(9002), 'Kota Semarag'));
+    app(IssueLetters::class)->handle($staff('tu'), $registration('r4'), LetterType::Guru, $draft($nomorGuru(9102), 'Kota Semarag'));
     $old = $currentLetter('r4', LetterType::Siswa);
-    $new = app(RevokeLetter::class)->handle($staff('tu'), $old, 'Salah ketik nama tempat lomba.', 9003, $draft(null, null));
+    $new = app(RevokeLetter::class)->handle($staff('tu'), $old, 'Salah ketik nama tempat lomba.', $draft($nomorSiswa(9003)));
     $scenario->note(sprintf('revoked %s → new version %d, %s (not sent yet: members are not told)', $old->full_number, $new->version, $new->full_number));
 }, [[$at('kepsek'), 'Surat tugas dicabut dan diganti']]);
 
@@ -1202,9 +1206,9 @@ $scenario->step('5d', 'TU sends Wulan\'s letters (SendLetters)', function () use
     [$at('hendra.k'), 'Surat perintah tugas terbit'],
 ]);
 
-$scenario->step('5e', 'TU corrects the team\'s SISWA letter after it was sent (RevokeLetter)', function () use ($staff, $siswa, $draft, $currentLetter, $scenario): void {
+$scenario->step('5e', 'TU corrects the team\'s SISWA letter after it was sent (RevokeLetter)', function () use ($staff, $siswa, $draft, $nomorSiswa, $currentLetter, $scenario): void {
     $old = $currentLetter('r1', LetterType::Siswa);
-    $new = app(RevokeLetter::class)->handle($staff('tu'), $old, 'Tanggal pelaksanaan berubah, surat diganti.', 9004, $draft(null, null));
+    $new = app(RevokeLetter::class)->handle($staff('tu'), $old, 'Tanggal pelaksanaan berubah, surat diganti.', $draft($nomorSiswa(9004)));
     $scenario->note(sprintf('revoked %s → version %d, %s', $old->full_number, $new->version, $new->full_number));
     $scenario->note('FilePolicy view for member Galuh: old PDF '.(Gate::forUser($siswa('galuh'))->allows('view', $old->file) ? 'allowed' : 'denied')
         .', new PDF '.(Gate::forUser($siswa('galuh'))->allows('view', $new->file) ? 'allowed' : 'denied'));
@@ -1215,9 +1219,9 @@ $scenario->step('5e', 'TU corrects the team\'s SISWA letter after it was sent (R
     [$at('kepsek'), 'Surat tugas dicabut dan diganti'],
 ]);
 
-$scenario->step('5f', 'TU corrects the team\'s GURU letter (RevokeLetter)', function () use ($staff, $draft, $currentLetter, $scenario): void {
+$scenario->step('5f', 'TU corrects the team\'s GURU letter (RevokeLetter)', function () use ($staff, $draft, $nomorGuru, $currentLetter, $scenario): void {
     $old = $currentLetter('r1', LetterType::Guru);
-    $new = app(RevokeLetter::class)->handle($staff('tu'), $old, 'Pangkat guru pembimbing salah tulis.', 9103, $draft(null, null));
+    $new = app(RevokeLetter::class)->handle($staff('tu'), $old, 'Pangkat guru pembimbing salah tulis.', $draft($nomorGuru(9103)));
     $scenario->note(sprintf('revoked %s → version %d, %s', $old->full_number, $new->version, $new->full_number));
 }, [
     [$at('hendra.k'), 'Surat perintah tugas diperbarui'],
@@ -1293,7 +1297,7 @@ $scenario->step('7a', 'Galuh (ketua) submits the laporan hasil with certificate 
 }, [[$at('kesiswaan'), 'Laporan hasil baru: '.$lomba['l1']]]);
 
 $scenario->step('7b', 'Kesiswaan asks for a revision (RequestReportRevision)', function () use ($staff, $report): void {
-    app(RequestReportRevision::class)->handle($staff('kesiswaan'), $report('r1'), 'Sertifikat kurang jelas, unggah ulang hasil pindai yang terbaca.');
+    app(RequestReportRevision::class)->handle($staff('kesiswaan'), $report('r1'), 'Sertifikat kurang jelas, upload ulang hasil pindai yang terbaca.');
 }, [
     [$mail('galuh'), 'Perbaiki laporan hasil: '.$lomba['l1']],
     [$mail('bayu'), 'Perbaiki laporan hasil: '.$lomba['l1']],
@@ -1374,7 +1378,7 @@ $scenario->step('8c', 'Humas schedules Bayu\'s publication for "now" (SchedulePu
         $user = Achievement::query()->findOrFail($publication->achievement_id)->student()->firstOrFail()->user()->first();
 
         foreach (AutoPublishPublication::humasRecipients() as $humas) {
-            $expected[] = [(string) $humas->email, 'Waktunya unggah publikasi'];
+            $expected[] = [(string) $humas->email, 'Waktunya upload publikasi'];
         }
 
         if ($user !== null && filled($user->email) && $user->canLogIn()) {
@@ -1684,7 +1688,7 @@ $scenario->step('11a', 'Production rule: a scheduled publication becomes due →
 
     $scenario->note('bell notifications "publication.due" for fitri.h (stored even without mail): '
         .$fitri->notifications()->where('type', PublicationDue::class)->count());
-}, [[$at('humas'), 'Waktunya unggah publikasi']]); // fitri.h (unverified, pending) must NOT be here
+}, [[$at('humas'), 'Waktunya upload publikasi']]); // fitri.h (unverified, pending) must NOT be here
 
 $scenario->step('11b', 'Production rule: the same unverified account still gets its own account notice (AdminNotice): Admin resets fitri.h', function () use ($staff, $temporaryPassword, $production): void {
     $production(function () use ($staff, $temporaryPassword): void {

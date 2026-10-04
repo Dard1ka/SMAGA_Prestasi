@@ -26,14 +26,14 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 /**
  * Kepala Sekolah · Laporan (UI-MAP §4b `kepsek.laporan`, backlog #6, owner B5): period report — counts per
- * bidang, tingkat, capaian, kelas and guru pembimbing plus the first rows of the detail list — and "Unduh
+ * bidang, tingkat, capaian, kelas and guru pembimbing plus the first rows of the detail list — and "Download
  * PDF/Excel" through App\Actions\Reports\ExportPrestasiReport (watermarked with the exporter's name + time,
  * audited, > 500 rows alert the Admins). Exports need a password confirmation from the last 15 minutes
  * (SECURITY §3m-9 "export"). Period = a school year, a date range (`?tahun=rentang&dari=&sampai=`) or all years.
- * Also reachable by Admin (the shared dashboard links "Unduh laporan" here).
+ * Also reachable by Admin (the shared dashboard links "Download laporan" here).
  */
 #[Title('Laporan prestasi')]
-#[Layout('layouts::app', ['subtitle' => 'Rekap prestasi per periode. Unduhan diberi tanda nama pengunduh.'])]
+#[Layout('layouts::app', ['subtitle' => 'Rekap prestasi per periode. File yang di-download diberi tanda nama kamu.'])]
 final class Laporan extends Component
 {
     use RequiresRecentPassword;

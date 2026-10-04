@@ -315,7 +315,7 @@ final class Index extends Component
                 'meta' => trim($studentLetter->full_number.' · PDF'),
                 'note' => $registration->type === RegistrationType::Tim ? '1 surat untuk '.$count.' anggota' : null,
                 'href' => $this->fileLink($studentLetter->file_id),
-                'label' => 'Unduh surat tugas siswa (PDF)',
+                'label' => 'Download surat tugas siswa (PDF)',
             ];
         }
 
@@ -325,7 +325,7 @@ final class Index extends Component
                 'meta' => 'PDF'.($registration->mentor !== null ? ' · '.$this->mentorName($registration->mentor) : ''),
                 'note' => null,
                 'href' => $this->fileLink($guruLetter->file_id),
-                'label' => 'Unduh surat perintah tugas guru pendamping (PDF)',
+                'label' => 'Download surat perintah tugas guru pendamping (PDF)',
             ];
         }
 

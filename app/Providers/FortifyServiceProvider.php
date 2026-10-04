@@ -50,7 +50,8 @@ class FortifyServiceProvider extends ServiceProvider
         Fortify::twoFactorChallengeView(fn () => view('auth.two-factor-challenge'));
         Fortify::confirmPasswordView(fn () => view('auth.confirm-password'));
 
-        // NIS / NISN (students) or email (staff); generic error, lockout, archived/disabled rejection.
+        // NIS / NISN (students; also their email once activation is finished) or username / email (staff);
+        // generic error, lockout, archived/disabled rejection.
         // B1: then K1 (expired initial/temporary password) and K3/K8 (frozen account), same generic error.
         $authenticate = function (Request $request): User {
             $user = app(AuthenticateUser::class)($request);

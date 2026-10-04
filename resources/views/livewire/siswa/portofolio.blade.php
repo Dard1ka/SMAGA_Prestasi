@@ -21,7 +21,7 @@
                 @endif
             </div>
             <x-sth.button variant="quiet" icon="download" wire:click="download" wire:loading.attr="disabled" wire:target="download">
-                Unduh portofolio (PDF)
+                Download portofolio (PDF)
             </x-sth.button>
         </div>
 
@@ -72,7 +72,7 @@
                                             <span class="flex size-10 shrink-0 items-center justify-center rounded-control bg-gold-bg text-gold" aria-hidden="true"><x-sth.icon name="file" /></span>
                                             <span class="flex flex-col">
                                                 <span class="text-sm font-bold">Sertifikat</span>
-                                                <span class="muted text-[12.5px]">Terverifikasi · unduh</span>
+                                                <span class="muted text-[12.5px]">Terverifikasi · download</span>
                                             </span>
                                             <x-sth.icon name="download" :size="18" class="ml-auto text-muted" />
                                         </a>

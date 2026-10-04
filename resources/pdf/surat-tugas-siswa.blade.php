@@ -1,83 +1,114 @@
 {{--
-    Surat tugas siswa (school Excel template, mockup-v2-notes/F.md): one letter for the whole team.
-    Vars: $content (App\Actions\Letters\LetterContent) · $number · $verification · $pdfImages
+    Surat tugas siswa: one letter for the whole team, laid out like the school's Excel sheet "ST_LOMBA … TIM"
+    (M1-A; measures in layout.blade.php). Rows of the sheet, top to bottom: kop · title · Nomor · Dasar / Nomor /
+    Tanggal · "Kepala … memberikan tugas kepada :" · table NO | NAMA MURID | NIS | KELAS · "untuk mengikuti
+    Lomba …, pada :" · Hari / Tanggal / Pukul / Tempat · closing · signature block centred on the right.
+    Vars: $content (App\Actions\Letters\LetterContent) · $number · $verification · $pdfImages · $replaces
 --}}
-@extends('pdf::layout', ['title' => 'Surat Tugas '.$number])
+@extends('pdf::layout', ['title' => 'Surat Tugas '.$number, 'letter' => 'siswa'])
 
 @section('content')
     {{-- B5: fixed texts from the TU letter template (App\Actions\Templates\LetterTemplate, plain text, escaped). --}}
     @php($tpl ??= $letterTemplate ?? \App\Actions\Templates\LetterTemplate::current())
-    @include('pdf::partials.kop')
+    @php([$dateStart, $dateEnd] = $content->dateRange())
+    @php([$timeStart, $timeEnd] = $content->timeRange())
+    @include('pdf::partials.kop', ['kop' => 'siswa'])
+    <div class="s-jarak-kop"></div>
 
-    <p class="judul"><span class="judul-spasi">SURAT TUGAS</span></p>
-    <p class="nomor">Nomor : {{ $number }}</p>
+    <div class="s-judul tebal garis-bawah">S U R A T &nbsp; T U G A S</div>
+    <div class="s-judul">Nomor : {{ $number }}</div>
+    <div class="s-baris"></div>
 
-    <table class="kv">
+    <table class="s-dasar">
         <tr>
             <td class="k">Dasar</td>
             <td class="s">:</td>
-            <td>{{ $tpl->siswaBasis($content->organizer) }}</td>
+            <td>{{ $tpl->siswaBasis($content->basisFrom) }}</td>
         </tr>
-        @if ($content->basisNumber !== null)
-            <tr>
-                <td class="k">Nomor</td>
-                <td class="s">:</td>
-                <td>{{ $content->basisNumber }}</td>
-            </tr>
-        @endif
-        @if ($content->basisDateText !== null)
-            <tr>
-                <td class="k">Tanggal</td>
-                <td class="s">:</td>
-                <td>{{ $content->basisDateText }}</td>
-            </tr>
-        @endif
+        <tr>
+            <td class="k">Nomor</td>
+            <td class="s">:</td>
+            <td>{{ $content->basisNumber ?? '-' }}</td>
+        </tr>
+        <tr>
+            <td class="k">Tanggal</td>
+            <td class="s">:</td>
+            <td>{{ $content->basisDateText ?? '-' }}</td>
+        </tr>
     </table>
+    <div class="s-baris"></div>
 
-    <p class="mt">{{ $tpl->siswaIntro() }}</p>
+    <div class="s-lebar">{{ $tpl->siswaIntro() }}</div>
+    <div class="s-baris"></div>
 
-    <table class="grid">
+    <table class="s-murid">
         <thead>
             <tr>
-                <th class="w-no">NO</th>
+                <th class="no">NO</th>
                 <th>NAMA MURID</th>
-                <th class="w-nis">NIS</th>
-                <th class="w-kelas">KELAS</th>
+                <th class="nis">NIS</th>
+                <th class="kelas">KELAS</th>
             </tr>
         </thead>
         <tbody>
             @foreach ($content->students as $student)
                 <tr>
-                    <td class="c">{{ $student['no'] }}</td>
-                    <td>{{ $student['name'] }}</td>
-                    <td class="c">{{ $student['nis'] }}</td>
-                    <td class="c">{{ $student['class'] }}</td>
+                    <td class="no">{{ $student['no'] }}</td>
+                    <td class="nama">{{ $student['name'] }}</td>
+                    <td class="nis">{{ $student['nis'] }}</td>
+                    <td class="kelas">{{ $student['class'] }}</td>
                 </tr>
             @endforeach
         </tbody>
     </table>
+    <div class="s-baris"></div>
 
-    <p>untuk mengikuti Lomba {{ $content->competitionName }}, pada :</p>
+    {{-- Like the sheet's long cells, these two sentences may run past the last column (to the page margin). --}}
+    <div>untuk mengikuti {{ $content->activity() }}, pada :</div>
+    <div class="s-baris"></div>
 
-    <table class="kv">
+    <table class="s-pelaksanaan">
         <tr>
-            <td class="k">Hari / Tanggal</td>
+            <td class="k">Hari</td>
             <td class="s">:</td>
-            <td>{{ $content->dayAndDate() }}</td>
+            <td colspan="3">{{ $content->scheduleDay }}</td>
+        </tr>
+        <tr>
+            <td class="k">Tanggal</td>
+            <td class="s">:</td>
+            @if ($dateEnd !== null)
+                <td class="awal">{{ $dateStart }}</td>
+                <td class="sd">s.d</td>
+                <td>{{ $dateEnd }}</td>
+            @else
+                <td colspan="3">{{ $dateStart }}</td>
+            @endif
         </tr>
         <tr>
             <td class="k">Pukul</td>
             <td class="s">:</td>
-            <td>{{ $content->scheduleTime }}</td>
+            @if ($timeEnd !== null)
+                <td class="awal">{{ $timeStart }}</td>
+                <td class="sd">s.d</td>
+                <td>{{ $timeEnd }}</td>
+            @else
+                <td colspan="3">{{ $timeStart }}</td>
+            @endif
         </tr>
         <tr>
             <td class="k">Tempat</td>
             <td class="s">:</td>
-            <td>{{ $content->place }}</td>
+            <td colspan="3">{{ $content->place }}</td>
         </tr>
     </table>
+    <div class="s-baris"></div>
 
-    <p class="justify mt">{{ $tpl->siswaClosing() }}</p>
+    <div>{{ $tpl->siswaClosing() }}</div>
+    <div class="s-baris"></div>
+    <div class="s-baris-15"></div>
 
-    @include('pdf::partials.ttd')
+    @include('pdf::partials.ttd', [
+        'ttd' => 's-ttd',
+        'ttdLines' => [$tpl->city().', '.$content->issuedOnText, $tpl->signerTitle()],
+    ])
 @endsection

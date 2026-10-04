@@ -22,11 +22,13 @@ dicek terhadap `docs/SECURITY.md` §4 oleh I sebelum rilis.
 - Model data: migrasi, enum, model, factory, seeder fiktif, policy untuk setiap model.
 - Aturan domain di `app/Domain`: poin + versi bobot, batas laporan 45 hari, arsip 18 bulan,
   penomoran surat, password awal, upload file.
-- Auth & akun: login NIS/NISN, aktivasi (ganti password → email → OTP), mode uji OTP, import siswa
-  (dry-run, queue), reset kata sandi & email oleh Admin, nonaktif/arsip manual, 2FA staf.
+- Auth & akun: login NIS/NISN (siswa juga email setelah aktivasi, D-78), aktivasi (email → OTP → kata
+  sandi, D-79), mode uji OTP, import siswa (dry-run, queue; import tahunan memperbarui kelas, D-81), reset
+  kata sandi & email oleh Admin, nonaktif/arsip manual, 2FA staf.
 - State machine pendaftaran & Action: undangan dan konfirmasi anggota tim, persetujuan Kepala Sekolah,
   pembatalan.
-- Surat tugas: nomor manual TU, generate PDF dengan satu gambar ttd + stempel, QR verifikasi.
+- Surat tugas: nomor lengkap diketik TU per surat (D-82, D-83), generate PDF sesuai surat asli sekolah
+  dengan satu gambar ttd + stempel (D-84), QR verifikasi.
 - Laporan hasil: verifikasi Kesiswaan, pembuatan prestasi per anggota, poin, rekalkulasi bobot.
 - Notifikasi (mail + database) & queue, audit log, job terjadwal.
 - Review kode semua PR; menjaga `CLAUDE.md` tetap benar.

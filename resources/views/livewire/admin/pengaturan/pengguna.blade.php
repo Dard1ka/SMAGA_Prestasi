@@ -144,7 +144,7 @@
                         <p class="text-sm muted">Ubah sesuai formulir izin orang tua. Tanpa izin publikasi, halaman publik hanya menulis "Siswa kelas …".</p>
                     </div>
                     <x-sth.checkbox wire:model="photoConsent" label="Foto boleh dipakai di publikasi" />
-                    <x-sth.checkbox wire:model="publishConsent" label="Nama dan prestasi boleh tampil di halaman publik" hint="Jika dicabut, tautan halaman publik siswa diganti." />
+                    <x-sth.checkbox wire:model="publishConsent" label="Nama dan prestasi boleh tampil di halaman publik" hint="Jika dicabut, link halaman publik siswa diganti." />
                     <x-sth.textarea wire:model="consentNote" label="Dasar perubahan" rows="2" hint="Contoh: formulir izin orang tua 1 Okt 2026." />
                     <span class="flex justify-end">
                         <x-sth.button type="submit" variant="soft" size="sm" wire:loading.attr="disabled" wire:target="saveConsent">Simpan persetujuan</x-sth.button>
@@ -225,7 +225,7 @@
                               hint="Akun Admin tidak bisa dipilih: Admin dan Kepala Sekolah akun terpisah." />
             @endif
             <x-sth.textarea wire:model="principalReason" label="Alasan" rows="2" hint="Contoh: SK pengangkatan Kepala Sekolah baru." />
-            <p class="text-sm muted">Tanda tangan lama dilepas saat penggantian berlaku. Unggah tanda tangan Kepala Sekolah baru di tab Surat & tanda tangan.</p>
+            <p class="text-sm muted">Tanda tangan lama dilepas saat penggantian berlaku. Upload tanda tangan Kepala Sekolah baru di tab Surat & tanda tangan.</p>
         </form>
         <x-slot:footer>
             <x-sth.button variant="quiet" data-sth-close>Batal</x-sth.button>

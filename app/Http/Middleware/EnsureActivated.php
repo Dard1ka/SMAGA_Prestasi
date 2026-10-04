@@ -14,8 +14,9 @@ use Illuminate\Support\Facades\Auth;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Alias `activated`. Until the first-login activation is finished (new password, bound + verified email),
- * the only reachable screen is `aktivasi` (docs/SECURITY.md §3a K4).
+ * Alias `activated`. Until the first-login activation is finished (bound + verified email, then the password
+ * step: a student changes or keeps the password, staff must change it), the only reachable screen is `aktivasi`
+ * (docs/SECURITY.md §3a K4, order of the lead's decision of 2026-10-04; DetermineActivationStep).
  *
  * B1: a frozen account (K3 failed logins, K8 "Bukan saya?") loses its session here as well, in case a session
  * survived the revocation (non-database session drivers).

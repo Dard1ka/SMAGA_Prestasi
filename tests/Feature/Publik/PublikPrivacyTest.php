@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Domain\Leaderboard\RankingScope;
 use App\Enums\Bidang;
 use App\Enums\Level;
 use App\Enums\ResultType;
@@ -54,7 +55,8 @@ function publikUrls(object $test): array
         route('public.lomba.pemenang', $test->opsi->id),
         route('public.lomba.pemenang', $test->robotik->id),
         route('public.peringkat'),
-        route('public.peringkat', ['alumni' => 1]),
+        route('public.peringkat', ['status' => 'semua']),
+        route('public.peringkat', ['status' => 'alumni']),
         route('public.peringkat', ['mode' => 'kelas']),
     ];
 }
@@ -133,10 +135,36 @@ it('shows alumni with the Alumni label and their rank including alumni', functio
     $this->f->prestasi($ardi, $this->f->lomba('OSN Nasional 2024 Kimia', Bidang::Sains, Level::Nasional, '2024-10-05'), ResultType::Juara1);
     $slug = $this->f->slug($ardi);
 
+    // M1-C: the last class of an alumnus is not shown any more.
     $this->get(route('public.prestasi.siswa', $slug))
         ->assertOk()
         ->assertSee('Alumni · lulus 2025')
-        ->assertSee('termasuk alumni');
+        ->assertSee('termasuk alumni')
+        ->assertDontSee('XII-3')
+        ->assertDontSee('Kelas terakhir');
+});
+
+it('keeps an alumnus without publish consent anonymous in every ranking group', function (): void {
+    $tiara = $this->f->student('Tiara Anjani Lestari', 'XII-8', consent: false, archived: true, attributes: ['grade12_start_date' => '2024-07-01', 'nis' => '222223555', 'nisn' => '0077123456']);
+    $this->f->prestasi($tiara, $this->robotik, ResultType::Juara2);
+    PublicAchievements::flush();
+
+    foreach (['alumni', 'semua'] as $status) {
+        $html = $this->get(route('public.peringkat', ['status' => $status]))
+            ->assertOk()
+            ->assertSee('Alumni')
+            ->assertDontSee('Tiara Anjani Lestari')
+            ->assertDontSee('XII-8')
+            ->getContent();
+
+        foreach (['222223555', '0077123456', (string) $tiara->id] as $secret) {
+            expect(str_contains($html, $secret))->toBeFalse("{$secret} leaked with status={$status}");
+        }
+    }
+
+    $row = collect(app(PublicAchievements::class)->ranking('siswa', scope: RankingScope::Alumni))->sole();
+
+    expect($row)->toMatchArray(['name' => 'Alumni', 'named' => false, 'slug' => null, 'kelas' => null, 'kelas_label' => null, 'lulus' => null]);
 });
 
 it('keeps disabled accounts out of names and rankings but inside the totals', function (): void {

@@ -26,6 +26,6 @@ final class SignatureReplaced extends AdminNotice
     {
         return $this->removed
             ? ["{$this->actorName} menghapus gambar tanda tangan + stempel. Surat tugas baru tidak bisa dibuat sampai ada gambar baru."]
-            : ["{$this->actorName} mengunggah gambar tanda tangan + stempel baru. Gambar ini dipakai di semua surat tugas berikutnya.", 'Jika bukan atas persetujuan Anda, hubungi Admin sekarang.'];
+            : ["{$this->actorName} meng-upload gambar tanda tangan + stempel baru. Gambar ini dipakai di semua surat tugas berikutnya.", 'Jika bukan atas persetujuan Anda, hubungi Admin sekarang.'];
     }
 }

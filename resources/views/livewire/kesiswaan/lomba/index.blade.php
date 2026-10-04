@@ -113,9 +113,9 @@
                                 @if ($item['website'])
                                     <x-sth.link :href="$item['website']" icon="link" external>{{ $item['websiteHost'] }}</x-sth.link>
                                 @elseif ($item['websiteInvalid'])
-                                    <span class="text-[13px] font-semibold text-orange">Tautan tidak valid</span>
+                                    <span class="text-[13px] font-semibold text-orange">Link tidak valid</span>
                                 @else
-                                    <span class="text-[13px] text-muted">Tanpa tautan</span>
+                                    <span class="text-[13px] text-muted">Tanpa link</span>
                                 @endif
                                 @if ($item['juknis'])
                                     @if ($item['juknis']['url'])

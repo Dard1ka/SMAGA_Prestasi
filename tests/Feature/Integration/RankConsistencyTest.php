@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Domain\Leaderboard\RankingScope;
 use App\Enums\Bidang;
 use App\Enums\Level;
 use App\Enums\ResultType;
@@ -18,7 +19,7 @@ use Tests\Feature\Publik\PublikFixtures;
 /*
 | W3-A, lead decision D-37: a student's personal rank ("peringkatmu") is computed among ACTIVE students only
 | and is the same number on siswa Beranda, Portofolio and the public student page; the public leaderboard
-| includes alumni (flagged) only with its toggle.
+| includes alumni (flagged) only when asked (status filter "Alumni" / "Semua", M1-C).
 */
 
 uses(RefreshDatabase::class);
@@ -41,9 +42,12 @@ it('shows demo Nadia as #14 everywhere and #15 only on the public ranking with a
         ->and($public->studentDetail($slug)['rank_active'])->toBe(14)
         ->and($public->studentDetail($slug)['rank_all'])->toBe(15)
         ->and(collect($public->ranking('siswa'))->firstWhere('name', 'Nadia Putri Anindya')['rank'])->toBe(14)
-        ->and(collect($public->ranking('siswa', alumni: true))->firstWhere('name', 'Nadia Putri Anindya')['rank'])->toBe(15)
-        ->and(collect($public->ranking('siswa', alumni: true))->contains(fn (array $row): bool => $row['alumni']))->toBeTrue()
-        ->and(collect($public->ranking('siswa'))->contains(fn (array $row): bool => $row['alumni']))->toBeFalse();
+        ->and(collect($public->ranking('siswa', scope: RankingScope::All))->firstWhere('name', 'Nadia Putri Anindya')['rank'])->toBe(15)
+        ->and(collect($public->ranking('siswa', scope: RankingScope::All))->contains(fn (array $row): bool => $row['alumni']))->toBeTrue()
+        ->and(collect($public->ranking('siswa'))->contains(fn (array $row): bool => $row['alumni']))->toBeFalse()
+        // M1-C: the alumni group holds alumni only (ranked among themselves), never Nadia.
+        ->and(collect($public->ranking('siswa', scope: RankingScope::Alumni))->every(fn (array $row): bool => $row['alumni']))->toBeTrue()
+        ->and(collect($public->ranking('siswa', scope: RankingScope::Alumni))->first()['rank'])->toBe(1);
 
     Livewire::actingAs($nadia->user)->test(Beranda::class)->assertSee('#14')->assertDontSee('#15');
     Livewire::actingAs($nadia->user)->test(Portofolio::class)->assertSee('#14')->assertSee('dari siswa aktif');

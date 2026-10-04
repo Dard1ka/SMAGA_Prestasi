@@ -151,11 +151,11 @@ it('asks for a revision with a note: report perlu_revisi, registration back to m
 
     expect(fn () => app(RequestReportRevision::class)->handle($this->kesiswaan, $report, ''))->toThrow(ValidationException::class);
 
-    app(RequestReportRevision::class)->handle($this->kesiswaan, $report, 'Unggah sertifikat yang terbaca.');
+    app(RequestReportRevision::class)->handle($this->kesiswaan, $report, 'Upload sertifikat yang terbaca.');
 
     $report->refresh();
     expect($report->status)->toBe(ReportStatus::PerluRevisi)
-        ->and($report->note)->toBe('Unggah sertifikat yang terbaca.')
+        ->and($report->note)->toBe('Upload sertifikat yang terbaca.')
         ->and($report->registration->status)->toBe(RegistrationStatus::MenungguLaporan)
         ->and(Achievement::query()->count())->toBe(0);
 

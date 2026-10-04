@@ -43,8 +43,9 @@
                                         <x-sth.chip size="sm" class="shrink-0">Alumni</x-sth.chip>
                                     @endif
                                 </span>
+                                {{-- An alumnus has the chip above and no class (the last class is never shown). --}}
                                 @if ($person['kelas'])
-                                    <span class="text-xs text-muted">{{ $person['alumni'] ? 'Kelas terakhir ' : 'Kelas ' }}{{ $person['kelas'] }}</span>
+                                    <span class="text-xs text-muted">Kelas {{ $person['kelas'] }}</span>
                                 @endif
                             </span>
                         </li>

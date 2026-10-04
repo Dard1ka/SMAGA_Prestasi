@@ -18,9 +18,9 @@ use Livewire\Attributes\Title;
 use Livewire\Component;
 
 /**
- * Guest "Lupa kata sandi" (docs/SECURITY.md §3b): 1 NIS/NISN (or staff email) → same message whether or not
- * the account exists → 2 six-digit code from the bound email + new password. Rate limited per identifier
- * bucket and per IP.
+ * Guest "Lupa kata sandi" (docs/SECURITY.md §3b): 1 NIS/NISN, the student's own email once activation is
+ * finished, or a staff username/email → same message whether or not the account exists → 2 six-digit code from
+ * the bound email + new password. Rate limited per typed identifier and per IP.
  */
 #[Layout('layouts::auth', ['variant' => 'simple'])]
 #[Title('Lupa kata sandi')]

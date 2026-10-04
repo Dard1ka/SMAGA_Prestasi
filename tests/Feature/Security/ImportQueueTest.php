@@ -194,7 +194,7 @@ it('fails gracefully when the importer lost the permission or the file is gone',
     ImportStudentsJob::dispatch($second->getKey());
 
     expect($second->refresh()->status)->toBe(StudentImportStatus::Failed)
-        ->and($second->error)->toBe('File impor tidak ditemukan. Unggah ulang file.');
+        ->and($second->error)->toBe('File impor tidak ditemukan. Upload ulang file.');
 });
 
 it('queues a big import from the screen and shows its progress, then the result', function (): void {

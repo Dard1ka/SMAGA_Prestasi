@@ -9,6 +9,8 @@
  |   data-sth-open="<dialog id>" · data-sth-close · data-sth-autoopen        <x-sth.modal>, mobile menu
  |   window events: sth-modal-open / sth-modal-close {id} · sth-toast {message, tone}
  |                  sth-form-invalid {form} — bring the first validation error into view
+ |                  sth-badges {badges: {key: count}} — update [data-sth-badge="key"] in the sidebar
+ |   form[data-sth-live-search]                                               top bar search filters as you type
  |   data-sth-toast / data-sth-toast-close / data-announce                    <x-sth.toast>, <x-sth.flash>
  |   data-sth-tabs / data-sth-tab / data-sth-panel                            <x-sth.tabs panels>
  |   data-sth-reveal="<input id>"                                             <x-sth.input revealable>
@@ -282,6 +284,84 @@ window.addEventListener('sth-form-invalid', (event) => {
     window.setTimeout(() => revealFirstError(scope), 50);
 });
 
+/* ---------------------------------------------------------------- sidebar badges */
+
+/*
+ | The sidebar belongs to the layout, which Livewire renders once per page load, so a queue count next to a
+ | menu item went stale as soon as an action on the page changed the queue (send a letter, verify a report).
+ | Screens dispatch `sth-badges` with fresh counts and the numbers are updated in place; zero hides the badge.
+ */
+window.addEventListener('sth-badges', (event) => {
+    const badges = event.detail?.badges;
+    if (!badges || typeof badges !== 'object') return;
+
+    for (const [key, value] of Object.entries(badges)) {
+        const count = Math.max(0, Math.trunc(Number(value)) || 0);
+        document.querySelectorAll(`[data-sth-badge="${CSS.escape(key)}"]`).forEach((badge) => {
+            badge.textContent = String(count);
+            badge.hidden = count === 0;
+        });
+    }
+});
+
+/* ---------------------------------------------------------------- top bar search (live) */
+
+/*
+ | The top bar search is a plain GET form (?q=) that points at the role's list page. On that list page itself
+ | the Livewire screen owns a property with the same name, so typing filters the list right away: no Enter
+ | needed, and emptying the box brings the full list back. On every other page Enter still submits the form.
+ */
+const SEARCH_DELAY = 350;
+let searchTimer = 0;
+
+function liveSearchTarget(form, name) {
+    if (!(form instanceof HTMLFormElement) || !form.hasAttribute('data-sth-live-search') || !name) return null;
+    if (new URL(form.action, window.location.href).pathname !== window.location.pathname) return null;
+
+    const components = window.Livewire?.all?.() || [];
+
+    return components.find((component) => component.canonical && Object.hasOwn(component.canonical, name)) || null;
+}
+
+document.addEventListener('input', (event) => {
+    const input = event.target;
+    if (!(input instanceof HTMLInputElement)) return;
+    const component = liveSearchTarget(input.form, input.name);
+    if (!component) return;
+
+    window.clearTimeout(searchTimer);
+    searchTimer = window.setTimeout(() => component.$wire.set(input.name, input.value), SEARCH_DELAY);
+});
+
+document.addEventListener('submit', (event) => {
+    const form = event.target;
+    const input = form instanceof HTMLFormElement ? form.querySelector('input[type="search"]') : null;
+    const component = input ? liveSearchTarget(form, input.name) : null;
+    if (!component) return;
+
+    event.preventDefault();
+    window.clearTimeout(searchTimer);
+    component.$wire.set(input.name, input.value);
+});
+
+// "Hapus filter" and the like change the value on the server: show it in the box unless the user is typing.
+function syncLiveSearch() {
+    document.querySelectorAll('form[data-sth-live-search] input[type="search"]').forEach((input) => {
+        if (document.activeElement === input) return;
+        const component = liveSearchTarget(input.form, input.name);
+        const value = component?.canonical?.[input.name];
+        if (typeof value === 'string' && input.value !== value) input.value = value;
+    });
+}
+
+function watchLiveSearch() {
+    if (!window.Livewire?.hook || window.sth?.searchWatched) return;
+    window.sth.searchWatched = true;
+    window.Livewire.hook('commit', ({ succeed }) => {
+        succeed(() => window.setTimeout(syncLiveSearch, 0));
+    });
+}
+
 /* ---------------------------------------------------------------- tabs (client panels) */
 
 function selectTab(tab, focus) {
@@ -468,3 +548,6 @@ function watchThrottledRequests() {
 
 watchThrottledRequests();
 document.addEventListener('livewire:init', watchThrottledRequests);
+
+watchLiveSearch();
+document.addEventListener('livewire:init', watchLiveSearch);

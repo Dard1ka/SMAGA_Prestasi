@@ -51,7 +51,7 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
  * on screen. Filters live in the URL; the same AchievementFilters object drives list, totals and export.
  */
 #[Title('Database prestasi')]
-#[Layout('layouts::app', ['subtitle' => 'Semua prestasi terverifikasi, bisa disaring dan diunduh.'])]
+#[Layout('layouts::app', ['subtitle' => 'Semua prestasi terverifikasi, bisa disaring dan di-download.'])]
 final class DatabasePrestasi extends Component
 {
     use RequiresRecentPassword, WithKesiswaanBadges, WithPagination;

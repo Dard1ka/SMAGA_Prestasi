@@ -131,7 +131,7 @@ it('stores the signature through StoreUpload: ttd/Y/m path, hourly upload limit,
     }
 
     expect(fn () => app(ReplaceSignatureImage::class)->handle($this->admin, sthPngUpload('baru.png')))
-        ->toThrow(ValidationException::class, 'Batas unggah tercapai')
+        ->toThrow(ValidationException::class, 'Batas upload tercapai')
         ->and(Setting::get(SettingKey::SignatureFileId))->toBe($file->id)
         ->and(File::query()->where('purpose', FilePurpose::Signature)->count())->toBe(1);
 });

@@ -34,6 +34,8 @@ final class LetterPdf
         'guru' => 'surat-perintah-tugas-guru',
     ];
 
+    public const MSG_NO_SIGNATURE = 'Tanda tangan dan stempel belum di-upload. Minta Admin upload di Pengaturan › Surat & tanda tangan.';
+
     public function __construct(
         private readonly PdfRenderer $renderer,
         private readonly PdfQrCode $qr,
@@ -54,7 +56,7 @@ final class LetterPdf
         $bytes = $file !== null && $file->purpose === FilePurpose::Signature ? $file->storage()->get($file->path) : null;
 
         if (! is_string($bytes) || $bytes === '') {
-            throw ValidationException::withMessages(['signature' => 'Tanda tangan dan stempel belum diunggah Admin.']);
+            throw ValidationException::withMessages(['signature' => self::MSG_NO_SIGNATURE]);
         }
 
         return ['bytes' => $bytes, 'file_id' => (string) $file->getKey(), 'sha256' => hash('sha256', $bytes)];
@@ -81,7 +83,7 @@ final class LetterPdf
                 'qr.png' => $this->qr->png($url, 6),
             ]);
         } catch (InvalidArgumentException) {
-            throw ValidationException::withMessages(['signature' => 'Gambar tanda tangan tidak bisa dipakai. Minta Admin mengunggah ulang.']);
+            throw ValidationException::withMessages(['signature' => 'Gambar tanda tangan tidak bisa dipakai. Minta Admin upload ulang.']);
         }
     }
 

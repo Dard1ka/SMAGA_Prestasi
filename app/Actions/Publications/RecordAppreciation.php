@@ -17,9 +17,9 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Puts a verified achievement (student with publish consent) on an upcoming appreciation event:
- * one `appreciations` row, status `dijadwalkan`, unique per achievement + event. Audited; the student
- * is notified after commit.
+ * Puts a verified achievement (student with publish consent) on an upcoming appreciation event that is not
+ * yet confirmed as held: one `appreciations` row, status `dijadwalkan`, unique per achievement + event.
+ * Audited; the student is notified after commit.
  */
 final class RecordAppreciation
 {
@@ -46,6 +46,11 @@ final class RecordAppreciation
             $appreciation = DB::transaction(function () use ($actor, $event, $achievement): Appreciation {
                 /** @var AppreciationEvent $lockedEvent */
                 $lockedEvent = AppreciationEvent::query()->whereKey($event->getKey())->lockForUpdate()->firstOrFail();
+
+                // A confirmed event is the record of who was appreciated (M1-E): nothing is added afterwards.
+                if ($lockedEvent->isCompleted()) {
+                    throw ValidationException::withMessages(['event' => 'Acara ini sudah dilaksanakan. Pilih acara lain.']);
+                }
 
                 if ($lockedEvent->held_on->lessThan(CarbonImmutable::today())) {
                     throw ValidationException::withMessages(['event' => 'Acara apresiasi ini sudah lewat.']);

@@ -12,13 +12,14 @@ use App\Models\RegistrationMember;
 use App\Models\Setting;
 
 /**
- * Everything both letters print, built from the approved registration (DB) + the TU draft. Shared by the
- * PDF templates (resources/pdf) and the live HTML preview so both show the same text (SECURITY §3g:
- * letter data comes from the database record, not from the request).
+ * Everything one letter prints, built from the approved registration (DB) + the TU draft of that letter.
+ * Shared by the PDF templates (resources/pdf) and the live HTML preview so both show the same text
+ * (SECURITY §3g: who is in the letter comes from the database record, not from the request).
  *
- * Structure follows the school's templates (mockup-v2-notes/F.md): student letter = one table
- * NO | NAMA MURID | NIS | KELAS for the whole team; guru letter = Surat Perintah Tugas + Lampiran.
- * Signer name/rank/NIP come from settings (placeholders until Admin fills them), never hard-coded.
+ * Structure follows the school's own files (M1-A, lead 2026-10-04): the student letter is the Excel sheet
+ * "ST_LOMBA … TIM" (one table NO | NAMA MURID | NIS | KELAS for the whole team, names in capitals, class as
+ * "XI - 7", Hari / Tanggal / Pukul / Tempat rows), the guru letter is the Word file "ST PENGUKUHAN KEG OPSI"
+ * (Surat Perintah Tugas + Lampiran). Signer name/rank/NIP come from settings, never hard-coded.
  */
 final readonly class LetterContent
 {
@@ -27,7 +28,7 @@ final readonly class LetterContent
     public const CITY = 'Semarang';
 
     /**
-     * @param  list<array{no: int, name: string, nis: string, class: string}>  $students
+     * @param  list<array{no: int, name: string, nis: string, class: string}>  $students  as printed (capitals, "XI - 7")
      * @param  array{name: string, rank: string, nip: string, position: string}|null  $mentor
      * @param  array{name: string, rank: string, nip: string}  $signer
      */
@@ -35,15 +36,19 @@ final readonly class LetterContent
         public string $competitionName,
         public string $competitionShort,
         public string $organizer,
+        public string $basisFrom,
         public ?string $basisNumber,
         public ?string $basisDateText,
+        public string $basisSubject,
         public array $students,
         public ?array $mentor,
         public string $scheduleDay,
+        public string $scheduleDate,
         public string $scheduleTime,
         public string $place,
         public bool $online,
         public string $issuedOnText,
+        public string $issuedYear,
         public string $schoolYear,
         public array $signer,
     ) {}
@@ -66,33 +71,38 @@ final readonly class LetterContent
         foreach ($members as $index => $member) {
             $students[] = [
                 'no' => $index + 1,
-                'name' => (string) $member->student?->user?->name,
+                'name' => mb_strtoupper((string) $member->student?->user?->name),
                 'nis' => (string) $member->student?->nis,
-                'class' => (string) $member->student?->classroom?->name,
+                'class' => self::classLabel((string) $member->student?->classroom?->name),
             ];
         }
 
         $mentor = $registration->mentor;
-        $place = trim($draft->place);
+        $organizer = trim((string) $competition?->organizer_name);
+        $place = self::line($draft->place);
 
         return new self(
             competitionName: $branch !== '' ? $name.' cabang '.mb_strtolower($branch) : $name,
             competitionShort: $name,
-            organizer: (string) ($competition?->organizer_name ?: 'penyelenggara'),
+            organizer: $organizer !== '' ? $organizer : 'penyelenggara',
+            basisFrom: self::line($draft->basisFrom),
             basisNumber: self::clean($draft->basisNumber),
             basisDateText: $draft->basisDate?->locale('id')->translatedFormat('j F Y'),
+            basisSubject: self::line($draft->basisSubject),
             students: $students,
             mentor: $mentor === null ? null : [
                 'name' => (string) $mentor->name,
                 'rank' => (string) ($mentor->staffProfile?->rank ?: '-'),
                 'nip' => (string) ($mentor->staffProfile?->nip ?: '-'),
-                'position' => 'Guru',
+                'position' => (string) ($mentor->staffProfile?->position ?: 'Guru'),
             ],
-            scheduleDay: trim($draft->scheduleDay),
-            scheduleTime: trim($draft->scheduleTime),
+            scheduleDay: self::line($draft->scheduleDay),
+            scheduleDate: self::line($draft->scheduleDate),
+            scheduleTime: self::line($draft->scheduleTime),
             place: $place,
             online: mb_strtolower($place) === 'daring',
             issuedOnText: $draft->issuedOn->locale('id')->translatedFormat('j F Y'),
+            issuedYear: (string) $draft->issuedOn->year,
             schoolYear: SchoolYear::containing($draft->issuedOn)->toString(),
             signer: [
                 'name' => (string) Setting::get(SettingKey::SignerName),
@@ -102,38 +112,94 @@ final readonly class LetterContent
         );
     }
 
-    /** "Sabtu, 7 November 2026" → "Sabtu / 7 November 2026" (student template layout). */
-    public function dayAndDate(): string
+    /** "XI-7" → "XI - 7", the way the school's student letter writes a class. Other names stay as they are. */
+    public static function classLabel(string $name): string
     {
-        [$day, $date] = $this->splitDay();
+        $name = trim($name);
 
-        return $day !== '' ? $day.' / '.$date : $date;
+        return preg_match('/^(XII|XI|X)\s*-\s*(\S.*)$/u', $name, $m) === 1 ? $m[1].' - '.$m[2] : $name;
     }
 
-    /** Guru letter, "Untuk" point 1. */
-    public function guruTask(): string
+    /** "Lomba <nama>" (student letter, with the cabang); a name that already starts with "Lomba" is not doubled. */
+    public function activity(): string
     {
-        [$day, $date] = $this->splitDay();
-        $where = $this->online ? 'secara daring' : 'di '.($this->place !== '' ? $this->place : '[tempat]');
-
-        return 'Melaksanakan tugas kegiatan mendampingi siswa Lomba '.$this->competitionShort
-            .' pada hari '.($day !== '' ? $day : '[hari]').' tanggal '.($date !== '' ? $date : '[tanggal]').', '.$where.'.';
+        return self::withLomba($this->competitionName);
     }
 
-    /** Guru letter, "Dasar" point 2. */
+    /** "Lomba <nama>" without the cabang (guru letter). */
+    public function activityShort(): string
+    {
+        return self::withLomba($this->competitionShort);
+    }
+
+    /**
+     * Student letter: "21 September 2026 s.d 24 September 2026" → ["21 September 2026", "24 September 2026"].
+     *
+     * @return array{0: string, 1: string|null}
+     */
+    public function dateRange(): array
+    {
+        return self::range($this->scheduleDate);
+    }
+
+    /**
+     * Student letter: "07.00 WIB s.d Selesai" → ["07.00 WIB", "Selesai"].
+     *
+     * @return array{0: string, 1: string|null}
+     */
+    public function timeRange(): array
+    {
+        return self::range($this->scheduleTime);
+    }
+
+    /** Guru letter, "Dasar": the invitation, after the fixed regulation texts. */
     public function guruBasis(): string
     {
-        $text = 'Surat dari '.$this->organizer;
+        $text = 'Surat dari '.($this->basisFrom !== '' ? $this->basisFrom : '[surat dari]');
 
         if ($this->basisNumber !== null) {
             $text .= ' Nomor '.$this->basisNumber;
         }
 
         if ($this->basisDateText !== null) {
-            $text .= ' tanggal '.$this->basisDateText;
+            $text .= ' Tanggal '.$this->basisDateText;
         }
 
-        return $text.'.';
+        if ($this->basisSubject !== '') {
+            $text .= ' Hal '.$this->basisSubject;
+        }
+
+        return $text;
+    }
+
+    /** Guru letter, "Untuk" point 1 (worded as in the school's file, without a full stop). */
+    public function guruTask(): string
+    {
+        $where = $this->online ? 'secara daring' : 'di '.($this->place !== '' ? $this->place : '[tempat]');
+
+        return 'Melaksanakan tugas kegiatan mendampingi siswa '.$this->activityShort()
+            .' pada hari '.($this->scheduleDay !== '' ? $this->scheduleDay : '[hari]')
+            .' tanggal '.($this->scheduleDate !== '' ? $this->scheduleDate : '[tanggal]')
+            .', Pukul '.($this->scheduleTime !== '' ? $this->scheduleTime : '[pukul]')
+            .' '.$where;
+    }
+
+    /**
+     * Guru letter, Lampiran: ["DAFTAR PENDAMPING LOMBA …", "TAHUN 2026"]. A year at the end of the lomba name
+     * moves to the second line (as in the school's file); otherwise the year of the letter date.
+     *
+     * @return array{0: string, 1: string}
+     */
+    public function attachmentTitle(): array
+    {
+        $activity = $this->activityShort();
+        $year = $this->issuedYear;
+
+        if (preg_match('/^(.+?)(?:\s+tahun)?\s+((?:19|20)\d{2})$/iu', $activity, $m) === 1) {
+            [$activity, $year] = [$m[1], $m[2]];
+        }
+
+        return ['DAFTAR PENDAMPING '.mb_strtoupper($activity), 'TAHUN '.$year];
     }
 
     public function studentCount(): int
@@ -141,22 +207,36 @@ final readonly class LetterContent
         return count($this->students);
     }
 
-    /** @return array{0: string, 1: string} */
-    private function splitDay(): array
+    private static function withLomba(string $name): string
     {
-        $value = $this->scheduleDay;
-        $comma = mb_strpos($value, ',');
+        return preg_match('/^lomba\b/iu', $name) === 1 ? $name : 'Lomba '.$name;
+    }
 
-        if ($comma === false || $comma === 0) {
-            return ['', $value];
+    /**
+     * Split "A s.d B" (also "s.d." and "s/d") into [A, B]; [text, null] when there is no range.
+     *
+     * @return array{0: string, 1: string|null}
+     */
+    private static function range(string $text): array
+    {
+        if (preg_match('~^(.+?)\s+(?:s\.d\.?|s/d)\s+(.+)$~iu', $text, $m) === 1) {
+            return [trim($m[1]), trim($m[2])];
         }
 
-        return [trim(mb_substr($value, 0, $comma)), trim(mb_substr($value, $comma + 1))];
+        return [$text, null];
+    }
+
+    /** One line of plain text: control characters and line breaks become spaces, runs of spaces collapse. */
+    private static function line(?string $value): string
+    {
+        $text = (string) preg_replace('/[\p{Cc}\p{Cf}\x{2028}\x{2029}]+/u', ' ', (string) $value);
+
+        return trim((string) preg_replace('/\s{2,}/u', ' ', $text));
     }
 
     private static function clean(?string $value): ?string
     {
-        $value = trim((string) $value);
+        $value = self::line($value);
 
         return $value === '' ? null : $value;
     }

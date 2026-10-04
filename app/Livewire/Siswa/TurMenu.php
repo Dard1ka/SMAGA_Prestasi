@@ -83,7 +83,7 @@ class TurMenu extends Component
     {
         return [
             1 => ['title' => 'Cari lomba', 'text' => 'Cari lomba dari sekolah dan daftar di sini.', 'icon' => 'search', 'label' => 'Cari lomba', 'cta' => '1', 'spot' => 'top-[80px]', 'pop' => 'top-[60px]'],
-            2 => ['title' => 'Lomba saya', 'text' => 'Pantau status, unduh surat tugas, dan laporkan hasil.', 'icon' => 'clipboard', 'label' => 'Lomba saya', 'cta' => '', 'spot' => 'top-[269px]', 'pop' => 'top-[249px]'],
+            2 => ['title' => 'Lomba saya', 'text' => 'Pantau status, download surat tugas, dan laporkan hasil.', 'icon' => 'clipboard', 'label' => 'Lomba saya', 'cta' => '', 'spot' => 'top-[269px]', 'pop' => 'top-[249px]'],
             3 => ['title' => 'Portofolio', 'text' => 'Semua prestasi dan sertifikatmu.', 'icon' => 'award', 'label' => 'Portofolio', 'cta' => '', 'spot' => 'top-[317px]', 'pop' => 'top-[297px]'],
             4 => ['title' => 'Peringkat', 'text' => 'Lihat poin dan posisimu.', 'icon' => 'bars', 'label' => 'Peringkat', 'cta' => '', 'spot' => 'top-[365px]', 'pop' => 'top-[345px]'],
             5 => ['title' => 'Profil talenta', 'text' => 'Atur minat dan bakatmu.', 'icon' => 'user', 'label' => 'Profil talenta', 'cta' => '', 'spot' => 'top-[455px]', 'pop' => 'top-[435px]'],
@@ -101,7 +101,7 @@ class TurMenu extends Component
     {
         return [
             1 => ['title' => 'Lomba', 'text' => 'Cari lomba dari sekolah dan daftar di sini.', 'icon' => 'search', 'label' => 'Lomba', 'spot' => 'left-[calc(6px+(100vw-12px)/5)]', 'arrow' => 'left-[calc(6px+(100vw-12px)*3/10-24px)]'],
-            2 => ['title' => 'Lombaku', 'text' => 'Pantau status, unduh surat tugas, dan laporkan hasil.', 'icon' => 'clipboard', 'label' => 'Lombaku', 'spot' => 'left-[calc(6px+(100vw-12px)*2/5)]', 'arrow' => 'left-[calc(6px+(100vw-12px)/2-24px)]'],
+            2 => ['title' => 'Lombaku', 'text' => 'Pantau status, download surat tugas, dan laporkan hasil.', 'icon' => 'clipboard', 'label' => 'Lombaku', 'spot' => 'left-[calc(6px+(100vw-12px)*2/5)]', 'arrow' => 'left-[calc(6px+(100vw-12px)/2-24px)]'],
             3 => ['title' => 'Peringkat', 'text' => 'Lihat poin dan posisimu.', 'icon' => 'bars', 'label' => 'Peringkat', 'spot' => 'left-[calc(6px+(100vw-12px)*3/5)]', 'arrow' => 'left-[calc(6px+(100vw-12px)*7/10-24px)]'],
             4 => ['title' => 'Profil', 'text' => 'Portofolio prestasi dan data talentamu.', 'icon' => 'user', 'label' => 'Profil', 'spot' => 'left-[calc(6px+(100vw-12px)*4/5)]', 'arrow' => 'left-[calc(6px+(100vw-12px)*9/10-24px)]'],
         ];

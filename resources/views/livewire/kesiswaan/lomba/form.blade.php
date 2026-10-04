@@ -53,7 +53,7 @@
 
             <div class="flex flex-col gap-2">
                 <x-sth.file-drop wire:model="juknis" label="Juknis/brosur" accept=".pdf,.jpg,.jpeg,.png"
-                    :title="$juknis ? $juknis->getClientOriginalName() : ($competition?->juknisFile ? 'Ganti file' : 'Unggah PDF')"
+                    :title="$juknis ? $juknis->getClientOriginalName() : ($competition?->juknisFile ? 'Ganti file' : 'Upload PDF')"
                     hint="PDF atau gambar, maks 5 MB." optional />
                 @if ($competition?->juknisFile && ! $juknis)
                     <p class="m-0 text-[13px] text-muted">
@@ -65,7 +65,7 @@
                         @endif
                     </p>
                 @endif
-                <p wire:loading wire:target="juknis" class="m-0 text-[13px] text-muted">Mengunggah…</p>
+                <p wire:loading wire:target="juknis" class="m-0 text-[13px] text-muted">Meng-upload…</p>
             </div>
 
             <div class="flex flex-col gap-2">
@@ -75,7 +75,7 @@
                 @if ($competition?->coverFile && ! $cover)
                     <x-sth.checkbox wire:model="removeCover">Hapus sampul, pakai warna bidang</x-sth.checkbox>
                 @endif
-                <p wire:loading wire:target="cover" class="m-0 text-[13px] text-muted">Mengunggah…</p>
+                <p wire:loading wire:target="cover" class="m-0 text-[13px] text-muted">Meng-upload…</p>
             </div>
 
             <x-sth.card tone="gold" padding="sm" class="flex flex-col gap-2">

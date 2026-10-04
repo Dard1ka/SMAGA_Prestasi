@@ -163,7 +163,7 @@ return [
     'string' => ':Attribute harus berupa teks.',
     'timezone' => ':Attribute harus berupa zona waktu yang valid.',
     'unique' => ':Attribute sudah dipakai.',
-    'uploaded' => ':Attribute gagal diunggah.',
+    'uploaded' => ':Attribute gagal di-upload.',
     'uppercase' => ':Attribute harus memakai huruf besar.',
     'url' => ':Attribute harus berupa URL yang valid.',
     'ulid' => ':Attribute harus berupa ULID yang valid.',

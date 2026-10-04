@@ -130,6 +130,37 @@ it('ignores the window once the student chose an own password', function (): voi
     $this->assertAuthenticatedAs(b1User($active));
 });
 
+// M1-B: the email comes first now, so an account can have a bound email while its password step is still open.
+it('keeps the window and the failed-login count running while only the email is bound', function (): void {
+    $student = H::pendingStudent();
+    $student->user->forceFill(['email' => 'nadia.anindya@example.test', 'email_verified_at' => now()])->saveQuietly();
+
+    b1Login(H::NIS, 'tebakan-salah-1')->assertSessionHasErrors(['identifier' => AuthenticateUser::GENERIC_ERROR]);
+    expect(AccountControls::failedAttempts(b1User($student)))->toBe(1);
+
+    b1Expire($student->user);
+
+    b1Login(H::NIS)->assertSessionHasErrors(['identifier' => AuthenticateUser::GENERIC_ERROR]);
+    $this->assertGuest();
+});
+
+it('ends the window once the student kept the password at the last activation step', function (): void {
+    $student = H::pendingStudent();
+    $user = b1User($student);
+    $user->forceFill([
+        'email' => 'nadia.anindya@example.test',
+        'email_verified_at' => now(),
+        'initial_password_expires_at' => now()->addDay(),
+    ])->saveQuietly();
+
+    app(CompleteActivation::class)->keepPassword($user);
+
+    $this->travel(30)->days();
+
+    b1Login(H::NIS)->assertRedirect(route('home'));
+    $this->assertAuthenticatedAs(b1User($student));
+});
+
 it('lets only Admin change the window length (1–30 days), audited', function (): void {
     app(UpdateActivationWindow::class)->handle($this->admin, 10);
 
@@ -235,10 +266,11 @@ it('logs a frozen account out of a running session', function (): void {
 
 // K8 ---------------------------------------------------------------------------------------------
 
-it('sends the bound address a notice with a single-use "Bukan saya?" link when activation completes', function (): void {
+// M1-B: the email is bound at step 2 of the activation (the notice goes out then); the account becomes active at
+// step 3, when the student changes or keeps the password.
+it('sends the bound address a notice with a single-use "Bukan saya?" link when the email is bound, before the password step', function (): void {
     $student = H::pendingStudent();
     $user = b1User($student);
-    $user->forceFill(['must_change_password' => false])->saveQuietly();
 
     $otp = new OtpCode;
     $otp->forceFill([
@@ -246,12 +278,21 @@ it('sends the bound address a notice with a single-use "Bukan saya?" link when a
         'code_hash' => str_repeat('a', 64), 'expires_at' => now()->addMinutes(5),
     ])->save();
 
-    app(CompleteActivation::class)->handle($user, $otp);
+    app(CompleteActivation::class)->bindEmail($user, $otp);
+
+    $user = b1User($student);
+    expect($user->status)->toBe(UserStatus::PendingActivation)
+        ->and($user->email)->toBe('nadia.anindya@example.test')
+        ->and(AccountControls::date($user, 'activated_at'))->toBeNull()
+        ->and(DB::table('email_notices')->where('user_id', $user->getKey())->where('kind', 'bound')->count())->toBe(1);
+
+    app(CompleteActivation::class)->keepPassword($user);
 
     $user = b1User($student);
     expect($user->status)->toBe(UserStatus::Active)
         ->and(AccountControls::date($user, 'activated_at'))->not->toBeNull()
-        ->and(DB::table('email_notices')->where('user_id', $user->getKey())->where('kind', 'bound')->count())->toBe(1);
+        // One notice for the binding; closing the activation sends no second one.
+        ->and(DB::table('email_notices')->where('user_id', $user->getKey())->count())->toBe(1);
 
     Notification::assertSentOnDemand(EmailBindingNotice::class, function (EmailBindingNotice $n, array $channels, AnonymousNotifiable $to): bool {
         return $n->kind === EmailBindingNotice::BOUND

@@ -30,9 +30,21 @@ class AppreciationEventPolicy
         return $this->viewAny($user);
     }
 
-    /** Add achievements to the event, mark it done. */
+    /**
+     * Add achievements to the event, confirm it as held. Permission only: the Actions answer a wrong state
+     * (event already confirmed, date not reached) with a message, not with a 403.
+     */
     public function update(User $user, AppreciationEvent $event): bool
     {
         return $this->viewAny($user);
+    }
+
+    /**
+     * "Hapus acara" (M1-E): the same people who create events, and only while the event is not confirmed
+     * as held. A confirmed event is the record of who was appreciated and stays.
+     */
+    public function delete(User $user, AppreciationEvent $event): bool
+    {
+        return $this->viewAny($user) && ! $event->isCompleted();
     }
 }

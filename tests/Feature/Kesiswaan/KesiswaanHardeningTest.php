@@ -70,14 +70,14 @@ function kesiswaanHardeningApplications(int $count): void
 // --- Antrean verifikasi: external links ------------------------------------------------------------------
 
 it('links a valid website with its host in the verification queue', function (): void {
-    Competition::factory()->create(['name' => 'Lomba Tautan Baik', 'website_url' => 'https://example.org/nsif']);
-    Competition::factory()->create(['name' => 'Lomba Tanpa Tautan', 'website_url' => null]);
+    Competition::factory()->create(['name' => 'Lomba Link Baik', 'website_url' => 'https://example.org/nsif']);
+    Competition::factory()->create(['name' => 'Lomba Tanpa Link', 'website_url' => null]);
 
     Livewire::withQueryParams(['tab' => 'verifikasi'])->actingAs($this->kesiswaan)->test(Index::class)
         ->assertSee('href="https://example.org/nsif"', false)
         ->assertSee('example.org')
-        ->assertSee('Tanpa tautan')
-        ->assertDontSee('Tautan tidak valid');
+        ->assertSee('Tanpa link')
+        ->assertDontSee('Link tidak valid');
 });
 
 it('shows a look-alike IDN host as punycode in the verification queue', function (): void {
@@ -96,11 +96,11 @@ it('shows a look-alike IDN host as punycode in the verification queue', function
 })->skip(fn (): bool => ! function_exists('idn_to_ascii'), 'ext-intl is not installed');
 
 it('does not link a queued website that fails the URL rule', function (string $url): void {
-    Competition::factory()->create(['name' => 'Lomba Tautan Buruk', 'website_url' => $url]);
+    Competition::factory()->create(['name' => 'Lomba Link Buruk', 'website_url' => $url]);
 
     Livewire::withQueryParams(['tab' => 'verifikasi'])->actingAs($this->kesiswaan)->test(Index::class)
-        ->assertSee('Lomba Tautan Buruk')
-        ->assertSee('Tautan tidak valid')
+        ->assertSee('Lomba Link Buruk')
+        ->assertSee('Link tidak valid')
         ->assertDontSee('href="'.e($url).'"', false)
         ->assertViewHas('queue', fn (Collection $queue): bool => $queue->first()['website'] === null && $queue->first()['websiteHost'] === null);
 })->with([

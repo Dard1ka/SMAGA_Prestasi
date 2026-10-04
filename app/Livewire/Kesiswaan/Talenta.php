@@ -6,6 +6,8 @@ namespace App\Livewire\Kesiswaan;
 
 use App\Actions\Talent\MoveTalentStage;
 use App\Actions\Talent\RejectTalentApplication;
+use App\Actions\Talent\RestoreTalentApplication;
+use App\Actions\Talent\TalentNote;
 use App\Actions\Talent\UpdateTalentAssessment;
 use App\Actions\Users\AdminRecipients;
 use App\Domain\Points\PointFormatter;
@@ -38,10 +40,15 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 /**
  * Talenta siswa (UI-MAP #18, board Kesiswaan-Talenta): pipeline tabs, filters (jenis → cabang, kelas,
- * nama/NIS), table with bulk moves, detail panel (pembina, jadwal asesmen, catatan). Every change goes
+ * nama/NIS), table with bulk moves, detail panel (pembina, jadwal asesmen, two notes). Every change goes
  * through MoveTalentStage / RejectTalentApplication / UpdateTalentAssessment (one call per row for bulk
  * moves), which notify the student. NIS is masked in the table; the Excel export escapes formulas, needs
  * a password from the last 15 minutes, is capped and audited with its filters.
+ *
+ * Notes (lead, 2026-10-04), both optional: "Catatan untuk guru pembina" (`panelNote`, internal, saved by every
+ * panel button) and "Catatan untuk siswa" (`panelStudentNote`, sent with "Lolos ke …" / "Tidak lolos" only).
+ * A "tidak lolos" row has "Pulihkan" (recycle icon → confirm dialog → RestoreTalentApplication); rows whose
+ * student sent "Minta ditinjau ulang" carry a chip and come first inside their stage.
  */
 #[Title('Talenta siswa')]
 #[Layout('layouts::app', ['subtitle' => 'Penjaringan, pemetaan, dan seleksi peserta pembinaan.'])]
@@ -57,6 +64,9 @@ class Talenta extends Component
     private const MAX = 300;
 
     private const TABS = ['semua', 'terdaftar', 'pemetaan', 'seleksi', 'pembinaan', 'tidak_lolos'];
+
+    /** id of the "Pulihkan" confirm dialog (<x-sth.modal>). */
+    public const RESTORE_DIALOG = 'pulihkan-talenta';
 
     #[Url(as: 'tahap', except: 'semua')]
     public string $tahap = 'semua';
@@ -89,11 +99,21 @@ class Talenta extends Component
 
     public string $assessmentOn = '';
 
+    /** Catatan untuk guru pembina (internal). */
     public string $panelNote = '';
+
+    /** Catatan untuk siswa: sent with the next "Lolos ke …" / "Tidak lolos", never saved by "Simpan". */
+    public string $panelStudentNote = '';
 
     /** "Dipindahkan dari …" line under the panel actions. */
     #[Locked]
     public ?string $panelDone = null;
+
+    /** Row waiting in the "Pulihkan" confirm dialog. */
+    #[Locked]
+    public ?string $restoreId = null;
+
+    public string $restoreNote = '';
 
     public function mount(): void
     {
@@ -149,7 +169,7 @@ class Talenta extends Component
         $this->openPanel($this->find($id));
     }
 
-    /** "Lolos ke …" from the panel (saves pembina/date/note in the same step). */
+    /** "Lolos ke …" from the panel (saves pembina/date/note in the same step, sends the note for the student). */
     public function advance(MoveTalentStage $move): void
     {
         $this->resetErrorBag();
@@ -162,14 +182,14 @@ class Talenta extends Component
         }
 
         try {
-            $move->handle($this->actor(), $application, $next, $this->panelDetails());
+            $move->handle($this->actor(), $application, $next, [...$this->panelDetails(), 'student_note' => $this->panelStudentNote]);
         } catch (ValidationException $e) {
             $this->showPanelErrors($e);
 
             return;
         }
 
-        $this->panelDone = 'Dipindahkan dari '.$from->label().' ke '.$next->label().'. Notifikasi terkirim.';
+        $this->panelDone = 'Dipindahkan dari '.$from->label().' ke '.$next->label().'. '.$this->sentText();
         $this->openPanel($application->refresh(), keepDone: true);
     }
 
@@ -205,15 +225,64 @@ class Talenta extends Component
         $from = $application->status;
 
         try {
-            $reject->handle($this->actor(), $application, $this->panelNote);
+            $reject->handle($this->actor(), $application, $this->panelStudentNote, $this->panelDetails());
         } catch (ValidationException $e) {
             $this->showPanelErrors($e);
 
             return;
         }
 
-        $this->panelDone = 'Tidak lolos dari tahap '.$from->label().'. Catatan terkirim ke siswa.';
+        $this->panelDone = 'Tidak lolos dari tahap '.$from->label().'. '.$this->sentText();
         $this->openPanel($application->refresh(), keepDone: true);
+    }
+
+    /** Recycle icon / "Pulihkan" on a tidak-lolos row: opens the confirm dialog. */
+    public function askRestore(string $id): void
+    {
+        $application = $this->find($id);
+        $this->authorize('restore', $application);
+
+        if (! $application->status->isRestorable()) {
+            $this->dispatch('sth-toast', message: 'Hanya pilihan yang tidak lolos yang bisa dipulihkan.', tone: 'error');
+
+            return;
+        }
+
+        $this->restoreId = $application->getKey();
+        $this->restoreNote = '';
+        $this->resetErrorBag('restoreNote');
+        $this->dispatch('sth-modal-open', id: self::RESTORE_DIALOG);
+    }
+
+    /** Confirm in the dialog: back to the stage before the rejection, the student is told. */
+    public function restore(RestoreTalentApplication $restore): void
+    {
+        $this->resetErrorBag('restoreNote');
+        $application = $this->find((string) $this->restoreId);
+
+        try {
+            $restored = $restore->handle($this->actor(), $application, $this->restoreNote);
+        } catch (ValidationException $e) {
+            $errors = $e->errors();
+
+            if (isset($errors['student_note'])) {
+                $this->addError('restoreNote', (string) ($errors['student_note'][0] ?? 'Periksa catatan.'));
+
+                return;
+            }
+
+            $this->closeRestoreDialog();
+            $this->dispatch('sth-toast', message: (string) (collect($errors)->flatten()->first() ?? 'Pilihan ini tidak bisa dipulihkan.'), tone: 'error');
+
+            return;
+        }
+
+        $this->closeRestoreDialog();
+        $this->dispatch('sth-toast', message: 'Dipulihkan ke tahap '.$restored->status->label().'. Siswa diberi tahu.', tone: 'success');
+
+        if ($this->panelId === $restored->getKey()) {
+            $this->openPanel($restored);
+        }
     }
 
     public function savePanel(UpdateTalentAssessment $update): void
@@ -280,12 +349,15 @@ class Talenta extends Component
         $this->resetErrorBag('bulkNote');
     }
 
+    /** The note for the students is optional; the same text goes to every checked row. */
     public function bulkReject(RejectTalentApplication $reject): void
     {
         $this->resetErrorBag();
 
-        if (trim($this->bulkNote) === '') {
-            $this->addError('bulkNote', 'Catatan wajib diisi.');
+        try {
+            TalentNote::clean($this->bulkNote, 'bulkNote');
+        } catch (ValidationException $e) {
+            $this->addError('bulkNote', (string) ($e->errors()['bulkNote'][0] ?? 'Periksa catatan.'));
 
             return;
         }
@@ -345,7 +417,8 @@ class Talenta extends Component
                         'Tahap' => self::cell($a->status->label()),
                         'Guru pembina' => self::cell($a->mentor?->name),
                         'Jadwal asesmen' => $a->assessment_on?->format('Y-m-d') ?? '',
-                        'Catatan' => self::cell($a->note),
+                        'Catatan untuk guru pembina' => self::cell($a->note),
+                        'Catatan untuk siswa' => self::cell($a->student_note),
                         'Didaftarkan' => $a->created_at?->format('Y-m-d') ?? '',
                     ]);
                 }
@@ -373,6 +446,7 @@ class Talenta extends Component
 
     public function render(PointFormatter $formatter): View
     {
+        $this->authorize('manage', TalentApplication::class);
         $this->clampLimit();
 
         $rows = $this->orderedQuery()
@@ -395,6 +469,7 @@ class Talenta extends Component
             'mentors' => User::query()->role(RoleName::Guru->value)->canLogIn()->orderBy('name')->pluck('name', 'id')->all(),
             'panel' => $this->panelId !== null ? $this->panel($formatter) : null,
             'bulkNext' => $this->bulkNextLabel(),
+            'restoring' => $this->restoring(),
         ])->layoutData(['badges' => $this->kesiswaanBadges()]);
     }
 
@@ -440,6 +515,8 @@ class Talenta extends Component
     {
         return $this->filteredQuery()
             ->orderByRaw('case status when ? then 0 when ? then 1 when ? then 2 when ? then 3 else 4 end', ['terdaftar', 'pemetaan', 'seleksi', 'pembinaan'])
+            // "Minta ditinjau ulang" first inside Tidak lolos (the only stage that has requests).
+            ->orderByRaw('case when review_requested_at is null then 1 else 0 end')
             ->orderByDesc('created_at')
             ->orderBy('id');
     }
@@ -496,6 +573,8 @@ class Talenta extends Component
             'prestasi' => $p['count'] ?? 0,
             'status' => $a->status,
             'next' => $a->status->next(),
+            'restorable' => $a->status->isRestorable(),
+            'reviewRequested' => $a->hasOpenReviewRequest(),
             'selected' => $a->getKey() === $this->panelId,
         ];
     }
@@ -541,6 +620,35 @@ class Talenta extends Component
             'final' => $a->status->isFinal(),
             'mentorName' => $a->mentor?->name,
             'note' => $a->note,
+            // The note the student reads now (sent with the latest decision).
+            'studentNote' => $a->student_note,
+            'restorable' => $a->status->isRestorable(),
+            'restoreTo' => $a->status->isRestorable() ? $a->restoreTarget()->label() : null,
+            'review' => $a->hasOpenReviewRequest() ? [
+                'at' => self::whenLabel($a->review_requested_at),
+                'message' => $a->review_message,
+            ] : null,
+        ];
+    }
+
+    /** @return array{name: string, talent: string, to: string, requested: bool}|null the row in the "Pulihkan" dialog */
+    private function restoring(): ?array
+    {
+        if ($this->restoreId === null) {
+            return null;
+        }
+
+        $a = TalentApplication::query()->with(['student.user', 'talentType', 'talentBranch'])->find($this->restoreId);
+
+        if ($a === null) {
+            return null;
+        }
+
+        return [
+            'name' => $a->student?->user?->name ?? 'Siswa',
+            'talent' => MoveTalentStage::talentLabel($a),
+            'to' => $a->restoreTarget()->label(),
+            'requested' => $a->hasOpenReviewRequest(),
         ];
     }
 
@@ -552,12 +660,14 @@ class Talenta extends Component
         $this->mentorId = $application->mentor_id !== null ? (string) $application->mentor_id : '';
         $this->assessmentOn = $application->assessment_on?->format('Y-m-d') ?? '';
         $this->panelNote = (string) ($application->note ?? '');
+        // Always empty: a note for the student is written for one decision and sent with it.
+        $this->panelStudentNote = '';
 
         if (! $keepDone) {
             $this->panelDone = null;
         }
 
-        $this->resetErrorBag(['mentorId', 'assessmentOn', 'panelNote', 'panel']);
+        $this->resetErrorBag(['mentorId', 'assessmentOn', 'panelNote', 'panelStudentNote', 'panel']);
     }
 
     /** @return array{mentor_id: string, assessment_on: string, note: string} */
@@ -568,11 +678,24 @@ class Talenta extends Component
 
     private function showPanelErrors(ValidationException $e): void
     {
-        $map = ['mentor_id' => 'mentorId', 'assessment_on' => 'assessmentOn', 'note' => 'panelNote'];
+        $map = ['mentor_id' => 'mentorId', 'assessment_on' => 'assessmentOn', 'note' => 'panelNote', 'student_note' => 'panelStudentNote'];
 
         foreach ($e->errors() as $key => $messages) {
             $this->addError($map[$key] ?? 'panel', (string) ($messages[0] ?? 'Periksa isian.'));
         }
+    }
+
+    /** End of the "done" line under the panel buttons. */
+    private function sentText(): string
+    {
+        return trim($this->panelStudentNote) === '' ? 'Siswa diberi tahu.' : 'Siswa diberi tahu, catatan terkirim.';
+    }
+
+    private function closeRestoreDialog(): void
+    {
+        $this->restoreId = null;
+        $this->restoreNote = '';
+        $this->dispatch('sth-modal-close', id: self::RESTORE_DIALOG);
     }
 
     /** @return Collection<int, TalentApplication> */

@@ -28,6 +28,10 @@ Semua perintah dijalankan lewat Docker. **Jangan memasang PHP, Composer, atau No
    dependensi, menyalakan semua container, menjalankan migrasi, mengisi data demo fiktif pada
    jalankan pertama, membangun aset frontend, lalu membuka http://127.0.0.1:8080.
 3. Selesai bekerja, klik dua kali **`stop.bat`**. Data database tetap tersimpan.
+4. Setelah mengubah file `.php`, `.blade.php`, `config/*.php`, atau `.env`, klik dua kali **`reload.bat`**
+   (sekitar 1 detik). Tanpa itu halaman masih menampilkan kode lama: supaya pindah halaman cepat di drive
+   Windows, PHP di container tidak memeriksa ulang file tiap request (`docs/dev-notes/PERF1.md` dan `M1.md`).
+   CSS dan JS tidak perlu ini.
 
 Kalau database kosong tetapi `.env` sudah ada (misalnya setelah volume MySQL dihapus), isi data awal
 dengan `docker compose exec app php artisan db:seed`.
@@ -52,6 +56,7 @@ docker compose --profile frontend up -d node           # Vite dengan hot reload
 docker compose run --rm --no-deps app php artisan test # jalankan test
 docker compose run --rm --no-deps app ./vendor/bin/pint # rapikan kode
 docker compose logs -f app queue                       # lihat log
+docker compose exec -T app sh docker/php/dev-cache.sh  # muat ulang PHP setelah mengubah kode (= reload.bat)
 ```
 Daftar perintah lengkap ada di `CLAUDE.md` §4.
 
@@ -88,7 +93,8 @@ dari data contoh desain (`docs/design/DESIGN-SPEC-v2.md` §5), bukan data sekola
 | Siswa | NIS atau NISN fiktif, mis. Nadia `225226201` / `0098765432` | password awal sesuai pola sekolah dari tanggal lahir fiktif di `database/seeders/DemoSeeder.php` |
 
 - Staf juga bisa masuk dengan email `<username>@sth.test`. Siswa wajib aktivasi saat pertama masuk
-  (ganti password → email → kode 6 digit).
+  (hubungkan email → kode 6 digit → kata sandi; siswa boleh memilih tidak mengganti kata sandi). Setelah
+  aktivasi selesai, siswa juga bisa masuk dengan email itu.
 - 2FA staf (aplikasi authenticator) wajib di semua lingkungan kecuali lokal. Untuk mencoba alurnya di
   lokal, set `STH_REQUIRE_STAFF_2FA=true` di `.env`.
 - Mode uji OTP (`STH_OTP_TEST_MODE=true`) hanya berlaku bila `APP_ENV=local`: kode 6 digit apa pun
@@ -96,7 +102,8 @@ dari data contoh desain (`docs/design/DESIGN-SPEC-v2.md` §5), bukan data sekola
 - Akun dan password demo **tidak boleh** ada di server produksi. Password awal siswa tidak pernah
   ditampilkan di aplikasi.
 - `php artisan test` selalu memakai SQLite di memori, jadi aman dijalankan kapan saja: data demo di
-  MySQL tidak ikut terhapus.
+  MySQL tidak ikut terhapus. Tes menolak jalan bila config ter-cache, jadi **jangan** menjalankan
+  `php artisan config:cache` atau `php artisan optimize` di repo (cukup `reload.bat`).
 
 ## Dokumentasi
 

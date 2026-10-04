@@ -7,6 +7,7 @@ use App\Actions\Templates\UpdateLetterTemplate;
 use App\Domain\Letters\PdfRenderer;
 use App\Enums\RoleName;
 use App\Livewire\TataUsaha\TemplateSurat;
+use App\Models\Setting;
 use App\Notifications\Admin\LetterTemplateChanged;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -51,8 +52,47 @@ it('starts at version 0 with the built-in texts', function (): void {
     expect($template->version)->toBe(0)
         ->and($template->siswaIntro())->toBe('Kepala SMA Negeri 3 Semarang memberikan tugas kepada :')
         ->and($template->siswaBasis('Puspresnas'))->toBe('Surat dari Puspresnas')
-        ->and($template->guruBasis('2026/2027'))->toBe('Program kerja SMA Negeri 3 Semarang tahun pelajaran 2026/2027.')
-        ->and($template->kopTitleLines())->toHaveCount(3);
+        ->and($template->kopTitleLines())->toHaveCount(3)
+        // M1-A: the kop and the guru letter's "Dasar" are the texts of the school's own files.
+        ->and($template->kopDetailLines())->toBe([
+            'Jalan Pemuda Nomor 149, Kota Semarang, Semarang Tengah, Kota Semarang, Jawa Tengah',
+            'Kode Pos 50132, Telepon 3544287, Faksimile 024-3544291',
+            'Laman https://sman3-smg.sch.id, Pos-el smanegeri3semarang149@gmail.com',
+        ])
+        ->and($template->guruBasisItems('2026/2027'))->toHaveCount(3)
+        ->and($template->guruBasisItems('2026/2027')[0])->toStartWith('Peraturan Daerah Provinsi Jawa Tengah Nomor 11 Tahun 2025')
+        ->and($template->guruBasisItems('2026/2027')[2])->toStartWith('Peraturan Gubernur Jawa Tengah Nomor 36 Tahun 2025');
+});
+
+it('skips an empty regulation text and fills the codes of the others', function (): void {
+    $template = LetterTemplate::draft([
+        'guru_basis_1' => 'Program kerja {sekolah} tahun pelajaran {tahun_ajaran}.',
+        'guru_basis_2' => '',
+        'guru_basis_3' => 'DPA {sekolah}.',
+    ]);
+
+    expect($template->guruBasisItems('2026/2027'))->toBe([
+        'Program kerja SMA Negeri 3 Semarang tahun pelajaran 2026/2027.',
+        'DPA SMA Negeri 3 Semarang.',
+    ]);
+});
+
+it('keeps a template saved before M1-A and uses the built-in text for fields it does not have', function (): void {
+    Setting::put(LetterTemplate::SETTING_KEY, [
+        'version' => 3,
+        'values' => ['city' => 'Kota Semarang', 'kop_4' => 'Alamat lama', 'guru_basis' => 'Program kerja lama.'],
+        'updated_at' => '2026-10-01T08:00:00+07:00',
+        'updated_by_name' => 'Ibu Siti Rahmawati',
+    ]);
+
+    $template = LetterTemplate::current();
+
+    expect($template->version)->toBe(3)
+        ->and($template->city())->toBe('Kota Semarang')
+        ->and($template->get('kop_4'))->toBe('Alamat lama')
+        ->and($template->get('kop_6'))->toBe(LetterTemplate::FIELDS['kop_6'][4])
+        ->and($template->guruBasisItems('2026/2027'))->toHaveCount(3)
+        ->and($template->values)->not->toHaveKey('guru_basis');
 });
 
 it('validates required fields, lengths and allowed codes; Blade-like text is just an unknown code', function (array $override, string $field): void {
@@ -68,8 +108,16 @@ it('validates required fields, lengths and allowed codes; Blade-like text is jus
     'unknown code' => [['siswa_intro' => 'Kepala {nama_kepsek} memberi tugas'], 'siswa_intro'],
     'code not allowed here' => [['kop_1' => 'PEMERINTAH {sekolah}'], 'kop_1'],
     'blade echo' => [['siswa_closing' => 'Demikian {{ 7*7 }}'], 'siswa_closing'],
-    'unclosed code' => [['guru_basis' => 'Program kerja {sekolah'], 'guru_basis'],
+    'unclosed code' => [['guru_basis_1' => 'Program kerja {sekolah'], 'guru_basis_1'],
+    'too long regulation text' => [['guru_basis_2' => str_repeat('a', 601)], 'guru_basis_2'],
 ]);
+
+it('accepts empty regulation texts (the school may have fewer than three)', function (): void {
+    $values = LetterTemplate::validate(b5TemplateInput(['guru_basis_1' => '', 'guru_basis_2' => ' ', 'guru_basis_3' => '']));
+
+    expect($values['guru_basis_1'])->toBe('')
+        ->and(LetterTemplate::draft($values)->guruBasisItems('2026/2027'))->toBe([]);
+});
 
 it('flattens line breaks and control characters', function (): void {
     $values = LetterTemplate::validate(b5TemplateInput(['city' => "Semarang\r\n\tKota"]));
@@ -117,6 +165,8 @@ it('prints the saved template in both PDF letters, escaped and never evaluated',
     app(UpdateLetterTemplate::class)->handle($this->tu, b5TemplateInput([
         'kop_5' => 'Telepon (024) 000000 · <b>laman</b>',
         'siswa_closing' => 'Demikian surat ini @php echo 1; @endphp dibuat oleh {sekolah}.',
+        'guru_basis_1' => 'Program kerja {sekolah} tahun pelajaran {tahun_ajaran}.',
+        'guru_basis_2' => '',
         'guru_closing' => 'Laksanakan dengan tanggung jawab.',
         'signer_title' => 'Plt. Kepala Sekolah',
     ]));
@@ -129,7 +179,10 @@ it('prints the saved template in both PDF letters, escaped and never evaluated',
         ->and($siswa)->toContain('Plt. Kepala Sekolah')
         ->and($siswa)->not->toContain('<b>laman</b>')
         ->and($guru)->toContain('Laksanakan dengan tanggung jawab.')
-        ->and($guru)->toContain('Program kerja SMA Negeri 3 Semarang tahun pelajaran 2026/2027.');
+        ->and($guru)->toContain('Program kerja SMA Negeri 3 Semarang tahun pelajaran 2026/2027.')
+        // the empty second text is skipped: regulation 3 becomes number 2, the invitation number 3
+        ->and($guru)->toContain('<td class="n">3.</td><td class="rata">Surat dari Panitia NSIF 2026 Nomor 012/NSIF/IX/2026 Tanggal 15 September 2026 Hal Undangan</td>')
+        ->and($guru)->not->toContain('<td class="n">4.</td>');
 });
 
 it('still renders a real PDF with the template', function (): void {
@@ -149,7 +202,11 @@ it('opens the template screen for Tata Usaha only', function (): void {
         ->assertOk()
         ->assertSee('Teks bawaan')
         ->assertSee('PEMERINTAH PROVINSI JAWA TENGAH')
-        ->assertSee('Raka Pradipta');
+        ->assertSee('RAKA PRADIPTA')
+        // M1-A: the number formats are only an example now, and the template has the new fields
+        ->assertSee('Contoh nomor surat')
+        ->assertSee('Kop baris 6 (laman, pos-el)')
+        ->assertSee('Surat guru: Dasar nomor 3');
 
     foreach ([RoleName::KepalaSekolah, RoleName::Kesiswaan, RoleName::Humas, RoleName::Guru, RoleName::Admin] as $role) {
         $this->actingAs(A::staff($role, ['username' => 'lain.'.$role->value]))->get(route('tu.surat.template'))->assertForbidden();
