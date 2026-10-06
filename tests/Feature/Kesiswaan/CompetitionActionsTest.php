@@ -130,12 +130,10 @@ it('publishes Kesiswaan own entry only through the queue and does not notify the
     Notification::assertNothingSent();
 });
 
-it('rejects with a required note and notifies the submitter', function (): void {
+it('rejects with an optional note and notifies the submitter', function (): void {
     $guru = F::staff(RoleName::Guru, 'Bu Retno Wulandari');
     $competition = Competition::factory()->proposal()->create(['submitted_by' => $guru->getKey()]);
-
-    expect(fn () => app(VerifyCompetition::class)->handle($this->kesiswaan, $competition, CompetitionStatus::Ditolak, '  '))
-        ->toThrow(ValidationException::class);
+    $second = Competition::factory()->proposal()->create(['submitted_by' => $guru->getKey()]);
 
     app(VerifyCompetition::class)->handle($this->kesiswaan, $competition, CompetitionStatus::Ditolak, 'Lomba sudah lewat.');
 
@@ -144,7 +142,13 @@ it('rejects with a required note and notifies the submitter', function (): void 
         ->and($competition->verification_note)->toBe('Lomba sudah lewat.')
         ->and($competition->verified_by)->toBe($this->kesiswaan->getKey());
 
-    Notification::assertSentTo($guru, CompetitionRejected::class);
+    // D-103: a blank reason is accepted and stored as null.
+    app(VerifyCompetition::class)->handle($this->kesiswaan, $second, CompetitionStatus::Ditolak, '  ');
+
+    expect($second->fresh()->status)->toBe(CompetitionStatus::Ditolak)
+        ->and($second->fresh()->verification_note)->toBeNull();
+
+    Notification::assertSentToTimes($guru, CompetitionRejected::class, 2);
 });
 
 it('denies verification to roles without competition.verify and to decided entries', function (): void {

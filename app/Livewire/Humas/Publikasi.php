@@ -5,8 +5,7 @@ declare(strict_types=1);
 namespace App\Livewire\Humas;
 
 use App\Actions\Publications\AchievementFacts;
-use App\Actions\Publications\FlyerRenderer;
-use App\Actions\Publications\GenerateFlyer;
+use App\Actions\Publications\FlyerData;
 use App\Actions\Publications\PublicationInput;
 use App\Actions\Publications\PublishPublication;
 use App\Actions\Publications\RecordAppreciation;
@@ -24,19 +23,18 @@ use Illuminate\Auth\AuthenticationException;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
 use Livewire\Component;
-use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
  * Humas · Antrean publikasi (UI-MAP #22, board Humas-Publikasi): 3-lane board (siap / terjadwal /
- * dipublikasikan) + panel "Siapkan publikasi" (flyer preview + PNG, caption, channels, schedule,
- * publish, apresiasi). Only verified achievements whose student gave publish consent are listed.
+ * dipublikasikan) + panel "Siapkan publikasi" ("Data untuk flyer" with "Salin data", caption, channels,
+ * schedule, publish, apresiasi). Humas designs the flyer in its own tools: STH draws none, it only hands
+ * over the facts (FlyerData, M3-E). Only verified achievements whose student gave publish consent are listed.
  * `?pilih=<publication>` preselects a card (404 when it is not in the visible queue).
  */
 #[Title('Publikasi prestasi')]
@@ -49,28 +47,6 @@ class Publikasi extends Component
     public const LANE_STEP = 20;
 
     public const LANE_MAX = 200;
-
-    /** Flyer preview colours per template (literal classes for Tailwind; tokens only). */
-    private const PREVIEW = [
-        'biru' => [
-            'bg' => 'bg-linear-150 from-sains-cover via-riset-cover to-riset-bg', 'accent' => 'text-primary-on-tint',
-            'rule' => 'bg-primary-on-tint', 'pill' => 'bg-medal text-ink', 'avatar' => 'bg-riset-cover-2 text-riset',
-            'ring' => 'border-white', 'blob1' => 'bg-riset-chart/15', 'blob2' => 'bg-sains-chart/15', 'dot' => 'bg-medal',
-            'band' => false,
-        ],
-        'emas' => [
-            'bg' => 'bg-linear-to-b from-gold-bg to-white', 'accent' => 'text-gold',
-            'rule' => 'bg-gold', 'pill' => 'bg-primary text-white', 'avatar' => 'bg-gold-line text-gold',
-            'ring' => 'border-white', 'blob1' => 'bg-medal/30', 'blob2' => 'bg-gold-line/60', 'dot' => 'bg-primary',
-            'band' => false,
-        ],
-        'putih' => [
-            'bg' => 'bg-white', 'accent' => 'text-primary',
-            'rule' => 'bg-primary', 'pill' => 'bg-medal text-ink', 'avatar' => 'bg-primary-tint text-primary-on-tint',
-            'ring' => 'border-primary', 'blob1' => 'bg-primary-tint', 'blob2' => 'bg-hover', 'dot' => 'bg-medal',
-            'band' => true,
-        ],
-    ];
 
     #[Locked]
     public ?string $selectedId = null;
@@ -86,8 +62,6 @@ class Publikasi extends Component
     public string $date = '';
 
     public string $time = '';
-
-    public string $template = FlyerRenderer::DEFAULT_TEMPLATE;
 
     public string $eventId = '';
 
@@ -182,21 +156,6 @@ class Publikasi extends Component
         $this->dispatch('sth-toast', message: 'Publikasi ditandai sudah terbit. Siswa sudah diberi tahu.', tone: 'success');
     }
 
-    public function downloadFlyer(GenerateFlyer $action): ?StreamedResponse
-    {
-        $publication = $this->selected();
-
-        try {
-            $file = $action->handle($this->actor(), $publication, $this->template);
-        } catch (ValidationException $e) {
-            $this->fail($e);
-
-            return null;
-        }
-
-        return Storage::disk($file->disk)->download($file->path, $file->original_name, ['Content-Type' => 'image/png']);
-    }
-
     public function recordAppreciation(RecordAppreciation $action): void
     {
         $publication = $this->selected();
@@ -266,7 +225,6 @@ class Publikasi extends Component
             'boardEmpty' => $siap->isEmpty() && $terjadwal->isEmpty() && $publishedCount === 0,
             'panel' => $selected !== null ? $this->panel($selected, $user) : null,
             'channelOptions' => PublicationChannel::options(),
-            'templateOptions' => FlyerRenderer::TEMPLATES,
         ])->layoutData([
             'badges' => $this->freshBadges($user),
             'search' => ['action' => route('humas.beranda'), 'placeholder' => 'Cari prestasi atau siswa'],
@@ -329,6 +287,7 @@ class Publikasi extends Component
     private function panel(Publication $publication, User $user): array
     {
         $facts = AchievementFacts::of($publication->achievement);
+        $flyer = FlyerData::of($publication->achievement);
         $status = $publication->status;
         $recorded = $publication->achievement->appreciations
             ->filter(fn (Appreciation $a): bool => $a->event !== null)
@@ -359,26 +318,11 @@ class Publikasi extends Component
             'published' => $status === PublicationStatus::Dipublikasikan,
             'publishedChannels' => PublicationInput::channelLabels($publication->channels),
             'publishedCaption' => $publication->caption,
-            'flyer' => [
-                'school' => 'SMA Negeri 3 Semarang',
-                'initials' => $facts->initials(),
-                'name' => $facts->studentName,
-                'class' => $facts->classLine(),
-                'result' => $facts->resultLabel,
-                'competition' => $facts->competitionName,
-                'level' => $facts->levelLine(),
-                'mentor' => $facts->mentorLine(),
-                'label' => 'Preview e-flyer: Selamat dan sukses '.$facts->studentName
-                    .($facts->className !== null ? ', kelas '.$facts->className : '')
-                    .', '.$facts->resultLabel.' '.$facts->competitionName
-                    .($facts->levelLabel !== null ? ' tingkat '.mb_strtolower($facts->levelLabel) : '').'.',
-                'style' => self::PREVIEW[$this->template] ?? self::PREVIEW[FlyerRenderer::DEFAULT_TEMPLATE],
-            ],
-            'photoConsent' => $facts->photoConsent,
+            'flyerRows' => $flyer->rows,
+            'flyerNotes' => $flyer->notes,
             'scheduleLabel' => $status === PublicationStatus::Terjadwal ? 'Jadwalkan ulang' : 'Jadwalkan',
             'canSchedule' => $user->can('schedule', $publication),
             'canPublish' => $user->can('publish', $publication),
-            'canFlyer' => $user->can('generateFlyer', $publication),
             'canAppreciate' => $user->can('create', Appreciation::class),
             'appreciations' => $recorded->map(fn (Appreciation $a): array => [
                 'event' => $a->event->name,
@@ -404,7 +348,6 @@ class Publikasi extends Component
         )) ?: [PublicationChannel::Instagram->value, PublicationChannel::Website->value];
         $this->date = $at->format('Y-m-d');
         $this->time = $at->format('H:i');
-        $this->template = FlyerRenderer::DEFAULT_TEMPLATE;
         $this->eventId = '';
         $this->resetErrorBag();
     }
@@ -446,7 +389,6 @@ class Publikasi extends Component
             'caption' => 'caption',
             'channels' => 'channels',
             'scheduled_at' => 'date',
-            'template' => 'template',
             'event' => 'eventId',
             'achievement' => 'eventId',
         ];

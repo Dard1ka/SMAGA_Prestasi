@@ -15,6 +15,7 @@ use App\Domain\Points\PointFormatter;
 use App\Enums\RoleName;
 use App\Enums\TalentStatus;
 use App\Enums\TalentTypeCode;
+use App\Http\Controllers\FileController;
 use App\Livewire\Admin\Concerns\RequiresRecentPassword;
 use App\Livewire\Kesiswaan\Concerns\WithKesiswaanBadges;
 use App\Models\Achievement;
@@ -58,6 +59,13 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
  * (`student_note_draft`, shown again after a reload, never shown or sent to the student) and says that it is
  * sent with the next decision (Q2-14). "Tidak lolos", in the panel and in the bulk bar, goes through the
  * confirm dialog REJECT_DIALOG like "Pulihkan", because it notifies the student at once (Q2-15).
+ *
+ * M3-A (lead, 2026-10-06): "Pulihkan" asks where the choice goes back to (`restoreTo`: Terdaftar, Pemetaan,
+ * Seleksi or Peserta pembinaan; the stage before the rejection is preselected and marked "Tahap sebelumnya").
+ * "Download data (Excel)" opens EXPORT_DIALOG first: Kesiswaan ticks the statuses that go into the file
+ * (`exportStatuses`, preselected from the open tab), `download()` turns them into the literal argument of
+ * `export()`, so the automatic download after the password page (RequiresRecentPassword) carries the same
+ * choice. The tab "Semua" lists every status, "Tidak lolos" included, each row with its chip.
  */
 #[Title('Talenta siswa')]
 #[Layout('layouts::app', ['subtitle' => 'Penjaringan, pemetaan, dan seleksi peserta pembinaan.'])]
@@ -88,6 +96,12 @@ class Talenta extends Component
     public const REJECT_PANEL = 'panel';
 
     public const REJECT_BULK = 'bulk';
+
+    /** id of the "Download data (Excel)" dialog: which statuses go into the file. */
+    public const EXPORT_DIALOG = 'download-talenta';
+
+    /** `export('semua')`: every status, whatever tab is open. */
+    public const EXPORT_ALL = 'semua';
 
     public const SAVED_WITH_DRAFT = 'Tersimpan. Catatan untuk siswa terkirim saat kamu menekan Lolos atau Tidak lolos.';
 
@@ -143,6 +157,16 @@ class Talenta extends Component
     public ?string $restoreId = null;
 
     public string $restoreNote = '';
+
+    /** Stage ticked in the "Pulihkan" dialog; restore() accepts only RestoreTalentApplication::TARGETS. */
+    public string $restoreTo = '';
+
+    /**
+     * Statuses ticked in the "Download data" dialog; download() keeps only real TalentStatus values.
+     *
+     * @var list<string>
+     */
+    public array $exportStatuses = [];
 
     public function mount(): void
     {
@@ -291,9 +315,18 @@ class Talenta extends Component
     {
         $this->authorize('manage', TalentApplication::class);
         $this->resetErrorBag('bulkNote');
+        $rows = $this->checkedApplications();
 
-        if ($this->checkedApplications()->isEmpty()) {
+        if ($rows->isEmpty()) {
             $this->checked = [];
+
+            return;
+        }
+
+        // "Semua" mixes every status: rows that are already final are skipped, and with only such rows
+        // there is nothing to ask.
+        if ($rows->every(fn (TalentApplication $a): bool => $a->status->isFinal())) {
+            $this->dispatch('sth-toast', message: 'Pilihan yang dicentang sudah final, tidak bisa ditandai tidak lolos.', tone: 'error');
 
             return;
         }
@@ -348,23 +381,39 @@ class Talenta extends Component
 
         $this->restoreId = $application->getKey();
         $this->restoreNote = '';
-        $this->resetErrorBag('restoreNote');
+        // The stage before the rejection stays the preselected choice (Terdaftar when it is unknown).
+        $this->restoreTo = $application->restoreTarget()->value;
+        $this->resetErrorBag(['restoreNote', 'restoreTo']);
         $this->dispatch('sth-modal-open', id: self::RESTORE_DIALOG);
     }
 
-    /** Confirm in the dialog: back to the stage before the rejection, the student is told. */
+    /** Confirm in the dialog: back into the stage Kesiswaan ticked (M3-A), the student is told. */
     public function restore(RestoreTalentApplication $restore): void
     {
-        $this->resetErrorBag('restoreNote');
+        $this->resetErrorBag(['restoreNote', 'restoreTo']);
         $application = $this->find((string) $this->restoreId);
+        $this->authorize('restore', $application);
+        $to = TalentStatus::tryFrom($this->restoreTo);
+
+        if ($to === null || ! in_array($to, RestoreTalentApplication::TARGETS, true)) {
+            $this->addError('restoreTo', RestoreTalentApplication::TARGET_MESSAGE);
+
+            return;
+        }
 
         try {
-            $restored = $restore->handle($this->actor(), $application, $this->restoreNote);
+            $restored = $restore->handle($this->actor(), $application, $this->restoreNote, $to);
         } catch (ValidationException $e) {
             $errors = $e->errors();
 
             if (isset($errors['student_note'])) {
                 $this->addError('restoreNote', (string) ($errors['student_note'][0] ?? 'Periksa catatan.'));
+
+                return;
+            }
+
+            if (isset($errors['to'])) {
+                $this->addError('restoreTo', (string) ($errors['to'][0] ?? RestoreTalentApplication::TARGET_MESSAGE));
 
                 return;
             }
@@ -487,20 +536,73 @@ class Talenta extends Component
         $this->afterBulk($done.' pilihan talenta ditandai tidak lolos. Siswa diberi tahu.'.self::draftsSentText($drafts), $skipped);
     }
 
-    /**
-     * Excel download of the filtered list (full NIS, names, notes): password from the last 15 minutes, at
-     * most EXPORT_MAX_ROWS, audited with its filters, Admins alerted above LargeExportNotice::LIMIT rows
-     * (SECURITY §3i, §3m-9; same gates as Database prestasi).
-     */
-    public function export(AdminRecipients $recipients): ?BinaryFileResponse
+    // "Download data (Excel)": Kesiswaan chooses the statuses first (M3-A) -------------------------------
+
+    /** Opens the dialog with the statuses of the open tab ticked ("Semua" = every status). */
+    public function askExport(): void
     {
         $this->authorize('manage', TalentApplication::class);
+        $this->resetErrorBag('exportStatuses');
+        $this->exportStatuses = self::statusValues($this->tabStatuses());
+        $this->dispatch('sth-modal-open', id: self::EXPORT_DIALOG);
+    }
 
-        if (! $this->passwordRecentlyConfirmed('export')) {
+    /** "Pilih semua status" in the dialog. */
+    public function selectAllExport(): void
+    {
+        $this->authorize('manage', TalentApplication::class);
+        $this->resetErrorBag('exportStatuses');
+        $this->exportStatuses = self::statusValues(TalentStatus::cases());
+    }
+
+    /**
+     * "Download" in the dialog: the ticked statuses become the literal argument of export(), so the download
+     * that starts by itself after the password page is the same one.
+     */
+    public function download(AdminRecipients $recipients): ?BinaryFileResponse
+    {
+        $this->authorize('manage', TalentApplication::class);
+        $this->resetErrorBag('exportStatuses');
+
+        $chosen = array_values(array_filter(
+            TalentStatus::cases(),
+            fn (TalentStatus $status): bool => in_array($status->value, $this->exportStatuses, true),
+        ));
+
+        if ($chosen === []) {
+            $this->addError('exportStatuses', 'Pilih minimal satu status.');
+
             return null;
         }
 
-        $count = $this->filteredQuery()->count();
+        $this->dispatch('sth-modal-close', id: self::EXPORT_DIALOG);
+
+        return $this->export($recipients, self::exportArgument($chosen));
+    }
+
+    /**
+     * Excel download of the list (full NIS, names, notes): password from the last 15 minutes, at most
+     * EXPORT_MAX_ROWS, audited with its filters, Admins alerted above LargeExportNotice::LIMIT rows
+     * (SECURITY §3i, §3m-9; same gates as Database prestasi).
+     *
+     * `$status` says which statuses go into the file: '' = what the open tab lists, EXPORT_ALL = every
+     * status, else TalentStatus values joined by commas ("terdaftar,seleksi"); anything else is a 404. The
+     * filters jenis, cabang, kelas and search always apply.
+     */
+    public function export(AdminRecipients $recipients, string $status = ''): ?BinaryFileResponse
+    {
+        $this->authorize('manage', TalentApplication::class);
+
+        $statuses = $this->exportSelection($status);
+        abort_if($statuses === null, 404);
+
+        // Rebuilt from TalentStatus values (never the raw input), so the call to resume stays a literal.
+        if (! $this->passwordRecentlyConfirmed($status === '' ? 'export' : "export('".self::exportArgument($statuses)."')")) {
+            return null;
+        }
+
+        $values = self::statusValues($statuses);
+        $count = $this->baseQuery()->whereIn('status', $values)->count();
 
         if ($count > self::EXPORT_MAX_ROWS) {
             $this->dispatch('sth-toast', message: 'Terlalu banyak baris ('.number_format($count, 0, ',', '.').'). Persempit filter, maks. '
@@ -516,7 +618,7 @@ class Talenta extends Component
         $path = $base.'.xlsx';
         $writer = SimpleExcelWriter::create($path)->noHeaderRow();
         $bold = (new Style)->setFontBold();
-        $describe = $this->describeFilters();
+        $describe = $this->describeFilters($statuses);
 
         // Marked like Database prestasi (ExportAchievements, SECURITY §3m): title, who exported it and when, filter.
         $writer->addRow(self::exportRow(['Talenta siswa SMAGA Talent Hub'], $bold));
@@ -525,7 +627,8 @@ class Talenta extends Component
         $writer->addRow(self::exportRow(['']));
         $writer->addRow(self::exportRow(self::EXPORT_HEADER, $bold));
 
-        $this->filteredQuery()->with(['student.user', 'student.classroom', 'talentType', 'talentBranch', 'mentor'])
+        $this->baseQuery()->whereIn('status', $values)
+            ->with(['student.user', 'student.classroom', 'talentType', 'talentBranch', 'mentor'])
             ->orderBy('created_at')
             ->chunk(500, function (Collection $chunk) use ($writer): void {
                 foreach ($chunk as $a) {
@@ -549,7 +652,7 @@ class Talenta extends Component
 
         activity('talent')->causedBy($actor)->event('talent.exported')
             ->withProperties([
-                'filters' => $this->activeFilters(),
+                'filters' => $this->exportFilters($statuses),
                 'rows' => $count,
                 'large' => $count > LargeExportNotice::LIMIT,
                 'format' => 'xlsx',
@@ -564,24 +667,117 @@ class Talenta extends Component
     }
 
     /**
-     * The active filters in words, for the export's "Filter:" row (same style as AchievementFilters::describe()).
+     * What the file holds, in words, for the export's "Filter:" row (same style as
+     * AchievementFilters::describe()): the chosen statuses first ("Tahap: Terdaftar, Seleksi/asesmen", or
+     * "Tahap: semua" next to another filter), then jenis, cabang, kelas and search. Empty = everything.
+     *
+     * @param  list<TalentStatus>  $statuses
+     * @return list<string>
+     */
+    private function describeFilters(array $statuses): array
+    {
+        $others = $this->describeOtherFilters();
+        $tahap = self::isEveryStatus($statuses)
+            ? ($others === [] ? null : 'Tahap: semua')
+            : 'Tahap: '.implode(', ', array_map(fn (TalentStatus $status): string => $status->label(), $statuses));
+
+        return array_values(array_filter([$tahap, ...$others]));
+    }
+
+    /**
+     * The filters next to the status, in words (also shown in the download dialog).
      *
      * @return list<string>
      */
-    private function describeFilters(): array
+    private function describeOtherFilters(): array
     {
-        $tahap = TalentStatus::tryFrom($this->tahap);
         $jenis = TalentTypeCode::tryFrom($this->jenis);
         $cabang = $this->cabang !== '' ? TalentBranch::query()->whereKey($this->cabang)->value('name') : null;
         $kelas = $this->kelas !== '' ? Classroom::query()->whereKey($this->kelas)->value('name') : null;
 
         return array_values(array_filter([
-            $tahap !== null ? 'Tahap: '.$tahap->label() : null,
             $jenis !== null ? 'Jenis: '.$jenis->label() : null,
             $cabang !== null ? 'Cabang: '.$cabang : null,
             $kelas !== null ? 'Kelas: '.$kelas : null,
             $this->q !== '' ? 'Siswa: '.$this->q : null,
         ]));
+    }
+
+    /**
+     * The audit properties of an export: like activeFilters(), with the chosen statuses under `tahap`
+     * (several joined by commas, absent when every status is in the file).
+     *
+     * @param  list<TalentStatus>  $statuses
+     * @return array<string, string>
+     */
+    private function exportFilters(array $statuses): array
+    {
+        return array_filter([
+            'tahap' => self::isEveryStatus($statuses) ? '' : implode(',', self::statusValues($statuses)),
+            'jenis' => $this->jenis,
+            'cabang' => $this->cabang,
+            'kelas' => $this->kelas,
+            'q' => $this->q,
+        ], fn (string $value): bool => $value !== '');
+    }
+
+    /**
+     * The statuses an export call asks for, in pipeline order; null = not a valid choice.
+     *
+     * @return list<TalentStatus>|null
+     */
+    private function exportSelection(string $status): ?array
+    {
+        if ($status === '') {
+            return $this->tabStatuses();
+        }
+
+        if ($status === self::EXPORT_ALL) {
+            return TalentStatus::cases();
+        }
+
+        if (strlen($status) > 100) {
+            return null;
+        }
+
+        $asked = array_unique(explode(',', $status));
+        $chosen = array_values(array_filter(TalentStatus::cases(), fn (TalentStatus $s): bool => in_array($s->value, $asked, true)));
+
+        // Every part has to be a status: a mistyped one is refused, never dropped without a word.
+        return $chosen !== [] && count($chosen) === count($asked) ? $chosen : null;
+    }
+
+    /** @return list<TalentStatus> the statuses the open tab lists ("Semua" = every one) */
+    private function tabStatuses(): array
+    {
+        $tab = TalentStatus::tryFrom($this->tahap);
+
+        return $tab !== null ? [$tab] : TalentStatus::cases();
+    }
+
+    /**
+     * The literal argument of export() for a choice made in the dialog.
+     *
+     * @param  list<TalentStatus>  $statuses
+     */
+    private static function exportArgument(array $statuses): string
+    {
+        return self::isEveryStatus($statuses) ? self::EXPORT_ALL : implode(',', self::statusValues($statuses));
+    }
+
+    /** @param  list<TalentStatus>  $statuses */
+    private static function isEveryStatus(array $statuses): bool
+    {
+        return count($statuses) === count(TalentStatus::cases());
+    }
+
+    /**
+     * @param  list<TalentStatus>  $statuses
+     * @return list<string>
+     */
+    private static function statusValues(array $statuses): array
+    {
+        return array_map(fn (TalentStatus $status): string => $status->value, $statuses);
     }
 
     /**
@@ -606,9 +802,10 @@ class Talenta extends Component
         $more = $rows->count() > $this->limit;
         $rows = $rows->take($this->limit);
         $prestasi = $this->prestasi($rows->pluck('student_id')->unique()->values()->all());
+        $counts = $this->counts();
 
         return view('livewire.kesiswaan.talenta', [
-            'counts' => $this->counts(),
+            'counts' => $counts,
             'rows' => $rows->map(fn (TalentApplication $a): array => $this->row($a, $prestasi, $formatter)),
             'hasMore' => $more && $this->limit < self::MAX,
             'capped' => $more && $this->limit >= self::MAX,
@@ -621,6 +818,8 @@ class Talenta extends Component
             'bulkNext' => $this->bulkNextLabel(),
             'restoring' => $this->restoring(),
             'rejecting' => $this->rejecting(),
+            'exportOptions' => self::exportOptions($counts),
+            'exportScope' => $this->exportScope(),
         ])->layoutData(['badges' => $this->kesiswaanBadges()]);
     }
 
@@ -762,6 +961,9 @@ class Talenta extends Component
                 'name' => $a->evidenceFile->original_name,
                 'size' => self::fileSize($a->evidenceFile->size),
                 'url' => Route::has('files.show') ? route('files.show', $a->evidenceFile) : null,
+                // M3-C: the click opens the preview popup; the href stays the download.
+                'preview' => FileController::previewUrl($a->evidenceFile),
+                'previewType' => FileController::previewType($a->evidenceFile),
             ] : null,
             'minat' => $profile !== null && is_array($profile->interests) && $profile->interests !== [] ? implode(', ', $profile->interests) : null,
             'organisasi' => $profile?->organizations,
@@ -776,7 +978,7 @@ class Talenta extends Component
             // A draft is saved and not sent yet (the field shows it; only staff ever see it).
             'hasDraft' => ! $a->status->isFinal() && $a->student_note_draft !== null,
             'restorable' => $a->status->isRestorable(),
-            'restoreTo' => $a->status->isRestorable() ? $a->restoreTarget()->label() : null,
+            'restoreHint' => $a->status->isRestorable() ? self::restoreHint(self::rejectedFrom($a)) : null,
             'review' => $a->hasOpenReviewRequest() ? [
                 'at' => self::whenLabel($a->review_requested_at),
                 'message' => $a->review_message,
@@ -784,7 +986,12 @@ class Talenta extends Component
         ];
     }
 
-    /** @return array{name: string, talent: string, to: string, requested: bool}|null the row in the "Pulihkan" dialog */
+    /**
+     * The row in the "Pulihkan" dialog: who, which talent, the stage it was rejected from (null = unknown) and
+     * the stages it can go back to.
+     *
+     * @return array{name: string, talent: string, from: ?string, options: array<string, array{label: string, sub: string}>, requested: bool}|null
+     */
     private function restoring(): ?array
     {
         if ($this->restoreId === null) {
@@ -797,12 +1004,80 @@ class Talenta extends Component
             return null;
         }
 
+        $from = self::rejectedFrom($a);
+
         return [
             'name' => $a->student?->user?->name ?? 'Siswa',
             'talent' => MoveTalentStage::talentLabel($a),
-            'to' => $a->restoreTarget()->label(),
+            'from' => $from?->label(),
+            'options' => self::restoreOptions($from),
             'requested' => $a->hasOpenReviewRequest(),
         ];
+    }
+
+    /** The stage a tidak-lolos row had before the rejection, null when it was never recorded. */
+    private static function rejectedFrom(TalentApplication $a): ?TalentStatus
+    {
+        $from = $a->rejected_from;
+
+        return $from instanceof TalentStatus && in_array($from, RestoreTalentApplication::TARGETS, true) ? $from : null;
+    }
+
+    /**
+     * The tiles of the "Pulihkan" dialog: every stage a choice can go back to, the earlier one marked.
+     *
+     * @return array<string, array{label: string, sub: string}>
+     */
+    private static function restoreOptions(?TalentStatus $previous): array
+    {
+        $options = [];
+
+        foreach (RestoreTalentApplication::TARGETS as $stage) {
+            $options[$stage->value] = [
+                'label' => $stage->label(),
+                'sub' => $stage === $previous ? 'Tahap sebelumnya' : 'Tahap '.$stage->step(),
+            ];
+        }
+
+        return $options;
+    }
+
+    /** The sentence in the panel of a tidak-lolos row. */
+    private static function restoreHint(?TalentStatus $previous): string
+    {
+        return 'Siswa sudah diberi tahu. '
+            .($previous !== null ? 'Tahap sebelumnya: '.$previous->label().'. ' : '')
+            .'Pulihkan untuk mengembalikannya ke tahap yang kamu pilih.';
+    }
+
+    /**
+     * The tiles of the "Download data" dialog: every status with its number of rows inside the other filters.
+     *
+     * @param  array<string, int>  $counts
+     * @return array<string, array{label: string, sub: string}>
+     */
+    private static function exportOptions(array $counts): array
+    {
+        $options = [];
+
+        foreach (TalentStatus::cases() as $status) {
+            $options[$status->value] = [
+                'label' => $status->label(),
+                'sub' => number_format($counts[$status->value] ?? 0, 0, ',', '.').' pilihan',
+            ];
+        }
+
+        return $options;
+    }
+
+    /** One line in the "Download data" dialog: the filters that also decide what the file holds. */
+    private function exportScope(): string
+    {
+        $others = $this->describeOtherFilters();
+
+        return $others === []
+            ? 'Semua jenis, cabang, dan kelas masuk ke file.'
+            : 'Filter yang sedang dipakai ikut berlaku: '.implode('; ', $others).'.';
     }
 
     // Helpers --------------------------------------------------------------------------------
@@ -854,6 +1129,7 @@ class Talenta extends Component
     {
         $this->restoreId = null;
         $this->restoreNote = '';
+        $this->restoreTo = '';
         $this->dispatch('sth-modal-close', id: self::RESTORE_DIALOG);
     }
 
@@ -896,12 +1172,15 @@ class Talenta extends Component
         }
 
         if ($this->rejectTarget === self::REJECT_BULK) {
-            $ids = array_values(array_filter($this->checked, 'is_string'));
+            $rows = $this->checkedApplications();
+            // Ticked in "Semua", a selection can hold rows that are already final: they are skipped.
+            $open = $rows->reject(fn (TalentApplication $a): bool => $a->status->isFinal());
 
             return [
                 'bulk' => true,
-                'count' => count($ids),
-                'drafts' => $ids === [] ? 0 : TalentApplication::query()->whereKey($ids)->whereNotNull('student_note_draft')->count(),
+                'count' => $open->count(),
+                'skipped' => $rows->count() - $open->count(),
+                'drafts' => $open->whereNotNull('student_note_draft')->count(),
             ];
         }
 

@@ -18,6 +18,8 @@ it('sends CSP with a per-request nonce and the other security headers', function
         ->toContain("default-src 'self'")
         ->toContain("frame-ancestors 'none'")
         ->toContain("object-src 'none'")
+        // M3-C: frames of this origin only (the preview popup); no blob:, data: or other origin.
+        ->toMatch("/(^|; )frame-src 'self'(;|$)/")
         ->toContain("base-uri 'self'")
         ->toContain("form-action 'self'")
         ->toMatch("/script-src 'self' 'nonce-[A-Za-z0-9]+'/")
@@ -35,6 +37,24 @@ it('keeps a CSP that a response sets itself (e.g. sandboxed downloads)', functio
     Route::middleware('web')->get('/_test/own-csp', fn () => response('pdf')->header('Content-Security-Policy', 'sandbox'));
 
     $this->get('/_test/own-csp')->assertHeader('Content-Security-Policy', 'sandbox');
+});
+
+it('keeps a frame permission that one response sets itself and still adds the other headers (M3-C inline PDF)', function (): void {
+    Route::middleware('web')->get('/_test/own-frame', fn () => response('pdf')
+        ->header('X-Frame-Options', 'SAMEORIGIN')
+        ->header('Content-Security-Policy', "default-src 'none'; frame-ancestors 'self'"));
+
+    $response = $this->get('/_test/own-frame');
+
+    $response->assertHeader('X-Frame-Options', 'SAMEORIGIN')
+        ->assertHeader('Content-Security-Policy', "default-src 'none'; frame-ancestors 'self'")
+        ->assertHeader('X-Content-Type-Options', 'nosniff')
+        ->assertHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+
+    expect($response->headers->all('x-frame-options'))->toHaveCount(1);
+
+    // The permission belongs to that answer only: the next page is locked again.
+    $this->get('/_test/headers')->assertHeader('X-Frame-Options', 'DENY');
 });
 
 it('hardens the session cookie in production config', function (): void {

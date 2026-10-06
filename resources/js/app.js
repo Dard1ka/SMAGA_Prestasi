@@ -19,6 +19,11 @@
  |             a plain POST form was submitted, see "passwords do not stay on screen"
  |   data-sth-drop / data-sth-file-name                                       <x-sth.file-drop>
  |   data-sth-menu / data-sth-menu-button / data-sth-menu-panel               top bar account menu
+ |   data-sth-preview="<inline url>" data-sth-preview-type="pdf|image" data-sth-preview-name="<file name>"
+ |       on a link whose href is the download (a <button>: data-sth-preview-download="<url>"): the click shows
+ |       the file in the dialog #sth-preview instead of downloading it        <x-sth.preview>, "file preview popup"
+ |   data-sth-copy="#target-id"                                               copies that element's innerText,
+ |       toast "Data disalin."; no Clipboard API or refused: selects the text, toast "Tekan Ctrl+C untuk menyalin."
  */
 
 const TOAST_TIMEOUT = 6000;
@@ -590,6 +595,231 @@ document.addEventListener('keydown', (event) => {
             button.focus();
         }
     });
+});
+
+/* ---------------------------------------------------------------- file preview popup */
+
+/*
+ | "Buka" used to download the certificate; now it shows it. A link carries
+ |   href="<download url>" data-sth-preview="<inline url>" data-sth-preview-type="pdf|image"
+ |   data-sth-preview-name="<file name>"
+ | and the click fills the one dialog of the page (#sth-preview, <x-sth.preview> in layouts::app and
+ | layouts::mobile): title = file name, body = the viewer, footer = "Tutup" and "Download" (the href). Without
+ | JavaScript, with a modifier key, or on a page without the dialog, the link simply downloads as before.
+ |
+ | - image: an <img>. An image element never runs anything and never downloads.
+ | - pdf: the browser's own PDF viewer in an <iframe> of this origin (the page CSP has `frame-src 'self'` and
+ |   `object-src 'none'`, so no <object>/<embed>, no blob:, no other origin). No `sandbox` attribute: Chrome
+ |   does not start its PDF viewer in a sandboxed frame. Before the frame gets its address a HEAD request asks
+ |   the server what it would send; the frame is only used for `200`, `application/pdf`, `inline`. So the popup
+ |   never starts a download by itself, and an expired session, a 404 or a 429 becomes one sentence instead of
+ |   a broken frame (an <iframe> reports no HTTP errors).
+ | - a browser without a PDF viewer (most phones), an unknown type, a foreign address or a failed load: one
+ |   sentence in the dialog; "Download" is always there.
+ | Closing (X, Tutup, Esc, click outside) removes the viewer element, which unloads the file. The viewer is
+ | created per opening, with its address set before it enters the page, so it adds nothing to the Back history.
+ | The texts live in the component (data-msg-*).
+ */
+const PREVIEW_ID = 'sth-preview';
+
+// Changes whenever the dialog is filled or emptied, so a late answer for an earlier file is ignored.
+let previewRun = 0;
+
+function previewParts(dialog) {
+    return {
+        stage: dialog.querySelector('[data-sth-preview-stage]'),
+        status: dialog.querySelector('[data-sth-preview-status]'),
+        title: dialog.querySelector(`#${PREVIEW_ID}-title`),
+        download: dialog.querySelector('[data-sth-preview-download]'),
+    };
+}
+
+function resetPreview(dialog) {
+    previewRun += 1;
+    const { stage, status, title, download } = previewParts(dialog);
+
+    stage?.querySelectorAll('.preview-frame, .preview-image').forEach((viewer) => viewer.remove());
+    if (status) {
+        status.textContent = '';
+        status.hidden = false;
+    }
+    if (title?.dataset.default) title.textContent = title.dataset.default;
+    download?.setAttribute('href', '#');
+}
+
+function previewNote(dialog, key) {
+    const { stage, status } = previewParts(dialog);
+    if (!stage || !status) return;
+    status.textContent = stage.getAttribute(`data-msg-${key}`) || '';
+    status.hidden = false;
+}
+
+function sameOrigin(url) {
+    try {
+        const parsed = new URL(url, window.location.href);
+
+        return parsed.origin === window.location.origin && /^https?:$/.test(parsed.protocol);
+    } catch {
+        return false;
+    }
+}
+
+function canShowPdf() {
+    if (typeof navigator.pdfViewerEnabled === 'boolean') return navigator.pdfViewerEnabled;
+
+    return Boolean(navigator.mimeTypes?.['application/pdf']);
+}
+
+async function servedInlineAsPdf(url) {
+    try {
+        const response = await fetch(url, { method: 'HEAD', credentials: 'same-origin', redirect: 'error', cache: 'no-store' });
+        const type = (response.headers.get('Content-Type') || '').toLowerCase();
+        const disposition = (response.headers.get('Content-Disposition') || '').toLowerCase();
+
+        // A HEAD answer has no body; reading it lets the request finish instead of being cancelled later.
+        await response.text();
+
+        return response.ok && type.startsWith('application/pdf') && disposition.startsWith('inline');
+    } catch {
+        return false;
+    }
+}
+
+/*
+ | Unload the file the moment the dialog closes, however it was closed. This watches the `open` attribute
+ | instead of the `close` event: the browser delivers that event with the next painted frame, so in a tab that
+ | is not painting it arrives late, after the file should be gone, or even after the next file was opened.
+ */
+function unloadWhenClosed(dialog, run) {
+    const observer = new MutationObserver(() => {
+        if (dialog.open) return;
+        observer.disconnect();
+        if (run === previewRun) resetPreview(dialog);
+    });
+    observer.observe(dialog, { attributes: true, attributeFilter: ['open'] });
+}
+
+function mountPreview(dialog, viewer, url, run) {
+    const { stage, status } = previewParts(dialog);
+    if (!stage) return;
+
+    viewer.addEventListener(
+        'load',
+        () => {
+            if (run === previewRun && status) status.hidden = true;
+        },
+        { once: true },
+    );
+    viewer.src = url;
+    stage.appendChild(viewer);
+}
+
+function openPreview(opener) {
+    const dialog = document.getElementById(PREVIEW_ID);
+    const url = opener.getAttribute('data-sth-preview');
+    if (!(dialog instanceof HTMLDialogElement) || dialog.open || !url) return false;
+
+    const { stage, title, download } = previewParts(dialog);
+    if (!stage) return false;
+
+    const type = (opener.getAttribute('data-sth-preview-type') || '').toLowerCase();
+    const name = (opener.getAttribute('data-sth-preview-name') || '').trim();
+    const label = `${stage.getAttribute('data-msg-frame') || 'Preview'} ${name}`.trim();
+
+    resetPreview(dialog);
+    const run = previewRun;
+
+    if (title) {
+        title.dataset.default ||= title.textContent;
+        title.textContent = name || title.dataset.default;
+    }
+    download?.setAttribute('href', opener.getAttribute('href') || opener.getAttribute('data-sth-preview-download') || url);
+    previewNote(dialog, 'loading');
+    openDialog(PREVIEW_ID, opener);
+    unloadWhenClosed(dialog, run);
+
+    if (!sameOrigin(url) || (type !== 'pdf' && type !== 'image')) {
+        previewNote(dialog, 'unsupported');
+    } else if (type === 'image') {
+        const image = document.createElement('img');
+        image.className = 'preview-image';
+        image.alt = label;
+        image.addEventListener(
+            'error',
+            () => {
+                if (run !== previewRun) return;
+                image.remove();
+                previewNote(dialog, 'error');
+            },
+            { once: true },
+        );
+        mountPreview(dialog, image, url, run);
+    } else if (!canShowPdf()) {
+        previewNote(dialog, 'nopdf');
+    } else {
+        servedInlineAsPdf(url).then((ok) => {
+            if (run !== previewRun || !dialog.open) return;
+            if (!ok) {
+                previewNote(dialog, 'error');
+
+                return;
+            }
+            const frame = document.createElement('iframe');
+            frame.className = 'preview-frame';
+            frame.title = label;
+            mountPreview(dialog, frame, url, run);
+        });
+    }
+
+    return true;
+}
+
+document.addEventListener('click', (event) => {
+    // A modified click (new tab, save link) keeps the browser's own meaning: the plain download.
+    if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+
+    const opener = event.target instanceof Element ? event.target.closest('[data-sth-preview]') : null;
+    if (!opener || opener.getAttribute('aria-disabled') === 'true') return;
+
+    if (openPreview(opener)) event.preventDefault();
+});
+
+/* ---------------------------------------------------------------- copy to clipboard */
+
+/*
+ | <button type="button" data-sth-copy="#target-id">Salin data</button> copies the innerText of #target-id and
+ | shows "Data disalin.". The Clipboard API only exists on https and localhost and may refuse (permission, no
+ | focus); then the text is selected instead, so Ctrl+C finishes the job, and the toast says so.
+ */
+function selectContents(node) {
+    const selection = window.getSelection();
+    if (!selection) return;
+    const range = document.createRange();
+    range.selectNodeContents(node);
+    selection.removeAllRanges();
+    selection.addRange(range);
+}
+
+document.addEventListener('click', async (event) => {
+    const button = event.target instanceof Element ? event.target.closest('[data-sth-copy]') : null;
+    if (!button) return;
+    event.preventDefault();
+
+    let target = null;
+    try {
+        target = document.querySelector(button.getAttribute('data-sth-copy'));
+    } catch {
+        target = null; // not a valid selector
+    }
+    if (!(target instanceof HTMLElement)) return;
+
+    try {
+        await navigator.clipboard.writeText(target.innerText);
+        showToast('Data disalin.', 'success');
+    } catch {
+        selectContents(target);
+        showToast('Tekan Ctrl+C untuk menyalin.', 'info');
+    }
 });
 
 /* ---------------------------------------------------------------- page load */

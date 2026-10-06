@@ -17,6 +17,10 @@ enum FilePurpose: string
     case TalentEvidence = 'talent_evidence';
     case Letter = 'letter';
     case Signature = 'signature';
+    /**
+     * Legacy (M3-E): STH generated e-flyers until 2026-10-06. Nothing creates one now; the files made
+     * before keep this purpose and their FilePolicy rule (D-75).
+     */
     case Flyer = 'flyer';
     case Import = 'import';
 

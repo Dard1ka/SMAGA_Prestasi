@@ -11,6 +11,7 @@ use App\Actions\Talent\SaveTalentProfile;
 use App\Actions\Talent\TalentNote;
 use App\Enums\RegistrationStatus;
 use App\Enums\TalentStatus;
+use App\Http\Controllers\FileController;
 use App\Models\Registration;
 use App\Models\Student;
 use App\Models\TalentApplication;
@@ -424,6 +425,9 @@ final class ProfilTalenta extends Component
                 'step' => $a->status->step(),
                 'evidence' => $a->evidenceFile?->original_name,
                 'evidenceUrl' => $a->evidence_file_id !== null && Route::has('files.show') ? route('files.show', $a->evidence_file_id) : null,
+                // M3-C: the click opens the preview popup; the href stays the download.
+                'evidencePreview' => $a->evidenceFile !== null ? FileController::previewUrl($a->evidenceFile) : null,
+                'evidencePreviewType' => $a->evidenceFile !== null ? FileController::previewType($a->evidenceFile) : null,
                 'canCancel' => Gate::allows('cancel', $a),
                 // Kesiswaan's note for the student of the latest decision (never the note for the guru pembina).
                 'note' => $a->student_note,

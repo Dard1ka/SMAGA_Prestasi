@@ -185,7 +185,14 @@
                     <section aria-labelledby="h-dp-file" class="flex flex-col gap-2">
                         <h3 id="h-dp-file" class="title-card m-0">Sertifikat</h3>
                         @foreach ($detail['files'] as $file)
-                            <x-sth.button variant="quiet" size="sm" icon="download" :href="$file['href']" class="self-start">{{ $file['name'] }}</x-sth.button>
+                            @if ($file['preview'])
+                                {{-- Preview popup (<x-sth.preview>) on top of this drawer; the href stays the download. --}}
+                                <x-sth.button variant="quiet" size="sm" icon="eye" :href="$file['href']" class="self-start" aria-haspopup="dialog"
+                                    :data-sth-preview="$file['preview']" :data-sth-preview-type="$file['previewType']"
+                                    :data-sth-preview-name="$file['name']"><span class="sr-only">Buka </span>{{ $file['name'] }}</x-sth.button>
+                            @else
+                                <x-sth.button variant="quiet" size="sm" icon="download" :href="$file['href']" class="self-start"><span class="sr-only">Download </span>{{ $file['name'] }}</x-sth.button>
+                            @endif
                         @endforeach
                     </section>
                 @endif

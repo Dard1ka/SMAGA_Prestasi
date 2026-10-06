@@ -9,13 +9,12 @@ use App\Enums\Permission;
 use App\Models\Achievement;
 use App\Models\Student;
 use App\Models\User;
-use App\Support\Navigation;
 use Illuminate\Support\Str;
 
 /**
  * The public-safe facts of one achievement that Humas may show (SECURITY §3m-7): name, class, capaian,
  * lomba, tingkat, pembimbing. Never NIS/NISN, birth date, phone or email. Used by the Humas screens,
- * the caption suggestion and GenerateFlyer so all three say the same thing.
+ * the caption suggestion and FlyerData ("Data untuk flyer") so all three say the same thing.
  */
 final readonly class AchievementFacts
 {
@@ -78,6 +77,12 @@ final readonly class AchievementFacts
             return $this;
         }
 
+        return $this->anonymous();
+    }
+
+    /** The same achievement without its student: neutral label, no class, no photo, `publishConsent` false. */
+    public function anonymous(): self
+    {
         return new self(
             studentName: $this->neutralName,
             className: null,
@@ -99,29 +104,6 @@ final readonly class AchievementFacts
         return trim($this->resultLabel.' '.($this->levelLabel === 'Kota/Kabupaten' ? 'Kota/Kab' : (string) $this->levelLabel));
     }
 
-    /** "Tingkat Nasional". */
-    public function levelLine(): ?string
-    {
-        return $this->levelLabel !== null ? 'Tingkat '.$this->levelLabel : null;
-    }
-
-    /** "Kelas XI-4". */
-    public function classLine(): ?string
-    {
-        return $this->className !== null ? 'Kelas '.$this->className : null;
-    }
-
-    /** "Pembimbing: Bu Retno Wulandari, S.Pd." (flyer). */
-    public function mentorLine(): ?string
-    {
-        return $this->mentorFull !== null ? 'Pembimbing: '.$this->mentorFull : null;
-    }
-
-    public function initials(): string
-    {
-        return Navigation::initials($this->studentName) ?: 'S';
-    }
-
     /** Suggested caption (mockup Humas-Publikasi); Humas edits it before scheduling. */
     public function suggestedCaption(): string
     {
@@ -131,12 +113,6 @@ final readonly class AchievementFacts
         $thanks = $this->mentorShort !== null ? ' Terima kasih '.$this->mentorShort.' atas bimbingannya.' : '';
 
         return 'Selamat kepada '.$who.', '.$what.'.'.$thanks."\n#SMAGASpectacular #SMAN3Semarang";
-    }
-
-    /** File-name slug of the student's name ("raka-pradipta"). */
-    public function slug(): string
-    {
-        return Str::slug($this->studentName) ?: 'prestasi';
     }
 
     /** "Siswa kelas XI", "Alumni" or "Siswa": the label PublicAchievements uses for a student without consent. */

@@ -3,17 +3,18 @@
 declare(strict_types=1);
 
 use App\Actions\Publications\AutoPublishPublication;
-use App\Actions\Publications\GenerateFlyer;
 use App\Enums\PublicationStatus;
 use App\Enums\RoleName;
 use App\Enums\UserStatus;
 use App\Jobs\AutoPublishPublications;
+use App\Models\File;
 use App\Models\Publication;
 use App\Notifications\Publications\AchievementPublished;
 use App\Notifications\Publications\PublicationDue;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Storage;
 use Spatie\Activitylog\Models\Activity;
 use Tests\Feature\Auth\AuthTestHelpers;
 use Tests\Feature\Humas\HumasFixtures as F;
@@ -21,7 +22,8 @@ use Tests\Feature\Humas\HumasFixtures as F;
 /*
  * B3 · backlog #12: terjadwal publications whose scheduled_at arrived become dipublikasikan
  * (AutoPublishPublication via the AutoPublishPublications job) and Humas is reminded to post.
- * Flyers stay on the private disk (lead decision). Fictional data only.
+ * STH makes no flyer (M3-E): the reminder promises none, and a flyer file from before stays where it is.
+ * Fictional data only.
  */
 
 uses(RefreshDatabase::class);
@@ -127,12 +129,32 @@ it('runs every due publication from the scheduled job, reminding only active Hum
     Notification::assertNotSentTo($kesiswaan, PublicationDue::class);
 });
 
-it('keeps the flyer on the private disk when publishing', function (): void {
+it('reminds Humas to upload without promising a flyer from the app (M3-E)', function (): void {
     $publication = b3Scheduled();
-    $flyer = app(GenerateFlyer::class)->handle($this->humas, $publication, 'biru');
+
+    $reminder = PublicationDue::for($publication);
+    $body = $reminder->body();
+    $mail = (string) $reminder->toMail($this->humas)->render();
+
+    expect($reminder->title())->toBe('Waktunya upload publikasi')
+        ->and($body)->toContain('Upload publikasinya ke Instagram, Website sekarang.')
+        ->toContain('Caption dan data untuk flyer ada di halaman publikasi.')
+        ->not->toContain('Upload caption dan flyer')
+        ->and($reminder->toArray($this->humas)['body'])->toBe($body)
+        ->and($mail)->toContain('data untuk flyer')
+        ->toContain('pilih='.$publication->getKey());
+});
+
+it('creates no file when publishing and leaves a flyer from before M3-E on the private disk', function (): void {
+    $publication = b3Scheduled();
+    $flyer = F::legacyFlyer($publication, $this->humas);
 
     app(AutoPublishPublication::class)->handle($publication);
 
-    expect($publication->fresh()->flyer_file_id)->toBe($flyer->getKey())
-        ->and($flyer->fresh()->disk)->toBe('local');
+    expect($publication->fresh()->status)->toBe(PublicationStatus::Dipublikasikan)
+        ->and($publication->fresh()->flyer_file_id)->toBe($flyer->getKey())
+        ->and($flyer->fresh()->disk)->toBe('local')
+        ->and(File::query()->count())->toBe(1)
+        ->and(Storage::disk('local')->allFiles())->toBe([$flyer->path])
+        ->and(Storage::disk('public')->allFiles())->toBe([]);
 });

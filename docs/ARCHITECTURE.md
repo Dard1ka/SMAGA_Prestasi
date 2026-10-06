@@ -7,9 +7,9 @@ Decisions referenced as D-xx live in `docs/DECISIONS.md`; security controls (K1�
 - PHP 8.4, **Laravel 13**, MySQL 8.4 LTS, all in Docker (dev: `compose.yaml`; prod: `docker/compose.prod.yaml`).
 - UI: Blade + **Livewire 4 (4.4)** + Alpine + Tailwind CSS v4 (Vite, built in a Node container at image build time).
 - Auth: Laravel **Fortify** (headless) with custom login by NIS or NISN (a student whose activation is finished may also use the bound email, D-78); TOTP 2FA mandatory for staff roles (U-03).
-- Packages: `spatie/laravel-permission` (roles), `spatie/laravel-activitylog` (audit), `spatie/simple-excel` (import/export via OpenSpout — never evaluates formulas), `barryvdh/laravel-dompdf` (dompdf ≥ 3.1.6; remote/JS disabled, chroot), `intervention/image` v4 (EXIF strip, flyer), `pestphp/pest` (tests).
+- Packages: `spatie/laravel-permission` (roles), `spatie/laravel-activitylog` (audit), `spatie/simple-excel` (import/export via OpenSpout — never evaluates formulas), `barryvdh/laravel-dompdf` (dompdf ≥ 3.1.6; remote/JS disabled, chroot), `intervention/image` v4 (re-encodes uploaded images, EXIF strip; it no longer draws a flyer, D-107), `pestphp/pest` (tests).
 - Queue/cache/session: `database` drivers (no Redis needed on the 8 GB host). Scheduler via `php artisan schedule:work` container.
-- Storage: `local` private disk only (`storage/app/private`). Nothing user-uploaded is ever web-served directly; files are streamed by controllers after a Policy check.
+- Storage: `local` private disk only (`storage/app/private`). Nothing user-uploaded is ever web-served directly; files are streamed by controllers after a Policy check (as a download; inline only for the preview popup, §8e).
 - Locale `id`, timezone `Asia/Jakarta`, decimal comma in UI (`Number::format(..., locale: 'id')`).
 
 ## 2. Roles (spatie, guard `web`)
@@ -37,14 +37,14 @@ docker/                    # Dockerfiles, nginx.conf (inside container), php.ini
 > Exception: `users.id` stays the framework's auto-increment BIGINT because Fortify (2FA/passkeys), sessions, spatie/permission and activitylog are built on it. Every FK to users is `foreignId(...)->constrained('users')`. All domain tables use ULIDs (`$table->ulid('id')->primary()`, `HasUlids`), and only domain ULIDs appear in URLs.
 >
 > Ratified 2026-10-01 (backlog #20): this section now matches `database/migrations` after waves 1–2 (W1-A additions,
-> W2 tables/columns) and backlog B1–B5; settings keys and staff-account rules updated after W4 (D1); columns of the four M1 migrations (2026-10-04) and of the two M2 migrations (2026-10-06) added. Origin tags: **[W1-A]**, **[W2-…]**, **[B1]…[B5]**, **[W4]**, **[M1-A]…[M1-E]**, **[M2-A]**, **[M2-B]** (details in `docs/dev-notes/`).
+> W2 tables/columns) and backlog B1–B5; settings keys and staff-account rules updated after W4 (D1); columns of the four M1 migrations (2026-10-04) and of the two M2 migrations (2026-10-06) added; `letters.printed` came with QA4 (PR 12, 2026-10-06); M3 (2026-10-06) has no migration. Origin tags: **[W1-A]**, **[W2-…]**, **[B1]…[B5]**, **[W4]**, **[M1-A]…[M1-E]**, **[M2-A]**, **[M2-B]** (details in `docs/dev-notes/`).
 > Runtime DB user `sth_app` has per-table privileges (`scripts/deploy/grants.sh`, DEPLOY §8.2): `activity_log` and
 > `audit_seals` are INSERT/SELECT only, `migrations` SELECT only, every other table DML; no DDL, no TRUNCATE.
 - **users***: id (bigint), name, username (nullable, unique; staff login, D-42) [W1-A], email (nullable, unique) [W1-A], email_verified_at, password, status (`UserStatus`), must_change_password (bool), initial_password_expires_at (K1 window / K10 temporary password, 72 h) [B1], temporary_password_issued_at (timestamp, nullable: set by `ResetStudentAccount`, cleared by `SetNewPassword` whenever the owner chooses a password; while it is set the stored password is an Admin's temporary one and cannot be kept at activation, D-92; the migration backfills it from `activity_log` `account.reset` for reset accounts that still have `must_change_password`) [M2-A], failed_activation_attempts (K3) [B1], frozen_at, frozen_reason (`failed_attempts` | `not_me`; login refused while set) [B1], activated_at (K9) [B1], password_changed_at (null on an active student = the school password was kept at activation, D-79) [M1-B: meaning only, no new column], last_login_at, tour_seen_at (menu tour done) [W2-A1], Fortify two_factor_* columns, remember_token.
 - **classrooms**: id, name (e.g. `X-1`, `X-TAHFIDZ`, `X-OLIMP`, `XI-12`, `XII-3`), level (10/11/12), active.
 - **students***: id, user_id (unique), nis (unique), nisn (unique), birth_date (date), classroom_id, import_school_year (e.g. `2026/2027`), grade12_start_date (date, computed), archive_at (date, computed, indexed), phone (nullable, `encrypted` cast), photo_consent (bool, default false), publish_consent (bool, default false), public_slug (string 32, nullable, unique; random URL key of the public student page, rotated when publish consent is revoked, `UpdateConsent`) [W2-D, W3-A]. The yearly import (`ImportStudents`, D-81) updates a registered student: classroom_id, import_school_year, grade12_start_date, archive_at, and phone when the file has one; it never writes name, birth_date, the password, email, status, activation or consent columns [M1-C].
 - **staff_profiles**: id, user_id, honorific (Bu/Pak/…, nullable) [W1-A], nip (nullable), rank (pangkat/gol, nullable), position (jabatan).
-- **competitions*** (lomba): id, name, description (nullable) [W1-A], bidang (`Bidang`), organizer_name, organizer_type (`OrganizerType`), weight_category (`WeightCategory`), event_status (`EventStatus`), level (`Level`), mode (`EventMode`), registration_opens_at, registration_closes_at, starts_on, final_on (date of the final — report deadline base), location, participation (`Participation`), max_team_size (nullable), default_mentor_id (users.id, guru), website_url, registration_url (D-28), juknis_file_id, cover_file_id, status (`CompetitionStatus`: menunggu_verifikasi, dipublikasikan, ditolak, ditutup), submitted_by, verified_by, verified_at, verification_note. Weight and date fields are nullable while `menunggu_verifikasi` (usulan) [W1-A]; `VerifyCompetition` requires them before `dipublikasikan`. **Every create starts at `menunggu_verifikasi` (D-27)**; only Kesiswaan/Admin can move it to `dipublikasikan`.
+- **competitions*** (lomba): id, name, description (nullable) [W1-A], bidang (`Bidang`), organizer_name, organizer_type (`OrganizerType`), weight_category (`WeightCategory`), event_status (`EventStatus`), level (`Level`), mode (`EventMode`), registration_opens_at, registration_closes_at, starts_on, final_on (date of the final — report deadline base), location, participation (`Participation`), max_team_size (nullable), default_mentor_id (users.id, guru), website_url, registration_url (D-28), juknis_file_id, cover_file_id, status (`CompetitionStatus`: menunggu_verifikasi, dipublikasikan, ditolak, ditutup), submitted_by, verified_by, verified_at, verification_note (nullable; `VerifyCompetition` accepts at most 1,000 characters, and since D-103 a rejection may leave it empty). Weight and date fields are nullable while `menunggu_verifikasi` (usulan) [W1-A]; `VerifyCompetition` requires them before `dipublikasikan`. **Every create starts at `menunggu_verifikasi` (D-27)**; only Kesiswaan/Admin can move it to `dipublikasikan`.
 - **registrations*** (pendaftaran): id, competition_id, leader_student_id, type (individu/tim), branch (cabang, nullable) [W1-A], mentor_id (guru, required D-35), status (`RegistrationStatus`, §6), principal_decision_by, principal_decided_at, principal_note, cancelled_at.
 - **registration_members**: id, registration_id, student_id, role (ketua/anggota), invited_at, confirmed_at, declined_at. Unique (registration_id, student_id). A student cannot be in two non-final registrations of the same competition. While `menunggu_konfirmasi` and registration is open, the leader may invite more members or replacements (`InviteMembers`; never someone who declined this team; ≤ max_team_size) [B3]. Open invitations expire at `registration_closes_at` by setting `declined_at`; a team left with < 2 confirmed members stays `menunggu_konfirmasi` until the leader cancels (D-36, D-50) [B3].
 - **registration_reminders** [W2-A2]: id (bigint), registration_id, kind (reminder type, e.g. report due), sent_at. Unique (registration_id, kind): each reminder is sent once.
@@ -55,9 +55,9 @@ docker/                    # Dockerfiles, nginx.conf (inside container), php.ini
 - **weight_versions**: id, effective_at, created_by, note. **weight_values**: id, weight_version_id, group (`WeightGroup`: level, result, organizer), key, value (decimal 6,2).
 - **settings**: key (string PK), value (json). Keys = the 12 cases of `App\Enums\SettingKey` (defaults in `SettingKey::defaultValue()`, seeded by `SettingSeeder`): `report_deadline_days` (45, D-25), `archive_months_after_grade12` (18), `signature_file_id` (null), `signer_name`, `signer_rank`, `signer_nip` (placeholders `[Nama Kepala Sekolah]`, `[Pangkat/Golongan]`, `[NIP]`), `letter_format_siswa` (`400.3.8/{seq}/MRD/{roman_month}/{year}`), `letter_format_guru` (`400.3.8.6/{seq}/{year}`) (since D-82 both are only the example shown under the number field; they no longer validate anything) [M1-A], `public_indexing`, `public_certificates` (both false, D-38/D-39) [W3-A], `activation_window_days` (14, Admin edits 1–30, D-54; `SettingKey::ActivationWindowDays`) [B1, W4], `letter_template` (null = built-in texts; JSON of the fixed letter texts, `App\Actions\Templates\LetterTemplate`, D-60; `SettingKey::LetterTemplate`) [B5, W4]. The initial-password pattern lives in code, never in a setting. OTP test mode is not a setting either: only the env flag `STH_OTP_TEST_MODE` with `APP_ENV=local` (§8, D-62); `SettingKey::OtpTestMode` was removed and the W4 migration `2026_10_01_600000_w4_remove_otp_test_mode_setting` deletes the old `otp_test_mode` row.
 - **talent_types**: id, code (osn, riset, fls3n, o2sn, olpain, debat), name, bidang (OSN/OLPAIN→sains, Riset→riset, FLS3N/Debat→seni_budaya, O2SN→olahraga; D-22), sort_order [W1-A]. **talent_branches**: id, talent_type_id, name, team_size (nullable), active, sort_order [W1-A]; unique (talent_type_id, name). Seeded from `docs/TALENT-FORM.md`.
-- **talent_applications***: id, student_id, talent_type_id, talent_branch_id (nullable for OLPAIN), evidence_file_id (nullable), status (`TalentStatus`: terdaftar, pemetaan, seleksi, pembinaan, tidak_lolos), mentor_id, assessment_on, note (the note for the guru pembina: internal, read by the guru pembina and Kesiswaan only), student_note (text, nullable: the note for the student of the latest decision, sent in that notification and shown on Profil talenta; a new decision replaces or clears it, D-85) [M1-D], student_note_draft (text, nullable: what Kesiswaan typed for the student and kept with "Simpan"; staff only, never shown to the student, the guru, the export or a notification; a decision sends its note and clears the draft, D-96) [M2-B], rejected_from (`TalentStatus` value, nullable: the stage before `tidak_lolos`, where "Pulihkan" puts the row back; Terdaftar when unknown) [M1-D], review_requested_at, review_message (≤ 500; one open review request per rejection, closed by a restore, D-86) [M1-D]. Unique (student_id, talent_type_id, talent_branch_id); OLPAIN (branch NULL) duplicates are blocked in the Action; a rejected choice cannot be applied for again (`ApplyTalent::REJECTED_MESSAGE`).
+- **talent_applications***: id, student_id, talent_type_id, talent_branch_id (nullable for OLPAIN), evidence_file_id (nullable), status (`TalentStatus`: terdaftar, pemetaan, seleksi, pembinaan, tidak_lolos), mentor_id, assessment_on, note (the note for the guru pembina: internal, read by the guru pembina and Kesiswaan only), student_note (text, nullable: the note for the student of the latest decision, sent in that notification and shown on Profil talenta; a new decision replaces or clears it, D-85) [M1-D], student_note_draft (text, nullable: what Kesiswaan typed for the student and kept with "Simpan"; staff only, never shown to the student, the guru, the export or a notification; a decision sends its note and clears the draft, D-96) [M2-B], rejected_from (`TalentStatus` value, nullable: the stage before `tidak_lolos`; since D-104 it is the stage "Pulihkan" preselects (Terdaftar when unknown) while Kesiswaan chooses the target, and a restore clears it) [M1-D, M3-A], review_requested_at, review_message (≤ 500; one open review request per rejection, closed by a restore, D-86) [M1-D]. Unique (student_id, talent_type_id, talent_branch_id); OLPAIN (branch NULL) duplicates are blocked in the Action; a rejected choice cannot be applied for again (`ApplyTalent::REJECTED_MESSAGE`).
 - **talent_profiles**: id, student_id (unique), interests (json, ≤ 4), skills, organizations, junior_high_achievements. **talent_profile_files** [W2-A2]: id, talent_profile_id, file_id; unique (talent_profile_id, file_id) (supporting documents of the profile).
-- **publications**: id, achievement_id (unique) [W1-A], status (siap, terjadwal, dipublikasikan), channels (json), scheduled_at, caption, flyer_file_id (private disk), published_at, created_by. At `scheduled_at` a job flips `terjadwal` → `dipublikasikan` (`published_at` = the scheduled time), notifies the student and reminds Humas to post; the flyer stays private (D-47) [B3].
+- **publications**: id, achievement_id (unique) [W1-A], status (siap, terjadwal, dipublikasikan), channels (json), scheduled_at, caption, flyer_file_id (private disk; since D-107 nothing writes it and it is not in `$fillable`: it only points at flyer files STH made before 2026-10-06, kept with `FilePurpose::Flyer` and their `FilePolicy` rule, no migration) [M3-E], published_at, created_by. At `scheduled_at` a job flips `terjadwal` → `dipublikasikan` (`published_at` = the scheduled time), notifies the student and reminds Humas to post (D-47) [B3]. STH draws no flyer: Humas reads "Data untuk flyer" (`FlyerData`, §8e) and designs it in its own tools (D-107).
 - **appreciation_events**: id, name, held_on, completed_at (timestamp, nullable, indexed), completed_by (users.id, null on delete) [M1-E]. An event is confirmed as a whole (`CompleteAppreciationEvent`: not before held_on, not without a scheduled row, not twice); a confirmed event takes no more rows and cannot be deleted; an unconfirmed one can be deleted (`DeleteAppreciationEvent`: its scheduled rows go, the achievements are free for another event; D-87). Scopes `open()` / `completed()`. **appreciations**: id, achievement_id, appreciation_event_id, status (dijadwalkan, selesai); unique (achievement_id, appreciation_event_id). An achievement is on at most **one** event: `RecordAppreciation` locks the achievement row and refuses it while it has any other row (still scheduled on an unconfirmed event, or already appreciated: a `selesai` row or a confirmed event); this is a rule of the Action, not a DB index. `ReleaseAppreciation` ("Lepas dari acara") deletes one `dijadwalkan` row of an unconfirmed event, which frees the achievement for another event (D-97) [M2-B].
 - **files**: id, disk, path, original_name, mime, size, sha256, purpose (`FilePurpose`), owner_user_id. All uploads go through `App\Domain\Files\StoreUpload`: extension + sniffed-MIME allowlist (pdf, jpg, jpeg, png, webp), max 10 MB, images re-encoded with EXIF stripped, random path under `storage/app/private`; per user max 30 uploads/hour and 200 MB per student (`UploadLimits`) [B2].
 - **otp_codes**: id, user_id, purpose (verify_email, reset_password), email, code_hash, expires_at, attempts, used_at. Rows older than 24 h are deleted by a scheduled job [B2].
@@ -121,6 +121,7 @@ Transitions happen only in `app/Actions/Registrations/*`, which assert the sourc
 - **Lists** that can grow render in steps (`$limit` with `STEP`/`MAX`, clamped), never all rows.
 - **Withdrawn publish consent**: viewers without `student.view` (Humas) get the neutral label and no flyer
   (`AchievementFacts::visibleTo()`, `FilePolicy::viaPublication()`); holders of `student.view` keep both.
+  Since D-107 the flyer half only concerns flyer files made before 2026-10-06 (§8e); the name rule is unchanged.
 
 ### 8b. Notifications and mail
 Notifications are queued (`mail` + `database` channels unless noted) and sent after the transaction commits. Mails are
@@ -137,7 +138,7 @@ the released appreciation) are covered by Pest only: the scenario has no step fo
 | Email bound or changed (`CompleteActivation::bindEmail`, `ChangeEmail`) | bound address; on a change the old and the new address, with a "Bukan saya?" link (mail only). At activation the notice goes out when the code is accepted (step 2), while the account is still pending; the password step (step 3) sends no mail (D-79) |
 | Password changed / reset (`ChangePassword`, `ResetPasswordWithCode`) | the account owner |
 | Lomba submitted or added (`SubmitCompetition`, `CreateCompetition`) | every holder of `competition.verify` except the actor |
-| Lomba published / rejected (`VerifyCompetition`) | the submitter (not when the verifier is the submitter) |
+| Lomba published / rejected (`VerifyCompetition`) | the submitter (not when the verifier is the submitter); a rejection carries "Alasan Kesiswaan: …" when a reason was written, else `CompetitionRejected::NO_REASON` (D-103) |
 | Team invitation (`CreateRegistration`, `InviteMembers`) | the invited students |
 | Member accepted / declined (`ConfirmMembership`, `DeclineMembership`), invitations expired | the ketua |
 | Registration waiting for approval (individual: at once; team: when complete) | holders of `registration.approve` (Kepala Sekolah) |
@@ -148,10 +149,10 @@ the released appreciation) are covered by Pest only: the scenario has no step fo
 | Report window opened, reminders 14 and 3 days before the deadline | the ketua |
 | Report submitted / resubmitted (`SubmitReport`) | every Kesiswaan |
 | Report verified / revision requested / rejected | all confirmed members; on verification also every Humas ("ready for publication") |
-| Publication published, appreciation scheduled | the student; a scheduled publication that became due also every Humas |
+| Publication published, appreciation scheduled | the student; a scheduled publication that became due also every Humas (`PublicationDue`, "Waktunya upload publikasi": since D-107 it points to the caption and the data for the flyer on the publication page, it no longer promises a flyer) |
 | Appreciation event deleted (`DeleteAppreciationEvent`, kind `appreciation.cancelled`) | every student with a scheduled row on it who can log in; confirming an event notifies nobody (D-87) |
 | Appreciation released (`ReleaseAppreciation`, kind `appreciation.released`, "Jadwal apresiasi berubah") | the student of that achievement when the account can log in; the event itself goes on (D-97) |
-| Talent stage changed / application rejected / restored (`MoveTalentStage`, `RejectTalentApplication`, `RestoreTalentApplication`) | the student, with the optional note for the student (D-85, D-86): the text typed for that decision, or the saved draft when the action has no note field (D-96); the guru pembina is not notified; a new application notifies nobody (backlog #40) |
+| Talent stage changed / application rejected / restored (`MoveTalentStage`, `RejectTalentApplication`, `RestoreTalentApplication`) | the student, with the optional note for the student (D-85, D-86): the text typed for that decision, or the saved draft when the action has no note field (D-96); the notification of a restore names the stage the choice is in again (D-104); the guru pembina is not notified; a new application notifies nobody (backlog #40) |
 | Talent review requested (`RequestTalentReview`, kind `talent.review_requested`) | every Kesiswaan |
 | Account frozen (failed logins before activation / "Bukan saya?") | Admins (+ Kesiswaan for failed logins) |
 | Staff account created | Admins |
@@ -176,7 +177,8 @@ the released appreciation) are covered by Pest only: the scenario has no step fo
   `LetterPolicy::view`, `Cache-Control: no-store, private`, CSP `frame-ancestors 'none'`); `tu.surat.kop` serves the
   emblems to the HTML preview (`LetterPolicy::viewQueue`).
 - **Talent**: `note` (guru pembina) and `student_note` (student) are separate and optional; "Simpan" never sends a
-  student note (since D-96 it keeps the text as a draft, §8d); `RestoreTalentApplication` (ability `restore` = `talent.manage`) and `RequestTalentReview` (ability
+  student note (since D-96 it keeps the text as a draft, §8d); `RestoreTalentApplication` (ability `restore` = `talent.manage`;
+  since D-104 with a target stage, §8e) and `RequestTalentReview` (ability
   `requestReview`: owner, status tidak_lolos, no open request; 10 per hour per student).
 - **Appreciation events**: `CompleteAppreciationEvent` stamps the event, `DeleteAppreciationEvent` (ability `delete`)
   only while not confirmed, `RecordAppreciation` refuses a confirmed event. Humas › Jadwal and the "Masukkan" select use
@@ -213,7 +215,8 @@ the released appreciation) are covered by Pest only: the scenario has no step fo
   under a new-password field from the rules that apply to that account.
 - **Reopen** (D-95): `ReopenActivationWindow::deadlineAfter()` (later of the current deadline and now + 72 h),
   `wouldChange()` (the screen offers the button only then: expired, frozen after failed logins, or less than 72 h
-  left), `notNeededMessage()`; reason `MIN_REASON` = 10 characters. `VerifyCompetition::MIN_REJECT_NOTE` = 10.
+  left), `notNeededMessage()`; reason `MIN_REASON` = 10 characters. (`VerifyCompetition::MIN_REJECT_NOTE` = 10 was
+  added here by M2 and removed again on 2026-10-06: the lomba rejection reason is optional, D-103, §8e.)
 - **Talent draft note** (D-96): `UpdateTalentAssessment` stores `student_note_draft` (the key `student_note` is still
   ignored there). `TalentNote::forDecision(?string $given, bool $wasGiven, ?string $draft)`: a text the caller passed
   is sent (an empty one = no note); a caller that passed none sends the saved draft (*sementara*). Every decision
@@ -243,6 +246,70 @@ the released appreciation) are covered by Pest only: the scenario has no step fo
 - **Audit added**: event `appreciation.released` (ids, event name and date, `notified`; no person names); new
   properties `previous_expires_at` (`account.activation_reopened`), `past_dates` (`competition.published`),
   `student_note_from_draft` (`talent.stage_changed`, `talent.rejected`).
+
+### 8e. Rules added by M3 and QA4 (D-103…D-108, the lead's six requests of 2026-10-06)
+No migration in M3. Details per area: `docs/dev-notes/M3.md`, `M3-A`, `M3-C`, `M3-D`, `M3-E`, `QA4`.
+- **Lomba rejection** (D-103): `VerifyCompetition::handle()` keeps its signature (§8d); for `Ditolak` the note is
+  optional. It is trimmed, at most 1,000 characters ("Catatan maksimal 1.000 karakter."), and an empty one is stored
+  as null in `verification_note` and in the audit property `note`. `CompetitionRejected::for(Competition, ?string
+  $note = null)`: body "Alasan Kesiswaan: …" or the constant `NO_REASON`. Unchanged: the reopen reason
+  (`ReopenActivationWindow::MIN_REASON` = 10), the required notes of `RejectRegistration`, `RejectReport` and
+  `RequestReportRevision`.
+- **Talent restore** (D-104): `RestoreTalentApplication::handle(User, TalentApplication, ?string $studentNote = null,
+  ?TalentStatus $to = null)`. `$to` must be one of `TARGETS` (Terdaftar, Pemetaan, Seleksi, Pembinaan), else a
+  `ValidationException` under `to` (`TARGET_MESSAGE`); null = `TalentApplication::restoreTarget()` (the stage before
+  the rejection, Terdaftar when unknown), so older calls behave as before. Still only from `tidak_lolos` (checked on
+  the locked row), ability `restore`, one transaction; the open review request is closed; pembina, assessment date
+  and the note for the guru stay, and no stage requires a pembina or a date (as in `MoveTalentStage`; *sementara*).
+  Audit `talent.restored`: `from` (tidak_lolos), `to`, `rejected_from` (new), `review_requested`, `student_note`.
+- **Talenta export** (D-104): `Kesiswaan\Talenta::export(AdminRecipients, string $status = '')`: `''` = what the open
+  tab lists, `Talenta::EXPORT_ALL` (`semua`), or `TalentStatus` values joined by commas; anything else → 404. The
+  screen calls it through the dialog `Talenta::EXPORT_DIALOG` (`askExport` → `download`, which keeps only real
+  `TalentStatus` values; none → "Pilih minimal satu status."). The password gate carries the choice across the
+  password page as a literal call rebuilt from enum values (`export('terdaftar,tidak_lolos')`, see QA4 below). Audit
+  `talent.exported`: `filters.tahap` = the chosen statuses joined by commas (empty = all). Title, "Diekspor oleh",
+  bold header, text cells, row cap and the Admin alert are those of QA4.
+- **File preview** (D-105; security reasoning in SECURITY §3d): `GET|HEAD /berkas/{file}` (`files.show`) answers
+  `attachment` unless the query has `tampil=1` (`FileController::INLINE_PARAMETER`) **and** the stored MIME is in the
+  inline allowlist: `application/pdf` → `pdf`, `image/jpeg`, `image/png`, `image/webp` → `image`
+  (`FileController::previewType(File): ?string`; `previewUrl(File): ?string` builds the inline address, null = no
+  preview). Headers: every file answer has `nosniff`, `Cache-Control: private, no-store` and CSP `default-src
+  'none'; sandbox`; only the inline **PDF** answer of `files.show` has CSP `default-src 'none'; frame-ancestors
+  'self'` and `X-Frame-Options: SAMEORIGIN` instead. `files.public` never sends a PDF inline. HEAD runs the same
+  policy check, reads no bytes and writes no audit row; a GET preview is audited as `file.downloaded` with
+  `inline: true`. Policy, 404-for-not-yours, the route middleware and `throttle:60,1` are unchanged (one PDF
+  preview = 2 requests). `SecurityHeaders` writes `frame-src 'self'` into the page CSP and keeps a header a response
+  set itself. One dialog per page: `<x-sth.preview />` in `layouts::app` and `layouts::mobile`.
+- **Demo documents** (D-106; local only, nothing ships): `Database\Seeders\Support\Demo\*` (`DemoDocumentResolver`
+  decides the kind from what the `files` row is attached to, `DemoPdfRenderer` renders with its own locked-down
+  dompdf, `DemoFileRefresher::refresh(bool $force = false, ?callable $progress = null, array $names = [])` /
+  `attachMissing()` / `lines()`), templates `database/seeders/demo/*.blade.php` (outside every view path of the
+  app). `DemoSeeder` calls the refresher after seeding when `DemoFiles::realistic()` (APP_ENV=local, not the test
+  process, not `STH_DEMO_FILES=placeholder`). Command `sth:demo:refresh-files` (`App\Console\Commands\
+  RefreshDemoFiles`; `--force`, `--berkas=*`, `-v`, `--lengkapi`): rewrites only `files` rows with a PDF under
+  `demo/` (bytes at the same path, `size`, `sha256`); `--lengkapi` is the only option that adds rows (one `files` +
+  one `report_files` row of kind `laporan_riset` for a demo report with a research title and no such file). Seeder,
+  refresher and command refuse unless `APP_ENV=local`; the renderer also refuses in production. Every page carries
+  `DemoPdfRenderer::FOOTER`; only names known to `DemoPeople::isFictional()` are printed.
+- **Humas** (D-107): `App\Actions\Publications\FlyerData::of(Achievement): self`: `rows` (list of `label`, `values`,
+  `list`; only known facts: Nama, Kelas or "Anggota tim", Capaian, Lomba, Cabang, Tingkat, Penyelenggara, Bidang,
+  Tanggal lomba, Guru pembimbing, Judul penelitian) and `notes` (consent sentences, outside the copied block);
+  `RELATIONS` for eager loading. It never names a student without publish consent (a team member is left out and
+  counted in a note) and never carries points, NIS/NISN, birth date, phone or email. Removed: `GenerateFlyer`,
+  `FlyerRenderer`, `PublicationPolicy::generateFlyer`, `Publikasi::downloadFlyer()`. Kept without a writer:
+  `publications.flyer_file_id`, `FilePurpose::Flyer`, the flyer rule of `FilePolicy` (D-75) and the audit label
+  `publication.flyer_generated`. Humas › Arsip has no file link; "Lihat" opens `humas.beranda?pilih=<id>` (not for
+  a row with withdrawn consent, whose panel answers 404).
+- **Letters** (D-108, QA4): `letters.printed`, §4. `LetterPdf::render()` takes the `LetterTemplate` as a parameter;
+  `LetterPdf::printed($content, $template)` builds what is stored.
+- **QA4, screens**: `RequiresRecentPassword::passwordRecentlyConfirmed(?string $resumeDownload = null)` keeps
+  `{component, call, until}` in the session (`sth.password_resume`) and `mountRequiresRecentPassword()` hands it back
+  once to that screen when the password is fresh; the view runs it with `wire:init` (downloads only; data-changing
+  actions still need a click). The confirm-password page has "Batal" (back to `url.intended` when it is our own URL,
+  else `home`). The import template carries Text cells for NIS, NISN and No HP
+  (`ImportStudents::TEMPLATE_TEXT_COLUMNS`). Toasts take an optional `key`; `sth-toast-clear {key}` removes them.
+- **Audit**: no new event. New property `rejected_from` on `talent.restored`; `filters.tahap` of `talent.exported`
+  may list several statuses; `inline: true` on `file.downloaded`; nothing writes `publication.flyer_generated` now.
 
 ## 9. Environments
 - Dev: `docker compose up` → app (php-fpm 8.4 + nginx on 127.0.0.1:8080), mysql 8.4 (127.0.0.1:3307), mailpit (127.0.0.1:8025), vite, scheduler, queue worker. Because the repo is bind-mounted from a Windows drive, the dev php-fpm workers read a cached config and keep compiled views in the container's own filesystem (`docker/php/fpm.dev.conf`, `docker/php/dev-cache.sh`; pool env only, never the command line), so after editing PHP, Blade, `config/` or `.env` run `reload.bat`; the test suite refuses to run on a cached config (D-91).

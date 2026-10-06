@@ -54,6 +54,7 @@ use App\Models\TalentType;
 use App\Models\User;
 use App\Models\WeightVersion;
 use Carbon\CarbonImmutable;
+use Database\Seeders\Support\Demo\DemoFileRefresher;
 use Database\Seeders\Support\DemoFiles;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Seeder;
@@ -77,8 +78,8 @@ final class DemoSeeder extends Seeder
     /** Dev-only password for the demo staff accounts. Never used outside APP_ENV=local. */
     public const STAFF_PASSWORD = 'password';
 
-    /** key => [name, username, role, honorific, position, rank] */
-    private const STAFF = [
+    /** key => [name, username, role, honorific, position, rank]. Public: the names are the whitelist of Support\Demo\DemoPeople. */
+    public const STAFF = [
         'kesiswaan' => ['Dwi Rahayu', 'kesiswaan', RoleName::Kesiswaan, 'Bu', 'Wakil Kepala Sekolah Bidang Kesiswaan', null],
         'kepsek' => ['Drs. Bambang Hartono, M.Pd.', 'kepsek', RoleName::KepalaSekolah, 'Pak', 'Kepala Sekolah', 'Pembina Tk. I, IV/b'],
         'tu' => ['Sri Handayani', 'tu', RoleName::TataUsaha, 'Bu', 'Staf Tata Usaha', null],
@@ -90,8 +91,8 @@ final class DemoSeeder extends Seeder
         'agus' => ['Agus Setiawan, S.Or.', 'agus.s', RoleName::Guru, 'Pak', 'Guru pembina Olahraga', null],
     ];
 
-    /** key => [name, class, NIS, NISN, birth date, photo consent, alumni] — NIS pattern 22<yy><yy+1>NNN. */
-    private const STUDENTS = [
+    /** key => [name, class, NIS, NISN, birth date, photo consent, alumni] — NIS pattern 22<yy><yy+1>NNN. Public: see STAFF. */
+    public const STUDENTS = [
         'nadia' => ['Nadia Putri Anindya', 'XI-4', '225226201', '0098765432', '2009-03-02', true, false],
         'dimas' => ['Dimas Arya Nugroho', 'XI-4', '225226204', '0093417728', '2009-07-19', false, false],
         'keisha' => ['Keisha Larasati', 'XI-6', '225226166', '0095263014', '2009-11-08', false, false],
@@ -370,6 +371,14 @@ final class DemoSeeder extends Seeder
             Registration::query()->count(),
             Achievement::query()->count(),
         ));
+
+        // The files above are tiny placeholders. On a real local seed they become realistic sample documents
+        // (certificates, piagam, research report, juknis, brochures, letters); tests keep the placeholders.
+        if (DemoFiles::realistic()) {
+            foreach (DemoFileRefresher::lines(app(DemoFileRefresher::class)->refresh()) as $line) {
+                $this->command?->line($line);
+            }
+        }
     }
 
     // Accounts -------------------------------------------------------------------------------
@@ -671,6 +680,11 @@ final class DemoSeeder extends Seeder
         ]);
 
         $this->attachEvidence($report, $certificate, $student);
+
+        // A riset report carries its research report next to the certificate (SubmitReport asks for one).
+        if (($research['research_title'] ?? null) !== null) {
+            $this->attachEvidence($report, DemoFiles::researchReportName($research['research_title']), $student, ReportFileKind::LaporanRiset);
+        }
     }
 
     /**
@@ -742,11 +756,11 @@ final class DemoSeeder extends Seeder
         }
     }
 
-    private function attachEvidence(Report $report, string $fileName, Student $owner): void
+    private function attachEvidence(Report $report, string $fileName, Student $owner, ReportFileKind $kind = ReportFileKind::Sertifikat): void
     {
         ReportFile::query()->create([
             'report_id' => $report->getKey(),
-            'kind' => ReportFileKind::Sertifikat,
+            'kind' => $kind,
             'file_id' => DemoFiles::pdf($fileName, FilePurpose::ReportEvidence, $owner->user_id)->getKey(),
         ]);
     }

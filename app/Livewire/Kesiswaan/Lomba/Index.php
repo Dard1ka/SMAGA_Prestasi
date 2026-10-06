@@ -11,6 +11,7 @@ use App\Enums\CompetitionStatus;
 use App\Enums\Participation;
 use App\Enums\RegistrationStatus;
 use App\Enums\RoleName;
+use App\Http\Controllers\FileController;
 use App\Livewire\Kesiswaan\Concerns\WithKesiswaanBadges;
 use App\Models\Competition;
 use App\Models\RegistrationMember;
@@ -213,13 +214,16 @@ class Index extends Component
         try {
             $verify->handle($this->actor(), $competition, CompetitionStatus::Ditolak, $this->rejectNote);
         } catch (ValidationException $e) {
-            $this->addError('rejectNote', collect($e->errors())->flatten()->first() ?? 'Tulis alasan penolakan.');
+            $this->addError('rejectNote', collect($e->errors())->flatten()->first() ?? 'Lomba ini belum bisa ditolak. Coba lagi.');
 
             return;
         }
 
+        // The reason is optional (D-103): the toast only promises a reason when one was written.
+        $withReason = trim($this->rejectNote) !== '';
+
         $this->cancelReject();
-        $this->dispatch('sth-toast', message: 'Lomba ditolak. Pengirim menerima alasannya.', tone: 'success');
+        $this->dispatch('sth-toast', message: $withReason ? 'Lomba ditolak. Pengirim menerima alasannya.' : 'Lomba ditolak. Pengirim diberi tahu.', tone: 'success');
     }
 
     public function close(string $id, CloseCompetition $close): void
@@ -373,6 +377,9 @@ class Index extends Component
                         'name' => $c->juknisFile->original_name,
                         'size' => self::fileSize($c->juknisFile->size),
                         'url' => Route::has('files.show') ? route('files.show', $c->juknisFile) : null,
+                        // M3-C: the click opens the preview popup; the href stays the download.
+                        'preview' => FileController::previewUrl($c->juknisFile),
+                        'previewType' => FileController::previewType($c->juknisFile),
                     ] : null,
                     'missing' => array_values($missing),
                     // Q1-04: wrong order blocks publishing; dates in the past only ask for a confirmation.

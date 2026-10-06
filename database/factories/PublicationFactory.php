@@ -26,7 +26,6 @@ class PublicationFactory extends Factory
             'channels' => [PublicationChannel::Instagram->value],
             'scheduled_at' => null,
             'caption' => fake('id_ID')->sentence(10),
-            'flyer_file_id' => null,
             'published_at' => null,
             'created_by' => null,
         ];

@@ -10,10 +10,8 @@ use App\Enums\Permission;
 use App\Enums\PublicationStatus;
 use App\Models\Publication;
 use App\Models\User;
-use App\Policies\PublicationPolicy;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Route;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
@@ -23,8 +21,11 @@ use Livewire\WithPagination;
 /**
  * Humas · Arsip (UI-MAP §4d): every published publication, newest first, 20 per page, search on
  * student or competition name. Rows whose student later withdrew publish consent stay listed (Humas has
- * to take the post down) and carry the chip "Izin dicabut": no flyer link for anyone, and no student
- * name or class (nor a match on the name) unless the viewer has `student.view` (SECURITY §3i, §3m-7).
+ * to take the post down) and carry the chip "Izin dicabut": no student name or class (nor a match on the
+ * name) unless the viewer has `student.view` (SECURITY §3i, §3m-7). No flyer column: STH makes no flyer
+ * (M3-E); a file generated before that stays in `publications.flyer_file_id`, unlinked from this screen.
+ * "Lihat" opens the publication in the panel of Antrean publikasi, where the caption and the data for the
+ * flyer are; a row with withdrawn consent has no such link.
  */
 #[Title('Arsip publikasi')]
 #[Layout('layouts::app', ['subtitle' => 'Prestasi yang sudah dipublikasikan.'])]
@@ -62,18 +63,15 @@ class Arsip extends Component
 
         $query = Publication::query()
             ->where('status', PublicationStatus::Dipublikasikan)
-            ->with([...HumasQueries::cardRelations(), 'flyerFile'])
+            ->with(HumasQueries::cardRelations())
             ->orderByDesc('published_at')
             ->orderByDesc('id');
 
         HumasQueries::search($query, $this->q, ! $user->can(Permission::StudentView->value));
 
         $page = $query->paginate(self::PER_PAGE);
-        $canDownload = Route::has('files.show');
 
-        $seesStudents = $user->can(Permission::StudentView->value);
-
-        $rows = $page->getCollection()->map(function (Publication $p) use ($canDownload, $seesStudents, $user): array {
+        $rows = $page->getCollection()->map(function (Publication $p) use ($user): array {
             $facts = AchievementFacts::of($p->achievement)->visibleTo($user);
 
             return [
@@ -85,11 +83,9 @@ class Arsip extends Component
                 'channels' => PublicationInput::channelLabels($p->channels) ?: '–',
                 'published' => HumasQueries::shortDate($p->published_at, true),
                 'consentWithdrawn' => ! $facts->publishConsent,
-                // Same rule as FilePolicy (flyer): no link once the publication is no longer eligible, except for
-                // a viewer with `student.view` (Admin, D-75).
-                'flyerUrl' => $canDownload && $p->flyerFile !== null && ($seesStudents || PublicationPolicy::eligible($p))
-                    ? route('files.show', $p->flyerFile)
-                    : null,
+                // "Lihat" opens the panel of this publication (caption, kanal, data untuk flyer; QA Q2-19). Not after
+                // a withdrawn consent: the queue no longer holds that publication (404), for any viewer.
+                'href' => $facts->publishConsent ? route('humas.beranda', ['pilih' => $p->getKey()]) : null,
             ];
         })->all();
 

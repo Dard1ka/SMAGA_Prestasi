@@ -119,7 +119,9 @@
                                 @endif
                                 @if ($item['juknis'])
                                     @if ($item['juknis']['url'])
-                                        <x-sth.link :href="$item['juknis']['url']" icon="file">{{ $item['juknis']['name'] }} · {{ $item['juknis']['size'] }}</x-sth.link>
+                                        <x-sth.link :href="$item['juknis']['url']" icon="file" aria-haspopup="dialog"
+                                            :data-sth-preview="$item['juknis']['preview']" :data-sth-preview-type="$item['juknis']['previewType']"
+                                            :data-sth-preview-name="$item['juknis']['name']">{{ $item['juknis']['name'] }} · {{ $item['juknis']['size'] }}</x-sth.link>
                                     @else
                                         <span class="text-[13px] text-muted">{{ $item['juknis']['name'] }} · {{ $item['juknis']['size'] }}</span>
                                     @endif
@@ -140,8 +142,8 @@
 
                         @if ($rejectingId === $item['id'])
                             <form wire:submit="reject" class="flex flex-col gap-3">
-                                <x-sth.textarea wire:model="rejectNote" label="Alasan penolakan" rows="2" placeholder="Contoh: Lomba sudah lewat atau info tidak resmi."
-                                    hint="Minimal 10 karakter. Alasan ini dikirim ke pengirim." />
+                                <x-sth.textarea wire:model="rejectNote" label="Alasan penolakan" rows="2" optional placeholder="Contoh: Lomba sudah lewat atau info tidak resmi."
+                                    hint="Boleh dikosongkan. Kalau diisi, alasan ini dikirim ke pengirim." />
                                 <div class="flex flex-wrap gap-2">
                                     <x-sth.button type="submit" variant="danger" size="sm" icon="send">Kirim penolakan</x-sth.button>
                                     <x-sth.button variant="quiet" size="sm" wire:click="cancelReject">Batal</x-sth.button>

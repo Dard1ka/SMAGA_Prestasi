@@ -21,6 +21,11 @@ use Symfony\Component\HttpFoundation\Response;
  *   because Vite injects <style> tags without a nonce.
  * - HSTS is NOT set here: the host Apache vhost owns it (§3e).
  * - A response that already carries its own CSP (e.g. a sandboxed file download) keeps it.
+ * - Frames (M3-C): pages may frame this origin only (`frame-src 'self'`, written out although `default-src`
+ *   already meant the same) and may themselves never be framed (`frame-ancestors 'none'`, `X-Frame-Options:
+ *   DENY`). The one answer that may sit in a frame is the inline PDF of the preview popup, which sets its own
+ *   `frame-ancestors 'self'` + `X-Frame-Options: SAMEORIGIN` (FileController); a header a response sets itself
+ *   is kept here. No `blob:`, `data:` or other origin in `frame-src`, and `object-src` stays 'none'.
  */
 class SecurityHeaders
 {
@@ -79,6 +84,7 @@ class SecurityHeaders
             "img-src 'self' data: blob:",
             'font-src '.implode(' ', $font),
             'connect-src '.implode(' ', $connect),
+            "frame-src 'self'",
             "object-src 'none'",
             "base-uri 'self'",
             "form-action 'self'",

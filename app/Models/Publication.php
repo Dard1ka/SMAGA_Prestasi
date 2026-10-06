@@ -14,7 +14,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * Humas publication of one achievement (unique achievement_id). channels = list of PublicationChannel values.
- * Not mass-assignable: status, published_at, created_by.
+ * Not mass-assignable: status, published_at, created_by, flyer_file_id.
+ * `flyer_file_id` is legacy (M3-E): Humas makes its flyers outside STH, so nothing sets the column any more;
+ * it only still points at the PNG of a publication whose flyer STH generated before 2026-10-06.
  */
 class Publication extends Model
 {
@@ -27,7 +29,6 @@ class Publication extends Model
         'channels',
         'scheduled_at',
         'caption',
-        'flyer_file_id',
     ];
 
     /** @return array<string, string> */
@@ -47,7 +48,7 @@ class Publication extends Model
         return $this->belongsTo(Achievement::class);
     }
 
-    /** @return BelongsTo<File, $this> */
+    /** The flyer STH generated before M3-E, if any (FilePolicy still guards its download). @return BelongsTo<File, $this> */
     public function flyerFile(): BelongsTo
     {
         return $this->belongsTo(File::class, 'flyer_file_id');

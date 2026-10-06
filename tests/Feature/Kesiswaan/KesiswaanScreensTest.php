@@ -113,21 +113,26 @@ it('lists every pending upload in the queue, from any role incl. Kesiswaan itsel
         ->assertSee('ISPO 2027');
 });
 
-it('publishes a complete queued lomba and requires a note to reject', function (): void {
+it('publishes a complete queued lomba and rejects one with or without a reason', function (): void {
     $ready = Competition::factory()->create(['name' => 'Lomba Siap', 'submitted_by' => $this->kesiswaan->getKey()]);
     $bad = Competition::factory()->create(['name' => 'Lomba Palsu']);
+    $old = Competition::factory()->create(['name' => 'Lomba Lama']);
 
+    // D-103: the reason is optional.
     Livewire::withQueryParams(['tab' => 'verifikasi'])->actingAs($this->kesiswaan)->test(Index::class)
         ->call('publish', $ready->getKey())
         ->assertDispatched('sth-toast')
-        ->call('startReject', $bad->getKey())
+        ->call('startReject', $old->getKey())
         ->call('reject')
-        ->assertHasErrors('rejectNote')
+        ->assertHasNoErrors()
+        ->call('startReject', $bad->getKey())
         ->set('rejectNote', 'Info tidak resmi.')
         ->call('reject')
         ->assertHasNoErrors();
 
     expect($ready->fresh()->status)->toBe(CompetitionStatus::Dipublikasikan)
+        ->and($old->fresh()->status)->toBe(CompetitionStatus::Ditolak)
+        ->and($old->fresh()->verification_note)->toBeNull()
         ->and($bad->fresh()->status)->toBe(CompetitionStatus::Ditolak)
         ->and($bad->fresh()->verification_note)->toBe('Info tidak resmi.');
 });
@@ -252,7 +257,8 @@ it('filters talent rows by stage and marks tidak lolos from the panel without a 
         ->call('reject')
         ->assertHasNoErrors()
         ->assertSet('panelDone', 'Tidak lolos dari tahap Terdaftar. Siswa diberi tahu.')
-        ->assertSee('Pulihkan untuk mengembalikan ke tahap Terdaftar.');
+        // M3-A: the stage is chosen in the "Pulihkan" dialog; the panel names the earlier one.
+        ->assertSee('Tahap sebelumnya: Terdaftar. Pulihkan untuk mengembalikannya ke tahap yang kamu pilih.');
 
     expect($a->fresh()->status)->toBe(TalentStatus::TidakLolos)
         ->and($a->fresh()->student_note)->toBeNull();
@@ -320,7 +326,9 @@ it('replaces the check by "Pulihkan" on tidak lolos rows and restores through th
         ->call('askRestore', $rejected->getKey())
         ->assertSet('restoreId', $rejected->getKey())
         ->assertDispatched('sth-modal-open', id: 'pulihkan-talenta')
-        ->assertSee('kembali ke tahap Seleksi/asesmen.')
+        // M3-A: the dialog asks for the stage; the one before the rejection is preselected (TalentaM3Test).
+        ->assertSee('tidak lolos dari tahap Seleksi/asesmen.')
+        ->assertSet('restoreTo', 'seleksi')
         ->set('restoreNote', str_repeat('a', 1001))
         ->call('restore')
         ->assertHasErrors('restoreNote');

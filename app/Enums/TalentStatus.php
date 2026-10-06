@@ -8,7 +8,8 @@ use App\Enums\Concerns\HasOptions;
 
 /**
  * Talent scouting pipeline: Terdaftar → Pemetaan → Seleksi/asesmen → Peserta pembinaan, or Tidak lolos.
- * Tidak lolos can be undone by Kesiswaan (RestoreTalentApplication: back to the stage before the rejection).
+ * Tidak lolos can be undone by Kesiswaan (RestoreTalentApplication: back to the stage Kesiswaan
+ * chooses, by default the one before the rejection; D-104).
  */
 enum TalentStatus: string
 {

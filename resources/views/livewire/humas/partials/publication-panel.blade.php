@@ -1,55 +1,41 @@
 {{-- Right panel "Siapkan publikasi". $panel comes from Publikasi::panel(); form state is the component's properties. --}}
-@php($flyer = $panel['flyer'])
-@php($style = $flyer['style'])
 <div class="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
     <h2 id="pub-judul" class="m-0 text-lg leading-6 font-bold">Siapkan publikasi</h2>
     <x-sth.chip :tone="$panel['statusChip'][0]" size="sm">{{ $panel['statusChip'][1] }}</x-sth.chip>
 </div>
 <p class="m-0 text-[13px] font-semibold text-muted">{{ $panel['heading'] }}</p>
 
-{{-- Flyer preview (HTML; the PNG from "Download PNG" has the same content). --}}
-<figure class="m-0 self-center">
-    <div role="img" aria-label="{{ $flyer['label'] }}" class="relative aspect-4/5 w-[300px] max-w-full overflow-hidden rounded-[18px] shadow-card {{ $style['bg'] }}">
-        <span class="absolute -top-[72px] -right-16 size-[210px] rounded-full {{ $style['blob1'] }}" aria-hidden="true"></span>
-        <span class="absolute -bottom-[70px] -left-14 size-[180px] rounded-full {{ $style['blob2'] }}" aria-hidden="true"></span>
-        <span class="absolute top-[118px] right-6 size-3 rounded-full {{ $style['dot'] }}" aria-hidden="true"></span>
-        @if ($style['band'])
-            <span class="absolute inset-x-0 top-0 h-1.5 bg-primary" aria-hidden="true"></span>
-            <span class="absolute inset-x-0 bottom-0 h-1.5 bg-primary" aria-hidden="true"></span>
-        @endif
-        <div class="relative flex h-full flex-col items-center px-4 pt-5 pb-4 text-center">
-            <span class="text-[11px] font-bold tracking-wide {{ $style['accent'] }}">{{ $flyer['school'] }}</span>
-            <span class="mt-1.5 h-0.5 w-8 rounded-full {{ $style['rule'] }}" aria-hidden="true"></span>
-            <span class="display mt-2 text-[21px] leading-tight font-extrabold tracking-wide {{ $style['accent'] }}">SELAMAT &amp; SUKSES</span>
-            <span class="display mt-3 inline-flex size-[76px] shrink-0 items-center justify-center rounded-full border-[3px] text-[28px] font-extrabold {{ $style['ring'] }} {{ $style['avatar'] }}" aria-hidden="true">{{ $flyer['initials'] }}</span>
-            <span class="display clamp2 mt-3 text-[18px] leading-tight font-extrabold text-ink">{{ $flyer['name'] }}</span>
-            @if ($flyer['class'])
-                <span class="text-[12px] font-semibold text-ink-2">{{ $flyer['class'] }}</span>
-            @endif
-            <span class="display mt-2 inline-flex h-7 items-center gap-1.5 rounded-full px-3 text-[14px] font-extrabold {{ $style['pill'] }}">
-                <x-sth.icon name="award" :size="14" />{{ $flyer['result'] }}
-            </span>
-            <span class="display clamp2 mt-2 text-[15px] leading-tight font-extrabold text-ink">{{ $flyer['competition'] }}</span>
-            @if ($flyer['level'])
-                <span class="text-[12px] font-bold {{ $style['accent'] }}">{{ $flyer['level'] }}</span>
-            @endif
-            @if ($flyer['mentor'])
-                <span class="mt-auto text-[10.5px] leading-snug font-semibold text-ink-2">{{ $flyer['mentor'] }}</span>
-            @endif
-        </div>
+{{--
+    M3-E: Humas designs the flyer in its own tools; STH only hands over the facts (FlyerData).
+    "Salin data" copies the innerText of #data-flyer (hook data-sth-copy in app.js). So that element holds
+    facts only, each row is a block and a "Label: isi" pair sits inline inside it: one fact per line.
+--}}
+<section class="flex flex-col gap-2 rounded-card bg-subtle p-3" aria-labelledby="data-flyer-judul">
+    <div class="flex flex-wrap items-center justify-between gap-2">
+        <h3 id="data-flyer-judul" class="m-0 text-[15px] leading-[18px] font-bold">Data untuk flyer</h3>
+        <x-sth.button variant="quiet" size="sm" data-sth-copy="#data-flyer">Salin data</x-sth.button>
     </div>
-</figure>
-
-@if ($panel['canFlyer'])
-    <x-sth.radio-pick wire:model.live="template" label="Template e-flyer" :options="$templateOptions" :value="$template" :columns="3" size="sm" />
-    <x-sth.button variant="quiet" size="sm" icon="download" wire:click="downloadFlyer" wire:loading.attr="disabled" wire:target="downloadFlyer">Download PNG</x-sth.button>
-@endif
-
-@unless ($panel['photoConsent'])
-    <p class="m-0 flex items-start gap-1.5 text-[12.5px] leading-[17px] text-muted">
-        <x-sth.icon name="info" :size="14" class="mt-px" />Tanpa izin foto, flyer otomatis memakai inisial.
-    </p>
-@endunless
+    <p class="m-0 text-[12.5px] leading-[17px] text-muted">Flyer dibuat di luar aplikasi ini. Pakai data di bawah supaya nama dan capaian tidak salah tulis.</p>
+    <dl id="data-flyer" class="m-0 flex flex-col gap-1 text-[13.5px] leading-snug">
+        @foreach ($panel['flyerRows'] as $row)
+            @if ($row['list'])
+                <div>
+                    <dt class="text-muted">{{ $row['label'] }}:</dt>
+                    @foreach ($row['values'] as $value)
+                        <dd class="m-0 font-semibold">{{ $value }}</dd>
+                    @endforeach
+                </div>
+            @else
+                <div><dt class="inline text-muted">{{ $row['label'] }}:</dt> <dd class="m-0 inline font-semibold">{{ $row['values'][0] }}</dd></div>
+            @endif
+        @endforeach
+    </dl>
+    @foreach ($panel['flyerNotes'] as $note)
+        <p class="m-0 flex items-start gap-1.5 text-[12.5px] leading-[17px] font-semibold text-ink-2">
+            <x-sth.icon name="info" :size="14" class="mt-px" />{{ $note }}
+        </p>
+    @endforeach
+</section>
 
 @if ($panel['published'])
     <div class="flex flex-col gap-1 border-t border-line pt-3">

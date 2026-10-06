@@ -9,6 +9,8 @@ Bukan tentang repo, bukan tentang server sekolah. Laptop anggota tim lain tidak 
 - Keputusan lead, 6 Oktober 2026: data ini **tidak dihapus**, cukup dicatat di sini.
 - Semua nama di sini fiktif. Tidak ada kata sandi di berkas ini.
 - Dibaca langsung dari database pada 6 Oktober 2026.
+- Bagian 12 ditambahkan 6 Oktober 2026 (gelombang M3): isi berkas demo diganti dokumen contoh. Bagian 1 sampai 11
+  tidak berubah karenanya.
 
 ## 1. Kenapa perlu tahu
 
@@ -142,3 +144,53 @@ menghapus **semua** isi database lokal lalu mengisi ulang data demo):
 ```
 docker compose exec app php artisan migrate:fresh --seed
 ```
+
+Sejak 6 Oktober 2026 perintah itu juga membuat dokumen contoh untuk semua berkas demo (bagian 12), jadi kira-kira
+30 detik lebih lama.
+
+## 12. Berkas demo diganti dokumen contoh (6 Oktober 2026)
+
+Sebelumnya semua berkas demo (sertifikat, piagam, juknis, brosur, poster, surat tugas) adalah satu halaman
+placeholder berukuran 1 kB yang hanya berisi beberapa baris teks. Lead meminta contoh yang tampak seperti dokumen
+sungguhan. Pada 6 Oktober 2026 dua perintah
+dijalankan di database ini:
+
+**1. `docker compose exec -T app php artisan sth:demo:refresh-files`**
+
+- **97 berkas** di folder `demo/` diganti isinya: 60 sertifikat, 19 piagam penghargaan, 8 juknis lomba, 1 brosur,
+  1 poster, 4 surat tugas siswa, dan 4 surat perintah tugas guru (delapan surat demo; sembilan surat uji di bagian 6
+  tidak termasuk dan tidak berubah).
+- **Barisnya tetap sama.** Tiap berkas ditulis ulang di tempat yang sama; di tabel `files` hanya ukuran dan sidik
+  berkasnya (`size`, `sha256`) yang diperbarui. Tidak ada baris yang ditambah atau dihapus.
+- **Yang lain tidak berubah.** Dicek sebelum dan sesudah: 13 tabel lain dan 14 berkas di luar folder `demo/` (berkas
+  yang di-upload saat uji) sama persis.
+- Ukuran folder demo naik dari sekitar 74 kB menjadi sekitar 2,1 MB.
+
+**2. `docker compose exec -T app php artisan sth:demo:refresh-files --lengkapi`**
+
+- Menambah **satu berkas laporan penelitian** pada laporan LKTI milik Keisha Larasati
+  (`laporan-penelitian-bioplastik-dari-limbah-kulit-pisang.pdf`, 15 halaman). Data demo yang baru di-seed memang
+  punya berkas ini; database ini belum, karena dibuat sebelum perubahannya.
+- Ini satu-satunya yang **menambah baris**: satu baris di `files` dan satu baris di `report_files`.
+- Hasil perintah: "Laporan penelitian ditambahkan pada 1 laporan riset demo.", "Berkas demo di folder demo/: 98",
+  "dibuat ulang · Laporan penelitian: 1", "sudah terbaru (tidak diubah): 97", "ukuran seluruh berkas: 2109 kB".
+- Jadi sekarang ada **98 berkas demo**.
+
+**Apa yang dikerjakan perintah ini**
+
+- Hanya jalan di komputer pengembang (`APP_ENV=local`); di tempat lain ia menolak dan tidak mengubah apa pun.
+- Hanya menyentuh berkas PDF di folder `demo/`. Berkas yang di-upload dengan tangan dan semua tabel lain dibiarkan.
+- Jenis dokumennya ditentukan dari tempat berkas itu terpasang: bukti laporan lomba menjadi sertifikat atau piagam,
+  juknis lomba menjadi juknis, surat menjadi surat tugas dengan template sekolah.
+- Aman diulang: berkas yang sudah terbaru dilewati. `--force` membuat ulang semuanya, `--berkas="piagam-*"` hanya
+  berkas dengan nama seperti itu, `-v` menampilkan satu baris per berkas.
+
+**Yang perlu diingat saat melihat berkasnya**
+
+- Isinya mengikuti data demo: nama siswa, lomba, capaian, tanggal. Semua nama fiktif.
+- Penanda tangan sertifikat adalah nama rekaan ("Ketua Panitia", "Ketua Dewan Juri"); tidak ada logo, stempel, atau
+  tanda tangan lembaga mana pun. Stempelnya bertulisan CONTOH.
+- Tiap halaman bertulisan "CONTOH · data fiktif untuk uji SMAGA Talent Hub · bukan dokumen resmi".
+- Tombol **Buka** pada bukti sekarang menampilkan berkas ini di jendela preview, jadi contoh inilah yang terlihat
+  saat menguji Verifikasi hasil, Database prestasi, Talenta, dan Portofolio.
+- Berkas yang di-upload saat uji tetap seperti saat di-upload.

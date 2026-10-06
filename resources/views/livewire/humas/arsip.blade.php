@@ -26,7 +26,7 @@
                 <th scope="col">Capaian</th>
                 <th scope="col">Kanal</th>
                 <th scope="col">Terbit</th>
-                <th scope="col"><span class="sr-only">Flyer</span></th>
+                <th scope="col"><span class="sr-only">Lihat</span></th>
             </x-slot:head>
             @foreach ($rows as $row)
                 <tr wire:key="arsip-{{ $row['id'] }}">
@@ -44,8 +44,10 @@
                     <td class="text-ink-2">{{ $row['channels'] }}</td>
                     <td class="num whitespace-nowrap">{{ $row['published'] }}</td>
                     <td class="text-right">
-                        @if ($row['flyerUrl'])
-                            <x-sth.link :href="$row['flyerUrl']" icon="download">Flyer</x-sth.link>
+                        @if ($row['href'])
+                            <x-sth.link :href="$row['href']">Lihat<span class="sr-only"> publikasi {{ $row['competition'] }}</span></x-sth.link>
+                        @else
+                            <span class="text-muted">–</span>
                         @endif
                     </td>
                 </tr>

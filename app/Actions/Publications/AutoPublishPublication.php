@@ -27,7 +27,7 @@ use Illuminate\Validation\ValidationException;
  * Re-checked under lockForUpdate(): still terjadwal, due, at least one channel, and still eligible
  * (verified achievement + publish_consent, PublicationPolicy::eligible) — otherwise skipped (null) and it
  * stays on Humas › Jadwal as "lewat jadwal". Audited `publication.published` with by = scheduler.
- * Flyers are not touched: they stay on the private disk (lead decision, backlog #12).
+ * No file is involved: STH makes no flyer (M3-E), and a flyer file from before that stays on the private disk.
  */
 final class AutoPublishPublication
 {
