@@ -9,6 +9,7 @@ use App\Actions\Accounts\RecordFailedLogin;
 use App\Actions\Fortify\AuthenticateUser;
 use App\Actions\Fortify\LoginIdentifier;
 use App\Actions\Fortify\LoginResponse;
+use App\Http\Middleware\RememberLoggedOutAccount;
 use App\Http\Middleware\RestrictTwoFactorToStaff;
 use App\Models\User;
 use App\Support\Audit\SecurityLog;
@@ -16,6 +17,7 @@ use App\Support\Audit\TwoFactorAuditSubscriber;
 use Closure;
 use Illuminate\Auth\Events\Failed;
 use Illuminate\Auth\Events\Login;
+use Illuminate\Auth\Events\Logout;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Hash;
@@ -126,6 +128,11 @@ class FortifyServiceProvider extends ServiceProvider
         Event::listen(Login::class, function (Login $event): void {
             $event->user->forceFill(['last_login_at' => now()])->saveQuietly();
         });
+
+        // After "Keluar" + Back the old page becomes the intended address of the guest session: a different account
+        // that logs in next goes to its beranda instead (App\Http\Middleware\RememberLoggedOutAccount).
+        Event::listen(Logout::class, [RememberLoggedOutAccount::class, 'loggedOut']);
+        Event::listen(Login::class, [RememberLoggedOutAccount::class, 'loggedIn']);
 
         // Audit rows for TOTP enabled / confirmed / disabled / recovery codes regenerated (Fortify's events).
         Event::subscribe(TwoFactorAuditSubscriber::class);

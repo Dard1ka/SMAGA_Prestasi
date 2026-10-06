@@ -1,7 +1,7 @@
 # DECISIONS.md — Log keputusan SMAGA Talent Hub (STH)
 
 > Log keputusan produk & teknis STH untuk SMA Negeri 3 Semarang. Dirujuk dari `CLAUDE.md` proyek.
-> Diperbarui: **6 Oktober 2026** (D-32…D-44; backlog D-45…D-60; integrasi W4 D-61…D-65; uji menyeluruh Q1 D-66…D-77; uji manual lead D-78…D-91; perbaikan dari uji QA D-92…D-101) · Sumber: keputusan pengguna 30 Sep 2026, keputusan lead 1, 2, 4, dan 6 Okt 2026, `DESIGN-SPEC-v2.md` §1–§5, `docs/SECURITY.md`.
+> Diperbarui: **6 Oktober 2026** (D-32…D-44; backlog D-45…D-60; integrasi W4 D-61…D-65; uji menyeluruh Q1 D-66…D-77; uji manual lead D-78…D-91; perbaikan dari uji QA D-92…D-102) · Sumber: keputusan pengguna 30 Sep 2026, keputusan lead 1, 2, 4, dan 6 Okt 2026, `DESIGN-SPEC-v2.md` §1–§5, `docs/SECURITY.md`.
 > **Status:** `final` = dipakai untuk implementasi · `sementara` = dipakai sekarang, akan ditinjau · `menunggu jawaban sekolah` = butuh konfirmasi sebelum dibangun.
 > **Aturan log:** entri tidak dihapus atau ditimpa. Keputusan yang berubah → entri baru dengan catatan "menggantikan D-xx", lalu status entri lama diubah menjadi `digantikan`.
 
@@ -110,6 +110,7 @@
 | D-99 | Siswa tidak men-download surat guru (hanya keterangan); kartu surat siswa hanya memuat surat yang **sudah dikirim** | Lead / QA (6 Okt 2026) | final (siswa tidak boleh membuka surat guru: sementara — bisa diubah user) |
 | D-100 | Angka menu samping dihitung di **satu tempat** dan tampil di semua halaman | Lead / QA (6 Okt 2026) | final (melengkapi D-90) |
 | D-101 | Halaman error milik aplikasi; `GET /logout` dialihkan; halaman pertama setelah login yang 403/404 → beranda | Lead / QA (6 Okt 2026) | final |
+| D-102 | Setelah Keluar: kolom **nama pengguna ikut dikosongkan** saat Back, dan akun **lain** yang masuk berikutnya tidak diarahkan ke halaman akun sebelumnya | Lead / QA (6 Okt 2026) | final (melengkapi D-93 dan D-101) |
 | U-01…U-06 | Usulan keamanan yang belum diputuskan | Agent H (keamanan) | menunggu jawaban sekolah / sementara |
 
 ---
@@ -710,6 +711,14 @@ yang ditandai *sementara*. Tiap entri menyebut keputusan lama yang disesuaikanny
 - **Alasan:** Q1-07 / Q2-30: halaman 403/404 bawaan tampil polos (gayanya diblokir CSP), 403 berbahasa Inggris, tanpa tombol kembali. Q2-03: `GET /logout` menjawab 405 dengan halaman debug 870 kB dalam 6–63 detik. Q2-17: setelah login pengguna mendarat di alamat lama yang tidak boleh dibukanya.
 - **Dampak:** `resources/views/errors/*` (kerangka `errors.layout`: tanpa layout peran, tanpa `style`/JS inline, `noindex`), `App\Providers\ErrorPageServiceProvider` (`links()`, `afterLogin()`, flash `sth.after_login` pada event `Login`; untuk 5xx tidak membuka koneksi database), satu baris `$exceptions->render()` di `bootstrap/app.php`, route `logout.get`. `/verifikasi-surat/{code}` kini menerima kode satu segmen apa pun, sehingga kode yang salah ketik mendapat halaman verifikasi sendiri ("Tidak ditemukan · Surat dengan kode ini tidak terdaftar."). Alamat yang tidak dikenal tidak punya sesi, jadi di sana "Kembali ke beranda" menuju `/` juga untuk pengguna yang sudah masuk (sengaja tanpa `Route::fallback()`, supaya permintaan pemindai tidak menulis baris sesi). Belum diuji ulang dengan `APP_DEBUG=false`.
 - **Status:** final (keputusan user: "lakukan sesuai saranmu").
+
+### D-102 · Setelah Keluar: nama pengguna dikosongkan, akun berikutnya tidak mendarat di halaman akun lama · 6 Okt 2026
+- **Keputusan:**
+  - Di halaman masuk, kolom nama pengguna (NIS, NISN, username, atau email; kolom dengan `autocomplete="username"`) dikosongkan bersama kolom kata sandi: setelah form dikirim, dan saat halaman dimunculkan lagi oleh Back/Forward. Kalau login gagal, nama pengguna tetap dikembalikan server seperti biasa.
+  - Setelah satu akun Keluar di sebuah browser, akun **lain** yang masuk berikutnya di browser itu langsung ke berandanya, bukan ke "alamat tujuan" yang tersimpan. Akun yang **sama** yang masuk lagi tetap dibawa ke halaman yang dimintanya. Browser yang tidak pernah dipakai Keluar tidak berubah (link dari email tetap membawa ke halamannya setelah login).
+- **Alasan:** uji browser 6 Okt 2026 terhadap perbaikan M2 (`hasil-uji/qa-3-cek-perbaikan.md`): Back kedua setelah Keluar masih menampilkan nama pengguna (kata sandi sudah kosong), karena browser mengisi ulang kolom teks saat memuat lagi halaman untuk Back. Back pertama meminta halaman lama sebagai tamu, sehingga alamat itu tersimpan sebagai tujuan; `operator` yang masuk berikutnya mendarat di `/kesiswaan`. Di komputer lab yang dipakai bergantian, itu membocorkan NIS siswa sebelumnya dan membingungkan pengguna berikutnya.
+- **Dampak:** `resources/js/app.js` (`credentialFields()`, `openedFromHistory()`); middleware baru `App\Http\Middleware\RememberLoggedOutAccount` di grup `web` (sebelum `EnsureAccountActive`) dengan kunci sesi `sth.logged_out_user`; dua listener (`Logout`, `Login`) di `FortifyServiceProvider`. Berlaku juga untuk akun yang dikeluarkan aplikasi (dinonaktifkan, dibekukan, "Bukan saya?") dan untuk login yang berakhir di tantangan 2FA. Yang sengaja tidak berubah: sesi yang habis sendiri (tidak ada yang menekan Keluar) tetap mengikuti alamat tujuan, dan D-101 tetap mengalihkan 403/404 ke beranda.
+- **Status:** final (keputusan user: "Ya perbaiki"). Melengkapi D-93 dan D-101. Diuji di Chrome dan Chromium; Firefox dan Safari belum.
 
 ## E. Usulan keamanan yang belum diputuskan
 

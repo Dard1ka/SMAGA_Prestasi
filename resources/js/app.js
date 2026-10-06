@@ -425,16 +425,20 @@ document.addEventListener('click', (event) => {
     setReveal(button, input, input.type === 'password');
 });
 
-/* ---------------------------------------------------------------- passwords do not stay on screen */
+/* ---------------------------------------------------------------- credentials do not stay on screen */
 
 /*
  | On a shared lab computer, Back after "Keluar" brought the old login page back with the password still in
  | its field (QA Q2-01). The credential pages are sent with `Cache-Control: no-store`
  | (App\Http\Middleware\PreventCredentialPageCaching); this is the second line, for a page the browser kept anyway:
- |   - a page that comes back from the back/forward cache (`pageshow` with `event.persisted`) gets every password
- |     field emptied;
- |   - a plain POST form (login, confirm password) gets its password fields emptied right after the browser has
- |     read them for the request, so the copy of the page that stays in history never holds a password.
+ |   - a page that comes back from the back/forward cache (`pageshow` with `event.persisted`), or that the browser
+ |     loaded again for Back/Forward and refilled from its own memory of the form (navigation type
+ |     `back_forward`), gets every password field and every account name field emptied;
+ |   - a plain POST form (login, confirm password) gets these fields emptied right after the browser has read them
+ |     for the request, so the copy of the page that stays in history holds neither a password nor an account name.
+ | The account name is the field with autocomplete="username" (NIS, NISN, username or email on the login page):
+ | the QA of 2026-10-06 still saw it after Keluar and two Backs, because a browser refills text fields on Back.
+ | When a login fails the server sends the page again with the account name in it, as before.
  | A Livewire form (`wire:submit`) is left alone on submit: Livewire sends its own state, and the component
  | empties the fields itself when the action succeeds. Emptying the input under it would only put the screen and
  | that state out of step.
@@ -451,7 +455,15 @@ function passwordFields(root) {
     return [...fields];
 }
 
-function emptyPasswordFields(fields, notify) {
+function credentialFields(root) {
+    return [...new Set([...passwordFields(root), ...root.querySelectorAll('input[autocomplete="username"]')])];
+}
+
+function openedFromHistory() {
+    return performance.getEntriesByType('navigation')[0]?.type === 'back_forward';
+}
+
+function emptyFields(fields, notify) {
     fields.forEach((input) => {
         const hadValue = input.value !== '';
         input.value = '';
@@ -468,7 +480,7 @@ function emptyPasswordFields(fields, notify) {
 }
 
 window.addEventListener('pageshow', (event) => {
-    if (event.persisted) emptyPasswordFields(passwordFields(document), true);
+    if (event.persisted || openedFromHistory()) emptyFields(credentialFields(document), true);
 });
 
 document.addEventListener('submit', (event) => {
@@ -476,14 +488,14 @@ document.addEventListener('submit', (event) => {
     if (!(form instanceof HTMLFormElement) || form.method !== 'post') return;
     if (form.getAttributeNames().some((name) => name.startsWith('wire:submit'))) return;
 
-    const fields = passwordFields(form);
-    if (!fields.length) return;
+    if (!passwordFields(form).length) return;
+    const fields = credentialFields(form);
 
     // The browser builds the request body from the fields in this same task, right after the submit event. A
     // timer runs after that, so the password is already on its way when its field is emptied. A submit that some
     // other handler cancelled keeps what was typed.
     window.setTimeout(() => {
-        if (!event.defaultPrevented) emptyPasswordFields(fields, false);
+        if (!event.defaultPrevented) emptyFields(fields, false);
     }, 0);
 });
 

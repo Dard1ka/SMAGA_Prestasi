@@ -4,6 +4,7 @@ use App\Http\Middleware\EnsureAccountActive;
 use App\Http\Middleware\EnsureActivated;
 use App\Http\Middleware\EnsureStaffTwoFactor;
 use App\Http\Middleware\PreventCredentialPageCaching;
+use App\Http\Middleware\RememberLoggedOutAccount;
 use App\Http\Middleware\RestrictTwoFactorToStaff;
 use App\Http\Middleware\SecurityHeaders;
 use App\Providers\ErrorPageServiceProvider;
@@ -57,7 +58,9 @@ return Application::configure(basePath: dirname(__DIR__))
 
         // Disabled/archived accounts lose their session on the next request (D-29, D-30).
         // TOTP management (Fortify's two-factor.* routes, /akun/2fa) is staff only: 404 for student accounts.
-        $middleware->web(append: [EnsureAccountActive::class, RestrictTwoFactorToStaff::class]);
+        // RememberLoggedOutAccount comes first so it also sees a logout done by the middleware after it: the next
+        // account that logs in on this browser never lands on the previous account's page.
+        $middleware->web(append: [RememberLoggedOutAccount::class, EnsureAccountActive::class, RestrictTwoFactorToStaff::class]);
 
         $middleware->alias([
             'active' => EnsureAccountActive::class,

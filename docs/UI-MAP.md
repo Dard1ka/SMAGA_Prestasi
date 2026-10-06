@@ -190,7 +190,7 @@ browser by the agents (Pest only).
 | screen | change |
 |---|---|
 | Aktivasi (#5) after an Admin reset | step 3 is "Buat kata sandi baru" without "Lewati, pakai kata sandi sekarang"; a student with the school password keeps both choices (D-92) |
-| Masuk (#4), Aktivasi, Lupa kata sandi, Konfirmasi kata sandi, 2FA | never stored by the browser (`no-store`); password fields are emptied after the submit and when Back restores the page (D-93) |
+| Masuk (#4), Aktivasi, Lupa kata sandi, Konfirmasi kata sandi, 2FA | never stored by the browser (`no-store`); password fields and the account name (NIS / username) are emptied after the submit and when Back brings the page back (D-93, D-102) |
 | Aktivasi, Keamanan akun, Lupa kata sandi | the hint under "Kata sandi baru" names the rules of that account (`SetNewPassword::hint()`); new messages "Jangan memakai nama pengguna.", "Jangan memakai email sendiri.", "Kata sandi ini terlalu mudah ditebak." (D-94) |
 | Keamanan akun › Perangkat yang masuk | no leftover devices after activation or a password change; "Perangkat ini" is listed right after "Kata sandi diganti" (D-93) |
 | Status aktivasi (Kesiswaan, Admin) | "Buka ulang" (was "Buka ulang 72 jam") only on rows where it changes something; the dialog says the new deadline before the click; reason at least 10 characters (D-95) |
