@@ -171,11 +171,36 @@ paling penting, lakukan sesuai saranmu". Tabel di bawah mengikuti nomor di ringk
   ikut mengirim draf catatan yang tersimpan; (b) siswa tidak boleh membuka surat guru: ringkasan uji meminta lead
   memutuskan, dan yang dibangun mengikuti aturan yang sudah ada; (c) kolom alasan lain (tolak pendaftaran, tolak
   atau revisi laporan, buka pembekuan) belum diberi batas 10 karakter.
-- **Belum dicoba di browser oleh pengerja:** urutan Keluar → Back, aktivasi setelah reset Admin, tiga dialog baru
-  (Tidak lolos, Tetap publikasikan, Lepas dari acara), halaman error selain 404, dan `/logout`. Semuanya baru
-  dibuktikan oleh tes. Uji dengan `APP_DEBUG=false` (seperti produksi) juga belum. Daftarnya di
-  `docs/dev-notes/M2.md`.
+- **Sudah dicoba di browser pada 6 Oktober 2026** (bagian 7): urutan Keluar → Back, aktivasi setelah reset Admin,
+  dialog Tidak lolos dan Lepas dari acara, halaman 403 dan 404, dan `/logout`. **Belum:** konfirmasi "Tetap
+  publikasikan?" untuk tanggal yang sudah lewat, "Tambah prestasi" yang sama di dua acara, dan halaman error lain.
+  Uji dengan `APP_DEBUG=false` (seperti produksi) juga belum. Daftarnya di `docs/dev-notes/M2.md`.
 - **Temuan lain dari uji 5 Oktober** (prioritas sedang dan kecil) belum dikerjakan. Daftar per nomor temuan ada di
   `docs/dev-notes/M2.md`; di backlog `CLAUDE.md` §10 menjadi nomor 57–68.
 
-HASIL TES (6 Oktober 2026): seluruh tes 2005 lulus, 1 gagal. Yang gagal adalah tes pembatas pencarian anggota tim; penyebabnya di tesnya sendiri (masa berlaku 1 detik, kalah cepat dengan render pertama di laptop ini), sudah diperbaiki dan file tesnya lulus 19/19 saat dijalankan ulang. Seluruh tes belum dijalankan ulang setelah perbaikan satu baris itu. Pint bersih (627 file), `npm run build` berhasil, dua migrasi baru jalan di MySQL lokal, dan pindaian Trivy untuk kedua image produksi 0 temuan. Belum dilihat di browser sungguhan: Back setelah Keluar, daftar perangkat setelah aktivasi, dan reset lalu aktivasi tanpa "Lewati".
+HASIL TES (6 Oktober 2026): seluruh tes 2005 lulus, 1 gagal. Yang gagal adalah tes pembatas pencarian anggota tim; penyebabnya di tesnya sendiri (masa berlaku 1 detik, kalah cepat dengan render pertama di laptop ini), sudah diperbaiki dan file tesnya lulus 19/19 saat dijalankan ulang. Setelah perbaikan satu baris itu seluruh tes dijalankan ulang: **2006 lulus, 0 gagal**; CI di GitHub untuk commit `e45a560` hijau di keenam pekerjaan. Pint bersih (627 file), `npm run build` berhasil, dua migrasi baru jalan di MySQL lokal, dan pindaian Trivy untuk kedua image produksi 0 temuan. Hasil lihat di browser sungguhan ada di bagian 7.
+
+## 7. Lanjutan 6 Oktober 2026: cek di browser, dua perbaikan kecil, data uji
+
+**PR 9 sudah digabung ke `main`** (commit `b4b6f77`). Perbaikan di bawah ada di branch `fix/auth-back-setelah-keluar`.
+
+Perbaikan 12 temuan dicek lagi di Chrome (`hasil-uji/qa-3-cek-perbaikan.md`, di luar repo). Semuanya lulus kecuali
+dua hal. Jawaban lead: "Ya perbaiki".
+
+| Yang terlihat | Penyebab | Yang diubah |
+|---|---|---|
+| Masuk → Keluar → Back dua kali: kata sandi sudah kosong, tetapi nama pengguna muncul lagi | Browser mengisi ulang kolom teks saat memuat lagi halaman untuk Back; skrip kita baru mengosongkan kolom kata sandi | Kolom nama pengguna ikut dikosongkan: setelah form dikirim dan saat halaman dimunculkan lagi oleh Back/Forward. Kalau login gagal, nama pengguna tetap dikembalikan seperti biasa |
+| Setelah itu `operator` masuk dan mendarat di `/kesiswaan`, bukan `/admin` | Back setelah Keluar membuat server mencatat halaman lama sebagai "alamat tujuan" untuk siapa pun yang masuk berikutnya | Server mengingat akun mana yang baru Keluar di browser itu. Akun **lain** yang masuk berikutnya langsung ke berandanya. Akun yang **sama** tetap dibawa ke halamannya |
+
+- Bukti: 5 tes baru; file tes login, keluar, halaman kredensial, dan 2FA staf: **64 lulus**. Dicoba di Chrome dan di
+  browser bawaan aplikasi (Chromium, diketik dengan keyboard): dua kolom kosong pada Back pertama dan kedua, lalu
+  `operator` mendarat di `/admin`. Kolom teks biasa di halaman lain tetap diisi ulang browser seperti sebelumnya.
+- Seluruh tes dijalankan ulang setelah perubahan ini: **2011 lulus, 0 gagal** (10.846 pemeriksaan); Pint bersih
+  (628 file); `npm run build` berhasil.
+- Belum dicoba: Firefox, Safari, dan HP.
+- Yang tidak berubah dengan sengaja: kalau sesi habis sendiri (tidak ada yang menekan Keluar), alamat tujuan tetap
+  dipakai seperti biasa.
+- Keputusan ini dicatat sebagai **D-102** di `docs/DECISIONS.md`.
+- Setelah menarik perubahan ini: `reload.bat`, lalu `npm run build` (ada perubahan di `resources/js/app.js`).
+
+**Data uji di database lokal lead tidak dihapus** (keputusan lead). Daftarnya ada di `dokumentasi.md`.

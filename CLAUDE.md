@@ -32,7 +32,7 @@ consent flags (D-16, SECURITY §3m-7).
 ## 2. Sources of truth (read before changing behaviour)
 | file | content |
 |---|---|
-| `docs/DECISIONS.md` | decision log D-01…D-101 (D-45…D-61 = backlog wave + W4 product choices, *sementara*; D-62…D-65 = security hardening, *final*; D-66…D-77 = Q1 security/performance pass and the lead's follow-up choices; D-78…D-91 = §D6, the lead's choices after the hand test of 2026-10-04; D-92…D-101 = §D7, the rules changed by the fixes after the QA pass of 2026-10-05), U-01…U-06, open questions §F. **Wins over everything.** |
+| `docs/DECISIONS.md` | decision log D-01…D-102 (D-45…D-61 = backlog wave + W4 product choices, *sementara*; D-62…D-65 = security hardening, *final*; D-66…D-77 = Q1 security/performance pass and the lead's follow-up choices; D-78…D-91 = §D6, the lead's choices after the hand test of 2026-10-04; D-92…D-102 = §D7, the rules changed by the fixes after the QA pass of 2026-10-05), U-01…U-06, open questions §F. **Wins over everything.** |
 | `docs/ARCHITECTURE.md` | binding contract: data model, enums, state machine, domain rules |
 | `docs/SECURITY.md` | threat model, top-10 risks §1, controls §3a–§3m (K1–K12), pre-release checklist §4 |
 | `docs/TALENT-FORM.md` | talent types/branches (seed source for `talent_types`, `talent_branches`) |
@@ -200,6 +200,10 @@ Global middleware (appended in `bootstrap/app.php`): `SecurityHeaders`, and `Pre
 `Cache-Control: no-store` on every answer for `/login`, `/aktivasi`, `/lupa-kata-sandi`, `/user/confirm-password`,
 `/two-factor-challenge` and `/akun/2fa` (`PreventCredentialPageCaching::PATHS`; add a new page that shows or takes a
 password, a code or a 2FA secret there, D-93).
+`RememberLoggedOutAccount` (first in the `web` group, so it also sees a logout done by a later middleware) keeps the id
+of the account that logged out in the new guest session (`sth.logged_out_user`); when a **different** account logs in
+next on that browser, the intended address is dropped and it goes to its beranda (listeners for `Logout` / `Login` in
+`FortifyServiceProvider`, D-102). A test that logs one account out and another in must not expect the intended URL.
 Auth routes (routes/web.php, Fortify + Livewire `App\Livewire\Auth\*`): `/login`, `POST /logout` (`logout`),
 `/two-factor-challenge`, `/user/confirm-password`, `/aktivasi` (`aktivasi`), `/lupa-kata-sandi`
 (`password.request`), `/akun/2fa` (`two-factor.setup`). `GET /logout` (`logout.get`) only redirects (signed in →
@@ -376,8 +380,9 @@ logs in through `POST /login` and expects a 403/404 on the next GET would see th
   (`NavigationServiceProvider::badges()`, registered with `Navigation::resolveBadgesUsing()`, D-100): it counts only
   the badge keys of the rendered menu, only for a user who may open that queue, with the query the screen uses. A
   page may still pass its own `badges` (they win); a new count = a key in `Navigation` + one line in
-  `NavigationServiceProvider::count()`. `app.js` also empties password fields after a plain form submit and on a
-  page restored from the back/forward cache (D-93).
+  `NavigationServiceProvider::count()`. `app.js` also empties password fields and the account name field
+  (`autocomplete="username"`: keep that attribute on a login field) after a plain form submit and on a page that Back
+  or Forward brings back (D-93, D-102).
   **Error pages** (D-101): `resources/views/errors/{401,403,404,405,419,429,500,503,4xx,5xx}.blade.php`, each
   including `errors.layout` (brand, "Kode <status>", title, one sentence, "Kembali ke beranda", "Kembali" when the
   visitor came from another page of the app; links from `ErrorPageServiceProvider::links()`). No role layout (no
@@ -447,7 +452,9 @@ lolos" asks first (quick actions and bulk moves also send a saved draft: *sement
 appreciation event, "Lepas dari acara"; D-98 a lomba cannot start before its registration deadline, and past dates
 need an explicit yes to publish; D-99 the student card lists only sent letters and the guru letter is text only
 (students may not open it: *sementara*); D-100 sidebar counts come from one resolver on every page; D-101 own error
-pages, `GET /logout` redirects, a 403/404 on the first page after login goes to the beranda. Do not bring back:
+pages, `GET /logout` redirects, a 403/404 on the first page after login goes to the beranda; D-102 (the lead: "Ya
+perbaiki") after Keluar the account name is emptied on Back too, and a different account that logs in next never lands
+on the previous account's page. Do not bring back:
 "Lewati" for a temporary password, `session()->regenerate()` without `true` on these screens or before the Action
 succeeded, a "Buka ulang" that sets now + 72 h unconditionally, a download button for the guru letter on the student
 card, counts that depend on each page passing `badges`, Laravel's default error views.
@@ -499,7 +506,8 @@ SMTP host must not be `mail.<domain>` (proxied) and its hourly send limit needs 
 ## 10. Status
 Last updated: 2026-10-04 (waves 1–2 done, W3-A integration pass, backlog wave B1–B6, W4 integration, D1 docs sync, CI green on GitHub, Q1 end-to-end/security/performance pass, PERF1 by S, M1 = the lead's 18 hand-test changes). Update this section whenever a milestone moves.
 M1 2026-10-05 (`docs/dev-notes/M1.md`, plain summary for the team in `catatan.md`; branch `feat/ui-uji-manual-m1`): full suite `--parallel --processes=4` → **1767 passed (8945 assertions)**, exit 0 (680 s); `pint --test` clean (610 files); `npm run build` OK; the four M1 migrations ran on the local MySQL. Dev page times after `reload.bat` + warm-up, all seven roles: 150–540 ms per menu, login 0.75–0.93 s (`catatan.md` §2). Not re-run after M1: the email scenario and the Playwright smoke (backlog).
-M2 2026-10-06 (`docs/dev-notes/M2.md` + `M2-A`…`M2-C`, D-92…D-101, plain summary in `catatan.md` §6; same branch): fixes for the 12 most important findings of the QA pass of 2026-10-05 (64 findings; the rest is backlog #57–#68) and the Trivy fix in `docker/Dockerfile.prod`; two migrations run on the local MySQL; suite numbers: TEST-RESULTS in `docs/dev-notes/M2.md`.
+M2 2026-10-06 (`docs/dev-notes/M2.md` + `M2-A`…`M2-C`, D-92…D-101, plain summary in `catatan.md` §6; same branch): fixes for the 12 most important findings of the QA pass of 2026-10-05 (64 findings; the rest is backlog #57–#68) and the Trivy fix in `docker/Dockerfile.prod`; two migrations run on the local MySQL; suite numbers: TEST-RESULTS in `docs/dev-notes/M2.md`. PR 9 (M1 + M2) merged into `main` on 2026-10-06 (`b4b6f77`).
+Follow-up 2026-10-06 (D-102, `docs/dev-notes/M2.md` "Follow-up", branch `fix/auth-back-setelah-keluar`): the two leftovers of the browser check (account name back on the second Back; next login on the previous account's page) fixed, tested and checked in Chrome + Chromium. `dokumentasi.md` (repo root) lists the test data left in the lead's local database, which the lead chose not to wipe.
 
 | area | owner | state (details in `docs/dev-notes/<ID>.md`) |
 |---|---|---|
@@ -593,7 +601,7 @@ M2 (2026-10-06): the "re-run" half of #46 is done (email scenario on 2026-10-05 
 | 56 | Small leftovers of the M1 notes: old note text "mengganti kata sandi dan menghubungkan email" in `resources/views/dev/{auth,components}.blade.php` and the example in `components/sth/alert.blade.php`; the generic login error still says "NIS/NISN atau kata sandi salah." although it now also answers an email (`lang/id/auth.php`, `lang/id.json`, `LangIdTest`); `AppreciationEventFactory::completed()` state; demo letters without `basis_from` / `schedule_date`; no bulk "Pulihkan" and no note for the student in the bulk "Pindahkan ke …"; the guru pembina is not told when a talent choice is rejected or restored; Kepala Sekolah "Surat atas nama saya" only downloads (no "Cetak"); `<x-sth.icon>` has no printer icon ("Cetak" uses `external`) | M1-A…M1-E | S + user |
 | 57 | Reason fields (Q1-18, rest): lomba rejection and "Buka ulang" now need 10 characters (D-95); reject a registration (Kepala Sekolah), reject / ask a revision of a report and "Buka pembekuan" (`UnfreezeAccount`) still accept two letters. Same minimum there needs the lead's yes | QA, M2-B | user |
 | 58 | Confirm the two *sementara* points of §D7: quick actions and bulk moves in Talenta send a saved draft note (D-96); students cannot open the guru letter, which the QA summary asked the lead to decide (D-99) | M2-B, M2-C | user |
-| 59 | Not run in a browser after M2 (list in `docs/dev-notes/M2.md` "Not verified"): the Back scenario after Keluar (also Firefox, Safari), activation after an Admin reset, the dialogs `tidak-lolos-talenta` / `lomba-tanggal-lewat` / "Lepas dari acara", the error pages other than 404, `GET /logout`, the redirect after login. On a production-like stack (`APP_DEBUG=false`, https, real OTP): repeat Q2-03 (405 size and time), check the `secure` cookie + HSTS and that links in mails use the configured host, not the request's (Q2-08, suspected) | M2, QA | I |
+| 59 | Browser check of M2, done on 2026-10-06 in Chrome (`hasil-uji/qa-3-cek-perbaikan.md`): Back after Keluar (D-102), activation after an Admin reset, the dialogs `tidak-lolos-talenta` and "Lepas dari acara", 403 / 404, `GET /logout`, the redirect after login. Still not run: the Back scenario in Firefox and Safari, the dialog `lomba-tanggal-lewat` (publishing with past dates), "Tambah prestasi" for an achievement that is already on an event, the error pages 419 / 429 / 500 / 503. On a production-like stack (`APP_DEBUG=false`, https, real OTP): repeat Q2-03 (405 size and time), check the `secure` cookie + HSTS and that links in mails use the configured host, not the request's (Q2-08, suspected) | M2, QA | I |
 | 60 | Top bar search (Q1-06, Q1-12, Q2-24): it does not filter the TU queue (`TataUsaha\SuratTugas` has no `q`) and points to `/tu` from Arsip surat; Kesiswaan's box says "Cari lomba atau siswa" but only finds lomba; two search boxes at once on Guru › Siswa binaan and TU › Arsip surat. One box per screen, label matching what it finds (D-90) | QA | S |
 | 61 | Letters (Q1-13, Q1-15, Q1-23): "Koreksi" from Arsip surat opens the siswa tab instead of the chosen letter; what TU typed for the siswa letter is not carried into the guru form; a letter revoked **before** it was sent answers "Tidak ditemukan" on `/verifikasi-surat` although TU could already print it (answer "Dicabut", or no "Cetak" before "Kirim": the lead's call) | QA | S + user |
 | 62 | Data checks (QA): a PNG named `.pdf` is accepted as a brochure (Q1-20) [user]; an assessment date in the past (2020) is accepted in Talenta (Q2-13) [user]; the per-class table of Status aktivasi counts alumni (Q2-11) [user + S]; Admin › Status sistem "Staf aktif" counts accounts that are not activated, and "Aktivitas Admin terbaru" shows fewer rows than its title (Q2-12) [S + user] | QA | user + S |

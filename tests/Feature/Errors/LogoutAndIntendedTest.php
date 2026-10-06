@@ -3,6 +3,8 @@
 declare(strict_types=1);
 
 use App\Enums\RoleName;
+use App\Enums\UserStatus;
+use App\Http\Middleware\RememberLoggedOutAccount;
 use App\Models\User;
 use App\Providers\ErrorPageServiceProvider;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -99,6 +101,91 @@ it('leaves an allowed first page and later errors alone', function (): void {
     expect(session()->has(ErrorPageServiceProvider::AFTER_LOGIN))->toBeFalse();
 
     $this->get(route('admin.beranda'))->assertForbidden();
+});
+
+// The page the previous account left behind -----------------------------------------------------------
+
+/*
+| QA of 2026-10-06: after "Keluar", Back asks for the old page again; the guest is sent to the login and that
+| address becomes the intended one. The Admin who logged in next on the same computer landed on /kesiswaan.
+| App\Http\Middleware\RememberLoggedOutAccount: a different account goes to its beranda, the same account still
+| gets its page back.
+*/
+
+it('does not send the next account to the page the previous account left behind', function (): void {
+    $kesiswaan = H::staff(RoleName::Kesiswaan);
+    $admin = H::staff(RoleName::Admin);
+
+    $this->actingAs($kesiswaan)->post('/logout')->assertRedirect('/');
+    expect(session(RememberLoggedOutAccount::SESSION_KEY))->toBe($kesiswaan->getKey());
+
+    // Back: the browser asks for the old page again, now as a guest.
+    $this->get(route('kesiswaan.lomba.index'))->assertRedirect(route('login'));
+    expect(session('url.intended'))->toBe(route('kesiswaan.lomba.index'));
+
+    // The Admin may open that page, but it is not the page the Admin asked for.
+    $this->from('/login')->post('/login', ['identifier' => 'staf.admin@example.test', 'password' => H::PASSWORD])
+        ->assertRedirect(route('home'));
+    $this->assertAuthenticatedAs($admin);
+
+    expect(session()->has('url.intended'))->toBeFalse()
+        ->and(session()->has(RememberLoggedOutAccount::SESSION_KEY))->toBeFalse();
+});
+
+it('still brings the same account back to its page after it logged out', function (): void {
+    $kesiswaan = H::staff(RoleName::Kesiswaan);
+
+    $this->actingAs($kesiswaan)->post('/logout')->assertRedirect('/');
+    $this->get(route('kesiswaan.lomba.index'))->assertRedirect(route('login'));
+
+    $this->from('/login')->post('/login', ['identifier' => 'staf.kesiswaan@example.test', 'password' => H::PASSWORD])
+        ->assertRedirect(route('kesiswaan.lomba.index'));
+    expect(session()->has(RememberLoggedOutAccount::SESSION_KEY))->toBeFalse();
+});
+
+it('forgets the left-behind page when the next login ends with the 2FA challenge', function (): void {
+    $kesiswaan = H::staff(RoleName::Kesiswaan);
+    $admin = H::staff(RoleName::Admin);
+    $admin->forceFill([
+        'two_factor_secret' => encrypt('JBSWY3DPEHPK3PXP'),
+        'two_factor_recovery_codes' => encrypt(json_encode(['aaaa-bbbb'])),
+        'two_factor_confirmed_at' => now(),
+    ])->save();
+
+    $this->actingAs($kesiswaan)->post('/logout')->assertRedirect('/');
+    $this->get(route('kesiswaan.lomba.index'))->assertRedirect(route('login'));
+
+    $this->post('/login', ['identifier' => 'staf.admin@example.test', 'password' => H::PASSWORD])
+        ->assertRedirect(route('two-factor.login'));
+    $this->post(route('two-factor.login.store'), ['recovery_code' => 'aaaa-bbbb'])->assertRedirect(route('home'));
+    $this->assertAuthenticatedAs($admin);
+});
+
+it('remembers an account that the app itself logged out', function (): void {
+    $student = User::query()->findOrFail(H::activeStudent()->user_id);
+    $admin = H::staff(RoleName::Admin);
+
+    $this->actingAs($student);
+    $student->forceFill(['status' => UserStatus::Disabled])->save();
+
+    $this->get(route('siswa.beranda'))->assertRedirect(route('login'));
+    $this->assertGuest();
+    expect(session(RememberLoggedOutAccount::SESSION_KEY))->toBe($student->getKey());
+
+    $this->get(route('siswa.beranda'))->assertRedirect(route('login'));
+    $this->from('/login')->post('/login', ['identifier' => 'staf.admin@example.test', 'password' => H::PASSWORD])
+        ->assertRedirect(route('home'));
+    $this->assertAuthenticatedAs($admin);
+});
+
+it('keeps the intended page in a browser nobody logged out of', function (): void {
+    H::staff(RoleName::Kesiswaan);
+
+    $this->get(route('kesiswaan.lomba.index'))->assertRedirect(route('login'));
+    expect(session()->has(RememberLoggedOutAccount::SESSION_KEY))->toBeFalse();
+
+    $this->from('/login')->post('/login', ['identifier' => 'staf.kesiswaan@example.test', 'password' => H::PASSWORD])
+        ->assertRedirect(route('kesiswaan.lomba.index'));
 });
 
 it('never redirects a form post or a JSON request after login', function (): void {

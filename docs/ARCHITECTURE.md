@@ -201,7 +201,10 @@ the released appreciation) are covered by Pest only: the scenario has no step fo
   `Cache-Control: no-store, no-cache, must-revalidate, max-age=0, private` and `Pragma: no-cache` on every answer
   (GET, POST, redirect, error) for the paths in `PreventCredentialPageCaching::PATHS` (login, aktivasi,
   lupa-kata-sandi, user/confirm-password, two-factor-challenge, akun/2fa); `resources/js/app.js` empties password
-  fields after a plain form submit and on `pageshow` with `persisted`. The session id is renewed with
+  fields and the account name field (`autocomplete="username"`) after a plain form submit, on `pageshow` with
+  `persisted` and on a page loaded again for Back/Forward (D-102). `RememberLoggedOutAccount` (group `web`) keeps
+  the id of the account that logged out in the guest session (`sth.logged_out_user`); when a **different** account
+  logs in next, the intended address of that session is dropped (D-102). The session id is renewed with
   `session()->regenerate(true)` (the old row is deleted) in `Auth\Activation`, `Akun\Keamanan::changePassword` and
   `Auth\TwoFactorSetup::confirm`, always after the Action succeeded. `ListUserSessions::handle(User, ?string
   $currentSessionId, ?string $currentUserAgent = null, ?string $currentIp = null)` lists the current device from the

@@ -93,7 +93,13 @@ it('keeps the script that empties password fields on a restored page and after a
         ->toContain("form.method !== 'post'")
         // Livewire forms are left alone on submit, a cancelled submit keeps what was typed.
         ->toContain("name.startsWith('wire:submit')")
-        ->toContain('event.defaultPrevented');
+        ->toContain('event.defaultPrevented')
+        // QA 2026-10-06: the account name is emptied too, also on a page loaded again for Back/Forward.
+        ->toContain('input[autocomplete="username"]')
+        ->toContain("=== 'back_forward'");
+
+    // The script finds the account name by this attribute.
+    $this->get('/login')->assertOk()->assertSee('name="identifier"', false)->assertSee('autocomplete="username"', false);
 });
 
 it('covers exactly the credential paths and leaves other pages to their own cache headers', function (): void {
