@@ -23,12 +23,14 @@ use Spatie\Activitylog\Support\LogOptions;
  * - `note` = catatan untuk guru pembina: internal, read by the guru pembina and Kesiswaan, never by the student.
  * - `student_note` = catatan untuk siswa: belongs to the latest decision (lolos, tidak lolos, dipulihkan); it is
  *   sent with that notification and shown on Profil talenta. A new decision replaces it (null = no note).
+ * - `student_note_draft` = what Kesiswaan typed for the student and kept with "Simpan" (M2-B). Staff only:
+ *   never shown or sent to the student. The next decision sends it as `student_note` and clears it.
  *
  * "Tidak lolos" can be undone: `rejected_from` keeps the stage before the rejection, `review_requested_at` +
  * `review_message` are the student's open "Minta ditinjau ulang" (one per rejection).
  *
- * Not mass-assignable: status, mentor_id, assessment_on, note, student_note, rejected_from,
- * review_requested_at, review_message (app/Actions/Talent only).
+ * Not mass-assignable: status, mentor_id, assessment_on, note, student_note, student_note_draft,
+ * rejected_from, review_requested_at, review_message (app/Actions/Talent only).
  */
 class TalentApplication extends Model
 {

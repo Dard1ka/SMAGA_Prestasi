@@ -28,7 +28,8 @@ use Spatie\Permission\Traits\HasRoles;
  *
  * Not mass-assignable on purpose (CLAUDE.md §3.6): status, must_change_password, password_changed_at,
  * last_login_at, email_verified_at and the B1 account-control columns (initial_password_expires_at,
- * failed_activation_attempts, frozen_at, frozen_reason, activated_at). Set them with forceFill() inside Actions.
+ * failed_activation_attempts, frozen_at, frozen_reason, activated_at) and M2-A's temporary_password_issued_at.
+ * Set them with forceFill() inside Actions.
  */
 class User extends Authenticatable
 {
@@ -69,6 +70,8 @@ class User extends Authenticatable
             'failed_activation_attempts' => 'integer',
             'frozen_at' => 'immutable_datetime',
             'activated_at' => 'immutable_datetime',
+            // M2-A: set while the stored password is the temporary one of an Admin reset (no "Lewati" then).
+            'temporary_password_issued_at' => 'immutable_datetime',
         ];
     }
 

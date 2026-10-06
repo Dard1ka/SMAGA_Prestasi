@@ -6,6 +6,7 @@ use App\Actions\Publications\CompleteAppreciationEvent;
 use App\Actions\Publications\CreateAppreciationEvent;
 use App\Actions\Publications\DeleteAppreciationEvent;
 use App\Actions\Publications\RecordAppreciation;
+use App\Actions\Publications\ReleaseAppreciation;
 use App\Enums\AppreciationStatus;
 use App\Enums\RoleName;
 use App\Enums\UserStatus;
@@ -13,6 +14,7 @@ use App\Models\Appreciation;
 use App\Models\AppreciationEvent;
 use App\Models\Student;
 use App\Notifications\Publications\AppreciationCancelled;
+use App\Notifications\Publications\AppreciationReleased;
 use App\Notifications\Publications\AppreciationScheduled;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -337,4 +339,173 @@ it('refuses a student to delete or confirm an event', function (): void {
     expect(fn () => app(DeleteAppreciationEvent::class)->handle($student, $event))->toThrow(AuthorizationException::class);
     expect(fn () => app(CompleteAppreciationEvent::class)->handle($student, $event))->toThrow(AuthorizationException::class);
     expect(AppreciationEvent::query()->open()->count())->toBe(1);
+});
+
+// --- M2-B: one achievement, one open event (QA 2026-10-05, Q2-10) ---------------------------
+
+it('refuses an achievement that is still scheduled on another event that is not confirmed, naming that event', function (): void {
+    $achievement = HumasFixtures::achievement();
+    $first = HumasFixtures::event('Upacara Senin, 5 Oktober 2026', now()->addDays(4)->toDateString());
+    $second = HumasFixtures::event('Upacara Hari Guru', now()->addDays(11)->toDateString());
+    app(RecordAppreciation::class)->handle($this->humas, $first, $achievement);
+    Notification::fake();
+
+    expect(fn () => app(RecordAppreciation::class)->handle($this->humas, $second, $achievement))
+        ->toThrow(ValidationException::class, 'Prestasi ini sudah dijadwalkan di acara Upacara Senin, 5 Oktober 2026 ('
+            .now()->addDays(4)->locale('id')->translatedFormat('j M Y').'). Lepas dulu dari acara itu.');
+
+    expect(Appreciation::query()->count())->toBe(1)
+        ->and(Appreciation::query()->sole()->appreciation_event_id)->toBe($first->getKey());
+    Notification::assertNothingSent();
+
+    // Another achievement of the same student is a different matter.
+    $other = HumasFixtures::achievement(studentName: 'Salsabila Kirana', competitionName: 'FIKSI 2026');
+    $other->forceFill(['student_id' => $achievement->student_id])->save();
+    expect(app(RecordAppreciation::class)->handle($this->humas, $second, $other->fresh())->exists)->toBeTrue();
+});
+
+it('counts an unconfirmed event whose date has passed as still scheduled', function (): void {
+    $achievement = HumasFixtures::achievement();
+    $overdue = HumasFixtures::event('Upacara lalu', now()->subDays(3)->toDateString());
+    $row = new Appreciation(['achievement_id' => $achievement->getKey(), 'appreciation_event_id' => $overdue->getKey()]);
+    $row->forceFill(['status' => AppreciationStatus::Dijadwalkan])->save();
+
+    expect(fn () => app(RecordAppreciation::class)->handle($this->humas, HumasFixtures::event(), $achievement))
+        ->toThrow(ValidationException::class, 'Prestasi ini sudah dijadwalkan di acara Upacara lalu (');
+    expect(Appreciation::query()->count())->toBe(1);
+});
+
+it('refuses an achievement that was already appreciated on a confirmed event', function (): void {
+    $achievement = HumasFixtures::achievement();
+    $held = HumasFixtures::event('Upacara Senin', now()->toDateString());
+    app(RecordAppreciation::class)->handle($this->humas, $held, $achievement);
+    app(CompleteAppreciationEvent::class)->handle($this->humas, $held);
+    Notification::fake();
+
+    expect(fn () => app(RecordAppreciation::class)->handle($this->humas, HumasFixtures::event('Upacara Hari Guru', now()->addDays(11)->toDateString()), $achievement))
+        ->toThrow(ValidationException::class, 'Prestasi ini sudah diapresiasi di acara Upacara Senin ('.now()->locale('id')->translatedFormat('j M Y').').');
+
+    expect(Appreciation::query()->count())->toBe(1);
+    Notification::assertNothingSent();
+});
+
+it('names the appreciated event first when old data has the achievement on two events', function (): void {
+    // The state QA produced before the rule: scheduled on one event, confirmed on another.
+    $achievement = HumasFixtures::achievement();
+    $open = HumasFixtures::event('Upacara Senin, 5 Oktober 2026', now()->addDays(4)->toDateString());
+    $done = HumasFixtures::event('Acara hari ini', now()->toDateString());
+
+    foreach ([[$open, AppreciationStatus::Dijadwalkan], [$done, AppreciationStatus::Selesai]] as [$event, $status]) {
+        $row = new Appreciation(['achievement_id' => $achievement->getKey(), 'appreciation_event_id' => $event->getKey()]);
+        $row->forceFill(['status' => $status])->save();
+    }
+
+    $done->forceFill(['completed_at' => now()])->save();
+
+    expect(fn () => app(RecordAppreciation::class)->handle($this->humas, HumasFixtures::event('Apel pagi', now()->addDays(2)->toDateString()), $achievement))
+        ->toThrow(ValidationException::class, 'Prestasi ini sudah diapresiasi di acara Acara hari ini (');
+
+    // The leftover scheduled row can be released.
+    $leftover = Appreciation::query()->where('appreciation_event_id', $open->getKey())->sole();
+    expect($this->humas->can('delete', $leftover))->toBeTrue();
+    app(ReleaseAppreciation::class)->handle($this->humas, $leftover);
+    expect(Appreciation::query()->sole()->appreciation_event_id)->toBe($done->getKey());
+});
+
+// --- ReleaseAppreciation ("Lepas dari acara") -----------------------------------------------
+
+it('releases one scheduled achievement from an open event, audited, and tells that student only', function (RoleName $role): void {
+    $actor = $role === RoleName::Humas ? $this->humas : AuthTestHelpers::staff($role);
+    $event = HumasFixtures::event();
+    $nadia = HumasFixtures::achievement();
+    $raka = HumasFixtures::achievement(studentName: 'Raka Pradipta', competitionName: 'FIKSI 2026');
+    $row = app(RecordAppreciation::class)->handle($this->humas, $event, $nadia);
+    $kept = app(RecordAppreciation::class)->handle($this->humas, $event, $raka);
+    Notification::fake();
+
+    $told = app(ReleaseAppreciation::class)->handle($actor, $row);
+    $log = Activity::query()->where('event', 'appreciation.released')->sole();
+
+    expect($told)->toBeTrue()
+        ->and(Appreciation::query()->whereKey($row->getKey())->exists())->toBeFalse()
+        ->and(Appreciation::query()->whereKey($kept->getKey())->exists())->toBeTrue()
+        ->and($event->fresh()->isCompleted())->toBeFalse()
+        ->and($log->causer_id)->toBe($actor->getKey())
+        ->and($log->subject_id)->toBe($event->getKey())
+        ->and($log->properties['achievement_id'])->toBe($nadia->getKey())
+        ->and($log->properties['name'])->toBe($event->name)
+        ->and($log->properties['held_on'])->toBe($event->held_on->toDateString())
+        ->and($log->properties['notified'])->toBeTrue()
+        ->and(json_encode($log->properties))->not->toContain('Nadia');
+
+    Notification::assertSentToTimes($nadia->student->user, AppreciationReleased::class, 1);
+    Notification::assertSentTo($nadia->student->user, AppreciationReleased::class, function (AppreciationReleased $n) use ($event): bool {
+        return $n->eventName === $event->name && $n->achievement === 'Juara II OPSI 2026';
+    });
+    Notification::assertNotSentTo($raka->student->user, AppreciationReleased::class);
+    Notification::assertNotSentTo($nadia->student->user, AppreciationCancelled::class);
+
+    // Released: the achievement can go on another event.
+    $other = HumasFixtures::event('Upacara Senin, 12 Oktober 2026', now()->addDays(11)->toDateString());
+    expect(app(RecordAppreciation::class)->handle($this->humas, $other, $nadia)->exists)->toBeTrue();
+})->with([RoleName::Humas, RoleName::Kesiswaan, RoleName::Admin]);
+
+it('releases without a notice when the student can no longer log in', function (): void {
+    $event = HumasFixtures::event();
+    $achievement = HumasFixtures::achievement(studentName: 'Bima Satria Wicaksono');
+    $row = app(RecordAppreciation::class)->handle($this->humas, $event, $achievement);
+    $achievement->student->user->forceFill(['status' => UserStatus::Archived])->save();
+    Notification::fake();
+
+    expect(app(ReleaseAppreciation::class)->handle($this->humas, $row))->toBeFalse()
+        ->and(Appreciation::query()->count())->toBe(0)
+        ->and(Activity::query()->where('event', 'appreciation.released')->sole()->properties['notified'])->toBeFalse();
+    Notification::assertNothingSent();
+});
+
+it('refuses to release from a confirmed event: it is the record', function (): void {
+    $event = HumasFixtures::event('Upacara Senin', now()->toDateString());
+    $achievement = HumasFixtures::achievement();
+    $row = app(RecordAppreciation::class)->handle($this->humas, $event, $achievement);
+    app(CompleteAppreciationEvent::class)->handle($this->humas, $event);
+    Notification::fake();
+
+    expect(fn () => app(ReleaseAppreciation::class)->handle($this->humas, $row))
+        ->toThrow(ValidationException::class, 'Prestasi di acara yang sudah dilaksanakan tidak bisa dilepas.');
+
+    expect(Appreciation::query()->sole()->status)->toBe(AppreciationStatus::Selesai)
+        ->and(Activity::query()->where('event', 'appreciation.released')->count())->toBe(0);
+    Notification::assertNothingSent();
+});
+
+it('refuses to release a row that is already appreciated on an unconfirmed event (data from before M1-E)', function (): void {
+    $event = HumasFixtures::event('Upacara Senin', now()->toDateString());
+    $row = app(RecordAppreciation::class)->handle($this->humas, $event, HumasFixtures::achievement());
+    $row->forceFill(['status' => AppreciationStatus::Selesai])->save();
+
+    expect(fn () => app(ReleaseAppreciation::class)->handle($this->humas, $row))
+        ->toThrow(ValidationException::class, ReleaseAppreciation::COMPLETED_MESSAGE);
+    expect(Appreciation::query()->count())->toBe(1);
+});
+
+it('answers plainly when the row was already released', function (): void {
+    $row = app(RecordAppreciation::class)->handle($this->humas, HumasFixtures::event(), HumasFixtures::achievement());
+    app(ReleaseAppreciation::class)->handle($this->humas, $row);
+
+    expect(fn () => app(ReleaseAppreciation::class)->handle($this->humas, $row))
+        ->toThrow(ValidationException::class, 'Prestasi ini sudah tidak ada di acara tersebut.');
+    expect(Activity::query()->where('event', 'appreciation.released')->count())->toBe(1);
+});
+
+it('refuses roles without appreciation.manage, and students, to release', function (): void {
+    $row = app(RecordAppreciation::class)->handle($this->humas, HumasFixtures::event(), HumasFixtures::achievement());
+    $student = Student::factory()->activated()->create()->user()->first()->fresh();
+
+    foreach ([AuthTestHelpers::staff(RoleName::Guru), AuthTestHelpers::staff(RoleName::TataUsaha), AuthTestHelpers::staff(RoleName::KepalaSekolah), $student] as $user) {
+        expect(fn () => app(ReleaseAppreciation::class)->handle($user, $row))->toThrow(AuthorizationException::class)
+            ->and($user->can('delete', $row))->toBeFalse();
+    }
+
+    expect(Appreciation::query()->count())->toBe(1)
+        ->and(Activity::query()->where('event', 'appreciation.released')->count())->toBe(0);
 });

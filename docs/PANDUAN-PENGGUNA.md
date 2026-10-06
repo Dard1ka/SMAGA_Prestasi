@@ -2,8 +2,8 @@
 
 Alamat: **https://prestasi.sman3-smg.sch.id** · Buka di browser HP atau laptop (Chrome, Edge, Firefox, Safari terbaru).
 Nama layar di panduan ini sama dengan judul layar dan menu di aplikasi (rujukan teknis: `docs/UI-MAP.md`).
-Semua contoh nama di panduan ini fiktif. Diperbarui 4 Oktober 2026 (perubahan setelah uji manual lead,
-`docs/DECISIONS.md` §D6).
+Semua contoh nama di panduan ini fiktif. Diperbarui 6 Oktober 2026 (perbaikan setelah uji 5 Oktober 2026,
+`docs/DECISIONS.md` §D7; sebelumnya perubahan setelah uji manual lead, §D6).
 
 Isi: [Semua pengguna](#1-semua-pengguna) · [Siswa](#2-siswa) · [Guru pembimbing](#3-guru-pembimbing) ·
 [Kesiswaan](#4-kesiswaan) · [Kepala Sekolah](#5-kepala-sekolah) · [Tata Usaha](#6-tata-usaha) · [Humas](#7-humas) ·
@@ -22,10 +22,11 @@ Isi: [Semua pengguna](#1-semua-pengguna) · [Siswa](#2-siswa) · [Guru pembimbin
 2. **Kode verifikasi**: masukkan kode 6 angka yang dikirim ke email itu → **Verifikasi**. Kode belum datang? Tunggu
    sebentar lalu **Kirim ulang kode**. Salah ketik email? **Ganti email**.
 3. **Kata sandi**: pilih salah satu.
-   - **Ganti kata sandi** (disarankan): minimal 10 karakter, ada huruf dan angka, jangan memakai tanggal lahir, NIS,
-     NISN, atau nama.
+   - **Ganti kata sandi** (disarankan): ikuti aturan kata sandi di bawah.
    - **Lewati, pakai kata sandi sekarang**: kamu tetap memakai kata sandi dari sekolah. Kata sandi itu mudah ditebak
      orang yang tahu tanggal lahirmu, jadi sebaiknya segera ganti di **Keamanan akun**.
+   - **Akunmu baru direset Admin?** Tombol "Lewati" tidak ada. Kamu **wajib membuat kata sandi baru**, karena kata
+     sandi sementara dari Admin tidak boleh dipakai terus.
 
 Setelah muncul "Akun kamu sudah aktif", tekan **Mulai**. Lain kali kamu bisa masuk pakai NIS, NISN, atau email itu.
 
@@ -33,6 +34,16 @@ Setelah muncul "Akun kamu sudah aktif", tekan **Mulai**. Lain kali kamu bisa mas
 Admin **wajib** diganti. Sesudah itu pasang verifikasi dua langkah: pasang aplikasi authenticator di HP (mis. Google
 Authenticator), pindai kode QR, masukkan kode 6 angka, lalu **simpan kode pemulihan** di tempat aman.
 Verifikasi dua langkah hanya untuk guru dan staf; akun siswa tidak memakainya.
+
+**Aturan kata sandi baru** (saat aktivasi, di **Keamanan akun**, dan di **Lupa kata sandi**). Aturannya juga tertulis
+di bawah kolom "Kata sandi baru".
+- Siswa: minimal 10 karakter, ada huruf dan angka. Guru dan staf: ikuti panjang dan jenis karakter yang tertulis di
+  bawah kolom.
+- Jangan memakai data dirimu: tanggal lahir, NIS, NISN, nama, nama pengguna, atau bagian depan emailmu (sebelum "@").
+- Jangan memakai kata sandi yang mudah ditebak, mis. `password123`, `qwerty2026`, `admin12345`, atau urutan seperti
+  `abcd` dan `12345`. Pesannya: "Kata sandi ini terlalu mudah ditebak." Menambah angka atau simbol saja tidak cukup;
+  tambahkan kata lain yang tidak umum.
+- Saat aktivasi, kata sandi baru harus berbeda dari kata sandi yang sedang dipakai.
 
 **Konfirmasi kata sandi**: beberapa layar meminta kata sandi lagi sebelum aksi penting. Salah 5 kali berturut-turut →
 tunggu 1 menit sebelum mencoba lagi.
@@ -49,7 +60,16 @@ Hapus isinya, daftar kembali penuh. Dari halaman lain, ketik lalu tekan Enter un
     Email lama dan baru menerima pemberitahuan dengan link "Bukan saya?".
   - **Perangkat yang masuk**: **Keluarkan** perangkat yang tidak kamu kenal, atau **Keluarkan semua perangkat lain**.
   - Guru dan staf: **Pasang 2FA** / **Kelola 2FA** (verifikasi dua langkah).
-- **Keluar**: selalu keluar setelah memakai komputer bersama.
+- **Keluar**: selalu keluar setelah memakai komputer bersama. Halaman masuk tidak disimpan browser dan kolom kata
+  sandinya dikosongkan, jadi tombol Back tidak memunculkan lagi NIS dan kata sandi orang sebelumnya. Keluar hanya
+  lewat menu ini; mengetik `/logout` di kolom alamat tidak mengeluarkan akun (kamu hanya dibawa ke beranda).
+
+**Halaman error**: bila alamat salah atau halaman itu bukan untuk akunmu, muncul halaman berisi kode (mis. "Kode 404"),
+satu kalimat penjelasan, dan tombol **Kembali ke beranda** (kadang juga **Kembali**). Arti kodenya ada di §9. Bila
+setelah masuk kamu diarahkan ke halaman yang bukan untuk akunmu, aplikasi langsung membawamu ke berandamu.
+
+**Angka di menu samping** (Tata Usaha, Kepala Sekolah, Kesiswaan, Humas): jumlah yang menunggu, mis. **Antrean surat**
+atau **Persetujuan**. Angkanya tampil di semua halaman dan berubah sendiri setelah aksi, tanpa memuat ulang.
 
 **Email "Bukan saya?"**: bila ada email bahwa emailmu dihubungkan ke akun atau diganti padahal bukan kamu, klik
 **Bukan saya?** di email itu. Akun langsung dibekukan; hubungi Kesiswaan atau Admin untuk membukanya lagi.
@@ -80,6 +100,10 @@ persetujuannya.
 
 **Surat tugas**: setelah Kepala Sekolah menyetujui, Tata Usaha mengirim surat tugas. Buka **Lomba saya**, lalu
 download surat tugasnya (PDF). Bila Tata Usaha mengoreksi surat, kamu mendapat notifikasi dan surat barunya.
+- Kartu **Surat tugas** hanya memuat surat yang **sudah dikirim** Tata Usaha. Sebelum itu tertulis "Tata Usaha sedang
+  menyiapkan surat tugas."
+- Surat untuk guru pendamping tampil sebagai keterangan saja ("Surat perintah tugas untuk guru pendamping sudah
+  terbit"), tanpa tombol download. File-nya untuk guru; kamu cukup men-download surat siswa.
 
 **Laporkan hasil** (ketua tim)
 1. Setelah tanggal final, buka **Lomba saya** → **Laporkan hasil**.
@@ -126,14 +150,22 @@ keterampilanmu. Status: terdaftar → pemetaan → seleksi → pembinaan.
 ## 4. Kesiswaan
 
 Angka di menu samping (**Usulan lomba**, **Verifikasi hasil**) berubah sendiri setelah Anda memeriksa; tidak perlu
-memuat ulang halaman.
+memuat ulang halaman. Angka itu tampil di semua halaman, juga di **Status aktivasi**, Notifikasi, dan Keamanan akun.
 
 **Kelola lomba**
 1. **Kelola lomba** → **Tambah lomba**: isi nama, bidang, penyelenggara, kategori A–E, tingkat, tanggal, batas
-   pendaftaran, individu/tim, guru pembimbing default, juknis, link resmi.
+   pendaftaran, individu/tim, guru pembimbing default, juknis, link resmi. **Tanggal mulai tidak boleh sebelum batas
+   daftar**; kalau terbalik, form menolak dengan pesan itu.
 2. Semua lomba baru (juga buatan Kesiswaan sendiri, guru, dan usulan siswa) masuk **Usulan lomba**. Verifikator lain
    (Kesiswaan dan Admin) mendapat email saat ada lomba baru, juga bila yang menambahkan adalah Admin.
-3. **Usulan lomba** → **Periksa & lengkapi** → **Publikasikan**, atau **Tolak** dengan catatan.
+3. **Usulan lomba** → **Periksa & lengkapi** → **Publikasikan**, atau **Tolak** dengan alasan (minimal 10 karakter;
+   alasan itu terkirim ke pengusul).
+   - **Tanggal sudah lewat?** Bila batas daftar atau tanggal final lomba sudah lewat, kartunya menulis "Tanggal sudah
+     lewat: …" dan **Publikasikan** bertanya dulu: "Tetap publikasikan?". Di form **Periksa lomba**, centang "Tanggal
+     lomba ini sudah lewat. Tetap publikasikan." sebelum **Simpan & publikasikan**. Ini untuk lomba lama yang dicatat
+     belakangan; menyimpan tanpa mempublikasikan tidak ditanya.
+   - Kartu bertulisan "Perlu diperbaiki: …" belum bisa dipublikasikan: buka **Periksa & lengkapi** dan betulkan
+     tanggalnya dulu.
 4. Nama lomba tidak boleh berisi alamat web. Link pengusul yang tidak lolos pemeriksaan tampil sebagai
    "Link tidak valid", dan alamat yang mirip-asli tampil dalam bentuk aslinya (punycode).
 5. Daftar menampilkan paling banyak 250 lomba; persempit dengan filter atau pencarian untuk melihat lainnya.
@@ -148,8 +180,16 @@ memuat ulang halaman.
   - **Catatan untuk guru pembina**: hanya dibaca guru pembina dan Kesiswaan. Tersimpan dengan **Simpan**.
   - **Catatan untuk siswa**: dibaca siswa di notifikasi dan Profil talenta. Terkirim saat Anda menekan **Lolos ke …**
     atau **Tidak lolos**. Keputusan berikutnya mengganti catatan yang lama.
+  - **Simpan** menyimpan catatan untuk siswa sebagai **draf**: di bawah kolomnya tertulis "Draf tersimpan, belum
+    terkirim." dan teksnya tetap ada saat halaman dibuka lagi. Siswa belum melihatnya. Draf terkirim, lalu kosong lagi,
+    saat Anda memutuskan.
 - **Lolos ke …** memindahkan ke tahap berikutnya; **Tidak lolos** tidak lagi wajib bercatatan. Beberapa baris
   sekaligus: centang → **Pindahkan ke …** atau **Tidak lolos**.
+- **Tidak lolos** selalu bertanya dulu ("Tandai tidak lolos?"), karena siswa langsung diberi tahu. Dialognya
+  menampilkan catatan yang akan terkirim; untuk beberapa baris sekaligus, catatannya diisi di dialog itu.
+- **Hati-hati dengan draf**: ikon centang di baris dan **Pindahkan ke …** tidak punya kolom catatan, jadi draf yang
+  tersimpan **ikut terkirim** ke siswa (pesan di layar menyebutkannya). **Tidak lolos** untuk beberapa baris dengan
+  kolom catatan kosong juga mengirim draf masing-masing; dialognya menyebut berapa pilihan yang punya draf.
 - **Berubah pikiran?** Buka tahap **Tidak lolos** → klik ikon daur ulang (**Pulihkan**) → tulis catatan untuk
   siswa kalau perlu → **Pulihkan**. Pilihan kembali ke tahap sebelum tidak lolos dan siswa diberi tahu.
 - **Minta ditinjau ulang**: siswa yang tidak lolos bisa meminta ditinjau lagi. Anda mendapat notifikasi, barisnya
@@ -181,8 +221,11 @@ memuat ulang halaman.
 **Status aktivasi** (menu **Data**, juga lewat notifikasi peringatan): siapa yang sudah/belum aktivasi per kelas.
 - Tekan **Lihat** di baris kelas: daftar siswa kelas itu terbuka dalam **popup** (status, email tersamar, aktivasi,
   login terakhir; 40 baris per langkah, **Tampilkan lebih banyak**). Tutup dengan **Tutup**.
-- **Buka ulang** memberi siswa 72 jam lagi (alasan wajib); **Buka pembekuan** untuk akun yang dibekukan karena salah
-  kata sandi berkali-kali. Keduanya juga ada di dalam popup.
+- **Buka ulang** memberi siswa waktu sampai paling sedikit 72 jam dari sekarang (alasan wajib, minimal 10 karakter).
+  Batas yang masih lebih lama **tidak pernah dipendekkan**. Tombolnya hanya ada bila memang perlu: batas sudah lewat,
+  akun dibekukan, atau sisa waktunya kurang dari 72 jam. Sebelum Anda menekan, dialognya menulis hasilnya ("Dibuka
+  lagi sampai …").
+- **Buka pembekuan** untuk akun yang dibekukan karena salah kata sandi berkali-kali. Keduanya juga ada di dalam popup.
 - **Daftar siswa** di bawahnya untuk mencari siswa di semua kelas → **Download CSV**.
 
 **Apresiasi**: acara apresiasi dikelola bersama Humas; caranya sama dengan §7.
@@ -230,6 +273,9 @@ boleh dipakai lagi) dan **Alasan pencabutan** (minimal 5 karakter), perbaiki isi
 ulang**. Surat lama tercatat "Dicabut" di halaman verifikasi. Bila surat itu sudah dikirim, versi barunya langsung
 terkirim dan penerima diberi tahu; Kepala Sekolah selalu diberi tahu.
 
+Angka di menu **Antrean surat** tampil di semua halaman, juga di **Arsip surat** dan **Template surat**. Siswa hanya
+melihat surat di **Lomba saya** setelah Anda menekan **Kirim**; surat guru pendamping tidak bisa di-download siswa.
+
 **Arsip surat**: semua surat yang sudah dibuat (hanya baca), dengan **Download** dan **Cetak**. **Template surat**:
 ubah teks tetap surat (kop, dasar, pembuka, penutup) → **Simpan template** (atau **Kembalikan bawaan**). Bentuk
 surat mengikuti surat asli sekolah, lengkap dengan lambang Pemprov dan lambang sekolah.
@@ -246,7 +292,11 @@ surat mengikuti surat asli sekolah, lengkap dengan lambang Pemprov dan lambang s
 - **Jadwal**: kalender publikasi dan acara apresiasi yang belum dilaksanakan.
 - **Apresiasi**:
   1. **Buat acara** (nama dan tanggal).
-  2. Di kartu acara: **Tambah prestasi** → pilih prestasi → **Masukkan**. Siswanya diberi tahu.
+  2. Di kartu acara: **Tambah prestasi** → pilih prestasi → **Masukkan**. Siswanya diberi tahu. Satu prestasi hanya
+     bisa ada di **satu acara**: daftar pilihan hanya memuat prestasi yang belum masuk acara mana pun.
+     - Salah memasukkan, atau prestasinya mau dipindah ke acara lain? Tekan **Lepas dari acara** di baris prestasi
+       itu → konfirmasi. Acaranya tetap ada, prestasinya bisa dimasukkan ke acara lain, dan siswanya diberi tahu
+       ("Jadwal apresiasi berubah"). Hanya bisa selama acara belum ditandai sudah dilaksanakan.
   3. Setelah acara berlangsung: **Tandai sudah dilaksanakan** → konfirmasi. Acara pindah ke **Sudah dilaksanakan**
      dan tidak bisa diubah atau dihapus lagi. Tombol ini baru muncul pada hari acara; acara tanpa prestasi tidak bisa
      ditandai.
@@ -286,7 +336,8 @@ aktivitas Admin terbaru.
 - **Reset kata sandi & email** (siswa lupa atau akun diambil alih): cek identitas siswa tatap muka dulu. Sistem
   membuat **kata sandi sementara acak, berlaku 72 jam, ditampilkan sekali** → berikan langsung ke siswa (jangan difoto
   atau dikirim lewat chat) → **Sudah saya berikan**. Email dilepas, semua perangkat dikeluarkan, siswa mengulang aktivasi
-  (email → kode → kata sandi) dan sebaiknya mengganti kata sandi sementara itu.
+  (email → kode → kata sandi) dan **wajib membuat kata sandi baru**: untuk akun yang direset tidak ada tombol "Lewati",
+  dan kata sandi sementara itu tidak bisa dipakai terus.
   Akun yang **dibekukan** tidak menerima email apa pun dan tidak bisa memakai "Lupa kata sandi"; reset inilah jalannya.
 - **Reset akun** staf: Anda mengetik kata sandi sementara; email diverifikasi ulang dan 2FA dipasang ulang saat login
   berikutnya. Sampai pemiliknya memverifikasi email lagi, ia hanya menerima email tentang akunnya, **bukan email
@@ -339,6 +390,17 @@ atau tanggal → **Download CSV** (meminta kata sandi, tercatat).
 | TU: "Nomor ini sudah dipakai surat lain" | Nomor itu pernah dipakai untuk surat sejenis (juga surat yang sudah dicabut). Ketik nomor yang belum dipakai. |
 | TU: surat belum bisa dikirim | Buat dulu PDF surat yang belum ada (surat siswa atau surat guru pendamping). |
 | Humas: acara tidak bisa ditandai sudah dilaksanakan | Tanggal acara belum tiba, atau acaranya belum berisi prestasi. Acara kosong hanya bisa dihapus. |
+| Humas: "Prestasi ini sudah dijadwalkan di acara …" | Satu prestasi hanya bisa ada di satu acara. Buka acara yang disebut, tekan **Lepas dari acara** di baris prestasi itu, lalu masukkan ke acara yang benar. "Sudah diapresiasi" berarti acaranya sudah dilaksanakan dan tidak bisa diubah. |
+| Kesiswaan: "Tanggal mulai tidak boleh sebelum batas daftar." | Betulkan tanggal mulai atau batas daftar lomba itu. |
+| Kesiswaan: "Batas aktivasi siswa ini masih sampai … Belum perlu dibuka ulang." | Waktu siswa itu masih lebih dari 72 jam, jadi tidak ada yang perlu dibuka. |
+| "Kata sandi ini terlalu mudah ditebak." | Jangan memakai kata umum seperti password, admin, atau qwerty, dan urutan seperti 12345. Lihat aturan kata sandi di §1. |
+| "Jangan memakai nama pengguna." / "Jangan memakai email sendiri." | Kata sandi tidak boleh berisi username atau bagian depan emailmu. |
+| Aktivasi setelah direset Admin: tombol "Lewati" tidak ada | Memang begitu: kata sandi sementara dari Admin wajib diganti dengan kata sandi buatanmu sendiri. |
+| Halaman "Akses ditolak" (kode 403) | Halaman itu bukan untuk akunmu. Tekan **Kembali ke beranda**. |
+| Halaman "Tidak ditemukan" (kode 404) | Alamatnya salah, atau data itu bukan milikmu. Tekan **Kembali ke beranda**. |
+| Halaman "Kedaluwarsa" (kode 419) | Halaman terlalu lama terbuka. Muat ulang, lalu ulangi. |
+| Halaman "Coba lagi nanti" (kode 429) | Terlalu banyak permintaan. Tunggu sebentar, lalu coba lagi. |
+| Halaman "Ada gangguan" (kode 500) atau "Sedang dirawat" (kode 503) | Coba lagi beberapa menit kemudian. Kalau tetap muncul, hubungi Admin dan sebutkan kodenya. |
 | "Terlalu banyak percobaan" saat konfirmasi kata sandi | Tunggu 1 menit, lalu coba lagi dengan kata sandi yang benar. |
 | Salah data (nama, kelas, NIS) | Hubungi Kesiswaan atau Admin; siswa tidak bisa mengubahnya sendiri. Kelas diperbarui lewat import siswa tahunan. |
 | Staf baru: "Akunmu belum punya peran" | Peran Admin, Kesiswaan, atau Tata Usaha menunggu persetujuan Admin lain (atau 24 jam). Coba masuk lagi nanti. |

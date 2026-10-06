@@ -10,7 +10,10 @@ use App\Enums\UserStatus;
 use App\Models\Classroom;
 use App\Models\Student;
 use App\Models\User;
+use Illuminate\Cookie\CookieValuePrefix;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Route;
 use Spatie\Permission\Models\Permission as PermissionModel;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionRegistrar;
@@ -92,5 +95,26 @@ final class AuthTestHelpers
     public static function sessionCount(User $user): int
     {
         return DB::table('sessions')->where('user_id', $user->getKey())->count();
+    }
+
+    /**
+     * M2-A: who a browser is signed in as when all it holds is this session cookie (null = nobody). Needs
+     * `session.driver = database`. Everything the test process still remembers (the guard's user, the session data
+     * in memory) is dropped first, so only the row in the `sessions` table decides, as for a real request.
+     * Afterwards the test process "is" that browser: the session store holds this id and what the row gave it.
+     */
+    public static function userBehindSession(string $sessionId): ?int
+    {
+        Route::middleware('web')->get('/_test/whoami', fn () => response()->json(['id' => Auth::id()]));
+
+        Auth::forgetGuards();
+        session()->flush();
+
+        $name = (string) config('session.cookie');
+        $cookie = encrypt(CookieValuePrefix::create($name, app('encrypter')->getKey()).$sessionId, false);
+
+        $id = test()->call('GET', '/_test/whoami', [], [$name => $cookie])->assertOk()->json('id');
+
+        return $id === null ? null : (int) $id;
     }
 }

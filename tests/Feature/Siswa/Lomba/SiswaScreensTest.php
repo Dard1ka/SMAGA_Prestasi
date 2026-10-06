@@ -179,7 +179,8 @@ it('rate-limits the member search per user', function (): void {
     $lomba = F::teamCompetition(3);
     $user = F::user($this->nadia);
     $this->actingAs($user);
-    RateLimiter::increment('anggota-menit:'.$user->id, 1, 30);
+    // 60 s, not 1 s: the counter must still be there after the first (slow, cold) render of the form.
+    RateLimiter::increment('anggota-menit:'.$user->id, 60, 30);
 
     Livewire::test(Form::class, ['competitionId' => $lomba->getKey()])
         ->set('q', 'Dimas')

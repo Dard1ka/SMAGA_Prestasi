@@ -334,15 +334,16 @@ class Publikasi extends Component
             ->filter(fn (Appreciation $a): bool => $a->event !== null)
             ->sortBy(fn (Appreciation $a): string => $a->event->held_on->toDateString())
             ->values();
-        $recordedEventIds = $recorded->map(fn (Appreciation $a): string => (string) $a->appreciation_event_id)->all();
-
-        $events = AppreciationEvent::query()
-            ->open() // M1-E: a confirmed event takes no more prestasi
-            ->whereDate('held_on', '>=', CarbonImmutable::today()->toDateString())
-            ->whereNotIn('id', $recordedEventIds)
-            ->orderBy('held_on')
-            ->limit(20)
-            ->get();
+        // M2-B (Q2-10): one achievement sits on one event. Once it is scheduled or was appreciated,
+        // RecordAppreciation refuses a second event, so no "Masukkan" is offered (the panel lists where it is).
+        $events = $publication->achievement->appreciations->isNotEmpty()
+            ? collect()
+            : AppreciationEvent::query()
+                ->open() // M1-E: a confirmed event takes no more prestasi
+                ->whereDate('held_on', '>=', CarbonImmutable::today()->toDateString())
+                ->orderBy('held_on')
+                ->limit(20)
+                ->get();
 
         $statusChip = match ($status) {
             PublicationStatus::Siap => ['orange', 'Siap publikasi'],

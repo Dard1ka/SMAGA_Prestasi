@@ -19,13 +19,16 @@ use Throwable;
  * tidak lolos) keep their data editable for the pembina and note only.
  *
  * `note` is the internal "catatan untuk guru pembina" (optional; guru pembina + Kesiswaan read it, the student
- * never does). The note for the student is not saved here: it belongs to a decision (MoveTalentStage,
- * RejectTalentApplication, RestoreTalentApplication) and travels with that notification.
+ * never does). The note for the student is never SENT here: it belongs to a decision (MoveTalentStage,
+ * RejectTalentApplication, RestoreTalentApplication) and travels with that notification. What Kesiswaan
+ * already typed for the student is kept as `student_note_draft` (M2-B, QA Q2-14: "Simpan" used to drop it
+ * without a word): only the panel reads it, `student_note` stays untouched, nobody is notified, and the next
+ * decision sends and clears it.
  */
 final class UpdateTalentAssessment
 {
     /**
-     * @param  array{mentor_id?: int|string|null, assessment_on?: string|null, note?: string|null}  $details
+     * @param  array{mentor_id?: int|string|null, assessment_on?: string|null, note?: string|null, student_note_draft?: string|null}  $details
      */
     public function handle(User $actor, TalentApplication $application, array $details): TalentApplication
     {
@@ -59,8 +62,8 @@ final class UpdateTalentAssessment
     /**
      * Validates and normalises the detail fields. Keys that are absent stay untouched.
      *
-     * @param  array{mentor_id?: int|string|null, assessment_on?: string|null, note?: string|null}  $details
-     * @return array{mentor_id?: ?int, assessment_on?: ?string, note?: ?string}
+     * @param  array{mentor_id?: int|string|null, assessment_on?: string|null, note?: string|null, student_note_draft?: string|null}  $details
+     * @return array{mentor_id?: ?int, assessment_on?: ?string, note?: ?string, student_note_draft?: ?string}
      */
     public function validated(array $details): array
     {
@@ -83,6 +86,14 @@ final class UpdateTalentAssessment
 
         if (array_key_exists('note', $details)) {
             $clean['note'] = TalentNote::clean($details['note'] === null ? null : (string) $details['note'], 'note');
+        }
+
+        // Unsent text for the student ("Simpan"); the key `student_note` itself is never accepted here.
+        if (array_key_exists('student_note_draft', $details)) {
+            $clean['student_note_draft'] = TalentNote::clean(
+                $details['student_note_draft'] === null ? null : (string) $details['student_note_draft'],
+                'student_note_draft',
+            );
         }
 
         return $clean;

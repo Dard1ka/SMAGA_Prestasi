@@ -62,7 +62,7 @@
                     <span class="inline-flex size-11 shrink-0 items-center justify-center rounded-tile bg-red-bg text-red" aria-hidden="true"><x-sth.icon name="alert" /></span>
                     <div class="flex flex-col gap-0.5">
                         <h2 id="hasil-verifikasi" class="title-card">Tidak ditemukan</h2>
-                        <p class="muted m-0 text-sm">Kode verifikasi ini tidak cocok dengan surat mana pun.</p>
+                        <p class="muted m-0 text-sm">Surat dengan kode ini tidak terdaftar.</p>
                     </div>
                 </div>
                 <p class="m-0 text-sm">Periksa kembali link atau kode QR. Jika ragu, hubungi Tata Usaha SMA Negeri 3 Semarang.</p>

@@ -222,6 +222,30 @@ it('puts the achievement on an upcoming appreciation event', function (): void {
     Notification::assertSentTo($publication->achievement->student->user, AppreciationScheduled::class);
 });
 
+// M2-B (QA Q2-10): one achievement sits on one event, so the panel offers no second "Masukkan".
+it('offers no second appreciation event once the achievement is on one, and refuses a forged one', function (): void {
+    $publication = HumasFixtures::publication();
+    $first = HumasFixtures::event();
+    $second = HumasFixtures::event('Upacara Hari Guru', now()->addDays(11)->toDateString());
+
+    Livewire::actingAs($this->humas)
+        ->test(Publikasi::class)
+        ->assertSee('Masukkan ke acara apresiasi')
+        ->assertSee('Upacara Hari Guru')
+        ->set('eventId', $first->getKey())
+        ->call('recordAppreciation')
+        ->assertHasNoErrors()
+        ->assertSee('Sudah masuk daftar apresiasi Upacara Senin, 5 Oktober 2026')
+        ->assertDontSee('Masukkan ke acara apresiasi')
+        ->assertDontSee('Upacara Hari Guru')
+        ->set('eventId', $second->getKey())
+        ->call('recordAppreciation')
+        ->assertHasErrors(['eventId']);
+
+    expect(Appreciation::query()->sole()->appreciation_event_id)->toBe($first->getKey());
+    Notification::assertSentToTimes($publication->achievement->student->user, AppreciationScheduled::class, 1);
+});
+
 it('is forbidden for roles without publication.manage', function (RoleName $role): void {
     HumasFixtures::publication();
 

@@ -185,18 +185,20 @@ it('masks NIS in the talent table and moves checked rows in bulk', function (): 
     expect($a->fresh()->status)->toBe(TalentStatus::Pemetaan)
         ->and($b->fresh()->status)->toBe(TalentStatus::Seleksi);
 
-    // The note for the students is optional in the bulk bar; only its length is checked.
+    // "Tidak lolos" in the bulk bar opens the confirm dialog (M2-B); the note in it is optional, only its
+    // length is checked.
     $component->set('checked', [$a->getKey()])
-        ->call('startBulkReject')
+        ->call('askBulkReject')
+        ->assertDispatched('sth-modal-open', id: 'tidak-lolos-talenta')
         ->assertSee('Catatan untuk siswa')
         ->set('bulkNote', str_repeat('a', 1001))
-        ->call('bulkReject')
+        ->call('reject')
         ->assertHasErrors('bulkNote');
 
     expect($a->fresh()->status)->toBe(TalentStatus::Pemetaan);
 
     $component->set('bulkNote', '')
-        ->call('bulkReject')
+        ->call('reject')
         ->assertHasNoErrors();
 
     expect($a->fresh()->status)->toBe(TalentStatus::TidakLolos)
@@ -204,9 +206,9 @@ it('masks NIS in the talent table and moves checked rows in bulk', function (): 
         ->and($a->fresh()->rejected_from)->toBe(TalentStatus::Pemetaan);
 
     $component->set('checked', [$b->getKey()])
-        ->call('startBulkReject')
+        ->call('askBulkReject')
         ->set('bulkNote', 'Belum memenuhi kuota.')
-        ->call('bulkReject');
+        ->call('reject');
 
     expect($b->fresh()->status)->toBe(TalentStatus::TidakLolos)
         ->and($b->fresh()->student_note)->toBe('Belum memenuhi kuota.');
@@ -228,7 +230,10 @@ it('filters talent rows by stage and marks tidak lolos from the panel without a 
         ->assertSee('Catatan untuk siswa')
         ->assertSee('Dibaca siswa di notifikasi dan Profil talenta.')
         ->assertDontSee('Wajib bila tidak lolos')
-        ->call('rejectPanel')
+        // M2-B: the button asks first (details: TalentDraftNoteTest).
+        ->call('askReject')
+        ->assertDispatched('sth-modal-open', id: 'tidak-lolos-talenta')
+        ->call('reject')
         ->assertHasNoErrors()
         ->assertSet('panelDone', 'Tidak lolos dari tahap Terdaftar. Siswa diberi tahu.')
         ->assertSee('Pulihkan untuk mengembalikan ke tahap Terdaftar.');
@@ -248,9 +253,10 @@ it('keeps the two notes of the talent panel apart: one for the guru pembina, one
         ->call('savePanel')
         ->assertHasNoErrors();
 
-    // "Simpan" stores the internal note only and tells nobody.
+    // "Simpan" stores the internal note, keeps the note for the student as an unsent draft (M2-B) and tells nobody.
     expect($a->fresh()->note)->toBe('Minta nilai rapor ke wali kelas.')
-        ->and($a->fresh()->student_note)->toBeNull();
+        ->and($a->fresh()->student_note)->toBeNull()
+        ->and($a->fresh()->student_note_draft)->toBe('Siapkan sertifikat SMP.');
     Notification::assertNothingSent();
 
     $component->call('advance')
@@ -267,8 +273,9 @@ it('keeps the two notes of the talent panel apart: one for the guru pembina, one
         && ! str_contains($n->body, 'wali kelas'));
 
     $component->set('panelStudentNote', str_repeat('a', 1001))
-        ->call('rejectPanel')
-        ->assertHasErrors('panelStudentNote');
+        ->call('askReject')
+        ->assertHasErrors('panelStudentNote')
+        ->assertNotDispatched('sth-modal-open');
 
     expect($a->fresh()->status)->toBe(TalentStatus::Pemetaan);
 });

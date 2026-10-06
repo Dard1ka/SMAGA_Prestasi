@@ -1,7 +1,7 @@
 # DECISIONS.md — Log keputusan SMAGA Talent Hub (STH)
 
 > Log keputusan produk & teknis STH untuk SMA Negeri 3 Semarang. Dirujuk dari `CLAUDE.md` proyek.
-> Diperbarui: **4 Oktober 2026** (D-32…D-44; backlog D-45…D-60; integrasi W4 D-61…D-65; uji menyeluruh Q1 D-66…D-77; uji manual lead D-78…D-91) · Sumber: keputusan pengguna 30 Sep 2026, keputusan lead 1, 2, dan 4 Okt 2026, `DESIGN-SPEC-v2.md` §1–§5, `docs/SECURITY.md`.
+> Diperbarui: **6 Oktober 2026** (D-32…D-44; backlog D-45…D-60; integrasi W4 D-61…D-65; uji menyeluruh Q1 D-66…D-77; uji manual lead D-78…D-91; perbaikan dari uji QA D-92…D-101) · Sumber: keputusan pengguna 30 Sep 2026, keputusan lead 1, 2, 4, dan 6 Okt 2026, `DESIGN-SPEC-v2.md` §1–§5, `docs/SECURITY.md`.
 > **Status:** `final` = dipakai untuk implementasi · `sementara` = dipakai sekarang, akan ditinjau · `menunggu jawaban sekolah` = butuh konfirmasi sebelum dibangun.
 > **Aturan log:** entri tidak dihapus atau ditimpa. Keputusan yang berubah → entri baru dengan catatan "menggantikan D-xx", lalu status entri lama diubah menjadi `digantikan`.
 
@@ -40,7 +40,7 @@
 | D-29 | Alumni (diarsipkan 18 bulan setelah mulai kelas XII) **tidak bisa login**; nama & prestasinya tetap tampil di ranking/halaman publik | workflow kasar.svg | final (menggantikan "read-only") |
 | D-30 | Admin bisa menonaktifkan/mengarsipkan akun manual (pindah sekolah, meninggal, dsb.) selain arsip otomatis | workflow kasar.svg | final |
 | D-31 | Halaman publik juga punya tampilan **pemenang per lomba** (klik lomba → daftar pemenang & capaian) | workflow kasar.svg | final |
-| D-32 | Password baru siswa **minimal 10 karakter** (SECURITY K5) | Lead (1 Okt 2026) | final |
+| D-32 | Password baru siswa **minimal 10 karakter** (SECURITY K5) | Lead (1 Okt 2026) | final (tambahan aturan kata sandi: D-94) |
 | D-33 | Ketua boleh membatalkan pendaftaran selama `menunggu_konfirmasi` **atau** `menunggu_kepsek` | Lead (1 Okt 2026) | final |
 | D-34 | Laporan hasil yang **ditolak** mengakhiri pendaftaran sebagai `selesai` **tanpa poin** | Lead (1 Okt 2026) | final |
 | D-35 | **Guru pembimbing wajib** dipilih saat mendaftar | Lead (1 Okt 2026) | final |
@@ -53,7 +53,7 @@
 | D-42 | Staf login dengan **username atau email**, siswa dengan **NIS atau NISN** | Lead (1 Okt 2026) | final (siswa juga boleh email: D-78) |
 | D-43 | Surat tugas: **Terbitkan** (nomor + PDF) dan **Kirim** adalah dua langkah; surat siswa mencetak NIS seperti template sekolah | Lead (1 Okt 2026) | final (terbit per surat: D-83; nomor: D-82) |
 | D-44 | `users.id` tetap bigint; tabel domain memakai ULID | Lead (1 Okt 2026) | final |
-| D-45 | Reset akun siswa oleh Admin memberi **kata sandi sementara acak, berlaku 72 jam** (K10), bukan pola kata sandi awal | Lead / B1 (1 Okt 2026) | sementara — bisa diubah user |
+| D-45 | Reset akun siswa oleh Admin memberi **kata sandi sementara acak, berlaku 72 jam** (K10), bukan pola kata sandi awal | Lead / B1 (1 Okt 2026) | sementara — bisa diubah user (siswa wajib mengganti kata sandi sementara itu: D-92) |
 | D-46 | Pemberian peran staf penting (Admin, Kepala Sekolah, Kesiswaan, Tata Usaha) butuh **persetujuan Admin kedua**, atau berlaku **24 jam** kemudian (bisa dibatalkan) bila hanya ada satu Admin; penurunan peran langsung berlaku | Lead / B5 (1 Okt 2026) | sementara — bisa diubah user |
 | D-47 | E-flyer Humas **tetap di disk privat**; publikasi terjadwal hanya mengubah status pada waktunya, memberi tahu siswa, dan mengingatkan Humas untuk mengunggah | Lead / B3 (1 Okt 2026) | sementara — bisa diubah user |
 | D-48 | Import siswa tetap **membersihkan** awalan `=`, `+`, `-`, `@` di sel dan **menandai** baris itu (tidak menolak barisnya) | Lead / B2 (1 Okt 2026) | sementara — bisa diubah user |
@@ -87,19 +87,29 @@
 | D-76 | Nama lomba tidak boleh berisi alamat web | Lead (2 Okt 2026) | final |
 | D-77 | Guru pembimbing dan Kepala Sekolah dikabari saat pendaftaran ditolak atau dibatalkan | Lead (2 Okt 2026) | final |
 | D-78 | Siswa boleh masuk dengan **email** setelah aktivasi selesai (selain NIS/NISN) | Lead (4 Okt 2026) | final (menggantikan bagian siswa D-42) |
-| D-79 | Urutan aktivasi **email → kode → kata sandi**; ganti kata sandi **opsional untuk siswa**, wajib untuk staf | Lead (4 Okt 2026) | final (risiko diterima; menggantikan urutan D-14 dan K4) |
+| D-79 | Urutan aktivasi **email → kode → kata sandi**; ganti kata sandi **opsional untuk siswa**, wajib untuk staf | Lead (4 Okt 2026) | final (risiko diterima; menggantikan urutan D-14 dan K4; setelah reset Admin siswa wajib ganti: D-92) |
 | D-80 | Peringkat publik: pilihan **Siswa aktif / Alumni / Semua**; alumni ditulis "Alumni" tanpa kelas terakhir | Lead (4 Okt 2026) | final (menggantikan tombol "Tampilkan alumni" D-09/D-37) |
 | D-81 | Import siswa tahunan **memperbarui kelas** siswa yang sudah terdaftar | Lead (4 Okt 2026) | final (menggantikan "NIS terdaftar = ditolak" D-12/D-26); berkas tahunan vs tanggal arsip manual dan siswa yang tidak ada di berkas: sementara — perlu dikonfirmasi user |
 | D-82 | Nomor surat **diketik lengkap oleh TU**, unik per jenis surat; format di Admin hanya contoh | Lead (4 Okt 2026) | final (menggantikan format `{seq}` D-06/D-43) |
 | D-83 | Satu surat satu form dan satu "Buat PDF"; "Kirim" sekali setelah semua surat yang wajib ada | Lead (4 Okt 2026) | final |
 | D-84 | Template surat = berkas asli sekolah; lambang Pemprov dan sekolah di repo; QR tetap; tombol "Cetak" | Lead (4 Okt 2026) | final |
-| D-85 | Talenta: dua catatan opsional (untuk guru pembina, untuk siswa); "tidak lolos" tidak wajib bercatatan | Lead (4 Okt 2026) | final |
+| D-85 | Talenta: dua catatan opsional (untuk guru pembina, untuk siswa); "tidak lolos" tidak wajib bercatatan | Lead (4 Okt 2026) | final ("Simpan" kini menyimpan draf catatan untuk siswa: D-96) |
 | D-86 | Talenta "tidak lolos" bisa **dipulihkan**; siswa bisa "Minta ditinjau ulang"; tidak ada pengajuan kedua | Lead (4 Okt 2026) | final (pulihkan tanpa permintaan siswa: sementara — bisa diubah user) |
-| D-87 | Acara apresiasi: konfirmasi di acara, hapus acara (siswa diberi tahu), acara terkonfirmasi terkunci | Lead (4 Okt 2026) | final |
+| D-87 | Acara apresiasi: konfirmasi di acara, hapus acara (siswa diberi tahu), acara terkonfirmasi terkunci | Lead (4 Okt 2026) | final (satu prestasi satu acara, "Lepas dari acara": D-97) |
 | D-88 | Status aktivasi: "Lihat" membuka popup kelas | Lead (4 Okt 2026) | final |
 | D-89 | Kata sehari-hari di UI: upload, download, link, preview | Lead (4 Okt 2026) | final (menyesuaikan gaya bahasa D-19) |
-| D-90 | Angka menu berubah tanpa muat ulang; kotak cari atas menyaring saat diketik; satu kotak cari per layar | Lead (4 Okt 2026) | final |
+| D-90 | Angka menu berubah tanpa muat ulang; kotak cari atas menyaring saat diketik; satu kotak cari per layar | Lead (4 Okt 2026) | final (angka tampil di semua halaman: D-100) |
 | D-91 | Kecepatan lokal: cache config + view khusus php-fpm di filesystem container; tes menolak jalan bila config ter-cache | Lead / M1 (4 Okt 2026) | final |
+| D-92 | Setelah reset Admin, siswa **wajib membuat kata sandi baru** (tanpa "Lewati"); kata sandi sekolah dari import tetap boleh dipertahankan | Lead / QA (6 Okt 2026) | final (menggantikan kalimat terakhir D-79) |
+| D-93 | Halaman kredensial **tidak disimpan browser** (`no-store`), kolom kata sandi dikosongkan; **sesi lama dihapus** saat sesi diperbarui | Lead / QA (6 Okt 2026) | final |
+| D-94 | Kata sandi baru menolak **kata sandi umum**, nama pengguna, dan nama email | Lead / QA (6 Okt 2026) | final (menambah K5 / D-32) |
+| D-95 | "Buka ulang" **tidak pernah memendekkan** batas aktivasi; alasan "Buka ulang" dan alasan menolak lomba minimal **10 karakter** | Lead / QA (6 Okt 2026) | final (menyesuaikan K2) |
+| D-96 | Talenta: catatan untuk siswa tersimpan sebagai **draf** sampai ada keputusan; "Tidak lolos" minta konfirmasi | Lead / QA (6 Okt 2026) | final (menyesuaikan D-85; aksi cepat ikut mengirim draf: sementara — bisa diubah user) |
+| D-97 | Satu prestasi hanya di **satu acara apresiasi**; tombol "Lepas dari acara" | Lead / QA (6 Okt 2026) | final (melengkapi D-87) |
+| D-98 | Tanggal lomba: mulai tidak boleh sebelum batas daftar; tanggal yang sudah lewat perlu **konfirmasi** untuk dipublikasikan | Lead / QA (6 Okt 2026) | final |
+| D-99 | Siswa tidak men-download surat guru (hanya keterangan); kartu surat siswa hanya memuat surat yang **sudah dikirim** | Lead / QA (6 Okt 2026) | final (siswa tidak boleh membuka surat guru: sementara — bisa diubah user) |
+| D-100 | Angka menu samping dihitung di **satu tempat** dan tampil di semua halaman | Lead / QA (6 Okt 2026) | final (melengkapi D-90) |
+| D-101 | Halaman error milik aplikasi; `GET /logout` dialihkan; halaman pertama setelah login yang 403/404 → beranda | Lead / QA (6 Okt 2026) | final |
 | U-01…U-06 | Usulan keamanan yang belum diputuskan | Agent H (keamanan) | menunggu jawaban sekolah / sementara |
 
 ---
@@ -540,7 +550,7 @@ Tiap entri menyebut keputusan lama yang digantinya; entri lama tidak dihapus.
   - **Risiko yang diterima:** siswa yang memilih "Lewati" tetap memakai kata sandi dari sekolah. Kata sandi itu bisa ditebak dari tanggal lahir **selama masih dipakai**; dulu celah ini tertutup saat aktivasi (paling lama jendela 14 hari). Deteksi K7 tidak bisa melihatnya, karena K7 hanya menyala bila pola awal *gagal* di akun aktif. Pengambilalihan juga bisa tidak ketahuan: orang yang aktivasi lebih dulu bisa menghubungkan emailnya sendiri lalu melewati langkah 3, dan pemilik asli tetap bisa masuk dengan kata sandi sekolah.
   - **Penyeimbang yang ada:** laporan Status aktivasi (K9: tiap siswa memeriksa email tersamar di barisnya) dan catatan audit `activation.password_kept`.
   - **Penyeimbang yang belum ada (backlog):** tanda "masih pakai kata sandi dari sekolah" di Status aktivasi (siswa aktif dengan `password_changed_at` kosong) dan pengingat untuk mengganti kata sandi.
-- **Status:** final (keputusan user; risiko diterima). Menggantikan urutan login pertama di D-14 dan K4 (SECURITY §3a). Formulir penerimaan risiko D-14 perlu memuat risiko ini.
+- **Status:** final (keputusan user; risiko diterima). Menggantikan urutan login pertama di D-14 dan K4 (SECURITY §3a). Formulir penerimaan risiko D-14 perlu memuat risiko ini. (6 Okt 2026: kalimat "siswa yang direset juga boleh tetap memakai kata sandi sementaranya" tidak berlaku lagi; setelah reset Admin siswa wajib membuat kata sandi baru, lihat D-92. Kata sandi sekolah dari import tetap boleh dipertahankan.)
 
 ### D-80 · Peringkat publik: Siswa aktif / Alumni / Semua · 4 Okt 2026
 - **Keputusan:** Peringkat publik punya tiga pilihan: **Siswa aktif** (bawaan), **Alumni**, **Semua**. "Alumni" hanya menampilkan alumni yang punya prestasi terverifikasi. Peringkat dihitung di dalam kelompok yang sedang tampil. Alumni ditulis **"Alumni"** di tempat kelas; kelas terakhirnya tidak ditampilkan lagi di halaman publik mana pun. Mode Kelas hanya untuk siswa aktif, karena alumni tidak punya kelas.
@@ -581,7 +591,7 @@ Tiap entri menyebut keputusan lama yang digantinya; entri lama tidak dihapus.
 - **Keputusan:** Tiap pilihan talenta punya dua catatan, keduanya **opsional**. **Catatan untuk guru pembina**: internal, hanya dibaca guru pembina dan Kesiswaan. **Catatan untuk siswa**: ikut di notifikasi keputusan (lolos, tidak lolos, dipulihkan) dan tampil di Profil talenta. Keputusan baru mengganti catatan siswa yang lama (dikosongkan = dihapus). "Tidak lolos" **tidak lagi wajib** bercatatan.
 - **Alasan:** Permintaan user: "catatan dibuat lebih jelas kepada siapa … Tambahkan catatan kepada siswa jika dia ditolak maupun di acc … semua catatan ini bersifat opsional".
 - **Dampak:** Kolom baru `talent_applications.student_note`; kolom `note` kini hanya catatan untuk guru pembina. Data lama: catatan baris `tidak_lolos` (dulu dikirim ke siswa) dipindah ke `student_note`. `MoveTalentStage`, `RejectTalentApplication`, `TalentNote`. Tombol "Simpan" tidak pernah menyimpan catatan untuk siswa. Ekspor Excel punya dua kolom catatan.
-- **Status:** final (keputusan user). Tidak menggantikan entri lama (aturan "penolakan wajib bercatatan" dulu hanya ada di kode).
+- **Status:** final (keputusan user). Tidak menggantikan entri lama (aturan "penolakan wajib bercatatan" dulu hanya ada di kode). (6 Okt 2026: kalimat "Tombol 'Simpan' tidak pernah menyimpan catatan untuk siswa" tidak berlaku lagi; "Simpan" kini menyimpannya sebagai draf yang belum terkirim, lihat D-96.)
 
 ### D-86 · Talenta "tidak lolos" bisa dipulihkan; siswa bisa minta ditinjau ulang · 4 Okt 2026
 - **Keputusan:** Kesiswaan bisa **Pulihkan** pilihan yang tidak lolos: pilihan kembali ke tahap sebelum ditolak (Terdaftar bila tidak diketahui), siswa diberi tahu, catatan untuk siswa opsional. Siswa bisa **Minta ditinjau ulang**: pesan opsional (maks. 500 karakter), satu permintaan terbuka per penolakan, maks. 10 per jam; statusnya tidak berubah sampai Kesiswaan memutuskan, dan semua akun Kesiswaan diberi tahu. Siswa **tidak bisa mendaftar ulang** jenis/cabang yang sudah ditolak; ia diarahkan ke "Minta ditinjau ulang".
@@ -619,6 +629,87 @@ Tiap entri menyebut keputusan lama yang digantinya; entri lama tidak dihapus.
 - **Alasan:** Permintaan user: pindah menu harus secepat mungkin untuk semua peran. Hasil ukur di satu halaman Humas: sekitar 400 pemeriksaan berkas per request di bind mount Windows (±6 ms tiap pemeriksaan), ±165 dari Blade dan ±140 dari config. Sesudahnya 139 per request; halaman Humas 480–720 ms → 260–430 ms. Sisi keamanan: config ter-cache membawa `APP_ENV=local` dan koneksi MySQL dev ke proses tes, `phpunit.xml` tidak bisa menimpanya lagi, lalu `RefreshDatabase` akan mengosongkan database dev.
 - **Dampak:** `docker/php/fpm.dev.conf`, `docker/php/dev-cache.sh`, `config/view.php`, `compose.yaml`, `start.bat`, `reload.bat`, `tests/TestCase.php`. Hanya untuk dev; produksi tidak membaca berkas-berkas itu. Melengkapi PERF1 (`docs/dev-notes/PERF1.md`).
 - **Status:** final (menyangkut keamanan: penjaga tes terhadap database dev; mengubahnya butuh entri baru).
+
+## D7. Perbaikan dari uji QA 5 Okt 2026 (6 Okt 2026)
+
+Pada 5 Okt 2026 aplikasi diuji lewat browser dan permintaan HTTP langsung: 64 temuan, 12 di antaranya prioritas tinggi
+(`hasil-uji/ringkasan-temuan.md` §1, di luar repo, di sebelah folder repo). Pada 6 Okt 2026 lead menjawab: "Dari ke 12
+temuan yang paling penting, lakukan sesuai saranmu". Entri di bawah mencatat aturan yang berubah karena perbaikan itu
+(ringkasan: `docs/dev-notes/M2.md`; rincian: `M2-A.md`…`M2-C.md`). Temuan 12 (paket di image produksi) bukan aturan
+aplikasi, jadi tidak punya entri. Semua berstatus **final (keputusan user: "lakukan sesuai saranmu")**, kecuali butir
+yang ditandai *sementara*. Tiap entri menyebut keputusan lama yang disesuaikannya; entri lama tidak dihapus.
+
+### D-92 · Setelah reset Admin, siswa wajib membuat kata sandi baru · 6 Okt 2026
+- **Keputusan:** Siswa yang akunnya direset Admin ("Reset kata sandi & email", K10) **wajib membuat kata sandi baru** di langkah 3 aktivasi. Tombol "Lewati, pakai kata sandi sekarang" tidak tampil untuknya, sama seperti staf. Tombol itu tetap ada untuk siswa yang masih memakai **kata sandi dari sekolah** (hasil import): bagian D-79 itu tidak berubah.
+- **Alasan:** Temuan Q2-02. Kata sandi sementara pernah tampil di layar Admin, jadi bukan rahasia pemilik akun saja. Dialog Admin sendiri sudah menulis "wajib menggantinya", tetapi siswa masih bisa menekan "Lewati" dan akunnya aktif dengan kata sandi itu.
+- **Dampak:** Kolom baru `users.temporary_password_issued_at`: diisi `ResetStudentAccount`, dikosongkan `SetNewPassword` setiap kali pemilik memilih kata sandinya sendiri (aktivasi, Keamanan akun, Lupa kata sandi). Selama kolom itu terisi, `CompleteActivation::mayKeepPassword()` salah; `keepPassword()` memeriksa lagi pada baris yang dikunci dan menolak dengan 403 ("Kata sandi akun ini wajib diganti."). Layar langkah 3 berjudul "Buat kata sandi baru" tanpa tombol lewati. Migrasi mengisi kolom itu untuk akun siswa yang direset sebelumnya dan belum memilih kata sandi (dari log audit `account.reset`). Akun yang **sudah terlanjur** mempertahankan kata sandi sementara tidak dipaksa mengganti; aplikasi belum dipakai sekolah, jadi akun seperti itu hanya ada di data uji lokal. Dua teks di Admin › Pengguna & peran disesuaikan. Reset akun staf tidak berubah (staf memang selalu wajib mengganti).
+- **Status:** final (keputusan user: "lakukan sesuai saranmu"). Menggantikan kalimat terakhir D-79 ("siswa yang direset juga boleh tetap memakai kata sandi sementaranya"); D-79 selebihnya tetap, termasuk risiko yang diterima untuk kata sandi sekolah. Melengkapi D-45.
+
+### D-93 · Halaman kredensial tidak disimpan browser; sesi lama dihapus · 6 Okt 2026
+- **Keputusan:**
+  - Semua jawaban untuk halaman yang menampilkan atau menerima kata sandi, kode, atau rahasia 2FA (`/login`, `/aktivasi`, `/lupa-kata-sandi`, `/user/confirm-password`, `/two-factor-challenge`, `/akun/2fa`) membawa `Cache-Control: no-store`. Browser tidak menyimpan halamannya, jadi tombol Back tidak memunculkannya lagi.
+  - Kolom kata sandi **dikosongkan** begitu form biasa dikirim, dan saat browser memulihkan halaman dari cache Back/Forward.
+  - Setiap kali ID sesi diperbarui (kode aktivasi diterima, ganti atau lewati kata sandi di aktivasi, ganti kata sandi di Keamanan akun, 2FA dikonfirmasi), **sesi lama dihapus**. Pembaruan itu hanya terjadi **setelah** aksinya berhasil: kata sandi sekarang yang salah atau kata sandi baru yang ditolak tidak lagi menyentuh sesi.
+- **Alasan:** Q2-01: setelah Keluar, Back dua kali memunculkan halaman masuk lama dengan NIS dan kata sandi masih terisi, dan "Masuk" langsung login lagi; berbahaya di komputer lab bersama. Q1-03 / Q2-07: sesi lama tidak dihapus saat sesi diperbarui, sehingga "Perangkat yang masuk" berisi perangkat hantu (sampai 7) dan nomor sesi lama masih hidup.
+- **Dampak:** Middleware global `App\Http\Middleware\PreventCredentialPageCaching` (berlaku untuk GET, POST, redirect, dan halaman error di alamat itu; juga `Pragma: no-cache`). `resources/js/app.js`: form `wire:submit` tidak disentuh saat dikirim, dan submit yang dibatalkan tidak mengosongkan isian. `session()->regenerate(true)` di `Auth\Activation`, `Akun\Keamanan`, `Auth\TwoFactorSetup`. `ListUserSessions` menampilkan "Perangkat ini" dari request bila baris sesinya belum tertulis. Login Fortify sendiri tidak diubah: baris sesi tamu dari sebelum login tidak punya pemilik, jadi tidak pernah tampil sebagai perangkat dan tidak pernah berstatus masuk. Skenario Back itu sendiri belum diulang di browser (`docs/dev-notes/M2.md`, "Not verified").
+- **Status:** final (keputusan user: "lakukan sesuai saranmu"; menyangkut keamanan, mengubahnya butuh entri baru).
+
+### D-94 · Kata sandi umum, nama pengguna, dan nama email ditolak · 6 Okt 2026
+- **Keputusan:** Kata sandi baru ditolak bila:
+  - memuat **nama pengguna** (username) akun itu atau **bagian email sebelum "@"**, utuh atau potongan 4 karakter ke atas yang berisi huruf;
+  - **terlalu umum**: memuat kata dari daftar bawaan (67 kata, mis. password, sandi, rahasia, admin, sekolah, semarang, indonesia, merdeka, bismillah, iloveyou, juga ejaan seperti passw0rd; "@" dan "$" dibaca a dan s), urutan huruf abjad atau keyboard 4 huruf ke atas, urutan angka 5 angka ke atas, atau satu karakter diulang 4 kali ke atas, **dan** huruf lain yang tersisa kurang dari 5. Angka dan simbol tidak dihitung.
+  - Contoh ditolak: `password123`, `Qwerty!2026`, `P@ssw0rd-99`, `kode123456`. Contoh diterima: `sandiwara malam 77`.
+  - Berlaku untuk siswa dan staf, di aktivasi, Keamanan akun, dan Lupa kata sandi. Aturan lama (K5, D-32) dan pesannya tidak berubah.
+- **Alasan:** Q1-02: `password123` diterima. Q2-05: staf boleh memakai kata sandi yang berisi username-nya; staf tidak punya NIS, jadi sebelumnya tidak ada pemeriksaan identitas untuk akun staf.
+- **Dampak:** `App\Domain\Accounts\PasswordPolicy` (pesan "Jangan memakai nama pengguna.", "Jangan memakai email sendiri.", "Kata sandi ini terlalu mudah ditebak."). `SetNewPassword::hint()` menyusun kalimat petunjuk di bawah kolom dari aturan yang berlaku untuk akun itu (staf: nama, nama pengguna, email; siswa atau tamu: tanggal lahir, NIS/NISN, nama). Daftar itu pendek, bukan kamus: pemeriksaan `uncompromised()` (HIBP) di produksi menutup sisanya. Yang dihitung hanya huruf, jadi `admin` diikuti sepuluh angka acak juga ditolak. Kata sandi sementara yang diketik Admin untuk akun staf **tidak** diperiksa dengan daftar ini.
+- **Status:** final (keputusan user: "lakukan sesuai saranmu"). Menambah K5 / D-32.
+
+### D-95 · "Buka ulang" tidak pernah memendekkan batas; alasan minimal 10 karakter · 6 Okt 2026
+- **Keputusan:** "Buka ulang" aktivasi (K2) memberi batas baru = **yang lebih jauh** antara batas yang sekarang dan sekarang + 72 jam. Tombolnya hanya tampil bila ada yang berubah: batas sudah lewat, akun dibekukan karena salah kata sandi, atau sisa waktunya kurang dari 72 jam. Dialognya menyebut hasilnya sebelum ditekan ("Dibuka lagi sampai …", atau "Pembekuan dibuka. Batas aktivasi tetap …"). Alasan "Buka ulang" dan alasan **menolak lomba** minimal **10 karakter**.
+- **Alasan:** Q2-09: "Buka ulang" pada siswa yang batasnya masih 15 Okt memendekkannya menjadi 8 Okt, dan alasan dua huruf diterima. Q1-18: alasan penolakan "ab" terkirim ke pengusul lomba lewat email.
+- **Dampak:** `ReopenActivationWindow::deadlineAfter()` / `wouldChange()` / `notNeededMessage()` / `MIN_REASON`. Permintaan basi atau buatan dijawab "Batas aktivasi siswa ini masih sampai … Belum perlu dibuka ulang." Audit `account.activation_reopened` menambah `previous_expires_at`. Tombol kini bertulisan "Buka ulang" (dulu "Buka ulang 72 jam"). Akun menunggu yang tidak punya batas sama sekali (data sebelum B1) tidak punya tombol. `VerifyCompetition::MIN_REJECT_NOTE` ("Alasan penolakan minimal 10 karakter."). Kolom alasan lain **belum** diberi batas yang sama: tolak pendaftaran (Kepala Sekolah), tolak atau minta revisi laporan hasil, dan "Buka pembekuan" (backlog; perlu keputusan user). Koreksi surat tetap minimal 5 karakter (D-49).
+- **Status:** final (keputusan user: "lakukan sesuai saranmu"). Menyesuaikan K2 (SECURITY §3a): "72 jam" kini berarti paling sedikit 72 jam dari sekarang, tidak pernah lebih pendek dari batas yang sudah ada.
+
+### D-96 · Talenta: catatan untuk siswa tersimpan sebagai draf; "Tidak lolos" minta konfirmasi · 6 Okt 2026
+- **Keputusan:** "Simpan" di panel Talenta kini juga menyimpan **draf** catatan untuk siswa. Draf hanya dilihat Kesiswaan. Siswa baru menerimanya saat ada keputusan (Lolos ke …, Tidak lolos, Pulihkan); keputusan mengirim catatannya lalu mengosongkan draf. "Tidak lolos" (di panel dan di aksi massal) membuka dialog konfirmasi dulu.
+  - Catatan mana yang terkirim: bila Kesiswaan mengisi kolom catatan untuk keputusan itu (panel, dialog Pulihkan, kolom catatan di dialog massal), teks itu yang terkirim; kolom yang dikosongkan berarti tanpa catatan.
+  - *Sementara — bisa diubah user:* aksi cepat yang tidak punya kolom catatan (ikon centang di baris, massal "Pindahkan ke …", massal "Tidak lolos" dengan catatan kosong) **ikut mengirim draf yang tersimpan**. Toast-nya menulis "… catatan untuk siswa yang tersimpan ikut terkirim.", dan dialog "Tidak lolos" massal menyebut berapa pilihan yang punya draf.
+- **Alasan:** Q2-14: "Simpan" menulis "tersimpan", tetapi catatan untuk siswa hilang tanpa pesan. Q2-15: "Tidak lolos" langsung jalan dengan satu klik, padahal siswa langsung diberi tahu. Untuk aksi cepat, tafsir lain ("hanya panel yang mengirim catatan") akan membuang atau menahan draf tanpa kabar, yaitu temuan itu sendiri.
+- **Dampak:** Kolom baru `talent_applications.student_note_draft`; `UpdateTalentAssessment` (kunci `student_note_draft`), `TalentNote::forDecision()`, `MoveTalentStage`, `RejectTalentApplication`, `RestoreTalentApplication`; dialog `tidak-lolos-talenta`; petunjuk "Draf tersimpan, belum terkirim." di panel; audit `talent.stage_changed` dan `talent.rejected` menambah `student_note_from_draft`. `student_note` tetap hanya ditulis oleh keputusan, jadi Profil talenta, tab guru, ekspor, dan notifikasi tidak pernah memuat draf.
+- **Status:** final (keputusan user: "lakukan sesuai saranmu"); butir aksi cepat di atas sementara. Menyesuaikan kalimat D-85 "Tombol 'Simpan' tidak pernah menyimpan catatan untuk siswa"; D-85 selebihnya tetap (dua catatan opsional, "tidak lolos" tidak wajib bercatatan).
+
+### D-97 · Satu prestasi hanya di satu acara apresiasi; "Lepas dari acara" · 6 Okt 2026
+- **Keputusan:** Satu prestasi hanya boleh ada di **satu** acara apresiasi. Prestasi yang masih dijadwalkan di acara lain yang belum dikonfirmasi ditolak ("Prestasi ini sudah dijadwalkan di acara X (5 Okt 2026). Lepas dulu dari acara itu."); prestasi yang sudah diapresiasi di acara terkonfirmasi juga ditolak ("Prestasi ini sudah diapresiasi di acara X (…)."). Tombol baru **"Lepas dari acara"** mengeluarkan satu prestasi terjadwal dari acara yang belum dikonfirmasi: acaranya tetap ada, prestasinya bisa dimasukkan ke acara lain, dan siswanya diberi tahu ("Jadwal apresiasi berubah").
+- **Alasan:** Q2-10: satu prestasi bisa masuk dua acara, dan satu-satunya cara melepasnya adalah menghapus seluruh acara (D-87).
+- **Dampak:** `RecordAppreciation` (mengunci baris prestasi; `blocking()`, `blockedMessage()`), `ReleaseAppreciation` (hak `AppreciationPolicy::delete`: pemegang `appreciation.manage`, hanya baris `dijadwalkan` di acara yang belum dikonfirmasi; audit `appreciation.released` tanpa nama), notifikasi `AppreciationReleased` (jenis `appreciation.released`, hanya untuk akun yang bisa masuk, dikirim setelah commit). "Tambah prestasi" hanya memuat prestasi yang belum ada di acara mana pun; Publikasi › "Masukkan ke acara" tidak menawarkan acara bila prestasinya sudah ada di satu acara. Tidak ada migrasi data untuk prestasi yang terlanjur ada di dua acara (hanya data uji lokal): lepas dengan tombol baru.
+- **Status:** final (keputusan user: "lakukan sesuai saranmu"). Melengkapi D-87: konfirmasi dan hapus tetap di tingkat acara, dan acara terkonfirmasi tetap terkunci.
+
+### D-98 · Tanggal lomba: urutan dan konfirmasi untuk tanggal yang sudah lewat · 6 Okt 2026
+- **Keputusan:** "Tanggal mulai" lomba tidak boleh sebelum "Batas daftar" (pesan "Tanggal mulai tidak boleh sebelum batas daftar."): diperiksa saat membuat, saat mengubah, dan sekali lagi saat mempublikasikan. Mempublikasikan lomba yang batas daftar atau tanggal finalnya **sudah lewat** tetap boleh (lomba lama kadang dicatat belakangan), tetapi hanya setelah konfirmasi yang jelas ("Tanggal lomba ini sudah lewat (…). Tetap publikasikan?"). Membuat atau menyimpan tanpa mempublikasikan tidak ditanya.
+- **Alasan:** Q1-04: lomba terbit dengan tanggal mulai 1 Agu, batas daftar 1 Sep, dan semua tanggal sudah lewat. Yang diperiksa dulu hanya "batas daftar ≥ dibuka" dan "final ≥ mulai".
+- **Dampak:** `App\Actions\Competitions\CompetitionDates`; `CreateCompetition`; `UpdateCompetition` (lomba yang sudah terbit hanya diperiksa bila salah satu dari dua tanggal itu diubah, supaya data lama tetap bisa diedit); `VerifyCompetition::handle(..., bool $confirmPastDates = false)` (menolak dengan kunci `CompetitionDates::PAST_KEY`; audit `competition.published` menambah `past_dates`). Layar: kartu antrean menulis "Tanggal sudah lewat: …" dan "Publikasikan" membuka dialog `lomba-tanggal-lewat`; urutan yang salah menampilkan "Perlu diperbaiki: …" sebagai ganti tombol; di drawer "Periksa lomba" ada centang "Tanggal lomba ini sudah lewat. Tetap publikasikan.", yang hanya ditanya oleh "Simpan & publikasikan".
+- **Status:** final (keputusan user: "lakukan sesuai saranmu").
+
+### D-99 · Siswa tidak men-download surat guru; kartu surat hanya memuat surat yang sudah dikirim · 6 Okt 2026
+- **Keputusan:** Di Siswa › Lomba saya, kartu "Surat tugas" hanya memuat surat yang **sudah dikirim** Tata Usaha. Surat siswa punya tombol download. Surat perintah tugas guru pendamping tampil sebagai **baris keterangan saja** ("Surat perintah tugas untuk guru pendamping sudah terbit" + "Untuk Bu/Pak …"), tanpa link dan tanpa tombol. Selama surat belum dikirim, kartu menulis "Tata Usaha sedang menyiapkan surat tugas." Guru pembimbing dan staf tetap bisa men-download suratnya.
+- **Alasan:** Q1-01: siswa melihat tombol download surat guru yang berujung 404. `LetterPolicy` memang tidak memberi berkas itu ke siswa (surat guru dan Lampirannya memuat NIP dan pangkat guru); yang salah adalah tombolnya. Surat yang sudah dibuat tetapi belum dikirim juga menampilkan tombol yang menjawab 404.
+- **Dampak:** `Siswa\LombaSaya\Index` (`detail()`, `letterRows()`), partial `letters-card`. `LetterPolicy` tidak berubah; link surat siswa mengikuti `Gate::allows('view', $letter)`.
+- **Status:** final (keputusan user: "lakukan sesuai saranmu"). *Sementara — bisa diubah user:* ringkasan QA meminta lead memutuskan apakah siswa boleh melihat surat guru; yang dibangun mempertahankan aturan policy yang sudah ada (tidak boleh). Bila siswa harus boleh membukanya, itu butuh entri baru dan perubahan `LetterPolicy`.
+
+### D-100 · Angka menu samping dihitung di satu tempat untuk semua halaman · 6 Okt 2026
+- **Keputusan:** Angka di menu samping (Antrean surat, Persetujuan, Usulan lomba, Verifikasi hasil, Antrean publikasi) tampil di **setiap** halaman ber-layout aplikasi, termasuk Arsip surat, Template surat, Status aktivasi, Notifikasi, dan Keamanan akun. Satu penghitung menghitungnya saat layout dirender; halaman tidak perlu lagi mengirim angkanya sendiri (halaman yang mengirim tetap menang).
+- **Alasan:** Q1-05: angka hanya muncul di halaman yang komponennya mengirim `badges` ke layout, jadi hilang di halaman lain.
+- **Dampak:** `App\Providers\NavigationServiceProvider::badges(object $user, string $role, array $except = [])`, didaftarkan lewat `Navigation::resolveBadgesUsing()`; `Navigation::badgeKeys()`. Aturannya: hanya kunci angka dari menu yang sedang dirender; hanya bila pengguna boleh membuka antrean itu (izin atau policy yang sama dengan layarnya, bukan nama peran); query yang sama dengan layarnya, satu `count(*)` per kunci, tanpa memuat baris; tidak ada untuk tamu. Atribut `data-sth-badge` dan event `sth-badges` (D-90) tidak berubah. Menu Admin tidak punya butir berangka, jadi akun Admin tetap tidak melihat angka di layar Kesiswaan, seperti sebelumnya.
+- **Status:** final (keputusan user: "lakukan sesuai saranmu"). Melengkapi D-90.
+
+### D-101 · Halaman error sendiri; `GET /logout` dialihkan; halaman pertama setelah login · 6 Okt 2026
+- **Keputusan:**
+  - Aplikasi punya halaman error sendiri untuk 401, 403, 404, 405, 419, 429, 500, dan 503 (ditambah cadangan untuk 4xx dan 5xx lain): berbahasa Indonesia, bergaya aplikasi, dengan "Kembali ke beranda" dan, bila pengunjung datang dari halaman lain di aplikasi ini, "Kembali". Halaman error **tidak pernah** menampilkan teks exception, dan tetap dipakai saat `APP_DEBUG=true`.
+  - `GET /logout` tidak lagi menjawab 405: yang sudah masuk dialihkan ke beranda, tamu ke halaman masuk. Alamat itu **tidak pernah** mengeluarkan pengguna; keluar tetap lewat `POST /logout` dengan token CSRF.
+  - Bila halaman pertama setelah login (alamat yang dibuka sebelum login) menjawab 403 atau 404 untuk akun itu, pengguna dialihkan ke berandanya. Hanya untuk permintaan GET tepat setelah login; permintaan berikutnya dan permintaan JSON mendapat halaman error biasa.
+- **Alasan:** Q1-07 / Q2-30: halaman 403/404 bawaan tampil polos (gayanya diblokir CSP), 403 berbahasa Inggris, tanpa tombol kembali. Q2-03: `GET /logout` menjawab 405 dengan halaman debug 870 kB dalam 6–63 detik. Q2-17: setelah login pengguna mendarat di alamat lama yang tidak boleh dibukanya.
+- **Dampak:** `resources/views/errors/*` (kerangka `errors.layout`: tanpa layout peran, tanpa `style`/JS inline, `noindex`), `App\Providers\ErrorPageServiceProvider` (`links()`, `afterLogin()`, flash `sth.after_login` pada event `Login`; untuk 5xx tidak membuka koneksi database), satu baris `$exceptions->render()` di `bootstrap/app.php`, route `logout.get`. `/verifikasi-surat/{code}` kini menerima kode satu segmen apa pun, sehingga kode yang salah ketik mendapat halaman verifikasi sendiri ("Tidak ditemukan · Surat dengan kode ini tidak terdaftar."). Alamat yang tidak dikenal tidak punya sesi, jadi di sana "Kembali ke beranda" menuju `/` juga untuk pengguna yang sudah masuk (sengaja tanpa `Route::fallback()`, supaya permintaan pemindai tidak menulis baris sesi). Belum diuji ulang dengan `APP_DEBUG=false`.
+- **Status:** final (keputusan user: "lakukan sesuai saranmu").
 
 ## E. Usulan keamanan yang belum diputuskan
 

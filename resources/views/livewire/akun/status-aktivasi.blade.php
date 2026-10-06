@@ -275,19 +275,34 @@
         </x-slot:footer>
     </x-sth.modal>
 
+    {{-- "Buka ulang" says what it will do before the click; the date comes from ReopenActivationWindow::deadlineAfter(). --}}
     <x-sth.modal id="aktivasi-aksi" :title="$action === 'cair' ? 'Buka pembekuan akun?' : 'Buka ulang aktivasi?'" size="sm"
         :description="$action === 'cair'
             ? 'Pastikan identitas pemilik akun sudah dicek tatap muka. Jika email akun mencurigakan, pakai Reset kata sandi & email di Pengguna & peran.'
-            : 'Kata sandi awal atau sementara siswa berlaku lagi 72 jam. Pastikan siswa siap aktivasi.'">
+            : 'Kata sandi awal atau sementara siswa bisa dipakai lagi. Pastikan siswa siap aktivasi.'">
         <form id="aktivasi-aksi-form" wire:submit="submitAction" class="flex flex-col gap-4" novalidate>
             @if ($target)
-                <p class="m-0 font-semibold">{{ $target['name'] }}@if ($target['classroom']) <span class="font-medium text-muted">· {{ $target['classroom'] }}</span>@endif</p>
+                <div class="flex flex-col gap-1">
+                    <p class="m-0 font-semibold">{{ $target['name'] }}@if ($target['classroom']) <span class="font-medium text-muted">· {{ $target['classroom'] }}</span>@endif</p>
+                    @if ($target['reopen'])
+                        <p class="m-0 text-[14.5px]">
+                            @if ($target['reopen']['kept'])
+                                Pembekuan dibuka. Batas aktivasi tetap <span class="num font-semibold">{{ $target['reopen']['until'] }}</span>.
+                            @elseif ($target['reopen']['unfreezes'])
+                                Pembekuan dibuka dan aktivasi dibuka lagi sampai <span class="num font-semibold">{{ $target['reopen']['until'] }}</span>.
+                            @else
+                                Dibuka lagi sampai <span class="num font-semibold">{{ $target['reopen']['until'] }}</span>.
+                            @endif
+                        </p>
+                    @endif
+                </div>
             @endif
-            <x-sth.textarea wire:model="reason" label="Alasan" rows="2" hint="Contoh: siswa sakit saat aktivasi kelas." />
+            <x-sth.textarea wire:model="reason" label="Alasan" rows="2"
+                :hint="($action === 'cair' ? '' : 'Minimal 10 karakter. ').'Contoh: siswa sakit saat aktivasi kelas.'" />
         </form>
         <x-slot:footer>
             <x-sth.button variant="quiet" data-sth-close>Batal</x-sth.button>
-            <x-sth.button type="submit" form="aktivasi-aksi-form" wire:loading.attr="disabled" wire:target="submitAction">{{ $action === 'cair' ? 'Buka pembekuan' : 'Buka ulang 72 jam' }}</x-sth.button>
+            <x-sth.button type="submit" form="aktivasi-aksi-form" wire:loading.attr="disabled" wire:target="submitAction">{{ $action === 'cair' ? 'Buka pembekuan' : 'Buka ulang' }}</x-sth.button>
         </x-slot:footer>
     </x-sth.modal>
 </div>

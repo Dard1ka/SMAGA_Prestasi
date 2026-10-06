@@ -1,4 +1,6 @@
-{{-- Aktivasi akun (urutan keputusan lead 2026-10-04): 1 email → 2 kode → 3 kata sandi (siswa boleh lewati) → selesai. --}}
+{{-- Aktivasi akun (urutan keputusan lead 2026-10-04): 1 email → 2 kode → 3 kata sandi → selesai. "Lewati" hanya untuk
+     siswa yang masih memakai kata sandi dari sekolah ($canKeepPassword); staf dan siswa yang akunnya direset Admin
+     wajib membuat kata sandi baru (M2-A). --}}
 <div class="flex flex-col gap-6">
     @if ($step < 4)
         <div class="flex flex-col gap-2">
@@ -98,7 +100,7 @@
                 wire:model="password"
                 type="password"
                 label="Kata sandi baru"
-                hint="Minimal {{ $minLength }} karakter, ada huruf dan angka. Jangan pakai tanggal lahir, NIS/NISN, atau nama."
+                :hint="$passwordHint"
                 autocomplete="new-password"
                 size="lg"
                 revealable

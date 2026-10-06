@@ -20,6 +20,8 @@ use Illuminate\Validation\ValidationException;
  *
  * `student_note` (optional "catatan untuk siswa") belongs to this decision: it is stored on the row, sent
  * with the notification and shown on Profil talenta. A move without one clears the note of the earlier stage.
+ * When the caller passes no `student_note` at all (row button, bulk move), the draft that "Simpan" kept on the
+ * row is the note (M2-B, TalentNote::forDecision()); every move clears the draft.
  */
 final class MoveTalentStage
 {
@@ -33,9 +35,11 @@ final class MoveTalentStage
         Gate::forUser($actor)->authorize('move', $application);
 
         $clean = $details === null ? [] : $this->assessment->validated($details);
-        $studentNote = TalentNote::clean(isset($details['student_note']) ? (string) $details['student_note'] : null, 'student_note');
+        // A text typed for this move wins (an empty one = no note); without the key the saved draft is sent.
+        $noteGiven = isset($details['student_note']);
+        $givenNote = TalentNote::clean($noteGiven ? (string) $details['student_note'] : null, 'student_note');
 
-        [$locked, $from] = DB::transaction(function () use ($actor, $application, $to, $clean, $studentNote): array {
+        [$locked, $from, $studentNote] = DB::transaction(function () use ($actor, $application, $to, $clean, $noteGiven, $givenNote): array {
             /** @var TalentApplication $locked */
             $locked = TalentApplication::query()->whereKey($application->getKey())->lockForUpdate()->firstOrFail();
             $from = $locked->status;
@@ -48,16 +52,24 @@ final class MoveTalentStage
                 ]);
             }
 
-            $locked->forceFill(['status' => $to, 'student_note' => $studentNote, ...$clean])->save();
+            [$studentNote, $fromDraft] = TalentNote::forDecision($givenNote, $noteGiven, $locked->student_note_draft);
+
+            $locked->forceFill([...$clean, 'status' => $to, 'student_note' => $studentNote, 'student_note_draft' => null])->save();
 
             activity('talent')
                 ->performedOn($locked)
                 ->causedBy($actor)
                 ->event('talent.stage_changed')
-                ->withProperties(['from' => $from->value, 'to' => $to->value, 'mentor_id' => $locked->mentor_id, 'student_note' => $studentNote])
+                ->withProperties([
+                    'from' => $from->value,
+                    'to' => $to->value,
+                    'mentor_id' => $locked->mentor_id,
+                    'student_note' => $studentNote,
+                    'student_note_from_draft' => $fromDraft,
+                ])
                 ->log('talent.stage_changed');
 
-            return [$locked, $from];
+            return [$locked, $from, $studentNote];
         });
 
         $application->setRawAttributes($locked->getAttributes(), true);

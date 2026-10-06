@@ -163,6 +163,32 @@ it('shows the note for the student next to the choice, never the note for the gu
         ->assertDontSee('Minta ditinjau ulang');
 });
 
+// M2-B (QA Q2-14): a note Kesiswaan only saved with "Simpan" is a draft. The student reads the sent note only.
+it('never shows the student a note that is still a draft', function (): void {
+    TalentApplication::factory()->status(TalentStatus::Pemetaan)->create([
+        'student_id' => $this->nadia->getKey(), 'talent_type_id' => $this->osn->getKey(), 'talent_branch_id' => $this->kimia->getKey(),
+        'student_note' => 'Siapkan rapor semester 1.',
+        'student_note_draft' => 'Draf: nilai asesmen belum cukup.',
+    ]);
+    TalentApplication::factory()->status(TalentStatus::Terdaftar)->create([
+        'student_id' => $this->nadia->getKey(), 'talent_type_id' => $this->osn->getKey(),
+        'talent_branch_id' => $this->osn->branches()->where('name', '!=', 'Kimia')->firstOrFail()->getKey(),
+        'student_note_draft' => 'Draf kedua yang belum terkirim.',
+    ]);
+
+    Livewire::actingAs($this->nadia->user)
+        ->test(ProfilTalenta::class)
+        ->assertSee('Siapkan rapor semester 1.')
+        ->assertDontSee('nilai asesmen belum cukup')
+        ->assertDontSee('Draf kedua');
+
+    $this->actingAs($this->nadia->user)
+        ->get(route('siswa.talenta'))
+        ->assertOk()
+        ->assertDontSee('nilai asesmen belum cukup')
+        ->assertDontSee('Draf kedua');
+});
+
 it('asks for a second look at a rejected choice, once per rejection', function (): void {
     Notification::fake();
     $kesiswaan = F::staff(RoleName::Kesiswaan, 'Ibu Dwi Rahayu');

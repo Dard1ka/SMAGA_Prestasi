@@ -10,9 +10,7 @@
                     wire:model="password"
                     type="password"
                     label="Kata sandi baru"
-                    :hint="$minLength !== null
-                        ? 'Minimal '.$minLength.' karakter, ada huruf dan angka. Jangan pakai tanggal lahir, NIS/NISN, atau nama.'
-                        : 'Pakai kata sandi panjang yang hanya kamu tahu.'"
+                    :hint="$passwordHint"
                     autocomplete="new-password"
                     revealable
                 />

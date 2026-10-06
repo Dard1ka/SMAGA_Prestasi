@@ -13,6 +13,7 @@ use App\Livewire\Humas\Jadwal;
 use App\Models\Appreciation;
 use App\Models\AppreciationEvent;
 use App\Notifications\Publications\AppreciationCancelled;
+use App\Notifications\Publications\AppreciationReleased;
 use App\Notifications\Publications\AppreciationScheduled;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
@@ -314,6 +315,136 @@ it('keeps the event ids of the screen locked and 404s unknown events', function 
         ->assertNotFound();
 
     expect(AppreciationEvent::query()->count())->toBe(0);
+});
+
+// --- M2-B: one achievement, one open event; "Lepas dari acara" (QA 2026-10-05, Q2-10) ------
+
+it('offers only achievements that are on no event in "Tambah prestasi" and refuses a forged second event', function (): void {
+    $nadia = HumasFixtures::achievement();
+    $raka = HumasFixtures::achievement(studentName: 'Raka Pradipta', competitionName: 'FIKSI 2026');
+    $first = HumasFixtures::event();
+    $second = HumasFixtures::event('Upacara Hari Guru', now()->addDays(11)->toDateString());
+    app(RecordAppreciation::class)->handle($this->humas, $first, $nadia);
+    Notification::fake();
+
+    Livewire::actingAs($this->humas)
+        ->test(Apresiasi::class)
+        ->call('startAdding', $second->getKey())
+        ->assertSee('Raka Pradipta (XI-4)')
+        ->assertDontSee('Nadia Putri Anindya (XI-4)')
+        ->assertSee('belum masuk acara mana pun')
+        // The browser names it anyway: the Action answers with the event it is on.
+        ->set('achievementId', $nadia->getKey())
+        ->call('addAchievement')
+        ->assertHasErrors(['achievementId'])
+        ->assertSee('Prestasi ini sudah dijadwalkan di acara Upacara Senin, 5 Oktober 2026')
+        ->assertSee('Lepas dulu dari acara itu.')
+        ->set('achievementId', $raka->getKey())
+        ->call('addAchievement')
+        ->assertHasNoErrors()
+        // Nothing is left to add: the hint says why.
+        ->call('startAdding', $second->getKey())
+        ->assertSee('Tidak ada prestasi lain yang bisa dimasukkan.')
+        ->assertSee('perlu dilepas dulu dari acara itu');
+
+    expect(Appreciation::query()->where('achievement_id', $nadia->getKey())->count())->toBe(1)
+        ->and(Appreciation::query()->count())->toBe(2);
+    Notification::assertNotSentTo($nadia->student->user, AppreciationScheduled::class);
+});
+
+it('releases one achievement from an event through the dialog and tells the student', function (): void {
+    $nadia = HumasFixtures::achievement();
+    $raka = HumasFixtures::achievement(studentName: 'Raka Pradipta', competitionName: 'FIKSI 2026');
+    $event = HumasFixtures::event();
+    $row = app(RecordAppreciation::class)->handle($this->humas, $event, $nadia);
+    $kept = app(RecordAppreciation::class)->handle($this->humas, $event, $raka);
+    Notification::fake();
+
+    $component = Livewire::actingAs($this->humas)
+        ->test(Apresiasi::class)
+        ->assertSee('Lepas dari acara')
+        ->assertSeeHtml("confirmRelease('".$row->getKey()."')")
+        ->assertSeeHtml("confirmRelease('".$kept->getKey()."')")
+        ->call('confirmRelease', $row->getKey())
+        ->assertDispatched('sth-modal-open', id: 'apresiasi-konfirmasi')
+        ->assertSet('confirmRowId', $row->getKey())
+        ->assertSet('confirmEventId', $event->getKey())
+        ->assertSee('Lepas dari acara?')
+        ->assertSee('Nadia Putri Anindya (XI-4)')
+        ->assertSee('Acaranya tetap ada. Siswanya diberi tahu.');
+
+    // The button only opened the dialog.
+    expect(Appreciation::query()->count())->toBe(2);
+    Notification::assertNothingSent();
+
+    $component->call('runConfirmed')
+        ->assertDispatched('sth-modal-close', id: 'apresiasi-konfirmasi')
+        ->assertDispatched('sth-toast', message: 'Prestasi dilepas dari acara ini. Siswanya diberi tahu.', tone: 'success')
+        ->assertSet('confirmRowId', null)
+        ->assertSet('confirmEventId', null)
+        ->assertSee('Upacara Senin, 5 Oktober 2026')
+        ->assertDontSeeHtml("confirmRelease('".$row->getKey()."')")
+        ->assertSeeHtml("confirmRelease('".$kept->getKey()."')")
+        // Free again: it is offered for an event.
+        ->call('startAdding', $event->getKey())
+        ->assertSee('Nadia Putri Anindya (XI-4)');
+
+    expect(Appreciation::query()->sole()->getKey())->toBe($kept->getKey())
+        ->and(AppreciationEvent::query()->count())->toBe(1);
+    Notification::assertSentTo($nadia->student->user, AppreciationReleased::class);
+    Notification::assertNotSentTo($raka->student->user, AppreciationReleased::class);
+});
+
+it('offers no "Lepas dari acara" on a confirmed event and answers a stale or forged release with the reason', function (): void {
+    $event = HumasFixtures::event('Upacara hari ini', now()->toDateString());
+    $row = app(RecordAppreciation::class)->handle($this->humas, $event, HumasFixtures::achievement());
+    $stale = Livewire::actingAs($this->humas)->test(Apresiasi::class)->call('confirmRelease', $row->getKey());
+
+    // A colleague confirms the event while the dialog is open.
+    app(CompleteAppreciationEvent::class)->handle(AuthTestHelpers::staff(RoleName::Kesiswaan), $event);
+
+    $stale->call('runConfirmed')
+        ->assertDispatched('sth-modal-close', id: 'apresiasi-konfirmasi')
+        ->assertDispatched('sth-toast', message: 'Prestasi di acara yang sudah dilaksanakan tidak bisa dilepas.', tone: 'error')
+        ->assertSet('confirmRowId', null);
+
+    Livewire::actingAs($this->humas)
+        ->test(Apresiasi::class)
+        ->assertSee('Sudah diapresiasi')
+        ->assertDontSee('Lepas dari acara')
+        ->assertDontSeeHtml("confirmRelease('".$row->getKey()."')")
+        ->call('confirmRelease', $row->getKey())
+        ->assertNotDispatched('sth-modal-open')
+        ->assertDispatched('sth-toast', message: 'Prestasi di acara yang sudah dilaksanakan tidak bisa dilepas.', tone: 'error')
+        ->assertSet('confirmRowId', null)
+        // A row that no longer exists.
+        ->call('confirmRelease', '01JZZZZZZZZZZZZZZZZZZZZZZZ')
+        ->assertNotDispatched('sth-modal-open')
+        ->assertDispatched('sth-toast', message: 'Prestasi ini sudah tidak ada di acara tersebut.', tone: 'error');
+
+    expect(fn () => Livewire::actingAs($this->humas)->test(Apresiasi::class)->set('confirmRowId', $row->getKey()))->toThrow(Exception::class);
+    expect(Appreciation::query()->sole()->status)->toBe(AppreciationStatus::Selesai);
+});
+
+it('lets Kesiswaan release a row and keeps the release away from other roles', function (): void {
+    $event = HumasFixtures::event();
+    $row = app(RecordAppreciation::class)->handle($this->humas, $event, HumasFixtures::achievement());
+
+    foreach ([RoleName::Guru, RoleName::TataUsaha, RoleName::KepalaSekolah] as $role) {
+        Livewire::actingAs(AuthTestHelpers::staff($role))->test(Apresiasi::class)->assertForbidden();
+    }
+
+    expect(Appreciation::query()->count())->toBe(1);
+
+    Livewire::actingAs(AuthTestHelpers::staff(RoleName::Kesiswaan))
+        ->test(Apresiasi::class)
+        ->assertSeeHtml("confirmRelease('".$row->getKey()."')")
+        ->call('confirmRelease', $row->getKey())
+        ->call('runConfirmed')
+        ->assertDispatched('sth-toast', message: 'Prestasi dilepas dari acara ini. Siswanya diberi tahu.', tone: 'success');
+
+    expect(Appreciation::query()->count())->toBe(0)
+        ->and(AppreciationEvent::query()->count())->toBe(1);
 });
 
 it('works for Kesiswaan (appreciation.manage) and not for other roles', function (): void {

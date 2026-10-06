@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Livewire\Kesiswaan\Lomba;
 
 use App\Actions\Competitions\CloseCompetition;
+use App\Actions\Competitions\CompetitionDates;
 use App\Actions\Competitions\VerifyCompetition;
 use App\Enums\CompetitionStatus;
 use App\Enums\Participation;
@@ -61,6 +62,13 @@ class Index extends Component
 
     public string $rejectNote = '';
 
+    /** id of the dialog "Tanggal lomba ini sudah lewat. Tetap publikasikan?" (<x-sth.modal>). */
+    public const PAST_DIALOG = 'lomba-tanggal-lewat';
+
+    /** Lomba waiting in that dialog; set only by publish(). */
+    #[Locked]
+    public ?string $pastId = null;
+
     public function mount(): void
     {
         $this->authorize('manage', Competition::class);
@@ -116,19 +124,63 @@ class Index extends Component
         $this->dispatch('lomba-form-open', id: $competition->getKey(), mode: $competition->status === CompetitionStatus::MenungguVerifikasi ? 'verify' : 'edit');
     }
 
+    /**
+     * "Publikasikan" on a queue card. A lomba whose registration deadline or final date has passed is not
+     * published by this click: the dialog PAST_DIALOG asks first (M2-B, Q1-04) and publishPast() carries on.
+     */
     public function publish(string $id, VerifyCompetition $verify): void
     {
         $competition = $this->find($id);
+        $this->authorize('verify', $competition);
 
+        if (CompetitionDates::past($competition->registration_closes_at, $competition->final_on) !== []) {
+            $this->askPast($competition);
+
+            return;
+        }
+
+        $this->runPublish($competition, false, $verify);
+    }
+
+    /** "Tetap publikasikan" in the dialog: the verifier said yes to the past dates. */
+    public function publishPast(VerifyCompetition $verify): void
+    {
+        abort_if($this->pastId === null, 404);
+
+        $competition = $this->find($this->pastId);
+        $this->authorize('verify', $competition);
+
+        $this->pastId = null;
+        $this->dispatch('sth-modal-close', id: self::PAST_DIALOG);
+        $this->runPublish($competition, true, $verify);
+    }
+
+    private function runPublish(Competition $competition, bool $confirmPastDates, VerifyCompetition $verify): void
+    {
         try {
-            $verify->handle($this->actor(), $competition, CompetitionStatus::Dipublikasikan);
+            $verify->handle($this->actor(), $competition, CompetitionStatus::Dipublikasikan, null, $confirmPastDates);
         } catch (ValidationException $e) {
-            $this->dispatch('sth-toast', message: collect($e->errors())->flatten()->first() ?? 'Lomba belum bisa dipublikasikan.', tone: 'error');
+            $errors = $e->errors();
+
+            // The date passed between drawing the card and the click: ask, do not refuse.
+            if (isset($errors[CompetitionDates::PAST_KEY]) && ! $confirmPastDates) {
+                $this->askPast($competition);
+
+                return;
+            }
+
+            $this->dispatch('sth-toast', message: collect($errors)->flatten()->first() ?? 'Lomba belum bisa dipublikasikan.', tone: 'error');
 
             return;
         }
 
         $this->dispatch('sth-toast', message: 'Lomba dipublikasikan ke katalog.', tone: 'success');
+    }
+
+    private function askPast(Competition $competition): void
+    {
+        $this->pastId = $competition->getKey();
+        $this->dispatch('sth-modal-open', id: self::PAST_DIALOG);
     }
 
     public function startReject(string $id): void
@@ -208,7 +260,23 @@ class Index extends Component
             'capped' => $more && $this->limit >= self::MAX,
             'queue' => $this->tab === 'verifikasi' ? $this->queueCards() : collect(),
             'statusFilters' => ['' => 'Semua'] + CompetitionStatus::options(),
+            'pastLomba' => $this->pastLomba(),
         ])->layoutData(['badges' => $this->kesiswaanBadges()]);
+    }
+
+    /** @return array{name: string, dates: string}|null the lomba in the "Tetap publikasikan?" dialog */
+    private function pastLomba(): ?array
+    {
+        $competition = $this->pastId !== null ? Competition::query()->find($this->pastId) : null;
+
+        if ($competition === null) {
+            return null;
+        }
+
+        return [
+            'name' => (string) $competition->name,
+            'dates' => implode(', ', CompetitionDates::past($competition->registration_closes_at, $competition->final_on)),
+        ];
     }
 
     /** @return Builder<Competition> */
@@ -307,6 +375,11 @@ class Index extends Component
                         'url' => Route::has('files.show') ? route('files.show', $c->juknisFile) : null,
                     ] : null,
                     'missing' => array_values($missing),
+                    // Q1-04: wrong order blocks publishing; dates in the past only ask for a confirmation.
+                    'dateProblem' => CompetitionDates::startsBeforeDeadline($c->starts_on, $c->registration_closes_at)
+                        ? CompetitionDates::STARTS_BEFORE_DEADLINE
+                        : null,
+                    'past' => array_values(CompetitionDates::past($c->registration_closes_at, $c->final_on)),
                     'canVerify' => $user->can('verify', $c),
                     'canEdit' => $user->can('update', $c),
                 ];

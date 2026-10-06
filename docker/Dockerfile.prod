@@ -84,9 +84,15 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
 FROM php:8.4-fpm-bookworm@sha256:43e1ac38217031dbbecae60e84ccf8593722031559178d199bf56adb0145d5d0 AS app
 
 # Runtime libraries of the compiled extensions (no -dev packages, no compilers) + cgi-fcgi for the healthcheck.
+# Security fixes that are newer than the pinned base image (same rule as the web stage: only the packages Trivy
+# names, and drop one again once a newer base digest already contains the fix).
+#   libpcre2-8-0 10.42-1+deb12u2: CVE-2026-103111 (added 2026-10-06)
+#   perl, perl-base, libperl5.36, perl-modules-5.36 5.36.0-7+deb12u4: CVE-2026-13221 and others (added 2026-10-06)
 RUN apt-get update \
  && apt-get install -y --no-install-recommends \
       libicu72 libzip4 libpng16-16 libjpeg62-turbo libwebp7 libfreetype6 libfcgi-bin \
+ && apt-get install -y --no-install-recommends --only-upgrade \
+      libpcre2-8-0 perl perl-base libperl5.36 perl-modules-5.36 \
  && rm -rf /var/lib/apt/lists/*
 
 COPY --from=php-ext /usr/local/lib/php/extensions/ /usr/local/lib/php/extensions/

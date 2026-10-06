@@ -336,6 +336,95 @@ it('reopens activation from the report (Kesiswaan) with a reason', function (): 
         ->and(Activity::query()->where('event', 'account.activation_reopened')->sole()->causer_id)->toBe($this->kesiswaan->getKey());
 });
 
+// --- M2-B: "Buka ulang" never shortens a deadline (QA 2026-10-05, Q2-09) -------------------------------
+
+it('offers "Buka ulang" only where it changes something and says what will happen', function (): void {
+    $this->travelTo(now()->startOfSecond());
+    $this->actingAs($this->kesiswaan);
+
+    $soon = Student::factory()->create(['classroom_id' => $this->xi4->getKey()]);
+    $soon->user->forceFill(['name' => 'Citra Ayu Lestari', 'initial_password_expires_at' => now()->addHours(20)])->saveQuietly();
+    $button = fn (Student $s): string => 'wire:click="openReopen('.$s->user_id.')"';
+    $rakaDeadline = AccountControls::date(User::query()->findOrFail($this->raka->user_id), 'initial_password_expires_at');
+
+    Livewire::test(StatusAktivasi::class)
+        ->assertSeeHtml($button($this->salsa))    // expired
+        ->assertSeeHtml($button($soon))           // 20 hours left: a reopen gives more
+        ->assertSeeHtml($button($this->dimas))    // frozen after failed logins
+        ->assertDontSeeHtml($button($this->raka)) // 5 days left: a reopen would give less
+        ->assertDontSeeHtml($button($this->nadia))
+        // The class dialog draws the same buttons.
+        ->call('showClass', $this->xi4->getKey())
+        ->assertSeeHtml('wire:key="kelas-siswa-'.$this->raka->user_id.'"')
+        ->assertDontSeeHtml($button($this->raka))
+        // A stale list or a forged call: the reason, no dialog.
+        ->call('openReopen', $this->raka->user_id)
+        ->assertNotDispatched('sth-modal-open', id: 'aktivasi-aksi')
+        ->assertDispatched('sth-toast', tone: 'error')
+        ->assertSet('targetId', null)
+        ->call('openReopen', $soon->user_id)
+        ->assertDispatched('sth-modal-open', id: 'aktivasi-aksi')
+        ->assertSee('Dibuka lagi sampai')
+        ->assertSee(now()->addHours(72)->translatedFormat('j M Y H:i'))
+        ->assertDontSee('Buka ulang 72 jam');
+
+    expect(AccountControls::date(User::query()->findOrFail($this->raka->user_id), 'initial_password_expires_at')->equalTo($rakaDeadline))->toBeTrue()
+        ->and(Activity::query()->where('event', 'account.activation_reopened')->exists())->toBeFalse();
+});
+
+it('needs a reason of at least 10 characters for "Buka ulang" on the screen', function (): void {
+    $this->travelTo(now()->startOfSecond());
+    $this->actingAs($this->kesiswaan);
+
+    Livewire::test(StatusAktivasi::class)
+        ->call('openReopen', $this->salsa->user_id)
+        ->assertSee('Minimal 10 karakter.')
+        ->set('reason', 'ab')
+        ->call('submitAction')
+        ->assertHasErrors('reason')
+        ->assertSee('Alasan minimal 10 karakter.')
+        ->assertNotDispatched('sth-modal-close', id: 'aktivasi-aksi')
+        // Spaces do not make a reason longer.
+        ->set('reason', 'ab                  ')
+        ->call('submitAction')
+        ->assertHasErrors('reason')
+        ->set('reason', 'Siswa izin sakit, aktivasi susulan.')
+        ->call('submitAction')
+        ->assertHasNoErrors()
+        ->assertDispatched('sth-toast', message: 'Aktivasi dibuka lagi sampai '.now()->addHours(72)->translatedFormat('j M Y H:i').'.', tone: 'success');
+
+    expect(Activity::query()->where('event', 'account.activation_reopened')->count())->toBe(1)
+        ->and(AccountControls::initialPasswordExpired(User::query()->findOrFail($this->salsa->user_id)))->toBeFalse();
+});
+
+it('lifts a freeze from the screen and tells that a longer deadline stays', function (): void {
+    $this->travelTo(now()->startOfSecond());
+    $this->actingAs($this->kesiswaan);
+    $deadline = now()->addDays(9);
+    User::query()->findOrFail($this->dimas->user_id)->forceFill(['initial_password_expires_at' => $deadline])->saveQuietly();
+
+    Livewire::test(StatusAktivasi::class)
+        ->call('openReopen', $this->dimas->user_id)
+        ->assertDispatched('sth-modal-open', id: 'aktivasi-aksi')
+        ->assertSee('Pembekuan dibuka. Batas aktivasi tetap')
+        ->assertSee($deadline->translatedFormat('j M Y H:i'))
+        ->set('reason', 'Sudah dicek wali kelas.')
+        ->call('submitAction')
+        ->assertHasNoErrors();
+
+    $dimas = User::query()->findOrFail($this->dimas->user_id);
+    expect(AccountControls::isFrozen($dimas))->toBeFalse()
+        ->and(AccountControls::date($dimas, 'initial_password_expires_at')->equalTo($deadline))->toBeTrue();
+});
+
+it('refuses "Buka ulang" to roles without student.import', function (RoleName $role): void {
+    $this->actingAs(A::staff($role));
+
+    Livewire::test(StatusAktivasi::class)->call('openReopen', $this->salsa->user_id)->assertForbidden();
+
+    expect(AccountControls::initialPasswordExpired(User::query()->findOrFail($this->salsa->user_id)))->toBeTrue();
+})->with([RoleName::TataUsaha, RoleName::KepalaSekolah]);
+
 it('keeps unfreeze and the window setting Admin-only and the target locked', function (): void {
     $this->actingAs($this->kesiswaan);
 

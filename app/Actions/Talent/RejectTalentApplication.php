@@ -18,6 +18,8 @@ use Illuminate\Validation\ValidationException;
  * Profil talenta. The stage the row had is kept in `rejected_from`, so RestoreTalentApplication can undo the
  * rejection. Optional pembina, assessment date and note for the guru pembina are saved in the same step (the
  * detail panel sends them, like "Lolos ke …"). Final stages (pembinaan, tidak lolos) cannot be rejected.
+ * `$studentNote` null (a bulk rejection without a note) sends the draft that "Simpan" kept on the row, a string
+ * is the note for this rejection, '' = none (M2-B, TalentNote::forDecision()); the rejection clears the draft.
  */
 final class RejectTalentApplication
 {
@@ -30,10 +32,12 @@ final class RejectTalentApplication
     {
         Gate::forUser($actor)->authorize('move', $application);
 
-        $studentNote = TalentNote::clean($studentNote, 'student_note');
+        // A text passed for this rejection wins (an empty one = no note); null = send the saved draft, if any.
+        $noteGiven = $studentNote !== null;
+        $givenNote = TalentNote::clean($studentNote, 'student_note');
         $clean = $details === null ? [] : $this->assessment->validated($details);
 
-        [$locked, $from] = DB::transaction(function () use ($actor, $application, $studentNote, $clean): array {
+        [$locked, $from, $studentNote] = DB::transaction(function () use ($actor, $application, $noteGiven, $givenNote, $clean): array {
             /** @var TalentApplication $locked */
             $locked = TalentApplication::query()->whereKey($application->getKey())->lockForUpdate()->firstOrFail();
             $from = $locked->status;
@@ -42,10 +46,13 @@ final class RejectTalentApplication
                 throw ValidationException::withMessages(['status' => 'Tahap ini sudah final.']);
             }
 
+            [$studentNote, $fromDraft] = TalentNote::forDecision($givenNote, $noteGiven, $locked->student_note_draft);
+
             $locked->forceFill([
                 ...$clean,
                 'status' => TalentStatus::TidakLolos,
                 'student_note' => $studentNote,
+                'student_note_draft' => null,
                 'rejected_from' => $from,
                 'review_requested_at' => null,
                 'review_message' => null,
@@ -55,10 +62,10 @@ final class RejectTalentApplication
                 ->performedOn($locked)
                 ->causedBy($actor)
                 ->event('talent.rejected')
-                ->withProperties(['from' => $from->value, 'student_note' => $studentNote])
+                ->withProperties(['from' => $from->value, 'student_note' => $studentNote, 'student_note_from_draft' => $fromDraft])
                 ->log('talent.rejected');
 
-            return [$locked, $from];
+            return [$locked, $from, $studentNote];
         });
 
         $application->setRawAttributes($locked->getAttributes(), true);

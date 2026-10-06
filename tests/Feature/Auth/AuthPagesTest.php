@@ -60,6 +60,8 @@ it('renders the password step with the skip button for a student whose email is 
         ->assertSee('Ganti kata sandi')
         ->assertSee('Lewati, pakai kata sandi sekarang')
         ->assertSee('Minimal 10 karakter')
+        // M2-A: the hint names every rule, including the common-password one.
+        ->assertSee('Jangan pakai tanggal lahir, NIS/NISN, nama, atau kata yang mudah ditebak.')
         ->assertSee('n•••@example.test')
         // Never the full address of step 1, never a hint at the password from school.
         ->assertDontSee('nadia.anindya@example.test')

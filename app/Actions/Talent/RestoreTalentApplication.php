@@ -26,9 +26,11 @@ final class RestoreTalentApplication
     {
         Gate::forUser($actor)->authorize('restore', $application);
 
-        $studentNote = TalentNote::clean($studentNote, 'student_note');
+        // Same rule as the other decisions (TalentNote::forDecision()): a text passed here wins, null = the draft.
+        $noteGiven = $studentNote !== null;
+        $givenNote = TalentNote::clean($studentNote, 'student_note');
 
-        [$locked, $hadRequest] = DB::transaction(function () use ($actor, $application, $studentNote): array {
+        [$locked, $hadRequest, $studentNote] = DB::transaction(function () use ($actor, $application, $noteGiven, $givenNote): array {
             /** @var TalentApplication $locked */
             $locked = TalentApplication::query()->whereKey($application->getKey())->lockForUpdate()->firstOrFail();
 
@@ -38,10 +40,12 @@ final class RestoreTalentApplication
 
             $to = $locked->restoreTarget();
             $hadRequest = $locked->review_requested_at !== null;
+            [$studentNote] = TalentNote::forDecision($givenNote, $noteGiven, $locked->student_note_draft);
 
             $locked->forceFill([
                 'status' => $to,
                 'student_note' => $studentNote,
+                'student_note_draft' => null,
                 'rejected_from' => null,
                 'review_requested_at' => null,
                 'review_message' => null,
@@ -59,7 +63,7 @@ final class RestoreTalentApplication
                 ])
                 ->log('talent.restored');
 
-            return [$locked, $hadRequest];
+            return [$locked, $hadRequest, $studentNote];
         });
 
         $application->setRawAttributes($locked->getAttributes(), true);

@@ -29,9 +29,19 @@
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <x-sth.input type="date" wire:model="form.registration_opens_at" label="Daftar dibuka" />
                 <x-sth.input type="date" wire:model="form.registration_closes_at" label="Batas daftar" />
-                <x-sth.input type="date" wire:model="form.starts_on" label="Tanggal mulai" />
+                <x-sth.input type="date" wire:model="form.starts_on" label="Tanggal mulai" hint="Tidak boleh sebelum batas daftar." />
                 <x-sth.input type="date" wire:model="form.final_on" label="Tanggal final" hint="Dasar batas laporan hasil." />
             </div>
+
+            {{-- Q1-04: old lomba may be published for the record, but only with this tick (VerifyCompetition asks for it). --}}
+            @if ($formMode === 'verify' && ($pastDates !== [] || $errors->has('confirmPast')))
+                <div class="flex flex-col gap-1 rounded-tile border border-line bg-subtle p-3">
+                    <x-sth.checkbox wire:model="confirmPast"
+                        :hint="$pastDates !== [] ? 'Sudah lewat: '.implode(', ', $pastDates).'. Siswa tidak bisa mendaftar lagi lewat STH.' : null">
+                        Tanggal lomba ini sudah lewat. Tetap publikasikan.
+                    </x-sth.checkbox>
+                </div>
+            @endif
 
             <x-sth.input wire:model="form.location" label="Tempat" placeholder="Contoh: Kota Semarang atau Daring" maxlength="200" />
 

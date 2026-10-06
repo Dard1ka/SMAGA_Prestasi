@@ -9,6 +9,7 @@ use App\Actions\Publications\CompleteAppreciationEvent;
 use App\Actions\Publications\CreateAppreciationEvent;
 use App\Actions\Publications\DeleteAppreciationEvent;
 use App\Actions\Publications\RecordAppreciation;
+use App\Actions\Publications\ReleaseAppreciation;
 use App\Enums\AppreciationStatus;
 use App\Models\Achievement;
 use App\Models\Appreciation;
@@ -17,7 +18,6 @@ use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Contracts\View\View;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
@@ -34,6 +34,10 @@ use Livewire\Component;
  * moves to "Sudah dilaksanakan" and can no longer be changed or deleted. A row whose student later withdrew
  * consent stays with the chip "Izin dicabut"; its name and class are shown only to a viewer with
  * `student.view` (Kesiswaan, Admin), Humas sees "Siswa kelas XI" (SECURITY §3i, §3m-7).
+ *
+ * M2-B (QA 2026-10-05, Q2-10): one achievement sits on one open event only, so "Tambah prestasi" offers only
+ * achievements that are on no event, and every scheduled row of an open event has "Lepas dari acara"
+ * (confirmRelease → the same dialog → ReleaseAppreciation).
  */
 #[Title('Apresiasi')]
 #[Layout('layouts::app', ['subtitle' => 'Acara apresiasi untuk prestasi siswa.'])]
@@ -55,6 +59,9 @@ class Apresiasi extends Component
 
     public const CONFIRM_DELETE = 'hapus';
 
+    /** "Lepas dari acara": one scheduled row leaves an event that is not confirmed (M2-B, Q2-10). */
+    public const CONFIRM_RELEASE = 'lepas';
+
     public string $name = '';
 
     public string $heldOn = '';
@@ -64,12 +71,16 @@ class Apresiasi extends Component
 
     public string $achievementId = '';
 
-    /** Event of the open confirmation dialog; set only by confirmComplete() / confirmDelete(). */
+    /** Event of the open confirmation dialog; set only by confirmComplete() / confirmDelete() / confirmRelease(). */
     #[Locked]
     public ?string $confirmEventId = null;
 
     #[Locked]
     public string $confirmAction = '';
+
+    /** Row of the open "Lepas dari acara" dialog; set only by confirmRelease(). */
+    #[Locked]
+    public ?string $confirmRowId = null;
 
     #[Locked]
     public int $doneLimit = self::DONE_STEP;
@@ -181,7 +192,34 @@ class Apresiasi extends Component
         $this->openConfirm($event, self::CONFIRM_DELETE);
     }
 
-    public function runConfirmed(CompleteAppreciationEvent $complete, DeleteAppreciationEvent $delete): void
+    /**
+     * Opens the dialog "Lepas dari acara?" for one row. A row that can no longer be released (stale list: the
+     * event was confirmed, or a colleague released the row) answers with the reason instead.
+     */
+    public function confirmRelease(string $appreciationId): void
+    {
+        $row = Appreciation::query()->with('event')->find($appreciationId);
+
+        if ($row === null || $row->event === null) {
+            $this->authorize('viewAny', AppreciationEvent::class);
+            $this->dispatch('sth-toast', message: ReleaseAppreciation::GONE_MESSAGE, tone: 'error');
+
+            return;
+        }
+
+        $this->authorize('update', $row->event);
+
+        if (! $this->actor()->can('delete', $row)) {
+            $this->dispatch('sth-toast', message: ReleaseAppreciation::COMPLETED_MESSAGE, tone: 'error');
+
+            return;
+        }
+
+        $this->confirmRowId = (string) $row->getKey();
+        $this->openConfirm($row->event, self::CONFIRM_RELEASE);
+    }
+
+    public function runConfirmed(CompleteAppreciationEvent $complete, DeleteAppreciationEvent $delete, ReleaseAppreciation $release): void
     {
         abort_if($this->confirmEventId === null, 404);
 
@@ -197,6 +235,15 @@ class Apresiasi extends Component
                 $message = $count > 0
                     ? 'Acara dihapus. '.$count.' prestasi dilepas dari acara ini dan siswanya diberi tahu.'
                     : 'Acara dihapus.';
+            } elseif ($this->confirmAction === self::CONFIRM_RELEASE) {
+                $row = $this->confirmRowId !== null ? Appreciation::query()->find($this->confirmRowId) : null;
+
+                if ($row === null) {
+                    throw ValidationException::withMessages(['appreciation' => ReleaseAppreciation::GONE_MESSAGE]);
+                }
+
+                $told = $release->handle($this->actor(), $row);
+                $message = 'Prestasi dilepas dari acara ini.'.($told ? ' Siswanya diberi tahu.' : '');
             } else {
                 abort(404);
             }
@@ -207,7 +254,8 @@ class Apresiasi extends Component
             return;
         }
 
-        if ($this->addingEventId === $this->confirmEventId) {
+        // The event is gone or locked: its "Tambah prestasi" form goes too. A release keeps the event as it is.
+        if ($this->confirmAction !== self::CONFIRM_RELEASE && $this->addingEventId === $this->confirmEventId) {
             $this->cancelAdding();
         }
 
@@ -263,7 +311,7 @@ class Apresiasi extends Component
             'doneMore' => $this->doneLimit < self::DONE_MAX && $doneCount > $done->count(),
             'canCreate' => $user->can('create', AppreciationEvent::class),
             'minDate' => $today->toDateString(),
-            'achievementOptions' => $this->addingEventId !== null ? $this->achievementOptions($this->addingEventId) : [],
+            'achievementOptions' => $this->addingEventId !== null ? $this->achievementOptions() : [],
             'confirm' => $this->confirmation(),
         ])->layoutData(['badges' => HumasQueries::badges($user)]);
     }
@@ -300,7 +348,7 @@ class Apresiasi extends Component
             'canDelete' => $scheduled === $rows->count() && $user->can('delete', $event),
             'completedNote' => $completed ? self::completedNote($event) : null,
             'items' => $rows
-                ->map(function (Appreciation $a) use ($user): array {
+                ->map(function (Appreciation $a) use ($user, $completed, $canUpdate): array {
                     // Consent withdrawn after the row was added: no name/class without `student.view`.
                     $facts = AchievementFacts::of($a->achievement)->visibleTo($user);
 
@@ -312,6 +360,8 @@ class Apresiasi extends Component
                         'competition' => $facts->competitionName,
                         'consentWithdrawn' => ! $facts->publishConsent,
                         'status' => $a->status === AppreciationStatus::Selesai ? ['green', 'Sudah diapresiasi'] : ['blue', 'Dijadwalkan'],
+                        // Same rule as AppreciationPolicy::delete(), from what this list already loaded.
+                        'canRelease' => $canUpdate && ! $completed && $a->status === AppreciationStatus::Dijadwalkan,
                     ];
                 })
                 ->sortBy(fn (array $row): string => mb_strtolower($row['student']))
@@ -359,18 +409,44 @@ class Apresiasi extends Component
 
         $count = (int) $event->appreciations_count;
         $delete = $this->confirmAction === self::CONFIRM_DELETE;
+        $release = $this->confirmAction === self::CONFIRM_RELEASE;
 
         return [
+            'action' => $this->confirmAction,
+            'title' => match (true) {
+                $release => 'Lepas dari acara?',
+                $delete => 'Hapus acara ini?',
+                default => 'Tandai sudah dilaksanakan?',
+            },
             'delete' => $delete,
             'name' => $event->name,
             'date' => HumasQueries::longDate($event->held_on),
             'count' => $count,
+            // The row a release is about, as the list shows it (no name without consent or `student.view`).
+            'row' => $release ? $this->releasing() : null,
             'text' => match (true) {
+                $release => 'Prestasi ini dilepas dari acara dan bisa dimasukkan ke acara lain. Acaranya tetap ada. Siswanya diberi tahu.',
                 $delete && $count > 0 => $count.' prestasi dilepas dari acara ini dan bisa dimasukkan ke acara lain. Siswanya diberi tahu bahwa acara dibatalkan.',
                 $delete => 'Acara ini belum berisi prestasi, jadi tidak ada siswa yang perlu diberi tahu.',
                 default => $count.' prestasi ditandai sudah diapresiasi. Setelah itu acara ini tidak bisa diubah atau dihapus lagi.',
             },
         ];
+    }
+
+    /** "Raka Pradipta (XI-4) · Juara II Nasional · FIKSI 2026" for the row in the "Lepas dari acara" dialog. */
+    private function releasing(): ?string
+    {
+        $relations = array_map(fn (string $r): string => 'achievement.'.$r, AchievementFacts::RELATIONS);
+        $row = $this->confirmRowId !== null ? Appreciation::query()->with($relations)->find($this->confirmRowId) : null;
+
+        if ($row === null || $row->achievement === null) {
+            return null;
+        }
+
+        $facts = AchievementFacts::of($row->achievement)->visibleTo($this->actor());
+
+        return $facts->studentName.($facts->className !== null ? ' ('.$facts->className.')' : '')
+            .' · '.$facts->headline().' · '.$facts->competitionName;
     }
 
     private function openConfirm(AppreciationEvent $event, string $action): void
@@ -383,15 +459,22 @@ class Apresiasi extends Component
     private function closeConfirm(): void
     {
         $this->confirmEventId = null;
+        $this->confirmRowId = null;
         $this->confirmAction = '';
         $this->dispatch('sth-modal-close', id: self::CONFIRM_DIALOG);
     }
 
-    /** @return array<string, string> achievement id => "Nama (Kelas) · Juara I Nasional · Lomba" */
-    private function achievementOptions(string $eventId): array
+    /**
+     * Achievements that are free for an event: verified, with publish consent, and on no event at all. One
+     * that is scheduled elsewhere or was already appreciated is not offered (RecordAppreciation would refuse
+     * it; M2-B, Q2-10); "Lepas dari acara" or "Hapus acara" brings it back.
+     *
+     * @return array<string, string> achievement id => "Nama (Kelas) · Juara I Nasional · Lomba"
+     */
+    private function achievementOptions(): array
     {
         return HumasQueries::appreciableAchievements()
-            ->whereDoesntHave('appreciations', fn (Builder $a) => $a->where('appreciation_event_id', $eventId))
+            ->whereDoesntHave('appreciations')
             ->with(['student.user', 'student.classroom', 'competition'])
             ->latest('verified_at')
             ->limit(self::OPTIONS_LIMIT)

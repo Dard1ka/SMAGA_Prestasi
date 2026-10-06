@@ -9,8 +9,8 @@ use App\Actions\Accounts\ChangeEmail;
 use App\Actions\Accounts\ChangePassword;
 use App\Actions\Accounts\ListUserSessions;
 use App\Actions\Accounts\RevokeOtherSession;
+use App\Actions\Accounts\SetNewPassword;
 use App\Actions\Accounts\VerifyOtpCode;
-use App\Domain\Accounts\PasswordPolicy;
 use App\Http\Middleware\EnsureStaffTwoFactor;
 use App\Models\User;
 use App\Providers\AppServiceProvider;
@@ -26,7 +26,8 @@ use Livewire\Component;
 
 /**
  * Akun › Keamanan (`akun.keamanan`, every role, docs/UI-MAP.md §2, B1): change password (current password
- * required; students PasswordPolicy(10), staff Password::defaults()), change the bound email (password + OTP to
+ * required; students PasswordPolicy(10), staff Password::defaults(); after a change the session id is renewed and
+ * the old session row deleted, a refused attempt changes nothing), change the bound email (password + OTP to
  * the new address, K8 notices to old + new), list/sign out other devices, and for staff the 2FA status with a
  * link to /akun/2fa. Holds no rules: everything goes through App\Actions\Accounts\*. Always acts on the signed-in
  * user only (no ids from the client except the HMAC session key, which is matched server-side).
@@ -70,11 +71,14 @@ final class Keamanan extends Component
         $this->throttle('akun-sandi:'.$user->getKey(), 5, 900, 'currentPassword');
 
         try {
-            session()->regenerate();
             $change->handle($user, $this->currentPassword, $this->password, session()->getId());
         } catch (ValidationException $e) {
+            // A refused attempt (wrong current password, weak new one) leaves the session as it is (QA Q2-07).
             throw self::remap($e, ['current_password' => 'currentPassword']);
         }
+
+        // Only now, with the new password stored: a new session id, and the old row is deleted, not left behind.
+        session()->regenerate(true);
 
         RateLimiter::clear('akun-sandi:'.$user->getKey());
         session()->put('auth.password_confirmed_at', time());
@@ -159,7 +163,7 @@ final class Keamanan extends Component
         $this->dispatch('sth-toast', message: 'Semua perangkat lain sudah dikeluarkan.', tone: 'success');
     }
 
-    public function render(ListUserSessions $sessions, PasswordPolicy $policy): View
+    public function render(ListUserSessions $sessions, SetNewPassword $setPassword): View
     {
         $user = $this->user();
         $isStaff = EnsureStaffTwoFactor::isStaff($user);
@@ -167,13 +171,13 @@ final class Keamanan extends Component
         return view('livewire.akun.keamanan', [
             'user' => $user,
             'isStaff' => $isStaff,
-            'minLength' => $isStaff ? null : $policy->minLength(),
+            'passwordHint' => $setPassword->hint($user),
             'passwordChangedAt' => AccountControls::date($user, 'password_changed_at'),
             'email' => AccountControls::maskEmail($user->email),
             'emailVerified' => $user->email_verified_at !== null,
             'testMode' => VerifyOtpCode::testModeActive(),
             'sessionsAvailable' => ListUserSessions::available(),
-            'sessions' => $sessions->handle($user, session()->getId()),
+            'sessions' => $sessions->handle($user, session()->getId(), request()->userAgent(), request()->ip()),
             'twoFactorConfirmed' => $user->two_factor_confirmed_at !== null,
             'twoFactorUrl' => $isStaff && Route::has('two-factor.setup') ? route('two-factor.setup') : null,
         ]);

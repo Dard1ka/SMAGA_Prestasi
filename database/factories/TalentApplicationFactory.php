@@ -31,6 +31,7 @@ class TalentApplicationFactory extends Factory
             'assessment_on' => null,
             'note' => null,
             'student_note' => null,
+            'student_note_draft' => null,
             'rejected_from' => null,
             'review_requested_at' => null,
             'review_message' => null,

@@ -14,6 +14,8 @@
  |   data-sth-toast / data-sth-toast-close / data-announce                    <x-sth.toast>, <x-sth.flash>
  |   data-sth-tabs / data-sth-tab / data-sth-panel                            <x-sth.tabs panels>
  |   data-sth-reveal="<input id>"                                             <x-sth.input revealable>
+ |   (no hook) password fields are emptied when a page returns from the back/forward cache and right after
+ |             a plain POST form was submitted, see "passwords do not stay on screen"
  |   data-sth-drop / data-sth-file-name                                       <x-sth.file-drop>
  |   data-sth-menu / data-sth-menu-button / data-sth-menu-panel               top bar account menu
  */
@@ -407,17 +409,82 @@ document.addEventListener('keydown', (event) => {
 
 /* ---------------------------------------------------------------- password reveal */
 
-document.addEventListener('click', (event) => {
-    const button = event.target instanceof Element ? event.target.closest('[data-sth-reveal]') : null;
-    if (!button) return;
-    const input = document.getElementById(button.getAttribute('data-sth-reveal'));
-    if (!(input instanceof HTMLInputElement)) return;
-    const show = input.type === 'password';
+function setReveal(button, input, show) {
     input.type = show ? 'text' : 'password';
     button.setAttribute('aria-pressed', show ? 'true' : 'false');
     button.setAttribute('aria-label', show ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi');
     button.querySelector('[data-sth-reveal-off]')?.toggleAttribute('hidden', show);
     button.querySelector('[data-sth-reveal-on]')?.toggleAttribute('hidden', !show);
+}
+
+document.addEventListener('click', (event) => {
+    const button = event.target instanceof Element ? event.target.closest('[data-sth-reveal]') : null;
+    if (!button) return;
+    const input = document.getElementById(button.getAttribute('data-sth-reveal'));
+    if (!(input instanceof HTMLInputElement)) return;
+    setReveal(button, input, input.type === 'password');
+});
+
+/* ---------------------------------------------------------------- passwords do not stay on screen */
+
+/*
+ | On a shared lab computer, Back after "Keluar" brought the old login page back with the password still in
+ | its field (QA Q2-01). The credential pages are sent with `Cache-Control: no-store`
+ | (App\Http\Middleware\PreventCredentialPageCaching); this is the second line, for a page the browser kept anyway:
+ |   - a page that comes back from the back/forward cache (`pageshow` with `event.persisted`) gets every password
+ |     field emptied;
+ |   - a plain POST form (login, confirm password) gets its password fields emptied right after the browser has
+ |     read them for the request, so the copy of the page that stays in history never holds a password.
+ | A Livewire form (`wire:submit`) is left alone on submit: Livewire sends its own state, and the component
+ | empties the fields itself when the action succeeds. Emptying the input under it would only put the screen and
+ | that state out of step.
+ */
+function passwordFields(root) {
+    const fields = new Set(root.querySelectorAll('input[type="password"]'));
+
+    // "Tampilkan kata sandi" turns a field into type=text; it is still a password field.
+    root.querySelectorAll('[data-sth-reveal]').forEach((button) => {
+        const input = document.getElementById(button.getAttribute('data-sth-reveal'));
+        if (input instanceof HTMLInputElement) fields.add(input);
+    });
+
+    return [...fields];
+}
+
+function emptyPasswordFields(fields, notify) {
+    fields.forEach((input) => {
+        const hadValue = input.value !== '';
+        input.value = '';
+
+        const button = input.id ? document.querySelector(`[data-sth-reveal="${CSS.escape(input.id)}"]`) : null;
+        if (button && input.type !== 'password') setReveal(button, input, false);
+
+        // Tell a bound Livewire property (wire:model) that the field is empty now.
+        if (notify && hadValue) {
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+            input.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+    });
+}
+
+window.addEventListener('pageshow', (event) => {
+    if (event.persisted) emptyPasswordFields(passwordFields(document), true);
+});
+
+document.addEventListener('submit', (event) => {
+    const form = event.target;
+    if (!(form instanceof HTMLFormElement) || form.method !== 'post') return;
+    if (form.getAttributeNames().some((name) => name.startsWith('wire:submit'))) return;
+
+    const fields = passwordFields(form);
+    if (!fields.length) return;
+
+    // The browser builds the request body from the fields in this same task, right after the submit event. A
+    // timer runs after that, so the password is already on its way when its field is emptied. A submit that some
+    // other handler cancelled keeps what was typed.
+    window.setTimeout(() => {
+        if (!event.defaultPrevented) emptyPasswordFields(fields, false);
+    }, 0);
 });
 
 /* ---------------------------------------------------------------- file drop */

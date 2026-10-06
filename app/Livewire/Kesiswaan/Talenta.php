@@ -49,6 +49,11 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
  * panel button) and "Catatan untuk siswa" (`panelStudentNote`, sent with "Lolos ke …" / "Tidak lolos" only).
  * A "tidak lolos" row has "Pulihkan" (recycle icon → confirm dialog → RestoreTalentApplication); rows whose
  * student sent "Minta ditinjau ulang" carry a chip and come first inside their stage.
+ *
+ * M2-B (QA 2026-10-05): "Simpan" keeps a typed "Catatan untuk siswa" as a draft on the row
+ * (`student_note_draft`, shown again after a reload, never shown or sent to the student) and says that it is
+ * sent with the next decision (Q2-14). "Tidak lolos", in the panel and in the bulk bar, goes through the
+ * confirm dialog REJECT_DIALOG like "Pulihkan", because it notifies the student at once (Q2-15).
  */
 #[Title('Talenta siswa')]
 #[Layout('layouts::app', ['subtitle' => 'Penjaringan, pemetaan, dan seleksi peserta pembinaan.'])]
@@ -67,6 +72,15 @@ class Talenta extends Component
 
     /** id of the "Pulihkan" confirm dialog (<x-sth.modal>). */
     public const RESTORE_DIALOG = 'pulihkan-talenta';
+
+    /** id of the "Tidak lolos" confirm dialog (panel and bulk bar). */
+    public const REJECT_DIALOG = 'tidak-lolos-talenta';
+
+    public const REJECT_PANEL = 'panel';
+
+    public const REJECT_BULK = 'bulk';
+
+    public const SAVED_WITH_DRAFT = 'Tersimpan. Catatan untuk siswa terkirim saat kamu menekan Lolos atau Tidak lolos.';
 
     #[Url(as: 'tahap', except: 'semua')]
     public string $tahap = 'semua';
@@ -88,8 +102,11 @@ class Talenta extends Component
     /** Checked row ids. @var list<string> */
     public array $checked = [];
 
-    public bool $bulkRejecting = false;
+    /** What the open "Tidak lolos" dialog will reject: '' (nothing), the panel row or the checked rows. */
+    #[Locked]
+    public string $rejectTarget = '';
 
+    /** Note for the students of a bulk rejection (typed in the dialog). */
     public string $bulkNote = '';
 
     #[Locked]
@@ -102,7 +119,10 @@ class Talenta extends Component
     /** Catatan untuk guru pembina (internal). */
     public string $panelNote = '';
 
-    /** Catatan untuk siswa: sent with the next "Lolos ke …" / "Tidak lolos", never saved by "Simpan". */
+    /**
+     * Catatan untuk siswa: sent with the next "Lolos ke …" / "Tidak lolos". "Simpan" keeps it as a draft on
+     * the row (never as the sent `student_note`), so it is here again after a reload.
+     */
     public string $panelStudentNote = '';
 
     /** "Dipindahkan dari …" line under the panel actions. */
@@ -141,7 +161,12 @@ class Talenta extends Component
             $this->sanitizeFilters();
             $this->limit = self::PAGE;
             $this->checked = [];
-            $this->bulkRejecting = false;
+        }
+
+        // The rows a bulk "Tidak lolos" dialog was opened for changed under it: it has to be asked again.
+        if ($this->rejectTarget === self::REJECT_BULK
+            && (in_array($property, ['tahap', 'jenis', 'cabang', 'kelas', 'q'], true) || str_starts_with($property, 'checked'))) {
+            $this->rejectTarget = '';
         }
     }
 
@@ -204,34 +229,98 @@ class Talenta extends Component
         }
 
         try {
-            $move->handle($this->actor(), $application, $next);
+            // No note is typed here: a draft saved with "Simpan" goes out with this move (MoveTalentStage).
+            $moved = $move->handle($this->actor(), $application, $next);
         } catch (ValidationException $e) {
             $this->dispatch('sth-toast', message: collect($e->errors())->flatten()->first() ?? 'Tahap tidak bisa diubah.', tone: 'error');
 
             return;
         }
 
-        $this->dispatch('sth-toast', message: 'Dipindahkan ke '.$next->label().'.', tone: 'success');
+        $this->dispatch('sth-toast', message: 'Dipindahkan ke '.$next->label().'.'
+            .($moved->student_note !== null ? ' Catatan untuk siswa yang tersimpan ikut terkirim.' : ''), tone: 'success');
 
         if ($this->panelId === $id) {
             $this->openPanel($application->refresh());
         }
     }
 
-    public function rejectPanel(RejectTalentApplication $reject): void
+    // "Tidak lolos": one confirm dialog for the panel row and for the checked rows (M2-B, Q2-15) ----------
+
+    /**
+     * "Tidak lolos" in the panel: checks the panel fields, then opens the dialog. Nothing changes and nobody
+     * is told before reject().
+     */
+    public function askReject(UpdateTalentAssessment $assessment): void
     {
         $this->resetErrorBag();
         $application = $this->find((string) $this->panelId);
-        $from = $application->status;
+        $this->authorize('move', $application);
+
+        if ($application->status->isFinal()) {
+            $this->dispatch('sth-toast', message: 'Tahap ini sudah final.', tone: 'error');
+
+            return;
+        }
 
         try {
-            $reject->handle($this->actor(), $application, $this->panelStudentNote, $this->panelDetails());
+            // The same checks the rejection runs, so the dialog never opens over a field error.
+            $assessment->validated($this->panelDetails());
+            TalentNote::clean($this->panelStudentNote, 'student_note');
         } catch (ValidationException $e) {
             $this->showPanelErrors($e);
 
             return;
         }
 
+        $this->rejectTarget = self::REJECT_PANEL;
+        $this->dispatch('sth-modal-open', id: self::REJECT_DIALOG);
+    }
+
+    /** "Tidak lolos" in the bulk bar: the dialog asks for the optional note and the confirmation. */
+    public function askBulkReject(): void
+    {
+        $this->authorize('manage', TalentApplication::class);
+        $this->resetErrorBag('bulkNote');
+
+        if ($this->checkedApplications()->isEmpty()) {
+            $this->checked = [];
+
+            return;
+        }
+
+        $this->bulkNote = '';
+        $this->rejectTarget = self::REJECT_BULK;
+        $this->dispatch('sth-modal-open', id: self::REJECT_DIALOG);
+    }
+
+    /** Confirm in the dialog. Without a dialog opened by askReject() / askBulkReject() there is nothing to confirm. */
+    public function reject(RejectTalentApplication $reject): void
+    {
+        match ($this->rejectTarget) {
+            self::REJECT_PANEL => $this->rejectPanel($reject),
+            self::REJECT_BULK => $this->bulkReject($reject),
+            default => abort(404),
+        };
+    }
+
+    private function rejectPanel(RejectTalentApplication $reject): void
+    {
+        $this->resetErrorBag();
+        $application = $this->find((string) $this->panelId);
+        $from = $application->status;
+
+        try {
+            // What the panel shows is what goes out: an emptied field means "no note", also over a saved draft.
+            $reject->handle($this->actor(), $application, $this->panelStudentNote, $this->panelDetails());
+        } catch (ValidationException $e) {
+            $this->closeRejectDialog();
+            $this->showPanelErrors($e);
+
+            return;
+        }
+
+        $this->closeRejectDialog();
         $this->panelDone = 'Tidak lolos dari tahap '.$from->label().'. '.$this->sentText();
         $this->openPanel($application->refresh(), keepDone: true);
     }
@@ -285,25 +374,37 @@ class Talenta extends Component
         }
     }
 
+    /**
+     * "Simpan": pembina, jadwal and the note for the guru pembina are saved; a typed note for the student is
+     * kept as a draft on the row and the toast says when it will be sent (M2-B, Q2-14). Nobody is notified.
+     */
     public function savePanel(UpdateTalentAssessment $update): void
     {
         $this->resetErrorBag();
+        $application = $this->find((string) $this->panelId);
+        $details = $this->panelDetails();
+
+        // The field is only drawn for a row that still gets a decision (not pembinaan, not tidak lolos).
+        if (! $application->status->isFinal()) {
+            $details['student_note_draft'] = $this->panelStudentNote;
+        }
 
         try {
-            $update->handle($this->actor(), $this->find((string) $this->panelId), $this->panelDetails());
+            $saved = $update->handle($this->actor(), $application, $details);
         } catch (ValidationException $e) {
             $this->showPanelErrors($e);
 
             return;
         }
 
-        $this->dispatch('sth-toast', message: 'Data asesmen tersimpan.', tone: 'success');
+        $this->dispatch('sth-toast', message: $saved->student_note_draft !== null ? self::SAVED_WITH_DRAFT : 'Data asesmen tersimpan.', tone: 'success');
     }
 
     public function bulkAdvance(MoveTalentStage $move): void
     {
         $moved = 0;
         $skipped = 0;
+        $notes = 0;
 
         foreach ($this->checkedApplications() as $application) {
             $next = $application->status->next();
@@ -315,14 +416,15 @@ class Talenta extends Component
             }
 
             try {
-                $move->handle($this->actor(), $application, $next);
+                // No note is typed in the bulk bar: a draft saved with "Simpan" goes out with the row's move.
+                $notes += $move->handle($this->actor(), $application, $next)->student_note !== null ? 1 : 0;
                 $moved++;
             } catch (ValidationException) {
                 $skipped++;
             }
         }
 
-        $this->afterBulk($moved.' pilihan talenta dipindahkan ke tahap berikutnya.', $skipped);
+        $this->afterBulk($moved.' pilihan talenta dipindahkan ke tahap berikutnya.'.self::draftsSentText($notes), $skipped);
     }
 
     /** Header checkbox: select every visible row, or clear when all are selected. */
@@ -331,31 +433,27 @@ class Talenta extends Component
         $visible = $this->orderedQuery()->limit($this->limit)->pluck('id')->map(fn ($id): string => (string) $id)->all();
 
         $this->checked = array_diff($visible, $this->checked) === [] ? [] : $visible;
-        $this->bulkRejecting = false;
-    }
-
-    public function startBulkReject(): void
-    {
-        $this->bulkRejecting = $this->checked !== [];
-        $this->bulkNote = '';
-        $this->resetErrorBag('bulkNote');
+        $this->rejectTarget = '';
     }
 
     public function cancelBulk(): void
     {
-        $this->bulkRejecting = false;
+        $this->rejectTarget = '';
         $this->bulkNote = '';
         $this->checked = [];
         $this->resetErrorBag('bulkNote');
     }
 
-    /** The note for the students is optional; the same text goes to every checked row. */
-    public function bulkReject(RejectTalentApplication $reject): void
+    /**
+     * Confirmed bulk rejection. The note is optional; a typed one goes to every checked row. Without one, a
+     * row that has a saved draft sends that draft (the dialog says so).
+     */
+    private function bulkReject(RejectTalentApplication $reject): void
     {
         $this->resetErrorBag();
 
         try {
-            TalentNote::clean($this->bulkNote, 'bulkNote');
+            $note = TalentNote::clean($this->bulkNote, 'bulkNote');
         } catch (ValidationException $e) {
             $this->addError('bulkNote', (string) ($e->errors()['bulkNote'][0] ?? 'Periksa catatan.'));
 
@@ -364,17 +462,20 @@ class Talenta extends Component
 
         $done = 0;
         $skipped = 0;
+        $drafts = 0;
 
         foreach ($this->checkedApplications() as $application) {
             try {
-                $reject->handle($this->actor(), $application, $this->bulkNote);
+                $rejected = $reject->handle($this->actor(), $application, $note);
+                $drafts += $note === null && $rejected->student_note !== null ? 1 : 0;
                 $done++;
             } catch (ValidationException) {
                 $skipped++;
             }
         }
 
-        $this->afterBulk($done.' pilihan talenta ditandai tidak lolos.', $skipped);
+        $this->closeRejectDialog();
+        $this->afterBulk($done.' pilihan talenta ditandai tidak lolos. Siswa diberi tahu.'.self::draftsSentText($drafts), $skipped);
     }
 
     /**
@@ -470,6 +571,7 @@ class Talenta extends Component
             'panel' => $this->panelId !== null ? $this->panel($formatter) : null,
             'bulkNext' => $this->bulkNextLabel(),
             'restoring' => $this->restoring(),
+            'rejecting' => $this->rejecting(),
         ])->layoutData(['badges' => $this->kesiswaanBadges()]);
     }
 
@@ -622,6 +724,8 @@ class Talenta extends Component
             'note' => $a->note,
             // The note the student reads now (sent with the latest decision).
             'studentNote' => $a->student_note,
+            // A draft is saved and not sent yet (the field shows it; only staff ever see it).
+            'hasDraft' => ! $a->status->isFinal() && $a->student_note_draft !== null,
             'restorable' => $a->status->isRestorable(),
             'restoreTo' => $a->status->isRestorable() ? $a->restoreTarget()->label() : null,
             'review' => $a->hasOpenReviewRequest() ? [
@@ -660,8 +764,14 @@ class Talenta extends Component
         $this->mentorId = $application->mentor_id !== null ? (string) $application->mentor_id : '';
         $this->assessmentOn = $application->assessment_on?->format('Y-m-d') ?? '';
         $this->panelNote = (string) ($application->note ?? '');
-        // Always empty: a note for the student is written for one decision and sent with it.
-        $this->panelStudentNote = '';
+        // The unsent draft "Simpan" kept for this row, if any. Never the note that was already sent
+        // (`student_note`): that one is written for one decision and shown read-only above the fields.
+        $this->panelStudentNote = $application->status->isFinal() ? '' : (string) ($application->student_note_draft ?? '');
+
+        // A "Tidak lolos" question about the row that was open is void once another row is shown.
+        if ($this->rejectTarget === self::REJECT_PANEL) {
+            $this->rejectTarget = '';
+        }
 
         if (! $keepDone) {
             $this->panelDone = null;
@@ -698,6 +808,57 @@ class Talenta extends Component
         $this->dispatch('sth-modal-close', id: self::RESTORE_DIALOG);
     }
 
+    private function closeRejectDialog(): void
+    {
+        $this->rejectTarget = '';
+        $this->dispatch('sth-modal-close', id: self::REJECT_DIALOG);
+    }
+
+    /** " 2 catatan untuk siswa yang tersimpan ikut terkirim." after a bulk action that sent drafts. */
+    private static function draftsSentText(int $count): string
+    {
+        return $count > 0 ? ' '.$count.' catatan untuk siswa yang tersimpan ikut terkirim.' : '';
+    }
+
+    /**
+     * Texts of the "Tidak lolos" dialog, or null while nothing is asked.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function rejecting(): ?array
+    {
+        if ($this->rejectTarget === self::REJECT_PANEL && $this->panelId !== null) {
+            $a = TalentApplication::query()->with(['student.user', 'talentType', 'talentBranch'])->find($this->panelId);
+
+            if ($a === null) {
+                return null;
+            }
+
+            $note = trim($this->panelStudentNote);
+
+            return [
+                'bulk' => false,
+                'name' => $a->student?->user?->name ?? 'Siswa',
+                'talent' => MoveTalentStage::talentLabel($a),
+                'from' => $a->status->label(),
+                // What the student will read: the text in the panel right now.
+                'note' => $note !== '' ? $note : null,
+            ];
+        }
+
+        if ($this->rejectTarget === self::REJECT_BULK) {
+            $ids = array_values(array_filter($this->checked, 'is_string'));
+
+            return [
+                'bulk' => true,
+                'count' => count($ids),
+                'drafts' => $ids === [] ? 0 : TalentApplication::query()->whereKey($ids)->whereNotNull('student_note_draft')->count(),
+            ];
+        }
+
+        return null;
+    }
+
     /** @return Collection<int, TalentApplication> */
     private function checkedApplications(): Collection
     {
@@ -709,7 +870,7 @@ class Talenta extends Component
     private function afterBulk(string $message, int $skipped): void
     {
         $this->checked = [];
-        $this->bulkRejecting = false;
+        $this->rejectTarget = '';
         $this->bulkNote = '';
         $this->dispatch('sth-toast', message: $message.($skipped > 0 ? ' '.$skipped.' dilewati (tahap final).' : ''), tone: 'success');
 

@@ -24,6 +24,9 @@
                             <x-sth.chip tone="orange" size="sm">Izin dicabut</x-sth.chip>
                         @endif
                         <x-sth.chip :tone="$row['status'][0]" size="sm">{{ $row['status'][1] }}</x-sth.chip>
+                        @if ($row['canRelease'])
+                            <x-sth.button variant="quiet" size="sm" aria-haspopup="dialog" wire:click="confirmRelease('{{ $row['id'] }}')">Lepas dari acara<span class="sr-only">: {{ $row['student'] }}, {{ $row['headline'] }}</span></x-sth.button>
+                        @endif
                     </div>
                 </li>
             @endforeach
@@ -35,13 +38,13 @@
     @if ($event['adding'])
         <form wire:submit="addAchievement" class="flex flex-col gap-2 border-t border-line pt-3" novalidate>
             @if ($achievementOptions !== [])
-                <x-sth.select wire:model="achievementId" label="Prestasi" placeholder="Pilih prestasi terverifikasi" :options="$achievementOptions" hint="Hanya prestasi siswa yang punya izin publikasi." />
+                <x-sth.select wire:model="achievementId" label="Prestasi" placeholder="Pilih prestasi terverifikasi" :options="$achievementOptions" hint="Hanya prestasi siswa yang punya izin publikasi dan belum masuk acara mana pun." />
                 <div class="flex flex-wrap gap-2">
                     <x-sth.button type="submit" size="sm" wire:loading.attr="disabled" wire:target="addAchievement">Masukkan</x-sth.button>
                     <x-sth.button variant="quiet" size="sm" wire:click="cancelAdding">Batal</x-sth.button>
                 </div>
             @else
-                <p class="m-0 text-[13px] text-muted">Tidak ada prestasi lain yang bisa dimasukkan.</p>
+                <p class="m-0 text-[13px] text-muted">Tidak ada prestasi lain yang bisa dimasukkan. Prestasi yang sudah dijadwalkan di acara lain perlu dilepas dulu dari acara itu.</p>
                 <div><x-sth.button variant="quiet" size="sm" wire:click="cancelAdding">Tutup</x-sth.button></div>
             @endif
         </form>

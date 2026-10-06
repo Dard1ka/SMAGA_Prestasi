@@ -11,7 +11,8 @@ use Spatie\Activitylog\Models\Activity;
 /**
  * Which first-login activation step a user still has to do (docs/SECURITY.md §3a K4, order of the lead's decision
  * of 2026-10-04): 'email' → bind + verify an email (address, then the 6-digit code); 'password' → the password
- * step (a student may change it or keep it, staff must change it); null → done.
+ * step (a student may change the school password or keep it; staff, and a student with the temporary password of
+ * an Admin reset, must change it: CompleteActivation::mayKeepPassword); null → done.
  *
  * The email comes first, so a login that stops half-way resumes at the right step: no verified email → 'email';
  * verified email but the password step not closed (`must_change_password`, or the account is still

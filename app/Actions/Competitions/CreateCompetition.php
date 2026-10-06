@@ -35,6 +35,10 @@ use Illuminate\Validation\Rule;
  * Even this entry starts at `menunggu_verifikasi` and appears in the verification queue (D-27);
  * VerifyCompetition publishes it. Juknis/brosur and cover go through App\Domain\Files (private disk).
  * Siswa/guru usulan use W2-A1's SubmitCompetition instead.
+ *
+ * Dates (M2-B, Q1-04): besides the per-field rules, "Tanggal mulai" may not lie before "Batas daftar"
+ * (CompetitionDates). Dates in the past are accepted here, since old lomba are entered for the record;
+ * VerifyCompetition asks for a confirmation before such an entry is published.
  */
 final class CreateCompetition
 {
@@ -46,7 +50,10 @@ final class CreateCompetition
         Gate::forUser($actor)->authorize('create', Competition::class);
         Gate::forUser($actor)->authorize('manage', Competition::class);
 
-        $data = self::normalize(Validator::make($input, self::rules(), self::messages())->validate());
+        $validator = Validator::make($input, self::rules(), self::messages());
+        // "Tanggal mulai" before "Batas daftar" is refused together with the other field errors (Q1-04).
+        $validator->after(CompetitionDates::checkOrder(...));
+        $data = self::normalize($validator->validate());
 
         $juknisFile = $juknis !== null ? self::storeFile($actor, $juknis, FilePurpose::Juknis) : null;
         $coverFile = $cover !== null ? self::storeFile($actor, $cover, FilePurpose::Cover) : null;

@@ -190,7 +190,16 @@ final class StatusAktivasi extends Component
     public function openReopen(int $userId): void
     {
         Gate::authorize(Permission::StudentImport->value);
-        $this->openAction($this->studentAccount($userId), self::ACTION_REOPEN);
+        $student = $this->studentAccount($userId);
+
+        // A stale list (the button is only drawn where a reopen does something): say why instead of a dialog.
+        if (($notNeeded = ReopenActivationWindow::notNeededMessage($student)) !== null) {
+            $this->dispatch('sth-toast', message: $notNeeded, tone: 'error');
+
+            return;
+        }
+
+        $this->openAction($student, self::ACTION_REOPEN);
     }
 
     public function openUnfreeze(int $userId): void
@@ -203,7 +212,14 @@ final class StatusAktivasi extends Component
     {
         abort_if($this->targetId === null, 404);
 
-        $this->validate(['reason' => ['required', 'string', 'max:500']], ['required' => 'Isi alasannya.', 'max' => 'Maksimal :max karakter.'], ['reason' => 'alasan']);
+        // A reopen needs a real reason (M2-B: "ab" was accepted); the Action checks the trimmed text again.
+        $min = $this->action === self::ACTION_REOPEN ? ReopenActivationWindow::MIN_REASON : 1;
+
+        $this->validate(
+            ['reason' => ['required', 'string', 'min:'.$min, 'max:500']],
+            ['required' => 'Isi alasannya.', 'min' => 'Alasan minimal :min karakter.', 'max' => 'Maksimal :max karakter.'],
+            ['reason' => 'alasan'],
+        );
 
         try {
             if ($this->action === self::ACTION_REOPEN) {
@@ -284,7 +300,9 @@ final class StatusAktivasi extends Component
         $filtered = $report->rows($this->daftarKelas ?: null, $this->status ?: null, $this->q);
         $isAdmin = Gate::allows(Permission::UserResetPassword->value);
         $canReopen = Gate::allows(Permission::StudentImport->value);
-        $target = $this->targetId !== null ? User::query()->with('student.classroom:id,name')->find($this->targetId, ['id', 'name']) : null;
+        $target = $this->targetId !== null
+            ? User::query()->with('student.classroom:id,name')->find($this->targetId, ['id', 'name', 'initial_password_expires_at', 'frozen_at'])
+            : null;
 
         return view('livewire.akun.status-aktivasi', [
             'totals' => ActivationReport::totals($all),
@@ -292,7 +310,7 @@ final class StatusAktivasi extends Component
             'classDialog' => $this->classDialog($all, $canReopen, $isAdmin),
             'openClassOnLoad' => $this->openClassOnLoad && $this->kelas !== '',
             'rows' => $filtered->take($this->limit)->map(fn (array $row): array => $row + [
-                'action' => self::rowAction($row['state'], $row['frozenReason'], true, $canReopen, $isAdmin),
+                'action' => self::rowAction($row['state'], $row['frozenReason'], true, $canReopen, $isAdmin, $row['expiresAt']),
             ]),
             'filteredCount' => $filtered->count(),
             'hasMore' => $filtered->count() > $this->limit,
@@ -309,6 +327,7 @@ final class StatusAktivasi extends Component
             'target' => $target === null ? null : [
                 'name' => (string) $target->name,
                 'classroom' => $target->student?->classroom?->name,
+                'reopen' => $this->action === self::ACTION_REOPEN ? self::reopenPreview($target) : null,
             ],
             'filtersActive' => $this->daftarKelas !== '' || $this->status !== '' || trim($this->q) !== '',
         ]);
@@ -357,7 +376,7 @@ final class StatusAktivasi extends Component
             'total' => $students->count(),
             'tabs' => $tabs,
             'rows' => $shown->take($this->kelasLimit)->map(fn (array $row): array => $row + [
-                'action' => self::rowAction($row['state'], $row['frozenReason'], true, $canReopen, $canUnfreeze),
+                'action' => self::rowAction($row['state'], $row['frozenReason'], true, $canReopen, $canUnfreeze, $row['expiresAt']),
             ]),
             'count' => $shown->count(),
             'hasMore' => $shown->count() > $this->kelasLimit,
@@ -403,13 +422,18 @@ final class StatusAktivasi extends Component
     }
 
     /**
-     * Which button a row gets: 'reopen' (K2: pending/expired, or frozen after failed logins), 'unfreeze'
-     * (Admin, any freeze), 'admin' (frozen by "Bukan saya?" and the viewer is not Admin) or null.
+     * Which button a row gets: 'reopen' (K2: expired, frozen after failed logins, or a window with less than
+     * 72 hours left, so the reopen really moves the deadline later; M2-B), 'unfreeze' (Admin, any freeze),
+     * 'admin' (frozen by "Bukan saya?" and the viewer is not Admin) or null.
      */
-    private static function rowAction(string $state, ?string $frozenReason, bool $student, bool $canReopen, bool $canUnfreeze): ?string
+    private static function rowAction(string $state, ?string $frozenReason, bool $student, bool $canReopen, bool $canUnfreeze, ?CarbonImmutable $expiresAt = null): ?string
     {
-        $reopenable = $student && (in_array($state, [AccountControls::STATE_PENDING, AccountControls::STATE_EXPIRED], true)
-            || ($state === AccountControls::STATE_FROZEN && $frozenReason === AccountControls::FROZEN_FAILED_ATTEMPTS));
+        $reopenable = $student && match ($state) {
+            AccountControls::STATE_EXPIRED => true,
+            AccountControls::STATE_FROZEN => $frozenReason === AccountControls::FROZEN_FAILED_ATTEMPTS,
+            AccountControls::STATE_PENDING => ReopenActivationWindow::wouldChange($expiresAt, false),
+            default => false,
+        };
 
         return match (true) {
             $reopenable && $canReopen => self::ACTION_REOPEN,
@@ -417,6 +441,25 @@ final class StatusAktivasi extends Component
             $state === AccountControls::STATE_FROZEN => 'admin',
             default => null,
         };
+    }
+
+    /**
+     * What "Buka ulang" will do for the account in the dialog, so the dialog says it before the click
+     * (the rule itself is ReopenActivationWindow::deadlineAfter()).
+     *
+     * @return array{until: string, kept: bool, unfreezes: bool}
+     */
+    private static function reopenPreview(User $target): array
+    {
+        $current = AccountControls::date($target, 'initial_password_expires_at');
+        $until = ReopenActivationWindow::deadlineAfter($current);
+
+        return [
+            'until' => $until->translatedFormat('j M Y H:i'),
+            // The window already runs longer than 72 hours: only the freeze is lifted.
+            'kept' => $current !== null && $until->equalTo($current),
+            'unfreezes' => AccountControls::isFrozen($target),
+        ];
     }
 
     private function openAction(User $target, string $action): void

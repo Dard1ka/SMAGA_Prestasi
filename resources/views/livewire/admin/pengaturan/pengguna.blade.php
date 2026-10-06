@@ -155,7 +155,7 @@
     </x-sth.card>
 
     {{-- Dialogs ----------------------------------------------------------------------------------- --}}
-    <x-sth.modal id="staf-baru" title="Tambah pengguna" description="Akun staf baru. Pemilik mengganti kata sandi, menghubungkan email, dan memasang 2FA saat login pertama." variant="drawer">
+    <x-sth.modal id="staf-baru" title="Tambah pengguna" description="Akun staf baru. Saat login pertama pemilik menghubungkan email, lalu wajib mengganti kata sandi sementara dan memasang 2FA." variant="drawer">
         <form id="staf-baru-form" wire:submit="createStaff" class="flex flex-col gap-4" novalidate>
             <x-sth.input wire:model="new.name" label="Nama lengkap" autocomplete="off" />
             <div class="grid gap-4 sm:grid-cols-2">
@@ -260,7 +260,7 @@
                 <p class="m-0 rounded-tile border border-line bg-subtle px-4 py-3 text-center font-mono text-2xl font-bold tracking-[0.12em] select-all">{{ $issuedPassword }}</p>
                 <ul class="m-0 flex list-disc flex-col gap-1 pl-5 text-[13.5px] text-ink-2">
                     <li>Berlaku 72 jam. Setelah itu siswa perlu reset lagi.</li>
-                    <li>Siswa masuk dengan NIS/NISN dan kata sandi ini, lalu wajib menggantinya dan menghubungkan email.</li>
+                    <li>Siswa masuk dengan NIS/NISN dan kata sandi ini, menghubungkan email, lalu wajib membuat kata sandi baru. Kata sandi ini tidak bisa dipakai terus.</li>
                     <li>Huruf besar dan kecil dibedakan.</li>
                 </ul>
             </div>

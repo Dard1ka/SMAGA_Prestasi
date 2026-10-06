@@ -7,7 +7,9 @@ use App\Enums\PublicationStatus;
 use App\Models\Appreciation;
 use App\Notifications\Publications\AchievementPublished;
 use App\Notifications\Publications\AppreciationCancelled;
+use App\Notifications\Publications\AppreciationReleased;
 use App\Notifications\Publications\AppreciationScheduled;
+use App\Notifications\Support\PlainMailMessage;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Feature\Auth\AuthTestHelpers;
@@ -108,4 +110,42 @@ it('queues AppreciationCancelled on the mail queue after commit, with plain even
 
     $several = new AppreciationCancelled('Upacara Senin', 'Senin, 5 Oktober 2026', ['Juara II OPSI 2026', 'Juara I FIKSI 2026']);
     expect($several->body())->toContain('2 prestasi kamu belum jadi diapresiasi');
+});
+
+// M2-B: "Lepas dari acara" takes one achievement off an event that itself goes on.
+it('queues AppreciationReleased on the mail queue after commit, with plain event text', function (): void {
+    $achievement = HumasFixtures::achievement();
+    $event = HumasFixtures::event('Upacara [klik](https://evil.example) Senin', '2026-10-05');
+    $appreciation = new Appreciation(['achievement_id' => $achievement->getKey(), 'appreciation_event_id' => $event->getKey()]);
+    $appreciation->forceFill(['status' => AppreciationStatus::Dijadwalkan])->save();
+
+    $notification = AppreciationReleased::for($event, $appreciation->fresh());
+    $student = $achievement->student;
+    $user = $student->user;
+
+    expect($notification)->toBeInstanceOf(ShouldQueue::class)
+        ->and($notification->queue)->toBe('mail')
+        ->and($notification->afterCommit)->toBeTrue()
+        ->and($notification->via($user))->toBe(['database', 'mail'])
+        ->and($notification->eventDate)->toBe('Senin, 5 Oktober 2026')
+        ->and($notification->achievement)->toBe('Juara II OPSI 2026');
+
+    $data = $notification->toArray($user);
+    $mail = $notification->toMail($user);
+    $html = (string) $mail->render();
+
+    expect($mail)->toBeInstanceOf(PlainMailMessage::class)
+        ->and($data['kind'])->toBe('appreciation.released')
+        ->and($data['title'])->toBe('Jadwal apresiasi berubah')
+        ->and($data['body'])->toContain('Prestasi kamu, Juara II OPSI 2026, tidak jadi diapresiasi di')
+        ->toContain('Senin, 5 Oktober 2026')->toContain('bisa dijadwalkan lagi di acara lain')
+        // The event goes on: this is not the "acara dibatalkan" notice.
+        ->not->toContain('dibatalkan')
+        ->and($html)->toContain('tidak jadi diapresiasi')
+        ->not->toContain('href="https://evil.example')
+        ->not->toContain($student->nis)->not->toContain($student->nisn)
+        ->and(json_encode($data))->not->toContain($student->nis)->not->toContain($student->birth_date->format('Y-m-d'));
+
+    $user->email = null;
+    expect($notification->via($user))->toBe(['database']);
 });

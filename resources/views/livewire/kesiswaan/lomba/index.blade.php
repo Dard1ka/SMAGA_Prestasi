@@ -127,15 +127,21 @@
                             </div>
                         </div>
 
-                        @if ($item['missing'] === [])
-                            <x-sth.chip tone="green" icon="check" class="self-start">Data lengkap, siap dipublikasikan</x-sth.chip>
-                        @else
+                        @if ($item['missing'] !== [])
                             <p class="m-0 text-[13px] text-orange"><strong>Perlu dilengkapi:</strong> {{ implode(', ', $item['missing']) }}</p>
+                        @elseif ($item['dateProblem'])
+                            <p class="m-0 text-[13px] text-orange"><strong>Perlu diperbaiki:</strong> {{ $item['dateProblem'] }}</p>
+                        @else
+                            <x-sth.chip tone="green" icon="check" class="self-start">Data lengkap, siap dipublikasikan</x-sth.chip>
+                        @endif
+                        @if ($item['past'] !== [])
+                            <p class="m-0 text-[13px] text-orange"><strong>Tanggal sudah lewat:</strong> {{ implode(', ', $item['past']) }}</p>
                         @endif
 
                         @if ($rejectingId === $item['id'])
                             <form wire:submit="reject" class="flex flex-col gap-3">
-                                <x-sth.textarea wire:model="rejectNote" label="Alasan penolakan" rows="2" placeholder="Contoh: Lomba sudah lewat atau info tidak resmi." />
+                                <x-sth.textarea wire:model="rejectNote" label="Alasan penolakan" rows="2" placeholder="Contoh: Lomba sudah lewat atau info tidak resmi."
+                                    hint="Minimal 10 karakter. Alasan ini dikirim ke pengirim." />
                                 <div class="flex flex-wrap gap-2">
                                     <x-sth.button type="submit" variant="danger" size="sm" icon="send">Kirim penolakan</x-sth.button>
                                     <x-sth.button variant="quiet" size="sm" wire:click="cancelReject">Batal</x-sth.button>
@@ -146,8 +152,8 @@
                                 @if ($item['canEdit'])
                                     <x-sth.button size="sm" variant="soft" icon="edit" wire:click="edit('{{ $item['id'] }}')" aria-haspopup="dialog">Periksa & lengkapi</x-sth.button>
                                 @endif
-                                @if ($item['missing'] === [])
-                                    <x-sth.button size="sm" icon="check" wire:click="publish('{{ $item['id'] }}')">Publikasikan</x-sth.button>
+                                @if ($item['missing'] === [] && ! $item['dateProblem'])
+                                    <x-sth.button size="sm" icon="check" wire:click="publish('{{ $item['id'] }}')" :aria-haspopup="$item['past'] !== [] ? 'dialog' : null">Publikasikan</x-sth.button>
                                 @endif
                                 <x-sth.button size="sm" variant="danger" icon="x" wire:click="startReject('{{ $item['id'] }}')">Tolak</x-sth.button>
                             </div>
@@ -157,6 +163,27 @@
             </ul>
         @endif
     @endif
+
+    {{-- Q1-04: old lomba may be published for the record, but only after this "yes" (opened by publish()). --}}
+    <x-sth.modal :id="\App\Livewire\Kesiswaan\Lomba\Index::PAST_DIALOG" size="sm" title="Tetap publikasikan?" description="Tanggal lomba ini sudah lewat.">
+        @if ($pastLomba)
+            <div class="flex flex-col gap-3">
+                <div class="rounded-tile bg-subtle px-3 py-2.5">
+                    <p class="m-0 font-semibold">{{ $pastLomba['name'] }}</p>
+                    <p class="m-0 text-[13px] text-muted">Sudah lewat: {{ $pastLomba['dates'] ?: 'tidak ada' }}</p>
+                </div>
+                <p class="m-0 text-[14.5px]">Lomba terbit sebagai catatan. Siswa tidak bisa mendaftar lagi lewat STH.</p>
+            </div>
+        @else
+            <p class="m-0 text-[14.5px] text-muted">Lomba tidak ditemukan. Tutup lalu coba lagi.</p>
+        @endif
+        <x-slot:footer>
+            <x-sth.button variant="quiet" data-sth-close>Batal</x-sth.button>
+            @if ($pastLomba)
+                <x-sth.button icon="check" wire:click="publishPast" wire:loading.attr="disabled" wire:target="publishPast">Tetap publikasikan</x-sth.button>
+            @endif
+        </x-slot:footer>
+    </x-sth.modal>
 
     <livewire:kesiswaan.lomba.form />
 </div>

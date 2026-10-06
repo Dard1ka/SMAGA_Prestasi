@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\AppreciationStatus;
 use App\Enums\PublicationStatus;
 use App\Enums\RoleName;
 use App\Enums\UserStatus;
@@ -111,7 +112,9 @@ it('gives appreciation abilities to appreciation.manage holders only', function 
         ->and($user->can('viewAny', Appreciation::class))->toBe($allowed)
         ->and($user->can('view', $appreciation))->toBe($allowed)
         ->and($user->can('create', Appreciation::class))->toBe($allowed)
-        ->and($user->can('update', $appreciation))->toBe($allowed);
+        ->and($user->can('update', $appreciation))->toBe($allowed)
+        // "Lepas dari acara" (M2-B): a scheduled row of an event that is not confirmed.
+        ->and($user->can('delete', $appreciation))->toBe($allowed);
 })->with([
     'humas' => [RoleName::Humas, true],
     'kesiswaan' => [RoleName::Kesiswaan, true],
@@ -133,6 +136,31 @@ it('lets nobody delete an event that is confirmed as held (M1-E)', function (Rol
         ->and($user->can('view', $event->fresh()))->toBeTrue()
         ->and($user->can('update', $event->fresh()))->toBeTrue();
 })->with([RoleName::Humas, RoleName::Kesiswaan, RoleName::Admin]);
+
+it('lets nobody release a row that is appreciated or sits on a confirmed event (M2-B)', function (RoleName $role): void {
+    $user = AuthTestHelpers::staff($role);
+    $event = HumasFixtures::event('Upacara lalu', now()->subWeek()->toDateString());
+    $scheduled = Appreciation::factory()->create(['appreciation_event_id' => $event->getKey()]);
+    $appreciated = Appreciation::factory()->create(['appreciation_event_id' => $event->getKey(), 'status' => AppreciationStatus::Selesai]);
+
+    expect($user->can('delete', $scheduled))->toBeTrue()
+        ->and($user->can('delete', $appreciated))->toBeFalse();
+
+    $event->forceFill(['completed_at' => now()->subDays(6)])->save();
+
+    expect($user->can('delete', $scheduled->fresh()))->toBeFalse()
+        ->and($user->can('update', $scheduled->fresh()))->toBeTrue();
+})->with([RoleName::Humas, RoleName::Kesiswaan, RoleName::Admin]);
+
+it('denies releasing a row to students and disabled accounts', function (): void {
+    $appreciation = Appreciation::factory()->create(['appreciation_event_id' => HumasFixtures::event()->getKey()]);
+    $student = Student::factory()->activated()->create()->user()->first()->fresh();
+    $humas = HumasFixtures::humas();
+    $humas->forceFill(['status' => UserStatus::Disabled])->save();
+
+    expect($student->can('delete', $appreciation))->toBeFalse()
+        ->and($humas->can('delete', $appreciation))->toBeFalse();
+});
 
 it('denies deleting an event to students and disabled accounts', function (): void {
     $event = HumasFixtures::event();

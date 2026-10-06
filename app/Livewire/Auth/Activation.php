@@ -7,6 +7,7 @@ namespace App\Livewire\Auth;
 use App\Actions\Accounts\CompleteActivation;
 use App\Actions\Accounts\DetermineActivationStep;
 use App\Actions\Accounts\IssueOtpCode;
+use App\Actions\Accounts\SetNewPassword;
 use App\Actions\Accounts\VerifyOtpCode;
 use App\Actions\Fortify\LoginIdentifier;
 use App\Domain\Accounts\PasswordPolicy;
@@ -25,9 +26,12 @@ use Livewire\Component;
 /**
  * First-login activation (SECURITY §3a K4; order of the lead's decision of 2026-10-04): 1 bind email →
  * 2 six-digit code → 3 password → done. At step 3 a student chooses: a new password, or "Lewati" to keep the
- * current one; staff must set a new one (no skip). The same screen serves an account reset by an Admin and a
- * restored account. The step shown is only a view hint: every action re-derives the real step from the database
+ * school password; staff must set a new one (no skip), and so must a student whose account an Admin reset: that
+ * temporary password was shown on the Admin's screen (M2-A, QA Q2-02). The same screen serves a restored account.
+ * The step shown is only a view hint: every action re-derives the real step from the database
  * (DetermineActivationStep), so a tampered client cannot skip a step. All state changes are in CompleteActivation.
+ * The session id is renewed (and the old session row deleted) after the code and after the password step, never on
+ * a refused attempt.
  */
 #[Layout('layouts::auth', ['variant' => 'simple'])]
 #[Title('Aktivasi akun')]
@@ -185,7 +189,9 @@ class Activation extends Component
             throw $e;
         }
 
-        session()->regenerate();
+        // New session id for the bound account; the old row is deleted, so it is neither listed as a second
+        // device nor usable any more (QA Q1-03).
+        session()->regenerate(true);
         RateLimiter::clear($key);
 
         $this->code = '';
@@ -219,15 +225,20 @@ class Activation extends Component
             ['password' => 'kata sandi'],
         );
 
-        session()->regenerate();
+        // A refused password throws here and leaves the session alone (QA Q2-07: every failed try used to add a
+        // "device"). Other devices are signed out by the Action; this one gets a new id once the password is stored.
         $complete->changePassword($user, $this->password, $this->password_confirmation, session()->getId(), self::messages());
+        session()->regenerate(true);
 
         $this->reset('password', 'password_confirmation');
         $this->passwordChanged = true;
         $this->step = self::STEP_DONE;
     }
 
-    /** Step 3, "Lewati": students only (403 for anyone else, also re-checked in the Action). */
+    /**
+     * Step 3, "Lewati": only a student who still has the school password (403 for staff and for a student with the
+     * temporary password of an Admin reset, also re-checked in the Action).
+     */
     public function keepPassword(DetermineActivationStep $activationStep, CompleteActivation $complete): void
     {
         $this->resetErrorBag();
@@ -240,8 +251,8 @@ class Activation extends Component
             return;
         }
 
-        session()->regenerate();
         $complete->keepPassword($user);
+        session()->regenerate(true);
 
         $this->reset('password', 'password_confirmation');
         $this->passwordChanged = false;
@@ -259,7 +270,7 @@ class Activation extends Component
         return $user->hasRole(RoleName::Siswa->value) ? $this->redirectRoute('siswa.tour') : $this->redirectRoute('home');
     }
 
-    public function render(IssueOtpCode $otp): mixed
+    public function render(IssueOtpCode $otp, SetNewPassword $setPassword): mixed
     {
         $user = $this->user();
 
@@ -267,7 +278,7 @@ class Activation extends Component
             'user' => $user,
             'testMode' => VerifyOtpCode::testModeActive(),
             'resendIn' => $this->step === self::STEP_CODE ? $otp->secondsUntilResend($user, CompleteActivation::PURPOSE) : 0,
-            'minLength' => app(PasswordPolicy::class)->minLength(),
+            'passwordHint' => $setPassword->hint($user),
             'isStudent' => LoginIdentifier::isStudentAccount($user),
             'canKeepPassword' => CompleteActivation::mayKeepPassword($user),
         ]);

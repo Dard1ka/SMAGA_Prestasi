@@ -6,6 +6,7 @@ namespace App\Livewire\Auth;
 
 use App\Actions\Accounts\RequestPasswordResetCode;
 use App\Actions\Accounts\ResetPasswordWithCode;
+use App\Actions\Accounts\SetNewPassword;
 use App\Actions\Accounts\VerifyOtpCode;
 use App\Actions\Fortify\LoginIdentifier;
 use App\Domain\Accounts\PasswordPolicy;
@@ -106,11 +107,12 @@ class ForgotPassword extends Component
         $this->step = 1;
     }
 
-    public function render(): mixed
+    public function render(SetNewPassword $setPassword): mixed
     {
         return view('livewire.auth.forgot-password', [
             'testMode' => VerifyOtpCode::testModeActive(),
-            'minLength' => app(PasswordPolicy::class)->minLength(),
+            // A guest: the account is not known here, so the general (student) text is shown.
+            'passwordHint' => $setPassword->hint(),
         ]);
     }
 

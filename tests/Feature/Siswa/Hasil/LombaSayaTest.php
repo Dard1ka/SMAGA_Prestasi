@@ -136,21 +136,25 @@ it('opens the inline report form only for the ketua who may report', function ()
         ->assertForbidden();
 });
 
-it('lists both surat tugas with download links through files.show', function (): void {
-    $issued = F::registration($this->keisha, RegistrationStatus::SuratTerbit);
+// M2-C (Q1-01): the guru letter is information only for a student; more cases in tests/Feature/Siswa/Lomba/LettersCardTest.php.
+it('lists the sent surat tugas: a download for the siswa letter, information only for the guru letter', function (): void {
+    $issued = F::registration($this->keisha, RegistrationStatus::SuratTerbit, mentor: $this->mentor);
     $siswaPdf = File::factory()->purpose(FilePurpose::Letter)->create();
     $guruPdf = File::factory()->purpose(FilePurpose::Letter)->create();
-    Letter::factory()->create(['registration_id' => $issued->getKey(), 'type' => LetterType::Siswa, 'sequence' => 312, 'issued_on' => '2026-09-08', 'file_id' => $siswaPdf->getKey()]);
-    Letter::factory()->guru()->create(['registration_id' => $issued->getKey(), 'sequence' => 1680, 'issued_on' => '2026-09-08', 'file_id' => $guruPdf->getKey()]);
+    Letter::factory()->create(['registration_id' => $issued->getKey(), 'type' => LetterType::Siswa, 'sequence' => 312, 'issued_on' => '2026-09-08', 'file_id' => $siswaPdf->getKey()])
+        ->forceFill(['sent_at' => now()])->save();
+    Letter::factory()->guru()->create(['registration_id' => $issued->getKey(), 'sequence' => 1680, 'issued_on' => '2026-09-08', 'file_id' => $guruPdf->getKey()])
+        ->forceFill(['sent_at' => now()])->save();
 
     $this->actingAs($this->keisha->user)
         ->get(route('siswa.lomba-saya.show', $issued))
         ->assertOk()
         ->assertSee('Surat tugas siswa')
         ->assertSee('400.3.8/312/MRD/IX/2026')
-        ->assertSee('Surat perintah tugas guru pendamping')
+        ->assertSee('Surat perintah tugas untuk guru pendamping sudah terbit')
+        ->assertSee('Retno Wulandari, S.Pd.')
         ->assertSee(route('files.show', $siswaPdf), false)
-        ->assertSee(route('files.show', $guruPdf), false)
+        ->assertDontSee(route('files.show', $guruPdf), false)
         ->assertSee('Terbit 8 Sep');
 });
 

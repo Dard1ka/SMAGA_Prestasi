@@ -49,7 +49,7 @@
                 wire:model="password"
                 type="password"
                 label="Kata sandi baru"
-                hint="Minimal {{ $minLength }} karakter, ada huruf dan angka. Jangan pakai tanggal lahir, NIS/NISN, atau nama."
+                :hint="$passwordHint"
                 autocomplete="new-password"
                 size="lg"
                 revealable

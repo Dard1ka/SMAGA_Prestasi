@@ -3,8 +3,10 @@
 use App\Http\Middleware\EnsureAccountActive;
 use App\Http\Middleware\EnsureActivated;
 use App\Http\Middleware\EnsureStaffTwoFactor;
+use App\Http\Middleware\PreventCredentialPageCaching;
 use App\Http\Middleware\RestrictTwoFactorToStaff;
 use App\Http\Middleware\SecurityHeaders;
+use App\Providers\ErrorPageServiceProvider;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -13,6 +15,7 @@ use Illuminate\Support\Facades\Route;
 use Spatie\Permission\Middleware\PermissionMiddleware;
 use Spatie\Permission\Middleware\RoleMiddleware;
 use Spatie\Permission\Middleware\RoleOrPermissionMiddleware;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -48,6 +51,10 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->append(SecurityHeaders::class);
 
+        // M2-A (QA Q2-01): `Cache-Control: no-store` on the login, activation, password and 2FA pages, so Back
+        // never shows a page with typed credentials again. Global because Fortify registers its own routes.
+        $middleware->append(PreventCredentialPageCaching::class);
+
         // Disabled/archived accounts lose their session on the next request (D-29, D-30).
         // TOTP management (Fortify's two-factor.* routes, /akun/2fa) is staff only: 404 for student accounts.
         $middleware->web(append: [EnsureAccountActive::class, RestrictTwoFactorToStaff::class]);
@@ -68,5 +75,11 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
+        );
+
+        // M2-C: HTTP errors render resources/views/errors/<status>.blade.php (also with APP_DEBUG=true, 405 included).
+        // Only exception: a 403/404 on the first page after login goes to the beranda (QA Q2-17).
+        $exceptions->render(
+            fn (HttpExceptionInterface $e, Request $request) => ErrorPageServiceProvider::afterLogin($e, $request),
         );
     })->create();

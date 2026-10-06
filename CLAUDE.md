@@ -32,7 +32,7 @@ consent flags (D-16, SECURITY §3m-7).
 ## 2. Sources of truth (read before changing behaviour)
 | file | content |
 |---|---|
-| `docs/DECISIONS.md` | decision log D-01…D-91 (D-45…D-61 = backlog wave + W4 product choices, *sementara*; D-62…D-65 = security hardening, *final*; D-66…D-77 = Q1 security/performance pass and the lead's follow-up choices; D-78…D-91 = §D6, the lead's choices after the hand test of 2026-10-04), U-01…U-06, open questions §F. **Wins over everything.** |
+| `docs/DECISIONS.md` | decision log D-01…D-101 (D-45…D-61 = backlog wave + W4 product choices, *sementara*; D-62…D-65 = security hardening, *final*; D-66…D-77 = Q1 security/performance pass and the lead's follow-up choices; D-78…D-91 = §D6, the lead's choices after the hand test of 2026-10-04; D-92…D-101 = §D7, the rules changed by the fixes after the QA pass of 2026-10-05), U-01…U-06, open questions §F. **Wins over everything.** |
 | `docs/ARCHITECTURE.md` | binding contract: data model, enums, state machine, domain rules |
 | `docs/SECURITY.md` | threat model, top-10 risks §1, controls §3a–§3m (K1–K12), pre-release checklist §4 |
 | `docs/TALENT-FORM.md` | talent types/branches (seed source for `talent_types`, `talent_branches`) |
@@ -154,8 +154,9 @@ Dependabot PR with red checks.** A PHP minor, Node major or MySQL upgrade is a p
 image, CI `PHP_VERSION`/`NODE_VERSION` and the composer platform together, with a full test run (PHP 8.5 has OPcache
 built in, so `docker-php-ext-install opcache` fails; MySQL 9.x are short-lived Innovation releases).
 When the `docker` job fails on Trivy because a base image has a new fixable CVE that upstream has not rebuilt yet, add
-the package to the `apk upgrade` line in the `web` stage of `docker/Dockerfile.prod` (or bump the digest) and run the
-same Trivy command locally before pushing (steps: DEPLOY §18).
+the package to the `apk upgrade` line in the `web` stage of `docker/Dockerfile.prod`, or to the `apt-get install
+--only-upgrade` line in the `app` stage (Debian; added 2026-10-06 for `libpcre2-8-0` and the perl packages), or bump
+the digest, and run the same Trivy command locally before pushing (steps: DEPLOY §18).
 Production (image, `docker/compose.prod.yaml`, Apache vhost, deploy/backup/restore, CI) is documented in
 **`docs/DEPLOY.md`** (owner I). Prod facts that affect code: queues `otp`, `mail`, `default`; the runtime
 DB user `sth_app` has per-table DML only (no DDL, no `TRUNCATE`: use `delete()`; `activity_log` and `audit_seals` are
@@ -174,7 +175,9 @@ app/Domain/<Area>/   pure PHP, no HTTP: Points, Deadlines, Archive, Accounts, Le
 app/Actions/<Area>/  one use case per class (Accounts, Competitions, Registrations, Reports, Letters, Students, …)
 app/Policies/        one per model, deny by default     app/Http/  thin controllers, middleware
 app/Livewire/<Role>/ full-page screens per role, mirror the mockup (docs/UI-MAP.md); Publik/Data = public data
-app/Support/Navigation.php        sidebar menus per role
+app/Providers/       AppServiceProvider, FortifyServiceProvider, NavigationServiceProvider (the one resolver of the
+                     sidebar counts, D-100), ErrorPageServiceProvider (links of the error pages, redirect after login, D-101)
+app/Support/Navigation.php        sidebar menus per role; badge keys, counts come from the resolver (§7)
 app/Support/Leaderboard/PersonalRank.php   a student's own rank among active students (D-37)
 resources/views/components/sth/   design-system components <x-sth.*>; layouts in resources/views/layouts
 routes/web.php       public pages + auth       routes/siswa.php  /siswa, names siswa.*
@@ -193,11 +196,18 @@ enforced everywhere except `APP_ENV=local` (`STH_REQUIRE_STAFF_2FA`, `config('fo
 TOTP is staff only (D-66): `RestrictTwoFactorToStaff` (in the `web` group) answers 404 for a student account on
 every `two-factor.*` management route, and a student login never goes to `/two-factor-challenge`.
 `POST /user/confirm-password` allows 5 tries per minute per account (D-67).
-Auth routes (routes/web.php, Fortify + Livewire `App\Livewire\Auth\*`): `/login`, `/logout`,
+Global middleware (appended in `bootstrap/app.php`): `SecurityHeaders`, and `PreventCredentialPageCaching`, which puts
+`Cache-Control: no-store` on every answer for `/login`, `/aktivasi`, `/lupa-kata-sandi`, `/user/confirm-password`,
+`/two-factor-challenge` and `/akun/2fa` (`PreventCredentialPageCaching::PATHS`; add a new page that shows or takes a
+password, a code or a 2FA secret there, D-93).
+Auth routes (routes/web.php, Fortify + Livewire `App\Livewire\Auth\*`): `/login`, `POST /logout` (`logout`),
 `/two-factor-challenge`, `/user/confirm-password`, `/aktivasi` (`aktivasi`), `/lupa-kata-sandi`
-(`password.request`), `/akun/2fa` (`two-factor.setup`). Fortify `home` = `/beranda`, which redirects to
+(`password.request`), `/akun/2fa` (`two-factor.setup`). `GET /logout` (`logout.get`) only redirects (signed in →
+`home`, guest → `login`) and never ends a session (D-101). Fortify `home` = `/beranda`, which redirects to
 the first existing `<area>.beranda` route of the user's role (`siswa`, `kesiswaan`, `kepsek`, `tu`,
-`humas`, `guru`, `admin`): every area must define its `.beranda` route.
+`humas`, `guru`, `admin`): every area must define its `.beranda` route. A GET that answers 403 or 404 on the very
+first request after a login is redirected to `home` (`ErrorPageServiceProvider::afterLogin()`, D-101): a test that
+logs in through `POST /login` and expects a 403/404 on the next GET would see that redirect.
 
 - **Keys**: domain tables use ULIDs (`$table->ulid('id')->primary()`, `HasUlids`); `users.id` stays
   bigint (Fortify, sessions, spatie). Only ULIDs appear in URLs.
@@ -206,7 +216,11 @@ the first existing `<area>.beranda` route of the user's role (`siswa`, `kesiswaa
   `CompetitionStatus` · `RegistrationStatus` (`phase()`, `tone()`) · `ReportStatus` · `TalentStatus` · …
 - **Competition**: every create, by any role (siswa *usulan*, guru, staff, even Kesiswaan), starts at
   `menunggu_verifikasi`; only Kesiswaan/Admin publish it, verifier + time audited (D-27). Has
-  `registration_url` (D-28). URLs validated `https`, never fetched.
+  `registration_url` (D-28). URLs validated `https`, never fetched. Date rules in one place,
+  `App\Actions\Competitions\CompetitionDates` (D-98): `starts_on` is never before `registration_closes_at` (create,
+  update, publish); publishing a lomba whose registration deadline or final date has passed needs an explicit yes
+  (`VerifyCompetition::handle(…, bool $confirmPastDates = false)`, error key `CompetitionDates::PAST_KEY`); saving
+  without publishing asks nothing. A rejection note has at least 10 characters (`VerifyCompetition::MIN_REJECT_NOTE`, D-95).
 - **Registration state machine** (`RegistrationStatus`, 6-phase tracker *Jejak Prestasi*):
   `menunggu_konfirmasi` (1 Daftar) → `menunggu_kepsek` (2 Persetujuan) → `disetujui` | `ditolak`
   (note required) → `surat_terbit` (3 Surat tugas) → `berlangsung` (4 Lomba, scheduler on `starts_on`)
@@ -244,14 +258,25 @@ the first existing `<area>.beranda` route of the user's role (`siswa`, `kesiswaa
   school's own files, with the Pemprov and school emblems from `resources/pdf/assets` (D-84); one private
   signature+stamp image (Admin) on every letter; dompdf remote/JS off; QR code → public
   `/verifikasi-surat/{code}`; "Cetak" = the PDF inline via `tu.surat.cetak` (`StreamLetter`, policy-checked,
-  audited) (SECURITY §3g, §3m-5).
+  audited) (SECURITY §3g, §3m-5). The student's "Surat tugas" card (Lomba saya) lists only letters TU already
+  **sent**; the siswa letter has a download, the guru letter is an information row without a link (`LetterPolicy`
+  keeps that file for the guru and staff: it carries NIP and rank; D-99, the "students may not open it" part is
+  *sementara*).
 - **Accounts**: students log in by NIS or NISN (10 digits → NISN) and, once activation is finished, by
   the bound email (`LoginIdentifier`, D-78); staff by `users.username` or email. First login (D-79):
   bind email → 6-digit OTP → password; at the password step a student may change it or keep the current
   one (`CompleteActivation::keepPassword()`, audit `activation.password_kept`), staff must change it.
+  Only the school password of the import may be kept: after an Admin reset the student **must** choose a new
+  password (no "Lewati"; `users.temporary_password_issued_at` is set by `ResetStudentAccount`, cleared by
+  `SetNewPassword`, read by `CompleteActivation::mayKeepPassword()`; D-92).
   No activation code (D-14). Initial password only via `App\Domain\Accounts\InitialPassword`. New student
   passwords: **min 10 characters** and `App\Domain\Accounts\PasswordPolicy` rejects birth date / `sm4g4` /
-  NIS / NISN / name (K5, lead 2026-10-01). Import (Excel/CSV, dry-run first) by Kesiswaan and Admin
+  NIS / NISN / name (K5, lead 2026-10-01) and, for every account, the username, the email's local part and common
+  passwords (built-in word list + alphabet/keyboard/digit runs, refused when fewer than 5 other letters remain:
+  `password123` fails; D-94). The hint under a new-password field comes from `SetNewPassword::hint($user)`.
+  Sessions (D-93): renew the id with `session()->regenerate(true)` (the old row is deleted) and only **after** the
+  Action succeeded. "Buka ulang" (`ReopenActivationWindow`, K2) never shortens a deadline: the later one of the
+  current deadline and now + 72 h, reason at least 10 characters (D-95). Import (Excel/CSV, dry-run first) by Kesiswaan and Admin
   (D-12, D-26). The yearly file may be uploaded again (D-81): a registered student (NIS **and** NISN
   match) moves to the class in the file; only class, school year, archive dates and phone are written,
   never name, birth date, password, email, status or consent. Account Actions live in
@@ -263,13 +288,19 @@ the first existing `<area>.beranda` route of the user's role (`siswa`, `kesiswaa
 - **Talent**: 6 types mapped to 4 bidang (OSN, OLPAIN → sains; Riset → riset; FLS3N, Debat →
   seni_budaya; O2SN → olahraga, D-22); a student may pick several; all active classes incl. XII (D-23).
   Two optional notes per application: `note` = for the guru pembina (internal), `student_note` = for the
-  student, sent with the decision (D-85). A `tidak_lolos` application can be restored to its earlier stage
+  student, sent with the decision (D-85). "Simpan" keeps what was typed for the student as a draft
+  (`student_note_draft`, staff only); a decision sends its note and clears the draft
+  (`TalentNote::forDecision()`): a text the caller passed wins, an action without a note field (row icon, bulk
+  move) sends the saved draft (*sementara*); "Tidak lolos" asks for confirmation first (D-96). A `tidak_lolos` application can be restored to its earlier stage
   (`RestoreTalentApplication`); the student may ask once per rejection (`RequestTalentReview`) and cannot
   apply again for a rejected choice (D-86).
 - **Appreciation events**: confirmed as a whole (`appreciation_events.completed_at` / `completed_by`,
   `CompleteAppreciationEvent`); deletable only while not confirmed (`DeleteAppreciationEvent`, the
   scheduled students are told); a confirmed event takes no more prestasi (D-87). Scopes
-  `AppreciationEvent::open()` / `completed()`.
+  `AppreciationEvent::open()` / `completed()`. One achievement is on at most one event (`RecordAppreciation`
+  refuses it while it is scheduled elsewhere or once it was appreciated); "Lepas dari acara"
+  (`ReleaseAppreciation`, `AppreciationPolicy::delete`) takes one scheduled row off an unconfirmed event and
+  tells the student (D-97).
 - **Settings**: `Setting::get(SettingKey::…)` / `Setting::put()` (defaults in `SettingKey::defaultValue()`,
   seeded by `SettingSeeder`), exactly these keys: `report_deadline_days` (45), `archive_months_after_grade12` (18),
   `signature_file_id`, `signer_name` / `signer_rank` / `signer_nip`, `letter_format_siswa` / `letter_format_guru`
@@ -341,6 +372,17 @@ the first existing `<area>.beranda` route of the user's role (`siswa`, `kesiswaa
   a queue); event `sth-form-invalid {form}` brings the error summary (`data-sth-error-summary`) or the first
   invalid field into view; `data-sth-live-search` on the top bar search form filters the list while typing
   when the form's action is the current page (sets the Livewire property named like the input, `q`; D-90).
+  Since M2 the counts themselves come from **one resolver** on every page of `layouts::app`
+  (`NavigationServiceProvider::badges()`, registered with `Navigation::resolveBadgesUsing()`, D-100): it counts only
+  the badge keys of the rendered menu, only for a user who may open that queue, with the query the screen uses. A
+  page may still pass its own `badges` (they win); a new count = a key in `Navigation` + one line in
+  `NavigationServiceProvider::count()`. `app.js` also empties password fields after a plain form submit and on a
+  page restored from the back/forward cache (D-93).
+  **Error pages** (D-101): `resources/views/errors/{401,403,404,405,419,429,500,503,4xx,5xx}.blade.php`, each
+  including `errors.layout` (brand, "Kode <status>", title, one sentence, "Kembali ke beranda", "Kembali" when the
+  visitor came from another page of the app; links from `ErrorPageServiceProvider::links()`). No role layout (no
+  menu, no counts), no inline style/JS, nothing that opens the database for a 5xx, and never
+  `$exception->getMessage()`; they are used with `APP_DEBUG=true` too. Another status gets its own file there.
   On Siswa › Cari lomba the in-page box is `lg:hidden`, so exactly one search box shows at any width. The CSP never allows
   `'unsafe-eval'` (D-65): keep `wire:*` expressions simple (method calls with literal arguments; `CspSafeTest` scans every view).
 - Showcase (local only): `/_dev/components` (`?role=kesiswaan`), `/_dev/components/{public,auth,mobile}`.
@@ -395,6 +437,20 @@ events, a confirmed one is locked; D-88 Status aktivasi "Lihat" opens a class po
 one search box per screen on Cari lomba; D-91 dev-only php-fpm config/view cache, and the tests refuse to run on a
 cached config. Do not bring back: "change password first", "NIS already registered = refused", `{seq}` number
 validation, one draft for both letters, the "Tampilkan alumni" tick, a required rejection note in Talenta.
+Fixes after the QA pass of 2026-10-05, **D-92…D-101** (DECISIONS §D7, `docs/dev-notes/M2.md`; the lead: "lakukan sesuai
+saranmu"), **final** unless noted: D-92 after an Admin reset a student must choose a new password (takes back the last
+sentence of D-79; the school password of the import may still be kept); D-93 credential pages are `no-store`, password
+fields are emptied, and a renewed session destroys the old one, never on a refused attempt; D-94 new passwords refuse
+the username, the email's local part and common passwords; D-95 "Buka ulang" never shortens a deadline, its reason and
+a lomba rejection need 10 characters; D-96 the talent note for the student is a draft until a decision and "Tidak
+lolos" asks first (quick actions and bulk moves also send a saved draft: *sementara*); D-97 one achievement on one
+appreciation event, "Lepas dari acara"; D-98 a lomba cannot start before its registration deadline, and past dates
+need an explicit yes to publish; D-99 the student card lists only sent letters and the guru letter is text only
+(students may not open it: *sementara*); D-100 sidebar counts come from one resolver on every page; D-101 own error
+pages, `GET /logout` redirects, a 403/404 on the first page after login goes to the beranda. Do not bring back:
+"Lewati" for a temporary password, `session()->regenerate()` without `true` on these screens or before the Action
+succeeded, a "Buka ulang" that sets now + 72 h unconditionally, a download button for the guru letter on the student
+card, counts that depend on each page passing `badges`, Laravel's default error views.
 
 Known stale text (do not "fix" code to match it): SECURITY.md §0/§3a still say `sm4g4_DD-MM-YYYY`;
 DESIGN-SPEC-v2 §1 and the Admin-Pengaturan mockup still show 30 days (and the mockup's WICE deadline
@@ -408,6 +464,11 @@ Stale since M1 (D-78…D-91): the mockup boards `Aktivasi` (password first), `Pe
 code samples in SECURITY §3g (regex per number format, unique `(jenis, tahun, nomor_urut)`) and the old texts of K4 and
 the import rule in §3f, which SECURITY keeps as history next to a dated M1 note; DECISIONS entries before D-78 that
 still say unggah / unduh / tautan / pratinjau.
+Stale since M2 (D-92…D-101): the last sentence of D-79's Keputusan and the "Simpan never stores" sentence of D-85
+(both carry a dated pointer to D-92 / D-96); `docs/dev-notes/M1-B.md` ("a reset student may also keep the temporary
+password") and `M1.md` / `catatan.md` §5 ("email scenario not re-run": it was, on 2026-10-05); `docs/dev-notes/W1-D.md`
+(badge resolver `fn ($user, $role)`: it now also gets `$except`); the old texts of K2, K4 and K10 in SECURITY §3a,
+kept as history next to a dated M2 note.
 
 ## 9. Open questions (answers come from the school; don't guess in code)
 Decided by the lead on 2026-10-04, no longer open: the letter template (= the school's own files: one team
@@ -424,6 +485,10 @@ Questions for the lead from M1 (marked *sementara* in DECISIONS §D6; backlog #4
 student file win over a manual archive date, and what happens to a registered student who is missing from
 the file (D-81); may Kesiswaan restore a rejected talent choice without a student's request (D-86); the
 flag and reminder for students who kept the school password (D-79).
+Questions for the lead from M2 (marked *sementara* in DECISIONS §D7; backlog #57, #58): should a saved draft
+note go out with the quick actions and bulk moves in Talenta (D-96); may students open the guru letter, which
+the QA summary asked the lead to decide (D-99: today they may not); should the other reason fields (reject a
+registration, reject / revise a report, "Buka pembekuan") also need 10 characters (D-95).
 Public DNS check of 2026-10-01 (not yet confirmed with the school): the domain's DNS is on Cloudflare (`www`, `mail`,
 `webmail` proxied); the main website and the school mail are on Desnet shared hosting (SPF, DKIM and DMARC `p=none`
 exist), so apparently **not** on the Ubuntu server (§1 assumes the same host: confirm). No `prestasi` record exists
@@ -434,6 +499,7 @@ SMTP host must not be `mail.<domain>` (proxied) and its hourly send limit needs 
 ## 10. Status
 Last updated: 2026-10-04 (waves 1–2 done, W3-A integration pass, backlog wave B1–B6, W4 integration, D1 docs sync, CI green on GitHub, Q1 end-to-end/security/performance pass, PERF1 by S, M1 = the lead's 18 hand-test changes). Update this section whenever a milestone moves.
 M1 2026-10-05 (`docs/dev-notes/M1.md`, plain summary for the team in `catatan.md`; branch `feat/ui-uji-manual-m1`): full suite `--parallel --processes=4` → **1767 passed (8945 assertions)**, exit 0 (680 s); `pint --test` clean (610 files); `npm run build` OK; the four M1 migrations ran on the local MySQL. Dev page times after `reload.bat` + warm-up, all seven roles: 150–540 ms per menu, login 0.75–0.93 s (`catatan.md` §2). Not re-run after M1: the email scenario and the Playwright smoke (backlog).
+M2 2026-10-06 (`docs/dev-notes/M2.md` + `M2-A`…`M2-C`, D-92…D-101, plain summary in `catatan.md` §6; same branch): fixes for the 12 most important findings of the QA pass of 2026-10-05 (64 findings; the rest is backlog #57–#68) and the Trivy fix in `docker/Dockerfile.prod`; two migrations run on the local MySQL; suite numbers: TEST-RESULTS in `docs/dev-notes/M2.md`.
 
 | area | owner | state (details in `docs/dev-notes/<ID>.md`) |
 |---|---|---|
@@ -493,6 +559,9 @@ Done in the backlog wave B1–B6 (details in the B dev-notes): former #1–#20, 
 (scheduler `sth:peran-tertunda`, menus, privileged staff accounts, settings/model tidy-up, K10 staff resets, signature upload via
 `StoreUpload`). The optional `OtpPurpose::ChangeEmail` of #30 was not done (now #35). Kept numbers for the open items.
 Closed by M1 (2026-10-04): the "letter template details" part of #26 (decided by the lead, D-82…D-84). Added by M1: #45–#56.
+M2 (2026-10-06): the "re-run" half of #46 is done (email scenario on 2026-10-05 with the M1 code → 122 mails, 0 missing, 0 unexpected,
+0 leaks, 0 failed jobs; Playwright smoke green in CI on PR 9). Added by M2: #57–#68 = what stays open from the QA pass of 2026-10-05
+(`hasil-uji/ringkasan-temuan.md` next to the repo; QA ids Q1-xx / Q2-xx; one line per finding in `docs/dev-notes/M2.md`).
 
 | # | item | source | owner |
 |---|---|---|---|
@@ -510,18 +579,30 @@ Closed by M1 (2026-10-04): the "letter template details" part of #26 (decided by
 | 42 | Staff 2FA follow-ups: hourly ceiling for confirm-password (D-67 is 5 per minute), staff can still disable their own TOTP after confirming the password (audited; `staff.2fa` forces setup again) | Q1 | user |
 | 43 | `PdfScanner` (D-70): PDFs made on the lead's laptop with Word, Excel, PowerPoint, "Microsoft Print to PDF", Edge, Chrome and photo/scan images are accepted, hostile and oversized ones refused (19 files; results and a rerun script are in `uji-pdf/` next to the repo, not in git). Still to try: Canva downloads, the school's copier/scanner, phone scan apps, organizers' original certificates | Q1 | I |
 | 44 | A staff account reset by an Admin only gets account notices until its owner verifies the email again (D-68): add this to PANDUAN-PENGGUNA (Admin). Dev stack: after a Docker restart `queue`/`scheduler` come up before MySQL and fill `laravel.log` with connection errors until `start.bat` runs | Q1 | I |
-| 45 | Counterweight for D-79: flag "masih pakai kata sandi dari sekolah" in Status aktivasi (active student with `password_changed_at` null, or the audit event `activation.password_kept`) + a reminder to change it; a pending row can now show a masked email (bound, password step open). Add the D-79 risk to the D-14 risk-acceptance form | M1-B | user |
-| 46 | Re-run `tests/E2E/support/email-scenario.php` and the Playwright smoke after M1 (the scenario file was adapted, not run). Add scenario steps 9d/9e: talent review request (mail to every Kesiswaan) and restore (mail to the student), and a step that deletes an appreciation event (mail to the scheduled students) | M1, M1-D, M1-E | I |
-| 47 | Optional sidebar badge on "Talenta siswa" for open review requests (`TalentApplication::query()->reviewRequested()->count()`, via `WithKesiswaanBadges` + `Navigation`) | M1-D | S |
+| 45 | Counterweight for D-79: flag "masih pakai kata sandi dari sekolah" in Status aktivasi (active student with `password_changed_at` null, or the audit event `activation.password_kept`) + a reminder to change it; a pending row can now show a masked email (bound, password step open). Add the D-79 risk to the D-14 risk-acceptance form. Since D-92 `users.temporary_password_issued_at` tells an Admin's temporary password from the school password, so the flag can name only the kept school passwords | M1-B, M2-A | user |
+| 46 | ~~Re-run `tests/E2E/support/email-scenario.php` and the Playwright smoke after M1~~ (done 2026-10-05, see above; not re-run with the M2 code unless TEST-RESULTS in `docs/dev-notes/M2.md` says so). Still open: scenario steps 9d/9e: talent review request (mail to every Kesiswaan) and restore (mail to the student), a step that deletes an appreciation event (mail to the scheduled students), and a step for `ReleaseAppreciation` (mail "Jadwal apresiasi berubah" to the student, D-97) | M1, M1-D, M1-E, M2-B | I |
+| 47 | Optional sidebar badge on "Talenta siswa" for open review requests (`TalentApplication::query()->reviewRequested()->count()`): since D-100 a badge key in `Navigation` + one line in `NavigationServiceProvider::count()` | M1-D, M2-C | S |
 | 48 | `<x-sth.modal size="xl">` (≈ 960 px) so the Status aktivasi class popup can show the email as its own column (today `lg`, 760 px) | M1-E | S |
 | 49 | `student.class_changed` (about 750 rows per yearly import): should it be in `SecurityEventSubscriber::AUDITED_EVENT_PREFIXES`, and in the history of `Admin\ArsipOtomatis::EVENTS` (it can move an archive date)? | M1-C | user |
 | 50 | Confirm the *sementara* points of D-81 and D-86: the yearly file wins over a manual archive date; a registered student who is missing from the file is left alone (list or flag "siswa aktif yang tidak ada di file"?); Kesiswaan may restore a rejected talent choice without a student's request | M1-C, M1-D | user |
 | 51 | Tata Usaha and Kepala Sekolah hold `student.view`; only the route middleware keeps them out of Status aktivasi (same kind of gap as #41): tighten the policy or the permission sets | M1-E | user |
-| 52 | Every public page logs a CSP console error "Applying inline style violates … style-src" (seen by M1-C, older than M1): find the inline style | M1-C | S |
+| 52 | Every public page logs a CSP console error "Applying inline style violates … style-src" (seen by M1-C, older than M1): find the inline style. QA (Q2-25) found one on every `wire:navigate` page change, on all screens: Livewire's own small `<style nonce data-livewire-style>` arrives with the new page's nonce, which the open page's CSP does not know; no visible effect. Idea from QA: move that style into `app.css` or allow it by hash | M1-C, QA | S |
 | 53 | The TU letter screen (`tu.surat.show`) overflows sideways below about 480 px | M1 | S |
 | 54 | Print both letters on a real printer ("Cetak" was only opened on screen) and compare them with the school's paper; then confirm `resources/pdf/assets/**` is in the production image (read only so far) | M1-A | I |
 | 55 | Update `panduan-uji-manual-sth.html` (outside the repo, next to it) to the M1 screens | M1 | user |
 | 56 | Small leftovers of the M1 notes: old note text "mengganti kata sandi dan menghubungkan email" in `resources/views/dev/{auth,components}.blade.php` and the example in `components/sth/alert.blade.php`; the generic login error still says "NIS/NISN atau kata sandi salah." although it now also answers an email (`lang/id/auth.php`, `lang/id.json`, `LangIdTest`); `AppreciationEventFactory::completed()` state; demo letters without `basis_from` / `schedule_date`; no bulk "Pulihkan" and no note for the student in the bulk "Pindahkan ke …"; the guru pembina is not told when a talent choice is rejected or restored; Kepala Sekolah "Surat atas nama saya" only downloads (no "Cetak"); `<x-sth.icon>` has no printer icon ("Cetak" uses `external`) | M1-A…M1-E | S + user |
+| 57 | Reason fields (Q1-18, rest): lomba rejection and "Buka ulang" now need 10 characters (D-95); reject a registration (Kepala Sekolah), reject / ask a revision of a report and "Buka pembekuan" (`UnfreezeAccount`) still accept two letters. Same minimum there needs the lead's yes | QA, M2-B | user |
+| 58 | Confirm the two *sementara* points of §D7: quick actions and bulk moves in Talenta send a saved draft note (D-96); students cannot open the guru letter, which the QA summary asked the lead to decide (D-99) | M2-B, M2-C | user |
+| 59 | Not run in a browser after M2 (list in `docs/dev-notes/M2.md` "Not verified"): the Back scenario after Keluar (also Firefox, Safari), activation after an Admin reset, the dialogs `tidak-lolos-talenta` / `lomba-tanggal-lewat` / "Lepas dari acara", the error pages other than 404, `GET /logout`, the redirect after login. On a production-like stack (`APP_DEBUG=false`, https, real OTP): repeat Q2-03 (405 size and time), check the `secure` cookie + HSTS and that links in mails use the configured host, not the request's (Q2-08, suspected) | M2, QA | I |
+| 60 | Top bar search (Q1-06, Q1-12, Q2-24): it does not filter the TU queue (`TataUsaha\SuratTugas` has no `q`) and points to `/tu` from Arsip surat; Kesiswaan's box says "Cari lomba atau siswa" but only finds lomba; two search boxes at once on Guru › Siswa binaan and TU › Arsip surat. One box per screen, label matching what it finds (D-90) | QA | S |
+| 61 | Letters (Q1-13, Q1-15, Q1-23): "Koreksi" from Arsip surat opens the siswa tab instead of the chosen letter; what TU typed for the siswa letter is not carried into the guru form; a letter revoked **before** it was sent answers "Tidak ditemukan" on `/verifikasi-surat` although TU could already print it (answer "Dicabut", or no "Cetak" before "Kirim": the lead's call) | QA | S + user |
+| 62 | Data checks (QA): a PNG named `.pdf` is accepted as a brochure (Q1-20) [user]; an assessment date in the past (2020) is accepted in Talenta (Q2-13) [user]; the per-class table of Status aktivasi counts alumni (Q2-11) [user + S]; Admin › Status sistem "Staf aktif" counts accounts that are not activated, and "Aktivitas Admin terbaru" shows fewer rows than its title (Q2-12) [S + user] | QA | user + S |
+| 63 | Account pages (QA): no "Keluar" on `/aktivasi` (Q1-11, Q2-04) [S]; "Email ini sudah dipakai akun lain." lets a signed-in account test which emails exist: limit the tries or answer neutrally (Q1-19, Q2-06) [user]; a download that asks for the password does not continue after the confirmation, and that page has no "Batal" (Q2-18) [S + user]; closing the Status aktivasi class popup with X or a click outside leaves `?kelas=` in the address (Q2-16) [S]; the bell count stays until a reload after "Tandai dibaca" (Q2-26) [S] | QA | S + user |
+| 64 | Admin › Log audit (Q2-33, Q2-35): 16 events still show their raw key (list in `hasil-uji/qa-2-peran-lain.md`; add them to `Admin\AuditLog::EVENT_LABELS`), the Subjek column shows ids, details are raw JSON (the new properties `previous_expires_at`, `past_dates`, `student_note_from_draft` too), the CSV uses commas while the Status aktivasi CSV uses semicolons | QA, M2-B | S + user |
+| 65 | Forms and lists (QA) [S unless noted]: validation messages appear one at a time in Usulkan lomba, Kelola lomba, Tambah pengguna, Jadwalkan, Buat acara (Q1-08, Q2-28); "Tambah prestasi" is one select without search (Q2-20); one long word from a student makes Kesiswaan › Talenta scroll sideways (Q2-29); Kepala Sekolah › Persetujuan: "Pilih semua" does not follow the selection, bulk approve and TU's "Kirim" have no confirmation (Q1-10); native `confirm()` in Import and "Tandai dipublikasikan" (Q2-34); tour highlight about 23 px off, last button "Lanjut" (Q1-09); "Kirim ulang" countdown jumps every 5 s (Q1-24); the note for the guru pembina is cut at about 300 letters (Q2-21); Humas › Arsip: empty Flyer column (Q2-19); Database prestasi: no sorting (Q2-23, see #32) | QA | S |
+| 66 | Import and teams (QA): the Excel template's NIS/NISN columns are not Text (leading zeros are lost) and the "rows to check" file lacks NISN and birth date (Q1-21) [user + S]; a student who is not activated can be invited to a team, and an open invitation cannot be withdrawn (Q1-22) [user + S] | QA | user + S |
+| 67 | Wording (Q1-27, Q1-28, Q2-36; together with #56): "peramban" in the mail footer, "Daring · Daring", mixed "Anda" / "kamu" for staff, internal codes such as "(D-08)" on Admin screens, "1000" vs "1.000". Speed and phone width (ringkasan §5, §6): Kepala Sekolah › Laporan PDF 8.7 s, letter PDF 1.7–3.4 s and flyer PNG 3.3 s without a "sedang dibuat" text, portfolio PDF 878 kB for one empty page (fonts not subset), Kepala Sekolah dashboard scrolls 107 px sideways at phone width (Q2-31), touch targets under 44 px (Q2-32; see also #53) | QA | S + user |
+| 68 | Small leftovers of the M2 notes: optional demo rows (a pending student with less than 72 h left, a talent row with a `student_note_draft`); optional `data-sth-back` hook for a real history back on the error pages ("Kembali" is a plain link to the Referer); an unknown address has no session, so its 404 links to `/` even for a signed-in visitor; Fortify's login keeps the guest session row from before the login (no `user_id`); the temporary password an Admin types for staff is not checked against the common-password list; `docs/dev-notes/W1-D.md` still shows the old badge resolver signature | M2-A…M2-C | user + S |
 
 ## 11. Team, ownership and agent protocol
 - **user** (lead, backend core, 40%): `app/{Enums,Models,Domain,Actions,Policies,Http,Providers,

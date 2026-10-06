@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Actions\Accounts\ListUserSessions;
+use App\Domain\Accounts\PasswordPolicy;
 use App\Enums\RoleName;
 use App\Livewire\Akun\Keamanan;
 use App\Mail\OtpCodeMail;
@@ -106,7 +107,128 @@ it('applies the student password policy (min 10, no birth date / NIS / name) and
     'birth date' => ['lahir02032010x', 'policy'],
     'NIS' => ['nis'.H::NIS.'ab', 'policy'],
     'same as now' => ['Rahasia-Lama-2026', 'same'],
+    // M2-A (QA Q1-02): a common word stays common with digits or symbols around it.
+    'common password' => ['password123', 'policy'],
+    'common word with symbols' => ['!!Sekolah-2026!!', 'policy'],
 ]);
+
+// M2-A (QA 2026-10-05, Q2-05): staff have no NIS; their username, email name and own name are refused instead.
+it('refuses a staff password built from the username, the email name or the own name', function (string $new, string $message): void {
+    $staff = A::staff(RoleName::Humas, ['name' => 'Rina Kusumawati', 'username' => 'uji.qa2', 'email' => 'humas.dua@example.test']);
+    $this->actingAs($staff);
+
+    $component = Livewire::test(Keamanan::class)
+        // The hint describes the staff rules, not the student's.
+        ->assertSee('Jangan pakai nama, nama pengguna, email, atau kata yang mudah ditebak.')
+        ->assertDontSee('NIS/NISN')
+        ->set('currentPassword', H::PASSWORD)
+        ->set('password', $new)
+        ->set('password_confirmation', $new)
+        ->call('changePassword')
+        ->assertHasErrors('password');
+
+    expect($component->errors()->get('password'))->toBe([$message])
+        ->and(Hash::check(H::PASSWORD, $staff->fresh()->password))->toBeTrue();
+})->with([
+    'the QA finding: username-username' => ['uji.qa2-uji.qa2', PasswordPolicy::MSG_USERNAME],
+    'email name' => ['Humas-dua-2026x', PasswordPolicy::MSG_EMAIL],
+    'own name' => ['Kusumawati-77-ok', PasswordPolicy::MSG_OWN_NAME],
+    'common password' => ['Admin-12345-admin', PasswordPolicy::MSG_TOO_COMMON],
+]);
+
+it('accepts a staff password that uses none of those and shows students their own hint', function (): void {
+    $staff = A::staff(RoleName::Humas, ['name' => 'Rina Kusumawati', 'username' => 'uji.qa2', 'email' => 'humas.dua@example.test']);
+    $this->actingAs($staff);
+
+    Livewire::test(Keamanan::class)
+        ->set('currentPassword', H::PASSWORD)
+        ->set('password', 'Bintang-Pagi-77')
+        ->set('password_confirmation', 'Bintang-Pagi-77')
+        ->call('changePassword')
+        ->assertHasNoErrors();
+
+    expect(Hash::check('Bintang-Pagi-77', $staff->fresh()->password))->toBeTrue();
+
+    $this->actingAs(b1Student());
+
+    Livewire::test(Keamanan::class)
+        ->assertSee('Minimal 10 karakter, ada huruf dan angka. Jangan pakai tanggal lahir, NIS/NISN, nama, atau kata yang mudah ditebak.');
+});
+
+// M2-A (QA 2026-10-05, Q2-07): a refused attempt leaves the session alone; a real change renews the id, deletes the
+// old row and still lists this device.
+it('renews the session only when the password really changed and leaves no ghost device', function (): void {
+    $user = b1Student();
+
+    $this->from('/login')->post('/login', ['identifier' => H::NIS, 'password' => H::PASSWORD])->assertRedirect(route('home'));
+
+    $old = session()->getId();
+    H::fakeSessions($user, 2);
+
+    expect(H::sessionCount($user))->toBe(3)
+        // Control: this is how a live session id answers.
+        ->and(H::userBehindSession($old))->toBe($user->getKey());
+
+    $component = Livewire::test(Keamanan::class)
+        ->assertSee('Perangkat ini')
+        ->set('currentPassword', 'salah')
+        ->set('password', 'Bintang-Pagi-77')
+        ->set('password_confirmation', 'Bintang-Pagi-77')
+        ->call('changePassword')
+        ->assertHasErrors('currentPassword')
+        ->set('currentPassword', H::PASSWORD)
+        ->set('password', 'password123')
+        ->set('password_confirmation', 'password123')
+        ->call('changePassword')
+        ->assertHasErrors('password');
+
+    // Two refused attempts: the same session id, no new row ("device").
+    expect(session()->getId())->toBe($old)
+        ->and(H::sessionCount($user))->toBe(3);
+
+    $component->set('password', 'Bintang-Pagi-77')
+        ->set('password_confirmation', 'Bintang-Pagi-77')
+        ->call('changePassword')
+        ->assertHasNoErrors()
+        // Right after the change, without a reload: this device is still listed.
+        ->assertSee('Perangkat ini')
+        ->assertDontSee('Tidak ada perangkat lain.')
+        ->assertDontSee('Keluarkan semua perangkat lain');
+
+    $new = session()->getId();
+    expect($new)->not->toBe($old)
+        ->and(DB::table('sessions')->where('id', $old)->exists())->toBeFalse()
+        ->and(H::sessionCount($user))->toBe(0); // the other devices and the old row; the new row comes when the request ends
+
+    session()->save(); // what StartSession does when the request ends (Livewire tests skip the middleware)
+
+    expect(H::sessionCount($user))->toBe(1)
+        ->and(H::userBehindSession($new))->toBe($user->getKey())
+        ->and(H::userBehindSession($old))->toBeNull();
+});
+
+it('lists the current device even when its session row is not written yet', function (): void {
+    $user = b1Student();
+    H::fakeSessions($user, 1);
+
+    $sessions = app(ListUserSessions::class)->handle(
+        $user,
+        'belum-ada-barisnya',
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/129.0 Safari/537.36',
+        '10.0.0.7',
+    );
+
+    expect($sessions)->toHaveCount(2)
+        ->and($sessions[0]['current'])->toBeTrue()
+        ->and($sessions[0]['device'])->toBe('Chrome di Windows')
+        ->and($sessions[0]['ip'])->toBe('10.0.0.7')
+        ->and($sessions[0]['key'])->toBe(ListUserSessions::key('belum-ada-barisnya'))
+        ->and($sessions[1]['current'])->toBeFalse()
+        // A row that exists is never doubled.
+        ->and(app(ListUserSessions::class)->handle($user, 'sess-'.$user->getKey().'-0'))->toHaveCount(1)
+        // Without a current session id nothing is made up.
+        ->and(app(ListUserSessions::class)->handle($user, null))->toHaveCount(1);
+});
 
 it('rate-limits wrong current passwords', function (): void {
     $this->actingAs(b1Student());
