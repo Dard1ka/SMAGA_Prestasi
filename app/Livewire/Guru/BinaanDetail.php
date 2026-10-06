@@ -8,6 +8,7 @@ use App\Domain\Points\PointFormatter;
 use App\Enums\LetterType;
 use App\Enums\RegistrationStatus;
 use App\Enums\ReportStatus;
+use App\Http\Controllers\FileController;
 use App\Livewire\Guru\Concerns\PresentsBinaan;
 use App\Livewire\Siswa\LombaSaya\Concerns\ReportHelpers;
 use App\Models\Achievement;
@@ -110,6 +111,9 @@ final class BinaanDetail extends Component
                         'kind' => $rf->kind->label(),
                         'name' => (string) $rf->file?->original_name,
                         'href' => route('files.show', $rf->file_id),
+                        // Preview popup (data-sth-preview); the link itself stays the download.
+                        'preview' => $rf->file !== null ? FileController::previewUrl($rf->file) : null,
+                        'previewType' => $rf->file !== null ? FileController::previewType($rf->file) : null,
                     ])->values()->all(),
             ],
             'achievements' => $report === null ? [] : Achievement::query()

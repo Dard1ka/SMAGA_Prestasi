@@ -53,7 +53,8 @@
                                     @endif
                                     @if ($row['evidence'])
                                         @if ($row['evidenceUrl'])
-                                            <a href="{{ $row['evidenceUrl'] }}" class="lnk ellip min-h-0 max-w-56">{{ $row['evidence'] }}</a>
+                                            <a href="{{ $row['evidenceUrl'] }}" class="lnk ellip min-h-0 max-w-56" aria-haspopup="dialog"
+                                                @if ($row['evidencePreview']) data-sth-preview="{{ $row['evidencePreview'] }}" data-sth-preview-type="{{ $row['evidencePreviewType'] }}" data-sth-preview-name="{{ $row['evidence'] }}" @endif>{{ $row['evidence'] }}</a>
                                         @else
                                             <span class="ellip max-w-56">{{ $row['evidence'] }}</span>
                                         @endif

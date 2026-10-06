@@ -3,24 +3,27 @@
 declare(strict_types=1);
 
 use App\Enums\AppreciationStatus;
-use App\Enums\FilePurpose;
 use App\Enums\PublicationStatus;
 use App\Enums\RoleName;
 use App\Livewire\Humas\Publikasi;
 use App\Models\Appreciation;
 use App\Models\File;
+use App\Models\Publication;
 use App\Notifications\Publications\AchievementPublished;
 use App\Notifications\Publications\AppreciationScheduled;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
+use Livewire\Exceptions\MethodNotFoundException;
 use Livewire\Livewire;
 use Tests\Feature\Auth\AuthTestHelpers;
 use Tests\Feature\Humas\HumasFixtures;
 
 /*
-| Humas · Publikasi (Livewire): lanes, consent filter, panel, schedule, publish, flyer, apresiasi.
+| Humas · Publikasi (Livewire): lanes, consent filter, panel, data for the flyer (M3-E: no generator),
+| schedule, publish, apresiasi.
 */
 
 uses(RefreshDatabase::class);
@@ -54,19 +57,154 @@ it('preselects the first ready card and suggests a caption', function (): void {
         ->assertSet('selectedId', $publication->getKey())
         ->assertSet('caption', "Selamat kepada Nadia Putri Anindya (XI-4), Juara II OPSI 2026 tingkat nasional. Terima kasih Bu Retno Wulandari atas bimbingannya.\n#SMAGASpectacular #SMAN3Semarang")
         ->assertSet('channels', ['instagram', 'website'])
-        ->assertSee('Siapkan publikasi')
-        ->assertSee('SELAMAT &amp; SUKSES', false)
-        ->assertSee('Kelas XI-4')
-        ->assertSee('Pembimbing: Bu Retno Wulandari, S.Pd.');
+        ->assertSee('Siapkan publikasi');
 });
 
-it('shows the initials note when there is no photo consent', function (): void {
+// --- M3-E: "Data untuk flyer" (Humas designs the flyer itself; STH only hands over the facts) ------------
+
+it('shows the data for the flyer as one fact per line, with a copy button for the whole block', function (): void {
+    $publication = HumasFixtures::publication();
+    $publication->achievement->competition->forceFill([
+        'organizer_name' => 'Pusat Prestasi Nasional',
+        'starts_on' => '2026-11-05',
+        'final_on' => '2026-11-07',
+    ])->save();
+    $publication->achievement->report->forceFill(['research_title' => 'Biofilter Limbah Batik dari Sabut Kelapa'])->save();
+
+    $html = Livewire::actingAs($this->humas)
+        ->test(Publikasi::class)
+        ->assertSee('Data untuk flyer')
+        ->assertSeeInOrder([
+            'Nama:', 'Nadia Putri Anindya',
+            'Kelas:', 'XI-4',
+            'Capaian:', 'Juara II',
+            'Lomba:', 'OPSI 2026',
+            'Tingkat:', 'Nasional',
+            'Penyelenggara:', 'Pusat Prestasi Nasional',
+            'Bidang:', 'Riset',
+            'Tanggal lomba:', '5–7 November 2026',
+            'Guru pembimbing:', 'Bu Retno Wulandari, S.Pd.',
+            'Judul penelitian:', 'Biofilter Limbah Batik dari Sabut Kelapa',
+        ])
+        // The contract of the copy hook (app.js): a plain button that names the element to copy.
+        ->assertSeeHtml('data-sth-copy="#data-flyer"')
+        ->assertSeeHtml('<dl id="data-flyer"')
+        ->assertSee('Salin data')
+        ->assertDontSee('tidak mengizinkan fotonya dipakai')
+        ->html();
+
+    // What "Salin data" copies is the text of that one element: facts only, no points, no helper text.
+    $start = strpos($html, '<dl id="data-flyer"');
+    $block = substr($html, $start, strpos($html, '</dl>', $start) - $start);
+    $text = html_entity_decode(strip_tags($block));
+
+    expect($start)->not->toBeFalse()
+        ->and($block)->toContain('<dt class="inline text-muted">Capaian:</dt> <dd class="m-0 inline font-semibold">Juara II</dd>')
+        ->and($text)->not->toContain('Flyer dibuat')
+        ->not->toContain('Salin data')
+        ->not->toContain('poin')
+        ->not->toContain('68')
+        ->not->toContain($publication->achievement->student->nis)
+        ->not->toContain($publication->achievement->student->nisn);
+});
+
+it('lists every team member with class in the data for the flyer', function (): void {
+    $publication = HumasFixtures::publication();
+    HumasFixtures::teammate($publication->achievement, 'Raka Pradipta', 'XII-2');
+    HumasFixtures::teammate($publication->achievement, 'Salsabila Kirana', 'X-3', ['photo_consent' => false]);
+
+    Livewire::actingAs($this->humas)
+        ->test(Publikasi::class)
+        ->assertSeeInOrder(['Anggota tim:', 'Nadia Putri Anindya (XI-4)', 'Raka Pradipta (XII-2)', 'Salsabila Kirana (X-3)', 'Capaian:', 'Juara II'])
+        ->assertDontSee('Nama:')
+        ->assertDontSee('Kelas:')
+        ->assertSee('Tidak mengizinkan fotonya dipakai: Salsabila Kirana.')
+        ->assertDontSee('tidak mengizinkan namanya dipublikasikan');
+});
+
+it('never names a team member without publish consent in the data for the flyer', function (): void {
+    $publication = HumasFixtures::publication();
+    HumasFixtures::teammate($publication->achievement, 'Raka Pradipta', 'XII-2');
+    HumasFixtures::teammate($publication->achievement, 'Fajar Ramadhan', 'XII-5', ['publish_consent' => false]);
+
+    Livewire::actingAs($this->humas)
+        ->test(Publikasi::class)
+        ->assertSeeInOrder(['Anggota tim:', 'Nadia Putri Anindya (XI-4)', 'Raka Pradipta (XII-2)'])
+        ->assertSee('1 anggota tim tidak mengizinkan namanya dipublikasikan, jadi tidak ditampilkan di sini.')
+        ->assertDontSee('Fajar Ramadhan')
+        ->assertDontSee('XII-5');
+});
+
+it('says that the student does not allow a photo, and offers none', function (): void {
     HumasFixtures::publication(['photo_consent' => false]);
 
     Livewire::actingAs($this->humas)
         ->test(Publikasi::class)
         ->assertSee('Tanpa foto')
-        ->assertSee('Tanpa izin foto, flyer otomatis memakai inisial.');
+        ->assertSee('Siswa ini tidak mengizinkan fotonya dipakai.')
+        ->assertDontSeeHtml('<img')
+        ->assertDontSee('inisial');
+});
+
+it('closes the panel, data for the flyer included, once publish consent is withdrawn', function (): void {
+    $publication = HumasFixtures::publication();
+    $component = Livewire::actingAs($this->humas)
+        ->test(Publikasi::class)
+        ->assertSee('Data untuk flyer')
+        ->assertSee('Nadia Putri Anindya');
+
+    $publication->achievement->student->forceFill(['publish_consent' => false])->save();
+
+    $component->call('tampilkanLebih')
+        ->assertSet('selectedId', null)
+        ->assertDontSee('Data untuk flyer')
+        ->assertDontSee('Nadia Putri Anindya')
+        ->assertDontSeeHtml('data-sth-copy');
+
+    Livewire::withQueryParams(['pilih' => $publication->getKey()])
+        ->actingAs($this->humas)
+        ->test(Publikasi::class)
+        ->assertNotFound();
+});
+
+it('keeps the data for the flyer on a published publication', function (): void {
+    HumasFixtures::publication(publicationState: ['status' => PublicationStatus::Dipublikasikan, 'published_at' => now()->subDay(), 'channels' => ['instagram'], 'caption' => 'Selamat, Nadia!']);
+
+    Livewire::actingAs($this->humas)
+        ->test(Publikasi::class)
+        ->call('select', Publication::query()->sole()->getKey())
+        ->assertSee('Sudah terbit')
+        ->assertSee('Data untuk flyer')
+        ->assertSeeHtml('data-sth-copy="#data-flyer"');
+});
+
+it('no longer offers a flyer mock-up, a template or a PNG, and has nothing left that could make one', function (): void {
+    $publication = HumasFixtures::publication();
+
+    $component = Livewire::actingAs($this->humas)
+        ->test(Publikasi::class)
+        ->assertDontSee('SELAMAT')
+        ->assertDontSee('Template e-flyer')
+        ->assertDontSee('Download PNG')
+        ->assertDontSee('Biru lavender')
+        ->assertDontSeeHtml('downloadFlyer')
+        ->assertDontSeeHtml('wire:model.live="template"');
+
+    expect(method_exists(Publikasi::class, 'downloadFlyer'))->toBeFalse()
+        ->and(property_exists(Publikasi::class, 'template'))->toBeFalse()
+        ->and(fn () => $component->call('downloadFlyer'))->toThrow(MethodNotFoundException::class)
+        // The generator classes are gone (checked as files: a stale Composer classmap may still list the names).
+        ->and(file_exists(app_path('Actions/Publications/GenerateFlyer.php')))->toBeFalse()
+        ->and(file_exists(app_path('Actions/Publications/FlyerRenderer.php')))->toBeFalse();
+
+    // No route makes or serves a new flyer either: the only file route is the policy-checked download.
+    $flyerRoutes = collect(Route::getRoutes()->getRoutes())
+        ->filter(fn ($route): bool => str_contains(strtolower($route->uri().' '.$route->getName().' '.$route->getActionName()), 'flyer'));
+
+    expect($flyerRoutes)->toBeEmpty()
+        ->and(File::query()->count())->toBe(0)
+        ->and(Storage::disk('local')->allFiles())->toBe([])
+        ->and($publication->fresh()->flyer_file_id)->toBeNull();
 });
 
 it('selects a card, and 404s for a publication outside the visible queue', function (): void {
@@ -170,33 +308,23 @@ it('publishes from the panel and notifies the student', function (): void {
     Notification::assertSentTo($publication->achievement->student->user, AchievementPublished::class);
 });
 
-it('downloads a generated flyer PNG', function (): void {
+it('schedules and publishes without creating any file', function (): void {
     $publication = HumasFixtures::publication();
 
     Livewire::actingAs($this->humas)
         ->test(Publikasi::class)
-        ->set('template', 'emas')
-        ->call('downloadFlyer')
-        ->assertFileDownloaded('flyer-nadia-putri-anindya.png');
-
-    $file = File::query()->sole();
-    expect($file->purpose)->toBe(FilePurpose::Flyer)
-        ->and($publication->fresh()->flyer_file_id)->toBe($file->getKey())
-        ->and(Storage::disk('local')->exists($file->path))->toBeTrue();
-
-});
-
-it('rejects an unknown flyer template', function (): void {
-    HumasFixtures::publication();
-
-    Livewire::actingAs($this->humas)
-        ->test(Publikasi::class)
-        ->set('template', 'neon')
-        ->call('downloadFlyer')
-        ->assertHasErrors(['template'])
+        ->set('channels', ['instagram'])
+        ->set('date', now()->addDay()->format('Y-m-d'))
+        ->set('time', '09:00')
+        ->call('schedule')
+        ->assertHasNoErrors()
+        ->call('publish')
         ->assertNoFileDownloaded();
 
-    expect(File::query()->count())->toBe(0);
+    expect($publication->fresh()->status)->toBe(PublicationStatus::Dipublikasikan)
+        ->and($publication->fresh()->flyer_file_id)->toBeNull()
+        ->and(File::query()->count())->toBe(0)
+        ->and(Storage::disk('local')->allFiles())->toBe([]);
 });
 
 it('puts the achievement on an upcoming appreciation event', function (): void {

@@ -18,6 +18,7 @@ use App\Enums\ReportFileKind;
 use App\Enums\ResultType;
 use App\Enums\RoleName;
 use App\Enums\UserStatus;
+use App\Http\Controllers\FileController;
 use App\Livewire\Admin\Concerns\RequiresRecentPassword;
 use App\Livewire\Kesiswaan\Concerns\WithKesiswaanBadges;
 use App\Models\Achievement;
@@ -317,6 +318,9 @@ final class DatabasePrestasi extends Component
                 ->map(fn (ReportFile $rf): array => [
                     'name' => (string) $rf->file?->original_name,
                     'href' => route('files.show', $rf->file_id),
+                    // Preview popup (data-sth-preview); the link itself stays the download.
+                    'preview' => $rf->file !== null ? FileController::previewUrl($rf->file) : null,
+                    'previewType' => $rf->file !== null ? FileController::previewType($rf->file) : null,
                 ])->values()->all(),
         ];
     }

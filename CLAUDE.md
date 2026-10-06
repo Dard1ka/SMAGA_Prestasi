@@ -21,7 +21,7 @@ Roles (spatie/laravel-permission, guard `web`). Kepala Sekolah and Admin are sep
 | `kesiswaan` | student affairs | manage + verify lomba uploads, verify results, talent pipeline, student import |
 | `kepala_sekolah` | principal | approve/reject every registration, dashboard |
 | `tata_usaha` | school admin office (TU) | type each letter's full number, generate, print and send the surat tugas PDFs |
-| `humas` | public relations | publication queue, e-flyer, *apresiasi* |
+| `humas` | public relations | publication queue with the data for the flyer Humas designs itself (D-107), *apresiasi* |
 | `admin` | operator | everything: users, import, settings, signature image, replace the Kepsek account (all audited) |
 
 Students log in with NIS or NISN and, once their activation is finished, also with the email they bound
@@ -32,7 +32,7 @@ consent flags (D-16, SECURITY §3m-7).
 ## 2. Sources of truth (read before changing behaviour)
 | file | content |
 |---|---|
-| `docs/DECISIONS.md` | decision log D-01…D-102 (D-45…D-61 = backlog wave + W4 product choices, *sementara*; D-62…D-65 = security hardening, *final*; D-66…D-77 = Q1 security/performance pass and the lead's follow-up choices; D-78…D-91 = §D6, the lead's choices after the hand test of 2026-10-04; D-92…D-102 = §D7, the rules changed by the fixes after the QA pass of 2026-10-05), U-01…U-06, open questions §F. **Wins over everything.** |
+| `docs/DECISIONS.md` | decision log D-01…D-108 (D-45…D-61 = backlog wave + W4 product choices, *sementara*; D-62…D-65 = security hardening, *final*; D-66…D-77 = Q1 security/performance pass and the lead's follow-up choices; D-78…D-91 = §D6, the lead's choices after the hand test of 2026-10-04; D-92…D-102 = §D7, the rules changed by the fixes after the QA pass of 2026-10-05; D-103…D-108 = §D8, the lead's six requests of 2026-10-06 (wave M3) and the schema change of QA4), U-01…U-06, open questions §F. **Wins over everything.** |
 | `docs/ARCHITECTURE.md` | binding contract: data model, enums, state machine, domain rules |
 | `docs/SECURITY.md` | threat model, top-10 risks §1, controls §3a–§3m (K1–K12), pre-release checklist §4 |
 | `docs/TALENT-FORM.md` | talent types/branches (seed source for `talent_types`, `talent_branches`) |
@@ -108,6 +108,9 @@ docker compose run --rm --no-deps node sh -c "npm ci && npm run build"
 One-off commands use **`docker compose run --rm --no-deps app <cmd>`**. `--no-deps` skips starting
 MySQL: fine for composer, Pint and the test suite. For DB commands start MySQL first
 (`docker compose up -d mysql`) or use `docker compose exec app <cmd>` while the stack runs.
+**Demo files (D-106):** a local demo seed (`APP_ENV=local`) now renders about 98 realistic sample PDFs for the
+demo files, about 30 s more on the lead's laptop; `STH_DEMO_FILES=placeholder` in the command's process env skips
+that and keeps the 1 kB placeholders. The test suite always keeps the placeholders.
 **Test safety:** compose does not inject `.env` as process env and every `<env>` in `phpunit.xml` has
 `force="true"`, so `php artisan test` always runs on in-memory SQLite (`APP_ENV=testing`) and can never
 touch or wipe the dev MySQL DB. Keep it that way: never add `env_file: .env` to `compose.yaml` and never
@@ -134,6 +137,7 @@ the config cache when `.env` or `config/` is newer, and reloads php-fpm. CSS and
 | generators | `docker compose run --rm --no-deps app php artisan make:model Foo -mf` (then add `declare(strict_types=1);`) |
 | migrate | `docker compose exec app php artisan migrate` |
 | reset local DB | `docker compose exec app php artisan migrate:fresh --seed` (local only) |
+| demo documents (local only, refuses unless `APP_ENV=local`) | `docker compose exec -T app php artisan sth:demo:refresh-files` (replaces the bytes of the `files` rows under `demo/` in the existing DB, safe to repeat; `--force` all again · `--berkas="piagam-*"` by name · `-v` one line per file · `--lengkapi` also adds the missing research report row) |
 | routes | `docker compose run --rm --no-deps app php artisan route:list --except-vendor` |
 | assets | `docker compose run --rm --no-deps node sh -c "npm ci && npm run build"` · HMR: `docker compose --profile frontend up -d node` |
 | reload PHP after an edit (dev) | `reload.bat` · `docker compose exec -T app sh docker/php/dev-cache.sh` (config cache for php-fpm only; never `config:cache` by hand) |
@@ -224,7 +228,9 @@ logs in through `POST /login` and expects a 403/404 on the next GET would see th
   `App\Actions\Competitions\CompetitionDates` (D-98): `starts_on` is never before `registration_closes_at` (create,
   update, publish); publishing a lomba whose registration deadline or final date has passed needs an explicit yes
   (`VerifyCompetition::handle(…, bool $confirmPastDates = false)`, error key `CompetitionDates::PAST_KEY`); saving
-  without publishing asks nothing. A rejection note has at least 10 characters (`VerifyCompetition::MIN_REJECT_NOTE`, D-95).
+  without publishing asks nothing. The rejection reason is **optional** (D-103; no minimum, at most 1.000
+  characters, an empty one is stored as null): the submitter is told either way, with the reason or with
+  `CompetitionRejected::NO_REASON` (`CompetitionRejected::for(Competition, ?string)`). `MIN_REJECT_NOTE` is gone.
 - **Registration state machine** (`RegistrationStatus`, 6-phase tracker *Jejak Prestasi*):
   `menunggu_konfirmasi` (1 Daftar) → `menunggu_kepsek` (2 Persetujuan) → `disetujui` | `ditolak`
   (note required) → `surat_terbit` (3 Surat tugas) → `berlangsung` (4 Lomba, scheduler on `starts_on`)
@@ -265,7 +271,10 @@ logs in through `POST /login` and expects a 403/404 on the next GET would see th
   audited) (SECURITY §3g, §3m-5). The student's "Surat tugas" card (Lomba saya) lists only letters TU already
   **sent**; the siswa letter has a download, the guru letter is an information row without a link (`LetterPolicy`
   keeps that file for the guru and staff: it carries NIP and rank; D-99, the "students may not open it" part is
-  *sementara*).
+  *sementara*). `letters.printed` (json, QA4, D-108) keeps what the PDF printed (`LetterContent` + the letter
+  template), written once by `IssueLetters` / `RevokeLetter` (`LetterPdf::printed()`); the TU preview of an issued
+  letter is drawn from it (`LetterContent::fromArray()`, `LetterTemplate::fromArray()`), never again from today's
+  data. It holds names, NIS and NIP, so it stays out of the activity log; letters made before it say so in the preview.
 - **Accounts**: students log in by NIS or NISN (10 digits → NISN) and, once activation is finished, by
   the bound email (`LoginIdentifier`, D-78); staff by `users.username` or email. First login (D-79):
   bind email → 6-digit OTP → password; at the password step a student may change it or keep the current
@@ -295,9 +304,14 @@ logs in through `POST /login` and expects a 403/404 on the next GET would see th
   student, sent with the decision (D-85). "Simpan" keeps what was typed for the student as a draft
   (`student_note_draft`, staff only); a decision sends its note and clears the draft
   (`TalentNote::forDecision()`): a text the caller passed wins, an action without a note field (row icon, bulk
-  move) sends the saved draft (*sementara*); "Tidak lolos" asks for confirmation first (D-96). A `tidak_lolos` application can be restored to its earlier stage
-  (`RestoreTalentApplication`); the student may ask once per rejection (`RequestTalentReview`) and cannot
-  apply again for a rejected choice (D-86).
+  move) sends the saved draft (*sementara*); "Tidak lolos" asks for confirmation first (D-96). A `tidak_lolos`
+  application can be restored to the stage Kesiswaan chooses (D-104): `RestoreTalentApplication::handle(User,
+  TalentApplication, ?string $studentNote = null, ?TalentStatus $to = null)`, `$to` one of `TARGETS` (Terdaftar,
+  Pemetaan, Seleksi, Peserta pembinaan), null = the stage before the rejection, which the dialog preselects; no
+  pembina or date is required (*sementara*). The student may ask once per rejection (`RequestTalentReview`) and
+  cannot apply again for a rejected choice (D-86). "Download data (Excel)" on Kesiswaan › Talenta first asks which
+  statuses go into the file (D-104; dialog `Talenta::EXPORT_DIALOG`; `export(AdminRecipients, string $status = '')`:
+  `''` = what the open tab lists, `Talenta::EXPORT_ALL`, or `TalentStatus` values joined by commas, else 404).
 - **Appreciation events**: confirmed as a whole (`appreciation_events.completed_at` / `completed_by`,
   `CompleteAppreciationEvent`); deletable only while not confirmed (`DeleteAppreciationEvent`, the
   scheduled students are told); a confirmed event takes no more prestasi (D-87). Scopes
@@ -305,6 +319,19 @@ logs in through `POST /login` and expects a 403/404 on the next GET would see th
   refuses it while it is scheduled elsewhere or once it was appreciated); "Lepas dari acara"
   (`ReleaseAppreciation`, `AppreciationPolicy::delete`) takes one scheduled row off an unconfirmed event and
   tells the student (D-97).
+- **Humas publication** (D-107): **STH draws no flyer.** Humas designs it in its own tools; the panel "Siapkan
+  publikasi" shows "Data untuk flyer" from `App\Actions\Publications\FlyerData::of(Achievement)` (`rows` = one fact
+  per line, `notes` = consent sentences outside the copied block; never points, NIS/NISN, or a student without
+  publish consent) and "Salin data" (`data-sth-copy`, §7). Caption, kanal, schedule, "Tandai dipublikasikan" and the
+  auto-publish job are unchanged. `GenerateFlyer`, `FlyerRenderer` and `PublicationPolicy::generateFlyer` are
+  deleted; `publications.flyer_file_id`, `FilePurpose::Flyer` and the flyer rule of `FilePolicy` stay for files
+  made before 2026-10-06 (nothing writes or links them now; D-47, D-71 and D-75 only concern those files).
+- **Files** (`App\Http\Controllers\FileController`, D-105): `files.show` answers `attachment` by default. With
+  `?tampil=1` (`INLINE_PARAMETER`) it answers inline for `application/pdf` and `image/jpeg|png|webp` only, for the
+  preview popup (§7). Only the inline **PDF** answer of `files.show` is relaxed (`X-Frame-Options: SAMEORIGIN`, CSP
+  `default-src 'none'; frame-ancestors 'self'`, no `sandbox`); every other answer and `files.public` keep `DENY` /
+  `sandbox`. HEAD = same policy check, no bytes, not audited; a preview is `file.downloaded` with `inline: true`.
+  A screen builds the link with `FileController::previewUrl($file)` and `previewType($file)` (null = download only).
 - **Settings**: `Setting::get(SettingKey::…)` / `Setting::put()` (defaults in `SettingKey::defaultValue()`,
   seeded by `SettingSeeder`), exactly these keys: `report_deadline_days` (45), `archive_months_after_grade12` (18),
   `signature_file_id`, `signer_name` / `signer_rank` / `signer_nip`, `letter_format_siswa` / `letter_format_guru`
@@ -322,7 +349,14 @@ logs in through `POST /login` and expects a 403/404 on the next GET would see th
   public data.
 - **Seeders** (`DatabaseSeeder`): roles + permissions, 36 classrooms, talent types/branches, default
   weight version, settings, sample signature (not in production), and `DemoSeeder` **only when
-  `APP_ENV=local`** (fictional data matching the mockup queues and leaderboard).
+  `APP_ENV=local`** (fictional data matching the mockup queues and leaderboard). The demo files are realistic
+  sample documents (D-106: certificate, piagam, research report, juknis, brochure, poster, surat tugas), rendered
+  after seeding by `Database\Seeders\Support\Demo\DemoFileRefresher` from `database/seeders/demo/*.blade.php` when
+  `Database\Seeders\Support\DemoFiles::realistic()` says so (local, not the test process, not with
+  `STH_DEMO_FILES=placeholder`). Limits that must hold: only fictional people of the demo set, invented signers
+  with committee roles, no real logo, stamp or signature of any body (drawn shapes; only the school's own demo
+  letters carry the two emblems of `resources/pdf/assets` and the repo's sample signature), "CONTOH" on every page,
+  nothing outside `APP_ENV=local`. Tests keep the 1 kB placeholder of `DemoFiles::pdf()`.
 - **Audit & jobs**: activitylog on every state change/Admin action, sealed after commit in a hash chain
   (`audit_seals` + `audit_chain_heads`, `sth:audit:verify` daily, D-63; app code only INSERTs into `activity_log`/`audit_seals`, D-51);
   notifications = queued mail + database; queues `otp`, `mail`, `default`.
@@ -366,9 +400,9 @@ logs in through `POST /login` and expects a 403/404 on the next GET would see th
   Tailwind, don't paste their markup.
 - Tokens (Tailwind v4 `@theme`, spec colours only) + helmet classes in `resources/css/app.css`; fonts
   self-hosted via `@fontsource/*`. Layouts `<x-layouts::app|public|auth|mobile>` (Livewire:
-  `#[Layout('layouts::app')]`), menus from `App\Support\Navigation`. 38 components `<x-sth.*>` (button,
+  `#[Layout('layouts::app')]`), menus from `App\Support\Navigation`. 39 components `<x-sth.*>` (button,
   chip, card, stat-tile, form fields that forward `wire:model` + `$errors`, table, tabs, tracker,
-  rumus-poin, lomba-card, modal, toast, …), each documented at the top of its file; contracts in
+  rumus-poin, lomba-card, modal, toast, preview, …), each documented at the top of its file; contracts in
   `docs/dev-notes/W1-D.md`. **No `style=""` and no inline JS** (CSP nonce): use tokens/`w-pct-*`,
   `data-sth-*` hooks and Livewire events `sth-modal-open|close`, `sth-toast`. Hooks added by M1 (all in
   `resources/js/app.js`): event `sth-badges {badges: {key: count}}` updates `[data-sth-badge="<key>"]` in the
@@ -383,6 +417,19 @@ logs in through `POST /login` and expects a 403/404 on the next GET would see th
   `NavigationServiceProvider::count()`. `app.js` also empties password fields and the account name field
   (`autocomplete="username"`: keep that attribute on a login field) after a plain form submit and on a page that Back
   or Forward brings back (D-93, D-102).
+  **File preview popup** (M3, D-105): one dialog per page, `<x-sth.preview />` (`#sth-preview`), rendered once by
+  `layouts::app` and `layouts::mobile` (not by `public` / `auth`: there a link simply downloads). Any link opens it
+  with three attributes and keeps the download as its `href`: `data-sth-preview` (the inline address from
+  `FileController::previewUrl()`; null = Blade drops it and the link is a plain download),
+  `data-sth-preview-type` (`pdf` | `image`, from `previewType()`), `data-sth-preview-name` (dialog title); on a
+  `<button>` give the download address in `data-sth-preview-download`. The script asks with HEAD first, frames only
+  a same-origin `200` + `application/pdf` + `inline` answer, and shows one sentence + "Download" for anything else
+  (no PDF viewer, 404, 429, expired session). Copy-paste example: top of `components/sth/preview.blade.php`.
+  **Copy hook** (M3): `<button type="button" data-sth-copy="#target-id">` copies the `innerText` of that element
+  (toast "Data disalin."; without the Clipboard API the text is selected and the toast says "Tekan Ctrl+C untuk
+  menyalin."), so the target holds only the text to copy. **Toasts** (QA4): `sth-toast` takes an optional `key`;
+  the event `sth-toast-clear {key}` removes the toasts raised with it, for an error toast whose cause is over
+  (`TataUsaha\SuratTugas::clearFailure()`).
   **Error pages** (D-101): `resources/views/errors/{401,403,404,405,419,429,500,503,4xx,5xx}.blade.php`, each
   including `errors.layout` (brand, "Kode <status>", title, one sentence, "Kembali ke beranda", "Kembali" when the
   visitor came from another page of the app; links from `ErrorPageServiceProvider::links()`). No role layout (no
@@ -420,7 +467,8 @@ D-64 queued-import spreadsheet deleted when the job ends, D-65 no `'unsafe-eval'
 Q1 pass D-66…D-74 (DECISIONS §D5), **final** unless noted: D-66 TOTP is staff only and a student reset clears it;
 D-67 confirm-password limit + 2FA audit events; D-68 no mail and no reset code for a frozen account, unverified address
 gets account notices only; D-69 user text in mails is plain text (`PlainMailMessage`); D-70 `PdfScanner` refuses PDFs it
-cannot read completely; D-71 a withdrawn publish consent also hides the name and the flyer from Humas; D-72 long lists
+cannot read completely; D-71 a withdrawn publish consent also hides the name and the flyer from Humas (flyer parts of
+D-71 and D-75: since D-107 only for flyer files made before 2026-10-06); D-72 long lists
 come in steps (*sementara*); D-73 "Tambah lomba" notifies the other verifiers (*sementara*); D-74 gzip for the
 Livewire script in the prod nginx + daily prune of expired cache rows. Lead's choices of 2026-10-02, **final**: D-75 the
 flyer file stays after a withdrawn consent, Humas cannot download it, Admin (`student.view`) still can; D-76 a lomba
@@ -447,8 +495,9 @@ saranmu"), **final** unless noted: D-92 after an Admin reset a student must choo
 sentence of D-79; the school password of the import may still be kept); D-93 credential pages are `no-store`, password
 fields are emptied, and a renewed session destroys the old one, never on a refused attempt; D-94 new passwords refuse
 the username, the email's local part and common passwords; D-95 "Buka ulang" never shortens a deadline, its reason and
-a lomba rejection need 10 characters; D-96 the talent note for the student is a draft until a decision and "Tidak
-lolos" asks first (quick actions and bulk moves also send a saved draft: *sementara*); D-97 one achievement on one
+a lomba rejection need 10 characters (the lomba half was taken back by D-103); D-96 the talent note for the
+student is a draft until a decision and "Tidak lolos" asks first (quick actions and bulk moves also send a saved
+draft: *sementara*); D-97 one achievement on one
 appreciation event, "Lepas dari acara"; D-98 a lomba cannot start before its registration deadline, and past dates
 need an explicit yes to publish; D-99 the student card lists only sent letters and the guru letter is text only
 (students may not open it: *sementara*); D-100 sidebar counts come from one resolver on every page; D-101 own error
@@ -458,6 +507,24 @@ on the previous account's page. Do not bring back:
 "Lewati" for a temporary password, `session()->regenerate()` without `true` on these screens or before the Action
 succeeded, a "Buka ulang" that sets now + 72 h unconditionally, a download button for the guru letter on the student
 card, counts that depend on each page passing `badges`, Laravel's default error views.
+The lead's six requests of 2026-10-06 and QA4, **D-103…D-108** (DECISIONS §D8, `docs/dev-notes/M3.md`), **final**
+unless noted: D-103 the reason for rejecting a lomba is optional and has no minimum length (replaces the lomba half of
+D-95 and the old "note required"; "Buka ulang" keeps its 10 characters); D-104 "Pulihkan" sends a rejected talent
+choice to the stage Kesiswaan chooses (Terdaftar, Pemetaan, Seleksi, Peserta pembinaan; the earlier stage is only
+the preselected one, which adjusts D-86), and "Download data" in Talenta asks which statuses go into the file
+(*sementara*: no pembina or date required for a restore into Peserta pembinaan, tidak-lolos rows last in "Semua", no
+bulk restore, "Status" in the dialog vs "Tahap" in the file); D-105 "Buka" shows an evidence file in a popup and the
+download stays: only the inline PDF answer of `files.show` may be framed by this origin and has no `sandbox`,
+everything else keeps `DENY` / `sandbox` (*sementara*: letters do not use the popup yet, HEAD is not audited, public
+pages only download); D-106 the local demo files are realistic sample documents with fictional people, invented
+signers and "CONTOH" on every page, never outside `APP_ENV=local` (`sth:demo:refresh-files`); D-107 STH draws no
+e-flyer: Humas gets "Data untuk flyer" + "Salin data" and designs the flyer itself, which narrows D-47 and the flyer
+parts of D-71 / D-75 to files made before 2026-10-06 (*sementara*: no upload for the finished flyer, old flyer files
+are kept); D-108 `letters.printed` keeps what an issued letter's PDF printed and the TU preview reads it (S, PR 12).
+Do not bring back: the flyer generator (`GenerateFlyer`, `FlyerRenderer`, a template choice, "Download PNG"), a
+required or 10-character lomba rejection reason, a restore that can only go to the earlier stage, 1 kB placeholder
+demo files in local seeding, a `sandbox` on the inline PDF answer (the viewer stays empty) or any wider relaxation
+of the file headers than that one answer, a preview of an issued letter drawn from today's data.
 
 Known stale text (do not "fix" code to match it): SECURITY.md §0/§3a still say `sm4g4_DD-MM-YYYY`;
 DESIGN-SPEC-v2 §1 and the Admin-Pengaturan mockup still show 30 days (and the mockup's WICE deadline
@@ -476,6 +543,17 @@ Stale since M2 (D-92…D-101): the last sentence of D-79's Keputusan and the "Si
 password") and `M1.md` / `catatan.md` §5 ("email scenario not re-run": it was, on 2026-10-05); `docs/dev-notes/W1-D.md`
 (badge resolver `fn ($user, $role)`: it now also gets `$except`); the old texts of K2, K4 and K10 in SECURITY §3a,
 kept as history next to a dated M2 note.
+Stale since M3 (D-103…D-108): the mockup board `Humas-Publikasi` (flyer mock-up, template select, "flyer otomatis
+memakai inisial"; mockups are design history and are not edited); the lomba half of D-95 ("alasan menolak lomba
+minimal 10 karakter"), D-86's "kembali ke tahap sebelum ditolak" and the flyer sentences of D-47, D-71 and D-75 (each
+carries a dated pointer to D-103 / D-104 / D-107); `catatan.md` §6 no. 4 ("juga alasan menolak lomba", with a
+pointer to its §8); `docs/dev-notes/M2-B.md` and `M2.md` (`VerifyCompetition::MIN_REJECT_NOTE`), `M1-D.md` (the
+signature of `RestoreTalentApplication::handle()` without `$to`) and the older notes that describe the flyer
+generator (`W2-C.md`, `W2-A1.md`, `Q1.md`; list in `M3-E.md`); in SECURITY the matrix row "Publikasi/e-flyer"
+(§3c), "disk `public` hanya untuk e-flyer" and "preview inline hanya untuk gambar" (§3d) and "attachment untuk
+PDF" (§3m-2), kept as history next to a dated M3 note;
+`resources/fonts/LICENSE-DejaVu.txt` (names `GenerateFlyer`; backlog #72); outside the repo
+`hasil-uji/qa-2-peran-lain.md` (Q2-19) and `hasil-uji/cek-backlog-dan-panduan.md`.
 
 ## 9. Open questions (answers come from the school; don't guess in code)
 Decided by the lead on 2026-10-04, no longer open: the letter template (= the school's own files: one team
@@ -496,6 +574,16 @@ Questions for the lead from M2 (marked *sementara* in DECISIONS §D7; backlog #5
 note go out with the quick actions and bulk moves in Talenta (D-96); may students open the guru letter, which
 the QA summary asked the lead to decide (D-99: today they may not); should the other reason fields (reject a
 registration, reject / revise a report, "Buka pembekuan") also need 10 characters (D-95).
+Questions for the lead from M3 and QA4 (marked *sementara* in DECISIONS §D8; backlog #71): Talenta (D-104): may a
+restore go straight into Peserta pembinaan without a guru pembina or an assessment date, should tidak-lolos rows stay
+last in "Semua", is a bulk "Pulihkan" wanted, one word for "Status" (dialog) and "Tahap" (file); preview (D-105):
+should the surat tugas links open in the popup too, should the HEAD question before a preview be audited, should
+public pages get the popup; demo documents (D-106): may the sample certificates name the organizers of the demo data,
+and is it fine that demo letters are not byte-equal to "Buat PDF"; Humas (D-107): is an upload for the finished flyer
+wanted (column and policy exist), should flyer files made before 2026-10-06 be deleted (today kept, still served to
+the roles that could open them), is it right to leave a team member without publish consent out of "Data untuk flyer",
+should the photo sentence be copied too, keep or drop M3-E's additions ("Lihat" on Arsip, the row "Cabang"); QA4:
+should alumni rows be offered in Apresiasi › Tambah prestasi.
 Public DNS check of 2026-10-01 (not yet confirmed with the school): the domain's DNS is on Cloudflare (`www`, `mail`,
 `webmail` proxied); the main website and the school mail are on Desnet shared hosting (SPF, DKIM and DMARC `p=none`
 exist), so apparently **not** on the Ubuntu server (§1 assumes the same host: confirm). No `prestasi` record exists
@@ -504,11 +592,12 @@ IPs, which breaks the per-IP login/OTP limits). The noreply mailbox would then b
 SMTP host must not be `mail.<domain>` (proxied) and its hourly send limit needs asking.
 
 ## 10. Status
-Last updated: 2026-10-04 (waves 1–2 done, W3-A integration pass, backlog wave B1–B6, W4 integration, D1 docs sync, CI green on GitHub, Q1 end-to-end/security/performance pass, PERF1 by S, M1 = the lead's 18 hand-test changes). Update this section whenever a milestone moves.
+Last updated: 2026-10-06 (waves 1–2 done, W3-A integration pass, backlog wave B1–B6, W4 integration, D1 docs sync, CI green on GitHub, Q1 end-to-end/security/performance pass, PERF1 by S, M1 = the lead's 18 hand-test changes, M2 = fixes after the QA pass, QA4 by S, M3 = the lead's six requests of 2026-10-06). Update this section whenever a milestone moves.
 M1 2026-10-05 (`docs/dev-notes/M1.md`, plain summary for the team in `catatan.md`; branch `feat/ui-uji-manual-m1`): full suite `--parallel --processes=4` → **1767 passed (8945 assertions)**, exit 0 (680 s); `pint --test` clean (610 files); `npm run build` OK; the four M1 migrations ran on the local MySQL. Dev page times after `reload.bat` + warm-up, all seven roles: 150–540 ms per menu, login 0.75–0.93 s (`catatan.md` §2). Not re-run after M1: the email scenario and the Playwright smoke (backlog).
 M2 2026-10-06 (`docs/dev-notes/M2.md` + `M2-A`…`M2-C`, D-92…D-101, plain summary in `catatan.md` §6; same branch): fixes for the 12 most important findings of the QA pass of 2026-10-05 (64 findings; the rest is backlog #57–#68) and the Trivy fix in `docker/Dockerfile.prod`; two migrations run on the local MySQL; suite numbers: TEST-RESULTS in `docs/dev-notes/M2.md`. PR 9 (M1 + M2) merged into `main` on 2026-10-06 (`b4b6f77`).
 Follow-up 2026-10-06 (D-102, `docs/dev-notes/M2.md` "Follow-up", branch `fix/auth-back-setelah-keluar`): the two leftovers of the browser check (account name back on the second Back; next login on the previous account's page) fixed, tested and checked in Chrome + Chromium. `dokumentasi.md` (repo root) lists the test data left in the lead's local database, which the lead chose not to wipe.
 QA4 2026-10-06 (`docs/dev-notes/QA4.md`, branch `fix/ui-uji-ulang-qa4`): the five findings of the Chrome retest of PR 9 / PR 11 fixed: the TU preview of an issued letter now shows what its PDF printed (new column `letters.printed`, migration run on the local MySQL), the letter screen's error toast goes away once the failure is over (toast `key` + `sth-toast-clear`), the Talenta export carries title, watermark, filter and bold header, the import template's NIS/NISN/No HP are Text, a download resumes after the password page and that page has "Batal". Full suite `--parallel --processes=4` → **2027 passed (10926 assertions)**, exit 0; `pint --test` clean (630 files); `composer audit` clean; `npm run build` OK.
+M3 2026-10-06 (`docs/dev-notes/M3.md` + `M3-A`, `M3-C`, `M3-D`, `M3-E`, D-103…D-108, plain summary in `catatan.md` §8; branch `feat/ui-uji-manual-m3`): the lead's six requests after pulling PR 12: the lomba rejection reason is optional; Talenta "Pulihkan" to a chosen stage and "Download data" with a status choice; "Buka" shows an evidence file in a preview popup (inline PDF / image, download stays); realistic demo documents + the local command `sth:demo:refresh-files` (run on the lead's database: 98 demo files); Humas gets "Data untuk flyer" + "Salin data" instead of the flyer generator. No migration in M3. Suite numbers: TEST-RESULTS in docs/dev-notes/M3.md. What stays open: backlog #69–#74.
 
 | area | owner | state (details in `docs/dev-notes/<ID>.md`) |
 |---|---|---|
@@ -538,6 +627,8 @@ QA4 2026-10-06 (`docs/dev-notes/QA4.md`, branch `fix/ui-uji-ulang-qa4`): the fiv
 | Q1 full check (`docs/dev-notes/Q1.md`, D-66…D-74): email scenario for every role (`tests/E2E/support/email-scenario.php`), security review + fixes (student TOTP lockout, confirm-password limit, PDF scanner, Markdown in mails, mail to frozen/unverified accounts, Humas after withdrawn consent, Talenta export), performance with school-sized data (list limits, gzip for the Livewire script, cache prune); follow-up D-75…D-77 (Admin flyer access, no web address in lomba names, reject/cancel notices for guru and Kepala Sekolah) | – | done |
 | PERF1 dev page speed (`docs/dev-notes/PERF1.md`): opcache without timestamp checks (`docker/php/php.dev.ini`), `reload.bat`, `wire:navigate` on the chrome links (`App\Support\Links`) | – | done (follow-up open: repo on a Linux filesystem) |
 | M1 the lead's hand test of 2026-10-04, 18 changes (`docs/dev-notes/M1.md` + `M1-A`…`M1-E`, D-78…D-91): student login by email + activation email → code → password (M1-B); public ranking filter + yearly import updates classes (M1-C); letters with a typed full number, one form per letter, the school's own templates, "Cetak" (M1-A); talent notes, Pulihkan, Minta ditinjau ulang (M1-D); appreciation events confirm/delete, Status aktivasi class popup (M1-E); sidebar counts without reload, live top bar search, everyday words, dev php-fpm config/view cache + test guard (coordinator) | – | built; four migrations run on local MySQL; email scenario + Playwright smoke not re-run (backlog #46) |
+| M2 fixes for the 12 most important findings of the QA pass of 2026-10-05 (`docs/dev-notes/M2.md` + `M2-A`…`M2-C`, D-92…D-102) and QA4 = S's PR 12, five findings of the retest (`docs/dev-notes/QA4.md`, D-108) | – / → S | done (status lines above); the rest of the QA list = backlog #57–#68 |
+| M3 the lead's six requests of 2026-10-06 (`docs/dev-notes/M3.md` + `M3-A`, `M3-C`, `M3-D`, `M3-E`, D-103…D-107): lomba rejection reason optional (coordinator); Talenta "Pulihkan" to a chosen stage + "Download data" with a status choice (M3-A); file preview popup with the hooks `data-sth-preview*` and `data-sth-copy` (M3-C, three more screens by the coordinator); realistic demo documents + `sth:demo:refresh-files` (M3-D); Humas "Data untuk flyer" instead of the flyer generator (M3-E) | – | built; no migration; browser spot checks in Chromium only (SPOT-CHECKS in `docs/dev-notes/M3.md`); open: backlog #69–#74 |
 
 Verified 2026-10-01 (W3-A, details in `docs/dev-notes/W3-A.md`): `php artisan test` → **925 passed (3726 assertions)** twice in a
 row (SQLite; `--parallel --processes=4` also 925 passed twice); `pint --test` clean; `npm run build` OK; `composer audit` clean; prod compose `config -q` OK;
@@ -571,6 +662,8 @@ Closed by M1 (2026-10-04): the "letter template details" part of #26 (decided by
 M2 (2026-10-06): the "re-run" half of #46 is done (email scenario on 2026-10-05 with the M1 code → 122 mails, 0 missing, 0 unexpected,
 0 leaks, 0 failed jobs; Playwright smoke green in CI on PR 9). Added by M2: #57–#68 = what stays open from the QA pass of 2026-10-05
 (`hasil-uji/ringkasan-temuan.md` next to the repo; QA ids Q1-xx / Q2-xx; one line per finding in `docs/dev-notes/M2.md`).
+QA4 and M3 (2026-10-06) closed or changed parts of #39, #46, #55, #57, #63, #65, #66 and #67 (marked in the rows). Added by M3:
+#69–#74 = what the four M3 notes and QA4 leave open (`docs/dev-notes/M3.md`).
 
 | # | item | source | owner |
 |---|---|---|---|
@@ -582,14 +675,14 @@ M2 (2026-10-06): the "re-run" half of #46 is done (email scenario on 2026-10-05 
 | 35 | Optional `OtpPurpose::ChangeEmail` (change-email OTP still uses `verify_email`): touches `ChangeEmail`, `CompleteActivation`, `OtpCodeMail` texts, Keamanan tests | B1, W4 | user |
 | 36 | Status sistem: attention item "N perubahan peran menunggu" (today only the panel in Pengguna & peran shows pending role requests) | W4 | S + user |
 | 37 | Browser check of the W4 menus (Status aktivasi, Surat atas nama saya, Log audit, Arsip otomatis, avatar Notifikasi) and "Tambah pengguna" with a privileged role (render-tested only) | W4 | I |
-| 39 | After a withdrawn publish consent the flyer file, the old caption and scheduled appreciation rows stay on purpose (D-75: Humas blocked, Admin keeps the download); SECURITY §3i asks for removal within 3×24 h, which is still a manual task | Q1 | user + S |
+| 39 | After a withdrawn publish consent the flyer file, the old caption and scheduled appreciation rows stay on purpose (D-75: Humas blocked, Admin keeps the download); SECURITY §3i asks for removal within 3×24 h, which is still a manual task. Since D-107 the flyer part concerns only flyer files made before 2026-10-06: STH makes no new ones and no screen links the old ones (`FilePolicy` still serves them at `/berkas/{file}`); deleting them is a separate, destructive step the lead has to decide (#71) | Q1, M3-E | user + S |
 | 40 | A talent application (SaveTalentProfile / ApplyTalent) notifies nobody; Kesiswaan only sees it on the pipeline screen. (Reject/cancel notices for guru and Kepala Sekolah are done, D-77; #38 lomba names with a web address is done, D-76) | Q1 | user |
 | 41 | Humas holds `achievement.view_all`; only the route middleware keeps Humas out of Database prestasi: tighten `AchievementPolicy::viewDatabase` or the Humas permission set. Unify the neutral-name rule (`PublicAchievements` + `AchievementFacts`) | Q1 | user |
 | 42 | Staff 2FA follow-ups: hourly ceiling for confirm-password (D-67 is 5 per minute), staff can still disable their own TOTP after confirming the password (audited; `staff.2fa` forces setup again) | Q1 | user |
 | 43 | `PdfScanner` (D-70): PDFs made on the lead's laptop with Word, Excel, PowerPoint, "Microsoft Print to PDF", Edge, Chrome and photo/scan images are accepted, hostile and oversized ones refused (19 files; results and a rerun script are in `uji-pdf/` next to the repo, not in git). Still to try: Canva downloads, the school's copier/scanner, phone scan apps, organizers' original certificates | Q1 | I |
 | 44 | A staff account reset by an Admin only gets account notices until its owner verifies the email again (D-68): add this to PANDUAN-PENGGUNA (Admin). Dev stack: after a Docker restart `queue`/`scheduler` come up before MySQL and fill `laravel.log` with connection errors until `start.bat` runs | Q1 | I |
 | 45 | Counterweight for D-79: flag "masih pakai kata sandi dari sekolah" in Status aktivasi (active student with `password_changed_at` null, or the audit event `activation.password_kept`) + a reminder to change it; a pending row can now show a masked email (bound, password step open). Add the D-79 risk to the D-14 risk-acceptance form. Since D-92 `users.temporary_password_issued_at` tells an Admin's temporary password from the school password, so the flag can name only the kept school passwords | M1-B, M2-A | user |
-| 46 | ~~Re-run `tests/E2E/support/email-scenario.php` and the Playwright smoke after M1~~ (done 2026-10-05, see above; not re-run with the M2 code unless TEST-RESULTS in `docs/dev-notes/M2.md` says so). Still open: scenario steps 9d/9e: talent review request (mail to every Kesiswaan) and restore (mail to the student), a step that deletes an appreciation event (mail to the scheduled students), and a step for `ReleaseAppreciation` (mail "Jadwal apresiasi berubah" to the student, D-97) | M1, M1-D, M1-E, M2-B | I |
+| 46 | ~~Re-run `tests/E2E/support/email-scenario.php` and the Playwright smoke after M1~~ (done 2026-10-05, see above; not re-run with the M2 code unless TEST-RESULTS in `docs/dev-notes/M2.md` says so). Still open: scenario steps 9d/9e: talent review request (mail to every Kesiswaan) and restore (mail to the student), a step that deletes an appreciation event (mail to the scheduled students), and a step for `ReleaseAppreciation` (mail "Jadwal apresiasi berubah" to the student, D-97); the restore step could pass a target stage (D-104). Neither the scenario nor the smoke was re-run with the M3 code by the M3 agents | M1, M1-D, M1-E, M2-B, M3-A | I |
 | 47 | Optional sidebar badge on "Talenta siswa" for open review requests (`TalentApplication::query()->reviewRequested()->count()`): since D-100 a badge key in `Navigation` + one line in `NavigationServiceProvider::count()` | M1-D, M2-C | S |
 | 48 | `<x-sth.modal size="xl">` (≈ 960 px) so the Status aktivasi class popup can show the email as its own column (today `lg`, 760 px) | M1-E | S |
 | 49 | `student.class_changed` (about 750 rows per yearly import): should it be in `SecurityEventSubscriber::AUDITED_EVENT_PREFIXES`, and in the history of `Admin\ArsipOtomatis::EVENTS` (it can move an archive date)? | M1-C | user |
@@ -598,9 +691,9 @@ M2 (2026-10-06): the "re-run" half of #46 is done (email scenario on 2026-10-05 
 | 52 | Every public page logs a CSP console error "Applying inline style violates … style-src" (seen by M1-C, older than M1): find the inline style. QA (Q2-25) found one on every `wire:navigate` page change, on all screens: Livewire's own small `<style nonce data-livewire-style>` arrives with the new page's nonce, which the open page's CSP does not know; no visible effect. Idea from QA: move that style into `app.css` or allow it by hash | M1-C, QA | S |
 | 53 | The TU letter screen (`tu.surat.show`) overflows sideways below about 480 px | M1 | S |
 | 54 | Print both letters on a real printer ("Cetak" was only opened on screen) and compare them with the school's paper; then confirm `resources/pdf/assets/**` is in the production image (read only so far) | M1-A | I |
-| 55 | Update `panduan-uji-manual-sth.html` (outside the repo, next to it) to the M1 screens | M1 | user |
+| 55 | ~~Update `panduan-uji-manual-sth.html` (outside the repo, next to it) to the M1 screens~~ (rewritten on 2026-10-06). Still to do: check it against the M3 screens (optional rejection reason, restore dialog, download dialog, preview popup, "Data untuk flyer"); the docs pass of M3 did not open it | M1, M3 | user |
 | 56 | Small leftovers of the M1 notes: old note text "mengganti kata sandi dan menghubungkan email" in `resources/views/dev/{auth,components}.blade.php` and the example in `components/sth/alert.blade.php`; the generic login error still says "NIS/NISN atau kata sandi salah." although it now also answers an email (`lang/id/auth.php`, `lang/id.json`, `LangIdTest`); `AppreciationEventFactory::completed()` state; demo letters without `basis_from` / `schedule_date`; no bulk "Pulihkan" and no note for the student in the bulk "Pindahkan ke …"; the guru pembina is not told when a talent choice is rejected or restored; Kepala Sekolah "Surat atas nama saya" only downloads (no "Cetak"); `<x-sth.icon>` has no printer icon ("Cetak" uses `external`) | M1-A…M1-E | S + user |
-| 57 | Reason fields (Q1-18, rest): lomba rejection and "Buka ulang" now need 10 characters (D-95); reject a registration (Kepala Sekolah), reject / ask a revision of a report and "Buka pembekuan" (`UnfreezeAccount`) still accept two letters. Same minimum there needs the lead's yes | QA, M2-B | user |
+| 57 | Reason fields (Q1-18, rest): "Buka ulang" needs 10 characters (D-95); the lomba rejection is no longer in this list (its reason is optional since D-103, by the lead's request); reject a registration (Kepala Sekolah), reject / ask a revision of a report and "Buka pembekuan" (`UnfreezeAccount`) still accept two letters. Same minimum there needs the lead's yes | QA, M2-B, M3 | user |
 | 58 | Confirm the two *sementara* points of §D7: quick actions and bulk moves in Talenta send a saved draft note (D-96); students cannot open the guru letter, which the QA summary asked the lead to decide (D-99) | M2-B, M2-C | user |
 | 59 | Browser check of M2, done on 2026-10-06 in Chrome (`hasil-uji/qa-3-cek-perbaikan.md`): Back after Keluar (D-102), activation after an Admin reset, the dialogs `tidak-lolos-talenta` and "Lepas dari acara", 403 / 404, `GET /logout`, the redirect after login. Still not run: the Back scenario in Firefox and Safari, the dialog `lomba-tanggal-lewat` (publishing with past dates), "Tambah prestasi" for an achievement that is already on an event, the error pages 419 / 429 / 500 / 503. On a production-like stack (`APP_DEBUG=false`, https, real OTP): repeat Q2-03 (405 size and time), check the `secure` cookie + HSTS and that links in mails use the configured host, not the request's (Q2-08, suspected) | M2, QA | I |
 | 60 | Top bar search (Q1-06, Q1-12, Q2-24): it does not filter the TU queue (`TataUsaha\SuratTugas` has no `q`) and points to `/tu` from Arsip surat; Kesiswaan's box says "Cari lomba atau siswa" but only finds lomba; two search boxes at once on Guru › Siswa binaan and TU › Arsip surat. One box per screen, label matching what it finds (D-90) | QA | S |
@@ -608,10 +701,16 @@ M2 (2026-10-06): the "re-run" half of #46 is done (email scenario on 2026-10-05 
 | 62 | Data checks (QA): a PNG named `.pdf` is accepted as a brochure (Q1-20) [user]; an assessment date in the past (2020) is accepted in Talenta (Q2-13) [user]; the per-class table of Status aktivasi counts alumni (Q2-11) [user + S]; Admin › Status sistem "Staf aktif" counts accounts that are not activated, and "Aktivitas Admin terbaru" shows fewer rows than its title (Q2-12) [S + user] | QA | user + S |
 | 63 | Account pages (QA): no "Keluar" on `/aktivasi` (Q1-11, Q2-04) [S]; "Email ini sudah dipakai akun lain." lets a signed-in account test which emails exist: limit the tries or answer neutrally (Q1-19, Q2-06) [user]; ~~a download that asks for the password does not continue after the confirmation, and that page has no "Batal" (Q2-18)~~ (done QA4); closing the Status aktivasi class popup with X or a click outside leaves `?kelas=` in the address (Q2-16) [S]; the bell count stays until a reload after "Tandai dibaca" (Q2-26) [S] | QA | S + user |
 | 64 | Admin › Log audit (Q2-33, Q2-35): 16 events still show their raw key (list in `hasil-uji/qa-2-peran-lain.md`; add them to `Admin\AuditLog::EVENT_LABELS`), the Subjek column shows ids, details are raw JSON (the new properties `previous_expires_at`, `past_dates`, `student_note_from_draft` too), the CSV uses commas while the Status aktivasi CSV uses semicolons | QA, M2-B | S + user |
-| 65 | Forms and lists (QA) [S unless noted]: validation messages appear one at a time in Usulkan lomba, Kelola lomba, Tambah pengguna, Jadwalkan, Buat acara (Q1-08, Q2-28); "Tambah prestasi" is one select without search (Q2-20); one long word from a student makes Kesiswaan › Talenta scroll sideways (Q2-29); Kepala Sekolah › Persetujuan: "Pilih semua" does not follow the selection, bulk approve and TU's "Kirim" have no confirmation (Q1-10); native `confirm()` in Import and "Tandai dipublikasikan" (Q2-34); tour highlight about 23 px off, last button "Lanjut" (Q1-09); "Kirim ulang" countdown jumps every 5 s (Q1-24); the note for the guru pembina is cut at about 300 letters (Q2-21); Humas › Arsip: empty Flyer column (Q2-19); Database prestasi: no sorting (Q2-23, see #32) | QA | S |
+| 65 | Forms and lists (QA) [S unless noted]: validation messages appear one at a time in Usulkan lomba, Kelola lomba, Tambah pengguna, Jadwalkan, Buat acara (Q1-08, Q2-28); "Tambah prestasi" is one select without search (Q2-20); one long word from a student makes Kesiswaan › Talenta scroll sideways (Q2-29); Kepala Sekolah › Persetujuan: "Pilih semua" does not follow the selection, bulk approve and TU's "Kirim" have no confirmation (Q1-10); native `confirm()` in Import and "Tandai dipublikasikan" (Q2-34); tour highlight about 23 px off, last button "Lanjut" (Q1-09); "Kirim ulang" countdown jumps every 5 s (Q1-24); the note for the guru pembina is cut at about 300 letters (Q2-21); ~~Humas › Arsip: empty Flyer column (Q2-19)~~ (done M3-E: the column is gone, the last cell is "Lihat"); Database prestasi: no sorting (Q2-23, see #32) | QA | S |
 | 66 | Import and teams (QA): ~~the Excel template's NIS/NISN columns are not Text (leading zeros are lost)~~ (done QA4, No HP too) and the "rows to check" file lacks NISN and birth date (Q1-21) [user + S]; a student who is not activated can be invited to a team, and an open invitation cannot be withdrawn (Q1-22) [user + S] | QA | user + S |
-| 67 | Wording (Q1-27, Q1-28, Q2-36; together with #56): "peramban" in the mail footer, "Daring · Daring", mixed "Anda" / "kamu" for staff, internal codes such as "(D-08)" on Admin screens, "1000" vs "1.000". Speed and phone width (ringkasan §5, §6): Kepala Sekolah › Laporan PDF 8.7 s, letter PDF 1.7–3.4 s and flyer PNG 3.3 s without a "sedang dibuat" text, portfolio PDF 878 kB for one empty page (fonts not subset), Kepala Sekolah dashboard scrolls 107 px sideways at phone width (Q2-31), touch targets under 44 px (Q2-32; see also #53) | QA | S + user |
+| 67 | Wording (Q1-27, Q1-28, Q2-36; together with #56): "peramban" in the mail footer, "Daring · Daring", mixed "Anda" / "kamu" for staff, internal codes such as "(D-08)" on Admin screens, "1000" vs "1.000". Speed and phone width (ringkasan §5, §6): Kepala Sekolah › Laporan PDF 8.7 s and letter PDF 1.7–3.4 s without a "sedang dibuat" text (~~flyer PNG 3.3 s~~: no longer applies, STH makes no flyer since D-107), portfolio PDF 878 kB for one empty page (fonts not subset), Kepala Sekolah dashboard scrolls 107 px sideways at phone width (Q2-31), touch targets under 44 px (Q2-32; see also #53) | QA | S + user |
 | 68 | Small leftovers of the M2 notes: optional demo rows (a pending student with less than 72 h left, a talent row with a `student_note_draft`); optional `data-sth-back` hook for a real history back on the error pages ("Kembali" is a plain link to the Referer); an unknown address has no session, so its 404 links to `/` even for a signed-in visitor; Fortify's login keeps the guest session row from before the login (no `user_id`); the temporary password an Admin types for staff is not checked against the common-password list; `docs/dev-notes/W1-D.md` still shows the old badge resolver signature | M2-A…M2-C | user + S |
+| 69 | Preview popup (D-105) on the screens that still only download a file: Kesiswaan › Kelola lomba, drawer "Periksa lomba" (`Kesiswaan\Lomba\Form`, juknis), Siswa › Detail lomba (`livewire/siswa/lomba/detail.blade.php`, juknis), Siswa › Lomba saya (`Siswa\LombaSaya\Index`), Guru › Lomba (`Guru\Lomba`, juknis): the three attributes shown at the top of `components/sth/preview.blade.php`. The surat tugas links wait for the lead (#71) | M3-C | S |
+| 70 | Browser check of M3 (only Chromium so far): the popup in Firefox, Safari, Edge and on a real phone (iOS Safari with a PDF in a frame; whether the viewer accepts `default-src 'none'` on the inline PDF), behind the production Apache (`Header setifempty X-Frame-Options` must keep `SAMEORIGIN`; read, not run), "Download" inside the dialog, the real clipboard for "Salin data", a student account (Portofolio, Profil talenta); Talenta: the restore dialog and the download dialog at phone width, "Pilih semua status", password page → automatic download with the chosen statuses; Humas: "Data untuk flyer" at phone width; the realistic demo PDFs in a PDF viewer and on paper | M3-A, M3-C, M3-D, M3-E | I |
+| 71 | Confirm the *sementara* points of §D8 and QA4's question (list in §9 and in `docs/dev-notes/M3.md`): restore into Peserta pembinaan without pembina or date, order of tidak-lolos rows, bulk "Pulihkan", "Status" vs "Tahap" (D-104); letters in the popup, HEAD not audited, public pages (D-105); organizer names on the sample certificates (D-106); upload for the finished flyer, keep or delete the flyer files made before 2026-10-06, team members without publish consent, the photo sentence, "Lihat" and "Cabang" (D-107); alumni rows in Apresiasi › Tambah prestasi (QA4) | M3 notes, QA4 | user |
+| 72 | Delete `resources/fonts/{DejaVuSans.ttf,DejaVuSans-Bold.ttf,LICENSE-DejaVu.txt}` (1.4 MB): only the deleted `FlyerRenderer` read them, the PDFs use dompdf's own DejaVu. Optional: GD's `--with-freetype` in both Dockerfiles was only needed to draw flyer text | M3-E | S + I |
+| 73 | The E2E seed (`tests/E2E/support/setup-app.sh` runs with `APP_ENV=local`) now renders about 98 demo PDFs (about 30 s on the lead's laptop): set `STH_DEMO_FILES=placeholder` on the E2E app service if that time matters in CI. A real `migrate:fresh --seed` on MySQL with the realistic documents has not been run yet (the seeder's refresh ran only in a test) | M3-D | I |
+| 74 | Small leftovers of the M3 notes: one JPG evidence in the demo data so the image path of the popup can be tried by hand; `FileController::previewType()` could move to `App\Models\File`; Admin › Log audit has no "preview" label for `file.downloaded` with `inline: true`, prints the new property `rejected_from` (`talent.restored`) and a `filters.tahap` with several statuses (`talent.exported`) as stored, and keeps the label `publication.flyer_generated` for old rows only (with #64); the comment in `livewire/partials/resume-download.blade.php` still says the call is a literal "export"; Esc does not close the popup while keyboard focus is inside the PDF viewer; `letters.printed` is null for demo letters; whether Tailwind reads `database/seeders/demo/*.blade.php` as a source was not checked; the invented signer names of the sample certificates were not searched for real namesakes; a dompdf PDF with an SVG can differ by one unused font entry between an empty and a filled `storage/app/pdf-fonts` (harmless unless letter hashes are compared) | M3-A, M3-C, M3-D, M3-E | user + S |
 
 ## 11. Team, ownership and agent protocol
 - **user** (lead, backend core, 40%): `app/{Enums,Models,Domain,Actions,Policies,Http,Providers,

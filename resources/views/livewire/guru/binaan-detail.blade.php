@@ -59,7 +59,14 @@
                                         <span class="font-bold">{{ $file['kind'] }}</span>
                                         <span class="ellip text-[12.5px] text-muted">{{ $file['name'] }}</span>
                                     </span>
-                                    <x-sth.button variant="quiet" size="sm" icon="download" :href="$file['href']">Download<span class="sr-only"> {{ $file['kind'] }}</span></x-sth.button>
+                                    @if ($file['preview'])
+                                        {{-- Preview popup (<x-sth.preview>); the href stays the download. --}}
+                                        <x-sth.button variant="quiet" size="sm" icon="eye" :href="$file['href']" aria-haspopup="dialog"
+                                            :data-sth-preview="$file['preview']" :data-sth-preview-type="$file['previewType']"
+                                            :data-sth-preview-name="$file['name']">Buka<span class="sr-only"> {{ $file['kind'] }}</span></x-sth.button>
+                                    @else
+                                        <x-sth.button variant="quiet" size="sm" icon="download" :href="$file['href']">Download<span class="sr-only"> {{ $file['kind'] }}</span></x-sth.button>
+                                    @endif
                                 </li>
                             @endforeach
                         </ul>

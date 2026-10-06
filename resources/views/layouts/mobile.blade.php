@@ -1,7 +1,7 @@
 {{--
     Focused single-task flow, mobile first (Lapor-Hasil-Mobile, Aktivasi boards): back button + title
     + subtitle, one column (max 480px, centred on desktop), optional sticky bottom action bar and the
-    siswa tab bar. No sidebar.
+    siswa tab bar. No sidebar. Carries the file preview popup (<x-sth.preview>) like layouts::app.
 
     <x-layouts::mobile title="Laporkan hasil" subtitle="WICE 2026 · Riset · Tim 3 orang"
                        :back="route('siswa.lomba-saya.index')" back-label="Kembali ke Lomba saya">
@@ -65,6 +65,7 @@
         <x-sth.tabbar :items="is_array($tabbar) ? $tabbar : null" />
     @endif
 
+    <x-sth.preview />
     <x-sth.flash />
     @livewireScripts
 </body>

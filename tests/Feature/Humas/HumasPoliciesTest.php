@@ -10,6 +10,7 @@ use App\Models\Appreciation;
 use App\Models\AppreciationEvent;
 use App\Models\Publication;
 use App\Models\Student;
+use App\Policies\PublicationPolicy;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Feature\Auth\AuthTestHelpers;
 use Tests\Feature\Humas\HumasFixtures;
@@ -31,8 +32,7 @@ it('lets only publication.manage holders see the queue', function (RoleName $rol
     expect($user->can('viewAny', Publication::class))->toBe($allowed)
         ->and($user->can('view', $publication))->toBe($allowed)
         ->and($user->can('schedule', $publication))->toBe($allowed)
-        ->and($user->can('publish', $publication))->toBe($allowed)
-        ->and($user->can('generateFlyer', $publication))->toBe($allowed);
+        ->and($user->can('publish', $publication))->toBe($allowed);
 })->with([
     'humas' => [RoleName::Humas, true],
     'admin' => [RoleName::Admin, true],
@@ -69,8 +69,7 @@ it('blocks changes when the student has no publish consent', function (): void {
     expect($humas->can('view', $publication))->toBeTrue()
         ->and($humas->can('update', $publication))->toBeFalse()
         ->and($humas->can('schedule', $publication))->toBeFalse()
-        ->and($humas->can('publish', $publication))->toBeFalse()
-        ->and($humas->can('generateFlyer', $publication))->toBeFalse();
+        ->and($humas->can('publish', $publication))->toBeFalse();
 });
 
 it('blocks changes when the achievement is not verified', function (): void {
@@ -78,8 +77,7 @@ it('blocks changes when the achievement is not verified', function (): void {
     $publication = HumasFixtures::publication(verified: false);
 
     expect($humas->can('schedule', $publication))->toBeFalse()
-        ->and($humas->can('publish', $publication))->toBeFalse()
-        ->and($humas->can('generateFlyer', $publication))->toBeFalse();
+        ->and($humas->can('publish', $publication))->toBeFalse();
 });
 
 it('follows the publication status', function (PublicationStatus $status, bool $schedule, bool $publish): void {
@@ -91,13 +89,22 @@ it('follows the publication status', function (PublicationStatus $status, bool $
 
     expect($humas->can('schedule', $publication))->toBe($schedule)
         ->and($humas->can('update', $publication))->toBe($schedule)
-        ->and($humas->can('publish', $publication))->toBe($publish)
-        ->and($humas->can('generateFlyer', $publication))->toBeTrue();
+        ->and($humas->can('publish', $publication))->toBe($publish);
 })->with([
     'siap' => [PublicationStatus::Siap, true, true],
     'terjadwal' => [PublicationStatus::Terjadwal, true, true],
     'dipublikasikan' => [PublicationStatus::Dipublikasikan, false, false],
 ]);
+
+// M3-E: Humas makes its flyers outside STH. The ability is gone, so asking for it is denied for every role.
+it('has no ability left to generate a flyer', function (RoleName $role): void {
+    $user = AuthTestHelpers::staff($role);
+    $publication = HumasFixtures::publication();
+
+    expect(method_exists(PublicationPolicy::class, 'generateFlyer'))->toBeFalse()
+        ->and($user->can('generateFlyer', $publication))->toBeFalse()
+        ->and($user->can('view', $publication))->toBe($role !== RoleName::Kesiswaan);
+})->with([RoleName::Humas, RoleName::Admin, RoleName::Kesiswaan]);
 
 it('gives appreciation abilities to appreciation.manage holders only', function (RoleName $role, bool $allowed): void {
     $user = AuthTestHelpers::staff($role);

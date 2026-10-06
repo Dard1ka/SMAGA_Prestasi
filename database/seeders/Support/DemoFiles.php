@@ -6,17 +6,57 @@ namespace Database\Seeders\Support;
 
 use App\Enums\FilePurpose;
 use App\Models\File;
+use Illuminate\Support\Env;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 /**
- * Tiny placeholder files for local demo data: a one-page PDF that says "Berkas contoh - data fiktif",
- * written to the private `local` disk under demo/ with a random name, plus its `files` row.
+ * Files of the local demo data: a `files` row + a PDF on the private `local` disk under demo/ with a random name.
  * Never used outside local seeding.
+ *
+ * pdf() writes a tiny placeholder (one page, "Berkas contoh - data fiktif"). After seeding, DemoSeeder lets
+ * Support\Demo\DemoFileRefresher replace every placeholder by a realistic sample document (certificate, piagam,
+ * research report, juknis, brochure, letter), but only when realistic() says so: a real local seed, never the
+ * test suite, where the placeholders stay because rendering about a hundred PDFs takes most of a minute.
  */
 final class DemoFiles
 {
     public const DIRECTORY = 'demo';
+
+    /** Set STH_DEMO_FILES=placeholder to seed local demo data without rendering the realistic documents. */
+    public const ENV_SWITCH = 'STH_DEMO_FILES';
+
+    private static ?bool $realistic = null;
+
+    /**
+     * Should the demo seed render realistic documents? Only on APP_ENV=local, not in the test process
+     * (phpunit.xml forces APP_ENV=testing there, also for a test that sets app()['env'] to local to run the
+     * demo seeder) and not when STH_DEMO_FILES=placeholder.
+     */
+    public static function realistic(): bool
+    {
+        if (self::$realistic !== null) {
+            return self::$realistic && app()->environment('local');
+        }
+
+        return app()->environment('local')
+            && Env::get('APP_ENV') !== 'testing'
+            && Env::get(self::ENV_SWITCH) !== 'placeholder';
+    }
+
+    /** Tests: true / false overrides the rule of realistic(), null gives it back. */
+    public static function forceRealistic(?bool $realistic): void
+    {
+        self::$realistic = $realistic;
+    }
+
+    /** File name of the research report a demo report with a research title carries (first five words of the title). */
+    public static function researchReportName(string $title): string
+    {
+        $slug = implode('-', array_slice(array_filter(explode('-', Str::slug($title))), 0, 5));
+
+        return 'laporan-penelitian-'.($slug !== '' ? $slug : 'siswa').'.pdf';
+    }
 
     public static function pdf(string $originalName, FilePurpose $purpose, ?int $ownerUserId = null, ?string $title = null): File
     {

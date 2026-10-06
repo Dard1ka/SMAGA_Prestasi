@@ -62,7 +62,8 @@ class TalentApplication extends Model
     }
 
     /**
-     * Stage a "tidak lolos" row goes back to when Kesiswaan restores it: the stage it had before the
+     * Default stage a "tidak lolos" row goes back to when Kesiswaan restores it without choosing another one
+     * (D-104: the restore dialog offers Terdaftar, Pemetaan, Seleksi and Peserta pembinaan): the stage it had before the
      * rejection, or Terdaftar when that is unknown (rows rejected before `rejected_from` existed).
      */
     public function restoreTarget(): TalentStatus

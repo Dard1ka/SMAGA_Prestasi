@@ -68,13 +68,20 @@
                                         <span class="muted num text-[13px]">{{ $item['formula'] }}</span>
                                     </div>
                                     @if ($item['certificateUrl'])
-                                        <a href="{{ $item['certificateUrl'] }}" class="mt-auto flex items-center gap-3 rounded-tile border border-line p-2.5 text-ink no-underline hover:bg-hover">
+                                        {{-- With a preview the click opens the popup (<x-sth.preview>); the href stays the download. --}}
+                                        <a href="{{ $item['certificateUrl'] }}" class="mt-auto flex items-center gap-3 rounded-tile border border-line p-2.5 text-ink no-underline hover:bg-hover"
+                                            @if ($item['certificatePreview'])
+                                                data-sth-preview="{{ $item['certificatePreview'] }}"
+                                                data-sth-preview-type="{{ $item['certificatePreviewType'] }}"
+                                                data-sth-preview-name="{{ $item['certificateName'] }}"
+                                                aria-haspopup="dialog"
+                                            @endif>
                                             <span class="flex size-10 shrink-0 items-center justify-center rounded-control bg-gold-bg text-gold" aria-hidden="true"><x-sth.icon name="file" /></span>
                                             <span class="flex flex-col">
                                                 <span class="text-sm font-bold">Sertifikat</span>
-                                                <span class="muted text-[12.5px]">Terverifikasi · download</span>
+                                                <span class="muted text-[12.5px]">Terverifikasi · {{ $item['certificatePreview'] ? 'buka' : 'download' }}</span>
                                             </span>
-                                            <x-sth.icon name="download" :size="18" class="ml-auto text-muted" />
+                                            <x-sth.icon :name="$item['certificatePreview'] ? 'eye' : 'download'" :size="18" class="ml-auto text-muted" />
                                         </a>
                                     @endif
                                 </div>

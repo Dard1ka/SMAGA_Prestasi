@@ -11,14 +11,18 @@ use App\Notifications\Verification\Notice;
 
 /**
  * To the student: Kesiswaan restored a "tidak lolos" pilihan talenta ("pengajuanmu dibuka kembali"), with the
- * stage it is in again and the optional note for the student.
+ * stage it is in again and the optional note for the student. Kesiswaan chooses that stage (M3-A), so it can
+ * also be Peserta pembinaan, which gets its own sentence.
  */
 final class TalentApplicationRestored extends Notice
 {
     public static function for(TalentApplication $application, string $talentLabel, ?string $studentNote = null, bool $reviewRequested = false): self
     {
         $body = ($reviewRequested ? 'Permintaan tinjau ulangmu diterima. ' : '')
-            .'Pengajuanmu untuk '.$talentLabel.' dibuka kembali, sekarang di tahap '.$application->status->label().'.';
+            .'Pengajuanmu untuk '.$talentLabel.' dibuka kembali'
+            .($application->status === TalentStatus::Pembinaan
+                ? '. Kamu sekarang peserta pembinaan.'
+                : ', sekarang di tahap '.$application->status->label().'.');
 
         if ($studentNote !== null && trim($studentNote) !== '') {
             $body .= ' Catatan dari Kesiswaan: '.TalentNote::inline($studentNote);

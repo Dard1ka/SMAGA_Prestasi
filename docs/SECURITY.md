@@ -6,6 +6,7 @@
 > Prinsip kerja: *crosscheck setiap fitur terhadap bagian 3 dan checklist bagian 4 sebelum merge.*
 > **Pembaruan 4 Okt 2026 (M1, keputusan lead D-78…D-91):** login siswa dengan email, urutan aktivasi baru dan ganti kata sandi opsional untuk siswa (§3a: K1, K4, K7, K8, K11 + tambahan risiko), import tahunan memperbarui kelas (§3f), nomor surat diketik lengkap, lambang di repo, dan cetak inline (§3g, §3m-4), alumni tanpa kelas terakhir (§3m-7), checklist §4. Analisis dan contoh kode lama **tidak dihapus**: bagian yang tidak berlaku lagi diberi tanda "Riwayat" atau "Pembaruan 4 Okt 2026".
 > **Pembaruan 6 Okt 2026 (M2, D-92…D-101, perbaikan dari uji QA 5 Okt 2026):** setelah reset Admin siswa wajib membuat kata sandi baru, "Buka ulang" tidak pernah memendekkan batas, daftar kata sandi umum, sesi lama dihapus saat sesi diperbarui (§3a: K2, K4, K5, K10, "Hashing & sesi", tambahan risiko D-79), halaman kredensial tidak disimpan browser dan halaman error tidak pernah mencetak teks exception (§3f), checklist §4. Ditandai "Pembaruan 6 Okt 2026".
+> **Pembaruan 6 Okt 2026 (M3, D-103…D-108, enam permintaan lead 6 Okt 2026):** "Buka" berkas tampil di popup, jadi `files.show` boleh mengirim PDF inline untuk di-frame origin ini sendiri (§3d: header, alasan tanpa `sandbox`, permintaan HEAD, apa yang tetap `DENY`; §3f: `frame-src 'self'`; §3m-2); STH tidak lagi membuat e-flyer dan Humas mendapat "Data untuk flyer" (§3c, §3d, §3m-7); berkas demo realistis hanya di `APP_ENV=local` (§3i); alasan menolak lomba opsional (tidak mengubah kontrol di dokumen ini); checklist §4. Ditandai "Pembaruan 6 Okt 2026 (M3)" atau "(D-10x)"; teks lama tetap sebagai riwayat.
 
 ---
 
@@ -313,6 +314,8 @@ Gmail mewajibkan SPF **atau** DKIM untuk semua pengirim, dan SPF + DKIM + DMARC 
 | User, peran, import, arsip, jendela aktivasi | – | – | R status aktivasi, buka jendela aktivasi ulang | – | – | – | C/U, reset akun, ganti akun Kepsek |
 | Semua resource saat akun **diarsipkan** | R sendiri saja (read-only) | – | – | – | – | – | – |
 
+**Pembaruan 6 Okt 2026 (D-107):** baris "Publikasi/e-flyer" kini berarti publikasi saja. STH tidak lagi membuat e-flyer: Humas membuatnya sendiri di luar aplikasi dari blok "Data untuk flyer" (`App\Actions\Publications\FlyerData`). Hak akses publikasi tidak berubah (`PublicationPolicy`; kemampuan `generateFlyer` dihapus). Berkas flyer yang dibuat sebelum 6 Okt 2026 tetap dijaga `FilePolicy` seperti sebelumnya (Humas selama izin publikasi berlaku; Admin juga setelah izin dicabut, D-75), tetapi tidak ada layar yang menautkannya.
+
 **Aturan implementasi (WAJIB):**
 1. **Deny by default.** Setiap aksi controller memanggil `Gate::authorize('ability', $model)`, atau route memakai `->can('update', 'pengajuan')`. Base `Controller` Laravel 11+ tidak lagi menyertakan trait `AuthorizesRequests`; tambahkan trait itu kalau ingin memakai `$this->authorize()`.
 2. **Scope query**, jangan hanya cek sesudah fetch. List, search, export, dashboard, dan leaderboard semuanya memakai `->visibleTo($user)`:
@@ -403,6 +406,27 @@ public function show(Lampiran $lampiran)
     ]);  // attachment; preview inline hanya untuk gambar hasil re-encode
 }
 ```
+
+**Pembaruan 6 Okt 2026 (M3, D-105): "Buka" berkas tampil di popup.** Komentar "preview inline hanya untuk gambar" di contoh atas adalah riwayat. Lead meminta berkas bukti (sertifikat, juknis) langsung tampil tanpa di-download dulu, dengan tombol Download tetap ada. Sejak itu `FileController::show` (`files.show`, `/berkas/{file}`) boleh menjawab **inline** bila URL memuat `?tampil=1` **dan** MIME tersimpan ada di allowlist: `application/pdf`, `image/jpeg`, `image/png`, `image/webp` (dulu: semua `image/*`; SVG, GIF, HTML, xlsx tetap attachment apa pun isi query-nya). Tanpa `?tampil=1` jawabannya tetap attachment seperti contoh di atas.
+
+Header tiap jawaban (diuji di `tests/Feature/Files/FilePreviewTest.php`):
+
+| Jawaban | Disposition | X-Frame-Options | CSP |
+|---|---|---|---|
+| halaman aplikasi mana pun | – | `DENY` | CSP halaman, kini dengan `frame-src 'self'` tertulis (§3f); `frame-ancestors 'none'` dan `object-src 'none'` tidak berubah |
+| download (bawaan) | attachment | `DENY` | `default-src 'none'; sandbox` (tidak berubah) |
+| gambar `?tampil=1` | inline | `DENY` | `default-src 'none'; sandbox` (tidak berubah; ditampilkan dengan `<img>`, tidak pernah di-frame) |
+| **PDF `?tampil=1` di `files.show`** | inline | `SAMEORIGIN` | `default-src 'none'; frame-ancestors 'self'` |
+| tipe lain dengan `?tampil=1`, PDF di `files.public`, jawaban 404 | attachment / – | `DENY` | seperti download / halaman |
+
+- **Satu-satunya pelonggaran** ada di jawaban PDF inline dari `files.show`: origin ini sendiri boleh mem-frame-nya, origin lain tidak. Tidak ada perubahan global yang melemahkan halaman: `frame-src 'self'` sama artinya dengan `default-src 'self'` yang sudah berlaku untuk frame; tidak ada `blob:`, `data:`, atau origin lain di `frame-src`.
+- **Kenapa tanpa `sandbox` di jawaban itu.** Penampil PDF bawaan Chromium tidak berjalan di dokumen ber-sandbox. Dicoba di browser dengan dua cara: `sandbox` di CSP jawaban, dan atribut `sandbox` pada frame (juga dengan `allow-same-origin allow-scripts`); keduanya membuat frame tetap kosong. Dengan `default-src 'none'; frame-ancestors 'self'` dan `object-src 'none'` di halaman, PDF tampil.
+- **Yang tetap menahan berkas menjalankan sesuatu di origin aplikasi:** MIME tersimpan berasal dari deteksi server saat upload, jawaban berkata `application/pdf` + `nosniff` (tidak pernah HTML), `default-src 'none'` tetap ada, PDF berisi skrip atau aksi sudah ditolak `PdfScanner` saat upload (D-70), dan **tidak ada pdf.js di origin kita**: penampil browser yang bekerja, jadi catatan versi pdf.js di atas tetap hanya berlaku bila suatu saat viewer itu dipasang.
+- **Permintaan HEAD lebih dulu.** Skrip popup (`resources/js/app.js`) bertanya dengan HEAD dan baru memasang frame bila jawabannya `200` + `application/pdf` + `inline`, dan hanya untuk alamat di origin yang sama. Dengan begitu popup tidak pernah memulai download sendiri, dan sesi habis, 404, atau 429 menjadi satu kalimat di dialog. HEAD menjalankan pemeriksaan policy yang sama, tidak membaca isi berkas, dan **tidak diaudit** (*sementara, menunggu jawaban lead*). Preview sendiri tercatat sebagai `file.downloaded` dengan `inline: true`; menekan "Download" menambah satu baris biasa.
+- **Yang tidak berubah:** `FilePolicy::view`, 404 untuk berkas yang bukan haknya (GET dan HEAD, dengan atau tanpa `?tampil=1`), middleware `auth` / `activated` / `staff.2fa`, `throttle:60,1` (satu preview PDF = 2 permintaan, "Download" 1 lagi), `Cache-Control: private, no-store` di semua jawaban berkas termasuk yang inline. `files.public` (tamu) **tidak pernah** mengirim PDF inline; di sana tidak ada yang perlu di-frame. Halaman tanpa dialog (`layouts::public`, `layouts::auth`) hanya men-download.
+- **Produksi:** vhost Apache memakai `Header setifempty X-Frame-Options`, jadi `SAMEORIGIN` dari jawaban itu seharusnya bertahan (dibaca di `docker/apache/*.conf`, **belum dijalankan**). Belum diuji: Firefox, Safari, Edge, HP sungguhan. Bila di salah satu browser frame tetap kosong karena `default-src 'none'`, yang boleh dilepas hanya direktif itu dan hanya di jawaban PDF inline (checklist §4).
+- **Surat tugas** (`FilePurpose::Letter`) belum memakai popup; rutenya sudah bisa mengirimnya inline, jadi yang menahan hanyalah link di layar. Keputusan lead (*sementara*).
+- **E-flyer (D-47, D-107):** kalimat "Disk `public` + `storage:link` hanya untuk e-flyer Humas" di butir Penyimpanan adalah riwayat rancangan awal. E-flyer tidak pernah ditaruh di disk publik (D-47), dan sejak 6 Okt 2026 STH tidak membuat e-flyer sama sekali (D-107). Aturannya tetap: berkas pengguna tidak pernah ditaruh di disk `public` (`CLAUDE.md` §3 butir 4).
 - Link berbagi sementara (mis. untuk TU): `URL::temporarySignedRoute('lampiran.show', now()->addMinutes(10), [...])` + middleware `signed` **dan** policy.
 - **Kuota & DoS:** maks. 10 file per pendaftaran/laporan, 200 MB per siswa, rate limit upload 30/jam per user, dan maks. 5 usulan lomba/hari per siswa. Batas selaras di tiga lapis: PHP (`upload_max_filesize=20M`, `post_max_size=25M`), nginx kontainer (`client_max_body_size 25m`), dan proxy luar (`client_max_body_size`/`LimitRequestBody`).
 - **Volume upload dan MySQL dipisah** (idealnya partisi/disk berbeda). Alert saat disk ≥ 80%. Disk penuh membuat MySQL crash.
@@ -566,6 +590,11 @@ public function handle(Request $request, Closure $next)
 - **Halaman pertama setelah login:** GET yang menjawab 403 atau 404 tepat setelah login dialihkan ke beranda (`ErrorPageServiceProvider::afterLogin()`). Otorisasi tidak berubah: yang berubah hanya tujuan pengalihan, dan hanya untuk satu permintaan itu.
 - Belum diuji ulang di lingkungan seperti produksi (`APP_DEBUG=false`); lihat checklist §4.
 
+**Pembaruan 6 Okt 2026 (M3, D-105, D-107):**
+- **`frame-src 'self'` tertulis di CSP halaman.** Contoh middleware di atas belum memuatnya; `SecurityHeaders` kini menulis `frame-src 'self'` (artinya sama dengan `default-src 'self'` yang sudah berlaku untuk frame) supaya popup preview boleh mem-frame PDF dari origin ini. Tidak ada `blob:`, `data:`, atau origin lain. Halaman aplikasi sendiri **tetap tidak bisa di-frame** siapa pun: `frame-ancestors 'none'` dan `X-Frame-Options: DENY` tidak berubah. Header yang sudah dipasang sebuah jawaban (PDF inline: `SAMEORIGIN` dan CSP-nya sendiri, §3d) tidak ditimpa middleware ini.
+- **Popup preview tanpa `style`/JS inline:** satu dialog `<x-sth.preview />` di `layouts::app` dan `layouts::mobile`; link membawa hook `data-sth-preview*`; teks dialog ada di atribut `data-msg-*` komponen itu, bukan di skrip. Uji browser M3-C: 0 peristiwa `securitypolicyviolation` saat PDF dibuka (Chromium).
+- **"Data untuk flyer" (D-107)** dirender dengan `{{ }}` sebagai teks polos; tombol "Salin data" (`data-sth-copy`) hanya menyalin `innerText` satu elemen di halaman itu ke clipboard, tidak mengirim apa pun ke server atau ke pihak lain. Di butir "Rich text (caption e-flyer, berita Humas)" di bawah, kata "e-flyer" tinggal riwayat: STH tidak lagi membuat e-flyer; caption publikasi tetap ada.
+
 **XSS di Blade:**
 - Output **selalu** `{{ }}`. `{!! !!}` **dilarang** kecuali untuk kolom yang sudah dipurifikasi (`*_html_clean`). CI mem-*grep* `{!!` dan setiap temuan harus ada di allowlist review.
 - Data ke JS: `@js($data)` / `Js::from()`, bukan `{{ }}` di dalam `<script>`. Atribut selalu diberi tanda kutip.
@@ -718,6 +747,15 @@ Fakta hukum yang relevan: UU PDP berlaku penuh 17 Okt 2024 (Pasal 74). Data anak
 | Pihak ketiga | SMTP/penyimpanan backup: perjanjian pemrosesan data. Pertimbangkan lokasi server di luar Indonesia (ketentuan transfer data UU PDP) |
 | Retensi (sebagian diputuskan) | OTP 24 jam; security log 1 tahun; audit log 5 tahun. Akun siswa **diarsipkan otomatis 18 bulan setelah mulai kelas XII** (read-only, D-13, §3m-8). Usulan (perlu keputusan sekolah): foto & lampiran dihapus 2 tahun setelah arsip kecuali ada persetujuan arsip; file import dihapus 7 hari; rekap prestasi (nama + capaian) disimpan sebagai arsip sekolah. Dijalankan job `schedule` dengan laporan |
 | DPIA & DPO | DPIA sederhana sebelum go-live (dokumen ini sebagai lampiran teknis); tunjuk DPO/penanggung jawab PDP di sekolah |
+
+**Pembaruan 6 Okt 2026 (M3, D-106): berkas demo realistis.** Berkas data demo (sertifikat, piagam, laporan penelitian, juknis, brosur, poster, surat tugas) kini dokumen contoh yang tampak seperti aslinya. Batas yang dijaga kode dan tesnya (`tests/Feature/Demo/*`):
+- **Hanya orang fiktif.** Nama dicetak hanya bila dikenal `DemoPeople::isFictional()` (daftar `DemoSeeder::STUDENTS` / `STAFF`); selain itu dipakai siswa pengganti dari spec, atau suratnya tidak dibuat. Kepala Sekolah di dokumen demo adalah konstanta fiktif, bukan penanda tangan dari Pengaturan.
+- **Tanpa tanda tangan, stempel, atau logo lembaga mana pun.** Penanda tangan sertifikat adalah nama rekaan dengan jabatan panitia ("Ketua Panitia", "Ketua Dewan Juri", dan sejenisnya), tidak pernah jabatan lembaga sungguhan; hiasan digambar sendiri (bentuk saja), stempel bertulisan CONTOH, nomor sertifikat memuat `/CONTOH/`. Dua lambang di `resources/pdf/assets` hanya muncul di surat sekolah sendiri, dengan gambar tanda tangan contoh dari repo, tidak pernah gambar yang di-upload Admin.
+- **Tiap halaman** bertulisan "CONTOH · data fiktif untuk uji SMAGA Talent Hub · bukan dokumen resmi" (`DemoPdfRenderer::FOOTER`).
+- **Hanya lokal.** `DemoSeeder`, `DemoFiles::realistic()`, `DemoFileRefresher`, dan perintah `sth:demo:refresh-files` menolak berjalan kecuali `APP_ENV=local`; `DemoPdfRenderer::render()` juga menolak di production. Templatnya ada di `database/seeders/demo`, di luar semua view path aplikasi.
+- **Lewat pemindai upload yang sama.** Tiap dokumen contoh diuji lewat `StoreUpload::store()` (UploadRules + `PdfScanner`).
+- **Tidak ada yang disalin dari internet**; isi laporan penelitian dan daftar pustakanya rekaan dan menyebut dirinya "data contoh".
+- Yang belum diperiksa: nama penanda tangan rekaan belum dicari kemiripannya dengan orang sungguhan; sertifikat menyebut nama penyelenggara dari data demo (Puspresnas, universitas), seperti yang sudah tampil di layar (*sementara*, D-106).
 
 ### 3j. Infrastruktur & Docker (Ubuntu 18.04, 8 GB RAM)
 
@@ -1022,6 +1060,7 @@ Kontak (isi sebelum go-live): Admin server: `____`; Penanggung jawab PDP/DPO: `_
 **3m-2. Brosur/juknis (usulan & katalog).** Aturan §3d berlaku: allowlist pdf/jpg/png/webp ≤ 5 MB, gambar di-re-encode, PDF diperiksa, private disk.
 - Brosur usulan tidak pernah publik.
 - Setelah menjadi katalog, brosur diunduh lewat controller (`Content-Disposition: attachment` untuk PDF, CSP `sandbox`).
+- **Pembaruan 6 Okt 2026 (D-105):** download tetap seperti butir di atas. Di kartu Usulan lomba (Kesiswaan), nama juknis juga membuka popup preview: PDF-nya dikirim inline hanya lewat `files.show` dengan header khusus di §3d (boleh di-frame origin ini saja, tanpa `sandbox`), setelah pemeriksaan policy yang sama. Juknis di layar lain (form "Periksa lomba", detail lomba siswa, Guru › Lomba) masih download saja.
 - Batas: 5 usulan/hari per siswa, 30 upload/jam per user.
 
 **3m-3. Pencarian anggota tim**
@@ -1068,6 +1107,7 @@ Uji payload ada di §4.
 - **Indexing:** halaman per siswa default `X-Robots-Tag: noindex` + `<meta name="robots" content="noindex">`, dengan opsi Admin untuk mengizinkan indeks. Halaman agregat boleh diindeks.
 - **Anti-scraping:** rate limit 60 req/menit/IP + cache.
 - **Pencabutan persetujuan** → data hilang dari halaman publik ≤ 3×24 jam, dan cache dibersihkan otomatis.
+- **Pembaruan 6 Okt 2026 (D-107): "Data untuk flyer" di layar Humas** adalah data yang memang untuk dipublikasikan, jadi mengikuti aturan izin yang sama untuk siapa pun yang melihatnya: panel publikasi hanya terbuka untuk siswa yang punya izin publikasi (selain itu 404); anggota tim tanpa izin publikasi **tidak dicantumkan** dan hanya dihitung dalam satu keterangan; tidak pernah memuat NIS/NISN, tanggal lahir, HP, email, atau poin. Aplikasi tidak menyediakan foto; keterangan di luar blok yang disalin menyebut siapa yang tidak mengizinkan fotonya dipakai. Flyer buatan Humas sendiri dibuat dan disimpan di luar STH, jadi penurunannya setelah izin dicabut sepenuhnya pekerjaan manual Humas (baris "Persetujuan ortu" di §3i). Berkas flyer buatan STH sebelum 6 Okt 2026 tetap tersimpan dan dijaga `FilePolicy` (D-75; backlog `CLAUDE.md` #39).
 
 **3m-8. Job arsip otomatis**
 - **Jadwal:** `Schedule::command('sth:arsip-otomatis')->dailyAt('01:00')->timezone('Asia/Jakarta')->withoutOverlapping()->onOneServer()`.
@@ -1162,7 +1202,7 @@ Target verifikasi: **ASVS 5.0 Level 1 untuk semua area, Level 2 untuk V6/V7/V8/V
 **Input/Output** (A03 · V1/V2/V3)
 - [ ] `{!!` hanya ada di allowlist (kolom yang sudah dipurifikasi).
 - [ ] CSP enforce (bukan report-only), tanpa pelanggaran di console; header dicek dengan `curl -sI`.
-- [ ] Payload `<script>`, `"><img src=x onerror=alert(1)>`, `javascript:` di semua field teks tidak tereksekusi (termasuk e-flyer, PDF, email).
+- [ ] Payload `<script>`, `"><img src=x onerror=alert(1)>`, `javascript:` di semua field teks tidak tereksekusi (termasuk e-flyer, PDF, email). *Sejak D-107:* STH tidak membuat e-flyer; uji blok "Data untuk flyer" dan teks hasil "Salin data" sebagai gantinya (nama lomba, penyelenggara, cabang, dan judul penelitian berisi payload tampil dan tersalin sebagai teks biasa).
 - [ ] Export XLSX/CSV dengan nilai `=HYPERLINK("http://x","klik")` dan `@SUM(1+1)` tampil sebagai teks.
 - [ ] Import Excel: header salah, sel formula, NIS/NISN duplikat, dan NIS = NISN akun lain ditolak dengan laporan. Import berjalan di queue, dry-run tersedia, `tanggal_arsip` terhitung benar di pratinjau. *Sejak D-81:* baris yang NIS **dan** NISN-nya milik satu siswa terdaftar memperbarui kelas siswa itu (bukan ditolak); baris dengan hanya satu nomor cocok, atau dua nomor milik siswa berbeda, ditolak; import ulang tidak mengubah nama, tanggal lahir, password, email, status, aktivasi, atau izin (test).
 - [ ] URL usulan/katalog: `javascript:`, `http://`, `https://user:pass@…`, dan IP literal ditolak. Tidak ada request keluar saat usulan disimpan/ditampilkan (cek log egress). Link ber-`rel="nofollow noopener noreferrer ugc"` dan menampilkan host.
@@ -1170,7 +1210,16 @@ Target verifikasi: **ASVS 5.0 Level 1 untuk semua area, Level 2 untuk V6/V7/V8/V
 **File & PDF** (A01/A03/A10 · V5)
 - [ ] Upload `.php`, `.phtml`, `.svg`, `.html`, polyglot `GIF89a<?php`, dan PDF yang diganti ekstensinya ditolak.
 - [ ] Foto hasil upload tidak lagi punya EXIF GPS (`exiftool` kosong).
-- [ ] File privat tidak bisa diakses via URL langsung; download non-pemilik mendapat 404/403; header `nosniff` + `sandbox` ada.
+- [ ] File privat tidak bisa diakses via URL langsung; download non-pemilik mendapat 404/403; header `nosniff` + `sandbox` ada. *Sejak D-105:* `sandbox` ada di semua jawaban berkas **kecuali** PDF inline dari `files.show` (butir berikut).
+- [ ] **Preview berkas di popup (D-105), dicek dengan `curl -sI` dan di browser:**
+  - `GET /berkas/{file}` tanpa `?tampil=1` → `attachment`, `X-Frame-Options: DENY`, CSP `default-src 'none'; sandbox`
+  - PDF dengan `?tampil=1` → `inline`, `X-Frame-Options: SAMEORIGIN`, CSP `default-src 'none'; frame-ancestors 'self'`, `nosniff`, `private, no-store`; **di belakang Apache produksi header ini masih `SAMEORIGIN`** (bukan ditimpa `DENY`) dan PDF tampil di popup
+  - gambar dengan `?tampil=1` → inline tetapi tetap `DENY` + `sandbox`; SVG/GIF/HTML/xlsx dengan `?tampil=1` → tetap attachment
+  - `/berkas/publik/{file}?tampil=1` untuk PDF → tetap attachment
+  - berkas milik orang lain → 404 untuk GET dan HEAD, dengan dan tanpa `?tampil=1`; halaman dari origin lain tidak bisa mem-frame PDF itu
+  - halaman aplikasi sendiri tetap `X-Frame-Options: DENY` + `frame-ancestors 'none'`; tidak ada pelanggaran CSP di console saat popup dibuka
+  - preview tercatat `file.downloaded` dengan `inline: true`; HEAD tidak menulis baris audit (disengaja, *sementara*)
+  - dicoba di Chrome/Edge, Firefox, Safari, dan satu HP: PDF tampil, atau dialog berisi satu kalimat + tombol "Download" (lulus di Chromium pada 6 Okt 2026; browser lain belum dicoba)
 - [ ] Batas ukuran konsisten di PHP, nginx kontainer, dan proxy luar; kuota per siswa berfungsi.
 - [ ] dompdf ≥ 3.1.6 dengan `enable_remote=false`, `enable_javascript=false`, `data://` tidak diizinkan, dan `chroot` = aset surat + ttd + temp. Field siswa berisi payload berikut tidak memicu request atau pembacaan file:
   - `<img src="http://<host-uji>/x">`
@@ -1193,6 +1242,8 @@ Target verifikasi: **ASVS 5.0 Level 1 untuk semua area, Level 2 untuk V6/V7/V8/V
 - [ ] DPIA disetujui Kepsek; DPO/penanggung jawab PDP ditunjuk.
 - [ ] Pemberitahuan privasi tampil saat aktivasi dan penerimaannya tercatat.
 - [ ] Persetujuan orang tua terisi; Humas tidak bisa mempublikasikan siswa tanpa persetujuan (test).
+- [ ] **"Data untuk flyer" (D-107):** tidak pernah memuat siswa tanpa izin publikasi (anggota tim tanpa izin tidak dicantumkan), NIS/NISN, atau poin; panel publikasi siswa yang izinnya dicabut → 404 (test `FlyerDataTest`, `ConsentWithdrawnTest`).
+- [ ] **Berkas demo (D-106):** tidak ada dokumen contoh di server produksi: `php artisan sth:demo:refresh-files` di luar `APP_ENV=local` menolak ("Perintah ini hanya untuk APP_ENV=local. Tidak ada yang diubah."), dan seeder demo tidak berjalan di production.
 - [ ] Halaman publik (ringkasan, drill-down bidang, peringkat):
   - hanya menampilkan nama + kelas + prestasi siswa yang punya `publikasi_nama`
   - tidak ada NIS/NISN/HP/tanggal lahir di HTML/JSON (cek view-source dan respons jaringan)

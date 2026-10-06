@@ -17,7 +17,8 @@ use Illuminate\Support\Facades\Route;
 /**
  * To every active Humas account when a scheduled publication reached its time and was marked
  * dipublikasikan automatically (B3, backlog #12): "post it now on <channels>". Scalars only; the
- * caption and flyer stay in the app (link to the publication panel). Queued after commit.
+ * caption and the data for the flyer stay in the app (link to the publication panel); the flyer itself is
+ * made by Humas outside STH (M3-E). Queued after commit.
  */
 final class PublicationDue extends Notification implements ShouldQueue
 {
@@ -70,7 +71,8 @@ final class PublicationDue extends Notification implements ShouldQueue
         $where = $this->channels !== '' ? ' ke '.$this->channels : '';
 
         return 'Jadwal '.$this->scheduledText.' sudah tiba: '.$this->headline.' '.$this->competitionName.' ('.$this->studentName.'). '
-            .'Statusnya kini Dipublikasikan. Upload caption dan flyer'.$where.' sekarang.';
+            .'Statusnya kini Dipublikasikan. Upload publikasinya'.$where.' sekarang. '
+            .'Caption dan data untuk flyer ada di halaman publikasi.';
     }
 
     public function toMail(object $notifiable): MailMessage

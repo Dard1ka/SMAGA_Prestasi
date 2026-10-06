@@ -1,6 +1,7 @@
 {{--
     Role app shell (DESIGN-SPEC-v2 §4): sidebar per role (lg+) · top bar · content · mobile drawer menu
-    · siswa tab bar (below lg) · toasts. Anonymous component in the Livewire 4 `layouts::` namespace.
+    · siswa tab bar (below lg) · file preview popup (<x-sth.preview>, links with data-sth-preview) · toasts.
+    Anonymous component in the Livewire 4 `layouts::` namespace.
 
     Blade page:
         <x-layouts::app title="Kelola lomba" subtitle="Lomba yang dipublikasikan tampil di katalog siswa."
@@ -95,6 +96,7 @@
         <x-sth.tabbar :items="$nav['tabbar']" />
     @endif
 
+    <x-sth.preview />
     <x-sth.flash />
     @livewireScripts
 </body>

@@ -17,21 +17,22 @@ use Illuminate\Validation\ValidationException;
 
 /**
  * Kesiswaan/Admin decides on a queued lomba (D-27): every upload from any role, Kesiswaan's own included,
- * waits in `menunggu_verifikasi` until this Action publishes it (`dipublikasikan`) or rejects it (`ditolak`,
- * note required). Publishing needs the fields that drive points and deadlines (a siswa usulan may lack
+ * waits in `menunggu_verifikasi` until this Action publishes it (`dipublikasikan`) or rejects it (`ditolak`).
+ * Publishing needs the fields that drive points and deadlines (a siswa usulan may lack
  * them; Kesiswaan fills them with UpdateCompetition first). Verifier + time are stored and audited; the
  * submitter is notified (queued) unless they decided themselves. UI-MAP's RejectCompetition = Ditolak here.
  *
- * M2-B (QA 2026-10-05): a rejection note has at least MIN_REJECT_NOTE characters (Q1-18: "ab" was mailed to
- * the student). Publishing refuses "Tanggal mulai" before "Batas daftar", and a lomba whose registration
+ * M3 (the lead, 2026-10-06, D-103): the rejection reason is optional. No reason and a short one are both
+ * accepted (this takes back the "note required" rule and the 10-character minimum of D-95 for a lomba
+ * rejection); the submitter is told either way, with the reason only when one was written.
+ *
+ * M2-B (QA 2026-10-05): publishing refuses "Tanggal mulai" before "Batas daftar", and a lomba whose registration
  * deadline or final date has already passed is published only with `$confirmPastDates` (Q1-04: old lomba are
  * entered for the record, so the answer is a question, not a ban). The refusal carries the key
  * CompetitionDates::PAST_KEY; the confirmation is audited (`past_dates`).
  */
 final class VerifyCompetition
 {
-    public const MIN_REJECT_NOTE = 10;
-
     /** Field → label for the "Lengkapi dulu" message (order = form order). */
     public const REQUIRED_TO_PUBLISH = [
         'name' => 'Nama lomba',
@@ -63,14 +64,6 @@ final class VerifyCompetition
         }
 
         $note = self::cleanNote($note);
-
-        if ($decision === CompetitionStatus::Ditolak && $note === null) {
-            throw ValidationException::withMessages(['note' => 'Tulis alasan penolakan.']);
-        }
-
-        if ($decision === CompetitionStatus::Ditolak && mb_strlen((string) $note) < self::MIN_REJECT_NOTE) {
-            throw ValidationException::withMessages(['note' => 'Alasan penolakan minimal '.self::MIN_REJECT_NOTE.' karakter.']);
-        }
 
         $result = DB::transaction(function () use ($actor, $competition, $decision, $note, $confirmPastDates): Competition {
             /** @var Competition $locked */
@@ -137,7 +130,7 @@ final class VerifyCompetition
         if ($submitter !== null && ! $submitter->is($actor) && $submitter->canLogIn()) {
             $submitter->notify($decision === CompetitionStatus::Dipublikasikan
                 ? CompetitionPublished::for($result, $submitter->hasRole(RoleName::Siswa->value))
-                : CompetitionRejected::for($result, (string) $note));
+                : CompetitionRejected::for($result, $note));
         }
 
         return $result;

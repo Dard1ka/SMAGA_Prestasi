@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace Tests\Feature\Humas;
 
 use App\Enums\Bidang;
+use App\Enums\FilePurpose;
 use App\Enums\Level;
+use App\Enums\MemberRole;
 use App\Enums\PublicationStatus;
 use App\Enums\RegistrationStatus;
 use App\Enums\ReportStatus;
@@ -16,12 +18,16 @@ use App\Models\Achievement;
 use App\Models\AppreciationEvent;
 use App\Models\Classroom;
 use App\Models\Competition;
+use App\Models\File;
 use App\Models\Publication;
 use App\Models\Registration;
+use App\Models\RegistrationMember;
 use App\Models\Report;
 use App\Models\StaffProfile;
 use App\Models\Student;
 use App\Models\User;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Tests\Feature\Auth\AuthTestHelpers;
 
 /**
@@ -122,6 +128,73 @@ final class HumasFixtures
         }
 
         return $achievement;
+    }
+
+    /**
+     * One more confirmed member on the report of $of (a team win): own student, own achievement row with the
+     * same lomba, capaian and tingkat (D-08: every member gets a row).
+     *
+     * @param  array<string, mixed>  $studentState  e.g. ['publish_consent' => false]
+     */
+    public static function teammate(Achievement $of, string $studentName, string $className = 'XII-2', array $studentState = []): Achievement
+    {
+        $classroom = Classroom::query()->firstWhere('name', $className)
+            ?? Classroom::factory()->level(match (true) {
+                str_starts_with($className, 'XII') => 12,
+                str_starts_with($className, 'XI') => 11,
+                default => 10,
+            })->create(['name' => $className]);
+
+        $student = Student::factory()->create(array_merge([
+            'user_id' => User::factory()->create(['name' => $studentName])->getKey(),
+            'classroom_id' => $classroom->getKey(),
+            'photo_consent' => true,
+            'publish_consent' => true,
+        ], $studentState));
+
+        RegistrationMember::factory()->create([
+            'registration_id' => $of->report->registration_id,
+            'student_id' => $student->getKey(),
+            'role' => MemberRole::Anggota,
+            'confirmed_at' => now(),
+        ]);
+
+        return Achievement::factory()
+            ->scored($of->level, $of->result, $of->weight_category)
+            ->create([
+                'report_id' => $of->report_id,
+                'student_id' => $student->getKey(),
+                'competition_id' => $of->competition_id,
+                'verified_at' => now(),
+            ])
+            ->fresh();
+    }
+
+    /**
+     * A flyer PNG as STH generated it before M3-E (the generator is gone): bytes on the private disk, a
+     * `files` row with purpose flyer owned by the Humas user, linked from publications.flyer_file_id.
+     */
+    public static function legacyFlyer(Publication $publication, User $owner): File
+    {
+        $path = 'flyer/2026/10/'.Str::lower((string) Str::ulid()).'.png';
+        $bytes = (string) base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', true);
+        Storage::disk('local')->put($path, $bytes);
+
+        $file = new File;
+        $file->forceFill([
+            'disk' => 'local',
+            'path' => $path,
+            'original_name' => 'flyer-contoh.png',
+            'mime' => 'image/png',
+            'size' => strlen($bytes),
+            'sha256' => hash('sha256', $bytes),
+            'purpose' => FilePurpose::Flyer,
+            'owner_user_id' => $owner->getKey(),
+        ])->save();
+
+        $publication->forceFill(['flyer_file_id' => $file->getKey()])->save();
+
+        return $file->fresh();
     }
 
     public static function event(string $name = 'Upacara Senin, 5 Oktober 2026', ?string $heldOn = null): AppreciationEvent

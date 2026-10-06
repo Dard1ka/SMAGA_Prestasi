@@ -372,51 +372,64 @@ it('does not block editing a published lomba whose dates are over, and shows no 
         ->and($old->fresh()->status)->toBe(CompetitionStatus::Dipublikasikan);
 });
 
-// --- Q1-18: a rejection needs a real reason ---------------------------------------------------------------
+// --- D-103 (the lead, 2026-10-06): the rejection reason is optional -----------------------------------------
+// Takes back Q1-18 / D-95 for a lomba rejection: no reason and a short one are both accepted.
 
-it('refuses a rejection note shorter than 10 characters and mails nothing', function (string $note): void {
+it('rejects a lomba without a reason or with a short one and still tells the submitter', function (?string $note, ?string $stored, string $body): void {
     $siswa = F::student('Raka Pradipta', 'XII-2')->user;
     $usulan = Competition::factory()->proposal()->create(['name' => 'ISPO 2027', 'submitted_by' => $siswa->getKey()]);
 
-    expect(fn () => app(VerifyCompetition::class)->handle($this->kesiswaan, $usulan, CompetitionStatus::Ditolak, $note))
-        ->toThrow(ValidationException::class, 'Alasan penolakan minimal 10 karakter.');
+    app(VerifyCompetition::class)->handle($this->kesiswaan, $usulan, CompetitionStatus::Ditolak, $note);
+
+    expect($usulan->fresh()->status)->toBe(CompetitionStatus::Ditolak)
+        ->and($usulan->fresh()->verification_note)->toBe($stored);
+    Notification::assertSentTo($siswa, CompetitionRejected::class, fn (CompetitionRejected $n): bool => $n->body === $body);
+})->with([
+    'no reason' => [null, null, CompetitionRejected::NO_REASON],
+    'only spaces' => ['   ', null, CompetitionRejected::NO_REASON],
+    'two letters' => ['ab', 'ab', 'Alasan Kesiswaan: ab'],
+    'a sentence' => ['Info lama.', 'Info lama.', 'Alasan Kesiswaan: Info lama.'],
+]);
+
+it('still refuses a rejection reason longer than 1.000 characters', function (): void {
+    $siswa = F::student('Raka Pradipta', 'XII-2')->user;
+    $usulan = Competition::factory()->proposal()->create(['name' => 'ISPO 2027', 'submitted_by' => $siswa->getKey()]);
+
+    expect(fn () => app(VerifyCompetition::class)->handle($this->kesiswaan, $usulan, CompetitionStatus::Ditolak, str_repeat('a', 1001)))
+        ->toThrow(ValidationException::class, 'Catatan maksimal 1.000 karakter.');
 
     expect($usulan->fresh()->status)->toBe(CompetitionStatus::MenungguVerifikasi);
     Notification::assertNothingSent();
-})->with([
-    'two letters' => ['ab'],
-    'nine letters' => ['sembilan9'],
-    'padded with spaces' => ['  ab          '],
-]);
-
-it('accepts a rejection note of 10 characters and sends it to the submitter', function (): void {
-    $siswa = F::student('Raka Pradipta', 'XII-2')->user;
-    $usulan = Competition::factory()->proposal()->create(['name' => 'ISPO 2027', 'submitted_by' => $siswa->getKey()]);
-
-    app(VerifyCompetition::class)->handle($this->kesiswaan, $usulan, CompetitionStatus::Ditolak, 'Info lama.');
-
-    expect($usulan->fresh()->status)->toBe(CompetitionStatus::Ditolak)
-        ->and($usulan->fresh()->verification_note)->toBe('Info lama.');
-    Notification::assertSentTo($siswa, CompetitionRejected::class);
 });
 
-it('shows the short-reason error under the note on the queue card', function (): void {
+it('sends a rejection from the queue card without a reason', function (): void {
     $siswa = F::student('Raka Pradipta', 'XII-2')->user;
     $usulan = Competition::factory()->proposal()->create(['name' => 'ISPO 2027', 'submitted_by' => $siswa->getKey()]);
 
     Livewire::withQueryParams(['tab' => 'verifikasi'])->actingAs($this->kesiswaan)->test(Index::class)
         ->call('startReject', $usulan->getKey())
-        ->assertSee('Minimal 10 karakter.')
-        ->set('rejectNote', 'ab')
-        ->call('reject')
-        ->assertHasErrors('rejectNote')
-        ->assertSee('Alasan penolakan minimal 10 karakter.')
-        ->assertSet('rejectingId', $usulan->getKey())
-        ->set('rejectNote', 'Lomba ini sudah lewat.')
+        ->assertSee('Boleh dikosongkan.')
+        ->assertDontSee('Minimal 10 karakter.')
         ->call('reject')
         ->assertHasNoErrors()
-        ->assertSet('rejectingId', null);
+        ->assertSet('rejectingId', null)
+        ->assertDispatched('sth-toast', message: 'Lomba ditolak. Pengirim diberi tahu.', tone: 'success');
 
-    expect($usulan->fresh()->status)->toBe(CompetitionStatus::Ditolak);
+    expect($usulan->fresh()->status)->toBe(CompetitionStatus::Ditolak)
+        ->and($usulan->fresh()->verification_note)->toBeNull();
     Notification::assertSentToTimes($siswa, CompetitionRejected::class, 1);
+});
+
+it('says the submitter gets the reason when one was typed on the queue card', function (): void {
+    $siswa = F::student('Raka Pradipta', 'XII-2')->user;
+    $usulan = Competition::factory()->proposal()->create(['name' => 'ISPO 2027', 'submitted_by' => $siswa->getKey()]);
+
+    Livewire::withQueryParams(['tab' => 'verifikasi'])->actingAs($this->kesiswaan)->test(Index::class)
+        ->call('startReject', $usulan->getKey())
+        ->set('rejectNote', 'ab')
+        ->call('reject')
+        ->assertHasNoErrors()
+        ->assertDispatched('sth-toast', message: 'Lomba ditolak. Pengirim menerima alasannya.', tone: 'success');
+
+    expect($usulan->fresh()->verification_note)->toBe('ab');
 });

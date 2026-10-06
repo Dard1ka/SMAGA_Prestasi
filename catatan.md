@@ -6,6 +6,9 @@ Rincian teknis (bahasa Inggris) ada di `docs/dev-notes/M1.md` dan `M1-A.md` … 
 Keputusan baru tercatat di `docs/DECISIONS.md` sebagai D-78 … D-91.
 Bagian 6 (ditambahkan 6 Oktober 2026, gelombang M2) berisi perbaikan 12 temuan terpenting dari uji 5 Oktober 2026;
 rincian teknisnya di `docs/dev-notes/M2.md` dan `M2-A.md` … `M2-C.md`, keputusannya D-92 … D-101.
+Bagian 8 (ditambahkan 6 Oktober 2026, gelombang M3) berisi enam permintaan lead setelah menarik PR 12 milik S;
+rincian teknisnya di `docs/dev-notes/M3.md`, `M3-A.md`, `M3-C.md`, `M3-D.md`, `M3-E.md`, dan `QA4.md`, keputusannya
+D-103 … D-108.
 
 ## 1. Delapan belas permintaan lead dan hasilnya
 
@@ -144,7 +147,7 @@ paling penting, lakukan sesuai saranmu". Tabel di bawah mengikuti nomor di ringk
 | 1 | Setelah direset Admin, siswa bisa menekan "Lewati" dan memakai kata sandi sementara terus | Siswa yang direset **wajib membuat kata sandi baru**; tombol "Lewati" tidak tampil. Siswa dengan kata sandi dari sekolah tetap boleh "Lewati". |
 | 2 | Setelah Keluar, tombol Back memunculkan halaman masuk dengan NIS dan kata sandi masih terisi | Halaman masuk, aktivasi, lupa kata sandi, konfirmasi kata sandi, dan 2FA tidak disimpan browser. Kolom kata sandi dikosongkan setelah form dikirim. |
 | 3 | "Perangkat yang masuk" berisi perangkat hantu; sesi lama masih hidup | Sesi lama dihapus tiap kali sesi diperbarui (aktivasi, ganti kata sandi, pasang 2FA). Gagal ganti kata sandi tidak lagi menyentuh sesi. |
-| 4 | "Buka ulang" memendekkan batas aktivasi; alasan 2 huruf diterima | "Buka ulang" tidak pernah memendekkan: batas baru = yang lebih jauh antara batas sekarang dan 72 jam dari sekarang. Tombolnya hanya muncul bila perlu, dan dialognya menyebut hasilnya dulu. Alasan minimal 10 karakter, juga alasan menolak lomba. |
+| 4 | "Buka ulang" memendekkan batas aktivasi; alasan 2 huruf diterima | "Buka ulang" tidak pernah memendekkan: batas baru = yang lebih jauh antara batas sekarang dan 72 jam dari sekarang. Tombolnya hanya muncul bila perlu, dan dialognya menyebut hasilnya dulu. Alasan minimal 10 karakter, juga alasan menolak lomba. (Sejak gelombang M3 alasan menolak lomba boleh kosong dan tanpa panjang minimal: bagian 8 no. 1. Alasan "Buka ulang" tetap minimal 10 karakter.) |
 | 5 | Siswa melihat tombol download surat guru yang berujung 404 | Kartu "Surat tugas" siswa hanya memuat surat yang sudah dikirim. Surat guru tampil sebagai keterangan saja, tanpa tombol. Guru dan staf tetap bisa men-download. |
 | 6 | Angka menu samping hilang di sebagian halaman | Angka dihitung di satu tempat dan tampil di semua halaman (juga Arsip surat, Template surat, Status aktivasi, Notifikasi, Keamanan akun). |
 | 7 | Talenta: catatan untuk siswa hilang saat "Simpan"; "Tidak lolos" jalan dengan satu klik | "Simpan" menyimpan catatan untuk siswa sebagai draf ("Draf tersimpan, belum terkirim."). "Tidak lolos" bertanya dulu, di panel dan di aksi massal. |
@@ -204,3 +207,91 @@ dua hal. Jawaban lead: "Ya perbaiki".
 - Setelah menarik perubahan ini: `reload.bat`, lalu `npm run build` (ada perubahan di `resources/js/app.js`).
 
 **Data uji di database lokal lead tidak dihapus** (keputusan lead). Daftarnya ada di `dokumentasi.md`.
+
+## 8. Gelombang M3 (6 Oktober 2026): enam permintaan lead
+
+Setelah menarik PR 12 milik S, lead menguji lagi dengan tangan dan meminta enam perubahan. Lima dikerjakan empat
+pengerja (catatan `M3-A`, `M3-C`, `M3-D`, `M3-E`), satu oleh koordinator. Branch: `feat/ui-uji-manual-m3`.
+Keputusannya tercatat sebagai D-103 … D-107 (D-108 mencatat satu perubahan dari PR 12).
+
+| No | Permintaan | Yang diubah |
+|---|---|---|
+| 1 | Kesiswaan › Usulan lomba: batas minimal dihilangkan, alasan penolakan dibuat opsional | Alasan menolak lomba **boleh kosong** dan tidak ada panjang minimal (maksimal 1.000 karakter). Kolomnya bertulisan "Alasan penolakan (opsional)". Kalau diisi, alasan dikirim ke pengirim. Kalau kosong, pengirim tetap diberi tahu, dengan kalimat "Kesiswaan tidak menulis alasan. Tanyakan ke Kesiswaan bila perlu." Yang tidak berubah: alasan "Buka ulang" tetap minimal 10 karakter; alasan menolak pendaftaran (Kepala Sekolah) dan menolak atau meminta revisi laporan tetap wajib. |
+| 2 | Talenta: pilihan yang tidak lolos bisa dipulihkan ke Pemetaan, Seleksi, Peserta pembinaan, atau Terdaftar, dan tampil juga di tab Semua lengkap dengan statusnya | "Pulihkan" sekarang menanyakan **tahap tujuan** (empat pilihan). Tahap sebelum tidak lolos sudah terpilih dan bertanda "Tahap sebelumnya". Notifikasi siswa menyebut tahapnya. Untuk tab "Semua": baris Tidak lolos ternyata **sudah tampil di sana sejak M1**, lengkap dengan statusnya. Urutannya paling bawah, jadi kalau barisnya lebih dari 30 ia ada di balik "Tampilkan lebih banyak". Tidak ada yang diubah di sana, hanya ditambah tes. |
+| 3 | "Download data" talenta bisa memilih: semua, yang terdaftar saja, atau status lain | Tombol "Download data (Excel)" membuka jendela **pilihan status**: lima status dengan jumlah barisnya, boleh beberapa, ada "Pilih semua status". Status tab yang sedang dibuka sudah tercentang (di tab Semua: kelimanya). Baris "Filter:" di file menyebut pilihannya. Kalau diminta kata sandi, download berjalan sendiri sesudahnya dengan pilihan yang sama. |
+| 4 | Klik "Buka" sertifikat tidak langsung download: tampil di popup, tombol download tetap ada | "Buka" (atau nama file) membuka **jendela preview**: PDF atau gambar langsung tampil, dengan tombol "Tutup" dan "Download". Tidak ada yang ter-download sebelum tombol itu ditekan. Berlaku di Kesiswaan › Verifikasi hasil, Database prestasi, Talenta (bukti dukung), kartu Usulan lomba (juknis), Guru › Siswa binaan, Siswa › Portofolio dan Profil talenta. Di HP yang tidak bisa menampilkan PDF, jendela berisi satu kalimat dan tombol Download. Surat tugas belum memakai jendela ini. |
+| 5 | Sertifikat, piagam, laporan penelitian, dan berkas demo lain harus seperti dokumen sungguhan, jangan kosong | Berkas data demo sekarang **dokumen contoh yang realistis**: sertifikat (enam gaya), piagam, laporan penelitian 15 halaman, juknis 3 halaman, brosur, poster, dan surat tugas. Isinya mengikuti data demo (nama siswa, lomba, capaian, tanggal). Semua nama fiktif, penanda tangan rekaan, tanpa logo atau stempel lembaga mana pun, dan tiap halaman bertulisan "CONTOH · data fiktif untuk uji SMAGA Talent Hub · bukan dokumen resmi". Hanya dibuat di komputer pengembang. |
+| 6 | Humas membuat flyer sendiri; aplikasi cukup menyediakan datanya | Pembuat e-flyer **dihapus** (gambar flyer, pilihan template, "Download PNG"). Gantinya blok **"Data untuk flyer"** di panel publikasi: nama dan kelas (untuk tim: semua anggota), capaian, lomba, cabang, tingkat, penyelenggara, bidang, tanggal lomba, guru pembimbing, judul penelitian. Tombol **"Salin data"** menyalin semuanya sebagai teks, satu fakta per baris. Caption, kanal, jadwal, dan "Tandai dipublikasikan" tidak berubah. Di Arsip, kolom Flyer hilang dan ada "Lihat" untuk membuka lagi caption dan datanya. |
+
+### Yang dibawa PR 12 milik S (sudah digabung; rincian di `docs/dev-notes/QA4.md`)
+- Preview surat yang sudah dibuat di layar TU sekarang sama dengan isi PDF-nya (kolom baru `letters.printed`, D-108).
+- Pesan merah di layar surat hilang sendiri setelah masalahnya selesai.
+- File Excel Talenta punya judul, "Diekspor oleh …", baris "Filter:", dan judul kolom tebal.
+- Kolom NIS, NISN, dan No HP di template import berformat Teks (angka nol di depan tidak hilang).
+- Download yang meminta kata sandi berjalan sendiri setelah kata sandi diisi; halaman kata sandi punya "Batal".
+
+### Yang perlu diketahui tim
+- **Setelah menarik branch ini:** jalankan `reload.bat` (banyak file PHP dan Blade berubah), lalu `npm run build`
+  (ada perubahan di `resources/js/app.js` dan `resources/css/app.css`; tanpa itu jendela preview dan "Salin data"
+  tidak bekerja).
+- **Autoload:** kalau kamu menjalankan `composer install` setelah menarik, tidak perlu apa-apa lagi. Kalau tidak,
+  jalankan sekali `docker compose run --rm --no-deps app composer dump-autoload` (dua kelas flyer dihapus, ada
+  kelas baru). Di laptop lead ini sudah dijalankan.
+- **Tidak ada migrasi baru di M3.** Yang perlu dijalankan hanya migrasi dari PR 12 kalau belum:
+  `docker compose exec app php artisan migrate` (`2026_10_06_120000_qa_add_printed_to_letters`, menambah kolom
+  `letters.printed`).
+- **Berkas demo.** Database lokal yang sudah ada masih berisi berkas demo placeholder 1 kB. Untuk menggantinya tanpa
+  seed ulang: `docker compose exec -T app php artisan sth:demo:refresh-files`. Perintah ini hanya jalan di
+  `APP_ENV=local`, hanya mengganti isi berkas di folder `demo/` (baris dan tabel lain tidak disentuh), dan aman
+  diulang. Tambahkan `--lengkapi` supaya laporan riset demo juga mendapat berkas laporan penelitian (menambah satu
+  baris). Di database lokal lead keduanya sudah dijalankan (`dokumentasi.md` bagian 12).
+- **Seed demo jadi lebih lama.** `migrate:fresh --seed` di lokal sekarang ikut membuat sekitar 98 PDF, kira-kira
+  30 detik lebih lama di laptop lead. Kalau tidak perlu, jalankan dengan `STH_DEMO_FILES=placeholder`. Tes tidak
+  terpengaruh (tes tetap memakai berkas placeholder 1 kB).
+- **Tiga file dihapus:** kelas `GenerateFlyer`, kelas `FlyerRenderer`, dan tes
+  `tests/Feature/Humas/GenerateFlyerTest.php`. Kolom `publications.flyer_file_id` dan berkas flyer lama **tidak**
+  dihapus.
+- **Belum dihapus:** `resources/fonts/DejaVuSans.ttf`, `DejaVuSans-Bold.ttf`, dan `LICENSE-DejaVu.txt` (1,4 MB).
+  Hanya pembuat flyer yang memakainya. Masuk backlog #72.
+- **Untuk yang membuat layar baru:** link berkas cukup diberi tiga atribut `data-sth-preview…` supaya tampil di
+  jendela preview, dan tombol salin cukup `data-sth-copy="#id"`. Contohnya di bagian atas
+  `resources/views/components/sth/preview.blade.php` dan di `CLAUDE.md` §7.
+- **Dokumen yang ikut diperbarui:** `CLAUDE.md`, `docs/DECISIONS.md` (§D8), `ARCHITECTURE.md` (§8e), `SECURITY.md`,
+  `UI-MAP.md` (§6d), `PANDUAN-PENGGUNA.md`, `TEAM.md`, `dokumentasi.md`. Mockup `Humas-Publikasi` masih menggambar
+  flyer: itu riwayat desain, tidak diubah.
+
+### Diputuskan pengerja, bisa diubah lead
+- **Talenta (no. 2 dan 3):** (a) memulihkan langsung ke Peserta pembinaan tidak mewajibkan guru pembina atau tanggal
+  asesmen, sama seperti "Lolos ke Peserta pembinaan" hari ini; Kesiswaan mengisinya di panel sesudahnya. (b) Baris
+  Tidak lolos tetap di urutan terakhir tab Semua. (c) Belum ada "Pulihkan" untuk banyak baris sekaligus. (d) Jendela
+  download menulis "Status", sedangkan file menulis "Tahap".
+- **Jendela preview (no. 4):** (a) link surat tugas belum memakai jendela ini; rutenya sudah bisa, tinggal keputusan
+  lead. (b) Pertanyaan awal dari jendela ("boleh ditampilkan?") tidak dicatat di log audit; preview-nya sendiri
+  dicatat. (c) Halaman publik tetap hanya download. (d) Tombol Esc tidak menutup jendela kalau kursor sedang di
+  dalam PDF; "Tutup", X, dan klik di luar tetap bisa.
+- **Berkas demo (no. 5):** (a) sertifikat contoh menyebut nama penyelenggara dari data demo (Puspresnas, Universitas
+  Diponegoro, dan seterusnya), seperti yang sudah tampil di layar. (b) Surat demo memakai template sekolah dengan
+  tanda tangan contoh dan tulisan CONTOH, jadi tidak sama persis dengan hasil "Buat PDF".
+- **Humas (no. 6):** (a) tidak ada tempat upload untuk flyer yang sudah jadi; bisa ditambahkan tanpa migrasi, kira-kira
+  setengah hari kerja. (b) Berkas flyer yang dulu dibuat aplikasi tetap disimpan; tidak ada layar yang menampilkan
+  link-nya, tetapi alamatnya masih bisa dibuka oleh peran yang dulu boleh. Menghapusnya perlu keputusan lead.
+  (c) Anggota tim tanpa izin publikasi tidak dicantumkan, hanya dihitung dalam satu keterangan. (d) Kalimat izin
+  foto tidak ikut tersalin. (e) "Tanggal hasil" tidak ditampilkan karena aplikasi hanya menyimpan tanggal mulai dan
+  tanggal final. (f) Tambahan dari pengerja yang boleh dibuang: "Lihat" di Arsip dan baris "Cabang".
+- **Dari PR 12:** apakah alumni boleh muncul di pilihan "Tambah prestasi" acara apresiasi (belum diputuskan).
+
+### Belum diuji
+Sudah dilihat koordinator di browser bawaan (Chromium) pada 6 Oktober 2026: kartu penolakan lomba dengan "Alasan
+penolakan (opsional)"; jendela "Download data talenta" dengan lima status dan jumlahnya; panel Humas dengan "Data
+untuk flyer", dan "Salin data" yang menyalin fakta per baris. Pengerja jendela preview juga mencobanya di Chromium.
+
+Belum:
+- Firefox, Safari, Edge, dan HP sungguhan untuk jendela preview; juga di belakang Apache server sekolah.
+- Tombol "Download" di dalam jendela preview (belum diklik), dan akun siswa di browser (baru lewat tes).
+- Jendela "Pulihkan" dengan pilihan tahap, dan urutan kata sandi → download otomatis dengan pilihan status, di
+  browser. Tampilan jendela-jendela itu dan blok "Data untuk flyer" di lebar HP.
+- Membuka berkas demo yang baru di penampil PDF biasa dan mencetaknya (pengerja hanya melihat gambarnya lewat alat
+  bantu); `migrate:fresh --seed` sungguhan di MySQL dengan berkas realistis.
+- Skenario email dan tes Playwright belum dijalankan ulang oleh para pengerja dengan kode M3.
+
+HASIL TES M3 (6 Oktober 2026): seluruh tes **2163 lulus, 1 dilewati, 0 gagal** (12.547 pemeriksaan); yang dilewati adalah tes seed demo penuh yang lambat dan hanya jalan dengan sakelar `STH_DEMO_FULL=1`. Pint bersih (651 file), `npm run build` berhasil. Dicek di browser (Chromium): kolom "Alasan penolakan (opsional)", dialog "Download data talenta" dengan lima status, "Data untuk flyer" + "Salin data", dan popup "Buka" yang menampilkan laporan penelitian contoh 15 halaman. Belum dicoba: Firefox, Safari, HP, dialog "Pulihkan" di browser (baru lewat tes), dan tombol "Download" di dalam popup.

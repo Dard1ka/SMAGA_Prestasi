@@ -47,11 +47,6 @@ class PublicationPolicy
             && in_array($publication->status, [PublicationStatus::Siap, PublicationStatus::Terjadwal], true);
     }
 
-    public function generateFlyer(User $user, Publication $publication): bool
-    {
-        return $this->viewAny($user) && self::eligible($publication);
-    }
-
     /** Verified achievement + student publish consent. */
     public static function eligible(Publication $publication): bool
     {

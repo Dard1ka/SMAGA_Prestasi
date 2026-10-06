@@ -2,8 +2,9 @@
 
 Alamat: **https://prestasi.sman3-smg.sch.id** · Buka di browser HP atau laptop (Chrome, Edge, Firefox, Safari terbaru).
 Nama layar di panduan ini sama dengan judul layar dan menu di aplikasi (rujukan teknis: `docs/UI-MAP.md`).
-Semua contoh nama di panduan ini fiktif. Diperbarui 6 Oktober 2026 (perbaikan setelah uji 5 Oktober 2026,
-`docs/DECISIONS.md` §D7; sebelumnya perubahan setelah uji manual lead, §D6).
+Semua contoh nama di panduan ini fiktif. Diperbarui 6 Oktober 2026 (enam permintaan lead 6 Oktober 2026,
+`docs/DECISIONS.md` §D8; sebelumnya perbaikan setelah uji 5 Oktober 2026, §D7, dan perubahan setelah uji manual
+lead, §D6).
 
 Isi: [Semua pengguna](#1-semua-pengguna) · [Siswa](#2-siswa) · [Guru pembimbing](#3-guru-pembimbing) ·
 [Kesiswaan](#4-kesiswaan) · [Kepala Sekolah](#5-kepala-sekolah) · [Tata Usaha](#6-tata-usaha) · [Humas](#7-humas) ·
@@ -46,7 +47,18 @@ di bawah kolom "Kata sandi baru".
 - Saat aktivasi, kata sandi baru harus berbeda dari kata sandi yang sedang dipakai.
 
 **Konfirmasi kata sandi**: beberapa layar meminta kata sandi lagi sebelum aksi penting. Salah 5 kali berturut-turut →
-tunggu 1 menit sebelum mencoba lagi.
+tunggu 1 menit sebelum mencoba lagi. Kalau yang kamu minta adalah download (mis. **Download data (Excel)**), isi kata
+sandi → **Lanjut**, lalu download-nya berjalan sendiri. Tidak jadi? Tekan **Batal** untuk kembali ke halaman tadi.
+
+**Membuka file bukti (tombol Buka)**: klik **Buka** pada bukti atau sertifikat, atau klik nama file-nya. File langsung
+tampil di jendela kecil (preview) di halaman yang sama, tanpa di-download.
+- PDF bisa digulir dan diperbesar; foto tampil utuh.
+- **Download** di bawah jendela menyimpan file ke perangkat. Sebelum tombol itu ditekan, tidak ada yang ter-download.
+- Menutup: **Tutup**, tombol X, klik di luar jendela, atau tombol Esc. Kalau Esc tidak bekerja setelah kamu mengklik
+  di dalam PDF, pakai **Tutup** atau X.
+- Di HP yang browsernya tidak bisa menampilkan PDF, jendela berisi satu kalimat penjelasan dan tombol **Download**.
+- Yang boleh membuka sebuah file tetap sama seperti sebelumnya. Surat tugas belum memakai jendela ini: surat tetap
+  lewat **Download** (Tata Usaha juga punya **Cetak**).
 
 **Kotak cari di atas layar**: di halaman daftarnya, daftar langsung tersaring saat kamu mengetik (tidak perlu Enter).
 Hapus isinya, daftar kembali penuh. Dari halaman lain, ketik lalu tekan Enter untuk membuka halaman daftarnya.
@@ -119,7 +131,9 @@ resmi** (`https://`), brosur → **Kirim usulan**. Lomba tampil di katalog setel
 tidak boleh berisi alamat web; tulis alamatnya di kolom link resmi.
 
 **Portofolio dan peringkat**
-- **Portofolio**: semua prestasi terverifikasi, poin, dan peringkatmu → **Download portofolio (PDF)**.
+- **Portofolio**: semua prestasi terverifikasi, poin, dan peringkatmu → **Download portofolio (PDF)**. Klik tanda
+  "Terverifikasi · buka" di sebuah prestasi untuk melihat sertifikatmu di jendela preview (lihat §1); dari sana kamu
+  bisa **Download**.
 - **Peringkat**: peringkat kumulatif siswa aktif; barismu ditandai "Kamu". Peringkat alumni ada di halaman publik
   (pilih **Alumni** atau **Semua**).
 
@@ -129,7 +143,9 @@ keterampilanmu. Status: terdaftar → pemetaan → seleksi → pembinaan.
   kembali), catatannya tampil di pilihan itu dan di notifikasi.
 - **Tidak lolos?** Kamu tidak bisa mendaftar lagi untuk pilihan yang sama. Tekan **Minta ditinjau ulang**, tulis pesan
   kalau perlu (boleh kosong, maks. 500 karakter) → **Kirim permintaan**. Statusmu baru berubah kalau Kesiswaan
-  membuka kembali pilihan itu; kamu akan diberi tahu.
+  membuka kembali pilihan itu; kamu akan diberi tahu, dan notifikasinya menyebut kamu sekarang di tahap mana
+  (bisa Terdaftar, Pemetaan, Seleksi/asesmen, atau langsung Peserta pembinaan).
+- **Bukti dukung**: klik nama file bukti di pilihanmu untuk melihatnya di jendela preview (lihat §1).
 
 **Bantuan**: ringkasan cara pakai dan **Buka tur** untuk melihat lagi penjelasan menu.
 
@@ -138,11 +154,14 @@ keterampilanmu. Status: terdaftar → pemetaan → seleksi → pembinaan.
 ## 3. Guru pembimbing
 
 - **Siswa binaan**: pendaftaran dan laporan siswa yang memilih Anda sebagai pembimbing. Buka satu siswa untuk melihat
-  jalur prestasinya dan **Surat tugas** (muncul setelah Tata Usaha mengirimnya; tekan **Download**).
+  jalur prestasinya dan **Surat tugas** (muncul setelah Tata Usaha mengirimnya; tekan **Download**). Bukti laporan
+  (sertifikat, foto): tekan **Buka** untuk melihatnya di jendela preview tanpa men-download (lihat §1).
 - Tab **Talenta**: siswa yang Anda bina. **Catatan untuk pembina** dari Kesiswaan tampil di sini; catatan ini tidak
   dilihat siswa.
 - **Lomba**: lihat katalog. Punya info lomba baru? **Upload info lomba** → masuk antrean verifikasi Kesiswaan dulu.
-  Nama lomba tidak boleh berisi alamat web; tulis alamatnya di kolom link resmi.
+  Nama lomba tidak boleh berisi alamat web; tulis alamatnya di kolom link resmi. Bila upload Anda ditolak, Anda
+  diberi tahu. Alasannya tampil bila Kesiswaan menulisnya; kalau tidak, tertulis "Kesiswaan tidak menulis alasan."
+  dan Anda bisa menanyakannya ke Kesiswaan.
 - **Notifikasi untuk pembimbing**: pendaftaran binaan **disetujui**, **tidak disetujui** (dengan alasan Kepala
   Sekolah), atau **dibatalkan** ketuanya; surat perintah tugas **terbit** atau **diperbarui**. Tombol di email membuka
   pendaftaran itu.
@@ -158,8 +177,11 @@ memuat ulang halaman. Angka itu tampil di semua halaman, juga di **Status aktiva
    daftar**; kalau terbalik, form menolak dengan pesan itu.
 2. Semua lomba baru (juga buatan Kesiswaan sendiri, guru, dan usulan siswa) masuk **Usulan lomba**. Verifikator lain
    (Kesiswaan dan Admin) mendapat email saat ada lomba baru, juga bila yang menambahkan adalah Admin.
-3. **Usulan lomba** → **Periksa & lengkapi** → **Publikasikan**, atau **Tolak** dengan alasan (minimal 10 karakter;
-   alasan itu terkirim ke pengusul).
+3. **Usulan lomba** → **Periksa & lengkapi** → **Publikasikan**, atau **Tolak** → **Kirim penolakan**.
+   - **Alasan penolakan boleh dikosongkan** dan tidak ada panjang minimal (maksimal 1.000 karakter). Kalau diisi,
+     alasan itu dikirim ke pengirim. Kalau kosong, pengirim tetap diberi tahu bahwa lombanya tidak dipublikasikan,
+     dengan kalimat "Kesiswaan tidak menulis alasan. Tanyakan ke Kesiswaan bila perlu."
+   - Klik nama file juknis di kartu usulan untuk melihatnya di jendela preview tanpa men-download (lihat §1).
    - **Tanggal sudah lewat?** Bila batas daftar atau tanggal final lomba sudah lewat, kartunya menulis "Tanggal sudah
      lewat: …" dan **Publikasikan** bertanya dulu: "Tetap publikasikan?". Di form **Periksa lomba**, centang "Tanggal
      lomba ini sudah lewat. Tetap publikasikan." sebelum **Simpan & publikasikan**. Ini untuk lomba lama yang dicatat
@@ -171,7 +193,8 @@ memuat ulang halaman. Angka itu tampil di semua halaman, juga di **Status aktiva
 5. Daftar menampilkan paling banyak 250 lomba; persempit dengan filter atau pencarian untuk melihat lainnya.
 
 **Verifikasi hasil**
-1. **Verifikasi hasil** → buka laporan → periksa capaian dan bukti (sertifikat, foto).
+1. **Verifikasi hasil** → buka laporan → periksa capaian dan bukti (sertifikat, foto). Tekan **Buka** pada sebuah
+   bukti: file-nya tampil di jendela preview di halaman yang sama, jadi tidak perlu di-download dulu (lihat §1).
 2. **Verifikasi dan beri poin** (poin dihitung otomatis: tingkat × capaian × penyelenggara), **Minta revisi**, atau
    **Tolak** (catatan wajib; pendaftaran selesai tanpa poin).
 
@@ -190,19 +213,34 @@ memuat ulang halaman. Angka itu tampil di semua halaman, juga di **Status aktiva
 - **Hati-hati dengan draf**: ikon centang di baris dan **Pindahkan ke …** tidak punya kolom catatan, jadi draf yang
   tersimpan **ikut terkirim** ke siswa (pesan di layar menyebutkannya). **Tidak lolos** untuk beberapa baris dengan
   kolom catatan kosong juga mengirim draf masing-masing; dialognya menyebut berapa pilihan yang punya draf.
-- **Berubah pikiran?** Buka tahap **Tidak lolos** → klik ikon daur ulang (**Pulihkan**) → tulis catatan untuk
-  siswa kalau perlu → **Pulihkan**. Pilihan kembali ke tahap sebelum tidak lolos dan siswa diberi tahu.
+- **Berubah pikiran?** Buka tahap **Tidak lolos** (atau tab **Semua**) → klik ikon daur ulang (**Pulihkan**) di
+  baris itu, atau tombol **Pulihkan** di panelnya. Jendela kecil menanyakan **Kembalikan ke tahap** mana:
+  **Terdaftar**, **Pemetaan**, **Seleksi/asesmen**, atau **Peserta pembinaan**. Tahap sebelum tidak lolos sudah
+  terpilih dan bertanda "Tahap sebelumnya"; pilih tahap lain kalau perlu. Tulis catatan untuk siswa kalau perlu →
+  **Pulihkan**. Siswa diberi tahu dan notifikasinya menyebut tahapnya; permintaan "Minta ditinjau ulang" yang masih
+  terbuka ikut ditutup. Guru pembina dan tanggal asesmen tidak ditanyakan di jendela ini: isi di panel sesudahnya.
+- Tab **Semua** memuat semua pilihan, juga yang **Tidak lolos**, masing-masing dengan statusnya. Baris tidak lolos
+  ada di urutan paling bawah (kalau daftarnya panjang, tekan **Tampilkan lebih banyak**) dan punya ikon **Pulihkan**
+  sebagai ganti ikon centang.
 - **Minta ditinjau ulang**: siswa yang tidak lolos bisa meminta ditinjau lagi. Anda mendapat notifikasi, barisnya
   bertanda "Minta ditinjau ulang" dan tampil paling atas di tahapnya; pesan siswa ada di panel. Setuju → **Pulihkan**.
   Tidak setuju → biarkan.
-- Daftar menampilkan paling banyak 300 baris (persempit filter). **Download data (Excel)** meminta kata sandi Anda
-  lagi, dibatasi 10.000 baris, dan tercatat di log audit.
+- **Bukti dukung** siswa di panel: tekan **Buka** untuk melihatnya di jendela preview (lihat §1).
+- Daftar menampilkan paling banyak 300 baris (persempit filter).
+- **Download data (Excel)** lebih dulu menanyakan **status mana yang masuk ke file**: Terdaftar, Pemetaan,
+  Seleksi/asesmen, Peserta pembinaan, Tidak lolos (tiap pilihan menampilkan jumlah barisnya). Status tab yang sedang
+  dibuka sudah tercentang; di tab **Semua** kelimanya tercentang. Centang yang lain, atau tekan **Pilih semua
+  status**, lalu **Download**. Filter jenis, cabang, kelas, dan pencarian tetap berlaku, dan baris "Filter:" di dalam
+  file menyebut pilihannya. Download meminta kata sandi Anda lagi; setelah kata sandi diisi, download berjalan
+  sendiri dengan pilihan yang sama. Dibatasi 10.000 baris dan tercatat di log audit.
 
-**Database prestasi**: semua prestasi terverifikasi dengan filter → **Download Excel** (tercatat di log audit).
+**Database prestasi**: semua prestasi terverifikasi dengan filter → **Download Excel** (tercatat di log audit). Klik
+nama sertifikat di rincian sebuah prestasi untuk melihatnya di jendela preview (lihat §1).
 
 **Import siswa** (dipakai saat awal dan **diulang tiap tahun ajaran** agar kelas selalu benar)
 1. **Import siswa** → **Download template Excel** → isi Nama lengkap, NIS, NISN, Tanggal lahir, **Kelas** (kelas
-   sekarang), No HP (opsional). Masukkan **semua** siswa aktif, bukan hanya siswa baru.
+   sekarang), No HP (opsional). Masukkan **semua** siswa aktif, bukan hanya siswa baru. Kolom NIS, NISN, dan No HP
+   di template sudah berformat Teks, jadi angka nol di depan tidak hilang; pakai template yang baru di-download.
 2. Pilih **Tahun ajaran data** → upload file → periksa **preview**:
    - **Siswa baru**: akun akan dibuat.
    - **Pindah kelas**: siswa sudah terdaftar (NIS dan NISN cocok), kelasnya diperbarui.
@@ -256,7 +294,9 @@ nomor, dan isian sendiri. Bila pendaftaran belum punya guru pembimbing, hanya su
    - **Dasar**: surat dari siapa, nomor dan tanggal surat undangan (dua terakhir boleh kosong).
    - **Pelaksanaan**: hari, tanggal, pukul, tempat (sudah terisi dari data lomba; boleh diubah).
 3. Periksa **Preview** di sebelah kanan, lalu tekan **Buat PDF surat siswa**. Setelah dibuat, nomor dan isi surat
-   tidak bisa diubah.
+   tidak bisa diubah. Preview surat yang sudah dibuat bertulisan "Isi PDF yang sudah dibuat": isinya sama dengan
+   PDF-nya, walaupun template atau data sesudahnya berubah. Surat yang dibuat sebelum 6 Oktober 2026 bertulisan
+   "Menurut data sekarang, bisa beda dari PDF. Lihat isi persisnya lewat Cetak."
 4. Pilih tab **Surat guru pendamping**, isi dengan cara yang sama (ada kolom **Hal**), lalu **Buat PDF surat guru
    pendamping**.
 5. Ada yang kurang atau salah? Layar langsung menuju kotak merah yang menyebut kolom mana yang perlu diperbaiki.
@@ -282,11 +322,23 @@ surat mengikuti surat asli sekolah, lengkap dengan lambang Pemprov dan lambang s
 
 ## 7. Humas
 
-- **Antrean publikasi**: prestasi terverifikasi yang **boleh dipublikasikan** (ada izin publikasi). Buka satu →
-  buat e-flyer → **Download PNG** → **Jadwalkan** (pilih tanggal dan kanal) atau **Tandai dipublikasikan**. Angka di
-  menu **Antrean publikasi** berubah sendiri, tanpa memuat ulang halaman.
-- Saat jadwal tiba, status berubah otomatis dan Humas mendapat pengingat untuk meng-upload ke kanal (e-flyer tetap
-  disimpan privat).
+- **Antrean publikasi**: prestasi terverifikasi yang **boleh dipublikasikan** (ada izin publikasi). Klik satu kartu:
+  panel **Siapkan publikasi** terbuka di kanan. Isi caption, lalu **Jadwalkan** (pilih tanggal dan kanal) atau
+  **Tandai dipublikasikan**. Angka di menu **Antrean publikasi** berubah sendiri, tanpa memuat ulang halaman.
+- **Data untuk flyer** (bagian teratas panel itu): aplikasi ini **tidak membuat flyer**. Flyer dibuat Humas sendiri
+  di aplikasi desain yang biasa dipakai; aplikasi ini menyediakan datanya supaya nama dan capaian tidak salah tulis.
+  - Isinya: nama dan kelas siswa (untuk tim: semua anggota, ketua lebih dulu), capaian, lomba, cabang, tingkat,
+    penyelenggara, bidang, tanggal lomba, guru pembimbing, dan judul penelitian bila ada. Yang datanya tidak ada
+    tidak ditampilkan. Poin, NIS, dan NISN tidak pernah ikut.
+  - Klik **Salin data**, lalu tempel di aplikasi desain. Yang tersalin adalah teks, satu fakta per baris, mis.
+    "Capaian: Juara II". Muncul pesan "Data disalin." Kalau muncul "Tekan Ctrl+C untuk menyalin.", teksnya sudah
+    terpilih: tekan Ctrl+C.
+  - Aplikasi ini tidak menyediakan foto siswa. Bila tertulis seorang siswa tidak mengizinkan fotonya dipakai,
+    jangan pakai fotonya. Anggota tim yang tidak mengizinkan namanya dipublikasikan tidak ditampilkan; jumlahnya
+    disebut dalam satu keterangan. Keterangan izin ini tidak ikut tersalin.
+  - Tombol **Download PNG** dan pilihan template flyer sudah tidak ada.
+- Saat jadwal tiba, status berubah otomatis dan Humas mendapat pengingat untuk meng-upload publikasinya ke kanal.
+  Caption dan data untuk flyer tetap bisa dibuka di halaman publikasi itu.
 - Tiap lajur papan menampilkan 20 kartu; **Tampilkan lebih banyak** untuk sisanya (angka di judul lajur = jumlah
   seluruhnya).
 - **Jadwal**: kalender publikasi dan acara apresiasi yang belum dilaksanakan.
@@ -303,10 +355,12 @@ surat mengikuti surat asli sekolah, lengkap dengan lambang Pemprov dan lambang s
   4. Acara batal? **Hapus acara** → konfirmasi. Prestasinya dilepas (bisa dimasukkan ke acara lain) dan siswa yang
      sudah dijadwalkan diberi tahu.
   5. Acara yang tanggalnya sudah lewat tetapi belum ditandai tampil di **Perlu dikonfirmasi**.
-- **Arsip**: publikasi yang sudah selesai.
+- **Arsip**: publikasi yang sudah selesai, dengan kolom Lomba, Siswa, Capaian, Kanal, dan Terbit. Klik **Lihat** di
+  ujung baris untuk membuka lagi caption dan data publikasi itu. Kolom Flyer sudah tidak ada.
 - **Izin dicabut**: bila izin publikasi seorang siswa dicabut, namanya di Arsip, Apresiasi, dan Jadwal diganti label
-  netral ("Siswa kelas XI") dengan chip "Izin dicabut", pencarian namanya tidak menemukan apa-apa, dan e-flyernya tidak
-  bisa di-download lagi. Artinya postingan tentang siswa itu perlu **diturunkan dari kanal sekolah**.
+  netral ("Siswa kelas XI") dengan chip "Izin dicabut", pencarian namanya tidak menemukan apa-apa, dan baris itu di
+  Arsip tidak punya **Lihat** (hanya "–"). Artinya postingan dan flyer tentang siswa itu perlu **diturunkan dari
+  kanal sekolah**; flyer buatan Humas sendiri disimpan di luar aplikasi ini, jadi menghapusnya juga tugas Humas.
 
 ## 8. Admin
 
@@ -346,9 +400,11 @@ aktivitas Admin terbaru.
 - **Nonaktifkan atau arsipkan** (pindah sekolah, dsb.): alasan wajib. Akun arsip tidak bisa masuk; prestasinya tetap
   tampil.
 - **Persetujuan publikasi** siswa: centang izin foto/publikasi sesuai formulir orang tua → **Simpan persetujuan**.
-  Bila izin publikasi **dicabut**: nama siswa hilang dari halaman publik, Humas tidak lagi melihat nama dan e-flyernya,
-  tetapi **file e-flyer tidak terhapus otomatis**. Admin masih bisa men-download-nya di Humas › **Arsip** untuk
-  memeriksa apa yang perlu diturunkan dari kanal sekolah.
+  Bila izin publikasi **dicabut**: nama siswa hilang dari halaman publik, dan Humas tidak lagi melihat namanya
+  maupun data publikasinya. Minta Humas menurunkan postingan dan flyer siswa itu dari kanal sekolah.
+  Catatan: sejak 6 Oktober 2026 aplikasi ini tidak membuat flyer (Humas membuatnya sendiri di luar aplikasi). File
+  flyer yang dulu dibuat aplikasi **tidak terhapus otomatis** dan masih tersimpan, tetapi tidak ada lagi layar yang
+  menampilkan link-nya.
 
 **Import siswa**: sama seperti Kesiswaan (§4).
 
@@ -391,6 +447,10 @@ atau tanggal → **Download CSV** (meminta kata sandi, tercatat).
 | TU: surat belum bisa dikirim | Buat dulu PDF surat yang belum ada (surat siswa atau surat guru pendamping). |
 | Humas: acara tidak bisa ditandai sudah dilaksanakan | Tanggal acara belum tiba, atau acaranya belum berisi prestasi. Acara kosong hanya bisa dihapus. |
 | Humas: "Prestasi ini sudah dijadwalkan di acara …" | Satu prestasi hanya bisa ada di satu acara. Buka acara yang disebut, tekan **Lepas dari acara** di baris prestasi itu, lalu masukkan ke acara yang benar. "Sudah diapresiasi" berarti acaranya sudah dilaksanakan dan tidak bisa diubah. |
+| Humas: tombol **Download PNG** atau pilihan template flyer tidak ada | Memang sudah dihapus: aplikasi ini tidak membuat flyer. Pakai **Data untuk flyer** → **Salin data**, lalu buat flyernya di aplikasi desain. |
+| Jendela preview hanya berisi satu kalimat, PDF-nya tidak tampil | Browser di perangkat itu (banyak HP) tidak bisa menampilkan PDF di dalam halaman. Tekan **Download** di jendela itu, lalu buka file-nya. |
+| Jendela preview: "File tidak bisa ditampilkan, coba download atau muat ulang halaman." | Bisa karena sudah terlalu lama tidak aktif, atau terlalu banyak file dibuka dalam satu menit. Muat ulang halaman, tunggu sebentar, lalu coba lagi. |
+| Kesiswaan: "Pilih minimal satu status." saat Download data talenta | Centang paling sedikit satu status, atau tekan **Pilih semua status**. |
 | Kesiswaan: "Tanggal mulai tidak boleh sebelum batas daftar." | Betulkan tanggal mulai atau batas daftar lomba itu. |
 | Kesiswaan: "Batas aktivasi siswa ini masih sampai … Belum perlu dibuka ulang." | Waktu siswa itu masih lebih dari 72 jam, jadi tidak ada yang perlu dibuka. |
 | "Kata sandi ini terlalu mudah ditebak." | Jangan memakai kata umum seperti password, admin, atau qwerty, dan urutan seperti 12345. Lihat aturan kata sandi di §1. |

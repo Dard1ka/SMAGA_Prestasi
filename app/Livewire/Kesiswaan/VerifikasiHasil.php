@@ -12,6 +12,7 @@ use App\Domain\Points\PointFormatter;
 use App\Domain\Points\WeightTable;
 use App\Enums\ReportStatus;
 use App\Enums\ResultType;
+use App\Http\Controllers\FileController;
 use App\Livewire\Kesiswaan\Concerns\WithKesiswaanBadges;
 use App\Models\Registration;
 use App\Models\Report;
@@ -32,7 +33,8 @@ use Livewire\Component;
  * Verifikasi hasil (UI-MAP #17, board Kesiswaan-Verifikasi-Hasil). Queue of `dikirim` reports on the left,
  * detail with evidence, capaian decision, live point formula, 4-item checklist and the three decisions on
  * the right. Rules live in VerifyReport / RequestReportRevision / RejectReport; the policy denies a verifier
- * who is the registration's guru pembimbing (§3c-10).
+ * who is the registration's guru pembimbing (§3c-10). "Buka" on an evidence file shows it in the preview
+ * popup (M3-C, `data-sth-preview`); nothing is downloaded until "Download" is pressed there.
  */
 #[Title('Verifikasi hasil')]
 #[Layout('layouts::app', ['subtitle' => 'Periksa bukti, tetapkan capaian, lalu beri poin.'])]
@@ -227,7 +229,12 @@ class VerifikasiHasil extends Component
                 'size' => $f->file !== null ? self::fileSize($f->file->size) : '',
                 'isImage' => $f->file?->isImage() ?? false,
                 'url' => $f->file !== null && Route::has('files.show') ? route('files.show', $f->file) : null,
-                'preview' => $f->file !== null && $f->file->isImage() && Route::has('files.show') ? route('files.show', ['file' => $f->file, 'tampil' => 1]) : null,
+                // "Buka" shows the file in the preview popup (data-sth-preview); the link itself stays the download.
+                'preview' => $f->file !== null ? FileController::previewUrl($f->file) : null,
+                'previewType' => $f->file !== null ? FileController::previewType($f->file) : null,
+                'thumb' => $f->file !== null && FileController::previewType($f->file) === FileController::PREVIEW_IMAGE
+                    ? FileController::previewUrl($f->file)
+                    : null,
             ])->values()->all(),
             'researchTitle' => $report->research_title,
             'researchAbstract' => $report->research_abstract,

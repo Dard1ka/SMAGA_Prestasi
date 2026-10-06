@@ -8,6 +8,7 @@ use App\Domain\Points\PointFormatter;
 use App\Enums\RegistrationStatus;
 use App\Enums\ReportFileKind;
 use App\Enums\TalentStatus;
+use App\Http\Controllers\FileController;
 use App\Models\Achievement;
 use App\Models\Registration;
 use App\Models\Student;
@@ -80,7 +81,7 @@ final class Portofolio extends Component
 
         $achievements = Achievement::query()
             ->where('student_id', $student->getKey())
-            ->with(['competition', 'report.files'])
+            ->with(['competition', 'report.files.file'])
             ->orderByDesc('points')
             ->orderByDesc('verified_at')
             ->get()
@@ -156,6 +157,10 @@ final class Portofolio extends Component
                 .$formatter->formatWeight((string) $achievement->w_result).' × '
                 .$formatter->formatWeight((string) $achievement->w_organizer),
             'certificateUrl' => $certificate !== null && Route::has('files.show') ? route('files.show', $certificate->file_id) : null,
+            // Preview popup (data-sth-preview); the link itself stays the download.
+            'certificatePreview' => $certificate?->file !== null ? FileController::previewUrl($certificate->file) : null,
+            'certificatePreviewType' => $certificate?->file !== null ? FileController::previewType($certificate->file) : null,
+            'certificateName' => (string) $certificate?->file?->original_name,
         ];
     }
 

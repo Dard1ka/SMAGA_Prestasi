@@ -9,7 +9,7 @@
 | Kode | Peran | Porsi | Fokus |
 |------|-------|-------|-------|
 | **user** | Lead & backend core | 40% | arsitektur, aturan domain, auth, alur data, review kode |
-| **S** | Frontend & fitur | 35% | design system, semua layar per peran, grafik, e-flyer, export |
+| **S** | Frontend & fitur | 35% | design system, semua layar per peran, grafik, data untuk flyer Humas, export |
 | **I** | Deploy & QA | 25% | image produksi, server sekolah, CI, backup, monitoring, uji E2E, UAT |
 
 Semua PR direview oleh **user**. PR yang menyentuh auth, upload, surat, poin, atau halaman publik juga
@@ -42,7 +42,8 @@ dicek terhadap `docs/SECURITY.md` §4 oleh I sebelum rilis.
     Sekolah, surat tugas TU, publikasi & apresiasi Humas, talenta siswa.
   - **Admin:** import siswa, pengaturan (bobot, batas & arsip, surat, pengguna, email).
   - **Publik:** beranda, prestasi per bidang (drill-down sampai siswa) + pemenang per lomba, peringkat.
-- Grafik (dashboard sekolah, prestasi per bidang), template e-flyer Humas, export Excel/PDF.
+- Grafik (dashboard sekolah, prestasi per bidang), blok "Data untuk flyer" Humas (sejak 6 Okt 2026 aplikasi tidak
+  membuat e-flyer; Humas membuatnya sendiri, D-107), export Excel/PDF.
 - Uji Livewire untuk tiap layar (render, validasi, akses ditolak untuk peran lain).
 
 ### I — deploy & QA (25%)
@@ -104,7 +105,8 @@ Kriteria penerimaan:
 - Job arsip idempoten (jalan 2× tidak mengubah apa pun); akun arsip ditolak saat login.
 
 ### M3 · Humas, talenta, dashboard, publik
-Isi: antrean publikasi + e-flyer + apresiasi, profil talenta siswa + talenta siswa (Kesiswaan),
+Isi: antrean publikasi + data untuk flyer (bukan pembuat e-flyer, D-107) + apresiasi, profil talenta siswa + talenta
+siswa (Kesiswaan),
 dashboard sekolah, halaman publik (beranda, prestasi per bidang, prestasi siswa, pemenang per lomba,
 peringkat), export, halaman guru pembimbing.
 Kriteria penerimaan:

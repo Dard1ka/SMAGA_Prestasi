@@ -16,7 +16,8 @@
                 </button>
             @endforeach
         </div>
-        <x-sth.button variant="quiet" size="sm" icon="download" wire:click="export">Download data (Excel)</x-sth.button>
+        {{-- Opens the dialog at the end of this file: which statuses go into the file (M3-A). --}}
+        <x-sth.button variant="quiet" size="sm" icon="download" wire:click="askExport" aria-haspopup="dialog">Download data (Excel)</x-sth.button>
     </div>
 
     <div class="grid grid-cols-1 items-start gap-[22px] xl:grid-cols-[1fr_340px] 2xl:grid-cols-[1fr_392px]">
@@ -152,7 +153,11 @@
                             <span class="ellip text-[13.5px] font-bold">{{ $panel['evidence']['name'] }}</span>
                             <span class="text-[12.5px] text-muted">Bukti dukung · {{ $panel['evidence']['size'] }}</span>
                         </span>
-                        @if ($panel['evidence']['url'])<x-sth.button variant="quiet" size="sm" :href="$panel['evidence']['url']">Buka</x-sth.button>@endif
+                        @if ($panel['evidence']['url'])
+                            <x-sth.button variant="quiet" size="sm" icon="eye" :href="$panel['evidence']['url']" aria-haspopup="dialog"
+                                :data-sth-preview="$panel['evidence']['preview']" :data-sth-preview-type="$panel['evidence']['previewType']"
+                                :data-sth-preview-name="$panel['evidence']['name']">Buka</x-sth.button>
+                        @endif
                     </div>
                 @else
                     <p class="m-0 rounded-tile border border-dashed border-line-dashed p-3 text-[13px] text-muted">Tidak ada bukti dukung · Opsional</p>
@@ -166,7 +171,7 @@
 
                 @if ($panel['final'])
                     <x-sth.alert :tone="$panel['restorable'] ? 'error' : 'success'" :title="$panel['status']->label()">
-                        {{ $panel['restorable'] ? 'Siswa sudah diberi tahu. Pulihkan untuk mengembalikan ke tahap '.$panel['restoreTo'].'.' : 'Pembina: '.($panel['mentorName'] ?? 'belum ditentukan') }}
+                        {{ $panel['restorable'] ? $panel['restoreHint'] : 'Pembina: '.($panel['mentorName'] ?? 'belum ditentukan') }}
                     </x-sth.alert>
                 @endif
 
@@ -223,6 +228,11 @@
                 <p class="m-0 text-sm">
                     <span class="font-bold"><span class="num">{{ $rejecting['count'] }}</span> pilihan talenta</span> ditandai tidak lolos. Tiap pilihan bisa dipulihkan lagi nanti.
                 </p>
+                @if ($rejecting['skipped'] > 0)
+                    <p class="m-0 text-[13px] text-muted">
+                        <span class="num">{{ $rejecting['skipped'] }}</span> pilihan yang dicentang sudah final (Peserta pembinaan atau Tidak lolos) dan dilewati.
+                    </p>
+                @endif
                 <x-sth.textarea wire:model="bulkNote" label="Catatan untuk siswa" optional rows="3" maxlength="1000"
                     hint="Catatan yang sama terkirim ke semua siswa yang dipilih." />
                 @if ($rejecting['drafts'] > 0)
@@ -254,14 +264,17 @@
         </x-slot:footer>
     </x-sth.modal>
 
-    {{-- "Pulihkan": a tidak-lolos choice goes back to the stage it had before the rejection. --}}
-    <x-sth.modal :id="\App\Livewire\Kesiswaan\Talenta::RESTORE_DIALOG" title="Pulihkan pilihan talenta?" description="Pilihan kembali ke tahap sebelum tidak lolos. Siswa diberi tahu." size="sm">
+    {{-- "Pulihkan": a tidak-lolos choice goes back into the stage Kesiswaan ticks; the earlier stage is preselected (M3-A). --}}
+    <x-sth.modal :id="\App\Livewire\Kesiswaan\Talenta::RESTORE_DIALOG" title="Pulihkan pilihan talenta?" description="Pilih tahap tujuannya. Siswa diberi tahu." size="sm">
         <form id="pulihkan-talenta-form" wire:submit="restore" class="flex flex-col gap-4" novalidate>
             @if ($restoring)
                 <p class="m-0 text-sm">
-                    <span class="font-bold">{{ $restoring['name'] }}</span> · {{ $restoring['talent'] }} kembali ke tahap {{ $restoring['to'] }}.
+                    <span class="font-bold">{{ $restoring['name'] }}</span> · {{ $restoring['talent'] }}
+                    {{ $restoring['from'] ? 'tidak lolos dari tahap '.$restoring['from'].'.' : 'tidak lolos.' }}
                     @if ($restoring['requested'])Permintaan tinjau ulang siswa ikut ditutup.@endif
                 </p>
+                <x-sth.radio-pick wire:model="restoreTo" label="Kembalikan ke tahap" :value="$restoreTo" :columns="2" size="sm" :options="$restoring['options']"
+                    :hint="$restoring['from'] ? null : 'Tahap sebelumnya tidak tercatat, jadi Terdaftar yang dipilih.'" />
             @endif
             <x-sth.textarea wire:model="restoreNote" label="Catatan untuk siswa" optional rows="3" maxlength="1000"
                 hint="Dibaca siswa di notifikasi dan Profil talenta." />
@@ -269,6 +282,21 @@
         <x-slot:footer>
             <x-sth.button variant="quiet" data-sth-close>Batal</x-sth.button>
             <x-sth.button type="submit" form="pulihkan-talenta-form" icon="recycle" wire:loading.attr="disabled" wire:target="restore">Pulihkan</x-sth.button>
+        </x-slot:footer>
+    </x-sth.modal>
+
+    {{-- "Download data (Excel)": tick the statuses that go into the file; the open tab is preselected (M3-A). --}}
+    <x-sth.modal :id="\App\Livewire\Kesiswaan\Talenta::EXPORT_DIALOG" title="Download data talenta" description="Pilih status yang masuk ke file Excel." size="sm">
+        <form id="download-talenta-form" wire:submit="download" class="flex flex-col gap-4" novalidate>
+            <x-sth.radio-pick wire:model="exportStatuses" multiple label="Status" :value="$exportStatuses" :columns="2" size="sm" :options="$exportOptions" />
+            <div class="flex flex-wrap gap-2">
+                <x-sth.button variant="quiet" size="sm" wire:click="selectAllExport" wire:loading.attr="disabled">Pilih semua status</x-sth.button>
+            </div>
+            <p class="m-0 text-[13px] text-muted">{{ $exportScope }}</p>
+        </form>
+        <x-slot:footer>
+            <x-sth.button variant="quiet" data-sth-close>Batal</x-sth.button>
+            <x-sth.button type="submit" form="download-talenta-form" icon="download" wire:loading.attr="disabled" wire:target="download">Download</x-sth.button>
         </x-slot:footer>
     </x-sth.modal>
 </div>

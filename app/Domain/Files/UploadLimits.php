@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\RateLimiter;
  * - at most 30 stored uploads per user per rolling hour (RateLimiter bucket `uploads:<user id>`; every stored
  *   file counts, also when the surrounding form later fails, so upload+delete loops cannot reset it);
  * - at most 200 MB stored per student: SUM(files.size) of the files the student owns (re-encoded bytes).
- * System-generated files (letters, flyers) and uploads without an owner are not limited here.
+ * System-generated files (letters) and uploads without an owner are not limited here.
  * Messages are short Indonesian texts for the form field (thrown as InvalidUpload).
  */
 final class UploadLimits

@@ -78,7 +78,7 @@
                 @if ($panel === null)
                     <h2 id="pub-judul" class="sr-only">Siapkan publikasi</h2>
                     <x-sth.empty-state icon="megaphone" title="Pilih prestasi di papan" :card="false" :level="3">
-                        Detail, flyer, dan jadwal publikasi tampil di sini.
+                        Data untuk flyer, caption, dan jadwal publikasi tampil di sini.
                     </x-sth.empty-state>
                 @else
                     @include('livewire.humas.partials.publication-panel', ['panel' => $panel])

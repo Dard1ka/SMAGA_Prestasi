@@ -245,7 +245,7 @@ final class Lomba extends Component
                 : null,
             'binaan' => $binaan,
             'note' => $competition->status === CompetitionStatus::Ditolak && (int) $competition->submitted_by === (int) $this->user()->getKey()
-                ? $competition->verification_note
+                ? ($competition->verification_note ?? 'Kesiswaan tidak menulis alasan.')
                 : null,
         ];
     }

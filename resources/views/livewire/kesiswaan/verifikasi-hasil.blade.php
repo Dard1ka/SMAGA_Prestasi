@@ -65,8 +65,8 @@
                     <h3 class="label m-0">Bukti</h3>
                     @forelse ($detail['files'] as $file)
                         <div class="flex flex-wrap items-center gap-3 rounded-tile border border-line p-3">
-                            @if ($file['preview'])
-                                <img src="{{ $file['preview'] }}" alt="Preview {{ $file['kind'] }}" loading="lazy" class="size-16 rounded-control border border-line object-cover">
+                            @if ($file['thumb'])
+                                <img src="{{ $file['thumb'] }}" alt="Preview {{ $file['kind'] }}" loading="lazy" class="size-16 rounded-control border border-line object-cover">
                             @else
                                 <span class="inline-flex size-11 items-center justify-center rounded-tile bg-primary-tint text-primary"><x-sth.icon name="file" /></span>
                             @endif
@@ -74,8 +74,13 @@
                                 <span class="ellip font-bold">{{ $file['name'] }}</span>
                                 <span class="text-[13px] text-muted">{{ $file['kind'] }}{{ $file['size'] ? ' · '.$file['size'] : '' }}</span>
                             </span>
-                            @if ($file['url'])
-                                <x-sth.button variant="quiet" size="sm" icon="download" :href="$file['url']">Buka</x-sth.button>
+                            @if ($file['url'] && $file['preview'])
+                                {{-- Preview popup (<x-sth.preview>): the href stays the download for a browser without JavaScript. --}}
+                                <x-sth.button variant="quiet" size="sm" icon="eye" :href="$file['url']" aria-haspopup="dialog"
+                                    :data-sth-preview="$file['preview']" :data-sth-preview-type="$file['previewType']"
+                                    :data-sth-preview-name="$file['name']">Buka<span class="sr-only"> {{ $file['kind'] }} {{ $file['name'] }}</span></x-sth.button>
+                            @elseif ($file['url'])
+                                <x-sth.button variant="quiet" size="sm" icon="download" :href="$file['url']">Download<span class="sr-only"> {{ $file['kind'] }} {{ $file['name'] }}</span></x-sth.button>
                             @endif
                         </div>
                     @empty
