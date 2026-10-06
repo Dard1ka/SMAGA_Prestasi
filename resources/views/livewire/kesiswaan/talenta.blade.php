@@ -1,5 +1,6 @@
 {{-- Talenta siswa (board Kesiswaan-Talenta). Data prepared in App\Livewire\Kesiswaan\Talenta. --}}
 <div class="flex flex-col gap-[22px]">
+    @include('livewire.partials.resume-download')
     <section aria-label="Ringkasan tahap" class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <x-sth.stat-tile icon="inbox" tone="gray" label="Terdaftar" :value="(string) $counts['terdaftar']" note="belum dipetakan" />
         <x-sth.stat-tile icon="users" tone="blue" label="Pemetaan" :value="(string) $counts['pemetaan']" note="sedang dipetakan" />

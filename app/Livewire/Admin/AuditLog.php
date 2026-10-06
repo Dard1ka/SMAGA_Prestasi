@@ -150,7 +150,7 @@ final class AuditLog extends Component
     {
         ExportAuditLog::authorize($this->actor());
 
-        if (! $this->passwordRecentlyConfirmed()) {
+        if (! $this->passwordRecentlyConfirmed('export')) {
             return null;
         }
 

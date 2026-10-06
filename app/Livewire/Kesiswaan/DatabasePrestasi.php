@@ -138,7 +138,7 @@ final class DatabasePrestasi extends Component
     {
         Gate::authorize('export', Achievement::class);
 
-        if (! $this->passwordRecentlyConfirmed()) {
+        if (! $this->passwordRecentlyConfirmed('export')) {
             return null;
         }
 

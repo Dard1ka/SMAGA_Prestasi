@@ -98,6 +98,16 @@ final readonly class LetterTemplate
         );
     }
 
+    /** The template a letter printed (`letters.printed['template']`, from toArray()); null when it is not one. */
+    public static function fromArray(mixed $data): ?self
+    {
+        if (! is_array($data) || ! is_int($data['version'] ?? null) || ! is_array($data['values'] ?? null)) {
+            return null;
+        }
+
+        return new self($data['version'], self::merge($data['values']));
+    }
+
     /** An unsaved draft (TU preview): same merge, no validation. */
     public static function draft(array $values): self
     {

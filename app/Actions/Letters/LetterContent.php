@@ -10,6 +10,7 @@ use App\Enums\SettingKey;
 use App\Models\Registration;
 use App\Models\RegistrationMember;
 use App\Models\Setting;
+use Error;
 
 /**
  * Everything one letter prints, built from the approved registration (DB) + the TU draft of that letter.
@@ -110,6 +111,31 @@ final readonly class LetterContent
                 'nip' => (string) Setting::get(SettingKey::SignerNip),
             ],
         );
+    }
+
+    /**
+     * Every field, for `letters.printed['content']` (QA retest 2026-10-06): the preview of an issued letter is
+     * rebuilt from this, never again from today's registration and settings.
+     *
+     * @return array<string, mixed>
+     */
+    public function toArray(): array
+    {
+        return get_object_vars($this);
+    }
+
+    /** The content stored by toArray(); null when $data is not a complete one (wrong or missing fields). */
+    public static function fromArray(mixed $data): ?self
+    {
+        if (! is_array($data) || array_is_list($data)) {
+            return null;
+        }
+
+        try {
+            return new self(...$data);
+        } catch (Error) { // TypeError, ArgumentCountError, unknown named parameter
+            return null;
+        }
     }
 
     /** "XI-7" → "XI - 7", the way the school's student letter writes a class. Other names stay as they are. */

@@ -24,7 +24,8 @@ use Spatie\Activitylog\Support\LogOptions;
  * Correction (B3, backlog #11): the old row gets revoked_at/revoked_by/revoke_reason, the new row has
  * version + 1, a NEW number and replaces_letter_id → the old row. "Current" = revoked_at IS NULL.
  * Not mass-assignable: verification_code, generated_by, generated_at, sent_at, version, replaces_letter_id,
- * signature_file_id, revoked_at, revoked_by, revoke_reason.
+ * signature_file_id, revoked_at, revoked_by, revoke_reason, printed.
+ * `printed` (QA retest 2026-10-06) = what the PDF was made from ({content, template}); null on letters made before.
  */
 class Letter extends Model
 {
@@ -65,6 +66,7 @@ class Letter extends Model
             'sent_at' => 'immutable_datetime',
             'version' => 'integer',
             'revoked_at' => 'immutable_datetime',
+            'printed' => 'array',
         ];
     }
 
@@ -87,7 +89,8 @@ class Letter extends Model
         return LogOptions::defaults()
             ->useLogName('letter')
             ->logAll()
-            ->logExcept(['created_at', 'updated_at', 'verification_code'])
+            // `printed` holds names, NIS and NIP; the append-only audit already has the PDF's SHA-256.
+            ->logExcept(['created_at', 'updated_at', 'verification_code', 'printed'])
             ->logOnlyDirty()
             ->dontLogEmptyChanges();
     }

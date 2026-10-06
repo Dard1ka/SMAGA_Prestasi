@@ -38,6 +38,22 @@ beforeEach(function (): void {
     $this->admin = F::staff(RoleName::Admin, 'Operator STH');
 });
 
+/** Is the cell $ref of an .xlsx sheet printed bold? Follows cell → cellXfs style → font, as Excel does. */
+function kesiswaanCellIsBold(string $sheetXml, string $stylesXml, string $ref): bool
+{
+    $ns = 'http://schemas.openxmlformats.org/spreadsheetml/2006/main';
+    $sheet = simplexml_load_string($sheetXml);
+    $styles = simplexml_load_string($stylesXml);
+    $sheet->registerXPathNamespace('m', $ns);
+    $styles->registerXPathNamespace('m', $ns);
+
+    $cell = $sheet->xpath("//m:c[@r='{$ref}']")[0] ?? null;
+    $xf = $cell === null ? null : ($styles->xpath('//m:cellXfs/m:xf')[(int) $cell['s']] ?? null);
+    $font = $xf === null ? null : ($styles->xpath('//m:fonts/m:font')[(int) $xf['fontId']] ?? null);
+
+    return $font !== null && $font->children($ns)->b->count() > 0;
+}
+
 dataset('kesiswaan routes', [
     'beranda' => ['kesiswaan.beranda'],
     'kelola lomba' => ['kesiswaan.lomba.index'],
@@ -380,13 +396,49 @@ it('exports the talent list as Excel with both notes in their own columns', func
 
     $path = sys_get_temp_dir().'/talenta-'.uniqid().'.xlsx';
     file_put_contents($path, base64_decode((string) $component->effects['download']['content']));
-    $row = SimpleExcelReader::create($path)->getRows()->first();
+    $rows = SimpleExcelReader::create($path)->noHeaderRow()->getRows()->all();
     @unlink($path);
 
-    expect($row)->toHaveKeys(['Catatan untuk guru pembina', 'Catatan untuk siswa'])
-        ->and($row)->not->toHaveKey('Catatan')
+    $header = collect($rows)->search(fn (array $row): bool => ($row[0] ?? null) === 'Nama');
+    $row = array_combine($rows[$header], $rows[$header + 1]);
+
+    expect($rows[$header])->toContain('Catatan untuk guru pembina', 'Catatan untuk siswa')
+        ->and($rows[$header])->not->toContain('Catatan')
         ->and($row['Catatan untuk guru pembina'])->toBe('Catatan internal pembina.')
         ->and($row['Catatan untuk siswa'])->toBe('Catatan yang dibaca siswa.');
+});
+
+it('marks the talent export like the other exports: title, who exported it and when, filter, bold header', function (): void {
+    session()->put('auth.password_confirmed_at', time());
+    $a = F::application();
+    $a->forceFill(['note' => '=HYPERLINK("http://x","klik")'])->save();
+
+    $component = Livewire::actingAs($this->kesiswaan)->test(Talenta::class)
+        ->call('setTahap', 'terdaftar')
+        ->call('export')
+        ->assertFileDownloaded();
+
+    $path = sys_get_temp_dir().'/talenta-'.uniqid().'.xlsx';
+    file_put_contents($path, base64_decode((string) $component->effects['download']['content']));
+    $rows = SimpleExcelReader::create($path)->noHeaderRow()->getRows()->all();
+    $zip = new ZipArchive;
+    $zip->open($path);
+    $sheet = (string) $zip->getFromName('xl/worksheets/sheet1.xml');
+    $styles = (string) $zip->getFromName('xl/styles.xml');
+    $zip->close();
+    @unlink($path);
+
+    expect($rows[0][0])->toBe('Talenta siswa SMAGA Talent Hub')
+        ->and($rows[1][0])->toStartWith('Diekspor oleh '.$this->kesiswaan->name.' · ')
+        ->and($rows[1][0])->toEndWith(' WIB')
+        ->and($rows[2][0])->toBe('Filter: Tahap: Terdaftar')
+        // the reader skips the empty 4th row; in the sheet the header is row 5 (A5 below)
+        ->and($rows[3][0])->toBe('Nama')
+        ->and(collect($rows)->flatten()->all())->toContain('\'=HYPERLINK("http://x","klik")')
+        ->and($sheet)->not->toContain('<f>')
+        ->and(kesiswaanCellIsBold($sheet, $styles, 'A1'))->toBeTrue()
+        ->and(kesiswaanCellIsBold($sheet, $styles, 'A5'))->toBeTrue()
+        ->and(kesiswaanCellIsBold($sheet, $styles, 'A6'))->toBeFalse();
 });
 
 it('imports students in three steps and never shows the initial password pattern', function (): void {

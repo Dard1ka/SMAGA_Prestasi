@@ -27,6 +27,11 @@ use Livewire\Attributes\Title;
 use Livewire\Component;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use Livewire\WithFileUploads;
+use OpenSpout\Common\Entity\Cell;
+use OpenSpout\Common\Entity\Cell\EmptyCell;
+use OpenSpout\Common\Entity\Cell\StringCell;
+use OpenSpout\Common\Entity\Row;
+use OpenSpout\Common\Entity\Style\Style;
 use Spatie\SimpleExcel\SimpleExcelWriter;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
@@ -92,9 +97,23 @@ class ImportSiswa extends Component
         $this->authorize(Permission::StudentImport->value);
 
         $path = self::tempPath('xlsx');
-        SimpleExcelWriter::create($path)
-            ->addHeader(ImportStudents::TEMPLATE_HEADER)
-            ->close();
+        $writer = SimpleExcelWriter::create($path)->addHeader(ImportStudents::TEMPLATE_HEADER);
+
+        // A General cell turns 0098765432 into 98765432 and 0812… into 812… (QA Q1-21, backlog #66). OpenSpout cannot
+        // give a whole column a format, so every row up to the import limit gets an empty Text cell there (an empty
+        // string: OpenSpout leaves out rows of only EmptyCells). Such rows are no data: the import skips them.
+        $text = (new Style)->setFormat('@');
+
+        for ($i = 0; $i < ImportStudents::MAX_ROWS; $i++) {
+            $writer->addRow(new Row(array_map(
+                fn (string $column): Cell => in_array($column, ImportStudents::TEMPLATE_TEXT_COLUMNS, true)
+                    ? new StringCell('', $text)
+                    : new EmptyCell(null, null),
+                ImportStudents::TEMPLATE_HEADER,
+            )));
+        }
+
+        $writer->close();
 
         return response()->download($path, 'template-import-siswa.xlsx')->deleteFileAfterSend();
     }

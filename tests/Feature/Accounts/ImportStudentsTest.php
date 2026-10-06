@@ -56,6 +56,24 @@ afterEach(function (): void {
 });
 
 /** Writes a CSV fixture (fictional data) and returns its path. */
+/** numFmtId of cell $ref in the first sheet of an .xlsx (null when the cell is not written at all). */
+function w1cTemplateFormat(string $xlsx, string $ref): ?int
+{
+    $ns = 'http://schemas.openxmlformats.org/spreadsheetml/2006/main';
+    $zip = new ZipArchive;
+    $zip->open($xlsx);
+    $sheet = simplexml_load_string((string) $zip->getFromName('xl/worksheets/sheet1.xml'));
+    $styles = simplexml_load_string((string) $zip->getFromName('xl/styles.xml'));
+    $zip->close();
+    $sheet->registerXPathNamespace('m', $ns);
+    $styles->registerXPathNamespace('m', $ns);
+
+    $cell = $sheet->xpath("//m:c[@r='{$ref}']")[0] ?? null;
+    $xf = $cell === null ? null : ($styles->xpath('//m:cellXfs/m:xf')[(int) $cell['s']] ?? null);
+
+    return $xf === null ? null : (int) $xf['numFmtId'];
+}
+
 function w1cCsv(array $rows, array $header = W1C_IMPORT_HEADER, string $delimiter = ','): string
 {
     $path = tempnam(sys_get_temp_dir(), 'sth-import-');
@@ -625,6 +643,28 @@ it('offers the template with the column "Kelas" and explains the yearly upload o
     file_put_contents($path, base64_decode((string) data_get($screen->effects, 'download.content')));
 
     expect(SimpleExcelReader::create($path)->getHeaders())->toBe(W1C_IMPORT_HEADER);
+});
+
+it('formats the NIS, NISN and No HP columns of the template as text, so Excel keeps their leading zeros', function (): void {
+    $this->withoutVite();
+
+    $screen = Livewire::actingAs($this->kesiswaan)->test(ImportSiswa::class)->call('downloadTemplate');
+
+    $path = tempnam(sys_get_temp_dir(), 'sth-template-').'.xlsx';
+    $GLOBALS['w1c_tmp_files'][] = $path;
+    file_put_contents($path, base64_decode((string) data_get($screen->effects, 'download.content')));
+
+    // numFmtId 49 is Excel's built-in "@" (Text) format (ECMA-376 §18.8.30).
+    foreach (['B2', 'C2', 'F2', 'B3001', 'C3001', 'F3001'] as $cell) {
+        expect(w1cTemplateFormat($path, $cell))->toBe(49, $cell);
+    }
+
+    // Name, birth date and class keep Excel's default; the header row is plain text.
+    expect(w1cTemplateFormat($path, 'A2'))->not->toBe(49)
+        ->and(w1cTemplateFormat($path, 'D2'))->not->toBe(49)
+        ->and(w1cTemplateFormat($path, 'E2'))->not->toBe(49)
+        // The formatted but empty rows are no data: the untouched template reads as a file without students.
+        ->and(app(ImportStudents::class)->handle($this->kesiswaan, $path, 'xlsx', '2026/2027')->total())->toBe(0);
 });
 
 it('previews baru, pindah kelas, tidak berubah and ditolak, then imports without touching a password', function (): void {

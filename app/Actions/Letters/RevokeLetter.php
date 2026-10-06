@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Actions\Letters;
 
 use App\Actions\Registrations\ApproveRegistration;
+use App\Actions\Templates\LetterTemplate;
 use App\Actions\Users\AdminRecipients;
 use App\Domain\Letters\LetterNumber;
 use App\Enums\LetterType;
@@ -113,6 +114,7 @@ final class RevokeLetter
                     ->where('type', $type)
                     ->max('version') + 1;
 
+                $template = LetterTemplate::current();
                 $new = $this->issue->newLetter($registration, $type, $number, $draft, $content);
                 $new->forceFill([
                     'version' => $version,
@@ -121,9 +123,10 @@ final class RevokeLetter
                     'generated_by' => $actor->getKey(),
                     'generated_at' => $now,
                     'sent_at' => $old->sent_at !== null ? $now : null,
+                    'printed' => LetterPdf::printed($content, $template),
                 ])->save();
 
-                $document = $this->pdf->render($type, $content, $new, $signature['bytes'], $old->full_number);
+                $document = $this->pdf->render($type, $content, $new, $signature['bytes'], $template, $old->full_number);
                 $file = $this->pdf->store($document, $type, $registration, $actor, $written, $version);
                 $new->forceFill(['file_id' => $file->getKey()])->save();
 

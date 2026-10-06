@@ -1,4 +1,4 @@
-{{-- Fortify::confirmPasswordView (middleware password.confirm) → POST password.confirm.store. --}}
+{{-- Fortify::confirmPasswordView (middleware password.confirm) → POST password.confirm.store. $back = "Batal" (FortifyServiceProvider::confirmPasswordBack). --}}
 <x-layouts::auth title="Konfirmasi kata sandi" variant="simple">
     <div class="flex flex-col gap-6">
         <div class="flex flex-col gap-2">
@@ -21,6 +21,7 @@
             />
 
             <x-sth.button type="submit" size="lg" block>Lanjut</x-sth.button>
+            <x-sth.button variant="quiet" size="lg" block href="{{ $back }}" :navigate="false">Batal</x-sth.button>
         </form>
     </div>
 </x-layouts::auth>

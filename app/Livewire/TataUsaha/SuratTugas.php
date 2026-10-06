@@ -10,6 +10,7 @@ use App\Actions\Letters\LetterDraft;
 use App\Actions\Letters\RevokeLetter;
 use App\Actions\Letters\SendLetters;
 use App\Actions\Letters\StreamLetter;
+use App\Actions\Templates\LetterTemplate;
 use App\Domain\Letters\LetterNumber;
 use App\Domain\Support\Dates;
 use App\Enums\FilePurpose;
@@ -51,6 +52,9 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 #[Title('Surat tugas')]
 class SuratTugas extends Component
 {
+    /** Key of this screen's error toasts: `sth-toast-clear` with it takes them away again (app.js). */
+    private const TOAST_KEY = 'surat-tugas';
+
     /** Action error key → form field (per letter). */
     private const ERROR_MAP = [
         'number' => 'nomor',
@@ -144,7 +148,7 @@ class SuratTugas extends Component
     {
         $registration = $this->selected();
         $this->tab = $tab === 'guru' && $registration->mentor_id !== null ? 'guru' : 'siswa';
-        $this->failed = false;
+        $this->clearFailure();
     }
 
     // --- live feedback while typing (the Actions decide on submit) ---
@@ -181,7 +185,7 @@ class SuratTugas extends Component
             return;
         }
 
-        $this->failed = false;
+        $this->clearFailure();
         $this->{$letterType->value} = LetterDraft::fromLetter($letter, $registration);
         $missing = SendLetters::missing($registration, $registration->letters()->get());
 
@@ -203,7 +207,7 @@ class SuratTugas extends Component
         $type = $letter->type;
 
         $this->resetErrorBag();
-        $this->failed = false;
+        $this->clearFailure();
         $this->revisingId = (string) $letter->getKey();
         $this->tab = $type->value;
         $this->alasan = '';
@@ -220,7 +224,7 @@ class SuratTugas extends Component
         $letter = $this->revisingId !== null ? $registration->letters()->whereKey($this->revisingId)->first() : null;
 
         $this->resetErrorBag();
-        $this->failed = false;
+        $this->clearFailure();
         $this->reset('revisingId', 'alasan');
 
         if ($letter !== null) {
@@ -244,7 +248,7 @@ class SuratTugas extends Component
             return;
         }
 
-        $this->failed = false;
+        $this->clearFailure();
         $this->reset('revisingId', 'alasan');
         $this->{$type->value} = LetterDraft::fromLetter($new, $registration);
         $this->dispatch('sth-toast', tone: 'success', message: $new->sent_at !== null
@@ -308,12 +312,12 @@ class SuratTugas extends Component
             $message = (string) (collect($e->errors())->flatten()->first() ?? 'Surat belum bisa dikirim.');
             $this->addError('kirim', $message);
             $this->dispatch('sth-form-invalid', form: 'surat-kirim');
-            $this->dispatch('sth-toast', message: $message, tone: 'error');
+            $this->dispatch('sth-toast', message: $message, tone: 'error', key: self::TOAST_KEY);
 
             return;
         }
 
-        $this->failed = false;
+        $this->clearFailure();
         $this->dispatch('sth-toast', message: 'Surat terkirim ke siswa dan guru pembimbing.', tone: 'success');
         $this->refreshBadge();
     }
@@ -360,6 +364,10 @@ class SuratTugas extends Component
             $last = Letter::lastNumber($type);
             $missing = SendLetters::missing($registration, $letters);
             $typed = (new LetterNumber)->normalize((string) ($this->{$type->value}['nomor'] ?? ''));
+            // An issued letter is shown as its PDF printed it, not as today's template, signer and classes would.
+            $printedContent = $editing ? null : LetterContent::fromArray($letter->printed['content'] ?? null);
+            $printedTemplate = $editing ? null : LetterTemplate::fromArray($letter->printed['template'] ?? null);
+            $printed = $printedContent !== null && $printedTemplate !== null;
 
             $data += [
                 'hasMentor' => $registration->mentor_id !== null,
@@ -368,7 +376,9 @@ class SuratTugas extends Component
                 'editing' => $editing,
                 'revising' => $revising !== null && $revising->type === $type ? $revising : null,
                 'revisingOther' => $revising !== null && $revising->type !== $type ? $revising : null,
-                'content' => LetterContent::build($registration, $this->draft($type, lenient: true)),
+                'content' => $printed ? $printedContent : LetterContent::build($registration, $this->draft($type, lenient: true)),
+                'letterTemplate' => $printed ? $printedTemplate : LetterTemplate::current(),
+                'printed' => $printed,
                 'number' => $editing ? ($typed !== '' ? $typed : null) : $letter->full_number,
                 'lastNumber' => $last,
                 'example' => $issue->example($type, $this->previewDate($type), $last),
@@ -551,7 +561,18 @@ class SuratTugas extends Component
 
         $this->failed = true;
         $this->dispatch('sth-form-invalid', form: 'surat-form-'.$type->value);
-        $this->dispatch('sth-toast', message: $toast, tone: 'error');
+        $this->dispatch('sth-toast', message: $toast, tone: 'error', key: self::TOAST_KEY);
+    }
+
+    /**
+     * The failed submit is over (success, another letter, a correction opened or closed): drop the summary and the
+     * error toast that reported it. Error toasts stay until closed (toast.blade.php), so without this one said
+     * "Belum bisa membuat PDF" long after the PDF was made (QA retest 2026-10-06).
+     */
+    private function clearFailure(): void
+    {
+        $this->failed = false;
+        $this->dispatch('sth-toast-clear', key: self::TOAST_KEY);
     }
 
     /**
