@@ -4,7 +4,9 @@
       → <x-sth.flash> in every layout renders it;
     - from Livewire: $this->dispatch('sth-toast', message: 'Lomba dipublikasikan.', tone: 'success');
     Screen readers get the text through the layout's live region (resources/js/app.js). success/info
-    close after 6 s (paused on hover/focus); warning/error stay until closed.
+    close after 6 s (paused on hover/focus); warning/error stay until closed, or until the screen that raised
+    them with a key says the failure is over: dispatch('sth-toast', …, key: 'surat-tugas') and later
+    dispatch('sth-toast-clear', key: 'surat-tugas') (e.g. TataUsaha\SuratTugas).
 
     <x-sth.toast tone="success">Lomba dipublikasikan.</x-sth.toast>
 

@@ -6,6 +6,8 @@ use App\Actions\Letters\IssueLetters;
 use App\Actions\Letters\LetterDraft;
 use App\Actions\Letters\SendLetters;
 use App\Actions\Registrations\ApproveRegistration;
+use App\Actions\Templates\LetterTemplate;
+use App\Actions\Templates\UpdateLetterTemplate;
 use App\Domain\Letters\LetterNumber;
 use App\Enums\FilePurpose;
 use App\Enums\LetterType;
@@ -14,10 +16,12 @@ use App\Enums\RoleName;
 use App\Enums\SettingKey;
 use App\Livewire\TataUsaha\ArsipSurat;
 use App\Livewire\TataUsaha\SuratTugas;
+use App\Models\Classroom;
 use App\Models\File;
 use App\Models\Letter;
 use App\Models\Registration;
 use App\Models\Setting;
+use App\Models\Student;
 use App\Models\User;
 use App\Notifications\Letters\LettersIssued;
 use Carbon\CarbonImmutable;
@@ -673,4 +677,70 @@ it('verifies a sent letter publicly without personal data', function (): void {
 
     $this->get('/verifikasi-surat/'.str_repeat('0', 32))->assertNotFound();
     $this->get('/verifikasi-surat/tidak-ada')->assertNotFound();
+});
+
+// QA retest 2026-10-06 ------------------------------------------------------------------------------
+
+it('shows an issued letter the way its PDF printed it, after the template, the signer and a class changed', function (): void {
+    Notification::fake();
+    Setting::put(SettingKey::SignerName, 'Drs. Bambang Hartono, M.Pd.');
+    $registration = w2cTeam($this->mentor);
+    app(IssueLetters::class)->handle($this->tu, $registration, LetterType::Siswa, w2cDraft());
+
+    // Everything the preview used to read live changes after the PDF was made.
+    app(UpdateLetterTemplate::class)->handle($this->tu, array_merge(LetterTemplate::defaults(), [
+        'kop_5' => 'Kode Pos 50999, Telepon 0000000',
+    ]));
+    Setting::put(SettingKey::SignerName, 'Plt. Kepala Sekolah Baru, S.Pd.');
+    // The yearly import moves the whole team (they were all in XI-4 when the letter was made).
+    $xii9 = Classroom::factory()->level(12)->create(['name' => 'XII-9']);
+    Student::query()->update(['classroom_id' => $xii9->getKey()]);
+
+    Livewire::actingAs($this->tu)->test(SuratTugas::class, ['registration' => $registration])
+        ->call('setTab', 'siswa')
+        ->assertSee('Isi PDF yang sudah dibuat')
+        ->assertSee('Kode Pos 50132, Telepon 3544287, Faksimile 024-3544291')
+        ->assertDontSee('Kode Pos 50999')
+        ->assertSee('Drs. Bambang Hartono, M.Pd.')
+        ->assertDontSee('Plt. Kepala Sekolah Baru')
+        ->assertSee('XI - 4')
+        ->assertDontSee('XII - 9');
+});
+
+it('does not claim to show the PDF for a letter issued before STH kept what it printed', function (): void {
+    $registration = F::registration(RegistrationStatus::Disetujui, ['Hana Safira'], null);
+    $file = File::factory()->purpose(FilePurpose::Letter)->create();
+    Letter::factory()->create([
+        'registration_id' => $registration->getKey(),
+        'type' => LetterType::Siswa,
+        'full_number' => '400.3.8/301/MRD/IX/2026',
+        'issued_on' => '2026-09-08',
+        'file_id' => $file->getKey(),
+    ]);
+
+    Livewire::actingAs($this->tu)->test(SuratTugas::class, ['registration' => $registration])
+        ->assertDontSee('Isi PDF yang sudah dibuat')
+        ->assertSee('Menurut data sekarang, bisa beda dari PDF');
+});
+
+it('takes the error toast of a failed "Buat PDF" away once the PDF is made or another letter opens', function (): void {
+    $registration = w2cTeam($this->mentor);
+
+    $component = Livewire::actingAs($this->tu)->test(SuratTugas::class, ['registration' => $registration])
+        ->call('generate')
+        ->assertDispatched('sth-toast', tone: 'error', key: 'surat-tugas')
+        ->assertNotDispatched('sth-toast-clear');
+
+    // Another letter's tab: the failure belonged to the letter that was open.
+    $component->call('setTab', 'guru')->assertDispatched('sth-toast-clear', key: 'surat-tugas');
+
+    // The same letter made after all.
+    $component->call('setTab', 'siswa')
+        ->call('generate')
+        ->assertDispatched('sth-toast', tone: 'error', key: 'surat-tugas')
+        ->set('siswa.nomor', W2C_SISWA)
+        ->call('generate')
+        ->assertHasNoErrors()
+        ->assertDispatched('sth-toast', tone: 'success')
+        ->assertDispatched('sth-toast-clear', key: 'surat-tugas');
 });

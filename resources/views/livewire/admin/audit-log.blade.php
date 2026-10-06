@@ -1,5 +1,6 @@
 {{-- Admin · Log audit (UI-MAP §5, backlog #8, B5). Read-only: no edit or delete anywhere. --}}
 <div class="flex flex-col gap-[22px]">
+    @include('livewire.partials.resume-download')
     <x-sth.card as="section" aria-labelledby="h-audit-filter" class="flex flex-col gap-4">
         <div class="flex flex-wrap items-center justify-between gap-3">
             <h2 id="h-audit-filter" class="title-card">Saring log <span class="muted text-[13.5px] font-normal" wire:loading>Memuat…</span></h2>

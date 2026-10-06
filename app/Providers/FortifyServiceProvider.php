@@ -50,7 +50,9 @@ class FortifyServiceProvider extends ServiceProvider
     {
         Fortify::loginView(fn () => view('auth.login'));
         Fortify::twoFactorChallengeView(fn () => view('auth.two-factor-challenge'));
-        Fortify::confirmPasswordView(fn () => view('auth.confirm-password'));
+        Fortify::confirmPasswordView(fn (Request $request) => view('auth.confirm-password', [
+            'back' => self::confirmPasswordBack($request),
+        ]));
 
         // NIS / NISN (students; also their email once activation is finished) or username / email (staff);
         // generic error, lockout, archived/disabled rejection.
@@ -136,5 +138,19 @@ class FortifyServiceProvider extends ServiceProvider
 
         // Audit rows for TOTP enabled / confirmed / disabled / recovery codes regenerated (Fortify's events).
         Event::subscribe(TwoFactorAuditSubscriber::class);
+    }
+
+    /**
+     * Where "Batal" on the password page goes (QA Q2-18, backlog #63): back to the screen that asked
+     * (`url.intended`) when it is a page of this app (same scheme, host and port, as the error pages' "Kembali"
+     * in ErrorPageServiceProvider), else the beranda.
+     */
+    public static function confirmPasswordBack(Request $request): string
+    {
+        $intended = $request->session()->get('url.intended');
+
+        return is_string($intended) && strlen($intended) <= 2000 && str_starts_with($intended, $request->getSchemeAndHttpHost().'/')
+            ? $intended
+            : route('home');
     }
 }

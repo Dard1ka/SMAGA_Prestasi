@@ -63,11 +63,23 @@ final class LetterPdf
     }
 
     /**
+     * What a letter stores in `printed` (QA retest 2026-10-06): the same content and template the PDF is
+     * rendered with, so the TU preview of the issued letter shows its PDF.
+     *
+     * @return array{content: array<string, mixed>, template: array{version: int, values: array<string, string>}}
+     */
+    public static function printed(LetterContent $content, LetterTemplate $template): array
+    {
+        return ['content' => $content->toArray(), 'template' => $template->toArray()];
+    }
+
+    /**
+     * @param  LetterTemplate  $template  B5: TU letter template, read once by the caller and stored with printed()
      * @param  string|null  $replaces  full number of the revoked letter this one replaces (printed in the footer)
      *
      * @throws ValidationException key `signature` when the image cannot be used
      */
-    public function render(LetterType $type, LetterContent $content, Letter $letter, string $signature, ?string $replaces = null): PdfDocument
+    public function render(LetterType $type, LetterContent $content, Letter $letter, string $signature, LetterTemplate $template, ?string $replaces = null): PdfDocument
     {
         $url = route('public.surat.verifikasi', ['code' => $letter->verification_code]);
 
@@ -77,7 +89,7 @@ final class LetterPdf
                 'number' => $letter->full_number,
                 'verification' => ['code' => $letter->verification_code, 'url' => $url],
                 'replaces' => $replaces,
-                'letterTemplate' => LetterTemplate::current(), // B5: TU letter template (plain text, read once per render)
+                'letterTemplate' => $template,
             ], [
                 'ttd.png' => $signature,
                 'qr.png' => $this->qr->png($url, 6),

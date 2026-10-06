@@ -1,5 +1,6 @@
 {{-- Kesiswaan · Database prestasi (backlog #4, B4). Data prepared in App\Livewire\Kesiswaan\DatabasePrestasi. --}}
 <div class="flex flex-col gap-[22px]">
+    @include('livewire.partials.resume-download')
     <section aria-label="Ringkasan" class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <x-sth.stat-tile icon="award" tone="blue" label="Prestasi" :value="$totals['count']" :note="$active === [] ? 'semua terverifikasi' : 'sesuai filter'" />
         <x-sth.stat-tile icon="users" tone="blue" label="Siswa berprestasi" :value="$totals['students']" note="siswa berbeda" />

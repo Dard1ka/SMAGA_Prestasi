@@ -10,6 +10,7 @@
     $statusChip = ['alumni' => ['gray', 'Alumni'], 'nonaktif' => ['red', 'Nonaktif']];
 @endphp
 <div class="flex flex-col gap-[22px]">
+    @include('livewire.partials.resume-download')
     <x-sth.card as="section" aria-labelledby="h-periode" class="flex flex-col gap-4">
         <div class="flex flex-wrap items-center justify-between gap-3">
             <div class="flex flex-col gap-0.5">

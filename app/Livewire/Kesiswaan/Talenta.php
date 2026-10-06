@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Livewire\Kesiswaan;
 
+use App\Actions\Exports\ExportAchievements;
 use App\Actions\Talent\MoveTalentStage;
 use App\Actions\Talent\RejectTalentApplication;
 use App\Actions\Talent\RestoreTalentApplication;
@@ -35,6 +36,9 @@ use Livewire\Attributes\Locked;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
 use Livewire\Component;
+use OpenSpout\Common\Entity\Cell\StringCell;
+use OpenSpout\Common\Entity\Row;
+use OpenSpout\Common\Entity\Style\Style;
 use Spatie\SimpleExcel\SimpleExcelWriter;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
@@ -62,6 +66,11 @@ class Talenta extends Component
     use RequiresRecentPassword, WithKesiswaanBadges;
 
     public const EXPORT_MAX_ROWS = 10000;
+
+    private const EXPORT_HEADER = [
+        'Nama', 'NIS', 'Kelas', 'Jenis', 'Cabang', 'Tahap', 'Guru pembina', 'Jadwal asesmen',
+        'Catatan untuk guru pembina', 'Catatan untuk siswa', 'Didaftarkan',
+    ];
 
     private const PAGE = 30;
 
@@ -487,7 +496,7 @@ class Talenta extends Component
     {
         $this->authorize('manage', TalentApplication::class);
 
-        if (! $this->passwordRecentlyConfirmed()) {
+        if (! $this->passwordRecentlyConfirmed('export')) {
             return null;
         }
 
@@ -500,34 +509,43 @@ class Talenta extends Component
             return null;
         }
 
+        $actor = $this->actor();
+        $exportedAt = now();
         $base = (string) tempnam(sys_get_temp_dir(), 'talenta');
         @unlink($base);
         $path = $base.'.xlsx';
-        $writer = SimpleExcelWriter::create($path);
+        $writer = SimpleExcelWriter::create($path)->noHeaderRow();
+        $bold = (new Style)->setFontBold();
+        $describe = $this->describeFilters();
+
+        // Marked like Database prestasi (ExportAchievements, SECURITY §3m): title, who exported it and when, filter.
+        $writer->addRow(self::exportRow(['Talenta siswa SMAGA Talent Hub'], $bold));
+        $writer->addRow(self::exportRow(['Diekspor oleh '.$actor->name.' · '.$exportedAt->format('d-m-Y H.i').' WIB']));
+        $writer->addRow(self::exportRow(['Filter: '.($describe === [] ? 'semua talenta' : implode('; ', $describe))]));
+        $writer->addRow(self::exportRow(['']));
+        $writer->addRow(self::exportRow(self::EXPORT_HEADER, $bold));
 
         $this->filteredQuery()->with(['student.user', 'student.classroom', 'talentType', 'talentBranch', 'mentor'])
             ->orderBy('created_at')
             ->chunk(500, function (Collection $chunk) use ($writer): void {
                 foreach ($chunk as $a) {
-                    $writer->addRow([
-                        'Nama' => self::cell($a->student?->user?->name),
-                        'NIS' => self::cell($a->student?->nis),
-                        'Kelas' => self::cell($a->student?->classroom?->name),
-                        'Jenis' => self::cell($a->talentType?->code?->label()),
-                        'Cabang' => self::cell($a->talentBranch?->name),
-                        'Tahap' => self::cell($a->status->label()),
-                        'Guru pembina' => self::cell($a->mentor?->name),
-                        'Jadwal asesmen' => $a->assessment_on?->format('Y-m-d') ?? '',
-                        'Catatan untuk guru pembina' => self::cell($a->note),
-                        'Catatan untuk siswa' => self::cell($a->student_note),
-                        'Didaftarkan' => $a->created_at?->format('Y-m-d') ?? '',
-                    ]);
+                    $writer->addRow(self::exportRow([
+                        (string) $a->student?->user?->name,
+                        (string) $a->student?->nis,
+                        (string) $a->student?->classroom?->name,
+                        (string) $a->talentType?->code?->label(),
+                        (string) $a->talentBranch?->name,
+                        $a->status->label(),
+                        (string) $a->mentor?->name,
+                        (string) $a->assessment_on?->format('Y-m-d'),
+                        (string) $a->note,
+                        (string) $a->student_note,
+                        (string) $a->created_at?->format('Y-m-d'),
+                    ]));
                 }
             });
 
         $writer->close();
-
-        $actor = $this->actor();
 
         activity('talent')->causedBy($actor)->event('talent.exported')
             ->withProperties([
@@ -542,7 +560,38 @@ class Talenta extends Component
             Notification::send($recipients->admins(), new LargeExportNotice((string) $actor->name, 'data talenta siswa', $count, now()->translatedFormat('j F Y H:i')));
         }
 
-        return response()->download($path, 'talenta-siswa-'.now()->format('Ymd').'.xlsx')->deleteFileAfterSend();
+        return response()->download($path, 'talenta-siswa-'.$exportedAt->format('Ymd').'.xlsx')->deleteFileAfterSend();
+    }
+
+    /**
+     * The active filters in words, for the export's "Filter:" row (same style as AchievementFilters::describe()).
+     *
+     * @return list<string>
+     */
+    private function describeFilters(): array
+    {
+        $tahap = TalentStatus::tryFrom($this->tahap);
+        $jenis = TalentTypeCode::tryFrom($this->jenis);
+        $cabang = $this->cabang !== '' ? TalentBranch::query()->whereKey($this->cabang)->value('name') : null;
+        $kelas = $this->kelas !== '' ? Classroom::query()->whereKey($this->kelas)->value('name') : null;
+
+        return array_values(array_filter([
+            $tahap !== null ? 'Tahap: '.$tahap->label() : null,
+            $jenis !== null ? 'Jenis: '.$jenis->label() : null,
+            $cabang !== null ? 'Cabang: '.$cabang : null,
+            $kelas !== null ? 'Kelas: '.$kelas : null,
+            $this->q !== '' ? 'Siswa: '.$this->q : null,
+        ]));
+    }
+
+    /**
+     * One export row of explicit text cells (never a formula), each value guarded like Database prestasi.
+     *
+     * @param  list<string>  $values
+     */
+    private static function exportRow(array $values, ?Style $style = null): Row
+    {
+        return new Row(array_map(fn (string $value): StringCell => new StringCell(ExportAchievements::cell($value), $style), $values));
     }
 
     public function render(PointFormatter $formatter): View
@@ -960,14 +1009,6 @@ class Talenta extends Component
         }
 
         return mb_strlen($nis) <= 4 ? '••••' : mb_substr($nis, 0, 4).'•••'.mb_substr($nis, -2);
-    }
-
-    /** Excel cell text; values that a spreadsheet would read as a formula get a leading apostrophe. */
-    private static function cell(?string $value): string
-    {
-        $value = (string) $value;
-
-        return $value !== '' && in_array($value[0], ['=', '+', '-', '@', "\t", "\r"], true) ? "'".$value : $value;
     }
 
     private function find(string $id): TalentApplication

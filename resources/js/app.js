@@ -7,7 +7,8 @@
  |
  | Hooks (see the component docs in resources/views/components/sth):
  |   data-sth-open="<dialog id>" · data-sth-close · data-sth-autoopen        <x-sth.modal>, mobile menu
- |   window events: sth-modal-open / sth-modal-close {id} · sth-toast {message, tone}
+ |   window events: sth-modal-open / sth-modal-close {id} · sth-toast {message, tone, key?}
+ |                  sth-toast-clear {key} — remove the toasts raised with that key (a failure that is over)
  |                  sth-form-invalid {form} — bring the first validation error into view
  |                  sth-badges {badges: {key: count}} — update [data-sth-badge="key"] in the sidebar
  |   form[data-sth-live-search]                                               top bar search filters as you type
@@ -189,7 +190,7 @@ function armToast(toast) {
     start();
 }
 
-function showToast(message, tone = 'success') {
+function showToast(message, tone = 'success', key = '') {
     const region = document.getElementById('sth-toasts');
     if (!region || !message) return;
     const [iconClass, path] = TONES[tone] || TONES.success;
@@ -213,6 +214,7 @@ function showToast(message, tone = 'success') {
     toast.dataset.sthToast = '';
     toast.dataset.tone = TONES[tone] ? tone : 'success';
     toast.dataset.message = String(message);
+    if (key) toast.dataset.key = String(key);
 
     const icon = document.createElement('span');
     icon.className = `toast-ic ${iconClass}`;
@@ -243,7 +245,18 @@ document.addEventListener('click', (event) => {
 
 window.addEventListener('sth-toast', (event) => {
     const detail = event.detail || {};
-    showToast(detail.message, detail.tone);
+    showToast(detail.message, detail.tone, detail.key);
+});
+
+// Error and warning toasts stay until closed. A screen that raised one with a key takes it away again once the
+// failure is over (e.g. the PDF was made after all), so it does not keep reporting a problem that is gone.
+window.addEventListener('sth-toast-clear', (event) => {
+    const key = String((event.detail || {}).key || '');
+    const region = document.getElementById('sth-toasts');
+    if (!region || !key) return;
+    region.querySelectorAll('[data-sth-toast]').forEach((toast) => {
+        if (toast.dataset.key === key) dismissToast(toast);
+    });
 });
 
 /* ---------------------------------------------------------------- form errors */

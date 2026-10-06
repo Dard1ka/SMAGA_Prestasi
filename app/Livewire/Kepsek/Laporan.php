@@ -69,7 +69,8 @@ final class Laporan extends Component
         Gate::authorize('exportSchoolReport', Achievement::class);
         abort_unless(in_array($format, ExportPrestasiReport::FORMATS, true), 404);
 
-        if (! $this->passwordRecentlyConfirmed()) {
+        // $format is one of FORMATS here, so the call stays a literal.
+        if (! $this->passwordRecentlyConfirmed("export('".$format."')")) {
             return null;
         }
 

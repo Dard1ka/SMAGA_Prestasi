@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Actions\Letters;
 
+use App\Actions\Templates\LetterTemplate;
 use App\Domain\Letters\LetterNumber;
 use App\Enums\LetterType;
 use App\Enums\RegistrationStatus;
@@ -93,15 +94,17 @@ final class IssueLetters
 
                 $version = (int) $locked->letterHistory()->where('type', $type)->max('version') + 1;
 
+                $template = LetterTemplate::current();
                 $letter = $this->newLetter($locked, $type, $number, $draft, $content);
                 $letter->forceFill([
                     'version' => $version,
                     'signature_file_id' => $signature['file_id'],
                     'generated_by' => $actor->getKey(),
                     'generated_at' => now(),
+                    'printed' => LetterPdf::printed($content, $template),
                 ])->save();
 
-                $document = $this->pdf->render($type, $content, $letter, $signature['bytes']);
+                $document = $this->pdf->render($type, $content, $letter, $signature['bytes'], $template);
                 $file = $this->pdf->store($document, $type, $locked, $actor, $written, $version);
                 $letter->forceFill(['file_id' => $file->getKey()])->save();
 

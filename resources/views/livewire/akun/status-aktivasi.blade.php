@@ -1,5 +1,6 @@
 {{-- Status aktivasi (K9, K2; UI-MAP §4a/§5). Data prepared in App\Livewire\Akun\StatusAktivasi + App\Actions\Accounts\ActivationReport. --}}
 <div class="flex flex-col gap-[22px]">
+    @include('livewire.partials.resume-download')
     <section aria-label="Ringkasan aktivasi" class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <x-sth.stat-tile icon="check-circle" tone="green" label="Sudah aktif" :value="(string) $totals['aktif']" note="akun siswa" />
         <x-sth.stat-tile icon="clock" tone="gray" label="Belum aktivasi" :value="(string) $totals['belum']" note="masih dalam jendela" />

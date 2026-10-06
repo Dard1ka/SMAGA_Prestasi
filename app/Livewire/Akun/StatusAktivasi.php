@@ -272,7 +272,7 @@ final class StatusAktivasi extends Component
         // The CSV belongs to the list at the bottom: coming back from the password page must not reopen a dialog.
         $this->forgetClass();
 
-        if (! $this->passwordRecentlyConfirmed()) {
+        if (! $this->passwordRecentlyConfirmed('export')) {
             return null;
         }
 

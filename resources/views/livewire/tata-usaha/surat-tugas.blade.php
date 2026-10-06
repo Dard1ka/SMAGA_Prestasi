@@ -209,7 +209,7 @@
             <x-sth.card as="section" class="flex min-w-0 flex-col gap-4" aria-labelledby="h-preview">
                 <div class="flex flex-wrap items-baseline justify-between gap-2">
                     <h2 id="h-preview" class="title-card">{{ $editing && ! $revising ? '2. Preview '.$typeName : 'Preview '.$typeName }}</h2>
-                    <span class="muted text-[13px]">{{ $editing ? 'Berubah saat data diisi' : 'Isi PDF yang sudah dibuat' }}</span>
+                    <span class="muted text-[13px]">{{ $editing ? 'Berubah saat data diisi' : ($printed ? 'Isi PDF yang sudah dibuat' : 'Menurut data sekarang, bisa beda dari PDF. Lihat isi persisnya lewat Cetak.') }}</span>
                 </div>
                 <div wire:loading.class="opacity-70">
                     @if ($isGuru)

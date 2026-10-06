@@ -87,6 +87,9 @@ final class ImportStudents
     /** Header row of the template (App\Livewire\Akun\ImportSiswa::downloadTemplate). */
     public const TEMPLATE_HEADER = ['Nama lengkap', 'NIS', 'NISN', 'Tanggal lahir', 'Kelas', 'No HP'];
 
+    /** Template columns of digits whose leading zero matters: formatted as Text, so Excel keeps them as typed. */
+    public const TEMPLATE_TEXT_COLUMNS = ['NIS', 'NISN', 'No HP'];
+
     public const REQUIRED = ['name', 'nis', 'nisn', 'birth_date', 'classroom'];
 
     private const LABELS = [
