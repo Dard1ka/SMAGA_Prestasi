@@ -46,7 +46,8 @@
         @endisset
 
         @if ($search)
-            <form role="search" method="GET" action="{{ $search['action'] }}" class="relative hidden w-[240px] lg:block xl:w-[300px]">
+            {{-- data-sth-live-search: on the list page itself app.js filters while typing (no Enter); elsewhere Enter = GET. --}}
+            <form role="search" method="GET" action="{{ $search['action'] }}" data-sth-live-search class="relative hidden w-[240px] lg:block xl:w-[300px]">
                 <label class="sr-only" for="cari-atas">{{ $search['placeholder'] }}</label>
                 <x-sth.icon name="search" class="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-placeholder" />
                 <input class="input pl-11" id="cari-atas" type="search" name="{{ $search['name'] }}" value="{{ $query }}" placeholder="{{ $search['placeholder'] }}" autocomplete="off">

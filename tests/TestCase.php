@@ -5,6 +5,7 @@ namespace Tests;
 use App\Domain\Letters\PdfRenderer;
 use Illuminate\Filesystem\Filesystem;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
+use RuntimeException;
 use Tests\Support\TestDisks;
 
 abstract class TestCase extends BaseTestCase
@@ -37,6 +38,27 @@ abstract class TestCase extends BaseTestCase
         TestDisks::cleanup();
 
         parent::tearDown();
+    }
+
+    /**
+     * M1 safety net: a cached config (`php artisan config:cache` / `optimize` run in this tree) carries
+     * APP_ENV=local and the dev MySQL connection into the test process, where phpunit.xml can no longer
+     * override it, and RefreshDatabase would then wipe the dev database. Stop before any trait runs.
+     * (The dev php-fpm config cache lives outside the repo and is invisible to the command line,
+     * see docker/php/fpm.dev.conf.)
+     */
+    public function createApplication()
+    {
+        $app = parent::createApplication();
+
+        if ($app->configurationIsCached() || ! $app->environment('testing')) {
+            throw new RuntimeException(
+                'Tests refuse to run: the config is cached or APP_ENV is not "testing". '
+                .'Run `php artisan config:clear` and start the tests with `docker compose run --rm --no-deps app php artisan test`.'
+            );
+        }
+
+        return $app;
     }
 
     /**

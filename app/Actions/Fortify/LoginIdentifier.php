@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Actions\Fortify;
 
+use App\Actions\Accounts\DetermineActivationStep;
 use App\Enums\RoleName;
 use App\Models\Student;
 use App\Models\User;
@@ -15,15 +16,21 @@ use Laravel\Fortify\Fortify;
  * Resolves the login field (docs/SECURITY.md §3a K11):
  * - digits only → student by NIS or NISN (10 digits is usually a NISN; both columns are checked, and if the
  *   value matches two different accounts the login is refused and a security event is logged);
- * - contains "@" → staff user by email; anything else → staff user by username.
- * Students never log in by email/username and staff never by NIS/NISN.
+ * - contains "@" → the one account with that email (`users.email` is unique): a staff account always, a student
+ *   account only once its first-login activation is finished (email bound and verified, status `active`; lead's
+ *   decision of 2026-10-04). Before that, and for a disabled or archived student, the address resolves to nobody:
+ *   same answer, same timing and same rate-limit bucket as an address nobody uses;
+ * - anything else → staff user by username.
+ * Students never log in by username and staff never by NIS/NISN.
  *
- * bucketKey() gives NIS and NISN of one student the same rate-limit bucket ("u:<id>"), and a stable HMAC
- * bucket for unknown identifiers so limiter behaviour does not reveal whether an account exists.
+ * bucketKey() gives every identifier of one account (NIS, NISN, email) the same rate-limit bucket ("u:<id>"), and
+ * a stable HMAC bucket for unknown identifiers so limiter behaviour does not reveal whether an account exists.
  */
 final class LoginIdentifier
 {
     private const RESOLVED = 'sth.login.identifier_user';
+
+    public function __construct(private readonly DetermineActivationStep $activationStep) {}
 
     public static function normalize(string $identifier): string
     {
@@ -46,12 +53,28 @@ final class LoginIdentifier
             return $this->resolveStudent($identifier);
         }
 
+        $byEmail = str_contains($identifier, '@');
+
         $user = User::query()
-            ->where(str_contains($identifier, '@') ? 'email' : 'username', $identifier)
+            ->where($byEmail ? 'email' : 'username', $identifier)
             ->first();
 
-        // Staff only: a student account never signs in with an email or username.
-        return $user !== null && ! $user->hasRole(RoleName::Siswa->value) && $user->student()->doesntExist() ? $user : null;
+        if ($user === null) {
+            return null;
+        }
+
+        if (self::isStudentAccount($user)) {
+            // Never by username; by email only after the activation proved the address is the student's own.
+            return $byEmail && $this->activationStep->finished($user) ? $user : null;
+        }
+
+        return $user;
+    }
+
+    /** The same test as RestrictTwoFactorToStaff uses: the `siswa` role or a student record. */
+    public static function isStudentAccount(User $user): bool
+    {
+        return $user->hasRole(RoleName::Siswa->value) || $user->student()->exists();
     }
 
     /** Memoised per request, so the rate limiter and the authenticator share one lookup. */

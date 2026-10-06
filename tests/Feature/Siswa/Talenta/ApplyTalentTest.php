@@ -65,6 +65,30 @@ it('allows several jenis and cabang (D-23) but never the same one twice', functi
     expect(TalentApplication::query()->where('student_id', $this->nadia->getKey())->count())->toBe(3);
 });
 
+it('never opens a second row for a rejected choice: the student is sent to "Minta ditinjau ulang"', function (): void {
+    $olpain = w2a2TalentType(TalentTypeCode::Olpain);
+    $kimia = $this->apply->handle($this->nadia->user, w2a2TalentType(TalentTypeCode::Osn), w2a2TalentBranch(TalentTypeCode::Osn, 'Kimia'));
+    $noBranch = $this->apply->handle($this->nadia->user, $olpain, null);
+
+    foreach ([$kimia, $noBranch] as $application) {
+        $application->forceFill(['status' => TalentStatus::TidakLolos, 'rejected_from' => TalentStatus::Seleksi, 'student_note' => 'Belum lolos.'])->save();
+    }
+
+    expect(fn () => $this->apply->handle($this->nadia->user, w2a2TalentType(TalentTypeCode::Osn), w2a2TalentBranch(TalentTypeCode::Osn, 'Kimia'), F::pdf()))
+        ->toThrow(ValidationException::class, ApplyTalent::REJECTED_MESSAGE)
+        ->and(fn () => $this->apply->handle($this->nadia->user, $olpain, null))
+        ->toThrow(ValidationException::class, ApplyTalent::REJECTED_MESSAGE);
+
+    // Nothing changed: same rows, still rejected, no stored file left behind.
+    expect(TalentApplication::withTrashed()->where('student_id', $this->nadia->getKey())->count())->toBe(2)
+        ->and($kimia->fresh()->status)->toBe(TalentStatus::TidakLolos)
+        ->and($kimia->fresh()->student_note)->toBe('Belum lolos.')
+        ->and(Storage::disk('local')->allFiles())->toBe([]);
+
+    // Another cabang of the same jenis is still open to the student.
+    expect($this->apply->handle($this->nadia->user, w2a2TalentType(TalentTypeCode::Osn), w2a2TalentBranch(TalentTypeCode::Osn, 'Biologi'))->status)->toBe(TalentStatus::Terdaftar);
+});
+
 it('handles OLPAIN without a cabang and blocks its duplicate in the Action (NULL branch)', function (): void {
     $olpain = w2a2TalentType(TalentTypeCode::Olpain);
 

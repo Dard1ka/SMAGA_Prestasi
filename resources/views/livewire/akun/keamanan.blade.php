@@ -10,9 +10,7 @@
                     wire:model="password"
                     type="password"
                     label="Kata sandi baru"
-                    :hint="$minLength !== null
-                        ? 'Minimal '.$minLength.' karakter, ada huruf dan angka. Jangan pakai tanggal lahir, NIS/NISN, atau nama.'
-                        : 'Pakai kata sandi panjang yang hanya kamu tahu.'"
+                    :hint="$passwordHint"
                     autocomplete="new-password"
                     revealable
                 />
@@ -62,7 +60,7 @@
                     </div>
                 </form>
             @endif
-            <p class="m-0 text-[13px] text-muted">Email lama dan email baru mendapat pemberitahuan dengan tautan "Bukan saya?".</p>
+            <p class="m-0 text-[13px] text-muted">Email lama dan email baru mendapat pemberitahuan dengan link "Bukan saya?".</p>
         </x-sth.card>
     </div>
 

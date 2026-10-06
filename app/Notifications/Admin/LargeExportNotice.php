@@ -34,7 +34,7 @@ final class LargeExportNotice extends AdminNotice
     public function lines(): array
     {
         return [
-            "{$this->exporterName} mengunduh {$this->exportLabel} berisi {$this->rows} baris pada {$this->at}.",
+            "{$this->exporterName} men-download {$this->exportLabel} berisi {$this->rows} baris pada {$this->at}.",
             'Jika bukan atas sepengetahuan sekolah, periksa log audit.',
         ];
     }

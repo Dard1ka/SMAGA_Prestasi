@@ -231,8 +231,11 @@ final class Index extends Component
         $mine = $registration->members->firstWhere('student_id', $student?->getKey());
         $isLeader = $registration->leader_student_id === $student?->getKey();
         $report = $registration->report;
-        $studentLetter = $registration->letters->firstWhere('type', LetterType::Siswa);
-        $guruLetter = $registration->letters->firstWhere('type', LetterType::Guru);
+        // A letter exists for the student once Tata Usaha sent it (LetterPolicy::view); until then the card says
+        // "sedang menyiapkan" instead of offering a file the policy would answer with 404.
+        $sentLetters = $registration->letters->filter(fn (Letter $letter): bool => $letter->sent_at !== null);
+        $studentLetter = $sentLetters->firstWhere('type', LetterType::Siswa);
+        $guruLetter = $sentLetters->firstWhere('type', LetterType::Guru);
         $achievement = $report !== null && $student !== null
             ? Achievement::query()->where('report_id', $report->getKey())->where('student_id', $student->getKey())->first()
             : null;
@@ -303,7 +306,11 @@ final class Index extends Component
         ], fn (string $text): bool => $text !== '');
     }
 
-    /** @return list<array{title: string, meta: string, href: ?string, label: string}> */
+    /**
+     * Rows of the "Surat tugas" card (sent letters only). `info` = a row without a file for the student.
+     *
+     * @return list<array{title: string, meta: string, note: ?string, href: ?string, label: string, info: bool}>
+     */
     private function letterRows(?Letter $studentLetter, ?Letter $guruLetter, Registration $registration): array
     {
         $rows = [];
@@ -314,18 +321,25 @@ final class Index extends Component
                 'title' => 'Surat tugas siswa',
                 'meta' => trim($studentLetter->full_number.' · PDF'),
                 'note' => $registration->type === RegistrationType::Tim ? '1 surat untuk '.$count.' anggota' : null,
-                'href' => $this->fileLink($studentLetter->file_id),
-                'label' => 'Unduh surat tugas siswa (PDF)',
+                // The link exists exactly when files.show would serve the file (FilePolicy → LetterPolicy::view).
+                'href' => Gate::allows('view', $studentLetter) ? $this->fileLink($studentLetter->file_id) : null,
+                'label' => 'Download surat tugas siswa (PDF)',
+                'info' => false,
             ];
         }
 
         if ($guruLetter !== null) {
+            // M2-C (Q1-01): the guru letter and its Lampiran carry the teacher's NIP and rank, so LetterPolicy
+            // keeps the file from students. The student only learns that it exists and for whom: never a link.
             $rows[] = [
-                'title' => 'Surat perintah tugas guru pendamping',
-                'meta' => 'PDF'.($registration->mentor !== null ? ' · '.$this->mentorName($registration->mentor) : ''),
+                'title' => 'Surat perintah tugas untuk guru pendamping sudah terbit',
+                'meta' => $registration->mentor !== null
+                    ? 'Untuk '.$this->mentorName($registration->mentor)
+                    : 'Hanya untuk guru pendamping',
                 'note' => null,
-                'href' => $this->fileLink($guruLetter->file_id),
-                'label' => 'Unduh surat perintah tugas guru pendamping (PDF)',
+                'href' => null,
+                'label' => '',
+                'info' => true,
             ];
         }
 

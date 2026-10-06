@@ -55,7 +55,7 @@ it('allows 30 uploads per hour and refuses the 31st with a friendly message', fu
 
     $message = b2StoreError(fn () => $store->store(b2Pdf(), FilePurpose::Juknis, $this->student));
 
-    expect($message)->toStartWith('Batas unggah tercapai (maks. 30 file per jam). Coba lagi dalam ')
+    expect($message)->toStartWith('Batas upload tercapai (maks. 30 file per jam). Coba lagi dalam ')
         ->and($message)->toEndWith(' menit.')
         ->and(File::query()->where('owner_user_id', $this->student->getKey())->count())->toBe(30);
 });
@@ -118,7 +118,7 @@ it('surfaces the limit as a validation error on the form field of an Action', fu
         $this->fail('Expected a validation error.');
     } catch (ValidationException $e) {
         expect($e->errors())->toHaveKey('brosur')
-            ->and($e->errors()['brosur'][0])->toStartWith('Batas unggah tercapai');
+            ->and($e->errors()['brosur'][0])->toStartWith('Batas upload tercapai');
     }
 });
 

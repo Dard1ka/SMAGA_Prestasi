@@ -6,6 +6,7 @@ namespace App\Actions\Letters;
 
 use App\Actions\Registrations\ApproveRegistration;
 use App\Actions\Users\AdminRecipients;
+use App\Domain\Letters\LetterNumber;
 use App\Enums\LetterType;
 use App\Models\Letter;
 use App\Models\Registration;
@@ -25,15 +26,17 @@ use Throwable;
  * revokes one issued letter with a required reason and issues its next version in the same step.
  * - the old row keeps its number + PDF and gets revoked_at / revoked_by / revoke_reason; the public
  *   verification page then shows "Dicabut" (only for letters that were sent);
- * - the new row: same registration + type, version + 1, replaces_letter_id → old, a NEW sequence typed by
- *   TU (the unique (type, year, sequence) index means an old number is never reused), the letter data from
- *   the draft (date, basis, schedule), members/mentor/signer re-read from the database, the current
- *   signature image, a fresh verification code and PDF ("menggantikan surat nomor …" in the footer);
+ * - the new row: same registration + type, version + 1, replaces_letter_id → old, a NEW complete number
+ *   typed by TU in the draft (the unique (type, full_number) index means an old number is never reused,
+ *   not even the revoked one), the letter data from the draft (date, basis, schedule), members/mentor/signer
+ *   re-read from the database, the current signature image, a fresh verification code and PDF
+ *   ("menggantikan surat nomor …" in the footer);
  * - if the old letter was already sent, the new one is sent at once and its recipients are notified
  *   (LetterRevised: members for the siswa letter, the mentor for the guru letter); otherwise it waits
  *   for SendLetters like a first issue. The registration status never changes.
- * Allowed at any registration stage, always audited (`letter.revoked`). Error keys: reason, sequence,
- * letter, signature + IssueLetters::draftFieldErrors() keys.
+ * Allowed at any registration stage, always audited (`letter.revoked`). Error keys: reason, letter,
+ * signature + IssueLetters::draftErrors() keys (number, issued_on, basis_*, schedule_*, place); every
+ * problem is reported at once.
  */
 final class RevokeLetter
 {
@@ -41,44 +44,40 @@ final class RevokeLetter
 
     public const MAX_REASON = 500;
 
+    public const MSG_REASON = 'Tulis alasan pencabutan, minimal 5 karakter.';
+
     public function __construct(
         private readonly IssueLetters $issue,
         private readonly LetterPdf $pdf,
+        private readonly LetterNumber $numbers,
     ) {}
 
     /**
-     * @param  int|null  $sequence  the new number's sequence for the replacement
+     * @param  LetterDraft  $draft  the data of the new version, with its NEW complete number
      * @return Letter the new version
      *
      * @throws AuthorizationException
      * @throws ValidationException
      */
-    public function handle(User $actor, Letter $letter, string $reason, ?int $sequence, LetterDraft $draft): Letter
+    public function handle(User $actor, Letter $letter, string $reason, LetterDraft $draft): Letter
     {
         Gate::forUser($actor)->authorize('revoke', $letter);
 
         $reason = trim($reason);
-        $errors = IssueLetters::draftFieldErrors($draft);
+        $errors = IssueLetters::draftErrors($draft, $letter->type);
 
         if (mb_strlen($reason) < self::MIN_REASON) {
-            $errors['reason'] = 'Tulis alasan pencabutan.';
+            $errors['reason'] = self::MSG_REASON;
         } elseif (mb_strlen($reason) > self::MAX_REASON) {
             $errors['reason'] = 'Alasan maksimal 500 karakter.';
         }
 
-        if ($sequence === null || $sequence < 1 || $sequence > 99999) {
-            $errors['sequence'] = 'Isi nomor urut 1–99999.';
-        }
-
-        if ($errors !== []) {
-            throw ValidationException::withMessages($errors);
-        }
-
-        $signature = $this->pdf->signature();
+        $signature = $this->issue->checked($errors);
+        $number = $this->numbers->normalize($draft->number);
         $written = [];
 
         try {
-            [$new, $old, $registration] = DB::transaction(function () use ($actor, $letter, $reason, $sequence, $draft, $signature, &$written): array {
+            [$new, $old, $registration] = DB::transaction(function () use ($actor, $letter, $reason, $number, $draft, $signature, &$written): array {
                 /** @var Registration $registration */
                 $registration = Registration::withTrashed()->whereKey($letter->registration_id)->lockForUpdate()->firstOrFail();
                 /** @var Letter $old */
@@ -102,8 +101,8 @@ final class RevokeLetter
                     throw ValidationException::withMessages(['letter' => 'Belum ada anggota yang terkonfirmasi.']);
                 }
 
-                if (IssueLetters::isTaken($type, $draft->issuedOn->year, (int) $sequence)) {
-                    throw ValidationException::withMessages(['sequence' => IssueLetters::MSG_TAKEN]);
+                if (IssueLetters::isTaken($type, $number)) {
+                    throw ValidationException::withMessages(['number' => IssueLetters::MSG_TAKEN]);
                 }
 
                 $now = now();
@@ -114,20 +113,7 @@ final class RevokeLetter
                     ->where('type', $type)
                     ->max('version') + 1;
 
-                $new = new Letter([
-                    'registration_id' => $registration->getKey(),
-                    'type' => $type,
-                    'sequence' => (int) $sequence,
-                    'full_number' => $this->issue->number($type, (int) $sequence, $draft->issuedOn),
-                    'year' => $draft->issuedOn->year,
-                    'month' => $draft->issuedOn->month,
-                    'issued_on' => $draft->issuedOn->toDateString(),
-                    'basis_number' => $content->basisNumber,
-                    'basis_date' => $draft->basisDate?->toDateString(),
-                    'schedule_day' => $content->scheduleDay,
-                    'schedule_time' => $content->scheduleTime,
-                    'place' => $content->place,
-                ]);
+                $new = $this->issue->newLetter($registration, $type, $number, $draft, $content);
                 $new->forceFill([
                     'version' => $version,
                     'replaces_letter_id' => $old->getKey(),
@@ -152,16 +138,17 @@ final class RevokeLetter
                         'issued_on' => $draft->issuedOn->toDateString(),
                         'signature_file_id' => $signature['file_id'],
                         'signature_sha256' => $signature['sha256'],
-                        'schedule' => [$content->scheduleDay, $content->scheduleTime, $content->place],
+                        'basis' => [$content->basisFrom, $content->basisNumber, $draft->basisDate?->toDateString()],
+                        'schedule' => [$content->scheduleDay, $content->scheduleDate, $content->scheduleTime, $content->place],
                     ])
                     ->log('letter.revoked');
 
-                return [$new->setRelation('file', $file), $old, $registration];
+                return [$new->refresh()->setRelation('file', $file), $old, $registration];
             });
         } catch (UniqueConstraintViolationException) {
             $this->pdf->cleanup($written);
 
-            throw ValidationException::withMessages(['sequence' => IssueLetters::MSG_TAKEN]);
+            throw ValidationException::withMessages(['number' => IssueLetters::MSG_TAKEN]);
         } catch (Throwable $e) {
             $this->pdf->cleanup($written);
 

@@ -197,6 +197,9 @@ class Persetujuan extends Component
         $waiting = Registration::query()->awaitingPrincipal()->count();
         $matching = $this->filtered(Registration::query()->awaitingPrincipal())->count();
 
+        // The sidebar is rendered once per page load: tell it the queue size after every approve/reject (app.js).
+        $this->dispatch('sth-badges', badges: ['kepsek.persetujuan' => $waiting]);
+
         return view('livewire.kepsek.persetujuan', [
             'rows' => $rows,
             'more' => $this->limit < self::MAX ? max(0, $matching - count($pendingIds)) : 0,

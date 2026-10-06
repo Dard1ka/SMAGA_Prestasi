@@ -4,6 +4,8 @@
 > Status: **baseline v2 (draft untuk review)** · Dibuat & diperbarui: 2026-09-30 (v2 memasukkan keputusan sekolah 30 Sep 2026: subdomain, Apache 2.4.29 tanpa upgrade OS, login tanpa Kode Aktivasi, OTP ditunda, alur v2) · Pemilik: Security Lead
 > Dirujuk dari `CLAUDE.md`; keputusan produk/teknis dicatat di `docs/DECISIONS.md`. Kata **WAJIB** = tidak boleh rilis tanpa ini; **SEBAIKNYA** = butuh alasan tertulis jika tidak dilakukan.
 > Prinsip kerja: *crosscheck setiap fitur terhadap bagian 3 dan checklist bagian 4 sebelum merge.*
+> **Pembaruan 4 Okt 2026 (M1, keputusan lead D-78…D-91):** login siswa dengan email, urutan aktivasi baru dan ganti kata sandi opsional untuk siswa (§3a: K1, K4, K7, K8, K11 + tambahan risiko), import tahunan memperbarui kelas (§3f), nomor surat diketik lengkap, lambang di repo, dan cetak inline (§3g, §3m-4), alumni tanpa kelas terakhir (§3m-7), checklist §4. Analisis dan contoh kode lama **tidak dihapus**: bagian yang tidak berlaku lagi diberi tanda "Riwayat" atau "Pembaruan 4 Okt 2026".
+> **Pembaruan 6 Okt 2026 (M2, D-92…D-101, perbaikan dari uji QA 5 Okt 2026):** setelah reset Admin siswa wajib membuat kata sandi baru, "Buka ulang" tidak pernah memendekkan batas, daftar kata sandi umum, sesi lama dihapus saat sesi diperbarui (§3a: K2, K4, K5, K10, "Hashing & sesi", tambahan risiko D-79), halaman kredensial tidak disimpan browser dan halaman error tidak pernah mencetak teks exception (§3f), checklist §4. Ditandai "Pembaruan 6 Okt 2026".
 
 ---
 
@@ -25,7 +27,7 @@
    - laporan per kelas
    - reset Admin beraudit
 
-   Penerimaan risiko **WAJIB** ditandatangani Kepala Sekolah.
+   Penerimaan risiko **WAJIB** ditandatangani Kepala Sekolah. **Pembaruan 4 Okt 2026 (D-79):** siswa boleh tetap memakai password awal setelah aktivasi, jadi untuk siswa itu risiko ini tidak lagi berhenti saat aktivasi (rincian di §3a, "Tambahan risiko sejak D-79").
 5. **Subdomain `prestasi.sman3-smg.sch.id` sudah dipilih, jadi origin-nya terpisah.** Tetapi STH masih *same-site* dan *same-host* dengan situs utama:
    - `sch.id` ada di Public Suffix List, sehingga `sman3-smg.sch.id` adalah registrable domain. SameSite dan cookie domain induk tidak memisahkan keduanya.
    - Situs utama tampaknya WordPress (HTML publik memuat `/wp-content/`, dicek 30 Sep 2026) dan berjalan di server yang sama. Kompromi WordPress bisa menjadi pijakan ke host (§3e).
@@ -45,7 +47,7 @@
 | 4 | **Data anak di halaman publik tanpa persetujuan**: nama, foto, sertifikat yang memuat NISN/TTL; scraping | Pelanggaran UU PDP Pasal 25, risiko keselamatan anak, reputasi sekolah | Flag persetujuan per jenis (default tidak), sertifikat tampil sebagai badge, resource dengan allowlist kolom, slug acak, `noindex`, rate limit (§3m-7, §3i) | backend + sekolah |
 | 5 | **Pivot dari situs utama (tampaknya WordPress) di host yang sama** | Shell `www-data` → baca file STH; LPE kernel → root → Docker dan DB | User Unix terpisah, izin 750/600, `www-data` tidak di grup docker, DB terpisah, port hanya `127.0.0.1`, patch kernel via ESM (§3e) | devops + pengelola situs utama |
 | 6 | **Akun berhak tinggi dibobol/disalahgunakan**: kekuasaan Admin, TU + ttd Kepsek, penggantian akun Kepsek | Surat resmi palsu, persetujuan/poin palsu, export massal data anak | 2FA TOTP wajib (Admin/Kepsek/TU/Kesiswaan), akun break-glass tersegel, konfirmasi ulang password, tunda 24 jam + notifikasi saat mengganti akun Kepsek, audit log hash-chain (§3m-9) | backend + sekolah |
-| 7 | **Pemalsuan surat & manipulasi poin**: gambar ttd disalin, nomor ganda, bobot/poin diubah, farming lewat anggota tim | Surat palsu beredar, apresiasi tidak adil | QR + kode verifikasi publik, SHA-256 PDF, nomor unik per jenis + tahun (constraint DB), roster tim dikunci setelah disetujui, bobot berversi + audit (§3g, §3h) | backend |
+| 7 | **Pemalsuan surat & manipulasi poin**: gambar ttd disalin, nomor ganda, bobot/poin diubah, farming lewat anggota tim | Surat palsu beredar, apresiasi tidak adil | QR + kode verifikasi publik, SHA-256 PDF, nomor unik per jenis surat (constraint DB `(type, full_number)` sejak D-82; sebelumnya per jenis + tahun), roster tim dikunci setelah disetujui, bobot berversi + audit (§3g, §3h) | backend |
 | 8 | **Upload & mesin PDF berbahaya**: sertifikat, brosur usulan, ttd; dompdf ≤ 3.1.5 (chroot bypass, baca file via SVG `data:`); EXIF GPS | XSS, baca file server (`.env`), malware ke staf, lokasi rumah anak bocor, DoS disk | Allowlist + re-encode, private disk + controller ber-policy, dompdf ≥ 3.1.6 tanpa remote/JS/`data://`, chroot sempit, kuota (§3d, §3g) | backend + devops |
 | 9 | **XSS, injeksi formula, phishing via tautan usulan lomba** | Pembajakan sesi staf, eksekusi formula di laptop TU, siswa diarahkan ke situs palsu | Blade `{{ }}`, CSP nonce, `url:https` + tampilkan host, `rel="nofollow noopener noreferrer ugc"`, URL tidak pernah di-fetch server (tanpa SSRF), `StringValueBinder` (§3f, §3m-1) | frontend + backend |
 | 10 | **Salah konfigurasi & rantai pasok**: bypass OTP lolos ke production, `APP_DEBUG=true`, `.env`/`APP_KEY` bocor, port DB terbuka, backup tidak ada, paket usang (Livewire CVE-2025-54068, dompdf) | Takeover massal, RCE, kehilangan data total | Boot guard + test CI, `.env` 600 di luar git/image, compose bind `127.0.0.1`, backup terenkripsi + uji restore, `composer audit`/Trivy/Dependabot (§3b, §3j, §3k) | devops + backend |
@@ -107,6 +109,16 @@ Setiap panah = titik validasi. Semua data dari browser, file upload, Excel, URL 
 - Password awal memakai pola `sm4g4_DDMMYY` (tanggal lahir, D-24).
 - **Tidak ada Kode Aktivasi.** Bila akun dibajak, Admin membantu memulihkan.
 
+**Keputusan lead (4 Okt 2026, D-78 dan D-79):**
+- Siswa yang **sudah selesai aktivasi** juga boleh login dengan **email** yang dihubungkan (selain NIS/NISN). Ini tidak menambah jalan masuk: email bukan rahasia, yang rahasia tetap password.
+- Urutan login pertama menjadi **hubungkan email → kode OTP → kata sandi**. Di langkah kata sandi, **siswa boleh memilih** mengganti password atau tetap memakai password yang sekarang; **staf wajib** mengganti.
+
+**Perbaikan dari uji QA 5 Okt 2026 (6 Okt 2026, D-92…D-95; lead: "lakukan sesuai saranmu"):**
+- **Setelah reset Admin (K10), siswa wajib membuat password baru** (D-92). "Tetap memakai password yang sekarang" kini hanya berlaku untuk **password awal dari import**. Password sementara pernah tampil di layar Admin, jadi tidak boleh menjadi password tetap.
+- **Halaman kredensial tidak disimpan browser dan sesi lama dihapus** saat ID sesi diperbarui (D-93; rincian di "Hashing & sesi" dan §3f).
+- **Password umum, username, dan nama email ditolak** untuk semua akun (D-94; K5).
+- **"Buka ulang" tidak pernah memendekkan jendela aktivasi** dan alasannya minimal 10 karakter (D-95; K2).
+
 Rekomendasi Kode Aktivasi di baseline v1 **dicabut sebagai WAJIB**. Kode ini tetap tersedia sebagai opsi bila pemicu tinjau ulang tercapai.
 
 **Analisis risiko yang diterima:**
@@ -118,8 +130,18 @@ Rekomendasi Kode Aktivasi di baseline v1 **dicabut sebagai WAJIB**. Kode ini tet
 - Orang luar (A3) tidak tahu tanggal lahir korban. Dengan pembekuan setelah 10 kali gagal (K3), peluang berhasilnya ≤ 10/1.100 (< 1%) per akun, dan pembekuan itu memicu alert.
 - **Risiko residual:** takeover terarah oleh orang yang tahu tanggal lahir korban, selama akun belum diaktivasi. Kontrol di bawah **memperpendek jendela, mendeteksi, dan memulihkan**. Kontrol ini tidak mencegah takeover sepenuhnya.
 
+**Tambahan risiko sejak D-79 (4 Okt 2026; analisis di atas ditulis untuk urutan lama dan dibiarkan sebagai riwayat):**
+- Dalam skenario takeover di atas, langkah 2 kini berbunyi: A1 mengikat email miliknya (kode OTP masuk ke email A1), lalu boleh **melewati** ganti password.
+- Siswa yang memilih "Lewati" tetap memakai password awal. Password itu bisa ditebak dari tanggal lahir **selama masih dipakai**, bukan hanya sampai aktivasi (dulu paling lama jendela K1, 14 hari). Jendela K1 berakhir saat aktivasi selesai, jadi sesudahnya password awal itu berlaku tanpa batas waktu.
+- **K7 tidak bisa melihatnya.** K7 hanya menyala bila pola awal *gagal* di akun aktif; pada akun yang tetap memakai password awal, login dengan pola itu berhasil.
+- **Takeover bisa tidak ketahuan.** Orang yang aktivasi lebih dulu mengikat email miliknya lalu melewati langkah password; pemilik asli tetap bisa masuk dengan password sekolah dan tidak melihat tanda apa pun. Email yang terikat itu juga menjadi alamat tujuan kode "Lupa kata sandi" akun tersebut.
+- **Penyeimbang yang ada:** laporan K9 (tiap siswa memeriksa email tersamar di barisnya), event audit `activation.password_kept` dan `account.email_bound`, serta K8 untuk pemilik email yang salah ketik. Akun siswa yang tetap memakai password awal = akun aktif dengan `password_changed_at` kosong.
+- **Penyeimbang yang belum ada (backlog CLAUDE.md #45):** tanda "masih pakai kata sandi dari sekolah" di Status aktivasi dan pengingat untuk mengganti password.
+- **Login dengan email (D-78) tidak menambah risiko ini:** email hanya dikenali setelah aktivasi selesai, memakai jatah percobaan akun yang sama, dan email yang tidak dikenali diperlakukan seperti akun yang tidak ada (K11).
+- **Pembaruan 6 Okt 2026 (D-92): risiko ini kini terbatas pada password awal dari import.** Sejak D-79 sampai perbaikan ini, siswa yang direset Admin juga bisa menekan "Lewati" dan akunnya aktif dengan password sementara yang pernah tampil di layar Admin (temuan QA Q2-02). Sejak D-92 tombol itu tidak ada untuk akun yang direset: kolom `users.temporary_password_issued_at` menandai password sementara, `CompleteActivation::keepPassword()` menolaknya (403, diperiksa lagi pada baris yang dikunci), dan tanda itu baru hilang saat pemilik memilih password sendiri. Jadi pemulihan K10 selalu berakhir dengan password yang hanya diketahui pemiliknya. Akun yang sudah terlanjur mempertahankan password sementara sebelum 6 Okt 2026 tidak dipaksa mengganti (hanya ada di data uji lokal).
+
 **Formulir penerimaan risiko (WAJIB sebelum go-live)** ditandatangani Kepala Sekolah dan memuat:
-- risiko residual di atas
+- risiko residual di atas, **termasuk tambahan risiko D-79** (password awal boleh tetap dipakai siswa)
 - kontrol K1–K12
 - pemilik proses pemulihan (Admin + Kesiswaan) dan target waktu pemulihan
 - pemicu tinjau ulang: ≥ 3 kasus pembajakan per semester → pertimbangkan Kode Aktivasi atau aktivasi terawasi
@@ -128,21 +150,21 @@ Rekomendasi Kode Aktivasi di baseline v1 **dicabut sebagai WAJIB**. Kode ini tet
 
 | # | Kontrol | Status |
 |---|---------|--------|
-| K1 | **Jendela aktivasi pendek:** `initial_password_expires_at = imported_at + 14 hari` (bisa diatur Admin, maks. 30). Setelah lewat, password awal ditolak dengan pesan generik. **SEBAIKNYA** aktivasi dilakukan serentak per kelas (jam TIK/wali kelas) agar jendela terbukanya hitungan jam, bukan hari. | WAJIB |
-| K2 | **Jendela aktivasi ulang:** Admin/Kesiswaan bisa membuka jendela baru 72 jam untuk satu siswa (mis. siswa sakit atau akun dibekukan). Alasan wajib diisi dan tercatat di audit log. | WAJIB |
+| K1 | **Jendela aktivasi pendek:** `initial_password_expires_at = imported_at + 14 hari` (bisa diatur Admin, maks. 30). Setelah lewat, password awal ditolak dengan pesan generik. **SEBAIKNYA** aktivasi dilakukan serentak per kelas (jam TIK/wali kelas) agar jendela terbukanya hitungan jam, bukan hari. *Pembaruan 4 Okt 2026 (D-79):* jendela ini hanya membatasi akun yang **belum** aktivasi. Saat aktivasi selesai, batas waktunya dihapus, juga bila siswa memilih tetap memakai password awal; untuk siswa itu password awal berlaku terus sampai ia menggantinya. | WAJIB |
+| K2 | **Jendela aktivasi ulang:** Admin/Kesiswaan bisa membuka jendela baru 72 jam untuk satu siswa (mis. siswa sakit atau akun dibekukan). Alasan wajib diisi dan tercatat di audit log. *Pembaruan 6 Okt 2026 (D-95):* "Buka ulang" **tidak pernah memendekkan** jendela. Batas baru = yang lebih jauh antara batas sekarang dan sekarang + 72 jam (`ReopenActivationWindow::deadlineAfter()`). Bila tidak ada yang berubah (tidak dibekukan dan sisa waktunya lebih dari 72 jam) tombolnya tidak tampil dan Action menolak. Alasan minimal 10 karakter; audit `account.activation_reopened` mencatat batas lama (`previous_expires_at`) dan batas baru. | WAJIB |
 | K3 | **Pembekuan akun belum aktif:** 10 percobaan gagal kumulatif → status `aktivasi_dibekukan`. Hanya Admin/Kesiswaan yang bisa membukanya (lewat K2). Akun yang **sudah aktif** tidak pernah dikunci permanen, hanya diberi jeda progresif, agar teman tidak bisa sengaja mengunci korban. | WAJIB |
-| K4 | **Wajib ganti password saat login pertama.** Sesi pertama hanya boleh mengakses route aktivasi (middleware `EnsureAccountActivated`). Urutannya: `session()->regenerate()` → password baru → ikat email (+ OTP bila sudah aktif, §3b) → `activated_at` diisi → `initial_password_hash` di-null-kan. | WAJIB |
-| K5 | **Aturan password baru:** `Password::min(10)->letters()->numbers()->uncompromised()` + rule kustom yang menolak password yang **sama dengan atau mengandung**: tanggal lahir (semua format: `ddmmyyyy`, `dd-mm-yyyy`, `yyyymmdd`, `yyyy-mm-dd`, `ddmmyy`), `sm4g4`/`smaga`/`sman3`, NIS, NISN, atau token nama ≥ 4 huruf. Perbandingan case-insensitive setelah pemisah dihapus. | WAJIB |
+| K4 | **Aktivasi wajib saat login pertama (urutan sejak 4 Okt 2026, D-79).** Sesi pertama hanya boleh mengakses route aktivasi (middleware `activated` = `EnsureActivated`). Urutannya: **hubungkan email** → **kode OTP** (§3b; email tersimpan terverifikasi, akun masih menunggu) → **kata sandi**: siswa memilih mengganti (aturan K5, harus berbeda dari password sekarang, sesi lain dicabut) **atau** tetap memakai password sekarang; staf wajib mengganti → `activated_at` diisi dan batas waktu password awal dihapus. Yang wajib bagi siswa kini adalah **email terverifikasi**, bukan password baru (risikonya: "Tambahan risiko sejak D-79" di atas).<br>*Riwayat (sampai 3 Okt 2026):* "Wajib ganti password saat login pertama. Urutannya: `session()->regenerate()` → password baru → ikat email (+ OTP bila sudah aktif, §3b) → `activated_at` diisi → `initial_password_hash` di-null-kan."<br>*Pembaruan 6 Okt 2026 (D-92):* pilihan "tetap memakai password sekarang" hanya untuk **password awal dari import**. Siswa yang password-nya adalah password sementara dari reset Admin (K10; `users.temporary_password_issued_at` terisi) wajib mengganti, sama seperti staf: tombol "Lewati" tidak tampil dan `keepPassword()` menjawab 403. Pembaruan ID sesi di langkah-langkah ini menghapus sesi lama (D-93). | WAJIB |
+| K5 | **Aturan password baru:** `Password::min(10)->letters()->numbers()->uncompromised()` + rule kustom yang menolak password yang **sama dengan atau mengandung**: tanggal lahir (semua format: `ddmmyyyy`, `dd-mm-yyyy`, `yyyymmdd`, `yyyy-mm-dd`, `ddmmyy`), `sm4g4`/`smaga`/`sman3`, NIS, NISN, atau token nama ≥ 4 huruf. Perbandingan case-insensitive setelah pemisah dihapus. *Pembaruan 6 Okt 2026 (D-94), untuk semua akun (siswa dan staf):* juga ditolak (a) **username** akun itu dan **bagian email sebelum "@"**, utuh atau potongan ≥ 4 karakter yang berisi huruf (staf tidak punya NIS, jadi ini pemeriksaan identitas mereka); (b) **password umum**: kata dari daftar bawaan `PasswordPolicy::COMMON_WORDS` (67 kata, mis. password, sandi, rahasia, admin, semarang, indonesia, juga ejaan seperti passw0rd; "@" dan "$" dibaca a dan s), urutan huruf abjad/keyboard ≥ 4, urutan angka ≥ 5, atau satu karakter diulang ≥ 4 kali, bila huruf lain yang tersisa kurang dari 5 (angka dan simbol tidak dihitung). `password123`, `Qwerty!2026`, `P@ssw0rd-99` ditolak; `sandiwara malam 77` diterima. Daftar ini pendek dan bukan pengganti `uncompromised()` (HIBP) di produksi. Password sementara yang diketik Admin untuk akun staf tidak diperiksa dengan daftar ini. | WAJIB |
 | K6 | **Login hanya membandingkan hash tersimpan** (`Hash::check`). Tidak ada kode autentikasi yang membangun `'sm4g4_'.$dob`, karena itu akan membuat pola tetap berlaku setelah password diganti. | WAJIB |
-| K7 | **Deteksi pembajakan.** Kondisi: login gagal pada akun yang **sudah aktif**, dan password yang dicoba sama dengan pola awal pemiliknya. Tindakan: catat event `security.initial_password_on_active` dan tampilkan di dashboard Admin/Kesiswaan (kemungkinan pemilik asli terkunci). Pemeriksaan ini hanya untuk deteksi: dijalankan **setelah** `Hash::check` gagal, tidak mengubah respons, dan tidak pernah memberi akses. | WAJIB |
-| K8 | **Notifikasi email + tautan "Bukan saya?"** Saat email diikat atau diganti, notifikasi dikirim ke email baru (dan ke email lama saat ganti). Tautan "Bukan saya?" (signed URL sekali pakai, 7 hari) membekukan akun, mencabut semua sesi, dan membuat tiket untuk Admin. Batasannya: pada takeover pra-aktivasi, notifikasi pertama justru masuk ke email penyerang. Jadi kontrol ini melindungi pemilik email yang salah diketik dan pembajakan **setelah** aktivasi. Email unik antar akun; ganti email = password + OTP. | WAJIB |
+| K7 | **Deteksi pembajakan.** Kondisi: login gagal pada akun yang **sudah aktif**, dan password yang dicoba sama dengan pola awal pemiliknya. Tindakan: catat event `security.initial_password_on_active` dan tampilkan di dashboard Admin/Kesiswaan (kemungkinan pemilik asli terkunci). Pemeriksaan ini hanya untuk deteksi: dijalankan **setelah** `Hash::check` gagal, tidak mengubah respons, dan tidak pernah memberi akses. *Batas sejak D-79 (4 Okt 2026):* K7 tidak bisa menyala untuk akun siswa yang tetap memakai password awal, karena di akun itu login dengan pola awal **berhasil**. Akun seperti itu dikenali dari `password_changed_at` yang kosong atau event `activation.password_kept`. | WAJIB |
+| K8 | **Notifikasi email + tautan "Bukan saya?"** Saat email diikat atau diganti, notifikasi dikirim ke email baru (dan ke email lama saat ganti). Tautan "Bukan saya?" (signed URL sekali pakai, 7 hari) membekukan akun, mencabut semua sesi, dan membuat tiket untuk Admin. Batasannya: pada takeover pra-aktivasi, notifikasi pertama justru masuk ke email penyerang. Jadi kontrol ini melindungi pemilik email yang salah diketik dan pembajakan **setelah** aktivasi. Email unik antar akun; ganti email = password + OTP. *Sejak D-79 (4 Okt 2026):* pada aktivasi, notifikasi dikirim saat email terhubung (langkah 2, kode diterima), ketika akun masih menunggu aktivasi; langkah kata sandi tidak mengirim email. | WAJIB |
 | K9 | **Laporan status aktivasi per kelas** (Admin & Kesiswaan). Kolom: nama, kelas, status (belum/aktif/kedaluwarsa/dibekukan), waktu aktivasi, asal (jaringan sekolah/luar), email ter-masking (`n•••@gmail.com`). Wali kelas meminta setiap siswa memeriksa barisnya ("apakah ini emailmu?"). Baris ditandai otomatis bila aktivasi terjadi di luar jam sekolah, dari luar jaringan sekolah, atau bila ≥ 3 akun diaktivasi dari satu sesi browser dalam 1 jam. | WAJIB |
-| K10 | **"Reset kata sandi & email" oleh Admin** (proses pemulihan pilihan sekolah):<br>1. Verifikasi identitas tatap muka (kartu pelajar/wali kelas).<br>2. Admin mengisi alasan.<br>3. Sistem memutus email, mencabut semua sesi & remember token, membatalkan OTP, **menghapus TOTP (secret, recovery codes, waktu konfirmasi; D-66)**, dan membuat **password sementara acak** (12 karakter, tampil sekali, berlaku 72 jam, wajib diganti). Pola tanggal lahir **tidak** dipakai lagi.<br>4. Email yang dilepas karena pembajakan diblokir untuk akun itu.<br>5. Linimasa aktivitas akun selama masa pembajakan (pendaftaran, undangan tim, laporan, usulan) ditampilkan agar Kesiswaan bisa membatalkan yang palsu.<br>Semua langkah masuk audit. Alert bila satu Admin melakukan > 10 reset/jam. | WAJIB |
-| K11 | **Pesan generik tanpa enumerasi.** Satu field "NIS atau NISN" dengan pesan yang sama untuk semua kegagalan: *"NIS/NISN atau kata sandi salah. Jika belum bisa masuk, hubungi Admin atau Kesiswaan."* Waktu respons seragam (`Hash::check` tetap dijalankan dengan hash dummy bila user tidak ada). Resolusi identifier: 10 digit → NISN, selain itu → NIS. Bila satu input cocok dengan dua akun berbeda → tolak + catat event. | WAJIB |
+| K10 | **"Reset kata sandi & email" oleh Admin** (proses pemulihan pilihan sekolah):<br>1. Verifikasi identitas tatap muka (kartu pelajar/wali kelas).<br>2. Admin mengisi alasan.<br>3. Sistem memutus email, mencabut semua sesi & remember token, membatalkan OTP, **menghapus TOTP (secret, recovery codes, waktu konfirmasi; D-66)**, dan membuat **password sementara acak** (12 karakter, tampil sekali, berlaku 72 jam, wajib diganti). Pola tanggal lahir **tidak** dipakai lagi.<br>4. Email yang dilepas karena pembajakan diblokir untuk akun itu.<br>5. Linimasa aktivitas akun selama masa pembajakan (pendaftaran, undangan tim, laporan, usulan) ditampilkan agar Kesiswaan bisa membatalkan yang palsu.<br>Semua langkah masuk audit. Alert bila satu Admin melakukan > 10 reset/jam.<br>*Pembaruan 6 Okt 2026 (D-92):* "wajib diganti" kini benar-benar dipaksa. Sejak D-79 (4 Okt 2026) sampai perbaikan ini, siswa yang direset bisa menekan "Lewati" dan tetap memakai password sementara itu. Sekarang reset mengisi `users.temporary_password_issued_at`, dan selama kolom itu terisi langkah kata sandi di aktivasi tidak punya tombol lewati. Kolom dikosongkan `SetNewPassword` saat pemilik memilih password sendiri (aktivasi, Keamanan akun, Lupa kata sandi). | WAJIB |
+| K11 | **Pesan generik tanpa enumerasi.** Satu field "NIS atau NISN" dengan pesan yang sama untuk semua kegagalan: *"NIS/NISN atau kata sandi salah. Jika belum bisa masuk, hubungi Admin atau Kesiswaan."* Waktu respons seragam (`Hash::check` tetap dijalankan dengan hash dummy bila user tidak ada). Resolusi identifier: 10 digit → NISN, selain itu → NIS. Bila satu input cocok dengan dua akun berbeda → tolak + catat event. *Sejak D-78 (4 Okt 2026):* field berlabel "NIS, NISN, atau email". Input ber-`@` dicocokkan ke siswa **hanya bila aktivasinya sudah selesai** (status aktif, email terverifikasi, tidak wajib ganti password). Dalam semua keadaan lain (email belum diverifikasi, langkah kata sandi belum selesai, akun nonaktif, arsip, alamat tidak dikenal) hasilnya sama dengan akun yang tidak ada: pesan yang sama, hash dummy, dan bucket HMAC untuk identifier tidak dikenal. Email yang dikenali memakai bucket akun `u:<id>` bersama NIS/NISN. Pesan tetap *"NIS/NISN atau kata sandi salah."* Siswa tidak pernah login dengan username; staf tidak berubah (username atau email). | WAJIB |
 | K12 | Pola password **tidak pernah** ditampilkan di UI atau halaman publik. Pola hanya disampaikan lewat wali kelas/surat edaran. | WAJIB |
 | Opsi | Kode Aktivasi acak ~40 bit per siswa (rekomendasi v1), atau aktivasi terawasi di lab hanya dari IP sekolah. Dipakai bila pemicu tinjau ulang tercapai. | Opsional |
 
-**Rate limit & jeda progresif** (di `AppServiceProvider::boot`). NIS dan NISN milik satu siswa **berbagi satu bucket** (dipetakan ke `user_id`); kalau tidak, penyerang mendapat jatah percobaan ganda. Siswa di sekolah berbagi 1 IP publik (NAT), jadi batas per-IP harus longgar dan batas per-akun ketat:
+**Rate limit & jeda progresif** (di `AppServiceProvider::boot`). NIS dan NISN milik satu siswa **berbagi satu bucket** (dipetakan ke `user_id`); kalau tidak, penyerang mendapat jatah percobaan ganda. Sejak D-78, email siswa yang dikenali (aktivasi selesai) masuk ke bucket yang sama. Siswa di sekolah berbagi 1 IP publik (NAT), jadi batas per-IP harus longgar dan batas per-akun ketat:
 ```php
 RateLimiter::for('login', function (Request $r) {
     $key = app(LoginIdentifier::class)->bucketKey((string) $r->input('identifier')); // 'u:<user_id>' atau HMAC stabil bila tidak ada
@@ -164,6 +186,8 @@ RateLimiter::for('login', function (Request $r) {
 - `HASH_DRIVER=argon2id` (image resmi `php:8.4-fpm` dikompilasi dengan `--with-password-argon2`) atau `bcrypt` dengan `BCRYPT_ROUNDS=12`. Biarkan verifikasi algoritma hash Laravel (`HASH_VERIFY`) aktif. Batasi panjang password maks. 64 karakter (bcrypt memotong di 72 byte).
 - Import 1.000+ siswa: hash password awal dihitung di **queue** per chunk. Plaintext pola tidak pernah ditulis ke log atau file sementara, dan hanya boleh ada di payload job yang `ShouldBeEncrypted`.
 - `session()->regenerate()` saat login, aktivasi, ganti password, aktifkan 2FA, dan perubahan peran. `Auth::logoutOtherDevices($pwd)` setelah ganti password. `SESSION_DRIVER=database` agar sesi bisa dicabut per user (dipakai K8/K10 dan arsip otomatis).
+  - **Pembaruan 6 Okt 2026 (D-93; temuan QA Q1-03, Q2-07):** `session()->regenerate()` tanpa argumen membuat ID baru tetapi **membiarkan baris sesi lama** di tabel `sessions`: "Perangkat yang masuk" menampilkan perangkat hantu (sampai 7), dan ID lama masih hidup sampai kedaluwarsa. Di layar aplikasi kini dipakai `session()->regenerate(true)` (baris lama dihapus): `Auth\Activation` (setelah kode diterima, setelah ganti password, setelah "Lewati"), `Akun\Keamanan::changePassword`, `Auth\TwoFactorSetup::confirm`. Pembaruan hanya dilakukan **setelah** Action berhasil: password sekarang yang salah atau password baru yang ditolak tidak lagi menyentuh sesi. Login dan tantangan 2FA milik Fortify tidak diubah: baris yang tertinggal di sana adalah sesi tamu dari sebelum login (tanpa `user_id`), jadi tidak pernah tampil sebagai perangkat dan tidak pernah berstatus masuk.
+  - **Halaman kredensial tidak disimpan browser (D-93; temuan QA Q2-01):** lihat §3f.
 - `SESSION_LIFETIME=120` untuk siswa. Idle-timeout 15 menit untuk Admin/Kepsek/TU/Kesiswaan dan 30 menit untuk staf lain (PC bersama di ruang guru/TU).
 - **Remember-me:** tidak ada untuk staf. Untuk siswa opsional, maks. 30 hari (`remember` = 43200 menit di konfigurasi guard; default Laravel ±400 hari). Dicabut otomatis saat ganti password atau reset Admin, dan tidak tersedia di sesi aktivasi.
 
@@ -534,6 +558,14 @@ public function handle(Request $request, Closure $next)
 - **HSTS:** dipasang di vhost Apache subdomain (§3e) dengan `max-age=31536000`. **Jangan** `includeSubDomains`/`preload` tanpa persetujuan IT sekolah (bisa memutus subdomain lain yang masih HTTP). Header ini tidak diduplikasi di middleware Laravel.
 - Header yang sudah ditambahkan proxy luar jangan diduplikasi. Hilangkan `X-Powered-By` (`expose_php=Off`) dan `server_tokens off`.
 
+**Pembaruan 6 Okt 2026 (D-93, D-101; temuan QA Q2-01, Q1-07, Q2-30, Q2-03):**
+- **Halaman kredensial tidak pernah disimpan browser.** Middleware global `PreventCredentialPageCaching` (di-append di `bootstrap/app.php` setelah `SecurityHeaders`) memasang `Cache-Control: no-store, no-cache, must-revalidate, max-age=0, private` dan `Pragma: no-cache` pada **semua** jawaban (GET, POST, redirect, halaman error) untuk `/login`, `/aktivasi`, `/lupa-kata-sandi`, `/user/confirm-password`, `/two-factor-challenge`, dan `/akun/2fa` (`PreventCredentialPageCaching::PATHS`). Sebelumnya `/login` hanya membawa `no-cache, private` bawaan Symfony, yang masih membolehkan cache Back/Forward: setelah Keluar, Back dua kali memunculkan halaman masuk dengan NIS dan password masih terisi (komputer lab bersama). Livewire menambah `no-store` sendiri, tetapi hanya pada jawaban yang merender komponen Livewire; halaman Fortify (`/login`, konfirmasi password, tantangan 2FA) adalah Blade biasa. Halaman baru yang menampilkan atau menerima password, kode, atau rahasia 2FA **WAJIB** ditambahkan ke `PATHS`.
+- **Kolom password dikosongkan** oleh `resources/js/app.js` (lapisan kedua): saat halaman dipulihkan dari cache Back/Forward (`pageshow` dengan `persisted`), dan tepat setelah form POST biasa dikirim. Berlaku juga untuk kolom yang sedang ditampilkan sebagai teks ("Tampilkan kata sandi"). Form `wire:submit` tidak disentuh saat dikirim.
+- **Halaman error milik aplikasi tidak pernah mencetak teks exception.** `resources/views/errors/{401,403,404,405,419,429,500,503,4xx,5xx}.blade.php` hanya berisi kode status, judul, dan satu kalimat tetap berbahasa Indonesia; tidak ada `$exception->getMessage()`, nama peran, nama kelas, atau jejak stack. CSS lewat nonce (`layouts.partials.head`), tanpa `style`/JS inline, `noindex`. Laravel memakai view ini juga saat `APP_DEBUG=true`, jadi permintaan dengan method yang salah (mis. `GET /logout`) tidak lagi membangun halaman debug (temuan: 405 berukuran 870 kB dalam 6–63 detik). Link "Kembali" hanya memakai Referer bila itu halaman lain di aplikasi ini (skema, host, dan port sama), jadi tidak bisa dipakai untuk mengalihkan ke situs luar. Untuk 5xx halaman error tidak membuka koneksi database.
+- **`GET /logout` hanya mengalihkan** (sudah masuk → beranda, tamu → halaman masuk) dan tidak pernah mengakhiri sesi: logout tetap `POST /logout` + CSRF, sehingga link atau gambar di situs lain tidak bisa mengeluarkan pengguna.
+- **Halaman pertama setelah login:** GET yang menjawab 403 atau 404 tepat setelah login dialihkan ke beranda (`ErrorPageServiceProvider::afterLogin()`). Otorisasi tidak berubah: yang berubah hanya tujuan pengalihan, dan hanya untuk satu permintaan itu.
+- Belum diuji ulang di lingkungan seperti produksi (`APP_DEBUG=false`); lihat checklist §4.
+
 **XSS di Blade:**
 - Output **selalu** `{{ }}`. `{!! !!}` **dilarang** kecuali untuk kolom yang sudah dipurifikasi (`*_html_clean`). CI mem-*grep* `{!!` dan setiap temuan harus ada di allowlist review.
 - Data ke JS: `@js($data)` / `Js::from()`, bukan `{{ }}` di dalam `<script>`. Atribut selalu diberi tanda kutip.
@@ -550,7 +582,7 @@ function csv_safe(?string $v): ?string {
 ```
 - Export via queue, file hasil di private disk, unduh via temporary signed URL (15 menit) + policy + audit log. Kolom NISN/HP **tidak** ikut secara default.
 
-**Import Excel siswa (Admin, D-12).** Kolom: Nama lengkap, NIS, NISN, Tanggal lahir, Kelas saat pendaftaran, No HP (opsional).
+**Import Excel siswa (Admin, D-12).** Kolom: Nama lengkap, NIS, NISN, Tanggal lahir, Kelas saat pendaftaran, No HP (opsional). *(Sejak D-81 kolom kelas bernama "Kelas" = kelas saat berkas di-upload; header lama masih dibaca. Aturan untuk siswa yang sudah terdaftar: lihat "Pembaruan 4 Okt 2026" di akhir bagian ini.)*
 - Hanya `.xlsx`, maks. 2 MB, maks. 3.000 baris. Jalankan di queue (`ShouldQueue`, `WithChunkReading`, `WithValidation`) dan **jangan** aktifkan `WithCalculatedFormulas`.
 - Header kolom harus sama persis dengan template. Validasi per baris:
   - nama ≤ 150 karakter
@@ -566,6 +598,14 @@ function csv_safe(?string $v): ?string {
 - Mode **dry-run**: tampilkan pratinjau + laporan error sebelum commit. Commit dalam transaksi. Log import berisi pelaku, waktu, jumlah baris, dan SHA-256 file. File sumber dihapus setelah 7 hari.
 - PhpSpreadsheet versi terpatch (mis. CVE-2024-45048 XXE diperbaiki di 1.29.1 / 2.2.1; ikuti `composer audit` untuk advisori berikutnya).
 
+**Pembaruan 4 Okt 2026 (D-81): import tahunan memperbarui kelas.** Kalimat "NIS dan NISN masing-masing unik, termasuk terhadap data lama" di atas kini berarti:
+- NIS **dan** NISN cocok dengan **satu** siswa terdaftar → baris itu memperbarui siswa tersebut (pindah kelas atau tidak berubah), bukan ditolak.
+- Hanya satu nomor yang cocok, atau kedua nomor milik siswa berbeda → **ditolak** dengan alasannya (ini tetap mencegah satu baris menimpa akun orang lain). Nomor ganda di dalam berkas tetap ditolak.
+- **Import tidak pernah menyentuh akun.** Yang ditulis untuk siswa terdaftar hanya `classroom_id`, `import_school_year`, `grade12_start_date`, `archive_at`, dan `phone` bila berkas mengisinya. Nama, tanggal lahir, password, email, status, aktivasi, dan flag persetujuan tidak pernah diubah. Karena itu import ulang tidak bisa dipakai untuk mereset password awal atau membuka kembali jendela aktivasi; perbaikan tanggal lahir yang salah tetap lewat "Reset kata sandi & email" (K10).
+- Nama atau tanggal lahir yang berbeda dari data lama hanya **dilaporkan** di catatan baris. Akun arsip dilewati; akun yang dihapus (soft delete) ditolak; akun nonaktif diperbarui dan tetap nonaktif.
+- Tanggal arsip dihitung ulang dari kelas di berkas + tahun ajaran. Bila hasilnya berbeda, tanggal baru ditulis (juga di atas tanggal yang pernah diubah Admin secara manual: *sementara*, D-81) dan tampil sebagai catatan baris; pratinjau memberi peringatan dengan jumlahnya (banyak = tahun ajaran salah pilih). Tanggal arsip baru yang tidak di masa depan membuat baris ditolak.
+- Audit: `student.import` (dengan jumlah `moved`), dan per siswa `student.class_changed` atau `student.phone_updated`, tanpa nama, nomor, tanggal lahir, atau No HP. Apakah `student.class_changed` ikut disalin ke channel `security` belum diputuskan (backlog CLAUDE.md #49).
+
 ### 3g. PDF & Surat Tugas
 
 **Alur (keputusan 30 Sep 2026, D-05/D-06):**
@@ -576,6 +616,13 @@ function csv_safe(?string $v): ?string {
 3. TU menekan Generate, dan sistem membuat PDF.
 
 Satu gambar tanda tangan + stempel (diunggah Admin) ditempel di semua surat. Satu tim mendapat **satu** surat siswa bersama.
+
+**Pembaruan 4 Okt 2026 (keputusan lead D-82, D-83, D-84); langkah 2–3 di atas adalah riwayat:**
+- **Nomor diketik lengkap.** TU mengetik nomor lengkap tiap surat (mis. `400.3.8/313/MRD/X/2026`); sistem tidak lagi menyusun atau mencocokkan format. Aturan nomor: dirapikan (spasi di ujung dibuang, spasi beruntun jadi satu), 3–64 karakter, hanya `A–Z a–z 0–9 . / -` dan spasi, wajib memuat angka. Karena hanya karakter itu yang diterima, nomor aman dicetak di PDF, halaman verifikasi, dan email.
+- **Unik per jenis surat** atas **semua** surat, termasuk yang sudah dicabut: indeks DB `(type, full_number)` menggantikan `(type, year, sequence)`. Perbandingan mengabaikan huruf besar/kecil dan spasi (`LetterNumber::key()`), jadi `400.3.8/313/MRD/X/2026` dan `400.3.8 / 313 / mrd / x / 2026` adalah nomor yang sama. Tahun dan bulan surat diambil dari tanggal surat, bukan dari nomor.
+- **Satu surat satu form.** Tiap surat diterbitkan sendiri (`IssueLetters` untuk satu jenis surat, transaksi + kunci pada pendaftaran, satu event audit `letters.issued` per surat). "Kirim" ditolak server sampai semua surat yang wajib punya PDF (surat siswa; surat guru bila ada guru pembimbing).
+- **Template = berkas asli sekolah, dengan lambang.** Lambang Pemprov Jawa Tengah dan lambang sekolah disimpan di repo (`resources/pdf/assets`, di dalam chroot dompdf `resources/pdf`). Keduanya lambang lembaga, bukan data pribadi dan bukan unggahan pengguna; aturan "tanpa data nyata di repo" tetap berlaku untuk nama, NIS/NISN, tanda tangan, dan foto. Gambar tanda tangan + stempel **tetap** file privat (§3m-5). QR dan kode verifikasi tetap dicetak.
+- **Cetak.** `tu.surat.cetak` mengirim PDF yang sama secara inline untuk di-print: hanya route TU, diperiksa `LetterPolicy::view`, `Cache-Control: no-store, private`, CSP respons itu hanya `frame-ancestors 'none'` (PDF tidak menjalankan skrip halaman), dan tercatat `letter.downloaded` dengan `inline: true`. `tu.surat.kop` hanya menyajikan dua lambang itu untuk preview HTML (`LetterPolicy::viewQueue`).
 
 - **Library:** `barryvdh/laravel-dompdf` dengan **dompdf ≥ 3.1.6**. Rilis 20 Jul 2026 itu memperbaiki 6 advisori, antara lain *chroot validation bypass* (GHSA-wvh6-f5jh-8gw4) dan baca file lokal lewat SVG `data:` URI (CVE-2026-56722). Browsershot/Chromium **tidak** disarankan (RAM ±300–500 MB per render, butuh `--no-sandbox`, permukaan SSRF lebih luas).
 - **Riwayat:** dompdf pernah terkena RCE via `@font-face` saat remote aktif (CVE-2022-28368) dan bypass URI SVG ke `phar://` (CVE-2023-23924). Remote fetch, protokol lokal, dan SVG adalah permukaan serangan nyata.
@@ -597,7 +644,7 @@ Satu gambar tanda tangan + stempel (diunggah Admin) ditempel di semua surat. Sat
     'temp_dir'           => storage_path('app/pdf-tmp'),
 ],
 ```
-**Nomor surat manual, race-safe** (juga §3m-4):
+**Nomor surat manual, race-safe** (juga §3m-4). *Riwayat: contoh di bawah adalah rancangan awal (nomor urut + regex per format). Sejak D-82 yang berlaku: tanpa regex format, validasi `LetterNumber::numberError()`, dan satu indeks unik `(type, full_number)`; kolom `sequence` boleh kosong. Prinsipnya tetap: constraint DB yang menjamin, transaksi + `lockForUpdate`, pesan duplikat yang ramah.*
 ```php
 // migration surat_tugas
 $t->string('jenis', 8);                    // 'siswa' | 'guru'
@@ -622,13 +669,13 @@ DB::transaction(function () use ($pendaftaran, $data, $tu) {
 });
 // QueryException 23000 (duplikat) → pesan "Nomor sudah dipakai surat lain", bukan error 500
 ```
-- Pengecekan "nomor sudah dipakai" di UI hanya bantuan. **Constraint DB** yang menjamin keunikan, sehingga dua TU yang menyimpan bersamaan tidak bisa lolos keduanya. Tahun di nomor harus sama dengan tahun terbit, dan bulan romawi sama dengan bulan terbit. Petunjuk "nomor terakhir" (mis. 312/1680) hanya informasi.
+- Pengecekan "nomor sudah dipakai" di UI hanya bantuan. **Constraint DB** yang menjamin keunikan, sehingga dua TU yang menyimpan bersamaan tidak bisa lolos keduanya. Tahun di nomor harus sama dengan tahun terbit, dan bulan romawi sama dengan bulan terbit *(riwayat: sejak D-82 isi nomor tidak dicocokkan dengan tanggal; itu tanggung jawab TU)*. Petunjuk "nomor terakhir" (mis. 312/1680) hanya informasi; sejak D-82 petunjuknya berbunyi "Terakhir dipakai: <nomor>" ditambah satu contoh dari format di Pengaturan.
 - Nomor & PDF **immutable** setelah terbit. Koreksi = cabut (alasan, maker-checker, audit) + surat versi baru; versi lama ditandai `superseded`/`dicabut`.
 - **Integritas & anti-pemalsuan.** Gambar ttd+stempel mudah disalin dari surat cetak mana pun, jadi keaslian ditentukan oleh **QR + kode verifikasi**, bukan oleh gambar.
   - Setiap PDF memuat QR ke `https://prestasi.sman3-smg.sch.id/v/<kode>` + kode yang tertulis. Kodenya acak 10 karakter Crockford Base32, bukan ID atau NIS.
   - Halaman verifikasi (tanpa login, rate limit 30/menit/IP) hanya menampilkan nomor, tanggal, nama lomba, nama siswa disingkat ("Nadia P. A."), status **Valid/Dicabut**, dan SHA-256 PDF. Tanpa NIS/NISN/kelas/HP.
-- **Simpan per PDF:** `sha256`, `generated_by`, `generated_at`, `ttd_version_id`. Audit **setiap** generate dan unduh. Kepala Sekolah punya daftar semua surat yang terbit atas namanya.
-- **Surat tim:** satu PDF untuk semua anggota, dan setiap anggota melihat nama + kelas anggota lain. Kolom NIS/NISN hanya dicantumkan bila template resmi mewajibkannya (menunggu konfirmasi sekolah).
+- **Simpan per PDF:** `sha256`, `generated_by`, `generated_at`, `ttd_version_id`. Audit **setiap** generate dan unduh (sejak D-84 juga setiap "Cetak"). Kepala Sekolah punya daftar semua surat yang terbit atas namanya.
+- **Surat tim:** satu PDF untuk semua anggota, dan setiap anggota melihat nama + kelas anggota lain. Kolom NIS/NISN hanya dicantumkan bila template resmi mewajibkannya (menunggu konfirmasi sekolah). *Terjawab: template sekolah memuat kolom NO · NAMA MURID · NIS · KELAS (D-43, D-84); NISN tidak dicetak.*
 - **Render:** generate di queue (timeout 60 detik, satu job per surat), PDF di private disk, unduh lewat controller ber-policy.
 - **Opsi masa depan:** tanda tangan elektronik tersertifikasi (TTE BSrE) bila sekolah/pemda sudah memakainya.
 
@@ -940,7 +987,7 @@ USER www-data
 
 | Kategori | Event |
 |----------|-------|
-| Auth | Login sukses/gagal (NIS/NISN, IP, UA); jeda & pembekuan aktivasi; aktivasi. `initial_password_on_active` (K7). Bind/ganti email dan klik "Bukan saya?". Request/sukses reset; "Reset kata sandi & email" oleh Admin. OTP gagal ≥ 3. `otp_bypass_used` (harus nol di production). 2FA: `two_factor.enabled`, `two_factor.confirmed`, `two_factor.disabled`, `two_factor.recovery_codes_regenerated` (log `auth`, maks. 10 baris per akun per jenis per menit); reset oleh Admin lewat `account.staff_reset` / `account.reset` (`two_factor_removed`); `security.password_confirm_locked` (D-67); login break-glass; logout paksa |
+| Auth | Login sukses/gagal (NIS/NISN, IP, UA; sejak D-78 identifier yang diketik bisa berupa email siswa, seperti email staf sebelumnya); jeda & pembekuan aktivasi; aktivasi (`account.email_bound`, `account.activated` dengan `password_changed`, `activation.password_kept`, D-79). `initial_password_on_active` (K7). Bind/ganti email dan klik "Bukan saya?". Request/sukses reset; "Reset kata sandi & email" oleh Admin. OTP gagal ≥ 3. `otp_bypass_used` (harus nol di production). 2FA: `two_factor.enabled`, `two_factor.confirmed`, `two_factor.disabled`, `two_factor.recovery_codes_regenerated` (log `auth`, maks. 10 baris per akun per jenis per menit); reset oleh Admin lewat `account.staff_reset` / `account.reset` (`two_factor_removed`); `security.password_confirm_locked` (D-67); login break-glass; logout paksa |
 | Admin | Import siswa, jendela aktivasi ulang, perubahan peran, **penggantian akun Kepala Sekolah**, unggah/ganti file ttd, perubahan bobot/batas laporan, unarchive/ubah tanggal arsip, maker-checker (usul/setuju/tolak) |
 | Data | Persetujuan/penolakan Kepsek, verifikasi/penolakan, perubahan tingkat/kategori/status, poin, generate/unduh/cabut surat, nomor surat duplikat yang ditolak, usulan lomba, publikasi Humas, export massal, download file oleh non-pemilik, hasil job arsip (jumlah akun) |
 | Anomali | Lonjakan 403/404/419/429, error 5xx, upload ditolak (tipe/ukuran), payload formula terdeteksi, scraping halaman publik atau pencarian anggota tim |
@@ -984,7 +1031,7 @@ Kontak (isi sebelum go-live): Admin server: `____`; Penanggung jawab PDP/DPO: `_
 - **Rate limit:** 30/menit dan 300/hari per user. Alert bila > 100 pencarian unik/jam dari satu akun (scraping daftar siswa).
 - **Undangan:** hanya penerima yang bisa mengonfirmasi/menolak (policy pada `invitee_id`); ketua tidak bisa mengonfirmasi atas nama anggota. Jumlah undangan ≤ `max_anggota`, undangan kedaluwarsa pada batas pendaftaran, dan notifikasinya tanpa data pribadi tambahan.
 
-**3m-4. Nomor surat manual.** Detail di §3g:
+**3m-4. Nomor surat manual.** Detail di §3g (dua butir pertama adalah riwayat; sejak D-82: nomor lengkap diketik TU, aturan karakter `LetterNumber::numberError()`, dan satu indeks unik `(type, full_number)` atas semua surat termasuk yang dicabut):
 - regex per jenis surat
 - unique `(jenis, tahun, nomor_urut)` dan `(jenis, nomor_lengkap)`
 - transaksi + `lockForUpdate` pada pendaftaran
@@ -1012,7 +1059,7 @@ Uji konkuren wajib (§4).
 Uji payload ada di §4.
 
 **3m-7. Halaman publik (tanpa login)**
-- **Yang boleh tampil:** hanya nama + kelas + prestasi terverifikasi (lomba, bidang, tingkat, capaian, tahun). **Tidak pernah** NIS, NISN, HP, email, tanggal lahir, atau alamat. Controller publik memakai API Resource khusus dengan allowlist kolom, bukan `toArray()` model, dan tidak ada endpoint JSON publik yang ikut membawa kolom lain.
+- **Yang boleh tampil:** hanya nama + kelas + prestasi terverifikasi (lomba, bidang, tingkat, capaian, tahun). **Tidak pernah** NIS, NISN, HP, email, tanggal lahir, atau alamat. **Alumni tanpa kelas (D-80, 4 Okt 2026):** untuk alumni, data publik tidak lagi membawa kelas terakhir (`kelas` kosong, label "Alumni"), di peringkat, beranda, pemenang lomba, dan halaman siswa. Peringkat publik menampilkan satu kelompok per pilihan `?status=aktif|alumni|semua` (bawaan: siswa aktif); pilihan itu tidak mengubah aturan izin nama. Controller publik memakai API Resource khusus dengan allowlist kolom, bukan `toArray()` model, dan tidak ada endpoint JSON publik yang ikut membawa kolom lain.
 - **Nama** hanya tampil bila `publikasi_nama` = ya. Selain itu tampil "Siswa kelas XI", atau tidak dicantumkan, tetapi tetap dihitung di agregat. **Foto** hanya bila `publikasi_foto` = ya; selain itu avatar inisial.
 - **Sertifikat** sering memuat NISN, tempat/tanggal lahir, dan tanda tangan pejabat.
   - Default: **gambar sertifikat tidak tampil** di publik. Yang tampil badge "Terverifikasi Kesiswaan" + tanggal verifikasi.
@@ -1081,9 +1128,13 @@ Target verifikasi: **ASVS 5.0 Level 1 untuk semua area, Level 2 untuk V6/V7/V8/V
 **Autentikasi & sesi** (A07 · V6/V7)
 - [ ] **Formulir penerimaan risiko login (D-14) ditandatangani Kepala Sekolah.**
 - [ ] Login menerima NIS **atau** NISN; keduanya berbagi satu bucket rate limit. Pesan & waktu respons seragam (user ada vs tidak, NIS vs NISN). Input yang cocok dengan dua akun ditolak.
-- [ ] Password awal hanya membuka sesi aktivasi (route lain ditolak sampai password diganti) dan kedaluwarsa sesuai jendela (default 14 hari). 10 kali gagal → akun belum aktif dibekukan (feature test).
-- [ ] Setelah aktivasi, `initial_password_hash` null. Tidak ada kode autentikasi yang membangun pola dari `birth_date` (grep `sm4g4`).
-- [ ] Password baru yang sama dengan/mengandung tanggal lahir (semua format), `sm4g4`/`smaga`, NIS, NISN, atau nama ditolak.
+- [ ] **Login email siswa (D-78):** email hanya diterima bila aktivasi sudah selesai; email akun yang belum selesai aktivasi, nonaktif, arsip, atau tidak dikenal mendapat pesan dan waktu respons yang sama dengan akun yang tidak ada; email yang dikenali berbagi bucket dengan NIS/NISN akun itu; login email tidak pernah melewati atau memicu TOTP untuk siswa (D-66).
+- [ ] Password awal hanya membuka sesi aktivasi (route lain ditolak sampai password diganti) dan kedaluwarsa sesuai jendela (default 14 hari). 10 kali gagal → akun belum aktif dibekukan (feature test). *Sejak D-79:* route lain ditolak sampai **aktivasi selesai** (email terverifikasi + langkah kata sandi: ganti, atau lewati untuk siswa); staf tidak bisa melewati; `keepPassword` untuk akun staf → 403.
+- [ ] Setelah aktivasi, `initial_password_hash` null. Tidak ada kode autentikasi yang membangun pola dari `birth_date` (grep `sm4g4`). *Sejak D-79 butir pertama tidak berlaku untuk siswa yang memilih tetap memakai password awal; butir kedua tetap wajib.*
+- [ ] **Penyeimbang D-79:** tanda "masih pakai kata sandi dari sekolah" di Status aktivasi + pengingat ganti password tersedia (belum dibangun, backlog CLAUDE.md #45), **atau** risikonya tertulis di formulir penerimaan risiko yang ditandatangani.
+- [ ] **Reset Admin memaksa password baru (D-92):** akun siswa yang direset tidak punya tombol "Lewati" di langkah kata sandi, dan `keepPassword` untuk akun itu → 403; siswa dengan password awal dari import tetap boleh melewati.
+- [ ] Password baru yang sama dengan/mengandung tanggal lahir (semua format), `sm4g4`/`smaga`, NIS, NISN, atau nama ditolak. *Sejak D-94:* juga username, bagian email sebelum "@", dan password umum (`password123`, `Qwerty!2026`), untuk siswa dan staf.
+- [ ] **"Buka ulang" (D-95)** tidak pernah menghasilkan batas yang lebih dekat dari batas sebelumnya; alasan di bawah 10 karakter ditolak.
 - [ ] K7: login gagal memakai pola awal pada akun aktif memunculkan event di dashboard Admin/Kesiswaan.
 - [ ] Fitur-fitur berikut berfungsi dan tercatat di audit:
   - laporan status aktivasi per kelas
@@ -1091,7 +1142,8 @@ Target verifikasi: **ASVS 5.0 Level 1 untuk semua area, Level 2 untuk V6/V7/V8/V
   - "Reset kata sandi & email" (password sementara acak, sesi & remember token dicabut, email lama diblokir)
   - tautan "Bukan saya?"
 - [ ] Rate limit login/OTP diuji **dari balik proxy**: IP klien asli terbaca, dan satu akun terkunci tanpa mengunci seluruh sekolah.
-- [ ] `session()->regenerate()` di login/aktivasi/ganti password/perubahan peran; sesi lain dicabut setelah ganti password. Remember-me siswa ≤ 30 hari, dan tidak ada untuk staf.
+- [ ] `session()->regenerate()` di login/aktivasi/ganti password/perubahan peran; sesi lain dicabut setelah ganti password. Remember-me siswa ≤ 30 hari, dan tidak ada untuk staf. *Sejak D-93:* di aktivasi, Keamanan akun, dan pemasangan 2FA dipakai `regenerate(true)`; baris sesi lama hilang dari tabel `sessions`, dan percobaan yang ditolak tidak memperbarui sesi (feature test).
+- [ ] **Halaman kredensial `no-store` (D-93):** `/login`, `/aktivasi`, `/lupa-kata-sandi`, `/user/confirm-password`, `/two-factor-challenge`, `/akun/2fa` menjawab `Cache-Control: no-store` untuk GET, POST, dan redirect. Uji tangan di browser: masuk → Keluar → Back dua kali tidak memunculkan NIS atau password (belum diulang di browser setelah perbaikan; coba juga Firefox dan Safari).
 - [ ] 2FA TOTP aktif untuk semua akun Admin, Kepala Sekolah, TU, dan Kesiswaan. Amplop break-glass tersegel, dan login uji break-glass memicu alert.
 - [ ] **Bypass OTP:** `STH_OTP_TEST_MODE` tidak ada/false di production. `APP_ENV=production STH_OTP_TEST_MODE=true php artisan about` gagal. Test Pest bypass hijau.
 - [ ] **SMTP produksi** terkonfigurasi (SPF/DKIM/DMARC) dan OTP nyata diuji end-to-end. `MAIL_MAILER` bukan `log`/`array`. Akun yang mengikat email saat bypass diminta verifikasi ulang.
@@ -1112,7 +1164,7 @@ Target verifikasi: **ASVS 5.0 Level 1 untuk semua area, Level 2 untuk V6/V7/V8/V
 - [ ] CSP enforce (bukan report-only), tanpa pelanggaran di console; header dicek dengan `curl -sI`.
 - [ ] Payload `<script>`, `"><img src=x onerror=alert(1)>`, `javascript:` di semua field teks tidak tereksekusi (termasuk e-flyer, PDF, email).
 - [ ] Export XLSX/CSV dengan nilai `=HYPERLINK("http://x","klik")` dan `@SUM(1+1)` tampil sebagai teks.
-- [ ] Import Excel: header salah, sel formula, NIS/NISN duplikat, dan NIS = NISN akun lain ditolak dengan laporan. Import berjalan di queue, dry-run tersedia, `tanggal_arsip` terhitung benar di pratinjau.
+- [ ] Import Excel: header salah, sel formula, NIS/NISN duplikat, dan NIS = NISN akun lain ditolak dengan laporan. Import berjalan di queue, dry-run tersedia, `tanggal_arsip` terhitung benar di pratinjau. *Sejak D-81:* baris yang NIS **dan** NISN-nya milik satu siswa terdaftar memperbarui kelas siswa itu (bukan ditolak); baris dengan hanya satu nomor cocok, atau dua nomor milik siswa berbeda, ditolak; import ulang tidak mengubah nama, tanggal lahir, password, email, status, aktivasi, atau izin (test).
 - [ ] URL usulan/katalog: `javascript:`, `http://`, `https://user:pass@…`, dan IP literal ditolak. Tidak ada request keluar saat usulan disimpan/ditampilkan (cek log egress). Link ber-`rel="nofollow noopener noreferrer ugc"` dan menampilkan host.
 
 **File & PDF** (A01/A03/A10 · V5)
@@ -1124,7 +1176,8 @@ Target verifikasi: **ASVS 5.0 Level 1 untuk semua area, Level 2 untuk V6/V7/V8/V
   - `<img src="http://<host-uji>/x">`
   - `<img src="data:image/svg+xml;base64,…">`
   - `<link href="file:///etc/passwd">`
-- [ ] Nomor surat manual diuji konkuren (20 request paralel dengan nomor sama): tepat satu sukses, sisanya mendapat pesan duplikat. Format salah ditolak, dan nomor tidak bisa diubah setelah terbit.
+- [ ] Nomor surat manual diuji konkuren (20 request paralel dengan nomor sama): tepat satu sukses, sisanya mendapat pesan duplikat. Format salah ditolak, dan nomor tidak bisa diubah setelah terbit. *Sejak D-82:* "format salah" = nomor kosong, di luar 3–64 karakter, memuat karakter selain huruf/angka/titik/garis miring/tanda hubung/spasi, atau tanpa angka; nomor yang hanya berbeda huruf besar/kecil atau spasi dihitung sama; nomor surat yang sudah dicabut tidak bisa dipakai lagi untuk jenis surat itu.
+- [ ] **Cetak surat (D-84):** `tu.surat.cetak` hanya untuk TU dan surat yang boleh ia lihat (peran lain dan tamu → 403/404); respons `no-store`; setiap cetak tercatat. Lambang di `resources/pdf/assets` ikut di image produksi; folder itu hanya berisi aset statis dari repo (dua lambang dan gambar kurung kurawal), tidak pernah unggahan pengguna.
 - [ ] File ttd: tidak ada URL publik; akses sebagai Siswa/Humas/tamu → 403/404; TU tidak bisa mengunduh file asli; setiap generate tercatat (pelaku, nomor, versi ttd, SHA-256).
 - [ ] QR verifikasi: surat valid tampil Valid, surat dicabut tampil Dicabut, tanpa PII sensitif; kode tidak bisa ditebak berurutan.
 
@@ -1167,7 +1220,7 @@ Target verifikasi: **ASVS 5.0 Level 1 untuk semua area, Level 2 untuk V6/V7/V8/V
 - [ ] Isolasi host: `sudo -u www-data cat /opt/sth/.env` gagal; `www-data` tidak di grup `docker`; tidak ada user DB bersama dengan situs utama.
 - [ ] Semua kontainer non-root (`docker compose exec app id`), `no-new-privileges`, tanpa docker.sock, tanpa `privileged`.
 - [ ] `nmap` dari luar: hanya 22/80/443; 3306/6379/8080 tertutup; `DOCKER-USER` terpasang.
-- [ ] Halaman error production tidak menampilkan stack trace (`APP_DEBUG=false`); `php artisan about` menunjukkan config/route/view cached.
+- [ ] Halaman error production tidak menampilkan stack trace (`APP_DEBUG=false`); `php artisan about` menunjukkan config/route/view cached. *Sejak D-101:* halaman 401/403/404/405/419/429/500/503 adalah halaman aplikasi sendiri tanpa teks exception; ulangi uji QA Q2-03 di lingkungan seperti produksi (`GET /logout` → pengalihan; method yang salah di route lain → 405 kecil dan cepat).
 - [ ] `/.env`, `/.git/HEAD`, `/storage/logs/laravel.log`, `/composer.lock` menghasilkan 404.
 - [ ] `.env` = 600 dan tidak ada di image (`docker run --rm --entrypoint ls sth-app -la /var/www/html/.env` gagal).
 - [ ] Subdomain:
@@ -1216,12 +1269,12 @@ Lihat `DECISIONS.md`.
 4. **DNS:** siapa pengelola zona `sman3-smg.sch.id` (untuk record A `prestasi` dan CAA)? Apakah IP publik server tetap?
 5. **Persetujuan orang tua** untuk nama, foto, dan sertifikat di halaman publik: bagaimana prosesnya saat ini (formulir daftar ulang?), dan bagaimana mengumpulkannya untuk siswa yang sudah terdaftar? Bolehkah Humas memakai foto di media sosial?
 6. **Tanda tangan + stempel:** apakah Kepala Sekolah menyetujui pemakaian gambar tanda tangannya di surat hasil sistem? Siapa yang boleh mengganti file itu? Apakah perlu TTE (BSrE)?
-7. **Template surat:** kolom apa saja yang ada di surat siswa (NIS/NISN? kelas?)? Apa arti "MRD"? Apakah nomor urut direset per tahun?
+7. ~~**Template surat:** kolom apa saja yang ada di surat siswa (NIS/NISN? kelas?)? Apa arti "MRD"? Apakah nomor urut direset per tahun?~~ **Diputuskan lead 4 Okt 2026:** template = berkas asli sekolah (D-84; surat siswa memuat NIS dan kelas), dan TU mengetik nomor lengkap (D-82), jadi arti "MRD" dan aturan reset tidak lagi dibutuhkan aplikasi.
 8. **Pemulihan akun dibajak:**
    - Siapa Admin yang bertugas?
    - Bagaimana verifikasi identitas tatap muka dilakukan?
    - Berapa target waktu pemulihan?
-   - Bersediakah Kepala Sekolah menandatangani formulir penerimaan risiko login?
+   - Bersediakah Kepala Sekolah menandatangani formulir penerimaan risiko login? (Sejak D-79 formulir itu juga memuat: siswa boleh tetap memakai password awal setelah aktivasi.)
 9. **Jadwal aktivasi:** bisakah aktivasi dilakukan serentak per kelas (jam TIK/wali kelas) agar jendelanya pendek? Berapa jumlah siswa? Di dokumen mana saja NIS/NISN tercetak?
 10. **2FA staf:** bisakah Admin, Kepala Sekolah, TU, dan Kesiswaan memakai aplikasi authenticator di HP? Apakah staf memakai PC bersama? Di brankas mana amplop break-glass disimpan?
 11. **Email noreply (nanti):** apakah domain `.sch.id` memakai Google Workspace for Education, dan siapa admin-nya?

@@ -17,7 +17,7 @@ final class AchievementReadyForPublication extends Notice
         return new self(
             kind: 'achievement.ready_for_publication',
             title: 'Prestasi baru siap dipublikasikan',
-            body: $who.' meraih '.$achievement->result->label().' di '.$competition.'. Cek persetujuan publikasi sebelum diunggah.',
+            body: $who.' meraih '.$achievement->result->label().' di '.$competition.'. Cek persetujuan publikasi sebelum di-upload.',
             routeName: 'humas.beranda',
             actionLabel: 'Buka antrean publikasi',
             extra: ['report_id' => (string) $achievement->report_id],

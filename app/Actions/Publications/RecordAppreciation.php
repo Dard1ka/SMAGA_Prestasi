@@ -12,14 +12,19 @@ use App\Models\User;
 use App\Notifications\Publications\AppreciationScheduled;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\UniqueConstraintViolationException;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Puts a verified achievement (student with publish consent) on an upcoming appreciation event:
- * one `appreciations` row, status `dijadwalkan`, unique per achievement + event. Audited; the student
- * is notified after commit.
+ * Puts a verified achievement (student with publish consent) on an upcoming appreciation event that is not
+ * yet confirmed as held: one `appreciations` row, status `dijadwalkan`, unique per achievement + event.
+ * Audited; the student is notified after commit.
+ *
+ * One achievement, one open event (M2-B, QA 2026-10-05 Q2-10): an achievement that is still scheduled on
+ * another event that is not confirmed, or that was already appreciated on a confirmed event, is refused with
+ * a message that names that event. "Lepas dari acara" (ReleaseAppreciation) or "Hapus acara" frees it again.
  */
 final class RecordAppreciation
 {
@@ -47,17 +52,30 @@ final class RecordAppreciation
                 /** @var AppreciationEvent $lockedEvent */
                 $lockedEvent = AppreciationEvent::query()->whereKey($event->getKey())->lockForUpdate()->firstOrFail();
 
+                // A confirmed event is the record of who was appreciated (M1-E): nothing is added afterwards.
+                if ($lockedEvent->isCompleted()) {
+                    throw ValidationException::withMessages(['event' => 'Acara ini sudah dilaksanakan. Pilih acara lain.']);
+                }
+
                 if ($lockedEvent->held_on->lessThan(CarbonImmutable::today())) {
                     throw ValidationException::withMessages(['event' => 'Acara apresiasi ini sudah lewat.']);
                 }
 
-                $duplicate = Appreciation::query()
-                    ->where('appreciation_event_id', $lockedEvent->getKey())
-                    ->where('achievement_id', $achievement->getKey())
-                    ->exists();
+                // One achievement, one open event (M2-B, Q2-10). The achievement row is locked so two events
+                // cannot take it at the same moment; every row it already has decides the answer.
+                Achievement::query()->whereKey($achievement->getKey())->lockForUpdate()->first();
 
-                if ($duplicate) {
+                $existing = Appreciation::query()
+                    ->where('achievement_id', $achievement->getKey())
+                    ->with('event')
+                    ->get();
+
+                if ($existing->contains(fn (Appreciation $a): bool => $a->appreciation_event_id === $lockedEvent->getKey())) {
                     throw ValidationException::withMessages(['achievement' => 'Prestasi ini sudah ada di daftar acara tersebut.']);
+                }
+
+                if (($blocking = self::blocking($existing)) !== null) {
+                    throw ValidationException::withMessages(['achievement' => self::blockedMessage($blocking)]);
                 }
 
                 $appreciation = new Appreciation([
@@ -86,6 +104,35 @@ final class RecordAppreciation
         $this->notify($appreciation, $achievement);
 
         return $appreciation;
+    }
+
+    /**
+     * The row that keeps an achievement off other events: one that is already appreciated (a `selesai` row or
+     * a confirmed event) before one that is still scheduled on an event not yet confirmed. Null = free.
+     *
+     * @param  Collection<int, Appreciation>  $existing  rows of one achievement, `event` loaded
+     */
+    public static function blocking(Collection $existing): ?Appreciation
+    {
+        return $existing->first(fn (Appreciation $a): bool => self::isAppreciated($a)) ?? $existing->first();
+    }
+
+    /** "… sudah diapresiasi di acara X (5 Okt 2026)." / "… sudah dijadwalkan di acara X (5 Okt 2026). Lepas dulu …" */
+    public static function blockedMessage(Appreciation $blocking): string
+    {
+        $event = $blocking->event;
+        $where = $event === null
+            ? 'acara lain'
+            : 'acara '.$event->name.' ('.$event->held_on->locale('id')->translatedFormat('j M Y').')';
+
+        return self::isAppreciated($blocking)
+            ? 'Prestasi ini sudah diapresiasi di '.$where.'.'
+            : 'Prestasi ini sudah dijadwalkan di '.$where.'. Lepas dulu dari acara itu.';
+    }
+
+    private static function isAppreciated(Appreciation $appreciation): bool
+    {
+        return $appreciation->status === AppreciationStatus::Selesai || $appreciation->event?->isCompleted() === true;
     }
 
     private function notify(Appreciation $appreciation, Achievement $achievement): void

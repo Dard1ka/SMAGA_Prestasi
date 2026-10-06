@@ -1,8 +1,12 @@
-{{-- Publik · Peringkat kumulatif (board `Peringkat`, D-09). Rows come ranked from PublicAchievements::ranking(). --}}
+{{--
+    Publik · Peringkat kumulatif (board `Peringkat`, D-09). Rows come ranked from PublicAchievements::ranking().
+    Filters: mode siswa | kelas, bidang, angkatan and who is shown (siswa aktif | alumni | semua, siswa mode only).
+    An alumnus shows the chip "Alumni" where the class stands, never the last class (lead, 2026-10-04).
+--}}
 @php
     $isSiswa = $mode === 'siswa';
     $shown = count($top) + count($rest);
-    $caption = $isSiswa ? 'Peringkat siswa' : 'Peringkat kelas';
+    $caption = 'Peringkat '.$noun;
 @endphp
 <div class="flex flex-col gap-5">
     <x-sth.page-header :level="1" title="Peringkat prestasi" subtitle="Akumulasi poin dari semua lomba yang sudah diverifikasi." />
@@ -12,20 +16,28 @@
             <div class="flex flex-wrap items-center gap-3">
                 <div class="seg seg-solid border border-line-input bg-surface" role="group" aria-label="Tampilan peringkat">
                     <button type="button" class="seg-btn h-9" aria-pressed="{{ $isSiswa ? 'true' : 'false' }}" wire:click="pilihMode('siswa')">Siswa</button>
-                    <button type="button" class="seg-btn h-9" aria-pressed="{{ $isSiswa ? 'false' : 'true' }}" wire:click="pilihMode('kelas')">Kelas</button>
+                    <button type="button" @class(['seg-btn h-9', 'cursor-not-allowed text-placeholder' => ! $kelasAvailable]) aria-pressed="{{ $isSiswa ? 'false' : 'true' }}"
+                        wire:click="pilihMode('kelas')" @if (! $kelasAvailable) disabled aria-describedby="peringkat-catatan" @endif>Kelas</button>
                 </div>
                 <div class="grid w-full grid-cols-2 gap-3 sm:flex sm:w-auto">
                     <x-sth.select wire:model.live="bidang" label="Bidang" hide-label size="sm" placeholder="Semua bidang" :options="$bidangOptions" class="sm:w-[190px]" />
                     <x-sth.select wire:model.live="angkatan" label="Angkatan" hide-label size="sm" placeholder="Semua angkatan" :options="$angkatanOptions" class="sm:w-[236px]" />
                 </div>
                 @if ($isSiswa)
-                    <x-sth.checkbox wire:model.live="alumni" :checked="$alumni" label="Tampilkan alumni" />
+                    <div class="seg" role="group" aria-label="Siswa yang ditampilkan">
+                        @foreach ($statusOptions as $value => $label)
+                            <button type="button" class="seg-btn h-9" wire:key="status-{{ $value }}" aria-pressed="{{ $status === $value ? 'true' : 'false' }}" wire:click="pilihStatus('{{ $value }}')">{{ $label }}</button>
+                        @endforeach
+                    </div>
                 @endif
             </div>
+            @if ($note)
+                <p id="peringkat-catatan" class="m-0 text-[13px] text-muted">{{ $note }}</p>
+            @endif
 
             <div class="flex flex-col gap-4" wire:loading.class="opacity-70">
                 @if ($total === 0)
-                    <x-sth.empty-state icon="bars" title="Belum ada data untuk filter ini.">Ganti bidang atau angkatan.</x-sth.empty-state>
+                    <x-sth.empty-state icon="bars" title="Belum ada data untuk filter ini.">{{ $noun === 'alumni' ? 'Ganti bidang atau angkatan, atau pilih Semua.' : 'Ganti bidang atau angkatan.' }}</x-sth.empty-state>
                 @else
                     <ol class="m-0 grid list-none gap-4 p-0 sm:grid-cols-3" aria-label="{{ $caption }}, tiga teratas">
                         @foreach ($top as $row)
@@ -41,8 +53,11 @@
                                             <div class="flex min-w-0 flex-col gap-1">
                                                 @include('livewire.publik.partials.person-name', ['person' => $row, 'class' => 'text-base leading-5'])
                                                 <span class="flex flex-wrap items-center gap-1.5">
-                                                    @if ($row['kelas'])<span class="text-[13px] text-muted">{{ $row['kelas'] }}</span>@endif
-                                                    @if ($row['alumni'])<x-sth.chip size="sm">Alumni</x-sth.chip>@endif
+                                                    @if ($row['alumni'] && $row['named'])
+                                                        <x-sth.chip size="sm">Alumni</x-sth.chip>
+                                                    @elseif ($row['kelas'])
+                                                        <span class="text-[13px] text-muted">{{ $row['kelas'] }}</span>
+                                                    @endif
                                                 </span>
                                             </div>
                                         @else
@@ -87,14 +102,17 @@
                                                 @include('livewire.publik.partials.avatar', ['person' => $row, 'size' => 'sm'])
                                                 <span class="flex min-w-0 flex-col gap-0.5">
                                                     @include('livewire.publik.partials.person-name', ['person' => $row, 'wrap' => true])
-                                                    <span class="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs text-muted">
-                                                        <span class="sm:hidden">{{ collect([$row['kelas'], $row['count'].' prestasi'])->filter()->implode(' · ') }}</span>
-                                                        @if ($row['alumni'])<x-sth.chip size="sm">Alumni</x-sth.chip>@endif
-                                                    </span>
+                                                    <span class="text-xs text-muted sm:hidden">{{ collect([$row['kelas_label'], $row['count'].' prestasi'])->filter()->implode(' · ') }}</span>
                                                 </span>
                                             </span>
                                         </td>
-                                        <td class="hidden sm:table-cell">{{ $row['kelas'] ?? '–' }}</td>
+                                        <td class="hidden sm:table-cell">
+                                            @if ($row['alumni'])
+                                                <x-sth.chip size="sm">Alumni</x-sth.chip>
+                                            @else
+                                                {{ $row['kelas'] ?? '–' }}
+                                            @endif
+                                        </td>
                                         <td class="num hidden sm:table-cell">{{ $row['count'] }}</td>
                                     @else
                                         <td>
@@ -114,7 +132,7 @@
                     @endif
 
                     <div class="flex flex-wrap items-center justify-between gap-3">
-                        <span class="num text-[13px] text-muted">Menampilkan {{ $shown }} dari {{ $total }} {{ $isSiswa ? 'siswa' : 'kelas' }}</span>
+                        <span class="num text-[13px] text-muted">Menampilkan {{ $shown }} dari {{ $total }} {{ $noun }}</span>
                         @if ($hasMore)
                             <x-sth.button variant="quiet" size="sm" icon="chevron-down" wire:click="tampilkanLebih">Tampilkan lebih banyak</x-sth.button>
                         @endif

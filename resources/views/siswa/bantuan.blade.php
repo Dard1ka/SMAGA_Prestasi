@@ -5,10 +5,11 @@
         <div class="flex min-w-0 flex-col gap-[18px]">
             @foreach ([
                 ['icon' => 'search', 'title' => 'Daftar lomba', 'text' => 'Buka Cari lomba, pilih lomba, lalu klik Daftar lomba. Pilih guru pembimbing. Untuk tim, undang anggota; setiap anggota konfirmasi dari akunnya sendiri.'],
-                ['icon' => 'check-circle', 'title' => 'Persetujuan dan surat tugas', 'text' => 'Kepala Sekolah menyetujui pendaftaranmu, lalu Tata Usaha mengirim surat tugas. Unduh suratnya di Lomba saya.'],
+                ['icon' => 'check-circle', 'title' => 'Persetujuan dan surat tugas', 'text' => 'Kepala Sekolah menyetujui pendaftaranmu, lalu Tata Usaha mengirim surat tugas. Download suratnya di Lomba saya.'],
                 ['icon' => 'upload', 'title' => 'Laporkan hasil', 'text' => "Ketua tim melapor paling lambat {$days} hari setelah tanggal final, lengkap dengan sertifikat atau foto. Setelah Kesiswaan memverifikasi, setiap anggota mendapat poin penuh."],
                 ['icon' => 'plus', 'title' => 'Usulkan lomba', 'text' => 'Lomba belum ada di katalog? Klik Usulkan lomba di Cari lomba. Lomba tampil setelah Kesiswaan memeriksanya.'],
-                ['icon' => 'lock', 'title' => 'Jaga akunmu', 'text' => 'Jangan bagikan kata sandi atau kode email. Ganti kata sandi di menu avatar, Keamanan akun. Dapat email aneh? Klik Bukan saya? lalu hubungi Kesiswaan.'],
+                ['icon' => 'user', 'title' => 'Masuk ke akun', 'text' => 'Masuk pakai NIS, NISN, atau email yang kamu hubungkan saat aktivasi. Lupa kata sandi? Klik Lupa kata sandi di halaman masuk, kodenya dikirim ke emailmu.'],
+                ['icon' => 'lock', 'title' => 'Jaga akunmu', 'text' => 'Jangan bagikan kata sandi atau kode email. Masih pakai kata sandi dari sekolah? Ganti di menu avatar, Keamanan akun. Dapat email aneh? Klik Bukan saya? lalu hubungi Kesiswaan.'],
             ] as $item)
                 <x-sth.card as="section" class="flex items-start gap-3.5">
                     <span class="inline-flex size-11 shrink-0 items-center justify-center rounded-tile bg-primary-tint text-primary" aria-hidden="true"><x-sth.icon :name="$item['icon']" /></span>

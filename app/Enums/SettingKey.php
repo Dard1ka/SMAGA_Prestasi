@@ -39,7 +39,7 @@ enum SettingKey: string
             self::LetterFormatSiswa => 'Format nomor surat siswa',
             self::LetterFormatGuru => 'Format nomor surat guru',
             self::PublicIndexing => 'Izinkan mesin pencari mengindeks halaman publik',
-            self::PublicCertificates => 'Tampilkan tautan sertifikat di halaman publik',
+            self::PublicCertificates => 'Tampilkan link sertifikat di halaman publik',
             self::ActivationWindowDays => 'Jendela aktivasi akun siswa (hari)',
             self::LetterTemplate => 'Template surat tugas',
         };

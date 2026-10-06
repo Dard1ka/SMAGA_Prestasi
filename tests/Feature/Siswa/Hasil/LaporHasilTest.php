@@ -105,7 +105,7 @@ it('shows Indonesian errors and keeps the status when fields are missing', funct
         ->call('kirim')
         ->assertHasErrors(['hasil', 'asli', 'sertifikat', 'foto', 'judul', 'abstrak', 'laporan'])
         ->assertSee('Centang pernyataan keaslian dokumen dulu.')
-        ->assertSee('Unggah sertifikat atau piagam.');
+        ->assertSee('Upload sertifikat atau piagam.');
 
     Livewire::actingAs($this->nadia->user)
         ->test(LaporHasil::class, ['registration' => $this->wice])
@@ -136,12 +136,12 @@ it('pre-fills a revision with the Kesiswaan note and the earlier answers', funct
         'research_title' => 'Biofilter sabut kelapa',
         'research_abstract' => 'Ringkasan lama.',
     ]);
-    $report->forceFill(['status' => ReportStatus::PerluRevisi, 'note' => 'Sertifikat buram, unggah ulang.'])->save();
+    $report->forceFill(['status' => ReportStatus::PerluRevisi, 'note' => 'Sertifikat buram, upload ulang.'])->save();
 
     Livewire::actingAs($this->nadia->user)
         ->test(LaporHasil::class, ['registration' => $this->wice])
         ->assertSet('hasil', ResultType::MedaliPerak->value)
         ->assertSet('judul', 'Biofilter sabut kelapa')
         ->assertSee('Perlu revisi')
-        ->assertSee('Sertifikat buram, unggah ulang.');
+        ->assertSee('Sertifikat buram, upload ulang.');
 });

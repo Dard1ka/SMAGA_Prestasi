@@ -114,6 +114,17 @@ it('recomputes the own rank under the bidang and angkatan filters', function ():
     $page->call('resetFilter')->assertSet('angkatan', '')->assertSet('bidang', '');
 });
 
+it('offers only the angkatan of active students and links to the public alumni ranking (M1-C)', function (): void {
+    Livewire::actingAs($this->nadia->user)
+        ->withQueryParams(['angkatan' => '2022']) // the alumni year: not a choice here
+        ->test(Peringkat::class)
+        ->assertSet('angkatan', '')
+        ->assertViewHas('angkatanOptions', fn (array $options): bool => array_keys($options) === [2026, 2025, 2024])
+        ->assertViewHas('publicUrl', route('public.peringkat', ['status' => 'alumni']))
+        ->assertDontSee('Ardiansyah Nur Hakim')
+        ->assertDontSee('XII-3');
+});
+
 it('ignores unknown filter values', function (): void {
     Livewire::actingAs($this->nadia->user)
         ->withQueryParams(['bidang' => 'sulap', 'angkatan' => '1999', 'mode' => 'x', 'limit' => 9999])

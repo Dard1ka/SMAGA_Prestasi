@@ -20,13 +20,16 @@ use Laravel\Fortify\Fortify;
 
 /**
  * Fortify::authenticateUsing callback (docs/SECURITY.md §3a).
- * - One generic message for every failure (unknown identifier, wrong password, disabled/archived) — K11.
+ * - One generic message for every failure (unknown identifier, wrong password, disabled/archived, a student's
+ *   email before the activation is finished) — K11. The text stays the one of lang/id/auth.php.
  * - Only compares the stored hash (K6); unknown identifiers still run Hash::check on a dummy hash, and the
  *   whole check runs in a Timebox, so response time does not reveal whether an account exists.
  * - Progressive lockout per account bucket (LoginLockout) on top of the `throttle:login` limiter.
  * - Disabled/archived accounts are refused and their sessions revoked (D-29, D-30).
  * - K7 detection: a failed login on an already-activated student account with that student's initial
- *   password pattern is logged as `security.initial_password_on_active` (never grants access).
+ *   password pattern is logged as `security.initial_password_on_active` (never grants access). A student who
+ *   kept the password from school at activation (`activation.password_kept`) logs in with it, so K7 cannot fire
+ *   for that account until the owner changes the password.
  */
 final class AuthenticateUser
 {

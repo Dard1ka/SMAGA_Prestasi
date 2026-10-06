@@ -9,8 +9,11 @@ use DateTimeInterface;
 use InvalidArgumentException;
 
 /**
- * Surat tugas numbers built from the settings formats (SECURITY §3g). TU types the sequence;
- * month and year always come from the issue date. Uniqueness is the DB index (type, year, sequence).
+ * Surat tugas numbers (SECURITY §3g). Since M1-A (lead, 2026-10-04) Tata Usaha types the COMPLETE number of
+ * every letter, e.g. `400.3.8/313/MRD/X/2026`: normalize() + numberError() check what was typed and key() is
+ * what two numbers are compared by. A number is never used twice for the same letter type; the DB index
+ * (type, full_number) is the final guard. The settings formats (`{seq}`, `{roman_month}`, `{year}`) are now only
+ * the example shown under the number field (example()); format()/parse() stay for that, the demo data and old rows.
  */
 final class LetterNumber
 {
@@ -22,11 +25,90 @@ final class LetterNumber
 
     public const MAX_TEMPLATE_LENGTH = 64;
 
+    public const MIN_NUMBER_LENGTH = 3;
+
+    public const MAX_NUMBER_LENGTH = 64;
+
     public const MSG_INVALID_SEQUENCE = 'Nomor urut harus angka 1–99999.';
+
+    public const MSG_NUMBER_REQUIRED = 'Ketik nomor surat lengkap.';
+
+    public const MSG_NUMBER_LENGTH = 'Nomor surat harus 3–64 karakter.';
+
+    public const MSG_NUMBER_CHARACTERS = 'Nomor surat hanya boleh berisi huruf, angka, titik, garis miring, tanda hubung, dan spasi.';
+
+    public const MSG_NUMBER_DIGIT = 'Nomor surat harus memuat angka.';
 
     private const PLACEHOLDERS = ['{seq}', '{roman_month}', '{year}'];
 
     private const ROMAN = [1 => 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII'];
+
+    // --- M1-A: the complete number as typed by Tata Usaha ---
+
+    /** Trimmed, every run of white space becomes one space. Nothing else is changed (case stays as typed). */
+    public function normalize(string $input): string
+    {
+        return trim((string) preg_replace('/\s+/u', ' ', $input));
+    }
+
+    /** Indonesian message for a typed number that cannot be used, or null when it is fine. */
+    public function numberError(string $input): ?string
+    {
+        $number = $this->normalize($input);
+        $length = mb_strlen($number);
+
+        return match (true) {
+            $number === '' => self::MSG_NUMBER_REQUIRED,
+            $length < self::MIN_NUMBER_LENGTH || $length > self::MAX_NUMBER_LENGTH => self::MSG_NUMBER_LENGTH,
+            preg_match('~^[A-Za-z0-9./ -]+$~', $number) !== 1 => self::MSG_NUMBER_CHARACTERS,
+            preg_match('/\d/', $number) !== 1 => self::MSG_NUMBER_DIGIT,
+            default => null,
+        };
+    }
+
+    public function isValidNumber(mixed $input): bool
+    {
+        return is_string($input) && $this->numberError($input) === null;
+    }
+
+    /** The normalized number, or InvalidArgumentException with the Indonesian message. */
+    public function parseNumber(string $input): string
+    {
+        $error = $this->numberError($input);
+
+        if ($error !== null) {
+            throw new InvalidArgumentException($error);
+        }
+
+        return $this->normalize($input);
+    }
+
+    /**
+     * What two numbers are compared by: lower case, no spaces. "400.3.8/313/MRD/X/2026" and
+     * "400.3.8 / 313 / mrd / x / 2026" are the same number.
+     */
+    public function key(string $number): string
+    {
+        return strtolower(str_replace(' ', '', $this->normalize($number)));
+    }
+
+    /**
+     * The example under the number field, built from a settings format. The sequence is the one after
+     * $lastNumber when that number fits the format, else $fallbackSequence. Null for a broken format.
+     */
+    public function example(string $template, DateTimeInterface|string $issuedOn, ?string $lastNumber = null, int $fallbackSequence = 1): ?string
+    {
+        try {
+            $parsed = $lastNumber !== null ? $this->parse($template, $lastNumber) : null;
+            $sequence = $parsed !== null ? min($parsed['sequence'] + 1, self::MAX_SEQUENCE) : $fallbackSequence;
+
+            return $this->format($template, $sequence, $issuedOn);
+        } catch (InvalidArgumentException) {
+            return null;
+        }
+    }
+
+    // --- end M1-A ---
 
     public function format(string $template, int|string $sequence, DateTimeInterface|string $issuedOn): string
     {

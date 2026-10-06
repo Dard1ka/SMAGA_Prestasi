@@ -7,7 +7,7 @@
                 @if ($filtered)
                     <x-sth.button variant="quiet" size="sm" icon="x" wire:click="resetFilters">Hapus filter</x-sth.button>
                 @endif
-                <x-sth.button variant="soft" size="sm" icon="download" wire:click="export" wire:loading.attr="disabled" wire:target="export">Unduh CSV</x-sth.button>
+                <x-sth.button variant="soft" size="sm" icon="download" wire:click="export" wire:loading.attr="disabled" wire:target="export">Download CSV</x-sth.button>
             </span>
         </div>
         <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
@@ -18,7 +18,7 @@
             <x-sth.input wire:model.live="sampai" type="date" label="Sampai tanggal" />
             <x-sth.input type="search" wire:model.live.debounce.400ms="q" label="Nama pelaku" icon="search" placeholder="Nama atau nama pengguna" />
         </div>
-        <p class="m-0 text-sm muted">Unduhan CSV berisi baris sesuai filter (maks. 10.000) dan ikut tercatat di log ini.</p>
+        <p class="m-0 text-sm muted">Download CSV berisi baris sesuai filter (maks. 10.000) dan ikut tercatat di log ini.</p>
     </x-sth.card>
 
     @if ($entries->isEmpty())

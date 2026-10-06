@@ -19,7 +19,7 @@ final class ExternalUrl implements ValidationRule
 {
     public const MAX_LENGTH = 500;
 
-    public const MESSAGE = 'Pakai tautan lengkap yang diawali https://, tanpa alamat IP.';
+    public const MESSAGE = 'Pakai link lengkap yang diawali https://, tanpa alamat IP.';
 
     public function validate(string $attribute, mixed $value, Closure $fail): void
     {

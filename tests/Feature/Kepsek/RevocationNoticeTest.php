@@ -40,16 +40,18 @@ beforeEach(function (): void {
     F::signature();
 });
 
-function b5RevokeDraft(string $day = 'Sabtu, 7 November 2026'): LetterDraft
+/** M1-A: one draft per letter, with the complete number typed by TU. */
+function b5RevokeDraft(string $number = '400.3.8/313/MRD/X/2026', string $date = '7 November 2026'): LetterDraft
 {
     return new LetterDraft(
-        siswaSequence: 313,
-        guruSequence: 1681,
+        number: $number,
         issuedOn: CarbonImmutable::parse('2026-10-01'),
+        basisFrom: 'Panitia NSIF 2026',
         basisNumber: '017/PAN-NSIF/IX/2026',
         basisDate: CarbonImmutable::parse('2026-09-15'),
-        scheduleDay: $day,
-        scheduleTime: '07.00 WIB s.d. selesai',
+        scheduleDay: 'Sabtu',
+        scheduleDate: $date,
+        scheduleTime: '07.00 WIB s.d Selesai',
         place: 'Daring',
     );
 }
@@ -57,7 +59,8 @@ function b5RevokeDraft(string $day = 'Sabtu, 7 November 2026'): LetterDraft
 function b5IssuedLetter(object $t, bool $send): Letter
 {
     $registration = F::registration(RegistrationStatus::Disetujui, ['Raka Pradipta', 'Bima Satria Wicaksono'], $t->mentor);
-    app(IssueLetters::class)->handle($t->tu, $registration, b5RevokeDraft());
+    app(IssueLetters::class)->handle($t->tu, $registration, LetterType::Siswa, b5RevokeDraft());
+    app(IssueLetters::class)->handle($t->tu, $registration, LetterType::Guru, b5RevokeDraft('400.3.8.6/1681/2026'));
 
     if ($send) {
         app(SendLetters::class)->handle($t->tu, $registration);
@@ -69,7 +72,7 @@ function b5IssuedLetter(object $t, bool $send): Letter
 it('notifies the Kepala Sekolah of every revocation with both numbers and the reason', function (bool $sent): void {
     $old = b5IssuedLetter($this, $sent);
 
-    $new = app(RevokeLetter::class)->handle($this->tu, $old, 'Tanggal pelaksanaan salah ketik.', 320, b5RevokeDraft('Minggu, 8 November 2026'));
+    $new = app(RevokeLetter::class)->handle($this->tu, $old, 'Tanggal pelaksanaan salah ketik.', b5RevokeDraft('400.3.8/320/MRD/X/2026', '8 November 2026'));
 
     Notification::assertSentTo($this->kepsek, LetterRevokedNotice::class, function (LetterRevokedNotice $notice) use ($old, $new): bool {
         $text = implode(' ', $notice->lines());
@@ -86,14 +89,14 @@ it('notifies the Kepala Sekolah of every revocation with both numbers and the re
 it('sends nothing to the Kepala Sekolah when the revocation fails', function (): void {
     $old = b5IssuedLetter($this, true);
 
-    expect(fn () => app(RevokeLetter::class)->handle($this->tu, $old, 'x', 320, b5RevokeDraft()))->toThrow(ValidationException::class);
+    expect(fn () => app(RevokeLetter::class)->handle($this->tu, $old, 'x', b5RevokeDraft('400.3.8/320/MRD/X/2026')))->toThrow(ValidationException::class);
 
     Notification::assertNotSentTo($this->kepsek, LetterRevokedNotice::class);
 });
 
 it('shows the revoked letter with its replacement and reason in the Kepala Sekolah list', function (): void {
     $old = b5IssuedLetter($this, true);
-    $new = app(RevokeLetter::class)->handle($this->tu, $old, 'Nama anggota salah.', 320, b5RevokeDraft());
+    $new = app(RevokeLetter::class)->handle($this->tu, $old, 'Nama anggota salah.', b5RevokeDraft('400.3.8/320/MRD/X/2026'));
 
     $this->actingAs($this->kepsek);
 
@@ -112,7 +115,7 @@ it('renders the replacement PDF with the current letter template', function (): 
     app(UpdateLetterTemplate::class)->handle($this->tu, array_merge(LetterTemplate::defaults(), ['signer_title' => 'Plt. Kepala Sekolah']));
     $old = b5IssuedLetter($this, false);
 
-    $new = app(RevokeLetter::class)->handle($this->tu, $old, 'Jabatan penandatangan berubah.', 320, b5RevokeDraft());
+    $new = app(RevokeLetter::class)->handle($this->tu, $old, 'Jabatan penandatangan berubah.', b5RevokeDraft('400.3.8/320/MRD/X/2026'));
 
     expect($new->file_id)->not->toBeNull()
         ->and(LetterTemplate::current()->signerTitle())->toBe('Plt. Kepala Sekolah');

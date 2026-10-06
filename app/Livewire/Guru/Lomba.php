@@ -25,12 +25,12 @@ use Livewire\Component;
 
 /**
  * Guru · Lomba (UI-MAP §4e `guru.lomba.index`, backlog #3, owner B4). Tab "Katalog": published lomba
- * (read-only, detail drawer via `?lihat=<ulid>`); tab "Unggahan saya": lomba info this guru uploaded with
+ * (read-only, detail drawer via `?lihat=<ulid>`); tab "Upload saya": lomba info this guru uploaded with
  * W2-A1's Lomba\UsulanForm → SubmitCompetition → menunggu_verifikasi until Kesiswaan publishes or rejects
  * it (D-27). Only the guru's own uploads are listed; a lomba the guru may not view (CompetitionPolicy) → 404.
  */
 #[Title('Lomba')]
-#[Layout('layouts::app', ['subtitle' => 'Katalog lomba sekolah dan info lomba yang kamu unggah.'])]
+#[Layout('layouts::app', ['subtitle' => 'Katalog lomba sekolah dan info lomba yang kamu upload.'])]
 final class Lomba extends Component
 {
     public const STEP = 12;
@@ -80,7 +80,7 @@ final class Lomba extends Component
         $this->limit += self::STEP;
     }
 
-    /** Lomba\UsulanForm sent an upload: show it in "Unggahan saya". */
+    /** Lomba\UsulanForm sent an upload: show it in "Upload saya". */
     #[On('usulan-terkirim')]
     public function afterUpload(): void
     {

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Livewire\Kesiswaan\Lomba;
 
+use App\Actions\Competitions\CompetitionDates;
 use App\Actions\Competitions\CreateCompetition;
 use App\Actions\Competitions\UpdateCompetition;
 use App\Actions\Competitions\VerifyCompetition;
@@ -70,6 +71,12 @@ class Form extends Component
 
     public bool $removeCover = false;
 
+    /**
+     * "Tanggal lomba ini sudah lewat. Tetap publikasikan" (M2-B, Q1-04): the tick "Simpan & publikasikan"
+     * needs when the registration deadline or the final date has passed. Never needed for "Simpan".
+     */
+    public bool $confirmPast = false;
+
     public function mount(): void
     {
         $this->authorize('manage', Competition::class);
@@ -81,7 +88,7 @@ class Form extends Component
     {
         $this->authorize('manage', Competition::class);
         $this->resetErrorBag();
-        $this->reset(['juknis', 'cover', 'removeCover']);
+        $this->reset(['juknis', 'cover', 'removeCover', 'confirmPast']);
 
         if ($id === null) {
             $this->competitionId = null;
@@ -136,7 +143,9 @@ class Form extends Component
             $competition = $this->competition($this->competitionId);
             $this->authorize('verify', $competition);
             $update->handle($this->actor(), $competition, $this->form, $this->juknis, $this->cover, $this->removeCover);
-            $verify->handle($this->actor(), $competition->refresh(), CompetitionStatus::Dipublikasikan);
+            // Without the tick VerifyCompetition refuses past dates under CompetitionDates::PAST_KEY; the
+            // data above is saved either way, as with missing fields.
+            $verify->handle($this->actor(), $competition->refresh(), CompetitionStatus::Dipublikasikan, null, $this->confirmPast);
         } catch (ValidationException $e) {
             $this->mapErrors($e);
             $this->reset(['juknis', 'cover']);
@@ -160,6 +169,10 @@ class Form extends Component
             'competition' => $competition,
             'submitterName' => $competition?->submitter?->name,
             'juknisUrl' => $competition?->juknisFile !== null && Route::has('files.show') ? route('files.show', $competition->juknisFile) : null,
+            // Only publishing asks about past dates, so only the "Periksa lomba" drawer shows the tick.
+            'pastDates' => $this->formMode === 'verify'
+                ? array_values(CompetitionDates::past($this->form['registration_closes_at'] ?? null, $this->form['final_on'] ?? null))
+                : [],
             'rumus' => $this->rumus($calculator, $formatter),
             'options' => [
                 'bidang' => collect(Bidang::cases())->mapWithKeys(fn (Bidang $b): array => [$b->value => ['label' => $b->label(), 'icon' => $b->cssKey()]])->all(),
@@ -228,6 +241,13 @@ class Form extends Component
         $this->resetErrorBag();
 
         foreach ($e->errors() as $key => $messages) {
+            // The question about past dates lands on its tick box (the view draws it and lists the dates).
+            if ($key === CompetitionDates::PAST_KEY) {
+                $this->addError('confirmPast', 'Centang dulu kalau lomba ini tetap dipublikasikan.');
+
+                continue;
+            }
+
             $this->addError(in_array($key, self::FIELDS, true) ? 'form.'.$key : $key, (string) ($messages[0] ?? 'Periksa isian ini.'));
         }
 
@@ -238,7 +258,7 @@ class Form extends Component
 
     private function finish(string $message): void
     {
-        $this->reset(['juknis', 'cover', 'removeCover']);
+        $this->reset(['juknis', 'cover', 'removeCover', 'confirmPast']);
         $this->dispatch('sth-modal-close', id: self::DIALOG);
         $this->dispatch('lomba-saved');
         $this->dispatch('sth-toast', message: $message, tone: 'success');

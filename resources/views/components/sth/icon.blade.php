@@ -7,7 +7,7 @@
 
     Props
     - name   spec set: home search clipboard award bars user users help trophy inbox shield check-circle
-             chart-pie database mail folder file megaphone calendar pin upload download archive sliders
+             chart-pie database mail folder file megaphone calendar pin upload download archive sliders recycle
              bell plus check x chevron-right chevron-left chevron-down clock info link image eye edit trash
              bidang: sains (flask) · riset (bulb) · seni / seni_budaya (palette) · olahraga (ball)
              extra: eye-off menu logout arrow-right arrow-left alert external send lock filter dots
@@ -187,6 +187,9 @@
             @break
         @case('dots')
             <path d="M5 12h.01M12 12h.01M19 12h.01"></path>
+            @break
+        @case('recycle')
+            <path d="M7 19H4.8a1.8 1.8 0 0 1-1.6-2.7l4-6.8"></path><path d="M11 19h8.2a1.8 1.8 0 0 0 1.6-2.7l-1.3-2.1"></path><path d="m14 16-3 3 3 3"></path><path d="M8.3 13.6 7.2 9.5l-4.1 1.1"></path><path d="m9.3 5.8 1.1-1.9a1.8 1.8 0 0 1 3.1 0l4 6.8"></path><path d="m13.4 9.6 4.1 1.1 1.1-4.1"></path>
             @break
         @default
             @if (config('app.debug'))

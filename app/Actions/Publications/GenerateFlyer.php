@@ -16,7 +16,7 @@ use Illuminate\Validation\ValidationException;
 use Throwable;
 
 /**
- * Humas "Unduh PNG": renders the e-flyer (FlyerRenderer, 1080×1350) and stores it on the PRIVATE `local`
+ * Humas "Download PNG": renders the e-flyer (FlyerRenderer, 1080×1350) and stores it on the PRIVATE `local`
  * disk under flyer/<Y>/<m>/<ulid>.png with a `files` row (purpose flyer, owner = actor). The previous
  * flyer of the publication (row + stored file) is replaced. Never written to the public disk; downloads go
  * through the policy-checked `files.show` or straight back to the Humas user. Audited.

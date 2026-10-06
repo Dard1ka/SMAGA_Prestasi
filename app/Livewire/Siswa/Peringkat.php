@@ -6,6 +6,7 @@ namespace App\Livewire\Siswa;
 
 use App\Domain\Archive\SchoolYear;
 use App\Domain\Leaderboard\Ranker;
+use App\Domain\Leaderboard\RankingScope;
 use App\Domain\Points\PointFormatter;
 use App\Enums\Bidang;
 use App\Enums\UserStatus;
@@ -24,9 +25,9 @@ use Livewire\Component;
 /**
  * Siswa · Peringkat (UI-MAP §3 sidebar "Peringkat", backlog #2, owner B4). The cumulative ranking of the
  * public page — PublicAchievements::ranking(), so the same consent rules apply: other students' names only
- * with publish consent — restricted to ACTIVE students (no alumni toggle), so the "Kamu" row carries the
- * same rank as Beranda, Portofolio and the public student page (PersonalRank, D-37). Modes siswa/kelas,
- * filters bidang and angkatan.
+ * with publish consent — restricted to ACTIVE students (RankingScope::Active, no alumni choice here), so the
+ * "Kamu" row carries the same rank as Beranda, Portofolio and the public student page (PersonalRank, D-37).
+ * Modes siswa/kelas, filters bidang and angkatan (only the years of active students are offered).
  *
  * The student's own row is found without exposing anyone's id: by the random public slug when the student
  * consented, otherwise by rank + points + count + the anonymous label (rows that match all of these are
@@ -103,7 +104,7 @@ final class Peringkat extends Component
         $angkatan = $this->angkatan !== '' ? (int) $this->angkatan : null;
         $isSiswa = $this->mode === 'siswa';
 
-        $rows = $data->ranking($this->mode, $bidang, $angkatan, false);
+        $rows = $data->ranking($this->mode, $bidang, $angkatan, RankingScope::Active);
         $meIndex = $isSiswa
             ? $this->ownRowIndex($rows, $student, $bidang, $angkatan)
             : $this->ownClassIndex($rows, $student);
@@ -129,8 +130,8 @@ final class Peringkat extends Component
             ],
             'kelas' => $student->classroom?->name,
             'bidangOptions' => Bidang::options(),
-            'angkatanOptions' => $data->angkatanOptions(),
-            'publicUrl' => route('public.peringkat', ['alumni' => 1]),
+            'angkatanOptions' => $data->angkatanOptions(RankingScope::Active, $this->mode),
+            'publicUrl' => route('public.peringkat', ['status' => RankingScope::Alumni->value]),
         ]);
     }
 
@@ -262,6 +263,7 @@ final class Peringkat extends Component
             $rows[$meIndex]['name'] = (string) $student->user?->name;
             $rows[$meIndex]['named'] = true;
             $rows[$meIndex]['kelas'] = $student->classroom?->name;
+            $rows[$meIndex]['kelas_label'] = $student->classroom?->name;
         }
 
         return $rows;
@@ -290,7 +292,7 @@ final class Peringkat extends Component
             $this->bidang = '';
         }
 
-        if ($this->angkatan !== '' && ! array_key_exists($this->angkatan, app(PublicAchievements::class)->angkatanOptions())) {
+        if ($this->angkatan !== '' && ! array_key_exists($this->angkatan, app(PublicAchievements::class)->angkatanOptions(RankingScope::Active, $this->mode))) {
             $this->angkatan = '';
         }
 

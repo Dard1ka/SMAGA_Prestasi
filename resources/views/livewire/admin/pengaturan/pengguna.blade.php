@@ -144,7 +144,7 @@
                         <p class="text-sm muted">Ubah sesuai formulir izin orang tua. Tanpa izin publikasi, halaman publik hanya menulis "Siswa kelas …".</p>
                     </div>
                     <x-sth.checkbox wire:model="photoConsent" label="Foto boleh dipakai di publikasi" />
-                    <x-sth.checkbox wire:model="publishConsent" label="Nama dan prestasi boleh tampil di halaman publik" hint="Jika dicabut, tautan halaman publik siswa diganti." />
+                    <x-sth.checkbox wire:model="publishConsent" label="Nama dan prestasi boleh tampil di halaman publik" hint="Jika dicabut, link halaman publik siswa diganti." />
                     <x-sth.textarea wire:model="consentNote" label="Dasar perubahan" rows="2" hint="Contoh: formulir izin orang tua 1 Okt 2026." />
                     <span class="flex justify-end">
                         <x-sth.button type="submit" variant="soft" size="sm" wire:loading.attr="disabled" wire:target="saveConsent">Simpan persetujuan</x-sth.button>
@@ -155,7 +155,7 @@
     </x-sth.card>
 
     {{-- Dialogs ----------------------------------------------------------------------------------- --}}
-    <x-sth.modal id="staf-baru" title="Tambah pengguna" description="Akun staf baru. Pemilik mengganti kata sandi, menghubungkan email, dan memasang 2FA saat login pertama." variant="drawer">
+    <x-sth.modal id="staf-baru" title="Tambah pengguna" description="Akun staf baru. Saat login pertama pemilik menghubungkan email, lalu wajib mengganti kata sandi sementara dan memasang 2FA." variant="drawer">
         <form id="staf-baru-form" wire:submit="createStaff" class="flex flex-col gap-4" novalidate>
             <x-sth.input wire:model="new.name" label="Nama lengkap" autocomplete="off" />
             <div class="grid gap-4 sm:grid-cols-2">
@@ -225,7 +225,7 @@
                               hint="Akun Admin tidak bisa dipilih: Admin dan Kepala Sekolah akun terpisah." />
             @endif
             <x-sth.textarea wire:model="principalReason" label="Alasan" rows="2" hint="Contoh: SK pengangkatan Kepala Sekolah baru." />
-            <p class="text-sm muted">Tanda tangan lama dilepas saat penggantian berlaku. Unggah tanda tangan Kepala Sekolah baru di tab Surat & tanda tangan.</p>
+            <p class="text-sm muted">Tanda tangan lama dilepas saat penggantian berlaku. Upload tanda tangan Kepala Sekolah baru di tab Surat & tanda tangan.</p>
         </form>
         <x-slot:footer>
             <x-sth.button variant="quiet" data-sth-close>Batal</x-sth.button>
@@ -260,7 +260,7 @@
                 <p class="m-0 rounded-tile border border-line bg-subtle px-4 py-3 text-center font-mono text-2xl font-bold tracking-[0.12em] select-all">{{ $issuedPassword }}</p>
                 <ul class="m-0 flex list-disc flex-col gap-1 pl-5 text-[13.5px] text-ink-2">
                     <li>Berlaku 72 jam. Setelah itu siswa perlu reset lagi.</li>
-                    <li>Siswa masuk dengan NIS/NISN dan kata sandi ini, lalu wajib menggantinya dan menghubungkan email.</li>
+                    <li>Siswa masuk dengan NIS/NISN dan kata sandi ini, menghubungkan email, lalu wajib membuat kata sandi baru. Kata sandi ini tidak bisa dipakai terus.</li>
                     <li>Huruf besar dan kecil dibedakan.</li>
                 </ul>
             </div>

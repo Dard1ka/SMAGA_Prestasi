@@ -43,7 +43,8 @@
             @endforeach
 
             <x-sth.card as="section" aria-labelledby="h-template-nomor" class="flex flex-col gap-2">
-                <h3 id="h-template-nomor" class="title-card">Format nomor surat</h3>
+                <h3 id="h-template-nomor" class="title-card">Contoh nomor surat</h3>
+                <p class="m-0 text-sm muted">Nomor surat diketik lengkap saat membuat surat. Format ini hanya jadi contoh di bawah kolom nomor.</p>
                 @foreach ($formats as $label => $format)
                     <p class="m-0 text-sm"><span class="font-semibold">{{ $label }}:</span> <code class="num">{{ $format }}</code></p>
                 @endforeach
@@ -82,7 +83,7 @@
 
     <section aria-labelledby="h-template-pratinjau" class="flex min-w-0 flex-col gap-3 xl:sticky xl:top-6">
         <div class="flex flex-wrap items-center justify-between gap-3">
-            <h2 id="h-template-pratinjau" class="title-card">Pratinjau</h2>
+            <h2 id="h-template-pratinjau" class="title-card">Preview</h2>
             <div class="seg" role="group" aria-label="Pilih surat">
                 <button type="button" class="seg-btn" wire:click="showPreview('siswa')" aria-pressed="{{ $preview === 'siswa' ? 'true' : 'false' }}">Surat siswa</button>
                 <button type="button" class="seg-btn" wire:click="showPreview('guru')" aria-pressed="{{ $preview === 'guru' ? 'true' : 'false' }}">Surat guru</button>

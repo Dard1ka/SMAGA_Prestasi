@@ -25,6 +25,7 @@ use App\Models\Student;
 use App\Models\User;
 use App\Notifications\Accounts\AccountAlert;
 use App\Notifications\Accounts\EmailBindingNotice;
+use Carbon\CarbonImmutable;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Notifications\AnonymousNotifiable;
@@ -130,6 +131,37 @@ it('ignores the window once the student chose an own password', function (): voi
     $this->assertAuthenticatedAs(b1User($active));
 });
 
+// M1-B: the email comes first now, so an account can have a bound email while its password step is still open.
+it('keeps the window and the failed-login count running while only the email is bound', function (): void {
+    $student = H::pendingStudent();
+    $student->user->forceFill(['email' => 'nadia.anindya@example.test', 'email_verified_at' => now()])->saveQuietly();
+
+    b1Login(H::NIS, 'tebakan-salah-1')->assertSessionHasErrors(['identifier' => AuthenticateUser::GENERIC_ERROR]);
+    expect(AccountControls::failedAttempts(b1User($student)))->toBe(1);
+
+    b1Expire($student->user);
+
+    b1Login(H::NIS)->assertSessionHasErrors(['identifier' => AuthenticateUser::GENERIC_ERROR]);
+    $this->assertGuest();
+});
+
+it('ends the window once the student kept the password at the last activation step', function (): void {
+    $student = H::pendingStudent();
+    $user = b1User($student);
+    $user->forceFill([
+        'email' => 'nadia.anindya@example.test',
+        'email_verified_at' => now(),
+        'initial_password_expires_at' => now()->addDay(),
+    ])->saveQuietly();
+
+    app(CompleteActivation::class)->keepPassword($user);
+
+    $this->travel(30)->days();
+
+    b1Login(H::NIS)->assertRedirect(route('home'));
+    $this->assertAuthenticatedAs(b1User($student));
+});
+
 it('lets only Admin change the window length (1–30 days), audited', function (): void {
     app(UpdateActivationWindow::class)->handle($this->admin, 10);
 
@@ -160,14 +192,113 @@ it('reopens an expired window for 72 hours (Kesiswaan), audited, and the student
 it('refuses reopen without a reason, for active accounts, staff, or roles without student.import', function (): void {
     $pending = H::pendingStudent();
     $tu = A::staff(RoleName::TataUsaha);
+    $reason = 'Siswa sakit saat aktivasi kelas.';
 
-    expect(fn () => app(ReopenActivationWindow::class)->handle($this->kesiswaan, $pending->user, '  '))->toThrow(ValidationException::class)
-        ->and(fn () => app(ReopenActivationWindow::class)->handle($tu, $pending->user, 'Alasan'))->toThrow(AuthorizationException::class)
-        ->and(fn () => app(ReopenActivationWindow::class)->handle($this->kesiswaan, A::staff(RoleName::Guru), 'Alasan'))->toThrow(ValidationException::class);
+    expect(fn () => app(ReopenActivationWindow::class)->handle($this->kesiswaan, $pending->user, '  '))->toThrow(ValidationException::class, 'Isi alasannya.')
+        ->and(fn () => app(ReopenActivationWindow::class)->handle($tu, $pending->user, $reason))->toThrow(AuthorizationException::class)
+        ->and(fn () => app(ReopenActivationWindow::class)->handle($this->kesiswaan, A::staff(RoleName::Guru), $reason))->toThrow(ValidationException::class, 'Akun ini bukan akun siswa.');
 
     $pending->user->forceFill(['status' => UserStatus::Active, 'must_change_password' => false])->saveQuietly();
 
-    expect(fn () => app(ReopenActivationWindow::class)->handle($this->kesiswaan, $pending->user, 'Alasan'))->toThrow(ValidationException::class);
+    expect(fn () => app(ReopenActivationWindow::class)->handle($this->kesiswaan, $pending->user, $reason))->toThrow(ValidationException::class, 'Akun ini sudah aktif, tidak perlu dibuka ulang.');
+});
+
+// M2-B (QA 2026-10-05, Q2-09): a reopen never shortens a deadline, and "ab" is not a reason.
+
+it('needs a reason of at least 10 characters to reopen', function (string $reason): void {
+    $student = H::pendingStudent();
+    b1Expire($student->user);
+
+    expect(fn () => app(ReopenActivationWindow::class)->handle($this->kesiswaan, $student->user, $reason))
+        ->toThrow(ValidationException::class, 'Alasan minimal 10 karakter.');
+
+    expect(AccountControls::initialPasswordExpired(b1User($student)))->toBeTrue()
+        ->and(Activity::query()->where('event', 'account.activation_reopened')->exists())->toBeFalse();
+})->with([
+    'two letters' => ['ab'],
+    'nine letters' => ['sembilan9'],
+    'padded with spaces' => ["   ab       \n  "],
+]);
+
+it('refuses to reopen a window that still runs longer than 72 hours and leaves the deadline alone', function (): void {
+    $this->travelTo(now()->startOfSecond());
+    $student = H::pendingStudent();
+    $deadline = now()->addDays(10);
+    $student->user->forceFill(['initial_password_expires_at' => $deadline])->saveQuietly();
+
+    expect(fn () => app(ReopenActivationWindow::class)->handle($this->kesiswaan, $student->user, 'Siswa minta waktu tambahan.'))
+        ->toThrow(ValidationException::class, 'Belum perlu dibuka ulang.');
+
+    expect(AccountControls::date(b1User($student), 'initial_password_expires_at')->equalTo($deadline))->toBeTrue()
+        ->and(Activity::query()->where('event', 'account.activation_reopened')->exists())->toBeFalse()
+        ->and(ReopenActivationWindow::notNeededMessage(b1User($student)))->toContain('Batas aktivasi siswa ini masih sampai');
+});
+
+it('moves a deadline with less than 72 hours left to now + 72 hours, never earlier', function (): void {
+    $this->travelTo(now()->startOfSecond());
+    $student = H::pendingStudent();
+    $deadline = now()->addHours(5);
+    $student->user->forceFill(['initial_password_expires_at' => $deadline])->saveQuietly();
+
+    $until = app(ReopenActivationWindow::class)->handle($this->kesiswaan, $student->user, 'Siswa izin sampai Kamis.');
+
+    $log = Activity::query()->where('event', 'account.activation_reopened')->sole();
+
+    expect($until->equalTo(now()->addHours(72)))->toBeTrue()
+        ->and(AccountControls::date(b1User($student), 'initial_password_expires_at')->equalTo($until))->toBeTrue()
+        ->and($until->greaterThan($deadline))->toBeTrue()
+        ->and(CarbonImmutable::parse($log->properties['previous_expires_at'])->equalTo($deadline))->toBeTrue()
+        ->and(CarbonImmutable::parse($log->properties['expires_at'])->equalTo($until))->toBeTrue();
+});
+
+it('lifts a failed-login freeze without shortening a deadline that runs longer than 72 hours', function (): void {
+    $this->travelTo(now()->startOfSecond());
+    $student = H::pendingStudent();
+    $deadline = now()->addDays(9);
+    $student->user->forceFill([
+        'initial_password_expires_at' => $deadline,
+        'frozen_at' => now(), 'frozen_reason' => AccountControls::FROZEN_FAILED_ATTEMPTS, 'failed_activation_attempts' => 10,
+    ])->saveQuietly();
+
+    $until = app(ReopenActivationWindow::class)->handle($this->kesiswaan, $student->user, 'Sudah dicek wali kelas.');
+
+    $user = b1User($student);
+    expect($until->equalTo($deadline))->toBeTrue()
+        ->and(AccountControls::isFrozen($user))->toBeFalse()
+        ->and(AccountControls::failedAttempts($user))->toBe(0)
+        ->and(AccountControls::date($user, 'initial_password_expires_at')->equalTo($deadline))->toBeTrue()
+        ->and(Activity::query()->where('event', 'account.activation_reopened')->sole()->properties['unfrozen'])->toBe(AccountControls::FROZEN_FAILED_ATTEMPTS);
+});
+
+it('leaves a "Bukan saya" freeze of a pending student to the Admin, whatever the deadline is', function (): void {
+    $student = H::pendingStudent();
+    $student->user->forceFill([
+        'initial_password_expires_at' => now()->subDay(),
+        'frozen_at' => now(), 'frozen_reason' => AccountControls::FROZEN_NOT_ME,
+    ])->saveQuietly();
+
+    expect(fn () => app(ReopenActivationWindow::class)->handle($this->kesiswaan, $student->user, 'Siswa datang ke ruang Kesiswaan.'))
+        ->toThrow(ValidationException::class, 'Hanya Admin yang bisa membukanya.');
+
+    expect(AccountControls::isFrozen(b1User($student)))->toBeTrue()
+        ->and(Activity::query()->where('event', 'account.activation_reopened')->exists())->toBeFalse();
+});
+
+it('computes the reopened deadline as the later one and knows when a reopen changes nothing', function (): void {
+    $now = CarbonImmutable::parse('2026-10-05 08:15:00');
+    $reopened = $now->addHours(72);
+
+    expect(ReopenActivationWindow::deadlineAfter(null, $now)->equalTo($reopened))->toBeTrue()
+        ->and(ReopenActivationWindow::deadlineAfter($now->subDay(), $now)->equalTo($reopened))->toBeTrue()
+        ->and(ReopenActivationWindow::deadlineAfter($now->addHours(71), $now)->equalTo($reopened))->toBeTrue()
+        // The QA case: a deadline on 15 Oct stays 15 Oct, it does not become 8 Oct.
+        ->and(ReopenActivationWindow::deadlineAfter($now->addDays(10), $now)->equalTo($now->addDays(10)))->toBeTrue()
+        ->and(ReopenActivationWindow::wouldChange($now->subDay(), false, $now))->toBeTrue()
+        ->and(ReopenActivationWindow::wouldChange($now->addHours(71), false, $now))->toBeTrue()
+        ->and(ReopenActivationWindow::wouldChange($now->addHours(72), false, $now))->toBeFalse()
+        ->and(ReopenActivationWindow::wouldChange($now->addDays(10), false, $now))->toBeFalse()
+        ->and(ReopenActivationWindow::wouldChange($now->addDays(10), true, $now))->toBeTrue()
+        ->and(ReopenActivationWindow::wouldChange(null, false, $now))->toBeFalse();
 });
 
 // K3 ---------------------------------------------------------------------------------------------
@@ -235,10 +366,11 @@ it('logs a frozen account out of a running session', function (): void {
 
 // K8 ---------------------------------------------------------------------------------------------
 
-it('sends the bound address a notice with a single-use "Bukan saya?" link when activation completes', function (): void {
+// M1-B: the email is bound at step 2 of the activation (the notice goes out then); the account becomes active at
+// step 3, when the student changes or keeps the password.
+it('sends the bound address a notice with a single-use "Bukan saya?" link when the email is bound, before the password step', function (): void {
     $student = H::pendingStudent();
     $user = b1User($student);
-    $user->forceFill(['must_change_password' => false])->saveQuietly();
 
     $otp = new OtpCode;
     $otp->forceFill([
@@ -246,12 +378,21 @@ it('sends the bound address a notice with a single-use "Bukan saya?" link when a
         'code_hash' => str_repeat('a', 64), 'expires_at' => now()->addMinutes(5),
     ])->save();
 
-    app(CompleteActivation::class)->handle($user, $otp);
+    app(CompleteActivation::class)->bindEmail($user, $otp);
+
+    $user = b1User($student);
+    expect($user->status)->toBe(UserStatus::PendingActivation)
+        ->and($user->email)->toBe('nadia.anindya@example.test')
+        ->and(AccountControls::date($user, 'activated_at'))->toBeNull()
+        ->and(DB::table('email_notices')->where('user_id', $user->getKey())->where('kind', 'bound')->count())->toBe(1);
+
+    app(CompleteActivation::class)->keepPassword($user);
 
     $user = b1User($student);
     expect($user->status)->toBe(UserStatus::Active)
         ->and(AccountControls::date($user, 'activated_at'))->not->toBeNull()
-        ->and(DB::table('email_notices')->where('user_id', $user->getKey())->where('kind', 'bound')->count())->toBe(1);
+        // One notice for the binding; closing the activation sends no second one.
+        ->and(DB::table('email_notices')->where('user_id', $user->getKey())->count())->toBe(1);
 
     Notification::assertSentOnDemand(EmailBindingNotice::class, function (EmailBindingNotice $n, array $channels, AnonymousNotifiable $to): bool {
         return $n->kind === EmailBindingNotice::BOUND
@@ -299,7 +440,7 @@ it('freezes the account from the "Bukan saya?" page: GET changes nothing, the bu
     b1Login(H::NIS)->assertSessionHasErrors(['identifier' => AuthenticateUser::GENERIC_ERROR]);
 
     // Kesiswaan cannot lift a "Bukan saya" freeze; Admin can, with a reason.
-    expect(fn () => app(ReopenActivationWindow::class)->handle($this->kesiswaan, $user, 'Alasan'))->toThrow(ValidationException::class)
+    expect(fn () => app(ReopenActivationWindow::class)->handle($this->kesiswaan, $user, 'Siswa datang ke ruang Kesiswaan.'))->toThrow(ValidationException::class)
         ->and(fn () => app(UnfreezeAccount::class)->handle($this->kesiswaan, $user, 'Alasan'))->toThrow(AuthorizationException::class);
 
     app(UnfreezeAccount::class)->handle($this->admin, $user, 'Pemilik datang dengan kartu pelajar.');

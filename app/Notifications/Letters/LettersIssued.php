@@ -40,7 +40,7 @@ class LettersIssued extends RegistrationNotification
             $mail->line('Bawa surat ini saat lomba. Keasliannya bisa dicek lewat kode QR di surat.');
         }
 
-        return $mail->action('Unduh surat', $this->url())->salutation('SMAGA Talent Hub');
+        return $mail->action('Download surat', $this->url())->salutation('SMAGA Talent Hub');
     }
 
     /** @return array<string, mixed> */

@@ -60,7 +60,8 @@ class TwoFactorSetup extends Component
             throw ValidationException::withMessages(['code' => 'Kode salah. Coba kode terbaru dari aplikasi.']);
         }
 
-        session()->regenerate();
+        // New session id once 2FA is on; the old row is deleted (a wrong code above never gets here).
+        session()->regenerate(true);
 
         // Audit row `two_factor.confirmed`: App\Support\Audit\TwoFactorAuditSubscriber (Fortify's event).
 

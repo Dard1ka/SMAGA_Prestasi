@@ -50,7 +50,7 @@
             </div>
             @if ($canExport)
                 <x-sth.button variant="quiet" size="sm" icon="download" wire:click="export" wire:loading.attr="disabled" wire:target="export"
-                              :disabled="$page->total() === 0">Unduh Excel</x-sth.button>
+                              :disabled="$page->total() === 0">Download Excel</x-sth.button>
             @endif
         </div>
 

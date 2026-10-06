@@ -66,7 +66,7 @@
                     @forelse ($detail['files'] as $file)
                         <div class="flex flex-wrap items-center gap-3 rounded-tile border border-line p-3">
                             @if ($file['preview'])
-                                <img src="{{ $file['preview'] }}" alt="Pratinjau {{ $file['kind'] }}" loading="lazy" class="size-16 rounded-control border border-line object-cover">
+                                <img src="{{ $file['preview'] }}" alt="Preview {{ $file['kind'] }}" loading="lazy" class="size-16 rounded-control border border-line object-cover">
                             @else
                                 <span class="inline-flex size-11 items-center justify-center rounded-tile bg-primary-tint text-primary"><x-sth.icon name="file" /></span>
                             @endif

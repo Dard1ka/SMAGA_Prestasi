@@ -4,6 +4,9 @@
         <div class="min-w-0">
             <h3 id="event-{{ $event['id'] }}-judul" class="m-0 text-base leading-snug font-bold">{{ $event['name'] }}</h3>
             <p class="m-0 text-[13px] text-muted">{{ $event['date'] }} · <span class="num">{{ $event['count'] }}</span> prestasi</p>
+            @if ($event['completedNote'])
+                <p class="m-0 text-[12.5px] text-muted">{{ $event['completedNote'] }}</p>
+            @endif
         </div>
         <x-sth.chip :tone="$event['chip'][0]" size="sm">{{ $event['chip'][1] }}</x-sth.chip>
     </div>
@@ -21,6 +24,9 @@
                             <x-sth.chip tone="orange" size="sm">Izin dicabut</x-sth.chip>
                         @endif
                         <x-sth.chip :tone="$row['status'][0]" size="sm">{{ $row['status'][1] }}</x-sth.chip>
+                        @if ($row['canRelease'])
+                            <x-sth.button variant="quiet" size="sm" aria-haspopup="dialog" wire:click="confirmRelease('{{ $row['id'] }}')">Lepas dari acara<span class="sr-only">: {{ $row['student'] }}, {{ $row['headline'] }}</span></x-sth.button>
+                        @endif
                     </div>
                 </li>
             @endforeach
@@ -32,23 +38,33 @@
     @if ($event['adding'])
         <form wire:submit="addAchievement" class="flex flex-col gap-2 border-t border-line pt-3" novalidate>
             @if ($achievementOptions !== [])
-                <x-sth.select wire:model="achievementId" label="Prestasi" placeholder="Pilih prestasi terverifikasi" :options="$achievementOptions" hint="Hanya prestasi siswa yang punya izin publikasi." />
+                <x-sth.select wire:model="achievementId" label="Prestasi" placeholder="Pilih prestasi terverifikasi" :options="$achievementOptions" hint="Hanya prestasi siswa yang punya izin publikasi dan belum masuk acara mana pun." />
                 <div class="flex flex-wrap gap-2">
                     <x-sth.button type="submit" size="sm" wire:loading.attr="disabled" wire:target="addAchievement">Masukkan</x-sth.button>
                     <x-sth.button variant="quiet" size="sm" wire:click="cancelAdding">Batal</x-sth.button>
                 </div>
             @else
-                <p class="m-0 text-[13px] text-muted">Tidak ada prestasi lain yang bisa dimasukkan.</p>
+                <p class="m-0 text-[13px] text-muted">Tidak ada prestasi lain yang bisa dimasukkan. Prestasi yang sudah dijadwalkan di acara lain perlu dilepas dulu dari acara itu.</p>
                 <div><x-sth.button variant="quiet" size="sm" wire:click="cancelAdding">Tutup</x-sth.button></div>
             @endif
         </form>
-    @elseif ($event['canAdd'] || $event['canComplete'])
-        <div class="flex flex-wrap gap-2">
-            @if ($event['canAdd'])
-                <x-sth.button variant="soft" size="sm" icon="plus" wire:click="startAdding('{{ $event['id'] }}')">Tambah prestasi</x-sth.button>
+    @elseif ($event['canAdd'] || $event['canComplete'] || $event['canDelete'] || $event['completeNote'])
+        <div class="flex flex-col gap-2 border-t border-line pt-3">
+            @if ($event['canAdd'] || $event['canComplete'] || $event['canDelete'])
+                <div class="flex flex-wrap gap-2">
+                    @if ($event['canAdd'])
+                        <x-sth.button variant="soft" size="sm" icon="plus" wire:click="startAdding('{{ $event['id'] }}')">Tambah prestasi</x-sth.button>
+                    @endif
+                    @if ($event['canComplete'])
+                        <x-sth.button variant="soft" size="sm" icon="check" aria-haspopup="dialog" wire:click="confirmComplete('{{ $event['id'] }}')">Tandai sudah dilaksanakan</x-sth.button>
+                    @endif
+                    @if ($event['canDelete'])
+                        <x-sth.button variant="quiet" size="sm" icon="trash" aria-haspopup="dialog" wire:click="confirmDelete('{{ $event['id'] }}')">Hapus acara</x-sth.button>
+                    @endif
+                </div>
             @endif
-            @if ($event['canComplete'])
-                <x-sth.button variant="quiet" size="sm" icon="check" wire:click="complete('{{ $event['id'] }}')" wire:confirm="Tandai semua apresiasi di acara ini selesai?">Tandai selesai</x-sth.button>
+            @if ($event['completeNote'])
+                <p class="m-0 text-[12.5px] text-muted">{{ $event['completeNote'] }}</p>
             @endif
         </div>
     @endif

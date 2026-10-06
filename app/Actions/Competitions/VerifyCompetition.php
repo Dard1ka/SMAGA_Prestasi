@@ -21,9 +21,17 @@ use Illuminate\Validation\ValidationException;
  * note required). Publishing needs the fields that drive points and deadlines (a siswa usulan may lack
  * them; Kesiswaan fills them with UpdateCompetition first). Verifier + time are stored and audited; the
  * submitter is notified (queued) unless they decided themselves. UI-MAP's RejectCompetition = Ditolak here.
+ *
+ * M2-B (QA 2026-10-05): a rejection note has at least MIN_REJECT_NOTE characters (Q1-18: "ab" was mailed to
+ * the student). Publishing refuses "Tanggal mulai" before "Batas daftar", and a lomba whose registration
+ * deadline or final date has already passed is published only with `$confirmPastDates` (Q1-04: old lomba are
+ * entered for the record, so the answer is a question, not a ban). The refusal carries the key
+ * CompetitionDates::PAST_KEY; the confirmation is audited (`past_dates`).
  */
 final class VerifyCompetition
 {
+    public const MIN_REJECT_NOTE = 10;
+
     /** Field → label for the "Lengkapi dulu" message (order = form order). */
     public const REQUIRED_TO_PUBLISH = [
         'name' => 'Nama lomba',
@@ -41,8 +49,13 @@ final class VerifyCompetition
         'participation' => 'Peserta',
     ];
 
-    public function handle(User $actor, Competition $competition, CompetitionStatus $decision, ?string $note = null): Competition
-    {
+    public function handle(
+        User $actor,
+        Competition $competition,
+        CompetitionStatus $decision,
+        ?string $note = null,
+        bool $confirmPastDates = false,
+    ): Competition {
         Gate::forUser($actor)->authorize('verify', $competition);
 
         if (! in_array($decision, [CompetitionStatus::Dipublikasikan, CompetitionStatus::Ditolak], true)) {
@@ -55,13 +68,19 @@ final class VerifyCompetition
             throw ValidationException::withMessages(['note' => 'Tulis alasan penolakan.']);
         }
 
-        $result = DB::transaction(function () use ($actor, $competition, $decision, $note): Competition {
+        if ($decision === CompetitionStatus::Ditolak && mb_strlen((string) $note) < self::MIN_REJECT_NOTE) {
+            throw ValidationException::withMessages(['note' => 'Alasan penolakan minimal '.self::MIN_REJECT_NOTE.' karakter.']);
+        }
+
+        $result = DB::transaction(function () use ($actor, $competition, $decision, $note, $confirmPastDates): Competition {
             /** @var Competition $locked */
             $locked = Competition::query()->whereKey($competition->getKey())->lockForUpdate()->firstOrFail();
 
             if ($locked->status !== CompetitionStatus::MenungguVerifikasi) {
                 throw ValidationException::withMessages(['decision' => 'Lomba ini sudah diputuskan.']);
             }
+
+            $pastDates = [];
 
             if ($decision === CompetitionStatus::Dipublikasikan) {
                 $missing = self::missingFields($locked);
@@ -72,6 +91,17 @@ final class VerifyCompetition
                         'decision',
                         'Lengkapi dulu: '.implode(', ', $missing).'.',
                     ));
+                }
+
+                // Entries queued before the rule existed can still carry this order.
+                if (CompetitionDates::startsBeforeDeadline($locked->starts_on, $locked->registration_closes_at)) {
+                    throw ValidationException::withMessages(['starts_on' => CompetitionDates::STARTS_BEFORE_DEADLINE]);
+                }
+
+                $pastDates = CompetitionDates::past($locked->registration_closes_at, $locked->final_on);
+
+                if ($pastDates !== [] && ! $confirmPastDates) {
+                    throw ValidationException::withMessages([CompetitionDates::PAST_KEY => CompetitionDates::pastMessage($pastDates)]);
                 }
             }
 
@@ -92,6 +122,8 @@ final class VerifyCompetition
                     'weight_category' => $locked->weight_category?->value,
                     'event_status' => $locked->event_status?->value,
                     'note' => $note,
+                    // Published although these dates had passed: the verifier confirmed it (empty = no question asked).
+                    'past_dates' => array_keys($pastDates),
                 ])
                 ->log($decision === CompetitionStatus::Dipublikasikan ? 'competition.published' : 'competition.rejected');
 

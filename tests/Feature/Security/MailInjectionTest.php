@@ -153,7 +153,7 @@ it('still renders the greeting, the lines, the action button and the fallback li
         ->and($html)->toMatch('~<a href="'.preg_quote(e($url), '~').'" class="button button-primary"[^>]*>Buka antrean</a>~')
         ->and($html)->toMatch('~<span class="break-all"[^>]*><a href="'.preg_quote(e($url), '~').'"~')
         ->and(substr_count($html, '<p'))->toBeGreaterThanOrEqual(4)
-        ->and(mailInjectionVisible($html))->toContain('Nadia Putri Anindya mengusulkan '.$name.'. Periksa penyelenggara dan tautannya sebelum dipublikasikan.')
+        ->and(mailInjectionVisible($html))->toContain('Nadia Putri Anindya mengusulkan '.$name.'. Periksa penyelenggara dan link-nya sebelum dipublikasikan.')
         ->and(mailInjectionVisible($html))->toContain('SMAGA Talent Hub Jika tombol "Buka antrean" tidak bisa diklik')
         ->and($text)->toContain('# Halo,')
         ->and($text)->toContain('Nadia Putri Anindya mengusulkan '.$name.'.')
@@ -173,7 +173,7 @@ it('keeps a signed action URL and punctuation in the texts intact', function ():
         [new PasswordWasReset, 'Halo Nadia,', 'baru saja diganti lewat "Lupa kata sandi". Semua perangkat sudah dikeluarkan.'],
         [new LetterRevokedNotice('Ibu Siti', 'Surat Tugas', '400.3.8/313/MRD/X/2026', '400.3.8.6/14/2026', 'OSN', 'Salah tulis'), 'Penggantinya: nomor 400.3.8.6/14/2026.', 'Ibu Siti mencabut Surat Tugas nomor 400.3.8/313/MRD/X/2026 (OSN).'],
         [new RoleChangeNotice(RoleChangeNotice::REQUESTED, 'Raka', 'Sari', 'Tata Usaha', '3 Okt 2026, 09.00'), 'Raka meminta peran Sari diubah menjadi Tata Usaha.', 'Jika keliru, batalkan di menu Pengguna & peran.'],
-        [new SignatureReplaced('Raka'), 'Raka mengunggah gambar tanda tangan + stempel baru.', 'Jika bukan atas persetujuan Anda, hubungi Admin sekarang.'],
+        [new SignatureReplaced('Raka'), 'Raka meng-upload gambar tanda tangan + stempel baru.', 'Jika bukan atas persetujuan Anda, hubungi Admin sekarang.'],
     ];
 
     foreach ($lines as [$notification, $first, $second]) {

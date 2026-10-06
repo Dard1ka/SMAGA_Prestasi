@@ -6,7 +6,10 @@ namespace App\Enums;
 
 use App\Enums\Concerns\HasOptions;
 
-/** Talent scouting pipeline: Terdaftar → Pemetaan → Seleksi/asesmen → Peserta pembinaan, or Tidak lolos. */
+/**
+ * Talent scouting pipeline: Terdaftar → Pemetaan → Seleksi/asesmen → Peserta pembinaan, or Tidak lolos.
+ * Tidak lolos can be undone by Kesiswaan (RestoreTalentApplication: back to the stage before the rejection).
+ */
 enum TalentStatus: string
 {
     use HasOptions;
@@ -51,9 +54,16 @@ enum TalentStatus: string
         };
     }
 
+    /** No "Lolos ke …" / "Tidak lolos" from here. Tidak lolos is still restorable (isRestorable()). */
     public function isFinal(): bool
     {
         return $this === self::Pembinaan || $this === self::TidakLolos;
+    }
+
+    /** "Pulihkan": only a rejected choice goes back into the pipeline. */
+    public function isRestorable(): bool
+    {
+        return $this === self::TidakLolos;
     }
 
     /** Chip tone as used in the Talenta mockups (T1/T2 notes). */

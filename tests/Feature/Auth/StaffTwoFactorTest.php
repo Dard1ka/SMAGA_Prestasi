@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Enums\RoleName;
 use App\Livewire\Auth\TwoFactorSetup;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 use Laravel\Fortify\Fortify;
 use Livewire\Livewire;
@@ -73,6 +74,39 @@ it('rejects a wrong TOTP code', function (): void {
     Livewire::test(TwoFactorSetup::class)->set('code', '000000')->call('confirm')->assertHasErrors('code');
 
     expect($staff->fresh()->two_factor_confirmed_at)->toBeNull();
+});
+
+// M2-A (QA 2026-10-05, Q1-03): the session id renewed after the TOTP confirmation leaves no old row behind.
+it('renews the session when TOTP is confirmed and deletes the old row; a wrong code renews nothing', function (): void {
+    config(['session.driver' => 'database']);
+
+    $staff = H::staff(RoleName::Kesiswaan);
+
+    $this->post('/login', ['identifier' => 'staf.kesiswaan@example.test', 'password' => H::PASSWORD])->assertRedirect(route('home'));
+
+    $old = session()->getId();
+    expect(H::sessionCount($staff))->toBe(1);
+
+    $component = Livewire::test(TwoFactorSetup::class);
+    $secret = Fortify::currentEncrypter()->decrypt($staff->fresh()->two_factor_secret);
+    $code = app(Google2FA::class)->getCurrentOtp($secret);
+
+    $component->set('code', $code === '000000' ? '111111' : '000000')->call('confirm')->assertHasErrors('code');
+
+    expect(session()->getId())->toBe($old)
+        ->and(H::sessionCount($staff))->toBe(1);
+
+    $component->set('code', $code)->call('confirm')->assertHasNoErrors()->assertSet('showRecoveryCodes', true);
+
+    $new = session()->getId();
+    expect($new)->not->toBe($old)
+        ->and(DB::table('sessions')->where('id', $old)->exists())->toBeFalse();
+
+    session()->save(); // what StartSession does when the request ends (Livewire tests skip the middleware)
+
+    expect(H::sessionCount($staff))->toBe(1)
+        ->and(H::userBehindSession($new))->toBe($staff->getKey())
+        ->and(H::userBehindSession($old))->toBeNull();
 });
 
 it('asks for the password before the setup page', function (): void {

@@ -40,7 +40,11 @@
                     >
                         <x-sth.icon :name="$item['icon']" />
                         <span class="min-w-0 flex-1 truncate">{{ $item['label'] }}</span>
-                        @if ($item['badge'])
+                        {{-- Always printed for items with a badge key, so the browser event `sth-badges` (app.js) can
+                             change or hide the count after a Livewire action without a page reload. --}}
+                        @if ($item['badgeKey'] ?? null)
+                            <span class="badge num" data-sth-badge="{{ $item['badgeKey'] }}" @if (! $item['badge']) hidden @endif>{{ $item['badge'] ?? 0 }}</span>
+                        @elseif ($item['badge'])
                             <span class="badge num">{{ $item['badge'] }}</span>
                         @endif
                         @if ($item['disabled'])

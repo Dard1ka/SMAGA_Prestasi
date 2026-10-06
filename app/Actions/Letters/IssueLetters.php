@@ -14,29 +14,34 @@ use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\UniqueConstraintViolationException;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
 use Throwable;
 
 /**
- * Tata Usaha issues the surat tugas of one approved registration (D-06, SECURITY §3g/§3m-4/§3m-6):
- * both numbers typed by TU (unique per type + year, DB index is the final guard), one siswa letter for the
- * whole team + one Surat Perintah Tugas for the guru pembimbing (skipped when the registration has no
- * mentor), each rendered to PDF with the signature + stamp image from settings and a verification QR.
- * PDFs go to the private disk (files rows, SHA-256), letters are immutable afterwards (a correction is
- * RevokeLetter: cabut + new version). Each letter stores the signature file id and the printed schedule
- * (B3, §3m-5). The registration stays `disetujui` until SendLetters (TU reviews the PDFs first, step 3).
+ * Tata Usaha issues ONE surat tugas of an approved registration (D-06, SECURITY §3g/§3m-4/§3m-6; M1-A, lead
+ * 2026-10-04: one letter at a time, each with its own number and data). `siswa` = one letter for the whole
+ * team, `guru` = the Surat Perintah Tugas of the guru pembimbing (only when the registration has one).
+ * The complete number is typed by TU and never used twice for the same letter type (the unique index
+ * (type, full_number) is the final guard). The letter is rendered to PDF with the signature + stamp image
+ * from settings and a verification QR, stored on the private disk (files row, SHA-256) and immutable
+ * afterwards (a correction is RevokeLetter: cabut + new version). The registration stays `disetujui` until
+ * SendLetters, which needs every required letter.
  *
- * Validation errors use the keys `siswa_sequence`, `guru_sequence`, `issued_on`, `basis_number`,
- * `basis_date`, `schedule_day`, `schedule_time`, `place`, `registration`, `signature`.
+ * Validation errors use the keys `number`, `issued_on`, `basis_from`, `basis_number`, `basis_date`,
+ * `basis_subject`, `schedule_day`, `schedule_date`, `schedule_time`, `place`, `registration`, `signature`.
+ * Every problem is reported at once (fields + missing signature), so the screen can list them.
  */
 final class IssueLetters
 {
-    public const MSG_TAKEN = 'Nomor ini sudah dipakai.';
+    public const MSG_TAKEN = 'Nomor ini sudah dipakai surat lain. Ketik nomor yang belum dipakai.';
 
     public const TEMPLATES = LetterPdf::TEMPLATES;
+
+    public const MAX_TEXT = 150;
+
+    public const MAX_BASIS_FROM = 200;
 
     public function __construct(
         private readonly LetterNumber $numbers,
@@ -44,35 +49,37 @@ final class IssueLetters
     ) {}
 
     /**
-     * @return Collection<int, Letter> the new letters (siswa first)
+     * @return Letter the new letter (with its `file` relation)
      *
      * @throws AuthorizationException
      * @throws ValidationException
      */
-    public function handle(User $actor, Registration $registration, LetterDraft $draft): Collection
+    public function handle(User $actor, Registration $registration, LetterType $type, LetterDraft $draft): Letter
     {
         Gate::forUser($actor)->authorize('viewQueue', Letter::class);
 
-        $hasMentor = $registration->mentor_id !== null;
-        self::validateDraft($draft, $hasMentor);
-
-        $signature = $this->pdf->signature();
+        $signature = $this->checked(self::draftErrors($draft, $type));
+        $number = $this->numbers->normalize($draft->number);
         $written = [];
 
         try {
-            $letters = DB::transaction(function () use ($actor, $registration, $draft, $signature, &$written): Collection {
+            $letter = DB::transaction(function () use ($actor, $registration, $type, $draft, $number, $signature, &$written): Letter {
                 /** @var Registration $locked */
                 $locked = Registration::query()->whereKey($registration->getKey())->lockForUpdate()->firstOrFail();
 
                 if ($locked->status !== RegistrationStatus::Disetujui) {
-                    throw ValidationException::withMessages(['registration' => 'Pendaftaran ini belum disetujui Kepala Sekolah atau suratnya sudah terbit.']);
+                    throw ValidationException::withMessages(['registration' => 'Pendaftaran ini belum disetujui Kepala Sekolah atau suratnya sudah dikirim.']);
                 }
 
-                if ($locked->letters()->exists()) {
-                    throw ValidationException::withMessages(['registration' => 'Surat untuk pendaftaran ini sudah dibuat.']);
+                if ($type === LetterType::Guru && $locked->mentor_id === null) {
+                    throw ValidationException::withMessages(['registration' => 'Pendaftaran ini tidak punya guru pembimbing, jadi tidak ada surat guru.']);
                 }
 
-                Gate::forUser($actor)->authorize('create', [Letter::class, $locked]);
+                if ($locked->letters()->where('type', $type)->exists()) {
+                    throw ValidationException::withMessages(['registration' => 'Surat ini sudah dibuat. Pakai Koreksi untuk menggantinya.']);
+                }
+
+                Gate::forUser($actor)->authorize('create', [Letter::class, $locked, $type]);
 
                 $content = LetterContent::build($locked, $draft);
 
@@ -80,183 +87,182 @@ final class IssueLetters
                     throw ValidationException::withMessages(['registration' => 'Belum ada anggota yang terkonfirmasi.']);
                 }
 
-                $plan = [LetterType::Siswa->value => $draft->siswaSequence];
-
-                if ($locked->mentor_id !== null) {
-                    $plan[LetterType::Guru->value] = $draft->guruSequence;
+                if (self::isTaken($type, $number)) {
+                    throw ValidationException::withMessages(['number' => self::MSG_TAKEN]);
                 }
 
-                $letters = collect();
-                $now = now();
+                $version = (int) $locked->letterHistory()->where('type', $type)->max('version') + 1;
 
-                foreach ($plan as $typeValue => $sequence) {
-                    $type = LetterType::from($typeValue);
-                    $number = $this->number($type, (int) $sequence, $draft->issuedOn);
+                $letter = $this->newLetter($locked, $type, $number, $draft, $content);
+                $letter->forceFill([
+                    'version' => $version,
+                    'signature_file_id' => $signature['file_id'],
+                    'generated_by' => $actor->getKey(),
+                    'generated_at' => now(),
+                ])->save();
 
-                    if (self::isTaken($type, $draft->issuedOn->year, (int) $sequence)) {
-                        throw ValidationException::withMessages([$typeValue.'_sequence' => self::MSG_TAKEN]);
-                    }
-
-                    $letter = new Letter([
-                        'registration_id' => $locked->getKey(),
-                        'type' => $type,
-                        'sequence' => (int) $sequence,
-                        'full_number' => $number,
-                        'year' => $draft->issuedOn->year,
-                        'month' => $draft->issuedOn->month,
-                        'issued_on' => $draft->issuedOn->toDateString(),
-                        'basis_number' => $content->basisNumber,
-                        'basis_date' => $draft->basisDate?->toDateString(),
-                        'schedule_day' => $content->scheduleDay,
-                        'schedule_time' => $content->scheduleTime,
-                        'place' => $content->place,
-                    ]);
-                    $letter->forceFill([
-                        'version' => 1,
-                        'signature_file_id' => $signature['file_id'],
-                        'generated_by' => $actor->getKey(),
-                        'generated_at' => $now,
-                    ])->save();
-
-                    $document = $this->pdf->render($type, $content, $letter, $signature['bytes']);
-                    $file = $this->pdf->store($document, $type, $locked, $actor, $written);
-                    $letter->forceFill(['file_id' => $file->getKey()])->save();
-
-                    $letters->push($letter->setRelation('file', $file));
-                }
+                $document = $this->pdf->render($type, $content, $letter, $signature['bytes']);
+                $file = $this->pdf->store($document, $type, $locked, $actor, $written, $version);
+                $letter->forceFill(['file_id' => $file->getKey()])->save();
 
                 activity('letter')
                     ->performedOn($locked)
                     ->causedBy($actor)
                     ->event('letters.issued')
                     ->withProperties([
-                        'letters' => $letters->map(fn (Letter $l): array => [
-                            'id' => $l->getKey(),
-                            'type' => $l->type->value,
-                            'number' => $l->full_number,
-                            'sha256' => $l->file?->sha256,
-                        ])->all(),
+                        'letters' => [[
+                            'id' => $letter->getKey(),
+                            'type' => $type->value,
+                            'number' => $letter->full_number,
+                            'sha256' => $file->sha256,
+                        ]],
                         'issued_on' => $draft->issuedOn->toDateString(),
                         'signature_file_id' => $signature['file_id'],
                         'signature_sha256' => $signature['sha256'],
-                        'schedule' => [$content->scheduleDay, $content->scheduleTime, $content->place],
+                        'basis' => [$content->basisFrom, $content->basisNumber, $draft->basisDate?->toDateString()],
+                        'schedule' => [$content->scheduleDay, $content->scheduleDate, $content->scheduleTime, $content->place],
                     ])
                     ->log('letters.issued');
 
-                return $letters;
+                return $letter->refresh()->setRelation('file', $file);
             });
         } catch (UniqueConstraintViolationException) {
             $this->pdf->cleanup($written);
-            $this->throwTaken($draft, $hasMentor);
+
+            throw ValidationException::withMessages(['number' => self::MSG_TAKEN]);
         } catch (Throwable $e) {
             $this->pdf->cleanup($written);
 
             throw $e;
         }
 
-        return $letters;
-    }
-
-    /** Is (type, year, sequence) already used? UI hint only; the DB unique index decides. */
-    public static function isTaken(LetterType $type, int $year, int $sequence): bool
-    {
-        return Letter::query()->where('type', $type)->where('year', $year)->where('sequence', $sequence)->exists();
-    }
-
-    /** Full number from the settings format, e.g. 400.3.8/313/MRD/X/2026. */
-    public function number(LetterType $type, int $sequence, CarbonImmutable $issuedOn): string
-    {
-        return $this->numbers->format((string) Setting::get($type->formatSetting()), $sequence, $issuedOn);
+        return $letter;
     }
 
     /**
-     * Prefix and suffix around the sequence for the composed input ("400.3.8/" [313] "/MRD/X/2026").
+     * Stop with every problem at once (field errors + a missing signature image), or hand back the signature.
+     * Shared with RevokeLetter.
      *
-     * @return array{0: string, 1: string}
+     * @param  array<string, string>  $errors
+     * @return array{bytes: string, file_id: string, sha256: string}
+     *
+     * @throws ValidationException
      */
-    public function numberParts(LetterType $type, CarbonImmutable $issuedOn): array
+    public function checked(array $errors): array
     {
-        $template = (string) Setting::get($type->formatSetting());
-        $this->numbers->assertValidTemplate($template);
-        $filled = strtr($template, [
-            '{roman_month}' => $this->numbers->romanMonth($issuedOn->month),
-            '{year}' => (string) $issuedOn->year,
-        ]);
-        [$prefix, $suffix] = explode('{seq}', $filled, 2);
+        $signature = null;
 
-        return [$prefix, $suffix];
-    }
-
-    /** @throws ValidationException */
-    public static function validateDraft(LetterDraft $draft, bool $hasMentor): void
-    {
-        $errors = [];
-        $numbers = new LetterNumber;
-
-        if ($draft->siswaSequence === null || ! $numbers->isValidSequence($draft->siswaSequence)) {
-            $errors['siswa_sequence'] = 'Isi nomor urut 1–99999.';
+        try {
+            $signature = $this->pdf->signature();
+        } catch (ValidationException $e) {
+            foreach ($e->errors() as $key => $messages) {
+                $errors[$key] = (string) $messages[0];
+            }
         }
 
-        if ($hasMentor && ($draft->guruSequence === null || ! $numbers->isValidSequence($draft->guruSequence))) {
-            $errors['guru_sequence'] = 'Isi nomor urut 1–99999.';
-        }
-
-        $errors += self::draftFieldErrors($draft);
-
-        if ($errors !== []) {
+        if ($errors !== [] || $signature === null) {
             throw ValidationException::withMessages($errors);
         }
+
+        return $signature;
     }
 
     /**
-     * Errors of the shared letter data (date, basis, schedule), without the sequences. Also used by
-     * RevokeLetter for the new version.
+     * The unsaved letter row of a draft (mass-assignable columns only). Shared with RevokeLetter. Every data
+     * column is set, so the model can be read right after save() (strict models).
+     */
+    public function newLetter(Registration $registration, LetterType $type, string $number, LetterDraft $draft, LetterContent $content): Letter
+    {
+        return new Letter([
+            'registration_id' => $registration->getKey(),
+            'type' => $type,
+            'sequence' => null,
+            'full_number' => $number,
+            'year' => $draft->issuedOn->year,
+            'month' => $draft->issuedOn->month,
+            'issued_on' => $draft->issuedOn->toDateString(),
+            'basis_from' => $content->basisFrom,
+            'basis_number' => $content->basisNumber,
+            'basis_date' => $draft->basisDate?->toDateString(),
+            'basis_subject' => LetterDraft::usesSubject($type) ? $content->basisSubject : null,
+            'schedule_day' => $content->scheduleDay,
+            'schedule_date' => $content->scheduleDate,
+            'schedule_time' => $content->scheduleTime,
+            'place' => $content->place,
+        ]);
+    }
+
+    /** Is this number already used by a letter of the type (revoked versions too)? UI hint; the DB index decides. */
+    public static function isTaken(LetterType $type, string $number): bool
+    {
+        $key = (new LetterNumber)->key($number);
+
+        return $key !== '' && Letter::numberTaken($type, $key);
+    }
+
+    /**
+     * The example shown under the number field: the Admin format of the type (now only an example) for the
+     * letter date, with the sequence after the last used number when that one fits the format.
+     */
+    public function example(LetterType $type, CarbonImmutable $issuedOn, ?string $lastNumber = null): ?string
+    {
+        return $this->numbers->example(
+            (string) Setting::get($type->formatSetting()),
+            $issuedOn,
+            $lastNumber,
+            $type === LetterType::Guru ? 1681 : 313,
+        );
+    }
+
+    /**
+     * Errors of one letter's draft (number, date, basis, schedule). Also used by RevokeLetter for the new
+     * version. Messages say what to do, because the screen lists them.
      *
      * @return array<string, string>
      */
-    public static function draftFieldErrors(LetterDraft $draft): array
+    public static function draftErrors(LetterDraft $draft, LetterType $type): array
     {
         $errors = [];
         $today = CarbonImmutable::today();
 
-        if ($draft->issuedOn->lt($today->subYear()) || $draft->issuedOn->gt($today->addMonths(3))) {
-            $errors['issued_on'] = 'Tanggal surat tidak wajar.';
+        if (($error = (new LetterNumber)->numberError($draft->number)) !== null) {
+            $errors['number'] = $error;
         }
 
-        if (mb_strlen((string) $draft->basisNumber) > 150) {
-            $errors['basis_number'] = 'Maksimal 150 karakter.';
+        if ($draft->issuedOn->lt($today->subYear()) || $draft->issuedOn->gt($today->addMonths(3))) {
+            $errors['issued_on'] = 'Tanggal surat paling lama setahun lalu dan paling jauh 3 bulan ke depan.';
+        }
+
+        $required = [
+            'basis_from' => [$draft->basisFrom, self::MAX_BASIS_FROM, 'Isi asal surat undangan, misalnya nama penyelenggara.'],
+            'schedule_day' => [$draft->scheduleDay, self::MAX_TEXT, 'Isi hari pelaksanaan, misalnya Sabtu.'],
+            'schedule_date' => [$draft->scheduleDate, self::MAX_TEXT, 'Isi tanggal pelaksanaan, misalnya 7 November 2026.'],
+            'schedule_time' => [$draft->scheduleTime, self::MAX_TEXT, 'Isi pukul pelaksanaan, misalnya 07.00 WIB s.d Selesai.'],
+            'place' => [$draft->place, self::MAX_TEXT, 'Isi tempat pelaksanaan.'],
+        ];
+
+        if (LetterDraft::usesSubject($type)) {
+            $required['basis_subject'] = [$draft->basisSubject, self::MAX_TEXT, 'Isi hal surat undangan, misalnya Undangan.'];
+        }
+
+        foreach ($required as $key => [$value, $max, $message]) {
+            $length = mb_strlen(trim($value));
+
+            if ($length === 0) {
+                $errors[$key] = $message;
+            } elseif ($length > $max) {
+                $errors[$key] = 'Maksimal '.$max.' karakter.';
+            }
+        }
+
+        if (mb_strlen(trim((string) $draft->basisNumber)) > self::MAX_TEXT) {
+            $errors['basis_number'] = 'Maksimal '.self::MAX_TEXT.' karakter.';
         }
 
         if ($draft->basisDate !== null && $draft->basisDate->gt($draft->issuedOn)) {
             $errors['basis_date'] = 'Tanggal surat undangan tidak boleh setelah tanggal surat.';
         }
 
-        foreach (['schedule_day' => $draft->scheduleDay, 'schedule_time' => $draft->scheduleTime, 'place' => $draft->place] as $key => $value) {
-            $length = mb_strlen(trim($value));
-
-            if ($length === 0) {
-                $errors[$key] = 'Wajib diisi.';
-            } elseif ($length > 150) {
-                $errors[$key] = 'Maksimal 150 karakter.';
-            }
-        }
-
         return $errors;
-    }
-
-    /** @throws ValidationException */
-    private function throwTaken(LetterDraft $draft, bool $hasMentor): never
-    {
-        $errors = [];
-
-        if (self::isTaken(LetterType::Siswa, $draft->issuedOn->year, (int) $draft->siswaSequence)) {
-            $errors['siswa_sequence'] = self::MSG_TAKEN;
-        }
-
-        if ($hasMentor && self::isTaken(LetterType::Guru, $draft->issuedOn->year, (int) $draft->guruSequence)) {
-            $errors['guru_sequence'] = self::MSG_TAKEN;
-        }
-
-        throw ValidationException::withMessages($errors !== [] ? $errors : ['registration' => 'Nomor sudah dipakai surat lain. Coba lagi.']);
     }
 }

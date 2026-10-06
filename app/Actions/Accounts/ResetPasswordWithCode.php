@@ -14,6 +14,8 @@ use Illuminate\Validation\ValidationException;
  * correct code unlocks the account-specific password rules; the code is consumed right before the password
  * is stored. Afterwards every session is revoked, a notice is mailed and the reset is audited.
  * All code/identifier failures give the same message (no enumeration).
+ * A reset counts as the password step of the first-login flow: an account that had bound its email but not yet
+ * closed that step becomes active here (CompleteActivation::whenPasswordAlreadyChosen).
  */
 final class ResetPasswordWithCode
 {
@@ -23,6 +25,7 @@ final class ResetPasswordWithCode
         private readonly RequestPasswordResetCode $request,
         private readonly VerifyOtpCode $verify,
         private readonly SetNewPassword $setPassword,
+        private readonly CompleteActivation $activation,
     ) {}
 
     /**
@@ -51,6 +54,7 @@ final class ResetPasswordWithCode
 
         // A reset also counts as the password change the first-login flow asks for.
         $this->setPassword->handle($user, $password, null, 'account.password_reset');
+        $this->activation->whenPasswordAlreadyChosen($user);
 
         $user->notify(new PasswordWasReset);
 

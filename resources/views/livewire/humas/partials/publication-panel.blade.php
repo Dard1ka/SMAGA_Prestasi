@@ -7,7 +7,7 @@
 </div>
 <p class="m-0 text-[13px] font-semibold text-muted">{{ $panel['heading'] }}</p>
 
-{{-- Flyer preview (HTML; the PNG from "Unduh PNG" has the same content). --}}
+{{-- Flyer preview (HTML; the PNG from "Download PNG" has the same content). --}}
 <figure class="m-0 self-center">
     <div role="img" aria-label="{{ $flyer['label'] }}" class="relative aspect-4/5 w-[300px] max-w-full overflow-hidden rounded-[18px] shadow-card {{ $style['bg'] }}">
         <span class="absolute -top-[72px] -right-16 size-[210px] rounded-full {{ $style['blob1'] }}" aria-hidden="true"></span>
@@ -42,7 +42,7 @@
 
 @if ($panel['canFlyer'])
     <x-sth.radio-pick wire:model.live="template" label="Template e-flyer" :options="$templateOptions" :value="$template" :columns="3" size="sm" />
-    <x-sth.button variant="quiet" size="sm" icon="download" wire:click="downloadFlyer" wire:loading.attr="disabled" wire:target="downloadFlyer">Unduh PNG</x-sth.button>
+    <x-sth.button variant="quiet" size="sm" icon="download" wire:click="downloadFlyer" wire:loading.attr="disabled" wire:target="downloadFlyer">Download PNG</x-sth.button>
 @endif
 
 @unless ($panel['photoConsent'])
@@ -70,7 +70,7 @@
             <x-sth.input type="time" wire:model="time" :value="$time" label="Jam" class="num" />
         </div>
         {{-- B3 (#12): AutoPublishPublications flips terjadwal → dipublikasikan at this time and reminds Humas. --}}
-        <p class="m-0 text-[13px] text-muted">Pada waktu ini status berubah otomatis menjadi Dipublikasikan dan Humas mendapat pengingat untuk mengunggah ke kanal yang dipilih.</p>
+        <p class="m-0 text-[13px] text-muted">Pada waktu ini status berubah otomatis menjadi Dipublikasikan dan Humas mendapat pengingat untuk meng-upload ke kanal yang dipilih.</p>
         <div class="flex flex-wrap gap-2">
             @if ($panel['canSchedule'])
                 <x-sth.button type="submit" icon="calendar" class="flex-1" wire:loading.attr="disabled" wire:target="schedule">{{ $panel['scheduleLabel'] }}</x-sth.button>

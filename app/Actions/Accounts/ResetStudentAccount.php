@@ -19,6 +19,8 @@ use Illuminate\Validation\ValidationException;
  * a RANDOM temporary password (12 characters, GenerateTemporaryPassword) is returned once for the Admin to
  * hand over face to face; it is stored only as a hash, valid 72 hours (`initial_password_expires_at`) and must
  * be changed at the next login (must_change_password). The initial birth-date pattern is no longer used here.
+ * `temporary_password_issued_at` marks the password as one an Admin has seen: the student cannot keep it at the
+ * activation password step (CompleteActivation::mayKeepPassword, QA Q2-02); SetNewPassword clears the mark.
  * Also: bound email removed, open OTPs cancelled, a K3/K8 freeze lifted, TOTP 2FA removed (students never have
  * it; `two_factor_removed` in the audit row tells whether there was one), every session + remember token
  * revoked, login lockout cleared, audited with the Admin's reason (never the password). A disabled/archived
@@ -72,6 +74,8 @@ final class ResetStudentAccount
                 'must_change_password' => true,
                 'password_changed_at' => null,
                 'initial_password_expires_at' => $expiresAt,
+                // M2-A: an Admin saw this password, so the owner must replace it (no "Lewati" at activation).
+                'temporary_password_issued_at' => now(),
                 'failed_activation_attempts' => 0,
                 'frozen_at' => null,
                 'frozen_reason' => null,

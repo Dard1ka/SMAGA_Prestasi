@@ -12,7 +12,7 @@
         <x-sth.select wire:model.live="tahun" label="Tahun ajaran" hide-label size="sm" :options="$yearOptions" class="w-44" />
         <span class="muted text-[13.5px]" wire:loading>Memuat…</span>
         @if ($laporanUrl)
-            <x-sth.button variant="quiet" size="sm" icon="download" href="{{ $laporanUrl }}" class="ml-auto">Unduh laporan</x-sth.button>
+            <x-sth.button variant="quiet" size="sm" icon="download" href="{{ $laporanUrl }}" class="ml-auto">Download laporan</x-sth.button>
         @endif
     </div>
 

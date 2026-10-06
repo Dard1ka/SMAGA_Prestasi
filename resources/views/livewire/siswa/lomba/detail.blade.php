@@ -118,7 +118,7 @@
                                     <span class="ellip font-bold">{{ $competition->juknisFile->original_name }}</span>
                                     <span class="num text-[13px] text-muted">{{ $competition->juknisFile->isImage() ? 'Gambar' : 'PDF' }} · {{ \App\Livewire\Siswa\Lomba\LombaPresenter::fileSize($competition->juknisFile->size) }}</span>
                                 </div>
-                                <x-sth.button variant="quiet" size="sm" icon="download" :href="route('files.show', $competition->juknisFile)">Unduh</x-sth.button>
+                                <x-sth.button variant="quiet" size="sm" icon="download" :href="route('files.show', $competition->juknisFile)">Download</x-sth.button>
                             </li>
                         @endif
                         @foreach ($links as $link)
@@ -126,7 +126,7 @@
                                 <span class="inline-flex size-10 shrink-0 items-center justify-center rounded-[10px] bg-primary-tint text-primary" aria-hidden="true"><x-sth.icon name="link" /></span>
                                 <div class="flex min-w-0 flex-1 flex-col">
                                     <span class="font-bold">{{ $link['label'] }}</span>
-                                    <span class="ellip text-[13px] text-muted">Tautan ke situs luar: {{ $link['host'] }}</span>
+                                    <span class="ellip text-[13px] text-muted">Link ke situs luar: {{ $link['host'] }}</span>
                                 </div>
                                 <a class="btn btn-quiet btn-sm" href="{{ $link['url'] }}" target="_blank" rel="nofollow noopener noreferrer ugc">Buka<span class="sr-only"> {{ $link['label'] }} ({{ $link['host'] }}, tab baru)</span></a>
                             </li>

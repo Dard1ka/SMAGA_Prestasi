@@ -1,4 +1,5 @@
-{{-- Masuk (mockup Masuk.dc.html). Fortify::loginView → POST login.store. Field `identifier` = NIS/NISN or staff email. --}}
+{{-- Masuk (mockup Masuk.dc.html). Fortify::loginView → POST login.store. Field `identifier` = NIS/NISN, a student's
+     bound email once activation is finished, or a staff username/email (App\Actions\Fortify\LoginIdentifier). --}}
 <x-layouts::auth title="Masuk" variant="split">
     <div class="flex flex-col gap-6">
         <div class="flex flex-col gap-2">
@@ -15,8 +16,8 @@
 
             <x-sth.input
                 name="identifier"
-                label="NIS / NISN"
-                hint="Guru dan staf: pakai username atau email."
+                label="NIS, NISN, atau email"
+                hint="Sudah aktivasi? Kamu juga bisa masuk pakai email. Guru dan staf: username atau email."
                 autocomplete="username"
                 autocapitalize="none"
                 spellcheck="false"
@@ -42,7 +43,7 @@
             <x-sth.button type="submit" size="lg" block>Masuk</x-sth.button>
         </form>
 
-        <x-sth.alert>Baru pertama masuk? Kamu akan diminta mengganti kata sandi dan menghubungkan email.</x-sth.alert>
+        <x-sth.alert>Baru pertama masuk? Kamu akan diminta menghubungkan email dulu. Setelah itu kamu boleh ganti kata sandi.</x-sth.alert>
 
         <p class="text-sm muted">Kesulitan masuk? Hubungi admin sekolah.</p>
     </div>

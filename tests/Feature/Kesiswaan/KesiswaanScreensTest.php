@@ -16,10 +16,15 @@ use App\Models\Achievement;
 use App\Models\Classroom;
 use App\Models\Competition;
 use App\Models\Student;
+use App\Models\TalentApplication;
+use App\Notifications\Talent\TalentApplicationRejected;
+use App\Notifications\Talent\TalentApplicationRestored;
+use App\Notifications\Talent\TalentStageChanged;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Notification;
 use Livewire\Livewire;
+use Spatie\SimpleExcel\SimpleExcelReader;
 use Tests\Feature\Kesiswaan\KesiswaanFixtures as F;
 
 uses(RefreshDatabase::class);
@@ -62,7 +67,7 @@ it('forbids the other roles and redirects guests', function (string $route): voi
 })->with('kesiswaan routes');
 
 it('serves the admin import route to Admin only', function (): void {
-    $this->actingAs($this->admin)->get(route('admin.import'))->assertOk()->assertSee('Unduh template Excel');
+    $this->actingAs($this->admin)->get(route('admin.import'))->assertOk()->assertSee('Download template Excel');
     $this->actingAs($this->kesiswaan)->get(route('admin.import'))->assertForbidden();
 });
 
@@ -180,17 +185,36 @@ it('masks NIS in the talent table and moves checked rows in bulk', function (): 
     expect($a->fresh()->status)->toBe(TalentStatus::Pemetaan)
         ->and($b->fresh()->status)->toBe(TalentStatus::Seleksi);
 
+    // "Tidak lolos" in the bulk bar opens the confirm dialog (M2-B); the note in it is optional, only its
+    // length is checked.
     $component->set('checked', [$a->getKey()])
-        ->call('startBulkReject')
-        ->call('bulkReject')
-        ->assertHasErrors('bulkNote')
-        ->set('bulkNote', 'Belum memenuhi kuota.')
-        ->call('bulkReject');
+        ->call('askBulkReject')
+        ->assertDispatched('sth-modal-open', id: 'tidak-lolos-talenta')
+        ->assertSee('Catatan untuk siswa')
+        ->set('bulkNote', str_repeat('a', 1001))
+        ->call('reject')
+        ->assertHasErrors('bulkNote');
 
-    expect($a->fresh()->status)->toBe(TalentStatus::TidakLolos);
+    expect($a->fresh()->status)->toBe(TalentStatus::Pemetaan);
+
+    $component->set('bulkNote', '')
+        ->call('reject')
+        ->assertHasNoErrors();
+
+    expect($a->fresh()->status)->toBe(TalentStatus::TidakLolos)
+        ->and($a->fresh()->student_note)->toBeNull()
+        ->and($a->fresh()->rejected_from)->toBe(TalentStatus::Pemetaan);
+
+    $component->set('checked', [$b->getKey()])
+        ->call('askBulkReject')
+        ->set('bulkNote', 'Belum memenuhi kuota.')
+        ->call('reject');
+
+    expect($b->fresh()->status)->toBe(TalentStatus::TidakLolos)
+        ->and($b->fresh()->student_note)->toBe('Belum memenuhi kuota.');
 });
 
-it('filters talent rows by stage and needs a note for tidak lolos in the panel', function (): void {
+it('filters talent rows by stage and marks tidak lolos from the panel without a note', function (): void {
     $a = F::application(F::student('Galang Putra Mahendra', 'X-TAHFIDZ'));
     $bima = F::application(F::student('Bima Satria Wicaksono', 'XII-7'), TalentStatus::Seleksi, 'Kimia');
 
@@ -201,19 +225,168 @@ it('filters talent rows by stage and needs a note for tidak lolos in the panel',
         ->assertDontSee('Galang Putra Mahendra')
         ->call('setTahap', 'semua')
         ->call('showPanel', $a->getKey())
-        ->call('rejectPanel')
-        ->assertHasErrors('panelNote');
+        ->assertSee('Catatan untuk guru pembina')
+        ->assertSee('Hanya dibaca guru pembina dan Kesiswaan. Siswa tidak melihatnya.')
+        ->assertSee('Catatan untuk siswa')
+        ->assertSee('Dibaca siswa di notifikasi dan Profil talenta.')
+        ->assertDontSee('Wajib bila tidak lolos')
+        // M2-B: the button asks first (details: TalentDraftNoteTest).
+        ->call('askReject')
+        ->assertDispatched('sth-modal-open', id: 'tidak-lolos-talenta')
+        ->call('reject')
+        ->assertHasNoErrors()
+        ->assertSet('panelDone', 'Tidak lolos dari tahap Terdaftar. Siswa diberi tahu.')
+        ->assertSee('Pulihkan untuk mengembalikan ke tahap Terdaftar.');
 
-    expect($a->fresh()->status)->toBe(TalentStatus::Terdaftar);
+    expect($a->fresh()->status)->toBe(TalentStatus::TidakLolos)
+        ->and($a->fresh()->student_note)->toBeNull();
+    Notification::assertSentTo($a->student->user, TalentApplicationRejected::class);
 });
 
-it('exports the talent list as Excel', function (): void {
-    session()->put('auth.password_confirmed_at', time()); // gate + cap + audit: KesiswaanHardeningTest
-    F::application();
+it('keeps the two notes of the talent panel apart: one for the guru pembina, one for the student', function (): void {
+    $a = F::application(F::student('Hana Safira', 'X-8'));
+
+    $component = Livewire::actingAs($this->kesiswaan)->test(Talenta::class)
+        ->call('showPanel', $a->getKey())
+        ->set('panelNote', 'Minta nilai rapor ke wali kelas.')
+        ->set('panelStudentNote', 'Siapkan sertifikat SMP.')
+        ->call('savePanel')
+        ->assertHasNoErrors();
+
+    // "Simpan" stores the internal note, keeps the note for the student as an unsent draft (M2-B) and tells nobody.
+    expect($a->fresh()->note)->toBe('Minta nilai rapor ke wali kelas.')
+        ->and($a->fresh()->student_note)->toBeNull()
+        ->and($a->fresh()->student_note_draft)->toBe('Siapkan sertifikat SMP.');
+    Notification::assertNothingSent();
+
+    $component->call('advance')
+        ->assertHasNoErrors()
+        ->assertSet('panelStudentNote', '')
+        ->assertSet('panelNote', 'Minta nilai rapor ke wali kelas.')
+        ->assertSet('panelDone', 'Dipindahkan dari Terdaftar ke Pemetaan. Siswa diberi tahu, catatan terkirim.')
+        ->assertSee('Catatan terakhir untuk siswa')
+        ->assertSee('Siapkan sertifikat SMP.');
+
+    expect($a->fresh()->status)->toBe(TalentStatus::Pemetaan)
+        ->and($a->fresh()->student_note)->toBe('Siapkan sertifikat SMP.');
+    Notification::assertSentTo($a->student->user, TalentStageChanged::class, fn (TalentStageChanged $n): bool => str_contains($n->body, 'Siapkan sertifikat SMP.')
+        && ! str_contains($n->body, 'wali kelas'));
+
+    $component->set('panelStudentNote', str_repeat('a', 1001))
+        ->call('askReject')
+        ->assertHasErrors('panelStudentNote')
+        ->assertNotDispatched('sth-modal-open');
+
+    expect($a->fresh()->status)->toBe(TalentStatus::Pemetaan);
+});
+
+it('replaces the check by "Pulihkan" on tidak lolos rows and restores through the confirm dialog', function (): void {
+    $rejected = TalentApplication::factory()->rejected(TalentStatus::Seleksi, 'Nilai asesmen kurang.')->create([
+        'student_id' => F::student('Citra Ayu Lestari', 'XI-2')->getKey(),
+        'talent_type_id' => F::talentType()->getKey(),
+    ]);
+    $open = F::application(F::student('Hana Safira', 'X-8'));
+
+    $component = Livewire::actingAs($this->kesiswaan)->test(Talenta::class)
+        ->call('showPanel', $rejected->getKey())
+        ->call('setTahap', 'tidak_lolos')
+        ->assertSee('Citra Ayu Lestari')
+        ->assertDontSee('Hana Safira')
+        ->assertSee('Catatan terakhir untuk siswa')
+        ->assertSee('Nilai asesmen kurang.')
+        ->assertSeeHtml('aria-label="Pulihkan Citra Ayu Lestari')
+        ->assertDontSeeHtml('aria-label="Tahap final"')
+        ->assertDontSeeHtml('wire:click="advanceRow(\''.$rejected->getKey().'\')"')
+        // Only a rejected row can be put into the dialog.
+        ->call('askRestore', $open->getKey())
+        ->assertSet('restoreId', null)
+        ->assertNotDispatched('sth-modal-open')
+        ->call('askRestore', $rejected->getKey())
+        ->assertSet('restoreId', $rejected->getKey())
+        ->assertDispatched('sth-modal-open', id: 'pulihkan-talenta')
+        ->assertSee('kembali ke tahap Seleksi/asesmen.')
+        ->set('restoreNote', str_repeat('a', 1001))
+        ->call('restore')
+        ->assertHasErrors('restoreNote');
+
+    expect($rejected->fresh()->status)->toBe(TalentStatus::TidakLolos);
+
+    $component->set('restoreNote', 'Asesmen susulan Jumat ini.')
+        ->call('restore')
+        ->assertHasNoErrors()
+        ->assertSet('restoreId', null)
+        ->assertDispatched('sth-modal-close', id: 'pulihkan-talenta')
+        ->assertDispatched('sth-toast', message: 'Dipulihkan ke tahap Seleksi/asesmen. Siswa diberi tahu.', tone: 'success')
+        // The tab Tidak lolos is empty again; the panel follows the row into its stage.
+        ->assertViewHas('rows', fn ($rows): bool => $rows->isEmpty())
+        ->assertSee('Lolos ke Peserta pembinaan');
+
+    expect($rejected->fresh()->status)->toBe(TalentStatus::Seleksi)
+        ->and($rejected->fresh()->student_note)->toBe('Asesmen susulan Jumat ini.');
+    Notification::assertSentTo($rejected->student->user, TalentApplicationRestored::class);
+
+    $component->call('setTahap', 'semua')
+        ->assertSeeHtml('wire:click="advanceRow(\''.$rejected->getKey().'\')"');
+});
+
+it('shows "Minta ditinjau ulang" on the row and the student message in the panel', function (): void {
+    $plain = TalentApplication::factory()->rejected(TalentStatus::Pemetaan)->create([
+        'student_id' => F::student('Fajar Ramadhan', 'XII-1')->getKey(),
+        'talent_type_id' => F::talentType()->getKey(),
+        'created_at' => now(),
+    ]);
+    $asked = TalentApplication::factory()->rejected(TalentStatus::Seleksi)->reviewRequested('Saya sakit saat asesmen, mohon dijadwalkan ulang.')->create([
+        'student_id' => F::student('Citra Ayu Lestari', 'XI-2')->getKey(),
+        'talent_type_id' => F::talentType()->getKey(),
+        'created_at' => now()->subDays(3),
+    ]);
 
     Livewire::actingAs($this->kesiswaan)->test(Talenta::class)
+        ->call('setTahap', 'tidak_lolos')
+        // Requests come first inside the stage, although this one is older.
+        ->assertSeeInOrder(['Citra Ayu Lestari', 'Minta ditinjau ulang', 'Fajar Ramadhan'])
+        ->call('showPanel', $plain->getKey())
+        ->assertDontSee('Siswa minta ditinjau ulang')
+        ->call('showPanel', $asked->getKey())
+        ->assertSee('Siswa minta ditinjau ulang')
+        ->assertSee('Saya sakit saat asesmen, mohon dijadwalkan ulang.')
+        ->call('askRestore', $asked->getKey())
+        ->assertSee('Permintaan tinjau ulang siswa ikut ditutup.')
+        ->call('restore')
+        ->assertDontSee('Siswa minta ditinjau ulang');
+
+    expect($asked->fresh()->status)->toBe(TalentStatus::Seleksi)
+        ->and($asked->fresh()->review_requested_at)->toBeNull();
+});
+
+it('keeps every other role away from the talent pipeline component', function (): void {
+    $rejected = TalentApplication::factory()->rejected()->create(['student_id' => F::student()->getKey(), 'talent_type_id' => F::talentType()->getKey()]);
+
+    foreach ([F::staff(RoleName::Guru, 'Pak Hendra Kusuma'), F::staff(RoleName::Humas, 'Mas Galih'), $rejected->student->user] as $user) {
+        Livewire::actingAs($user)->test(Talenta::class)->assertForbidden();
+    }
+
+    expect($rejected->fresh()->status)->toBe(TalentStatus::TidakLolos);
+});
+
+it('exports the talent list as Excel with both notes in their own columns', function (): void {
+    session()->put('auth.password_confirmed_at', time()); // gate + cap + audit: KesiswaanHardeningTest
+    $a = F::application();
+    $a->forceFill(['note' => 'Catatan internal pembina.', 'student_note' => 'Catatan yang dibaca siswa.'])->save();
+
+    $component = Livewire::actingAs($this->kesiswaan)->test(Talenta::class)
         ->call('export')
         ->assertFileDownloaded();
+
+    $path = sys_get_temp_dir().'/talenta-'.uniqid().'.xlsx';
+    file_put_contents($path, base64_decode((string) $component->effects['download']['content']));
+    $row = SimpleExcelReader::create($path)->getRows()->first();
+    @unlink($path);
+
+    expect($row)->toHaveKeys(['Catatan untuk guru pembina', 'Catatan untuk siswa'])
+        ->and($row)->not->toHaveKey('Catatan')
+        ->and($row['Catatan untuk guru pembina'])->toBe('Catatan internal pembina.')
+        ->and($row['Catatan untuk siswa'])->toBe('Catatan yang dibaca siswa.');
 });
 
 it('imports students in three steps and never shows the initial password pattern', function (): void {
@@ -232,7 +405,7 @@ it('imports students in three steps and never shows the initial password pattern
         ->set('schoolYear', '2026/2027')
         ->set('file', $file)
         ->assertHasNoErrors()
-        ->assertSee('Siap diimpor')
+        ->assertSee('Siswa baru') // M1-C: the preview sums up baru · pindah kelas · tidak berubah · ditolak
         ->assertSee('Tanggal lahir tidak valid')
         ->assertSee('Impor 2 siswa')
         ->assertDontSee('sm4g4');

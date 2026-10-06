@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Livewire\Akun;
 
 use App\Actions\Accounts\ImportStudents;
+use App\Actions\Accounts\StudentImportReport;
 use App\Domain\Archive\SchoolYear;
 use App\Domain\Files\InvalidUpload;
 use App\Domain\Files\StoreUpload;
@@ -34,8 +35,11 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
  * template (generated on the fly), upload + choose the tahun ajaran → dry run with ImportStudents,
  * review valid/invalid rows, then import. The preview rows stay server-side in the cache (keyed per user),
  * never in the Livewire payload. The initial password pattern (D-24) is never shown or described.
- * B2 (backlog #19): more than ImportStudentsJob::SYNC_MAX_ROWS valid rows → the commit is queued (StudentImport row,
+ * B2 (backlog #19): more than ImportStudentsJob::SYNC_MAX_ROWS rows to write → the commit is queued (StudentImport row,
  * progress polled with wire:poll); rows whose cells lost a leading = + - @ show "Sel dibersihkan".
+ * M1-C (lead, 2026-10-04): the file lists every student with the current class ("Kelas"). The preview sums up
+ * baru · pindah kelas · tidak berubah · ditolak; a registered student only moves class (ImportStudents), the
+ * account and its password are never touched or shown.
  */
 #[Title('Import data siswa')]
 #[Layout('layouts::app', ['subtitle' => 'Akun siswa dibuat otomatis dari file Excel.'])]
@@ -48,18 +52,27 @@ class ImportSiswa extends Component
 
     private const CACHE_MINUTES = 30;
 
+    /** What happens to a row (StudentImportReport action) => [label, chip tone]. */
+    private const ACTION_LABELS = [
+        StudentImportReport::NEW => ['Baru', 'green'],
+        StudentImportReport::MOVED => ['Pindah kelas', 'blue'],
+        StudentImportReport::UNCHANGED => ['Tidak berubah', 'gray'],
+        StudentImportReport::SKIPPED => ['Dilewati', 'gray'],
+        StudentImportReport::REJECTED => ['Ditolak', 'red'],
+    ];
+
     /** @var TemporaryUploadedFile|null */
     public $file = null;
 
     public string $schoolYear = '';
 
-    /** all | bad */
+    /** all | bad (ditolak) | notes (rows with a note) */
     public string $filter = 'all';
 
     #[Locked]
     public ?string $previewToken = null;
 
-    /** Summary after the real import: created, invalid. @var array{created: int, invalid: int}|null */
+    /** Summary after the real import. @var array{created: int, moved: int, invalid: int}|null */
     #[Locked]
     public ?array $imported = null;
 
@@ -80,7 +93,7 @@ class ImportSiswa extends Component
 
         $path = self::tempPath('xlsx');
         SimpleExcelWriter::create($path)
-            ->addHeader(['Nama lengkap', 'NIS', 'NISN', 'Tanggal lahir', 'Kelas saat pendaftaran', 'No HP'])
+            ->addHeader(ImportStudents::TEMPLATE_HEADER)
             ->close();
 
         return response()->download($path, 'template-import-siswa.xlsx')->deleteFileAfterSend();
@@ -136,7 +149,7 @@ class ImportSiswa extends Component
     public function import(ImportStudents $import): void
     {
         if ($this->file === null || $this->previewToken === null) {
-            $this->addError('file', 'Unggah file dulu.');
+            $this->addError('file', 'Upload file dulu.');
 
             return;
         }
@@ -144,13 +157,13 @@ class ImportSiswa extends Component
         $preview = $this->preview();
 
         if ($preview === null) {
-            $this->addError('file', 'Pratinjau sudah kedaluwarsa. Unggah file lagi.');
+            $this->addError('file', 'Preview sudah kedaluwarsa. Upload file lagi.');
 
             return;
         }
 
-        // B2 (#19): many rows → queued job with progress (password hashing would outlast the request timeout).
-        if (count(array_filter($preview['rows'], fn (array $r): bool => $r['errors'] === [])) > ImportStudentsJob::SYNC_MAX_ROWS) {
+        // B2 (#19): many rows to write → queued job with progress (password hashing would outlast the request timeout).
+        if (StudentImportReport::countChanges($preview['rows']) > ImportStudentsJob::SYNC_MAX_ROWS) {
             $this->queueImport(app(StoreUpload::class));
 
             return;
@@ -164,8 +177,8 @@ class ImportSiswa extends Component
             return;
         }
 
-        $this->imported = ['created' => $report->created, 'invalid' => $report->invalidCount()];
-        $this->dispatch('sth-toast', message: $report->created.' akun siswa dibuat.', tone: 'success');
+        $this->imported = ['created' => $report->created, 'moved' => $report->moved, 'invalid' => $report->invalidCount()];
+        $this->dispatch('sth-toast', message: self::resultLabel($report->created, $report->moved).'.', tone: 'success');
     }
 
     public function startOver(): void
@@ -213,7 +226,10 @@ class ImportSiswa extends Component
         $this->dispatch('sth-toast', message: 'Impor berjalan di latar belakang. Kemajuannya tampil di sini.', tone: 'info');
     }
 
-    /** "Unduh baris bermasalah": row number, name, NIS, class and the errors (formula-safe). */
+    /**
+     * "Download baris yang perlu dicek": the refused rows and the rows with a note: row number, name, NIS, class,
+     * what happens to the row and why (formula-safe). Never a birth date, a phone number or a password.
+     */
     public function downloadInvalid(): ?BinaryFileResponse
     {
         $this->authorize(Permission::StudentImport->value);
@@ -227,7 +243,7 @@ class ImportSiswa extends Component
         $writer = SimpleExcelWriter::create($path);
 
         foreach ($preview['rows'] as $row) {
-            if ($row['errors'] === []) {
+            if ($row['errors'] === [] && ($row['notes'] ?? []) === []) {
                 continue;
             }
 
@@ -236,13 +252,14 @@ class ImportSiswa extends Component
                 'Nama lengkap' => self::cell($row['name']),
                 'NIS' => self::cell($row['nis']),
                 'Kelas' => self::cell($row['classroom']),
-                'Masalah' => self::cell(implode(' ', $row['errors'])),
+                'Status' => self::ACTION_LABELS[$row['action'] ?? StudentImportReport::REJECTED][0],
+                'Keterangan' => self::cell(implode(' ', [...$row['errors'], ...($row['notes'] ?? [])])),
             ]);
         }
 
         $writer->close();
 
-        return response()->download($path, 'baris-bermasalah.xlsx')->deleteFileAfterSend();
+        return response()->download($path, 'baris-perlu-dicek.xlsx')->deleteFileAfterSend();
     }
 
     public function render(): View
@@ -250,33 +267,72 @@ class ImportSiswa extends Component
         $preview = $this->preview();
         $rows = $preview['rows'] ?? [];
         $invalid = array_values(array_filter($rows, fn (array $r): bool => $r['errors'] !== []));
-        $duplicates = count(array_filter($invalid, fn (array $r): bool => collect($r['errors'])->contains(fn (string $e): bool => str_contains($e, 'dobel di file'))));
-        $list = $this->filter === 'bad' ? $invalid : $rows;
+        $noted = array_values(array_filter($rows, fn (array $r): bool => ($r['notes'] ?? []) !== []));
+        $summary = StudentImportReport::summarize($rows);
+        $list = match ($this->filter) {
+            'bad' => $invalid,
+            'notes' => $noted,
+            default => $rows,
+        };
         $job = $this->importId !== null ? StudentImport::query()->find($this->importId) : null;
         $job = $job !== null && $this->actor()->can('view', $job) ? $job : null;
         $step = match (true) {
             $preview !== null || $this->imported !== null || $job !== null => 3,
             default => 2,
         };
+        $changeCount = StudentImportReport::countChanges($rows);
 
         return view('livewire.akun.import-siswa', [
             'step' => $step,
             'preview' => $preview,
             'total' => count($rows),
-            'validCount' => count($rows) - count($invalid),
+            'summary' => $summary,
+            'changeCount' => $changeCount,
+            'confirm' => self::confirmText($summary, $changeCount),
             'invalidCount' => count($invalid),
-            'duplicateCount' => $duplicates,
+            'notedCount' => count($noted),
+            // Registered students whose archive date changes: normal for a few (tinggal kelas, salah kelas), a sign of a
+            // wrong school year when there are many.
+            'archiveCorrections' => count(array_filter($noted, fn (array $r): bool => collect($r['notes'])
+                ->contains(fn (string $note): bool => str_starts_with($note, ImportStudents::NOTE_ARCHIVE_CORRECTED)))),
             'sanitizedCount' => count(array_filter($rows, fn (array $r): bool => $r['sanitized'] ?? false)),
             'job' => $job,
+            'jobResult' => $job !== null ? self::resultLabel($job->created_count, $job->updated_count) : null,
+            'importedResult' => $this->imported !== null ? self::resultLabel($this->imported['created'], $this->imported['moved'] ?? 0) : null,
             'list' => array_map(fn (array $r): array => [
                 ...$r,
                 'grade12' => self::monthLabel($r['grade12_start_date']),
                 'archive' => self::monthLabel($r['archive_at']),
                 'angkatan' => $r['grade12_start_date'] !== null ? (string) ((int) substr($r['grade12_start_date'], 0, 4) - 2) : null,
+                'kelas' => ($r['previous_classroom'] ?? null) !== null ? $r['previous_classroom'].' → '.$r['classroom'] : $r['classroom'],
+                'status' => self::ACTION_LABELS[$r['action'] ?? StudentImportReport::NEW][0],
+                'tone' => self::ACTION_LABELS[$r['action'] ?? StudentImportReport::NEW][1],
+                'notes' => $r['notes'] ?? [],
             ], array_slice($list, 0, self::PREVIEW_ROWS)),
             'listTotal' => count($list),
             'yearOptions' => self::yearOptions(),
         ])->layoutData(['badges' => $this->kesiswaanBadges()]);
+    }
+
+    /** "3 akun siswa dibuat", plus ", 12 siswa pindah kelas" when students moved. */
+    private static function resultLabel(int $created, int $moved): string
+    {
+        return $created.' akun siswa dibuat'.($moved > 0 ? ', '.$moved.' siswa pindah kelas' : '');
+    }
+
+    /**
+     * The question before the import writes anything.
+     *
+     * @param  array{new: int, moved: int, unchanged: int, skipped: int, rejected: int}  $summary
+     */
+    private static function confirmText(array $summary, int $changeCount): string
+    {
+        $parts = array_filter([
+            $summary[StudentImportReport::NEW] > 0 ? 'buat '.$summary[StudentImportReport::NEW].' akun siswa' : null,
+            $summary[StudentImportReport::MOVED] > 0 ? 'pindahkan '.$summary[StudentImportReport::MOVED].' siswa ke kelas di file' : null,
+        ]);
+
+        return $parts === [] ? 'Simpan '.$changeCount.' perbaikan data sekarang?' : ucfirst(implode(' dan ', $parts)).' sekarang?';
     }
 
     /** @return array{rows: list<array<string, mixed>>, fileName: string, schoolYear: string}|null */

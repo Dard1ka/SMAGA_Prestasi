@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * A queued student import (backlog #19): created by App\Livewire\Akun\ImportSiswa for files with more than
  * App\Jobs\ImportStudentsJob::SYNC_MAX_ROWS valid rows, advanced by ImportStudentsJob slice by slice, polled by
  * the import screen. Counts only (no student data). Status, counters and file_id are not mass-assignable.
+ * `created_count` = accounts created, `updated_count` = registered students moved to another class (M1-C).
  */
 class StudentImport extends Model
 {
@@ -39,6 +40,7 @@ class StudentImport extends Model
             'sanitized_rows' => 'integer',
             'processed_rows' => 'integer',
             'created_count' => 'integer',
+            'updated_count' => 'integer',
             'started_at' => 'immutable_datetime',
             'finished_at' => 'immutable_datetime',
         ];

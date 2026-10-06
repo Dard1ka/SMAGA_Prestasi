@@ -14,19 +14,19 @@
                             <span class="truncate">{{ $signatureFile->original_name }}</span>
                             <x-sth.chip tone="green" size="sm" icon="check">Aktif</x-sth.chip>
                         </p>
-                        <p class="text-sm muted">PNG · {{ number_format($signatureFile->size / 1024, 0, ',', '.') }} KB · diunggah {{ $signatureFile->created_at?->translatedFormat('j M Y') }}. Dipakai otomatis di semua surat tugas PDF.</p>
+                        <p class="text-sm muted">PNG · {{ number_format($signatureFile->size / 1024, 0, ',', '.') }} KB · di-upload {{ $signatureFile->created_at?->translatedFormat('j M Y') }}. Dipakai otomatis di semua surat tugas PDF.</p>
                     </div>
                     <x-sth.button variant="danger" size="sm" icon="trash" data-sth-open="ttd-hapus" aria-haspopup="dialog">Hapus</x-sth.button>
                 </div>
             @else
-                <x-sth.alert tone="warning" title="Belum ada file">Wajib diunggah sebelum Tata Usaha membuat surat tugas.</x-sth.alert>
+                <x-sth.alert tone="warning" title="Belum ada file">Wajib di-upload sebelum Tata Usaha membuat surat tugas.</x-sth.alert>
             @endif
 
             <form wire:submit="uploadSignature" class="flex flex-col gap-3" novalidate>
-                <x-sth.file-drop wire:model="signature" :file="$signature" label="{{ $signatureFile ? 'Ganti file' : 'Unggah file' }}" accept=".png,image/png"
+                <x-sth.file-drop wire:model="signature" :file="$signature" label="{{ $signatureFile ? 'Ganti file' : 'Upload file' }}" accept=".png,image/png"
                                  hint="PNG transparan, maks. 1 MB. Versi lama tetap disimpan sebagai bukti." icon="image" />
                 <div class="flex justify-end">
-                    <x-sth.button type="submit" icon="upload" wire:loading.attr="disabled" wire:target="signature,uploadSignature">Unggah tanda tangan</x-sth.button>
+                    <x-sth.button type="submit" icon="upload" wire:loading.attr="disabled" wire:target="signature,uploadSignature">Upload tanda tangan</x-sth.button>
                 </div>
             </form>
         </x-sth.card>
@@ -66,20 +66,23 @@
     @if ($canFormats)
         <x-sth.card as="section" aria-labelledby="h-format" class="flex flex-col gap-4">
             <div>
-                <h3 id="h-format" class="title-card">Format nomor surat</h3>
-                <p class="text-sm muted">Kode: {seq} nomor urut dari TU, {roman_month} bulan Romawi, {year} tahun. Surat yang sudah terbit tidak berubah.</p>
+                <h3 id="h-format" class="title-card">Contoh nomor surat</h3>
+                <p class="text-sm muted">
+                    Tata Usaha mengetik nomor lengkap di tiap surat. Format ini hanya jadi contoh di bawah kolom nomor, tidak mengisi nomor otomatis.
+                    Kode: {seq} nomor urut, {roman_month} bulan Romawi, {year} tahun.
+                </p>
             </div>
             <form wire:submit="saveFormats" class="grid gap-4 md:grid-cols-2" novalidate>
                 <div class="flex flex-col gap-1.5">
                     <x-sth.input wire:model.live.debounce.400ms="formatSiswa" label="Surat tugas siswa" autocomplete="off" class="num" />
-                    <p class="text-sm muted">Contoh: <span class="num font-semibold text-ink">{{ $exampleSiswa ?? '–' }}</span></p>
+                    <p class="text-sm muted">Tampil sebagai: <span class="num font-semibold text-ink">{{ $exampleSiswa ?? '–' }}</span></p>
                 </div>
                 <div class="flex flex-col gap-1.5">
                     <x-sth.input wire:model.live.debounce.400ms="formatGuru" label="Surat tugas guru" autocomplete="off" class="num" />
-                    <p class="text-sm muted">Contoh: <span class="num font-semibold text-ink">{{ $exampleGuru ?? '–' }}</span></p>
+                    <p class="text-sm muted">Tampil sebagai: <span class="num font-semibold text-ink">{{ $exampleGuru ?? '–' }}</span></p>
                 </div>
                 <div class="flex justify-end md:col-span-2">
-                    <x-sth.button type="submit" wire:loading.attr="disabled" wire:target="saveFormats">Simpan format</x-sth.button>
+                    <x-sth.button type="submit" wire:loading.attr="disabled" wire:target="saveFormats">Simpan contoh</x-sth.button>
                 </div>
             </form>
         </x-sth.card>

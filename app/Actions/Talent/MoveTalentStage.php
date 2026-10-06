@@ -15,23 +15,31 @@ use Illuminate\Validation\ValidationException;
 /**
  * Kesiswaan moves a pilihan talenta one step forward in the pipeline ("Lolos ke …"):
  * terdaftar → pemetaan → seleksi → pembinaan (TalentStatus::next()). Optional pembina, assessment date and
- * note are saved in the same step (UpdateTalentAssessment). Tidak lolos = RejectTalentApplication.
- * The student is notified (queued). Bulk moves call this once per row.
+ * the note for the guru pembina are saved in the same step (UpdateTalentAssessment). Tidak lolos =
+ * RejectTalentApplication. The student is notified (queued). Bulk moves call this once per row.
+ *
+ * `student_note` (optional "catatan untuk siswa") belongs to this decision: it is stored on the row, sent
+ * with the notification and shown on Profil talenta. A move without one clears the note of the earlier stage.
+ * When the caller passes no `student_note` at all (row button, bulk move), the draft that "Simpan" kept on the
+ * row is the note (M2-B, TalentNote::forDecision()); every move clears the draft.
  */
 final class MoveTalentStage
 {
     public function __construct(private readonly UpdateTalentAssessment $assessment) {}
 
     /**
-     * @param  array{mentor_id?: int|string|null, assessment_on?: string|null, note?: string|null}|null  $details
+     * @param  array{mentor_id?: int|string|null, assessment_on?: string|null, note?: string|null, student_note?: string|null}|null  $details
      */
     public function handle(User $actor, TalentApplication $application, TalentStatus $to, ?array $details = null): TalentApplication
     {
         Gate::forUser($actor)->authorize('move', $application);
 
-        $clean = $details === null ? null : $this->assessment->validated($details);
+        $clean = $details === null ? [] : $this->assessment->validated($details);
+        // A text typed for this move wins (an empty one = no note); without the key the saved draft is sent.
+        $noteGiven = isset($details['student_note']);
+        $givenNote = TalentNote::clean($noteGiven ? (string) $details['student_note'] : null, 'student_note');
 
-        [$locked, $from] = DB::transaction(function () use ($actor, $application, $to, $clean): array {
+        [$locked, $from, $studentNote] = DB::transaction(function () use ($actor, $application, $to, $clean, $noteGiven, $givenNote): array {
             /** @var TalentApplication $locked */
             $locked = TalentApplication::query()->whereKey($application->getKey())->lockForUpdate()->firstOrFail();
             $from = $locked->status;
@@ -44,16 +52,24 @@ final class MoveTalentStage
                 ]);
             }
 
-            $locked->forceFill(['status' => $to, ...($clean ?? [])])->save();
+            [$studentNote, $fromDraft] = TalentNote::forDecision($givenNote, $noteGiven, $locked->student_note_draft);
+
+            $locked->forceFill([...$clean, 'status' => $to, 'student_note' => $studentNote, 'student_note_draft' => null])->save();
 
             activity('talent')
                 ->performedOn($locked)
                 ->causedBy($actor)
                 ->event('talent.stage_changed')
-                ->withProperties(['from' => $from->value, 'to' => $to->value, 'mentor_id' => $locked->mentor_id])
+                ->withProperties([
+                    'from' => $from->value,
+                    'to' => $to->value,
+                    'mentor_id' => $locked->mentor_id,
+                    'student_note' => $studentNote,
+                    'student_note_from_draft' => $fromDraft,
+                ])
                 ->log('talent.stage_changed');
 
-            return [$locked, $from];
+            return [$locked, $from, $studentNote];
         });
 
         $application->setRawAttributes($locked->getAttributes(), true);
@@ -61,7 +77,7 @@ final class MoveTalentStage
         $user = $locked->student()->with('user')->first()?->user;
 
         if ($user !== null && $user->canLogIn()) {
-            $user->notify(TalentStageChanged::for($locked, $from, self::talentLabel($locked)));
+            $user->notify(TalentStageChanged::for($locked, $from, self::talentLabel($locked), $studentNote));
         }
 
         return $locked;

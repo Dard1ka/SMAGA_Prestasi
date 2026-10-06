@@ -16,8 +16,10 @@
                           placeholder="Semua tingkat" :options="$tingkatOptions" class="sm:w-44" />
             <x-sth.select wire:model.live="status" id="f-status" label="Status pendaftaran" hide-label size="sm"
                           placeholder="Semua status" :options="$statusOptions" class="sm:w-44" />
+            {{-- One search box at a time: from lg up the top bar search does this job (it filters while typing,
+                 app.js "top bar search"), below lg the top bar has no text box, so this one shows instead. --}}
             <x-sth.input wire:model.live.debounce.400ms="q" id="f-cari" type="search" label="Cari nama lomba" hide-label
-                         icon="search" placeholder="Nama lomba" maxlength="100" class="col-span-2 sm:w-60" />
+                         icon="search" placeholder="Cari lomba" maxlength="100" class="col-span-2 sm:w-60 lg:hidden" />
         </div>
     </section>
 

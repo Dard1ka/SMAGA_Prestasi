@@ -15,8 +15,9 @@ use App\Models\User;
  * Surat tugas (D-06, SECURITY §3g, UI-MAP #21). Deny by default; letters are immutable (no update/delete).
  * - staff with `letter.view` (TU, Kepala Sekolah, Kesiswaan, Admin) see every letter;
  * - after sending, team members see the siswa letter, the guru pembimbing sees both;
- * - only `letter.generate` issues letters, only for `disetujui` registrations without letters (checked
- *   again inside IssueLetters under a row lock); only `letter.send` sends them.
+ * - only `letter.generate` issues letters, one letter type at a time, only for `disetujui` registrations
+ *   that do not have that letter yet (checked again inside IssueLetters under a row lock); only `letter.send`
+ *   sends them, once every required letter exists.
  * FilePolicy (W2-A1) delegates downloads of `letter` files to view().
  */
 class LetterPolicy
@@ -70,15 +71,29 @@ class LetterPolicy
             ->exists();
     }
 
-    /** Issue both letters (numbers + PDFs) for an approved registration. */
-    public function create(User $user, Registration $registration): bool
+    /**
+     * Issue ONE letter (number + PDF) of an approved registration (M1-A: one letter type at a time). With a
+     * type: that letter does not exist yet (a guru letter needs a guru pembimbing). Without a type: at least
+     * one required letter is still missing.
+     */
+    public function create(User $user, Registration $registration, ?LetterType $type = null): bool
     {
-        return $this->viewQueue($user)
-            && $registration->status === RegistrationStatus::Disetujui
-            && $registration->letters()->doesntExist();
+        if (! $this->viewQueue($user) || $registration->status !== RegistrationStatus::Disetujui) {
+            return false;
+        }
+
+        if ($type === null) {
+            return $registration->letters()->count() < count(self::requiredTypes($registration));
+        }
+
+        return in_array($type, self::requiredTypes($registration), true)
+            && $registration->letters()->where('type', $type)->doesntExist();
     }
 
-    /** Send the issued letters to the team and the mentor (disetujui → surat_terbit). */
+    /**
+     * Send the issued letters to the team and the mentor (disetujui → surat_terbit): every required letter
+     * has its PDF (siswa, plus guru when there is a guru pembimbing) and none was sent yet.
+     */
     public function send(User $user, Registration $registration): bool
     {
         if (! $user->canLogIn() || ! $user->can(Permission::LetterSend->value)) {
@@ -91,8 +106,24 @@ class LetterPolicy
 
         $letters = $registration->letters()->get();
 
-        return $letters->contains(fn (Letter $letter): bool => $letter->type === LetterType::Siswa && $letter->file_id !== null)
-            && $letters->every(fn (Letter $letter): bool => $letter->sent_at === null);
+        foreach (self::requiredTypes($registration) as $type) {
+            if (! $letters->contains(fn (Letter $letter): bool => $letter->type === $type && $letter->file_id !== null)) {
+                return false;
+            }
+        }
+
+        return $letters->every(fn (Letter $letter): bool => $letter->sent_at === null);
+    }
+
+    /**
+     * The letters a registration needs before "Kirim": always the siswa letter, the guru letter when it has a
+     * guru pembimbing.
+     *
+     * @return list<LetterType>
+     */
+    public static function requiredTypes(Registration $registration): array
+    {
+        return $registration->mentor_id !== null ? [LetterType::Siswa, LetterType::Guru] : [LetterType::Siswa];
     }
 
     // --- B3: correction (backlog #11) ---

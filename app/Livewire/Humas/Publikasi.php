@@ -203,7 +203,7 @@ class Publikasi extends Component
         $publication->loadMissing('achievement');
 
         $event = $this->eventId !== ''
-            ? AppreciationEvent::query()->whereKey($this->eventId)->whereDate('held_on', '>=', CarbonImmutable::today()->toDateString())->first()
+            ? AppreciationEvent::query()->open()->whereKey($this->eventId)->whereDate('held_on', '>=', CarbonImmutable::today()->toDateString())->first()
             : null;
 
         if ($event === null) {
@@ -268,9 +268,23 @@ class Publikasi extends Component
             'channelOptions' => PublicationChannel::options(),
             'templateOptions' => FlyerRenderer::TEMPLATES,
         ])->layoutData([
-            'badges' => HumasQueries::badges($user),
+            'badges' => $this->freshBadges($user),
             'search' => ['action' => route('humas.beranda'), 'placeholder' => 'Cari prestasi atau siswa'],
         ]);
+    }
+
+    /**
+     * Sidebar counts for the layout, also sent to the browser: the sidebar is rendered once per page load, so
+     * without the `sth-badges` event (app.js) the number stayed until the next reload.
+     *
+     * @return array<string, int>
+     */
+    private function freshBadges(?User $user): array
+    {
+        $badges = HumasQueries::badges($user);
+        $this->dispatch('sth-badges', badges: $badges);
+
+        return $badges;
     }
 
     /** @return Builder<Publication> */
@@ -320,14 +334,16 @@ class Publikasi extends Component
             ->filter(fn (Appreciation $a): bool => $a->event !== null)
             ->sortBy(fn (Appreciation $a): string => $a->event->held_on->toDateString())
             ->values();
-        $recordedEventIds = $recorded->map(fn (Appreciation $a): string => (string) $a->appreciation_event_id)->all();
-
-        $events = AppreciationEvent::query()
-            ->whereDate('held_on', '>=', CarbonImmutable::today()->toDateString())
-            ->whereNotIn('id', $recordedEventIds)
-            ->orderBy('held_on')
-            ->limit(20)
-            ->get();
+        // M2-B (Q2-10): one achievement sits on one event. Once it is scheduled or was appreciated,
+        // RecordAppreciation refuses a second event, so no "Masukkan" is offered (the panel lists where it is).
+        $events = $publication->achievement->appreciations->isNotEmpty()
+            ? collect()
+            : AppreciationEvent::query()
+                ->open() // M1-E: a confirmed event takes no more prestasi
+                ->whereDate('held_on', '>=', CarbonImmutable::today()->toDateString())
+                ->orderBy('held_on')
+                ->limit(20)
+                ->get();
 
         $statusChip = match ($status) {
             PublicationStatus::Siap => ['orange', 'Siap publikasi'],
@@ -352,7 +368,7 @@ class Publikasi extends Component
                 'competition' => $facts->competitionName,
                 'level' => $facts->levelLine(),
                 'mentor' => $facts->mentorLine(),
-                'label' => 'Pratinjau e-flyer: Selamat dan sukses '.$facts->studentName
+                'label' => 'Preview e-flyer: Selamat dan sukses '.$facts->studentName
                     .($facts->className !== null ? ', kelas '.$facts->className : '')
                     .', '.$facts->resultLabel.' '.$facts->competitionName
                     .($facts->levelLabel !== null ? ' tingkat '.mb_strtolower($facts->levelLabel) : '').'.',

@@ -43,18 +43,26 @@ Route::middleware(['throttle:60,1', PublicPageHeaders::class])->group(function (
 // --- end W2-D ---
 
 // --- W2-C: public letter verification (QR on every surat tugas, SECURITY §3g; 30/min/IP, noindex) ---
+// M2-C: any one-segment code reaches the controller, so a mistyped code gets its own "Surat dengan kode ini
+// tidak terdaftar." page instead of the generic 404 (the controller only looks up 32 hex characters).
 Route::get('/verifikasi-surat/{code}', LetterVerificationController::class)
-    ->where('code', '[A-Za-z0-9]{1,64}')
+    ->where('code', '[^/]{1,128}')
     ->middleware('throttle:30,1')
     ->name('public.surat.verifikasi');
 // --- end W2-C ---
+
+// M2-C (QA Q2-03): people type /logout into the address bar. Logging out stays POST + CSRF (Fortify `logout`);
+// this GET never ends a session, it only answers with a redirect instead of a 405 page.
+Route::get('/logout', fn (Request $request) => redirect()->route($request->user() !== null ? 'home' : 'login'))
+    ->name('logout.get');
 
 Route::middleware('guest')->group(function (): void {
     Route::livewire('/lupa-kata-sandi', ForgotPassword::class)->name('password.request');
 });
 
 Route::middleware(['auth', 'active'])->group(function (): void {
-    // First login: new password → email → 6-digit code (the only screen until activation is done).
+    // First login: email → 6-digit code → password (student: change or keep; staff: change). The only screen
+    // until activation is done.
     Route::livewire('/aktivasi', Activation::class)->name('aktivasi');
 
     // Staff TOTP setup; `staff.2fa` sends staff here until 2FA is confirmed.

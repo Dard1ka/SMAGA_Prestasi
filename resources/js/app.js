@@ -9,9 +9,13 @@
  |   data-sth-open="<dialog id>" · data-sth-close · data-sth-autoopen        <x-sth.modal>, mobile menu
  |   window events: sth-modal-open / sth-modal-close {id} · sth-toast {message, tone}
  |                  sth-form-invalid {form} — bring the first validation error into view
+ |                  sth-badges {badges: {key: count}} — update [data-sth-badge="key"] in the sidebar
+ |   form[data-sth-live-search]                                               top bar search filters as you type
  |   data-sth-toast / data-sth-toast-close / data-announce                    <x-sth.toast>, <x-sth.flash>
  |   data-sth-tabs / data-sth-tab / data-sth-panel                            <x-sth.tabs panels>
  |   data-sth-reveal="<input id>"                                             <x-sth.input revealable>
+ |   (no hook) password fields are emptied when a page returns from the back/forward cache and right after
+ |             a plain POST form was submitted, see "passwords do not stay on screen"
  |   data-sth-drop / data-sth-file-name                                       <x-sth.file-drop>
  |   data-sth-menu / data-sth-menu-button / data-sth-menu-panel               top bar account menu
  */
@@ -282,6 +286,84 @@ window.addEventListener('sth-form-invalid', (event) => {
     window.setTimeout(() => revealFirstError(scope), 50);
 });
 
+/* ---------------------------------------------------------------- sidebar badges */
+
+/*
+ | The sidebar belongs to the layout, which Livewire renders once per page load, so a queue count next to a
+ | menu item went stale as soon as an action on the page changed the queue (send a letter, verify a report).
+ | Screens dispatch `sth-badges` with fresh counts and the numbers are updated in place; zero hides the badge.
+ */
+window.addEventListener('sth-badges', (event) => {
+    const badges = event.detail?.badges;
+    if (!badges || typeof badges !== 'object') return;
+
+    for (const [key, value] of Object.entries(badges)) {
+        const count = Math.max(0, Math.trunc(Number(value)) || 0);
+        document.querySelectorAll(`[data-sth-badge="${CSS.escape(key)}"]`).forEach((badge) => {
+            badge.textContent = String(count);
+            badge.hidden = count === 0;
+        });
+    }
+});
+
+/* ---------------------------------------------------------------- top bar search (live) */
+
+/*
+ | The top bar search is a plain GET form (?q=) that points at the role's list page. On that list page itself
+ | the Livewire screen owns a property with the same name, so typing filters the list right away: no Enter
+ | needed, and emptying the box brings the full list back. On every other page Enter still submits the form.
+ */
+const SEARCH_DELAY = 350;
+let searchTimer = 0;
+
+function liveSearchTarget(form, name) {
+    if (!(form instanceof HTMLFormElement) || !form.hasAttribute('data-sth-live-search') || !name) return null;
+    if (new URL(form.action, window.location.href).pathname !== window.location.pathname) return null;
+
+    const components = window.Livewire?.all?.() || [];
+
+    return components.find((component) => component.canonical && Object.hasOwn(component.canonical, name)) || null;
+}
+
+document.addEventListener('input', (event) => {
+    const input = event.target;
+    if (!(input instanceof HTMLInputElement)) return;
+    const component = liveSearchTarget(input.form, input.name);
+    if (!component) return;
+
+    window.clearTimeout(searchTimer);
+    searchTimer = window.setTimeout(() => component.$wire.set(input.name, input.value), SEARCH_DELAY);
+});
+
+document.addEventListener('submit', (event) => {
+    const form = event.target;
+    const input = form instanceof HTMLFormElement ? form.querySelector('input[type="search"]') : null;
+    const component = input ? liveSearchTarget(form, input.name) : null;
+    if (!component) return;
+
+    event.preventDefault();
+    window.clearTimeout(searchTimer);
+    component.$wire.set(input.name, input.value);
+});
+
+// "Hapus filter" and the like change the value on the server: show it in the box unless the user is typing.
+function syncLiveSearch() {
+    document.querySelectorAll('form[data-sth-live-search] input[type="search"]').forEach((input) => {
+        if (document.activeElement === input) return;
+        const component = liveSearchTarget(input.form, input.name);
+        const value = component?.canonical?.[input.name];
+        if (typeof value === 'string' && input.value !== value) input.value = value;
+    });
+}
+
+function watchLiveSearch() {
+    if (!window.Livewire?.hook || window.sth?.searchWatched) return;
+    window.sth.searchWatched = true;
+    window.Livewire.hook('commit', ({ succeed }) => {
+        succeed(() => window.setTimeout(syncLiveSearch, 0));
+    });
+}
+
 /* ---------------------------------------------------------------- tabs (client panels) */
 
 function selectTab(tab, focus) {
@@ -327,17 +409,82 @@ document.addEventListener('keydown', (event) => {
 
 /* ---------------------------------------------------------------- password reveal */
 
-document.addEventListener('click', (event) => {
-    const button = event.target instanceof Element ? event.target.closest('[data-sth-reveal]') : null;
-    if (!button) return;
-    const input = document.getElementById(button.getAttribute('data-sth-reveal'));
-    if (!(input instanceof HTMLInputElement)) return;
-    const show = input.type === 'password';
+function setReveal(button, input, show) {
     input.type = show ? 'text' : 'password';
     button.setAttribute('aria-pressed', show ? 'true' : 'false');
     button.setAttribute('aria-label', show ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi');
     button.querySelector('[data-sth-reveal-off]')?.toggleAttribute('hidden', show);
     button.querySelector('[data-sth-reveal-on]')?.toggleAttribute('hidden', !show);
+}
+
+document.addEventListener('click', (event) => {
+    const button = event.target instanceof Element ? event.target.closest('[data-sth-reveal]') : null;
+    if (!button) return;
+    const input = document.getElementById(button.getAttribute('data-sth-reveal'));
+    if (!(input instanceof HTMLInputElement)) return;
+    setReveal(button, input, input.type === 'password');
+});
+
+/* ---------------------------------------------------------------- passwords do not stay on screen */
+
+/*
+ | On a shared lab computer, Back after "Keluar" brought the old login page back with the password still in
+ | its field (QA Q2-01). The credential pages are sent with `Cache-Control: no-store`
+ | (App\Http\Middleware\PreventCredentialPageCaching); this is the second line, for a page the browser kept anyway:
+ |   - a page that comes back from the back/forward cache (`pageshow` with `event.persisted`) gets every password
+ |     field emptied;
+ |   - a plain POST form (login, confirm password) gets its password fields emptied right after the browser has
+ |     read them for the request, so the copy of the page that stays in history never holds a password.
+ | A Livewire form (`wire:submit`) is left alone on submit: Livewire sends its own state, and the component
+ | empties the fields itself when the action succeeds. Emptying the input under it would only put the screen and
+ | that state out of step.
+ */
+function passwordFields(root) {
+    const fields = new Set(root.querySelectorAll('input[type="password"]'));
+
+    // "Tampilkan kata sandi" turns a field into type=text; it is still a password field.
+    root.querySelectorAll('[data-sth-reveal]').forEach((button) => {
+        const input = document.getElementById(button.getAttribute('data-sth-reveal'));
+        if (input instanceof HTMLInputElement) fields.add(input);
+    });
+
+    return [...fields];
+}
+
+function emptyPasswordFields(fields, notify) {
+    fields.forEach((input) => {
+        const hadValue = input.value !== '';
+        input.value = '';
+
+        const button = input.id ? document.querySelector(`[data-sth-reveal="${CSS.escape(input.id)}"]`) : null;
+        if (button && input.type !== 'password') setReveal(button, input, false);
+
+        // Tell a bound Livewire property (wire:model) that the field is empty now.
+        if (notify && hadValue) {
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+            input.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+    });
+}
+
+window.addEventListener('pageshow', (event) => {
+    if (event.persisted) emptyPasswordFields(passwordFields(document), true);
+});
+
+document.addEventListener('submit', (event) => {
+    const form = event.target;
+    if (!(form instanceof HTMLFormElement) || form.method !== 'post') return;
+    if (form.getAttributeNames().some((name) => name.startsWith('wire:submit'))) return;
+
+    const fields = passwordFields(form);
+    if (!fields.length) return;
+
+    // The browser builds the request body from the fields in this same task, right after the submit event. A
+    // timer runs after that, so the password is already on its way when its field is emptied. A submit that some
+    // other handler cancelled keeps what was typed.
+    window.setTimeout(() => {
+        if (!event.defaultPrevented) emptyPasswordFields(fields, false);
+    }, 0);
 });
 
 /* ---------------------------------------------------------------- file drop */
@@ -468,3 +615,6 @@ function watchThrottledRequests() {
 
 watchThrottledRequests();
 document.addEventListener('livewire:init', watchThrottledRequests);
+
+watchLiveSearch();
+document.addEventListener('livewire:init', watchLiveSearch);

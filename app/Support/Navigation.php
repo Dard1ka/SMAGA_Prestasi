@@ -17,9 +17,11 @@ use Throwable;
  * is used. When none exists yet the item renders as href="#" with aria-disabled="true", so the shell
  * works before wave 2 has created the screens.
  *
- * Badge counts are never invented here: pass them to the layout (:badges="['siswa.lomba-saya' => 2]")
- * or register one resolver in a service provider:
- *     Navigation::resolveBadgesUsing(fn (User $user, string $role): array => [...]);
+ * Badge counts are never invented here. They come from the one resolver that
+ * App\Providers\NavigationServiceProvider registers (so every page of a role shows them, M2-C), and a page
+ * may pass its own (:badges="['tu.surat' => 3]" / ->layoutData(['badges' => …])): the page's value wins and
+ * the resolver is not asked for that key again.
+ *     Navigation::resolveBadgesUsing(fn (object $user, string $role, array $except): array => [...]);
  */
 final class Navigation
 {
@@ -66,11 +68,33 @@ final class Navigation
     private static ?Closure $badgeResolver = null;
 
     /**
-     * Register one callback that returns badge counts: fn (object $user, string $role): array<string, int>.
+     * Register one callback that returns badge counts:
+     * fn (object $user, string $role, list<string> $except): array<string, int>.
+     * `$except` = keys the page passed itself (they win anyway, so the callback can skip their queries).
      */
     public static function resolveBadgesUsing(?Closure $resolver): void
     {
         self::$badgeResolver = $resolver;
+    }
+
+    /**
+     * Badge keys the menu of a role shows (e.g. kesiswaan → kesiswaan.usulan, kesiswaan.verifikasi).
+     *
+     * @return list<string>
+     */
+    public static function badgeKeys(?string $role): array
+    {
+        $keys = [];
+
+        foreach (self::definitions()[$role]['sections'] ?? [] as $section) {
+            foreach ($section['items'] as $def) {
+                if (isset($def['badge'])) {
+                    $keys[] = (string) $def['badge'];
+                }
+            }
+        }
+
+        return array_values(array_unique($keys));
     }
 
     public static function roleLabel(?string $role): string
@@ -103,7 +127,7 @@ final class Navigation
     ): array {
         $currentRoute ??= Route::currentRouteName();
         $role = self::resolveRole($user, $role, $currentRoute);
-        $badges = array_merge(self::resolvedBadges($user, $role), $badges);
+        $badges = array_merge(self::resolvedBadges($user, $role, array_map('strval', array_keys($badges))), $badges);
         $definition = $role !== null ? self::definitions()[$role] : ['cta' => null, 'search' => null, 'sections' => []];
 
         $sections = [];
@@ -421,10 +445,14 @@ final class Navigation
     }
 
     /**
+     * Counts from the registered resolver. Nothing for guests and preview arrays; a failing query costs the
+     * numbers, never the page.
+     *
      * @param  object|array<string, mixed>|null  $user
+     * @param  list<string>  $except  keys the page passed itself
      * @return array<string, int|null>
      */
-    private static function resolvedBadges(object|array|null $user, ?string $role): array
+    private static function resolvedBadges(object|array|null $user, ?string $role, array $except = []): array
     {
         if (self::$badgeResolver === null || ! is_object($user) || $role === null) {
             return [];
@@ -432,7 +460,7 @@ final class Navigation
 
         $resolver = self::$badgeResolver;
 
-        return (array) rescue(fn () => $resolver($user, $role), [], true);
+        return (array) rescue(fn () => $resolver($user, $role, $except), [], true);
     }
 
     /**
@@ -454,6 +482,8 @@ final class Navigation
             'current' => false,
             'disabled' => $url === null && ! $preview,
             'badge' => $badge !== null && (int) $badge > 0 ? (int) $badge : null,
+            // The sidebar prints this as data-sth-badge so the browser event `sth-badges` can update the count in place.
+            'badgeKey' => isset($def['badge']) ? (string) $def['badge'] : null,
         ];
     }
 

@@ -2,7 +2,7 @@
 @php
     $variant = request()->query('variant') === 'simple' ? 'simple' : 'split';
 @endphp
-<x-layouts::auth title="Pratinjau masuk" :variant="$variant">
+<x-layouts::auth title="Preview masuk" :variant="$variant">
     @if ($variant === 'simple')
         <div class="flex flex-col gap-5">
             <div class="flex flex-col gap-1.5">

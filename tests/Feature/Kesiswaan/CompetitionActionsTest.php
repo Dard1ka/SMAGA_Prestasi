@@ -14,6 +14,7 @@ use App\Models\Competition;
 use App\Notifications\Competitions\CompetitionPublished;
 use App\Notifications\Competitions\CompetitionRejected;
 use App\Rules\ExternalUrl;
+use Carbon\CarbonImmutable;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
@@ -25,6 +26,9 @@ use Tests\Feature\Kesiswaan\KesiswaanFixtures as F;
 uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
+    // F::form() has fixed dates (deadline 20 Oct 2026). Since M2-B publishing asks for a confirmation once a
+    // date has passed (LombaDatesTest), so "today" is fixed too and these tests read the same on every run.
+    $this->travelTo(CarbonImmutable::parse('2026-10-06 09:00:00'));
     F::boot();
     Notification::fake();
 

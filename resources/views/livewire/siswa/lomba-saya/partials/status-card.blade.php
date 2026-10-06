@@ -99,7 +99,7 @@
                     </div>
                     <p class="muted m-0 text-sm">
                         @if ($d['canReport'])
-                            Unggah sertifikat dan foto dokumentasi lombamu.
+                            Upload sertifikat dan foto dokumentasi lombamu.
                         @else
                             Ketua tim mengirim laporan hasil untuk seluruh tim.
                         @endif
@@ -189,9 +189,9 @@
                 </x-sth.card>
                 <x-sth.card as="section" aria-labelledby="sert-judul" class="flex flex-col gap-3">
                     <h3 id="sert-judul" class="title-card">Sertifikat</h3>
-                    <p class="muted m-0 text-sm">Terverifikasi. Hanya kamu, tim, dan sekolah yang bisa mengunduh.</p>
+                    <p class="muted m-0 text-sm">Terverifikasi. Hanya kamu, tim, dan sekolah yang bisa men-download.</p>
                     @if ($d['certificate'])
-                        <x-sth.button variant="quiet" icon="download" :href="$d['certificate']">Unduh sertifikat</x-sth.button>
+                        <x-sth.button variant="quiet" icon="download" :href="$d['certificate']">Download sertifikat</x-sth.button>
                     @endif
                 </x-sth.card>
             </div>

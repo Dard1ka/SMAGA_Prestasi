@@ -23,10 +23,8 @@
             <{{ $hName }} @class(['m-0 font-display leading-tight font-extrabold break-words', 'text-[26px] md:text-[30px]' => $level === 1, 'text-[22px]' => $level !== 1])>{{ $detail['name'] }}</{{ $hName }}>
             <div class="flex flex-wrap items-center gap-2">
                 @if ($detail['alumni'])
+                    {{-- An alumnus has no class any more: the last class is not shown (lead, 2026-10-04). --}}
                     <x-sth.chip>Alumni{{ $detail['lulus'] ? ' · lulus '.$detail['lulus'] : '' }}</x-sth.chip>
-                    @if ($detail['kelas'])
-                        <span class="text-sm font-semibold text-ink-2">Kelas terakhir {{ $detail['kelas'] }}</span>
-                    @endif
                 @else
                     <span class="text-sm font-semibold text-ink-2">Kelas {{ $detail['kelas'] }}</span>
                 @endif

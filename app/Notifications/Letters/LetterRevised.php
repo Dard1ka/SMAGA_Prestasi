@@ -35,7 +35,7 @@ class LetterRevised extends RegistrationNotification
             ->greeting($this->audience === 'siswa' ? 'Halo '.self::firstName($notifiable).',' : 'Yth. '.trim((string) ($notifiable->name ?? '')).',')
             ->line($this->message())
             ->line('Pakai surat yang baru. Keasliannya bisa dicek lewat kode QR di surat.')
-            ->action('Unduh surat baru', $this->url())
+            ->action('Download surat baru', $this->url())
             ->salutation('SMAGA Talent Hub');
     }
 

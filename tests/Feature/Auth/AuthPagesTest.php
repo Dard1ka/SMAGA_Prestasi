@@ -19,6 +19,10 @@ it('renders the login page without ever showing the initial password pattern', f
     $this->get('/login')
         ->assertOk()
         ->assertSee('Pakai NIS atau NISN dan kata sandi dari sekolah.')
+        // M1-B: one field for NIS, NISN or the email bound at activation; the note follows the new order.
+        ->assertSee('NIS, NISN, atau email')
+        ->assertSee('Sudah aktivasi? Kamu juga bisa masuk pakai email. Guru dan staf: username atau email.')
+        ->assertSee('Kamu akan diminta menghubungkan email dulu. Setelah itu kamu boleh ganti kata sandi.')
         ->assertSee('name="identifier"', false)
         ->assertSee(route('password.request'), false)
         ->assertDontSee('sm4g4')
@@ -26,16 +30,41 @@ it('renders the login page without ever showing the initial password pattern', f
 });
 
 it('renders the forgot password page for guests', function (): void {
-    $this->get(route('password.request'))->assertOk()->assertSee('Lupa kata sandi')->assertDontSee('sm4g4');
+    $this->get(route('password.request'))
+        ->assertOk()
+        ->assertSee('Lupa kata sandi')
+        ->assertSee('NIS, NISN, atau email')
+        ->assertDontSee('sm4g4');
 });
 
-it('renders the activation page for a first login', function (): void {
+it('renders the activation page for a first login: the email comes first', function (): void {
     $this->actingAs(H::pendingStudent()->user)
         ->get(route('aktivasi'))
         ->assertOk()
-        ->assertSee('Buat kata sandi baru')
-        ->assertSee('Minimal 10 karakter')
+        ->assertSee('Langkah 1 dari 3')
+        ->assertSee('Hubungkan email')
         ->assertSee(H::NIS)
+        ->assertDontSee('Kata sandi baru')
+        ->assertDontSee('Lewati, pakai kata sandi sekarang')
+        ->assertDontSee('sm4g4');
+});
+
+it('renders the password step with the skip button for a student whose email is bound', function (): void {
+    $user = H::pendingStudent()->user;
+    $user->forceFill(['email' => 'nadia.anindya@example.test', 'email_verified_at' => now()])->save();
+
+    $this->actingAs($user)
+        ->get(route('aktivasi'))
+        ->assertOk()
+        ->assertSee('Langkah 3 dari 3')
+        ->assertSee('Ganti kata sandi')
+        ->assertSee('Lewati, pakai kata sandi sekarang')
+        ->assertSee('Minimal 10 karakter')
+        // M2-A: the hint names every rule, including the common-password one.
+        ->assertSee('Jangan pakai tanggal lahir, NIS/NISN, nama, atau kata yang mudah ditebak.')
+        ->assertSee('n•••@example.test')
+        // Never the full address of step 1, never a hint at the password from school.
+        ->assertDontSee('nadia.anindya@example.test')
         ->assertDontSee('sm4g4');
 });
 
@@ -44,10 +73,9 @@ it('shows the test mode banner only in local test mode', function (): void {
     config(['fortify.sth.otp_test_mode' => true]);
 
     $user = H::pendingStudent()->user;
-    $user->forceFill(['must_change_password' => false])->save();
     app(IssueOtpCode::class)->handle($user, 'verify_email', 'nadia.anindya@example.test');
 
-    $this->actingAs($user)->get(route('aktivasi'))->assertOk()->assertSee('Mode uji: kode apa pun diterima.');
+    $this->actingAs($user)->get(route('aktivasi'))->assertOk()->assertSee('Langkah 2 dari 3')->assertSee('Mode uji: kode apa pun diterima.');
 });
 
 it('forwards an activated student from /beranda and the tour link to the siswa landing', function (): void {

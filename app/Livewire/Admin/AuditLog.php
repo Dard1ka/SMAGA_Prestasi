@@ -22,7 +22,7 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
  * Admin · Log audit (UI-MAP §5 `admin.audit.index`, backlog #8, owner B5; SECURITY §3m-9 "tidak ada menu
  * hapus/edit log"). Read-only list of activity_log with filters (pelaku, peristiwa, subjek, rentang tanggal,
  * nama pelaku) from ExportAuditLog::query(), 25 per page, newest first, details (properties, changes, hash)
- * in a native <details>. "Unduh CSV" exports the filtered rows formula-safe, needs a password confirmation
+ * in a native <details>. "Download CSV" exports the filtered rows formula-safe, needs a password confirmation
  * from the last 15 minutes and is itself audited. `audit.view` only (Admin).
  */
 #[Title('Log audit')]
@@ -49,12 +49,23 @@ final class AuditLog extends Component
         'account.staff_created' => 'Akun staf dibuat',
         'account.staff_reset' => 'Akun staf direset',
         'account.unarchived' => 'Akun dipulihkan dari arsip',
-        'audit.exported' => 'Log audit diunduh',
+        // M1: new activation order (email first, password change optional for students), yearly class import,
+        // appreciation events, talent restore.
+        'account.email_bound' => 'Email dihubungkan',
+        'account.initial_password_changed' => 'Kata sandi awal diganti',
+        'activation.password_kept' => 'Kata sandi dari sekolah tetap dipakai',
+        'appreciation.event_deleted' => 'Acara apresiasi dihapus',
+        'appreciation.released' => 'Prestasi dilepas dari acara',
+        'student.class_changed' => 'Kelas siswa diperbarui',
+        'student.phone_updated' => 'No HP siswa diperbarui',
+        'talent.restored' => 'Pengajuan talenta dipulihkan',
+        'talent.review_requested' => 'Siswa minta ditinjau ulang',
+        'audit.exported' => 'Log audit di-download',
         'competition.created' => 'Lomba dibuat',
         'competition.submitted' => 'Lomba diusulkan',
         'competition.closed' => 'Lomba ditutup',
         'competition.weights_changed' => 'Bobot lomba diubah',
-        'letter.downloaded' => 'Surat diunduh',
+        'letter.downloaded' => 'Surat di-download',
         'letter.revoked' => 'Surat dicabut',
         'letters.issued' => 'Surat diterbitkan',
         'letters.sent' => 'Surat dikirim',
@@ -72,9 +83,9 @@ final class AuditLog extends Component
         'report.verified' => 'Laporan hasil diverifikasi',
         'report.revision_requested' => 'Laporan perlu revisi',
         'report.rejected' => 'Laporan hasil ditolak',
-        'school_report.exported' => 'Laporan prestasi diunduh',
-        'achievement.exported' => 'Database prestasi diunduh',
-        'account.activation_report_exported' => 'Laporan aktivasi diunduh',
+        'school_report.exported' => 'Laporan prestasi di-download',
+        'achievement.exported' => 'Database prestasi di-download',
+        'account.activation_report_exported' => 'Laporan aktivasi di-download',
         'role.change_requested' => 'Perubahan peran diminta',
         'role.change_approved' => 'Perubahan peran disetujui',
         'role.change_cancelled' => 'Perubahan peran dibatalkan',
@@ -87,7 +98,7 @@ final class AuditLog extends Component
         'student.archive_date_changed' => 'Tanggal arsip diubah',
         'student.consent_updated' => 'Persetujuan publikasi diubah',
         'student.import' => 'Impor siswa',
-        'talent.exported' => 'Data talenta diunduh',
+        'talent.exported' => 'Data talenta di-download',
         'two_factor.enabled' => '2FA mulai disiapkan',
         'two_factor.confirmed' => '2FA diaktifkan',
         'two_factor.disabled' => '2FA dimatikan',

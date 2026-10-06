@@ -7,6 +7,7 @@ namespace App\Livewire\Publik\Data;
 use App\Domain\Archive\SchoolYear;
 use App\Domain\Leaderboard\RankedStudent;
 use App\Domain\Leaderboard\Ranker;
+use App\Domain\Leaderboard\RankingScope;
 use App\Domain\Points\PointCalculator;
 use App\Domain\Points\PointFormatter;
 use App\Domain\Points\WeightTable;
@@ -43,6 +44,9 @@ use Throwable;
  * `students.publish_consent` is true; everyone else is "Siswa kelas XI" (or "Alumni") but still counts in
  * every aggregate. Disabled or deleted accounts count in the aggregates only (no name, no ranking row).
  *
+ * Alumni (archived accounts, D-29): their last class never leaves this class. `kelas` is null and
+ * `kelas_label` says "Alumni" (lead, 2026-10-04); the ranking shows them only when asked (RankingScope).
+ *
  * Results are cached for 10 minutes under keys prefixed with the version in `publik:version`;
  * call PublicAchievements::flush() after a verification, a consent change or a weight recalculation.
  */
@@ -51,6 +55,13 @@ final class PublicAchievements
     public const VERSION_KEY = 'publik:version';
 
     public const TTL_SECONDS = 600;
+
+    /**
+     * Part of every cache key. Raise it when the arrays this class returns change shape (a new or removed key),
+     * so results cached by the previous release are not handed to the new views after a deploy.
+     * 2 = `kelas_label`, no class for alumni (2026-10-04).
+     */
+    public const SHAPE = 2;
 
     public const SLUG_PATTERN = '/^[a-f0-9]{20}$/';
 
@@ -341,7 +352,7 @@ final class PublicAchievements
                 'points' => $total,
                 'points_label' => $this->formatter->format($total),
                 'rank_active' => $rankActive,
-                'rank_all' => $this->rankOf($sid, $this->rankedStudents(null, null, true)),
+                'rank_all' => $this->rankOf($sid, $this->rankedStudents(null, null, RankingScope::All)),
                 'count' => count($rows),
                 'achievements' => array_map(fn (array $row): array => $this->achievementItem($row, $certificates), $rows),
             ];
@@ -412,43 +423,64 @@ final class PublicAchievements
     }
 
     /**
-     * Cumulative ranking (D-09). mode 'siswa': students via the Ranker, alumni only when $alumni (chip
-     * "Alumni"). mode 'kelas': active students grouped by their current class. Filters: bidang (points of
-     * that bidang only) and angkatan (= year of the grade-12 start - 2).
+     * Cumulative ranking (D-09). mode 'siswa': students via the Ranker, limited to $scope (active students by
+     * default, alumni only, or both); ranks are computed within that group. mode 'kelas': active students
+     * grouped by their current class (alumni have no class, so the alumni scope gives an empty list).
+     * Filters: bidang (points of that bidang only) and angkatan (= year of the grade-12 start - 2).
      *
      * @return list<array<string, mixed>>
      */
-    public function ranking(string $mode = 'siswa', ?Bidang $bidang = null, ?int $angkatan = null, bool $alumni = false): array
+    public function ranking(string $mode = 'siswa', ?Bidang $bidang = null, ?int $angkatan = null, RankingScope $scope = RankingScope::Active): array
     {
         $mode = $mode === 'kelas' ? 'kelas' : 'siswa';
-        $alumni = $mode === 'siswa' && $alumni;
 
-        return $this->remember('ranking', [$mode, $bidang?->value, $angkatan, $alumni, $this->currentYear()->toString()], function () use ($mode, $bidang, $angkatan, $alumni): array {
+        if ($mode === 'kelas' && ! $scope->hasClasses()) {
+            return [];
+        }
+
+        $scope = $mode === 'kelas' ? RankingScope::Active : $scope;
+
+        return $this->remember('ranking', [$mode, $bidang?->value, $angkatan, $scope->value, $this->currentYear()->toString()], function () use ($mode, $bidang, $angkatan, $scope): array {
             return $mode === 'kelas'
                 ? $this->classRanking($bidang, $angkatan)
-                : $this->studentRanking($bidang, $angkatan, $alumni);
+                : $this->studentRanking($bidang, $angkatan, $scope);
         });
     }
 
-    /** @return array<string, string> angkatan => "Angkatan 2025 (kelas XI)", newest first */
-    public function angkatanOptions(): array
+    /**
+     * Angkatan choices of a ranking: only the years that have someone in the shown group, so a choice never
+     * leads to an empty list by itself (an alumni year is not offered while alumni are hidden). mode 'kelas'
+     * uses the year of the current class, like the class ranking does.
+     *
+     * @return array<string, string> angkatan => "Angkatan 2025 (kelas XI)", newest first
+     */
+    public function angkatanOptions(RankingScope $scope = RankingScope::Active, string $mode = 'siswa'): array
     {
         $current = $this->currentYear();
+        $byClass = $mode === 'kelas';
+        $scope = $byClass ? RankingScope::Active : $scope;
 
-        return $this->remember('angkatan-options', [$current->toString()], function () use ($current): array {
+        return $this->remember('angkatan-options', [$scope->value, $byClass, $current->toString()], function () use ($current, $scope, $byClass): array {
+            /** @var array<int, bool> $values angkatan => has active students */
             $values = [];
 
             foreach ($this->rows() as $row) {
-                if (! $row['inactive'] && $row['angkatan'] !== null) {
-                    $values[$row['angkatan']] = true;
+                if ($row['inactive'] || ! $scope->includes($row['alumni'])) {
+                    continue;
+                }
+
+                $angkatan = $byClass ? $this->classAngkatan($row['level_num'], $current) : $row['angkatan'];
+
+                if ($angkatan !== null) {
+                    $values[$angkatan] = ($values[$angkatan] ?? false) || ! $row['alumni'];
                 }
             }
 
             krsort($values);
             $options = [];
 
-            foreach (array_keys($values) as $angkatan) {
-                $level = self::ROMAN[10 + $current->startYear - $angkatan] ?? null;
+            foreach ($values as $angkatan => $hasActive) {
+                $level = $hasActive ? (self::ROMAN[10 + $current->startYear - $angkatan] ?? null) : null;
                 $options[(string) $angkatan] = 'Angkatan '.$angkatan.($level !== null ? ' (kelas '.$level.')' : '');
             }
 
@@ -551,12 +583,12 @@ final class PublicAchievements
     // Internals ----------------------------------------------------------------------------------
 
     /** @return list<array<string, mixed>> */
-    private function studentRanking(?Bidang $bidang, ?int $angkatan, bool $alumni): array
+    private function studentRanking(?Bidang $bidang, ?int $angkatan, RankingScope $scope): array
     {
         $meta = [];
         $bidangPoints = [];
 
-        foreach ($this->filteredRows(null, $angkatan, $alumni) as $row) {
+        foreach ($this->filteredRows(null, $angkatan, $scope) as $row) {
             $meta[$row['sid']] ??= $this->person($row);
             $bidangPoints[$row['sid']][$row['bidang']] = bcadd($bidangPoints[$row['sid']][$row['bidang']] ?? '0.00', $row['points'], 2);
         }
@@ -577,7 +609,7 @@ final class PublicAchievements
                 'points_label' => $this->formatter->format($ranked->points),
                 'main_bidang' => $main !== null ? Bidang::from($main)->label() : null,
             ];
-        }, $this->rankedStudents($bidang, $angkatan, $alumni));
+        }, $this->rankedStudents($bidang, $angkatan, $scope));
     }
 
     /** @return list<array<string, mixed>> */
@@ -587,7 +619,7 @@ final class PublicAchievements
         $classes = [];
 
         foreach ($this->rows() as $row) {
-            $classAngkatan = isset(self::ROMAN[$row['level_num']]) ? $current->startYear - ($row['level_num'] - 10) : null;
+            $classAngkatan = $this->classAngkatan($row['level_num'], $current);
 
             if ($row['inactive'] || $row['alumni']
                 || ($bidang !== null && $row['bidang'] !== $bidang->value)
@@ -627,12 +659,18 @@ final class PublicAchievements
         return $ranked;
     }
 
+    /** Angkatan of a class of the current school year (kelas X now = this year's intake); null for other levels. */
+    private function classAngkatan(int $level, SchoolYear $current): ?int
+    {
+        return isset(self::ROMAN[$level]) ? $current->startYear - ($level - 10) : null;
+    }
+
     /** @return list<RankedStudent> */
-    private function rankedStudents(?Bidang $bidang, ?int $angkatan, bool $alumni): array
+    private function rankedStudents(?Bidang $bidang, ?int $angkatan, RankingScope $scope): array
     {
         $input = [];
 
-        foreach ($this->filteredRows($bidang, $angkatan, $alumni) as $row) {
+        foreach ($this->filteredRows($bidang, $angkatan, $scope) as $row) {
             $input[] = [
                 'student_id' => $row['sid'],
                 'name' => $row['name'],
@@ -646,10 +684,10 @@ final class PublicAchievements
     }
 
     /** @return list<array<string, mixed>> rows of rankable students (no disabled/deleted accounts) */
-    private function filteredRows(?Bidang $bidang, ?int $angkatan, bool $alumni): array
+    private function filteredRows(?Bidang $bidang, ?int $angkatan, RankingScope $scope): array
     {
         return array_values(array_filter($this->rows(), fn (array $row): bool => ! $row['inactive']
-            && ($alumni || ! $row['alumni'])
+            && $scope->includes($row['alumni'])
             && ($bidang === null || $row['bidang'] === $bidang->value)
             && ($angkatan === null || $row['angkatan'] === $angkatan)));
     }
@@ -754,7 +792,8 @@ final class PublicAchievements
             'named' => $named,
             'name' => $label,
             'slug' => $named && is_string($a->getAttribute('s_slug')) && $a->getAttribute('s_slug') !== '' ? $a->getAttribute('s_slug') : null,
-            'kelas' => $named ? (string) $a->getAttribute('c_name') : null,
+            // An alumnus has no class any more: the last class is never shown (lead, 2026-10-04).
+            'kelas' => $named && ! $alumni ? (string) $a->getAttribute('c_name') : null,
             'kelas_room' => (string) $a->getAttribute('c_name'),
             'level_num' => $levelNum,
             'alumni' => $alumni,
@@ -781,9 +820,12 @@ final class PublicAchievements
 
     /**
      * Public identity of a row: name (or the anonymous label), class, alumni flag and the slug link.
+     * `kelas` is the current class of a named active student (null for alumni and anonymous rows);
+     * `kelas_label` is what to print where a class stands next to a name: the class, or "Alumni" for a named
+     * alumnus (an anonymous row needs nothing: its label already says "Siswa kelas XI" / "Alumni").
      *
      * @param  array<string, mixed>  $row
-     * @return array{name: string, named: bool, slug: string|null, kelas: string|null, alumni: bool, lulus: int|null}
+     * @return array{name: string, named: bool, slug: string|null, kelas: string|null, kelas_label: string|null, alumni: bool, lulus: int|null}
      */
     private function person(array $row): array
     {
@@ -792,6 +834,7 @@ final class PublicAchievements
             'named' => $row['named'],
             'slug' => $row['slug'],
             'kelas' => $row['kelas'],
+            'kelas_label' => $row['named'] && $row['alumni'] ? 'Alumni' : $row['kelas'],
             'alumni' => $row['alumni'],
             'lulus' => $row['named'] ? $row['lulus'] : null,
         ];
@@ -996,7 +1039,7 @@ final class PublicAchievements
     private function remember(string $name, array $args, Closure $callback): mixed
     {
         $version = (int) Cache::get(self::VERSION_KEY, 1);
-        $key = sprintf('publik:v%d:%s:%s', $version, $name, md5((string) json_encode($args)));
+        $key = sprintf('publik:v%d:s%d:%s:%s', $version, self::SHAPE, $name, md5((string) json_encode($args)));
 
         return Cache::remember($key, self::TTL_SECONDS, $callback);
     }

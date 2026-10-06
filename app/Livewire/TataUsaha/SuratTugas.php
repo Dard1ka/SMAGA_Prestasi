@@ -9,6 +9,8 @@ use App\Actions\Letters\LetterContent;
 use App\Actions\Letters\LetterDraft;
 use App\Actions\Letters\RevokeLetter;
 use App\Actions\Letters\SendLetters;
+use App\Actions\Letters\StreamLetter;
+use App\Domain\Letters\LetterNumber;
 use App\Domain\Support\Dates;
 use App\Enums\FilePurpose;
 use App\Enums\LetterType;
@@ -19,6 +21,7 @@ use App\Models\Letter;
 use App\Models\Registration;
 use App\Models\Setting;
 use App\Models\User;
+use App\Policies\LetterPolicy;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Contracts\View\View;
@@ -35,43 +38,64 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
  * Tata Usaha · Surat tugas (mockup TU-Surat-Tugas, UI-MAP #21): queue of approved registrations
- * (`tu.beranda`, first one selected) or one of them (`tu.surat.show`). Step 1 both numbers + letter data
- * (schedule prefilled from the lomba), step 2 live HTML preview of both letters, step 3 IssueLetters
- * (PDFs) then SendLetters. Every action re-authorizes; the selected ULID is #[Locked].
+ * (`tu.beranda`, first one selected) or one of them (`tu.surat.show`).
+ *
+ * M1-A (lead, 2026-10-04): every letter has its OWN form, data and "Buat PDF". The two tabs "Surat siswa" /
+ * "Surat guru pendamping" each show that letter's form (complete number typed by TU, letter date, Dasar,
+ * Pelaksanaan — prefilled from the lomba), its live preview and, once issued, Download / Cetak / Koreksi.
+ * "Kirim ke siswa dan guru" stays one action for the registration and needs every required letter.
+ * No silent dead ends: the buttons stay enabled, the Actions validate, every wrong field gets its message, a
+ * summary lists them and the page jumps there (browser event `sth-form-invalid`). After issue / revise / send
+ * the sidebar badge gets the fresh queue count (`sth-badges`). Every action re-authorizes; ids are #[Locked].
  */
 #[Title('Surat tugas')]
 class SuratTugas extends Component
 {
-    /** Form field → IssueLetters error key. */
+    /** Action error key → form field (per letter). */
     private const ERROR_MAP = [
-        'siswa_sequence' => 'nomorSiswa',
-        'guru_sequence' => 'nomorGuru',
+        'number' => 'nomor',
         'issued_on' => 'tanggalSurat',
+        'basis_from' => 'dasarDari',
         'basis_number' => 'dasarNomor',
         'basis_date' => 'dasarTanggal',
-        'schedule_day' => 'hariTanggal',
+        'basis_subject' => 'dasarHal',
+        'schedule_day' => 'hari',
+        'schedule_date' => 'tanggal',
         'schedule_time' => 'pukul',
         'place' => 'tempat',
+    ];
+
+    /** Form field → name in the error summary (same order as on screen). */
+    private const FIELD_LABELS = [
+        'nomor' => 'Nomor surat',
+        'alasan' => 'Alasan pencabutan',
+        'tanggalSurat' => 'Tanggal surat',
+        'dasarDari' => 'Surat dari',
+        'dasarNomor' => 'Nomor surat undangan',
+        'dasarTanggal' => 'Tanggal surat undangan',
+        'dasarHal' => 'Hal',
+        'hari' => 'Hari',
+        'tanggal' => 'Tanggal pelaksanaan',
+        'pukul' => 'Pukul',
+        'tempat' => 'Tempat',
     ];
 
     #[Locked]
     public ?string $registrationId = null;
 
-    public string $nomorSiswa = '';
+    /**
+     * Form of the student letter (keys: LetterDraft::defaults()).
+     *
+     * @var array<string, string>
+     */
+    public array $siswa = [];
 
-    public string $nomorGuru = '';
-
-    public string $tanggalSurat = '';
-
-    public string $dasarNomor = '';
-
-    public string $dasarTanggal = '';
-
-    public string $hariTanggal = '';
-
-    public string $pukul = '';
-
-    public string $tempat = '';
+    /**
+     * Form of the guru letter (same keys; `dasarHal` is printed on this letter only).
+     *
+     * @var array<string, string>
+     */
+    public array $guru = [];
 
     public string $tab = 'siswa';
 
@@ -80,6 +104,10 @@ class SuratTugas extends Component
     public ?string $revisingId = null;
 
     public string $alasan = '';
+
+    /** A submit failed: show the summary of what is still wrong (cleared by the next success or tab change). */
+    #[Locked]
+    public bool $failed = false;
 
     public function mount(?Registration $registration = null): void
     {
@@ -93,18 +121,74 @@ class SuratTugas extends Component
             $target = $this->queueQuery()->first();
         }
 
-        if ($target !== null) {
-            $this->registrationId = $target->getKey();
-            $target->loadMissing('competition');
-            $this->fill(LetterDraft::defaults($target));
-
-            // Already issued: show what was printed (date, basis and — since B3 — schedule are stored on the letter).
-            $issued = $target->letters()->orderBy('type', 'desc')->first();
-
-            if ($issued !== null) {
-                $this->fillFromLetter($issued);
-            }
+        if ($target === null) {
+            return;
         }
+
+        $this->registrationId = $target->getKey();
+        $target->loadMissing('competition');
+        $letters = $target->letters()->get();
+
+        // Each letter: what it printed when it exists, else the prefill from the lomba.
+        foreach (LetterType::cases() as $type) {
+            $letter = $letters->firstWhere('type', $type);
+            $this->{$type->value} = $letter !== null ? LetterDraft::fromLetter($letter, $target) : LetterDraft::defaults($target);
+        }
+
+        // Open on the first letter that still has to be made.
+        $missing = SendLetters::missing($target, $letters);
+        $this->tab = $missing !== [] ? $missing[0]->value : 'siswa';
+    }
+
+    public function setTab(string $tab): void
+    {
+        $registration = $this->selected();
+        $this->tab = $tab === 'guru' && $registration->mentor_id !== null ? 'guru' : 'siswa';
+        $this->failed = false;
+    }
+
+    // --- live feedback while typing (the Actions decide on submit) ---
+
+    public function updatedSiswa(mixed $value, ?string $key = null): void
+    {
+        $this->fieldChanged(LetterType::Siswa, (string) $key);
+    }
+
+    public function updatedGuru(mixed $value, ?string $key = null): void
+    {
+        $this->fieldChanged(LetterType::Guru, (string) $key);
+    }
+
+    public function updatedAlasan(): void
+    {
+        $this->resetErrorBag('alasan');
+    }
+
+    // --- issue one letter ---
+
+    /** "Buat PDF" of the letter whose tab is open (the form on screen). */
+    public function generate(IssueLetters $issue): void
+    {
+        $registration = $this->selected();
+        $letterType = $this->letterType($this->tab, $registration);
+        $this->resetErrorBag();
+
+        try {
+            $letter = $issue->handle($this->user(), $registration, $letterType, $this->draft($letterType));
+        } catch (ValidationException $e) {
+            $this->showActionErrors($e, $letterType, 'Belum bisa membuat PDF. Periksa isian yang ditandai.');
+
+            return;
+        }
+
+        $this->failed = false;
+        $this->{$letterType->value} = LetterDraft::fromLetter($letter, $registration);
+        $missing = SendLetters::missing($registration, $registration->letters()->get());
+
+        $this->dispatch('sth-toast', tone: 'success', message: $missing !== []
+            ? 'PDF '.self::typeName($letterType).' siap. Lanjut buat '.self::typeName($missing[0]).'.'
+            : 'PDF '.self::typeName($letterType).' siap. Periksa lalu kirim.');
+        $this->refreshBadge();
     }
 
     // --- B3: correction = cabut + new version (backlog #11) ---
@@ -115,63 +199,58 @@ class SuratTugas extends Component
         $letter = $this->currentLetter($letterId);
         Gate::authorize('revoke', $letter);
 
+        $registration = $this->selected();
+        $type = $letter->type;
+
         $this->resetErrorBag();
+        $this->failed = false;
         $this->revisingId = (string) $letter->getKey();
-        $this->fillFromLetter($letter);
-        $this->tanggalSurat = CarbonImmutable::today()->format('Y-m-d');
-        $this->nomorSiswa = '';
-        $this->nomorGuru = '';
+        $this->tab = $type->value;
         $this->alasan = '';
-        $this->tab = $letter->type === LetterType::Guru ? 'guru' : 'siswa';
+        // The new version starts from what the old one printed, with today's date and an empty number.
+        $this->{$type->value} = array_merge(LetterDraft::fromLetter($letter, $registration), [
+            'nomor' => '',
+            'tanggalSurat' => CarbonImmutable::today()->format('Y-m-d'),
+        ]);
     }
 
     public function cancelRevision(): void
     {
+        $registration = $this->selected();
+        $letter = $this->revisingId !== null ? $registration->letters()->whereKey($this->revisingId)->first() : null;
+
         $this->resetErrorBag();
-        $this->reset('revisingId', 'alasan', 'nomorSiswa', 'nomorGuru');
+        $this->failed = false;
+        $this->reset('revisingId', 'alasan');
 
-        $current = $this->selected()->letters()->orderBy('type', 'desc')->first();
-
-        if ($current !== null) {
-            $this->fillFromLetter($current);
+        if ($letter !== null) {
+            $this->{$letter->type->value} = LetterDraft::fromLetter($letter, $registration);
         }
     }
 
     public function revise(RevokeLetter $revoke): void
     {
+        $registration = $this->selected();
         $letter = $this->currentLetter((string) $this->revisingId);
-        $field = $letter->type === LetterType::Guru ? 'nomorGuru' : 'nomorSiswa';
-
-        $this->validate([
-            $field => ['required', 'regex:/^\d{1,5}$/'],
-            'alasan' => ['required', 'string', 'min:'.RevokeLetter::MIN_REASON, 'max:'.RevokeLetter::MAX_REASON],
-            'tanggalSurat' => ['required', 'date_format:Y-m-d'],
-            'dasarNomor' => ['nullable', 'string', 'max:150'],
-            'dasarTanggal' => ['nullable', 'date_format:Y-m-d'],
-            'hariTanggal' => ['required', 'string', 'max:150'],
-            'pukul' => ['required', 'string', 'max:150'],
-            'tempat' => ['required', 'string', 'max:150'],
-        ], [
-            'required' => 'Wajib diisi.',
-            'regex' => 'Isi nomor urut 1–99999.',
-            'alasan.min' => 'Tulis alasan pencabutan.',
-            'date_format' => 'Tanggal tidak valid.',
-            'max' => 'Maksimal :max karakter.',
-        ]);
+        $type = $letter->type;
+        $this->tab = $type->value;
+        $this->resetErrorBag();
 
         try {
-            $new = $revoke->handle($this->user(), $letter, $this->alasan, (int) $this->$field, $this->draft());
+            $new = $revoke->handle($this->user(), $letter, $this->alasan, $this->draft($type));
         } catch (ValidationException $e) {
-            $this->showActionErrors($e, ['sequence' => $field, 'reason' => 'alasan']);
+            $this->showActionErrors($e, $type, 'Belum bisa mencabut surat. Periksa isian yang ditandai.');
 
             return;
         }
 
-        $this->reset('revisingId', 'alasan', 'nomorSiswa', 'nomorGuru');
-        $this->fillFromLetter($new);
+        $this->failed = false;
+        $this->reset('revisingId', 'alasan');
+        $this->{$type->value} = LetterDraft::fromLetter($new, $registration);
         $this->dispatch('sth-toast', tone: 'success', message: $new->sent_at !== null
             ? 'Surat lama dicabut. Versi baru '.$new->full_number.' terkirim.'
             : 'Surat lama dicabut. Versi baru '.$new->full_number.' siap dikirim.');
+        $this->refreshBadge();
     }
 
     /**
@@ -209,92 +288,34 @@ class SuratTugas extends Component
         return $letter;
     }
 
-    /** Form fields from what a letter printed (date, basis; schedule when stored). */
-    private function fillFromLetter(Letter $letter): void
-    {
-        $this->fill([
-            'tanggalSurat' => $letter->issued_on->format('Y-m-d'),
-            'dasarNomor' => (string) $letter->basis_number,
-            'dasarTanggal' => $letter->basis_date?->format('Y-m-d') ?? '',
-        ]);
-
-        foreach (['hariTanggal' => $letter->schedule_day, 'pukul' => $letter->schedule_time, 'tempat' => $letter->place] as $field => $value) {
-            if (is_string($value) && $value !== '') {
-                $this->$field = $value;
-            }
-        }
-    }
-
     // --- end B3 ---
-
-    public function setTab(string $tab): void
-    {
-        $this->tab = $tab === 'guru' ? 'guru' : 'siswa';
-    }
-
-    public function updatedNomorSiswa(): void
-    {
-        $this->nomorSiswa = self::digits($this->nomorSiswa);
-        $this->checkTaken(LetterType::Siswa, 'nomorSiswa', $this->nomorSiswa);
-    }
-
-    public function updatedNomorGuru(): void
-    {
-        $this->nomorGuru = self::digits($this->nomorGuru);
-        $this->checkTaken(LetterType::Guru, 'nomorGuru', $this->nomorGuru);
-    }
-
-    public function updatedTanggalSurat(): void
-    {
-        $this->resetErrorBag('tanggalSurat');
-        $this->checkTaken(LetterType::Siswa, 'nomorSiswa', $this->nomorSiswa);
-        $this->checkTaken(LetterType::Guru, 'nomorGuru', $this->nomorGuru);
-    }
-
-    public function generate(IssueLetters $issue): void
-    {
-        $registration = $this->selected();
-
-        $this->validate([
-            'nomorSiswa' => ['required', 'regex:/^\d{1,5}$/'],
-            'nomorGuru' => [$registration->mentor_id !== null ? 'required' : 'nullable', 'regex:/^\d{1,5}$/'],
-            'tanggalSurat' => ['required', 'date_format:Y-m-d'],
-            'dasarNomor' => ['nullable', 'string', 'max:150'],
-            'dasarTanggal' => ['nullable', 'date_format:Y-m-d'],
-            'hariTanggal' => ['required', 'string', 'max:150'],
-            'pukul' => ['required', 'string', 'max:150'],
-            'tempat' => ['required', 'string', 'max:150'],
-        ], [
-            'required' => 'Wajib diisi.',
-            'regex' => 'Isi nomor urut 1–99999.',
-            'date_format' => 'Tanggal tidak valid.',
-            'max' => 'Maksimal :max karakter.',
-        ]);
-
-        try {
-            $issue->handle($this->user(), $registration, $this->draft());
-        } catch (ValidationException $e) {
-            $this->showActionErrors($e);
-
-            return;
-        }
-
-        $this->dispatch('sth-toast', message: 'PDF surat siap. Periksa lalu kirim ke siswa dan guru.', tone: 'success');
-    }
 
     public function send(SendLetters $send): void
     {
         $registration = $this->selected();
+        $this->resetErrorBag();
 
         try {
             $send->handle($this->user(), $registration);
         } catch (ValidationException $e) {
-            $this->showActionErrors($e);
+            // Name what is missing, open that letter's tab and bring the message into view.
+            $missing = SendLetters::missing($registration, $registration->letters()->get());
+
+            if ($missing !== [] && $this->revisingId === null) {
+                $this->tab = $missing[0]->value;
+            }
+
+            $message = (string) (collect($e->errors())->flatten()->first() ?? 'Surat belum bisa dikirim.');
+            $this->addError('kirim', $message);
+            $this->dispatch('sth-form-invalid', form: 'surat-kirim');
+            $this->dispatch('sth-toast', message: $message, tone: 'error');
 
             return;
         }
 
+        $this->failed = false;
         $this->dispatch('sth-toast', message: 'Surat terkirim ke siswa dan guru pembimbing.', tone: 'success');
+        $this->refreshBadge();
     }
 
     public function download(string $letterId): StreamedResponse
@@ -305,26 +326,10 @@ class SuratTugas extends Component
         return self::streamLetter($this->user(), $letter);
     }
 
-    /** Shared with ArsipSurat: policy check, audit, stream from the private disk. */
+    /** Shared with ArsipSurat and Kepsek\SuratSaya: policy check, audit, stream from the private disk. */
     public static function streamLetter(User $user, Letter $letter): StreamedResponse
     {
-        Gate::forUser($user)->authorize('view', $letter);
-
-        $file = $letter->file_id !== null ? File::query()->find($letter->file_id) : null;
-        abort_if($file === null || $file->purpose !== FilePurpose::Letter || ! $file->storage()->exists($file->path), 404);
-
-        activity('letter')
-            ->performedOn($letter)
-            ->causedBy($user)
-            ->event('letter.downloaded')
-            ->withProperties(['number' => $letter->full_number])
-            ->log('letter.downloaded');
-
-        return $file->storage()->download($file->path, $file->original_name, [
-            'Content-Type' => 'application/pdf',
-            'Cache-Control' => 'no-store, private',
-            'X-Content-Type-Options' => 'nosniff',
-        ]);
+        return app(StreamLetter::class)->handle($user, $letter);
     }
 
     public function render(IssueLetters $issue): View
@@ -337,40 +342,44 @@ class SuratTugas extends Component
 
         $registration = $this->registrationId !== null ? $this->selectedOrNull() : null;
         $letters = $registration?->letters()->with('file')->orderBy('type', 'desc')->get() ?? new Collection;
-        $issuedOn = $this->previewDate();
 
         $data = [
             'queue' => $queue,
             'registration' => $registration,
             'letters' => $letters,
-            'issued' => $letters->isNotEmpty(),
-            'sent' => $letters->isNotEmpty() && $letters->every(fn (Letter $l): bool => $l->sent_at !== null),
             'signature' => $this->signatureName(),
         ];
 
         if ($registration !== null) {
-            $hasMentor = $registration->mentor_id !== null;
-            $content = LetterContent::build($registration, $this->draft(lenient: true));
-            // B3 (#11): correction mode — the corrected type gets a new number in the form and the preview.
+            $required = LetterPolicy::requiredTypes($registration);
+            $type = $this->tab === 'guru' && $registration->mentor_id !== null ? LetterType::Guru : LetterType::Siswa;
+            $letter = $letters->firstWhere('type', $type);
+            // B3 (#11): correction mode — the corrected letter's form opens again with a new number.
             $revising = $this->revisingId !== null ? $letters->firstWhere('id', $this->revisingId) : null;
-            $revisingType = $revising?->type;
-            $revisingField = $revisingType === LetterType::Guru ? 'nomorGuru' : 'nomorSiswa';
+            $editing = $letter === null || ($revising !== null && $revising->type === $type);
+            $last = Letter::lastNumber($type);
+            $missing = SendLetters::missing($registration, $letters);
+            $typed = (new LetterNumber)->normalize((string) ($this->{$type->value}['nomor'] ?? ''));
 
             $data += [
-                'hasMentor' => $hasMentor,
-                'content' => $content,
-                'siswaParts' => $issue->numberParts(LetterType::Siswa, $issuedOn),
-                'guruParts' => $issue->numberParts(LetterType::Guru, $issuedOn),
-                'lastSiswa' => Letter::lastSequence(LetterType::Siswa, $issuedOn->year),
-                'lastGuru' => Letter::lastSequence(LetterType::Guru, $issuedOn->year),
-                'siswaNumber' => $revisingType === LetterType::Siswa ? null : $letters->firstWhere('type', LetterType::Siswa)?->full_number,
-                'guruNumber' => $revisingType === LetterType::Guru ? null : $letters->firstWhere('type', LetterType::Guru)?->full_number,
-                'ready' => $this->nomorSiswa !== '' && (! $hasMentor || $this->nomorGuru !== '')
-                    && ! $this->getErrorBag()->hasAny(['nomorSiswa', 'nomorGuru']),
-                'revising' => $revising,
-                'revisingField' => $revisingField,
-                'reviseReady' => $revising !== null && $this->$revisingField !== '' && trim($this->alasan) !== ''
-                    && ! $this->getErrorBag()->has($revisingField),
+                'hasMentor' => $registration->mentor_id !== null,
+                'type' => $type,
+                'letter' => $letter,
+                'editing' => $editing,
+                'revising' => $revising !== null && $revising->type === $type ? $revising : null,
+                'revisingOther' => $revising !== null && $revising->type !== $type ? $revising : null,
+                'content' => LetterContent::build($registration, $this->draft($type, lenient: true)),
+                'number' => $editing ? ($typed !== '' ? $typed : null) : $letter->full_number,
+                'lastNumber' => $last,
+                'example' => $issue->example($type, $this->previewDate($type), $last),
+                'problems' => $this->failed ? $this->problems($type) : [],
+                'tabs' => array_map(fn (LetterType $t): array => [
+                    'key' => $t->value,
+                    'label' => $t === LetterType::Guru ? 'Surat guru pendamping' : 'Surat siswa',
+                    'letter' => $letters->firstWhere('type', $t),
+                ], $required),
+                'missing' => array_map(self::typeName(...), $missing),
+                'sent' => $letters->isNotEmpty() && $letters->every(fn (Letter $l): bool => $l->sent_at !== null),
                 'history' => $this->history($registration),
             ];
         }
@@ -385,6 +394,12 @@ class SuratTugas extends Component
     private function queueQuery(): Builder
     {
         return Registration::query()->awaitingLetters()->orderBy('principal_decided_at')->orderBy('created_at');
+    }
+
+    /** The sidebar is rendered once per page load: tell it the queue count after an action changed it. */
+    private function refreshBadge(): void
+    {
+        $this->dispatch('sth-badges', badges: ['tu.surat' => $this->queueQuery()->count()]);
     }
 
     private function selected(): Registration
@@ -410,68 +425,163 @@ class SuratTugas extends Component
         return $registration->status === RegistrationStatus::Disetujui || $registration->letters()->exists() ? $registration : null;
     }
 
-    /** Draft from the form. Lenient (preview): blanks and bad dates fall back instead of failing. */
-    private function draft(bool $lenient = false): LetterDraft
+    /** The letter type of an action argument; a guru letter needs a guru pembimbing (else 404). */
+    private function letterType(string $type, Registration $registration): LetterType
     {
-        $issuedOn = self::parseDate($this->tanggalSurat);
-        $basisDate = self::parseDate($this->dasarTanggal);
+        $letterType = LetterType::tryFrom($type);
+        abort_if($letterType === null || ($letterType === LetterType::Guru && $registration->mentor_id === null), 404);
 
-        if (! $lenient && $issuedOn === null) {
-            throw ValidationException::withMessages(['tanggalSurat' => 'Tanggal tidak valid.']);
-        }
+        return $letterType;
+    }
 
-        return new LetterDraft(
-            siswaSequence: ctype_digit($this->nomorSiswa) ? (int) $this->nomorSiswa : null,
-            guruSequence: ctype_digit($this->nomorGuru) ? (int) $this->nomorGuru : null,
+    /**
+     * Draft of one letter from its form. Lenient (preview): blanks and bad dates fall back instead of failing.
+     * Strict (submit): a date that cannot be read is reported together with every other problem of the draft.
+     *
+     * @throws ValidationException keys as in IssueLetters
+     */
+    private function draft(LetterType $type, bool $lenient = false): LetterDraft
+    {
+        $form = $this->form($type);
+        $issuedOn = self::parseDate($form['tanggalSurat']);
+        $basisDate = self::parseDate($form['dasarTanggal']);
+
+        $draft = new LetterDraft(
+            number: $form['nomor'],
             issuedOn: $issuedOn ?? CarbonImmutable::today(),
-            basisNumber: trim($this->dasarNomor) !== '' ? trim($this->dasarNomor) : null,
+            basisFrom: $form['dasarDari'],
+            basisNumber: trim($form['dasarNomor']) !== '' ? trim($form['dasarNomor']) : null,
             basisDate: $basisDate,
-            scheduleDay: $this->hariTanggal,
-            scheduleTime: $this->pukul,
-            place: $this->tempat,
+            scheduleDay: $form['hari'],
+            scheduleDate: $form['tanggal'],
+            scheduleTime: $form['pukul'],
+            place: $form['tempat'],
+            basisSubject: $form['dasarHal'],
         );
+
+        if ($lenient) {
+            return $draft;
+        }
+
+        $dates = [];
+
+        if ($issuedOn === null) {
+            $dates['issued_on'] = trim($form['tanggalSurat']) === '' ? 'Isi tanggal surat.' : 'Tanggal surat tidak valid.';
+        }
+
+        if ($basisDate === null && trim($form['dasarTanggal']) !== '') {
+            $dates['basis_date'] = 'Tanggal surat undangan tidak valid.';
+        }
+
+        if ($dates !== []) {
+            throw ValidationException::withMessages($dates + IssueLetters::draftErrors($draft, $type));
+        }
+
+        return $draft;
     }
 
-    private function previewDate(): CarbonImmutable
+    /**
+     * The form of a letter with every key present as a string (tampered or missing keys become '').
+     *
+     * @return array<string, string>
+     */
+    private function form(LetterType $type): array
     {
-        return self::parseDate($this->tanggalSurat) ?? CarbonImmutable::today();
+        $raw = $this->{$type->value};
+        $form = [];
+
+        foreach (self::ERROR_MAP as $field) {
+            $form[$field] = is_scalar($raw[$field] ?? null) ? (string) $raw[$field] : '';
+        }
+
+        return $form;
     }
 
-    private function checkTaken(LetterType $type, string $field, string $value): void
+    private function previewDate(LetterType $type): CarbonImmutable
     {
-        $this->resetErrorBag($field);
+        return self::parseDate($this->form($type)['tanggalSurat']) ?? CarbonImmutable::today();
+    }
 
-        if ($value === '') {
+    /** One field changed: drop its old message; a typed number is checked at once (format, already used). */
+    private function fieldChanged(LetterType $type, string $field): void
+    {
+        $key = $type->value.'.'.$field;
+        $this->resetErrorBag([$key, 'umum', 'kirim']);
+
+        if ($field !== 'nomor') {
             return;
         }
 
-        if ((int) $value < 1) {
-            $this->addError($field, 'Isi nomor urut 1–99999.');
+        $number = $this->form($type)['nomor'];
 
+        if (trim($number) === '') {
             return;
         }
 
-        if (IssueLetters::isTaken($type, $this->previewDate()->year, (int) $value)) {
-            $this->addError($field, IssueLetters::MSG_TAKEN);
+        $error = (new LetterNumber)->numberError($number);
+
+        if ($error === null && IssueLetters::isTaken($type, $number)) {
+            $error = IssueLetters::MSG_TAKEN;
+        }
+
+        if ($error !== null) {
+            $this->addError($key, $error);
         }
     }
 
-    /** @param array<string, string> $extra more action key → form field mappings */
-    private function showActionErrors(ValidationException $e, array $extra = []): void
+    /**
+     * Put the Action's errors on the fields of that letter's form, keep the rest (signature, registration,
+     * letter) as general messages, and ask the browser to jump to the summary (`sth-form-invalid`).
+     */
+    private function showActionErrors(ValidationException $e, LetterType $type, string $toast): void
     {
-        $general = [];
+        $this->resetErrorBag();
 
         foreach ($e->errors() as $key => $messages) {
-            $field = $extra[$key] ?? self::ERROR_MAP[$key] ?? null;
+            $message = (string) ($messages[0] ?? 'Periksa isian ini.');
 
-            if ($field !== null) {
-                $this->addError($field, (string) $messages[0]);
+            if ($key === 'reason') {
+                $this->addError('alasan', $message);
+            } elseif (isset(self::ERROR_MAP[$key])) {
+                $this->addError($type->value.'.'.self::ERROR_MAP[$key], $message);
             } else {
-                $general[] = (string) $messages[0];
+                $this->addError('umum', $message);
             }
         }
 
-        $this->dispatch('sth-toast', message: $general[0] ?? 'Periksa isian yang ditandai.', tone: 'error');
+        $this->failed = true;
+        $this->dispatch('sth-form-invalid', form: 'surat-form-'.$type->value);
+        $this->dispatch('sth-toast', message: $toast, tone: 'error');
+    }
+
+    /**
+     * What is still wrong in one letter's form, in screen order: [label, message] (label null = general).
+     *
+     * @return list<array{0: string|null, 1: string}>
+     */
+    private function problems(LetterType $type): array
+    {
+        $bag = $this->getErrorBag();
+        $problems = [];
+
+        foreach ($bag->get('umum') as $message) {
+            $problems[] = [null, (string) $message];
+        }
+
+        foreach (self::FIELD_LABELS as $field => $label) {
+            $key = $field === 'alasan' ? 'alasan' : $type->value.'.'.$field;
+
+            if ($bag->has($key)) {
+                $problems[] = [$label, (string) $bag->first($key)];
+            }
+        }
+
+        return $problems;
+    }
+
+    private static function typeName(LetterType $type): string
+    {
+        return $type === LetterType::Guru ? 'surat guru pendamping' : 'surat siswa';
     }
 
     private function signatureName(): ?string
@@ -494,11 +604,6 @@ class SuratTugas extends Component
         }
 
         return $user;
-    }
-
-    private static function digits(string $value): string
-    {
-        return mb_substr(preg_replace('/\D+/', '', $value) ?? '', 0, 5);
     }
 
     private static function parseDate(string $value): ?CarbonImmutable

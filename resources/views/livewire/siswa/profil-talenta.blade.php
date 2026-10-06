@@ -38,6 +38,9 @@
                                     <x-sth.chip :tone="$row['status']->tone()" :icon="$row['status'] === \App\Enums\TalentStatus::Pembinaan ? 'check' : 'clock'" size="sm">{{ $row['status']->label() }}</x-sth.chip>
                                 </div>
                                 <span class="text-sm text-ink-2">{{ $row['info'] }}</span>
+                                @if ($row['note'])
+                                    <p class="m-0 rounded-control bg-subtle px-3 py-2 text-[13.5px] whitespace-pre-line break-words"><span class="font-bold">Catatan dari Kesiswaan:</span> {{ $row['note'] }}</p>
+                                @endif
                                 <div class="muted flex flex-wrap items-center gap-2 text-[13px]">
                                     @if ($row['step'] !== null)
                                         <span class="sg-row w-24" aria-hidden="true">
@@ -62,6 +65,12 @@
                             @if ($row['canCancel'])
                                 <x-sth.button variant="quiet" size="sm" wire:click="batalkan('{{ $row['id'] }}')" wire:loading.attr="disabled"
                                     aria-label="Batalkan {{ $row['title'] }}">Batalkan</x-sth.button>
+                            @endif
+                            @if ($row['canRequestReview'])
+                                <x-sth.button variant="quiet" size="sm" wire:click="mintaTinjau('{{ $row['id'] }}')" wire:loading.attr="disabled"
+                                    aria-haspopup="dialog" aria-label="Minta ditinjau ulang {{ $row['title'] }}">Minta ditinjau ulang</x-sth.button>
+                            @elseif ($row['reviewRequested'])
+                                <x-sth.chip tone="orange" icon="clock" size="sm" class="self-start">Menunggu tinjauan ulang</x-sth.chip>
                             @endif
                         </li>
                     @endforeach
@@ -120,7 +129,7 @@
                                 @class(['fchip gap-2', 'fchip-on' => $cabang === $branch['id']])>
                                 {{ $branch['name'] }}
                                 @if ($branch['team'])<span class="chip chip-sm c-gray">{{ $branch['team'] }}</span>@endif
-                                @if ($branch['taken'])<span class="chip chip-sm c-green">Sudah dipilih</span>@endif
+                                @if ($branch['rejected'])<span class="chip chip-sm c-red">Tidak lolos</span>@elseif ($branch['taken'])<span class="chip chip-sm c-green">Sudah dipilih</span>@endif
                             </button>
                         @endforeach
                     </div>
@@ -139,7 +148,7 @@
                             @include('livewire.siswa.lomba-saya.partials.upload-row', ['name' => $bukti->getClientOriginalName(), 'size' => $bukti->getSize(), 'remove' => 'hapusBukti', 'removeLabel' => 'Hapus bukti dukung'])
                             @error('bukti')<p class="field-error m-0 mt-1"><x-sth.icon name="alert" :size="16" />{{ $message }}</p>@enderror
                         @else
-                            <x-sth.file-drop wire:model="bukti" :file="$bukti" id="talenta-bukti" title="Unggah sertifikat"
+                            <x-sth.file-drop wire:model="bukti" :file="$bukti" id="talenta-bukti" title="Upload sertifikat"
                                 hint="PDF, JPG, atau PNG · maks. 5 MB" accept=".pdf,.jpg,.jpeg,.png,.webp" />
                         @endif
                     </div>
@@ -224,7 +233,7 @@
                         </div>
                     @endforeach
                     @if ($slotsLeft > 0)
-                        <x-sth.file-drop wire:model="sertifikatPilih" :file="$sertifikatPilih" id="sertifikat-pilih" title="Unggah sertifikat" hint="PDF, JPG, atau PNG · maks. 5 MB"
+                        <x-sth.file-drop wire:model="sertifikatPilih" :file="$sertifikatPilih" id="sertifikat-pilih" title="Upload sertifikat" hint="PDF, JPG, atau PNG · maks. 5 MB"
                             accept=".pdf,.jpg,.jpeg,.png,.webp" />
                     @endif
                     @error('sertifikat')<p class="field-error m-0"><x-sth.icon name="alert" :size="16" />{{ $message }}</p>@enderror
@@ -239,4 +248,21 @@
             </form>
         </x-sth.card>
     </div>
+
+    {{-- "Minta ditinjau ulang": a rejected choice, one open request per rejection. Kesiswaan decides. --}}
+    @if ($hasRejected)
+        <x-sth.modal :id="\App\Livewire\Siswa\ProfilTalenta::REVIEW_DIALOG" title="Minta ditinjau ulang?" description="Kesiswaan akan membaca permintaanmu. Statusmu baru berubah kalau Kesiswaan membuka kembali pilihan ini." size="sm">
+            <form id="tinjau-ulang-form" wire:submit="kirimTinjau" class="flex flex-col gap-4" novalidate>
+                @if ($reviewing)
+                    <p class="m-0 text-sm font-bold">{{ $reviewing }}</p>
+                @endif
+                <x-sth.textarea wire:model="pesanTinjau" label="Pesan untuk Kesiswaan" optional rows="3" maxlength="{{ $reviewMax }}"
+                    hint="Maks. {{ $reviewMax }} karakter. Contoh: alasan atau bukti baru yang kamu punya." />
+            </form>
+            <x-slot:footer>
+                <x-sth.button variant="quiet" data-sth-close>Batal</x-sth.button>
+                <x-sth.button type="submit" form="tinjau-ulang-form" icon="send" wire:loading.attr="disabled" wire:target="kirimTinjau">Kirim permintaan</x-sth.button>
+            </x-slot:footer>
+        </x-sth.modal>
+    @endif
 </div>

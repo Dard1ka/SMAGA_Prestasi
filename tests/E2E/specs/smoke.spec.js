@@ -17,7 +17,8 @@ test('demo student logs in, sees the beranda and logs out', async ({ page }) => 
     expect(password, 'E2E_STUDENT_PASSWORD must be set (see tests/E2E/compose.e2e.yaml)').not.toBe('');
 
     await page.goto('/login');
-    await page.getByLabel('NIS / NISN').fill(nis);
+    // One field for NIS, NISN or (after activation) the bound email; the smoke test logs in with the NIS.
+    await page.getByLabel('NIS, NISN, atau email').fill(nis);
     await page.getByLabel('Kata sandi', { exact: true }).fill(password);
     await page.getByRole('button', { name: 'Masuk', exact: true }).click();
 

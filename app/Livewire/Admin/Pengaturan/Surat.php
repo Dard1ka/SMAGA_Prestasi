@@ -28,6 +28,8 @@ use Throwable;
  * pangkat / NIP, and the two letter number formats. Signature actions need `signature.manage`, formats
  * `setting.manage`. The image itself is never shown here (no public or signed URL; TU uses it only through
  * letter generation) — only its metadata.
+ * M1-A (lead, 2026-10-04): Tata Usaha types the complete number of every letter, so the two formats no longer
+ * build numbers: they are only the example shown under TU's number field ("Contoh nomor surat" on this tab).
  */
 final class Surat extends Component
 {
@@ -110,7 +112,7 @@ final class Surat extends Component
         }
 
         $update->handle($this->user(), $this->formatSiswa, $this->formatGuru);
-        $this->dispatch('sth-toast', message: 'Format nomor surat tersimpan.', tone: 'success');
+        $this->dispatch('sth-toast', message: 'Contoh nomor surat tersimpan.', tone: 'success');
     }
 
     public function render(LetterNumber $letterNumber): View

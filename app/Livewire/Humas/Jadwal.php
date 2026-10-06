@@ -91,6 +91,7 @@ class Jadwal extends Component
     private function events(User $user): array
     {
         return AppreciationEvent::query()
+            ->open() // M1-E: an event Humas confirmed as held (even today) leaves the agenda
             ->whereDate('held_on', '>=', CarbonImmutable::today()->toDateString())
             ->with(array_map(fn (string $r): string => 'appreciations.achievement.'.$r, AchievementFacts::RELATIONS))
             ->orderBy('held_on')

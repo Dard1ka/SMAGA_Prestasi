@@ -83,7 +83,7 @@ final class UploadLimits
 
     public static function rateMessage(int $minutes): string
     {
-        return 'Batas unggah tercapai (maks. '.self::MAX_PER_HOUR.' file per jam). Coba lagi dalam '.$minutes.' menit.';
+        return 'Batas upload tercapai (maks. '.self::MAX_PER_HOUR.' file per jam). Coba lagi dalam '.$minutes.' menit.';
     }
 
     public static function quotaMessage(int $remainingBytes): string

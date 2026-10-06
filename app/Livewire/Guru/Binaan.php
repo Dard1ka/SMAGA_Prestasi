@@ -192,7 +192,8 @@ final class Binaan extends Component
             'tone' => $status->tone(),
             'step' => $status === TalentStatus::TidakLolos ? null : $status->step(),
             'assessment' => $application->assessment_on !== null ? self::longDate($application->assessment_on) : null,
-            'note' => $application->note !== null ? Str::limit($application->note, 80) : null,
+            // Kesiswaan's "catatan untuk guru pembina" (internal). The note for the student is not shown here.
+            'note' => $application->note !== null ? Str::limit($application->note, 300) : null,
         ];
     }
 

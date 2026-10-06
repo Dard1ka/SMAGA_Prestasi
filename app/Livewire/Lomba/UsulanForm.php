@@ -76,13 +76,13 @@ class UsulanForm extends Component
             'name.max' => 'Nama lomba maks. 200 karakter.',
             'organizer_name.required' => 'Isi nama penyelenggara dulu.',
             'organizer_name.max' => 'Nama penyelenggara maks. 200 karakter.',
-            'website_url.required' => 'Isi tautan resmi lomba dulu.',
-            'brosur.required' => 'Unggah brosur atau juknis dulu.',
+            'website_url.required' => 'Isi link resmi lomba dulu.',
+            'brosur.required' => 'Upload brosur atau juknis dulu.',
             'description.max' => 'Catatan maks. 1000 karakter.',
             'brosur.max' => 'Ukuran file maksimal 5 MB.',
             'brosur.extensions' => 'Pakai file PDF, JPG, PNG, atau WEBP.',
             'brosur.mimetypes' => 'Isi file tidak sesuai jenis yang diizinkan.',
-            'brosur.file' => 'File gagal diunggah. Coba lagi.',
+            'brosur.file' => 'File gagal di-upload. Coba lagi.',
         ];
     }
 

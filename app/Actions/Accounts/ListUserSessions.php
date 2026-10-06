@@ -26,15 +26,19 @@ final class ListUserSessions
     }
 
     /**
+     * The current session is always in the list. Right after its id was renewed (password change: the old row is
+     * deleted, the new one is written when the request ends) it has no row yet; it is then described from the
+     * request itself (`$currentUserAgent`, `$currentIp`), so "Perangkat ini" does not vanish until a reload (Q2-07).
+     *
      * @return list<array{key: string, current: bool, device: string, ip: ?string, lastActive: CarbonImmutable}>
      */
-    public function handle(User $user, ?string $currentSessionId): array
+    public function handle(User $user, ?string $currentSessionId, ?string $currentUserAgent = null, ?string $currentIp = null): array
     {
         if (! self::available()) {
             return [];
         }
 
-        return DB::connection(config('session.connection'))
+        $sessions = DB::connection(config('session.connection'))
             ->table((string) config('session.table', 'sessions'))
             ->where('user_id', $user->getAuthIdentifier())
             ->orderByDesc('last_activity')
@@ -46,7 +50,19 @@ final class ListUserSessions
                 'device' => self::device((string) $row->user_agent),
                 'ip' => $row->ip_address !== null ? (string) $row->ip_address : null,
                 'lastActive' => CarbonImmutable::createFromTimestamp((int) $row->last_activity, config('app.timezone')),
-            ])
+            ]);
+
+        if ($currentSessionId !== null && ! $sessions->contains('current', true)) {
+            $sessions->push([
+                'key' => self::key($currentSessionId),
+                'current' => true,
+                'device' => self::device((string) $currentUserAgent),
+                'ip' => $currentIp,
+                'lastActive' => CarbonImmutable::now(config('app.timezone')),
+            ]);
+        }
+
+        return $sessions
             ->sortByDesc(fn (array $s): int => $s['current'] ? PHP_INT_MAX : $s['lastActive']->getTimestamp())
             ->values()
             ->all();

@@ -7,7 +7,7 @@ return [
     | Baris bahasa paginasi
     |--------------------------------------------------------------------------
     |
-    | Teks tautan paginasi yang dibuat oleh pustaka paginator.
+    | Teks link paginasi yang dibuat oleh pustaka paginator.
     |
     */
 

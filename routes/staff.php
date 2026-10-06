@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\LetterPrintController;
 use App\Livewire\Akun\ImportSiswa;
 use App\Livewire\Akun\StatusAktivasi;
 use App\Livewire\Guru\Binaan;
@@ -47,6 +48,14 @@ Route::middleware(['area.staff', 'role:tata_usaha'])->prefix('tu')->name('tu.')-
     Route::livewire('/surat/{registration}', SuratTugas::class)
         ->whereUlid('registration')
         ->name('surat.show');
+    // M1-A: "Cetak" opens the letter PDF inline (LetterPolicy::view + audit inside StreamLetter); the two
+    // letterhead emblems for the HTML preview (LetterPolicy::viewQueue).
+    Route::get('/surat/cetak/{letter}', [LetterPrintController::class, 'show'])
+        ->whereUlid('letter')
+        ->name('surat.cetak');
+    Route::get('/surat/kop/{logo}', [LetterPrintController::class, 'logo'])
+        ->whereIn('logo', array_keys(LetterPrintController::LOGOS))
+        ->name('surat.kop');
 });
 
 Route::middleware(['area.staff', 'role:humas'])->prefix('humas')->name('humas.')->group(function (): void {
@@ -111,7 +120,7 @@ Route::middleware(['area.staff', 'role:kesiswaan|admin'])->prefix('kesiswaan')->
 // --- B5: Kepala Sekolah prestasi/laporan/surat (backlog #6, UI-MAP §4b) + TU template surat (backlog #7, UI-MAP §4c) ---
 // Every screen authorizes again inside the component: AchievementPolicy::viewSchoolReport/exportSchoolReport,
 // LetterPolicy::viewAny, SettingPolicy::viewLetterTemplate/manageLetterTemplate. kepsek.laporan is also open to Admin
-// (the shared dashboard at admin.beranda links "Unduh laporan" there).
+// (the shared dashboard at admin.beranda links "Download laporan" there).
 
 Route::middleware(['area.staff', 'role:kepala_sekolah'])->prefix('kepsek')->name('kepsek.')->group(function (): void {
     Route::livewire('/prestasi', KepsekPrestasiBidang::class)->name('prestasi');
