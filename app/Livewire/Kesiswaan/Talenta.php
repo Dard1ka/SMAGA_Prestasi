@@ -305,7 +305,7 @@ class Talenta extends Component
 
         try {
             // The same checks the rejection runs, so the dialog never opens over a field error.
-            $assessment->validated($this->panelDetails());
+            $assessment->validated($this->panelDetails(), $application);
             TalentNote::clean($this->panelStudentNote, 'student_note');
         } catch (ValidationException $e) {
             $this->showPanelErrors($e);

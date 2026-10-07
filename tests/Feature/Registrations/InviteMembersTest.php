@@ -7,6 +7,7 @@ use App\Actions\Registrations\CreateRegistration;
 use App\Actions\Registrations\DeclineMembership;
 use App\Actions\Registrations\ExpirePendingInvitations;
 use App\Actions\Registrations\InviteMembers;
+use App\Actions\Registrations\WithdrawInvitation;
 use App\Enums\MemberRole;
 use App\Enums\RegistrationStatus;
 use App\Enums\RegistrationType;
@@ -20,8 +21,10 @@ use App\Models\Competition;
 use App\Models\Registration;
 use App\Models\RegistrationMember;
 use App\Notifications\Registrations\InvitationsExpired;
+use App\Notifications\Registrations\InvitationWithdrawn;
 use App\Notifications\Registrations\RegistrationAwaitingPrincipal;
 use App\Notifications\Registrations\TeamInvitation;
+use App\Notifications\Support\PlainMailMessage;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Console\Scheduling\CallbackEvent;
 use Illuminate\Console\Scheduling\Schedule;
@@ -268,4 +271,108 @@ it('schedules both B3 jobs every five minutes on one server', function (): void 
     $jobs->each(fn (CallbackEvent $e) => expect($e->expression)->toBe('*/5 * * * *')
         ->and($e->withoutOverlapping)->toBeTrue()
         ->and($e->onOneServer)->toBeTrue());
+});
+
+// QA6: withdraw an open invitation; students who have not activated yet (#66 Q1-22) -------------------
+
+it('lets the ketua withdraw an invitation nobody answered; a complete team then goes to the Kepala Sekolah', function (): void {
+    $registration = b3Team($this, F::teamCompetition(3), [$this->dimas, $this->keisha]);
+    app(ConfirmMembership::class)->handle(F::user($this->keisha), $registration->fresh());
+
+    app(WithdrawInvitation::class)->handle(F::user($this->nadia), $registration->fresh(), $this->dimas->getKey());
+
+    expect($registration->members()->where('student_id', $this->dimas->getKey())->exists())->toBeFalse()
+        // Keisha confirmed and two people remain (D-36).
+        ->and($registration->fresh()->status)->toBe(RegistrationStatus::MenungguKepsek);
+
+    Notification::assertSentTo(F::user($this->dimas), InvitationWithdrawn::class);
+    Notification::assertSentTo($this->kepsek, RegistrationAwaitingPrincipal::class);
+    $audit = Activity::query()->where('event', 'registration.invitation_withdrawn')->firstOrFail();
+    expect($audit->causer_id)->toBe(F::user($this->nadia)->id)
+        ->and($audit->properties['student_id'])->toBe($this->dimas->getKey());
+});
+
+it('keeps the team waiting while others still answer, and the withdrawn student can be invited again', function (): void {
+    $registration = b3Team($this, F::teamCompetition(3), [$this->dimas, $this->keisha]);
+
+    app(WithdrawInvitation::class)->handle(F::user($this->nadia), $registration, $this->dimas->getKey());
+
+    expect($registration->fresh()->status)->toBe(RegistrationStatus::MenungguKonfirmasi);
+    Notification::assertNotSentTo($this->kepsek, RegistrationAwaitingPrincipal::class);
+
+    b3Invite($this, $registration->fresh(), [$this->dimas]);
+    expect($registration->members()->where('student_id', $this->dimas->getKey())->exists())->toBeTrue();
+});
+
+it('withdraws only an open invitation, only for the ketua, only while the team waits', function (): void {
+    $registration = b3Team($this, F::teamCompetition(4), [$this->dimas, $this->keisha, $this->rizky]);
+    app(ConfirmMembership::class)->handle(F::user($this->keisha), $registration->fresh());
+    app(DeclineMembership::class)->handle(F::user($this->rizky), $registration->fresh());
+    $withdraw = fn ($as, $student) => app(WithdrawInvitation::class)->handle(F::user($as), $registration->fresh(), $student->getKey());
+
+    expect(fn () => $withdraw($this->keisha, $this->dimas))->toThrow(AuthorizationException::class)
+        ->and(b3MembersError(fn () => $withdraw($this->nadia, $this->keisha)))->toBe('Keisha Larasati sudah konfirmasi, undangannya tidak bisa dibatalkan.')
+        ->and(b3MembersError(fn () => $withdraw($this->nadia, $this->rizky)))->toBe('Rizky Maulana sudah menolak undangan ini.')
+        ->and(b3MembersError(fn () => $withdraw($this->nadia, $this->hana)))->toBe('Undangan tidak ditemukan.')
+        ->and(b3MembersError(fn () => $withdraw($this->nadia, $this->nadia)))->toBe('Undangan tidak ditemukan.')
+        ->and($registration->members()->count())->toBe(4);
+});
+
+it('withdraws from the registration panel and marks a student who has not activated yet', function (): void {
+    F::student('Laras Wening Pangestu', 'XI-2', ['status' => UserStatus::PendingActivation]);
+    $lomba = F::teamCompetition(3);
+    $registration = b3Team($this, $lomba, [$this->dimas]);
+
+    $form = Livewire::actingAs(F::user($this->nadia))->test(Form::class, ['competitionId' => $lomba->getKey()])
+        ->assertSeeHtml('aria-label="Batalkan undangan Dimas Arya Nugroho"')
+        ->set('q', 'Pangestu');
+
+    expect($form->get('hasil')[0]['pending'])->toBeTrue();
+    $form->assertSee('belum aktivasi akun');
+
+    $form->call('batalkanUndangan', $this->dimas->getKey())
+        ->assertHasNoErrors()
+        ->assertDispatched('sth-toast', tone: 'success')
+        ->assertDispatched('pendaftaran-berubah')
+        ->assertDontSeeHtml('aria-label="Batalkan undangan Dimas Arya Nugroho"');
+
+    expect($registration->members()->where('student_id', $this->dimas->getKey())->exists())->toBeFalse();
+
+    // The ketua is no invitation: the action names the problem instead of failing.
+    Livewire::actingAs(F::user($this->nadia))->test(Form::class, ['competitionId' => $lomba->getKey()])
+        ->call('batalkanUndangan', $this->nadia->getKey())
+        ->assertHasErrors(['members']);
+});
+
+it('refuses a withdraw once the team waits for the Kepala Sekolah or registration has closed (QA6 review)', function (): void {
+    $lomba = F::teamCompetition(4);
+    $registration = b3Team($this, $lomba, [$this->dimas, $this->keisha]);
+    $withdraw = fn () => app(WithdrawInvitation::class)->handle(F::user($this->nadia), $registration->fresh(), $this->dimas->getKey());
+
+    $lomba->forceFill(['registration_closes_at' => now()->subMinute()])->save();
+    expect($withdraw)->toThrow(AuthorizationException::class);
+
+    $lomba->forceFill(['registration_closes_at' => now()->addDays(5)])->save();
+    $registration->forceFill(['status' => RegistrationStatus::MenungguKepsek])->save();
+    expect($withdraw)->toThrow(AuthorizationException::class)
+        ->and($registration->members()->where('student_id', $this->dimas->getKey())->exists())->toBeTrue();
+});
+
+it('tells the student in plain words who withdrew which invitation, also after the queue (QA6 review)', function (): void {
+    $lomba = F::teamCompetition(3);
+    $registration = b3Team($this, $lomba, [$this->dimas]);
+    $dimas = F::user($this->dimas);
+    $notice = unserialize(serialize(new InvitationWithdrawn($registration->fresh())));
+
+    expect($notice->toArray($dimas))->toMatchArray([
+        'type' => 'registration.invitation_withdrawn',
+        'title' => 'Undangan tim dibatalkan',
+        'message' => 'Nadia Putri Anindya membatalkan undanganmu untuk ikut tim '.$lomba->name.'.',
+        'url' => route('siswa.lomba.show', $lomba->getKey()),
+    ]);
+
+    $mail = $notice->toMail($dimas);
+    expect($mail)->toBeInstanceOf(PlainMailMessage::class)
+        ->and($mail->subject)->toBe('Undangan tim dibatalkan: '.$lomba->name)
+        ->and($mail->actionUrl)->toBe(route('siswa.lomba.show', $lomba->getKey()));
 });

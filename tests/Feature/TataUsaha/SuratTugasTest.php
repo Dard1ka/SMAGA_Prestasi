@@ -445,13 +445,13 @@ it('gives each letter its own form: prefilled from the lomba, number empty, last
         ->assertHasNoErrors(['siswa.nomor'])
         // the preview shows what was typed (the input value itself is not in the HTML)
         ->assertSee('400.3.8/777/MRD/X/2026')
-        // the other letter has its own data
+        // the other letter starts from what TU typed (QA6), then keeps its own data
         ->set('siswa.tempat', 'Gedung A')
         ->call('setTab', 'guru')
         ->assertSee('SURAT PERINTAH TUGAS')
         ->assertSee('Terlampir')
         ->assertSee('Buat PDF surat guru pendamping')
-        ->assertSet('guru.tempat', 'Kota Semarang')
+        ->assertSet('guru.tempat', 'Gedung A')
         ->set('guru.tempat', 'Gedung B')
         ->assertSet('siswa.tempat', 'Gedung A');
 });
@@ -654,14 +654,14 @@ it('keeps the print route and the letterhead emblems inside the Tata Usaha area'
 
 // Public verification -----------------------------------------------------------------------------
 
-it('verifies a sent letter publicly without personal data', function (): void {
+it('verifies an issued letter publicly without personal data, before and after "Kirim"', function (): void {
     Notification::fake();
     $registration = w2cTeam($this->mentor);
     w2cIssueBoth($this->tu, $registration);
     $letter = Letter::query()->where('type', LetterType::Siswa)->firstOrFail();
 
-    // Not sent yet → not valid.
-    $this->get('/verifikasi-surat/'.$letter->verification_code)->assertNotFound()->assertSee('Tidak ditemukan');
+    // QA6 (D-113): issued = signed and numbered, so a letter TU printed before "Kirim" is valid too.
+    $this->get('/verifikasi-surat/'.$letter->verification_code)->assertOk()->assertSee('Sah')->assertSee(W2C_SISWA);
 
     app(SendLetters::class)->handle($this->tu, $registration);
 
@@ -743,4 +743,137 @@ it('takes the error toast of a failed "Buat PDF" away once the PDF is made or an
         ->assertHasNoErrors()
         ->assertDispatched('sth-toast', tone: 'success')
         ->assertDispatched('sth-toast-clear', key: 'surat-tugas');
+});
+
+// QA6: explore round 3 after PR 14 (2026-10-07) ----------------------------------------------------
+
+it('carries what TU typed about the invitation into the guru letter that is not made yet (QA6, #61 Q1-15)', function (): void {
+    $registration = w2cTeam($this->mentor);
+
+    $component = Livewire::actingAs($this->tu)->test(SuratTugas::class, ['registration' => $registration])
+        ->set('siswa.nomor', W2C_SISWA)
+        ->set('siswa.dasarNomor', '017/PAN-NSIF/IX/2026')
+        ->set('siswa.dasarTanggal', '2026-09-15')
+        ->set('siswa.tempat', 'Gedung A')
+        ->call('setTab', 'guru')
+        ->assertSet('guru.dasarNomor', '017/PAN-NSIF/IX/2026')
+        ->assertSet('guru.dasarTanggal', '2026-09-15')
+        ->assertSet('guru.tempat', 'Gedung A')
+        ->assertSet('guru.nomor', '');
+
+    // What TU then types for the guru letter stays its own (D-83: two forms, never one shared draft).
+    $component->set('guru.tempat', 'Gedung B')
+        ->call('setTab', 'siswa')
+        ->call('setTab', 'guru')
+        ->assertSet('guru.tempat', 'Gedung B')
+        ->assertSet('siswa.tempat', 'Gedung A');
+});
+
+it('fills the guru form from the issued student letter when the page is opened again (QA6, #61 Q1-15)', function (): void {
+    $registration = w2cTeam($this->mentor);
+    app(IssueLetters::class)->handle($this->tu, $registration, LetterType::Siswa, w2cDraft());
+
+    Livewire::actingAs($this->tu)->test(SuratTugas::class, ['registration' => $registration])
+        ->assertSet('tab', 'guru')
+        ->assertSet('guru.dasarDari', 'Panitia NSIF 2026')
+        ->assertSet('guru.dasarNomor', '017/PAN-NSIF/IX/2026')
+        ->assertSet('guru.dasarTanggal', '2026-09-15')
+        ->assertSet('guru.tanggal', '7 November 2026')
+        ->assertSet('guru.nomor', '');
+});
+
+it('opens the chosen letter in correction mode from Arsip surat (QA6, #61 Q1-13)', function (): void {
+    $registration = w2cTeam($this->mentor);
+    w2cIssueBoth($this->tu, $registration);
+    $guru = Letter::query()->where('type', LetterType::Guru)->firstOrFail();
+
+    Livewire::actingAs($this->tu)->test(ArsipSurat::class)
+        ->assertSeeHtml(route('tu.surat.show', ['registration' => $registration, 'koreksi' => $guru->getKey()]));
+
+    Livewire::withQueryParams(['koreksi' => $guru->getKey()])->actingAs($this->tu)
+        ->test(SuratTugas::class, ['registration' => $registration])
+        ->assertSet('tab', 'guru')
+        ->assertSet('revisingId', $guru->getKey())
+        ->assertSet('guru.nomor', '')
+        ->call('cancelRevision')
+        ->assertSet('koreksi', '')
+        ->assertSet('revisingId', null);
+
+    // A letter of another registration, or one that is no longer current, only opens the page.
+    Livewire::withQueryParams(['koreksi' => 'bukan-surat'])->actingAs($this->tu)
+        ->test(SuratTugas::class, ['registration' => $registration])
+        ->assertOk()
+        ->assertSet('revisingId', null)
+        ->assertSet('koreksi', '');
+});
+
+it('asks before "Kirim" once every letter exists (QA6, #65 Q1-10)', function (): void {
+    Notification::fake();
+    $registration = w2cTeam($this->mentor);
+    app(IssueLetters::class)->handle($this->tu, $registration, LetterType::Siswa, w2cDraft());
+
+    // A letter is still missing: the button explains that at once, no question first.
+    Livewire::actingAs($this->tu)->test(SuratTugas::class, ['registration' => $registration])
+        ->assertDontSeeHtml('data-sth-open="kirim-surat"');
+
+    app(IssueLetters::class)->handle($this->tu, $registration, LetterType::Guru, w2cDraft(W2C_GURU));
+
+    Livewire::actingAs($this->tu)->test(SuratTugas::class, ['registration' => $registration])
+        ->assertSeeHtml('data-sth-open="kirim-surat"')
+        ->assertSee('Kirim surat sekarang?')
+        ->assertSee('3 siswa dan 1 guru pembimbing')
+        ->call('send')
+        ->assertDispatched('sth-modal-close', id: 'kirim-surat');
+
+    expect($registration->fresh()->status)->toBe(RegistrationStatus::SuratTerbit);
+});
+
+it('never refills a field TU changed on the other letter, even back to the lomba value or to empty (QA6 review)', function (): void {
+    $registration = w2cTeam($this->mentor);
+
+    Livewire::actingAs($this->tu)->test(SuratTugas::class, ['registration' => $registration])
+        ->set('siswa.dasarNomor', '017/PAN-NSIF/IX/2026')
+        ->set('siswa.tempat', 'Gedung A')
+        ->call('setTab', 'guru')
+        ->assertSet('guru.tempat', 'Gedung A')
+        ->set('guru.tempat', 'Kota Semarang')   // the lomba value, on purpose
+        ->set('guru.dasarNomor', '')            // this invitation has no number for the guru
+        ->call('setTab', 'siswa')
+        ->assertSet('siswa.tempat', 'Gedung A')
+        ->call('setTab', 'guru')
+        ->assertSet('guru.tempat', 'Kota Semarang')
+        ->assertSet('guru.dasarNomor', '');
+});
+
+it('opens a correction only for a current letter of this registration and drops ?koreksi= once it is saved (QA6 review)', function (): void {
+    Notification::fake();
+    $registration = w2cTeam($this->mentor);
+    w2cIssueBoth($this->tu, $registration);
+    $other = F::registration(RegistrationStatus::Disetujui, ['Hana Safira']);
+    $foreign = app(IssueLetters::class)->handle($this->tu, $other, LetterType::Siswa, w2cDraft('400.3.8/920/MRD/X/2026'));
+    $siswa = Letter::query()->where('registration_id', $registration->getKey())->where('type', LetterType::Siswa)->firstOrFail();
+
+    // A letter of another registration only opens the page.
+    Livewire::withQueryParams(['koreksi' => $foreign->getKey()])->actingAs($this->tu)
+        ->test(SuratTugas::class, ['registration' => $registration])
+        ->assertSet('revisingId', null)
+        ->assertSet('koreksi', '');
+
+    // The chosen letter: the address keeps it while the correction is open, and loses it once the new version exists.
+    Livewire::withQueryParams(['koreksi' => $siswa->getKey()])->actingAs($this->tu)
+        ->test(SuratTugas::class, ['registration' => $registration])
+        ->assertSet('revisingId', $siswa->getKey())
+        ->assertSet('koreksi', $siswa->getKey())
+        ->set('alasan', 'Nomor undangan salah ketik.')
+        ->set('siswa.nomor', '400.3.8/921/MRD/X/2026')
+        ->call('revise')
+        ->assertHasNoErrors()
+        ->assertSet('revisingId', null)
+        ->assertSet('koreksi', '');
+
+    // The old link of the revoked letter only opens the page.
+    Livewire::withQueryParams(['koreksi' => $siswa->getKey()])->actingAs($this->tu)
+        ->test(SuratTugas::class, ['registration' => $registration])
+        ->assertSet('revisingId', null)
+        ->assertSet('koreksi', '');
 });

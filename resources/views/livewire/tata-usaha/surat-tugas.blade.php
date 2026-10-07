@@ -271,13 +271,35 @@
 
             @unless ($sent)
                 <div class="flex flex-wrap items-center gap-3">
-                    <x-sth.button icon="send" wire:click="send" wire:loading.attr="disabled" wire:target="send">Kirim ke siswa{{ $hasMentor ? ' dan guru' : '' }}</x-sth.button>
+                    @if ($missing !== [])
+                        {{-- A letter is missing: the click names it at once (the Action refuses), no question first. --}}
+                        <x-sth.button icon="send" wire:click="send" wire:loading.attr="disabled" wire:target="send">Kirim ke siswa{{ $hasMentor ? ' dan guru' : '' }}</x-sth.button>
+                    @else
+                        {{-- QA6 (Q1-10): sending cannot be taken back, so it asks first. --}}
+                        <x-sth.button icon="send" :data-sth-open="\App\Livewire\TataUsaha\SuratTugas::SEND_DIALOG" aria-haspopup="dialog">Kirim ke siswa{{ $hasMentor ? ' dan guru' : '' }}</x-sth.button>
+                    @endif
                     @if ($missing !== [])
                         <p class="m-0 text-[13px] font-semibold text-orange">Belum bisa dikirim: buat dulu PDF {{ implode(' dan ', $missing) }}.</p>
                     @else
                         <p class="muted m-0 text-[13px]">{{ $n > 1 ? 'Tiap anggota tim menerima surat yang sama.' : 'Siswa dan guru pembimbing menerima surat masing-masing.' }}</p>
                     @endif
                 </div>
+
+                <x-sth.modal :id="\App\Livewire\TataUsaha\SuratTugas::SEND_DIALOG" title="Kirim surat sekarang?" size="sm"
+                             :description="$n.' siswa'.($hasMentor ? ' dan 1 guru pembimbing' : '').' mendapat notifikasi dan bisa men-download suratnya. Setelah terkirim, perubahan hanya lewat Koreksi: surat lama dicabut dan diganti versi baru.'">
+                    <ul class="m-0 flex list-none flex-col gap-2 p-0">
+                        @foreach ($tabs as $item)
+                            <li wire:key="kirim-cek-{{ $item['key'] }}" class="flex flex-col gap-0.5 rounded-tile border border-line p-3">
+                                <span class="text-sm font-bold">{{ $item['label'] }}</span>
+                                <span class="num muted text-[12.5px]">{{ $item['letter'] ? 'Nomor '.$item['letter']->full_number : 'PDF belum dibuat' }}</span>
+                            </li>
+                        @endforeach
+                    </ul>
+                    <x-slot:footer>
+                        <x-sth.button variant="quiet" data-sth-close>Batal</x-sth.button>
+                        <x-sth.button icon="send" wire:click="send" wire:loading.attr="disabled" wire:target="send">Kirim sekarang</x-sth.button>
+                    </x-slot:footer>
+                </x-sth.modal>
             @endunless
         </x-sth.card>
 

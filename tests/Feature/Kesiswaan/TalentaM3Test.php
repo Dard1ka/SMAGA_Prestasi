@@ -8,6 +8,7 @@ use App\Enums\TalentStatus;
 use App\Enums\UserStatus;
 use App\Livewire\Kesiswaan\Talenta;
 use App\Models\TalentApplication;
+use App\Models\TalentProfile;
 use App\Notifications\Talent\TalentApplicationRejected;
 use App\Notifications\Talent\TalentApplicationRestored;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -713,4 +714,24 @@ it('does not preselect a guru pembina who is no longer in the list of the restor
     Livewire::actingAs($this->kesiswaan)->test(Talenta::class)
         ->call('askRestore', $rejected->getKey())
         ->assertSet('restoreMentor', (string) $active->getKey());
+});
+
+// QA6: explore round 3 after PR 14 (2026-10-07) ----------------------------------------------------
+
+it('wraps one long word of the student in the detail panel instead of widening the page (QA6, #65 Q2-29)', function (): void {
+    $application = F::application();
+    $word = str_repeat('instagramcomsiswasmagaresmi', 3);
+    TalentProfile::query()->create([
+        'student_id' => $application->student_id,
+        'interests' => [mb_substr($word, 0, 40)],
+        'organizations' => $word,
+        'junior_high_achievements' => $word,
+    ]);
+
+    Livewire::actingAs($this->kesiswaan)->test(Talenta::class)
+        ->call('showPanel', $application->getKey())
+        ->assertSee($word)
+        // A grid column of 1fr grows to its longest word; minmax(0,1fr) plus a break inside the word keeps it in the card.
+        ->assertSeeHtml('grid-cols-[110px_minmax(0,1fr)]')
+        ->assertSeeHtml('<dd class="m-0 [overflow-wrap:anywhere]">'.$word.'</dd>');
 });

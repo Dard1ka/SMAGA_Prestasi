@@ -10,7 +10,8 @@
             <x-sth.select wire:model.live="bidang" label="Saring bidang" hide-label size="sm" :options="$bidangOptions" class="w-44" />
             <span class="muted num text-[13.5px]" wire:loading.remove>{{ count($pendingIds) }} menunggu</span>
             <span class="muted text-[13.5px]" wire:loading>Memuat…</span>
-            <x-sth.button class="ml-auto" icon="check" wire:click="approveSelected" wire:loading.attr="disabled" :disabled="$checkedCount === 0">
+            {{-- QA6 (Q1-10): one click used to approve every ticked row; the dialog below lists them first. --}}
+            <x-sth.button class="ml-auto" icon="check" data-sth-open="setujui-terpilih" aria-haspopup="dialog" :disabled="$checkedCount === 0">
                 Setujui terpilih (<span class="num">{{ $checkedCount }}</span>)
             </x-sth.button>
         </div>
@@ -32,6 +33,8 @@
                 $mentor = $row->mentor;
                 $mentorName = $mentor ? trim(($mentor->staffProfile?->honorific ? $mentor->staffProfile->honorific.' ' : '').$mentor->name) : 'Belum dipilih';
                 $title = $competition?->name.($row->branch ? ' · '.$row->branch : '');
+                // Several rows of one lomba: the checkbox names whose registration it is (QA6).
+                $who = trim(($members->first()?->student?->user?->name ?? '').($members->count() > 1 ? ' dkk.' : ''));
             @endphp
             <article wire:key="reg-{{ $row->id }}" aria-label="{{ $title }}" @class([
                 'border-b border-line-soft px-4 py-4 last:border-b-0 sm:px-5',
@@ -41,7 +44,7 @@
                 <div class="flex items-start gap-2">
                     <label class="inline-flex size-11 shrink-0 items-center justify-center">
                         <input type="checkbox" class="cek" value="{{ $row->id }}" wire:model.live="selected" @disabled(! $pending)
-                               aria-label="Pilih {{ $title }}">
+                               aria-label="Pilih {{ $who !== '' ? $who.', ' : '' }}{{ $title }}">
                     </label>
 
                     <div class="flex min-w-0 flex-1 flex-col gap-3">
@@ -144,6 +147,24 @@
             </div>
         @endif
     </section>
+
+    <x-sth.modal :id="\App\Livewire\Kepsek\Persetujuan::BULK_DIALOG" :title="'Setujui '.$checkedCount.' pendaftaran?'"
+                 description="Tata Usaha langsung bisa membuat surat tugasnya. Persetujuan tidak bisa dibatalkan dari layar ini." size="sm">
+        <ul class="m-0 flex list-none flex-col gap-2 p-0">
+            @foreach ($selectedRows as $row)
+                <li wire:key="setujui-{{ $row->id }}" class="flex flex-col gap-0.5 rounded-tile border border-line p-3">
+                    <span class="text-sm font-bold">{{ $row->competition?->name }}{{ $row->branch ? ' · '.$row->branch : '' }}</span>
+                    <span class="muted text-[13px]">{{ $row->members->map(fn ($m) => $m->student?->user?->name)->filter()->implode(', ') }}</span>
+                </li>
+            @endforeach
+        </ul>
+        <x-slot:footer>
+            <x-sth.button variant="quiet" data-sth-close>Batal</x-sth.button>
+            @if ($checkedCount > 0)
+                <x-sth.button icon="check" wire:click="approveSelected" wire:loading.attr="disabled" wire:target="approveSelected">Setujui {{ $checkedCount }} pendaftaran</x-sth.button>
+            @endif
+        </x-slot:footer>
+    </x-sth.modal>
 
     <div class="flex w-full shrink-0 flex-col gap-[18px] lg:w-[300px]">
         <x-sth.card as="section" padding="none" class="flex flex-col gap-3 p-[18px]" aria-labelledby="ringkasan-title">

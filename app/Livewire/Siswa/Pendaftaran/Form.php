@@ -7,10 +7,12 @@ namespace App\Livewire\Siswa\Pendaftaran;
 use App\Actions\Registrations\CancelRegistration;
 use App\Actions\Registrations\CreateRegistration;
 use App\Actions\Registrations\InviteMembers;
+use App\Actions\Registrations\WithdrawInvitation;
 use App\Enums\MemberRole;
 use App\Enums\Participation;
 use App\Enums\RegistrationStatus;
 use App\Enums\RegistrationType;
+use App\Enums\UserStatus;
 use App\Livewire\Siswa\Lomba\LombaPresenter;
 use App\Models\Competition;
 use App\Models\Registration;
@@ -34,10 +36,16 @@ use Livewire\Component;
  * cancel while nobody has decided yet (CancelRegistration).
  *
  * Member search (SECURITY §3m-3): active students only, name ≥ 3 letters or an exact NIS/NISN,
- * ≤ 10 results, only ULID + name + class reach the browser, 30/min and 300/day per user.
+ * ≤ 10 results, only ULID + name + class reach the browser, 30/min and 300/day per user. A student who has not
+ * activated the account is marked (QA6): the invitation waits until that student activates.
+ *
+ * After every change of the registration (send, cancel, invite, withdraw) it dispatches CHANGED, so the page around
+ * it (Detail lomba) counts the registrants again (QA6).
  */
 class Form extends Component
 {
+    public const CHANGED = 'pendaftaran-berubah';
+
     public const SEARCH_PER_MINUTE = 30;
 
     public const SEARCH_PER_DAY = 300;
@@ -54,7 +62,7 @@ class Form extends Component
 
     public string $q = '';
 
-    /** @var list<array{id: string, name: string, kelas: string, busy: bool, declined: bool}> */
+    /** @var list<array{id: string, name: string, kelas: string, busy: bool, declined: bool, pending: bool}> */
     public array $hasil = [];
 
     public ?string $searchNote = null;
@@ -125,7 +133,7 @@ class Form extends Component
             ->when($digits,
                 fn (Builder $q) => $q->where(fn (Builder $w) => $w->where('nis', $term)->orWhere('nisn', $term)),
                 fn (Builder $q) => $q->whereHas('user', fn (Builder $u) => $u->where('name', 'like', '%'.addcslashes($term, '%_\\').'%')))
-            ->with(['user:id,name', 'classroom:id,name'])
+            ->with(['user:id,name,status', 'classroom:id,name'])
             ->limit(self::MAX_RESULTS)
             ->get();
 
@@ -141,6 +149,7 @@ class Form extends Component
                 'kelas' => (string) $s->classroom?->name,
                 'busy' => in_array($s->getKey(), $busy, true),
                 'declined' => in_array($s->getKey(), $declined, true),
+                'pending' => $s->user?->status === UserStatus::PendingActivation,
             ])
             ->values()
             ->all();
@@ -199,6 +208,33 @@ class Form extends Component
 
         $this->reset('q', 'hasil', 'searchNote');
         $this->dispatch('sth-toast', message: 'Undangan terkirim ke '.$candidate['name'].'.', tone: 'success');
+        $this->dispatch(self::CHANGED);
+    }
+
+    /** QA6 (#66): the ketua withdraws an invitation nobody answered yet (WithdrawInvitation re-checks everything). */
+    public function batalkanUndangan(string $studentId, WithdrawInvitation $withdraw): void
+    {
+        $this->resetErrorBag('members');
+        $registration = $this->current();
+
+        if ($registration === null || Gate::denies('invite', $registration)) {
+            $this->addError('members', 'Undangan tidak bisa dibatalkan lagi untuk pendaftaran ini.');
+
+            return;
+        }
+
+        $name = (string) $registration->members->firstWhere('student_id', $studentId)?->student?->user?->name;
+
+        try {
+            $withdraw->handle(auth()->user(), $registration, $studentId);
+        } catch (ValidationException $e) {
+            $this->addError('members', (string) collect($e->errors())->flatten()->first());
+
+            return;
+        }
+
+        $this->dispatch('sth-toast', message: 'Undangan untuk '.$name.' dibatalkan.', tone: 'success');
+        $this->dispatch(self::CHANGED);
     }
 
     public function kirim(CreateRegistration $create): void
@@ -229,6 +265,7 @@ class Form extends Component
 
         $this->reset('members', 'q', 'hasil', 'searchNote', 'setuju');
         $this->dispatch('sth-toast', message: 'Pendaftaran terkirim.', tone: 'success');
+        $this->dispatch(self::CHANGED);
     }
 
     public function batalkan(CancelRegistration $cancel): void
@@ -245,6 +282,7 @@ class Form extends Component
 
         $this->dispatch('sth-modal-close', id: 'batal-daftar');
         $this->dispatch('sth-toast', message: 'Pendaftaran dibatalkan.', tone: 'info');
+        $this->dispatch(self::CHANGED);
     }
 
     public function render(): View
@@ -375,6 +413,7 @@ class Form extends Component
                 ->sortBy(fn (RegistrationMember $m): string => ($m->role === MemberRole::Ketua ? '0' : '1').($m->invited_at?->format('YmdHis') ?? ''))
                 ->map(fn (RegistrationMember $m): array => [
                     'id' => (string) $m->getKey(),
+                    'studentId' => (string) $m->student_id,
                     'name' => (string) $m->student?->user?->name,
                     'meta' => trim(($m->student?->classroom?->name ?? '').' · '.$m->role?->label(), ' ·'),
                     'state' => $m->declined_at !== null ? 'declined' : ($m->confirmed_at !== null ? 'confirmed' : 'pending'),

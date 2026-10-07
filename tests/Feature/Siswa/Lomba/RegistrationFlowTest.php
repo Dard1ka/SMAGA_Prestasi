@@ -12,6 +12,8 @@ use App\Enums\RegistrationStatus;
 use App\Enums\RegistrationType;
 use App\Enums\RoleName;
 use App\Enums\UserStatus;
+use App\Livewire\Siswa\Lomba\Detail;
+use App\Livewire\Siswa\Pendaftaran\Form;
 use App\Models\Registration;
 use App\Notifications\Registrations\MemberResponded;
 use App\Notifications\Registrations\RegistrationAwaitingPrincipal;
@@ -21,6 +23,7 @@ use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\ValidationException;
+use Livewire\Livewire;
 use Spatie\Activitylog\Models\Activity;
 use Tests\Feature\Siswa\Lomba\LombaFixtures as F;
 
@@ -226,4 +229,27 @@ it('registers for a lomba open to both individu and tim either way', function ()
 
     expect(w2a1Register($this, $this->nadia, $lomba, RegistrationType::Individu)->status)->toBe(RegistrationStatus::MenungguKepsek)
         ->and(w2a1Register($this, $this->keisha, $lomba, RegistrationType::Tim, [$this->rizky])->status)->toBe(RegistrationStatus::MenungguKonfirmasi);
+});
+
+// QA6: explore round 3 after PR 14 (2026-10-07) ----------------------------------------------------
+
+it('updates "N siswa SMAGA sudah mendaftar" on Detail lomba right after registering or cancelling (QA6)', function (): void {
+    $lomba = F::openCompetition();
+
+    $detail = Livewire::actingAs(F::user($this->nadia))->test(Detail::class, ['competition' => $lomba])
+        ->assertDontSee('siswa SMAGA sudah mendaftar');
+
+    Livewire::actingAs(F::user($this->nadia))->test(Form::class, ['competitionId' => $lomba->getKey()])
+        ->set('mentorId', $this->guru->id)
+        ->set('setuju', true)
+        ->call('kirim')
+        ->assertHasNoErrors()
+        ->assertDispatched('pendaftaran-berubah')
+        ->call('batalkan')
+        ->assertDispatched('pendaftaran-berubah');
+
+    w2a1Register($this, $this->dimas, $lomba, RegistrationType::Individu);
+
+    // The panel is a child component: the page reads the count again when the panel says so.
+    $detail->dispatch('pendaftaran-berubah')->assertSee('1</span> siswa SMAGA sudah mendaftar', false);
 });

@@ -1,7 +1,7 @@
 # DECISIONS.md — Log keputusan SMAGA Talent Hub (STH)
 
 > Log keputusan produk & teknis STH untuk SMA Negeri 3 Semarang. Dirujuk dari `CLAUDE.md` proyek.
-> Diperbarui: **7 Oktober 2026** (D-32…D-44; backlog D-45…D-60; integrasi W4 D-61…D-65; uji menyeluruh Q1 D-66…D-77; uji manual lead D-78…D-91; perbaikan dari uji QA D-92…D-102; permintaan lead 6 Okt dan QA4 D-103…D-108; uji ulang M3 / QA5 D-109…D-112) · Sumber: keputusan pengguna 30 Sep 2026, keputusan lead 1, 2, 4, 6, dan 7 Okt 2026, dokumen klien "SMAGA TALENT HUB (STH)", `DESIGN-SPEC-v2.md` §1–§5, `docs/SECURITY.md`.
+> Diperbarui: **7 Oktober 2026** (D-32…D-44; backlog D-45…D-60; integrasi W4 D-61…D-65; uji menyeluruh Q1 D-66…D-77; uji manual lead D-78…D-91; perbaikan dari uji QA D-92…D-102; permintaan lead 6 Okt dan QA4 D-103…D-108; uji ulang M3 / QA5 D-109…D-112; eksplorasi ulang QA6 D-113…D-116) · Sumber: keputusan pengguna 30 Sep 2026, keputusan lead 1, 2, 4, 6, dan 7 Okt 2026, dokumen klien "SMAGA TALENT HUB (STH)", `DESIGN-SPEC-v2.md` §1–§5, `docs/SECURITY.md`.
 > **Status:** `final` = dipakai untuk implementasi · `sementara` = dipakai sekarang, akan ditinjau · `menunggu jawaban sekolah` = butuh konfirmasi sebelum dibangun.
 > **Aturan log:** entri tidak dihapus atau ditimpa. Keputusan yang berubah → entri baru dengan catatan "menggantikan D-xx", lalu status entri lama diubah menjadi `digantikan`.
 
@@ -121,6 +121,10 @@
 | D-110 | Guru pembimbing diberi tahu keputusan laporan dan jadwal apresiasi binaannya | Lead + dokumen klien (7 Okt 2026) | final |
 | D-111 | "Download data" Talenta mengikuti filter layar; status kosong tidak bisa dipilih | Lead (7 Okt 2026) | final |
 | D-112 | Surat tugas di Guru › Siswa binaan terbuka di popup | Dokumen klien, UX diserahkan lead (7 Okt 2026) | final (layar guru) |
+| D-113 | Surat yang sudah terbit sah di halaman verifikasi QR, juga sebelum "Kirim" | Dokumen klien, temuan QA Q1-23 (7 Okt 2026) | sementara (lead bisa memilih "tanpa Cetak sebelum Kirim") |
+| D-114 | Jadwal asesmen yang baru diisi atau diubah tidak boleh sebelum hari ini | Temuan QA Q2-13, UX diserahkan lead (7 Okt 2026) | final |
+| D-115 | Ketua tim bisa membatalkan undangan yang belum dijawab | Temuan QA Q1-22, UX diserahkan lead (7 Okt 2026) | final |
+| D-116 | Surat yang belum dibuat mengambil isian undangan dan pelaksanaan dari surat yang lain, kecuali isian yang diketik TU sendiri | Temuan QA Q1-15, UX diserahkan lead (7 Okt 2026) | final |
 | U-01…U-06 | Usulan keamanan yang belum diputuskan | Agent H (keamanan) | menunggu jawaban sekolah / sementara |
 
 ---
@@ -800,6 +804,34 @@ Hasil uji ulang sistem setelah PR 13 (M3) di browser, ditambah jawaban lead atas
 - **Alasan:** dokumen klien bagian Surat Tugas: siswa dan guru dapat melihat dan men-download surat tugas; lead menyerahkan UX-nya ("tentukan sendiri uxnya yg enak"). Di layar ini bukti laporan sudah memakai popup, sedangkan surat masih ikon download saja.
 - **Dampak:** `Guru\BinaanDetail::letterRows()` (`preview`, `previewType`, `name` dari `FileController::previewUrl()` / `previewType()`), `livewire/guru/binaan-detail.blade.php`. Tanpa perubahan header berkas: jawaban PDF inline tetap aturan D-105.
 - **Status:** final untuk layar guru. Menjawab sebagian pertanyaan *sementara* D-105 "surat tugas belum memakai popup"; layar siswa (Lomba saya) dan TU masih download saja (backlog #69).
+
+## D10. Eksplorasi ulang setelah PR 14 (QA6) · 7 Okt 2026
+
+Uji ulang alur ujung ke ujung dan isian ekstrem setelah PR 14 di-merge. Untuk hal yang tidak disebut dokumen klien, UX diserahkan lead ("tentukan sendiri uxnya yg enak"). Catatan pengerja: `docs/dev-notes/QA6.md`.
+
+### D-113 · Surat yang sudah terbit sah di halaman verifikasi QR, juga sebelum "Kirim" · 7 Okt 2026
+- **Keputusan:** `/verifikasi-surat/{kode}` menganggap setiap surat yang sudah dibuat PDF-nya ("Buat PDF") sebagai surat yang ada: "Sah" bila belum dicabut, "Dicabut" bila sudah dicabut (dengan nomor penggantinya bila sudah ada), baik sudah maupun belum dikirim. Sebelumnya hanya surat yang sudah dikirim yang dikenali, sehingga surat yang dicetak TU sebelum "Kirim" (tombol "Cetak" ada sejak D-84) menjawab "Tidak ditemukan" dan terlihat seperti surat palsu.
+- **Alasan:** temuan QA Q1-23 (backlog #61) menyebut dua jalan: jawab "Dicabut"/"Sah", atau tidak ada "Cetak" sebelum "Kirim". Dokumen klien menyebut surat "terbit" setelah ditandatangani dan diterbitkan; pengiriman ke siswa adalah langkah distribusi sesudahnya. Kode verifikasi acak dan hanya tercetak di PDF-nya, jadi tidak ada data yang bocor.
+- **Dampak:** `LetterVerificationController` (tanpa syarat `sent_at`, juga untuk nomor pengganti). Halaman dan isinya tidak berubah (tanpa data pribadi).
+- **Status:** sementara. Kalau lead lebih memilih "tidak ada Cetak/Download sebelum Kirim", entri baru menggantikan ini.
+
+### D-114 · Jadwal asesmen yang baru diisi atau diubah tidak boleh sebelum hari ini · 7 Okt 2026
+- **Keputusan:** Di Kesiswaan › Talenta, tanggal "Jadwal asesmen" yang baru diisi atau diubah harus hari ini atau sesudahnya ("Jadwal asesmen tidak boleh sebelum hari ini."). Tanggal yang sudah tersimpan tetap sah walaupun sudah lewat, supaya panel tetap bisa disimpan setelah asesmen berlangsung (misalnya hanya catatan yang diubah).
+- **Alasan:** temuan QA Q2-13 (backlog #62): tahun 2020 diterima dan dikirim ke siswa sebagai "Jadwal asesmen". Isian ini jadwal, bukan catatan riwayat.
+- **Dampak:** `UpdateTalentAssessment::validated(array $details, ?TalentApplication $current = null)` (dipanggil juga oleh `MoveTalentStage`, `RejectTalentApplication` dan pemeriksaan "Tidak lolos" di `Kesiswaan\Talenta`).
+- **Status:** final (UX diserahkan lead).
+
+### D-115 · Ketua tim bisa membatalkan undangan yang belum dijawab · 7 Okt 2026
+- **Keputusan:** Selama tim menunggu konfirmasi dan pendaftaran lomba masih dibuka, ketua bisa membatalkan undangan anggota yang belum menjawab (tombol X "Batalkan undangan …" di panel Daftar lomba). Barisnya dihapus, jadi siswa itu boleh diundang lagi. Undangan yang sudah dikonfirmasi atau ditolak tidak bisa dibatalkan. Setelah pembatalan berlaku aturan D-36 seperti setelah penolakan: semua sisa anggota sudah konfirmasi dan tim minimal 2 orang → lanjut ke Kepala Sekolah. Siswa yang undangannya dibatalkan mendapat notifikasi. Di hasil pencarian anggota, siswa yang belum aktivasi akun ditandai "belum aktivasi akun"; undangannya baru terlihat setelah ia aktivasi.
+- **Alasan:** temuan QA Q1-22 (backlog #66): undangan yang tidak dijawab (misalnya teman yang belum aktivasi) menahan tempat di tim sampai batas pendaftaran, dan tim tidak bisa diteruskan lebih cepat.
+- **Dampak:** Action baru `App\Actions\Registrations\WithdrawInvitation` (izin `RegistrationPolicy::invite`, kunci baris, audit `registration.invitation_withdrawn`), notifikasi `InvitationWithdrawn` (mail + database), `Siswa\Pendaftaran\Form::batalkanUndangan()`, tanda `pending` di hasil pencarian.
+- **Status:** final (UX diserahkan lead).
+
+### D-116 · Surat yang belum dibuat mengambil isian undangan dan pelaksanaan dari surat yang lain, kecuali isian yang diketik TU sendiri · 7 Okt 2026
+- **Keputusan:** Di TU › Surat tugas, surat yang belum dibuat PDF-nya mengambil "Surat dari", nomor dan tanggal surat undangan, hari, tanggal, pukul dan tempat dari surat yang lain (biasanya surat guru dari surat siswa) bila TU mengetiknya di surat yang lain atau surat itu sudah dibuat PDF-nya. Isian yang sudah diketik TU untuk surat itu sendiri tidak pernah ditimpa, juga bila TU sengaja mengosongkannya atau mengembalikannya ke isian awal dari data lomba. Nomor surat, tanggal surat dan "Hal" tetap milik surat masing-masing.
+- **Alasan:** temuan QA Q1-15 (backlog #61): TU mengetik nomor dan tanggal undangan dua kali. Ini bukan satu draf bersama (D-83 tetap: dua form, dua "Buat PDF"); hanya isian awal yang lebih tepat.
+- **Dampak:** `TataUsaha\SuratTugas` (`SHARED_FIELDS`, `$typed` = isian yang diketik TU per surat selama kunjungan itu, `carrySharedFields()` saat halaman dibuka, saat pindah tab dan setelah "Buat PDF").
+- **Status:** final (UX diserahkan lead). Melengkapi D-83.
 
 ## E. Usulan keamanan yang belum diputuskan
 

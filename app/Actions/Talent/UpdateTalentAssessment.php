@@ -24,6 +24,9 @@ use Throwable;
  * already typed for the student is kept as `student_note_draft` (M2-B, QA Q2-14: "Simpan" used to drop it
  * without a word): only the panel reads it, `student_note` stays untouched, nobody is notified, and the next
  * decision sends and clears it.
+ *
+ * "Jadwal asesmen" is a schedule (QA6, Q2-13): a new or changed date may not lie before today (Asia/Jakarta); the
+ * date already saved on the row stays valid, so the panel can still be saved after the assessment took place.
  */
 final class UpdateTalentAssessment
 {
@@ -34,7 +37,7 @@ final class UpdateTalentAssessment
     {
         Gate::forUser($actor)->authorize('move', $application);
 
-        $clean = $this->validated($details);
+        $clean = $this->validated($details, $application);
 
         $locked = DB::transaction(function () use ($actor, $application, $clean): TalentApplication {
             /** @var TalentApplication $locked */
@@ -60,12 +63,13 @@ final class UpdateTalentAssessment
     }
 
     /**
-     * Validates and normalises the detail fields. Keys that are absent stay untouched.
+     * Validates and normalises the detail fields. Keys that are absent stay untouched. $current is the row the
+     * details are for: its saved assessment date passes even when it lies in the past.
      *
      * @param  array{mentor_id?: int|string|null, assessment_on?: string|null, note?: string|null, student_note_draft?: string|null}  $details
      * @return array{mentor_id?: ?int, assessment_on?: ?string, note?: ?string, student_note_draft?: ?string}
      */
-    public function validated(array $details): array
+    public function validated(array $details, ?TalentApplication $current = null): array
     {
         $clean = [];
 
@@ -81,7 +85,7 @@ final class UpdateTalentAssessment
 
         if (array_key_exists('assessment_on', $details)) {
             $raw = trim((string) $details['assessment_on']);
-            $clean['assessment_on'] = $raw === '' ? null : self::date($raw);
+            $clean['assessment_on'] = $raw === '' ? null : self::date($raw, $current?->assessment_on?->format('Y-m-d'));
         }
 
         if (array_key_exists('note', $details)) {
@@ -99,7 +103,7 @@ final class UpdateTalentAssessment
         return $clean;
     }
 
-    private static function date(string $value): string
+    private static function date(string $value, ?string $saved): string
     {
         try {
             $date = CarbonImmutable::createFromFormat('!Y-m-d', $value);
@@ -109,6 +113,10 @@ final class UpdateTalentAssessment
 
         if ($date === false || $date->format('Y-m-d') !== $value || $date->year < 2020 || $date->year > 2100) {
             throw ValidationException::withMessages(['assessment_on' => 'Tanggal asesmen tidak valid.']);
+        }
+
+        if ($date->format('Y-m-d') !== $saved && $date->lessThan(CarbonImmutable::today())) {
+            throw ValidationException::withMessages(['assessment_on' => 'Jadwal asesmen tidak boleh sebelum hari ini.']);
         }
 
         return $date->format('Y-m-d');

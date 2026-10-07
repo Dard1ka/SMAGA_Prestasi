@@ -165,10 +165,11 @@
                     <p class="m-0 rounded-tile border border-dashed border-line-dashed p-3 text-[13px] text-muted">Tidak ada bukti dukung · Opsional</p>
                 @endif
 
-                <dl class="m-0 grid grid-cols-[110px_1fr] gap-x-3 gap-y-1.5 text-[13.5px]">
-                    <dt class="text-muted">Minat</dt><dd class="m-0">{{ $panel['minat'] ?? '–' }}</dd>
-                    <dt class="text-muted">Organisasi</dt><dd class="m-0">{{ $panel['organisasi'] ?? '–' }}</dd>
-                    <dt class="text-muted">Prestasi SMP</dt><dd class="m-0">{{ $panel['smp'] ?? '–' }}</dd>
+                {{-- The student types these: one long word (a link, a handle) wraps inside the card (QA6, Q2-29). --}}
+                <dl class="m-0 grid grid-cols-[110px_minmax(0,1fr)] gap-x-3 gap-y-1.5 text-[13.5px]">
+                    <dt class="text-muted">Minat</dt><dd class="m-0 [overflow-wrap:anywhere]">{{ $panel['minat'] ?? '–' }}</dd>
+                    <dt class="text-muted">Organisasi</dt><dd class="m-0 [overflow-wrap:anywhere]">{{ $panel['organisasi'] ?? '–' }}</dd>
+                    <dt class="text-muted">Prestasi SMP</dt><dd class="m-0 [overflow-wrap:anywhere]">{{ $panel['smp'] ?? '–' }}</dd>
                 </dl>
 
                 @if ($panel['final'])

@@ -63,7 +63,8 @@
                             @endif
                         @endif
                         @if ($canCorrect && ! $letter->revoked_at && $registration)
-                            <x-sth.button variant="quiet" size="sm" icon="edit" href="{{ route('tu.surat.show', $registration) }}">
+                            {{-- QA6 (Q1-13): opens this letter's correction form, not just the registration. --}}
+                            <x-sth.button variant="quiet" size="sm" icon="edit" href="{{ route('tu.surat.show', ['registration' => $registration, 'koreksi' => $letter->id]) }}">
                                 Koreksi<span class="sr-only"> {{ $letter->full_number }}</span>
                             </x-sth.button>
                         @endif

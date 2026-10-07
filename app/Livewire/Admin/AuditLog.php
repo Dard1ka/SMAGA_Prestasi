@@ -121,6 +121,7 @@ final class AuditLog extends Component
         'registration.members_invited' => 'Anggota tim diundang',
         'registration.member_confirmed' => 'Anggota tim menerima undangan',
         'registration.member_declined' => 'Anggota tim menolak undangan',
+        'registration.invitation_withdrawn' => 'Undangan tim dibatalkan ketua',
         'registration.invitations_expired' => 'Undangan tim kedaluwarsa',
         'registration.laporan_dikirim' => 'Laporan hasil dikirim siswa',
         'registration.berlangsung' => 'Lomba dimulai (otomatis)',

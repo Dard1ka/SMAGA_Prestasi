@@ -9,6 +9,7 @@ use App\Domain\Points\PointCalculator;
 use App\Domain\Points\WeightTable;
 use App\Enums\Participation;
 use App\Enums\ResultType;
+use App\Livewire\Siswa\Pendaftaran\Form;
 use App\Models\Competition;
 use App\Models\WeightVersion;
 use App\Rules\ExternalUrl;
@@ -17,6 +18,7 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
+use Livewire\Attributes\On;
 use Livewire\Component;
 
 /**
@@ -36,6 +38,10 @@ class Detail extends Component
 
         $this->competitionId = $competition->getKey();
     }
+
+    /** The "Daftar lomba" panel changed a registration: render again so "N siswa SMAGA sudah mendaftar" is current (QA6). */
+    #[On(Form::CHANGED)]
+    public function registrationChanged(): void {}
 
     public function render(): View
     {

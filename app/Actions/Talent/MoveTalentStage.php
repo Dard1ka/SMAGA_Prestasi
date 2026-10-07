@@ -34,7 +34,7 @@ final class MoveTalentStage
     {
         Gate::forUser($actor)->authorize('move', $application);
 
-        $clean = $details === null ? [] : $this->assessment->validated($details);
+        $clean = $details === null ? [] : $this->assessment->validated($details, $application);
         // A text typed for this move wins (an empty one = no note); without the key the saved draft is sent.
         $noteGiven = isset($details['student_note']);
         $givenNote = TalentNote::clean($noteGiven ? (string) $details['student_note'] : null, 'student_note');

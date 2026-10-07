@@ -80,6 +80,9 @@
                                     <x-sth.chip tone="red" size="sm">Menolak</x-sth.chip>
                                 @else
                                     <x-sth.chip size="sm" icon="clock">Menunggu</x-sth.chip>
+                                    {{-- QA6 (#66): an unanswered invitation no longer holds the place until the deadline. --}}
+                                    <x-sth.icon-button icon="x" size="sm" :label="'Batalkan undangan '.$row['name']"
+                                        wire:click="batalkanUndangan('{{ $row['studentId'] }}')" wire:loading.attr="disabled" wire:target="batalkanUndangan" />
                                 @endif
                             </li>
                         @endforeach
@@ -93,7 +96,7 @@
                     @else
                         <x-sth.input wire:model.live.debounce.500ms="q" id="undang-anggota" type="search" label="Undang anggota pengganti" icon="search"
                                      placeholder="Cari nama, NIS, atau NISN" autocomplete="off" maxlength="60"
-                                     hint="Undangan berlaku sampai batas pendaftaran." />
+                                     hint="Undangan berlaku sampai batas pendaftaran. Siswa yang belum aktivasi akun baru melihatnya setelah aktivasi." />
                         @if ($hasil !== [])
                             <ul aria-label="Akun siswa yang cocok" class="m-0 flex list-none flex-col gap-1.5 p-0">
                                 @foreach ($hasil as $row)
@@ -101,7 +104,7 @@
                                         <x-sth.avatar :name="$row['name']" size="sm" />
                                         <div class="flex min-w-0 flex-1 flex-col">
                                             <span class="ellip font-semibold">{{ $row['name'] }}</span>
-                                            <span class="text-[13px] text-muted">{{ $row['kelas'] }}</span>
+                                            <span class="text-[13px] text-muted">{{ $row['kelas'] }}{{ ($row['pending'] ?? false) ? ' · belum aktivasi akun' : '' }}</span>
                                         </div>
                                         @if ($row['declined'] ?? false)
                                             <x-sth.chip tone="gray" size="sm">Sudah menolak</x-sth.chip>
@@ -206,7 +209,7 @@
                                         <x-sth.avatar :name="$row['name']" size="sm" />
                                         <div class="flex min-w-0 flex-1 flex-col">
                                             <span class="ellip font-semibold">{{ $row['name'] }}</span>
-                                            <span class="text-[13px] text-muted">{{ $row['kelas'] }}</span>
+                                            <span class="text-[13px] text-muted">{{ $row['kelas'] }}{{ ($row['pending'] ?? false) ? ' · belum aktivasi akun' : '' }}</span>
                                         </div>
                                         @if ($row['busy'])
                                             <x-sth.chip tone="gray" size="sm">Sudah terdaftar</x-sth.chip>
