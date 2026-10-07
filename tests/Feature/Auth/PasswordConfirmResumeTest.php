@@ -89,3 +89,22 @@ it('sends "Batal" to the beranda when the page that asked is unknown or not ours
         ->assertSee('href="'.e(route('home')).'"', false)
         ->assertDontSee('evil.test');
 })->with(['none' => [null], 'another site' => ['https://evil.test/kesiswaan/talenta']]);
+
+it('sends "Batal" back to the page the user came from when the page that asked is itself behind the password', function (string $route): void {
+    $this->actingAs($this->admin)
+        ->withSession(['url.intended' => route($route)])
+        ->withHeader('Referer', route('admin.ringkasan'))
+        ->get(route('password.confirm'))
+        ->assertOk()
+        ->assertSee('href="'.e(route('admin.ringkasan')).'"', false)
+        ->assertDontSee('href="'.e(route($route)).'"', false);
+})->with(['admin.pengguna.index', 'admin.pengaturan', 'two-factor.setup']);
+
+it('sends "Batal" to the beranda when such a page was opened without a page before it', function (): void {
+    $this->actingAs($this->admin)
+        ->withSession(['url.intended' => route('admin.pengguna.index')])
+        ->withHeader('Referer', route('admin.pengguna.index'))
+        ->get(route('password.confirm'))
+        ->assertOk()
+        ->assertSee('href="'.e(route('home')).'"', false);
+});

@@ -159,6 +159,14 @@ it('opens the students of a class in a dialog instead of filtering the list at t
         ->assertDontSeeHtml($inDialog($this->dimas));
 });
 
+it('resets ?kelas= however the class dialog is closed, not only with Tutup (QA5 retest, #63)', function (): void {
+    $this->actingAs($this->kesiswaan)
+        ->get(route('kesiswaan.aktivasi.index'))
+        ->assertOk()
+        ->assertSee('id="aktivasi-kelas"', false)
+        ->assertSee('data-sth-on-close="closeClass"', false);
+});
+
 it('opens the dialog on page load with ?kelas= and drops an unknown class', function (): void {
     $this->actingAs($this->kesiswaan);
     $empty = Classroom::factory()->create(['name' => 'X-9', 'level' => 10]);

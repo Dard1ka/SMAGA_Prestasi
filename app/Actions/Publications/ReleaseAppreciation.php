@@ -9,6 +9,7 @@ use App\Models\Appreciation;
 use App\Models\AppreciationEvent;
 use App\Models\User;
 use App\Notifications\Publications\AppreciationReleased;
+use App\Notifications\Publications\BinaanAppreciationNotice;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
@@ -19,7 +20,8 @@ use Illuminate\Validation\ValidationException;
  * releases the achievement (RecordAppreciation accepts it on another event again); the event itself stays.
  * A confirmed event, or a row that is already `selesai`, is the record and stays (same rule as
  * DeleteAppreciationEvent). The student was told "Kamu masuk daftar apresiasi" when the row was made and is
- * now told it is off, by the rule RecordAppreciation used (an account that can log in), after commit.
+ * now told it is off, by the rule RecordAppreciation used (an account that can log in), after commit; so is
+ * the guru pembimbing (D-110).
  * Audited: actor, event, achievement id; no names.
  */
 final class ReleaseAppreciation
@@ -39,8 +41,8 @@ final class ReleaseAppreciation
         // Permission first (403 for other roles); the state is answered below with a message.
         $gate->authorize('update', $appreciation);
 
-        /** @var array{0: User, 1: AppreciationReleased}|null $notice */
-        $notice = DB::transaction(function () use ($actor, $appreciation, $gate): ?array {
+        /** @var array{0: User|null, 1: AppreciationReleased, 2: User|null, 3: BinaanAppreciationNotice} $notices */
+        $notices = DB::transaction(function () use ($actor, $appreciation, $gate): array {
             // Same lock order as RecordAppreciation and DeleteAppreciationEvent: the event, then its rows.
             /** @var AppreciationEvent|null $event */
             $event = AppreciationEvent::query()->whereKey($appreciation->appreciation_event_id)->lockForUpdate()->first();
@@ -49,7 +51,7 @@ final class ReleaseAppreciation
             $locked = $event === null ? null : Appreciation::query()
                 ->whereKey($appreciation->getKey())
                 ->where('appreciation_event_id', $event->getKey())
-                ->with(['achievement.student.user', 'achievement.competition'])
+                ->with(['achievement.student.user', 'achievement.competition', 'achievement.report'])
                 ->lockForUpdate()
                 ->first();
 
@@ -65,7 +67,9 @@ final class ReleaseAppreciation
             $gate->authorize('delete', $locked);
 
             $user = $locked->achievement?->student?->user;
-            $notice = $user !== null && $user->canLogIn() ? [$user, AppreciationReleased::for($event, $locked)] : null;
+            $user = $user !== null && $user->canLogIn() ? $user : null;
+            $mentor = $locked->achievement !== null ? RecordAppreciation::mentorUser($locked->achievement) : null;
+            $notices = [$user, AppreciationReleased::for($event, $locked), $mentor, BinaanAppreciationNotice::released($event, $locked)];
 
             $locked->delete();
 
@@ -78,17 +82,16 @@ final class ReleaseAppreciation
                     'achievement_id' => $locked->achievement_id,
                     'name' => $event->name,
                     'held_on' => $event->held_on->toDateString(),
-                    'notified' => $notice !== null,
+                    'notified' => $user !== null,
                 ])
                 ->log('appreciation.released');
 
-            return $notice;
+            return $notices;
         });
 
-        if ($notice !== null) {
-            $notice[0]->notify($notice[1]);
-        }
+        $notices[0]?->notify($notices[1]);
+        $notices[2]?->notify($notices[3]);
 
-        return $notice !== null;
+        return $notices[0] !== null;
     }
 }

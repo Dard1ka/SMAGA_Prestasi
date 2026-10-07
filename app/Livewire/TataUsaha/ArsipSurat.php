@@ -93,6 +93,8 @@ class ArsipSurat extends Component
             'canPrint' => Route::has('tu.surat.cetak'),
         ])->layoutData([
             'subtitle' => 'Surat yang sudah terbit. Nomor dan isi tidak bisa diubah.',
+            // One search box per screen (D-90, backlog #60): this page has its own, so the top bar shows none.
+            'search' => false,
         ]);
     }
 

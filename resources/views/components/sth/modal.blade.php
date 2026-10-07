@@ -16,10 +16,12 @@
 
     Props: id · title · description · variant dialog (centred) | sheet (bottom on phones) | drawer (right)
            size sm | md | lg (dialog/sheet widths 440/560/760) · open (open on page load, e.g. after a
-           failed non-Livewire submit)
+           failed non-Livewire submit) · on-close (a method of the Livewire component around it, called
+           whenever the dialog closes: a close button, Esc or a click outside; for a dialog whose state lives on
+           the server, e.g. in the address, QA5 #63)
     Slots: default (body, scrolls) · footer (sticky actions, right-aligned)
 --}}
-@props(['id', 'title', 'description' => null, 'variant' => 'dialog', 'size' => 'md', 'open' => false])
+@props(['id', 'title', 'description' => null, 'variant' => 'dialog', 'size' => 'md', 'open' => false, 'onClose' => null])
 @php
     $variantClass = ['dialog' => null, 'sheet' => 'dlg-sheet', 'drawer' => 'dlg-drawer'][$variant] ?? null;
     $sizeClass = ['sm' => 'dlg-sm', 'md' => null, 'lg' => 'dlg-lg'][$size] ?? null;
@@ -30,6 +32,7 @@
     @if ($description) aria-describedby="{{ $id }}-desc" @endif
     wire:ignore.self
     @if ($open) data-sth-autoopen @endif
+    @if ($onClose) data-sth-on-close="{{ $onClose }}" @endif
     {{ $attributes->class(['dlg', $variantClass, $sizeClass]) }}
 >
     <div class="dlg-panel">

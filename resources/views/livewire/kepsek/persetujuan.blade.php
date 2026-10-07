@@ -99,7 +99,7 @@
                                 <dt class="text-xs font-semibold tracking-wide text-muted uppercase">Jadwal lomba</dt>
                                 <dd class="m-0 flex flex-col gap-0.5">
                                     <span class="num text-sm font-semibold">{{ $competition?->starts_on?->translatedFormat('j M Y') ?? '-' }}</span>
-                                    <span class="muted text-[12.5px]">{{ $competition?->mode?->label() }}{{ $competition?->location ? ' · '.$competition->location : '' }}</span>
+                                    <span class="muted text-[12.5px]">{{ \App\Livewire\Kepsek\Persetujuan::modeAndPlace($competition) }}</span>
                                 </dd>
                             </div>
                             <div class="flex min-w-0 flex-col gap-1">

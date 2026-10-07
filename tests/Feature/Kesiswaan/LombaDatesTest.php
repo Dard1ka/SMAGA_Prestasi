@@ -433,3 +433,26 @@ it('says the submitter gets the reason when one was typed on the queue card', fu
 
     expect($usulan->fresh()->verification_note)->toBe('ab');
 });
+
+// QA5 (2026-10-07): the toast only says the submitter was told when a notification really went out -----------
+
+it('does not claim the submitter was told when nobody gets a notification', function (string $who): void {
+    if ($who === 'own entry') {
+        $submitter = $this->kesiswaan;
+    } else {
+        $submitter = F::student('Putri Maharani Kusuma', 'XII-1')->user;
+        $submitter->forceFill(['status' => 'archived'])->save();
+    }
+
+    $usulan = Competition::factory()->proposal()->create(['name' => 'Lomba Uji Tolak 2026', 'submitted_by' => $submitter->getKey()]);
+
+    Livewire::withQueryParams(['tab' => 'verifikasi'])->actingAs($this->kesiswaan)->test(Index::class)
+        ->call('startReject', $usulan->getKey())
+        ->set('rejectNote', 'Data lomba belum lengkap.')
+        ->call('reject')
+        ->assertHasNoErrors()
+        ->assertDispatched('sth-toast', message: 'Lomba ditolak.', tone: 'success');
+
+    expect($usulan->fresh()->status)->toBe(CompetitionStatus::Ditolak);
+    Notification::assertNothingSent();
+})->with(['own entry', 'archived student']);

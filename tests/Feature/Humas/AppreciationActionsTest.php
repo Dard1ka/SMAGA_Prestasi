@@ -16,8 +16,10 @@ use App\Models\Student;
 use App\Notifications\Publications\AppreciationCancelled;
 use App\Notifications\Publications\AppreciationReleased;
 use App\Notifications\Publications\AppreciationScheduled;
+use App\Notifications\Publications\BinaanAppreciationNotice;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\ValidationException;
 use Spatie\Activitylog\Models\Activity;
@@ -450,17 +452,20 @@ it('releases one scheduled achievement from an open event, audited, and tells th
     expect(app(RecordAppreciation::class)->handle($this->humas, $other, $nadia)->exists)->toBeTrue();
 })->with([RoleName::Humas, RoleName::Kesiswaan, RoleName::Admin]);
 
-it('releases without a notice when the student can no longer log in', function (): void {
+it('releases without a notice to a student who can no longer log in (the guru pembimbing still hears)', function (): void {
     $event = HumasFixtures::event();
     $achievement = HumasFixtures::achievement(studentName: 'Bima Satria Wicaksono');
     $row = app(RecordAppreciation::class)->handle($this->humas, $event, $achievement);
-    $achievement->student->user->forceFill(['status' => UserStatus::Archived])->save();
+    $student = $achievement->student->user;
+    $student->forceFill(['status' => UserStatus::Archived])->save();
     Notification::fake();
 
     expect(app(ReleaseAppreciation::class)->handle($this->humas, $row))->toBeFalse()
         ->and(Appreciation::query()->count())->toBe(0)
         ->and(Activity::query()->where('event', 'appreciation.released')->sole()->properties['notified'])->toBeFalse();
-    Notification::assertNothingSent();
+    Notification::assertNothingSentTo($student);
+    Notification::assertSentTimes(AppreciationReleased::class, 0);
+    Notification::assertSentToTimes($achievement->report->registration->mentor, BinaanAppreciationNotice::class, 1);
 });
 
 it('refuses to release from a confirmed event: it is the record', function (): void {
@@ -508,4 +513,72 @@ it('refuses roles without appreciation.manage, and students, to release', functi
 
     expect(Appreciation::query()->count())->toBe(1)
         ->and(Activity::query()->where('event', 'appreciation.released')->count())->toBe(0);
+});
+
+// QA5 (2026-10-07, client document "Penjadwalan Apresiasi": "Siswa dan guru pembimbing menerima notifikasi") --
+
+it('tells the guru pembimbing when a binaan is scheduled, released, or the event is deleted', function (): void {
+    $achievement = HumasFixtures::achievement();
+    $mentor = $achievement->report->registration->mentor;
+    $event = HumasFixtures::event();
+
+    $appreciation = app(RecordAppreciation::class)->handle($this->humas, $event, $achievement);
+
+    Notification::assertSentTo($mentor, BinaanAppreciationNotice::class, function (BinaanAppreciationNotice $n) use ($mentor, $event): bool {
+        return $n->kind === BinaanAppreciationNotice::SCHEDULED
+            && $n->title() === 'Binaan masuk daftar apresiasi'
+            && str_contains($n->body(), 'Nadia Putri Anindya (Juara II OPSI 2026) akan diapresiasi di '.$event->name)
+            && html_entity_decode((string) $n->toMail($mentor)->greeting, ENT_QUOTES | ENT_HTML5) === 'Yth. Retno Wulandari, S.Pd.,';
+    });
+
+    app(ReleaseAppreciation::class)->handle($this->humas, $appreciation);
+
+    Notification::assertSentTo($mentor, BinaanAppreciationNotice::class, fn (BinaanAppreciationNotice $n): bool => $n->kind === BinaanAppreciationNotice::RELEASED
+        && $n->title() === 'Jadwal apresiasi binaan berubah'
+        && str_contains($n->body(), 'Nadia Putri Anindya (Juara II OPSI 2026) tidak jadi diapresiasi di '.$event->name));
+
+    app(RecordAppreciation::class)->handle($this->humas, $event, $achievement->fresh());
+    app(DeleteAppreciationEvent::class)->handle($this->humas, $event);
+
+    Notification::assertSentTo($mentor, BinaanAppreciationNotice::class, fn (BinaanAppreciationNotice $n): bool => $n->kind === BinaanAppreciationNotice::CANCELLED
+        && $n->title() === 'Acara apresiasi binaan dibatalkan'
+        && str_contains($n->body(), $event->name)
+        && str_contains($n->body(), 'Nadia Putri Anindya (Juara II OPSI 2026)'));
+
+    // Scheduled, released, scheduled again, event deleted.
+    Notification::assertSentToTimes($mentor, BinaanAppreciationNotice::class, 4);
+});
+
+it('tells no guru pembimbing who can no longer log in', function (): void {
+    $achievement = HumasFixtures::achievement();
+    $mentor = $achievement->report->registration->mentor;
+    $mentor->forceFill(['status' => UserStatus::Disabled])->save();
+
+    app(RecordAppreciation::class)->handle($this->humas, HumasFixtures::event(), $achievement);
+
+    Notification::assertNotSentTo($mentor, BinaanAppreciationNotice::class);
+});
+
+it('finds the gurus of a deleted event in a fixed number of queries, one notice per guru', function (): void {
+    $event = HumasFixtures::event();
+    $names = ['Nadia Putri Anindya', 'Dimas Arya Nugroho', 'Keisha Larasati', 'Rizky Maulana'];
+
+    foreach ($names as $i => $name) {
+        app(RecordAppreciation::class)->handle($this->humas, $event, HumasFixtures::achievement(studentName: $name, competitionName: 'Lomba '.($i + 1)));
+    }
+
+    Notification::fake();
+    $lookups = 0;
+    DB::listen(function ($query) use (&$lookups): void {
+        if (preg_match('/from "(reports|registrations)"/', $query->sql) === 1) {
+            $lookups++;
+        }
+    });
+
+    app(DeleteAppreciationEvent::class)->handle($this->humas, $event);
+
+    // The eager load of the rows plus one lookup each for reports and registrations; before QA5's fix it was two per
+    // row (9 for these 4 rows).
+    expect($lookups)->toBeLessThanOrEqual(3);
+    Notification::assertSentTimes(BinaanAppreciationNotice::class, count($names));
 });

@@ -514,3 +514,41 @@ it('paginates the archive by 20', function (): void {
 it('forbids Arsip without publication.manage', function (): void {
     Livewire::actingAs(AuthTestHelpers::staff(RoleName::Kesiswaan))->test(Arsip::class)->assertForbidden();
 });
+
+// QA5 (2026-10-07): an alumnus is offered as "Alumni", never with the last class (same as the ranking, D-80) --
+
+it('offers the achievement of an alumnus as "Alumni" instead of the last class', function (): void {
+    $achievement = HumasFixtures::achievement(studentName: 'Putri Maharani Kusuma');
+    $achievement->student->user->forceFill(['status' => 'archived'])->save();
+    $event = HumasFixtures::event();
+
+    Livewire::actingAs($this->humas)->test(Apresiasi::class)
+        ->call('startAdding', $event->getKey())
+        ->assertViewHas('achievementOptions', fn (array $options): bool => ($options[$achievement->getKey()] ?? null) === 'Putri Maharani Kusuma (Alumni) · Juara II Nasional · OPSI 2026');
+});
+
+// QA5 retest (2026-10-07, backlog #65): an empty "Buat acara" form names both missing fields ------------------
+
+it('names a missing event name and a missing date together', function (): void {
+    Livewire::actingAs($this->humas)
+        ->test(Apresiasi::class)
+        ->set('name', '')
+        ->set('heldOn', '')
+        ->call('createEvent')
+        ->assertHasErrors(['name', 'heldOn']);
+
+    expect(AppreciationEvent::query()->count())->toBe(0);
+});
+
+it('drops the name error once the name is filled while the date is still missing', function (): void {
+    Livewire::actingAs($this->humas)
+        ->test(Apresiasi::class)
+        ->set('name', '')
+        ->set('heldOn', '')
+        ->call('createEvent')
+        ->assertHasErrors(['name', 'heldOn'])
+        ->set('name', 'Upacara Senin, 12 Oktober 2026')
+        ->call('createEvent')
+        ->assertHasErrors(['heldOn'])
+        ->assertHasNoErrors(['name']);
+});

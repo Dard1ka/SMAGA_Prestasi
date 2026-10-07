@@ -308,3 +308,33 @@ it('treats a user without the guru role as not allowed even with a mentor id', f
     expect($humas->can('viewAsMentor', $this->other->fresh()))->toBeFalse();
     expect(User::query()->whereKey($humas->getKey())->exists())->toBeTrue();
 });
+
+// QA5 (2026-10-07) -------------------------------------------------------------------------------------------
+
+it('tells the guru a report waits for its revision, not that none was sent', function (): void {
+    $this->actingAs($this->retno)->get(route('guru.binaan.show', $this->mine))
+        ->assertOk()
+        ->assertSee('Laporan hasil belum dikirim')
+        ->assertDontSee('Laporan perlu direvisi');
+
+    $report = new Report(['registration_id' => $this->mine->getKey(), 'claimed_result' => ResultType::Juara2]);
+    $report->forceFill(['status' => ReportStatus::PerluRevisi, 'note' => 'Sertifikat belum terbaca.', 'submitted_by' => $this->nadia->user_id, 'submitted_at' => now()])->save();
+
+    $this->actingAs($this->retno)->get(route('guru.binaan.show', $this->mine))
+        ->assertOk()
+        ->assertSee('Laporan perlu direvisi')
+        ->assertSee('Ketua tim memperbaiki laporan dari akunnya.')
+        ->assertDontSee('Laporan hasil belum dikirim');
+});
+
+it('opens a sent surat tugas in the preview popup, the link itself staying the download', function (): void {
+    $pdf = File::factory()->purpose(FilePurpose::Letter)->create(['original_name' => 'surat-perintah-tugas.pdf', 'mime' => 'application/pdf']);
+    Letter::factory()->guru()->create(['registration_id' => $this->mine->getKey(), 'file_id' => $pdf->getKey(), 'sent_at' => now()]);
+
+    $html = $this->actingAs($this->retno)->get(route('guru.binaan.show', $this->mine))->assertOk()->getContent();
+
+    expect($html)->toContain('href="'.route('files.show', $pdf).'"')
+        ->and($html)->toContain('data-sth-preview="'.e(route('files.show', ['file' => $pdf, 'tampil' => 1])).'"')
+        ->and($html)->toContain('data-sth-preview-type="pdf"')
+        ->and($html)->toContain('data-sth-preview-name="surat-perintah-tugas.pdf"');
+});

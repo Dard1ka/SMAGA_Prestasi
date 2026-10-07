@@ -28,7 +28,8 @@ use Livewire\Component;
  * in Guru\BinaanDetail (`guru.binaan.show`, 404 for anyone else's). Topbar search posts `?q=` here.
  */
 #[Title('Siswa binaan')]
-#[Layout('layouts::app', ['subtitle' => 'Siswa yang kamu bimbing di lomba dan pembinaan talenta.'])]
+// One search box per screen (D-90, backlog #60): this page has its own, so the top bar shows none.
+#[Layout('layouts::app', ['subtitle' => 'Siswa yang kamu bimbing di lomba dan pembinaan talenta.', 'search' => false])]
 final class Binaan extends Component
 {
     use PresentsBinaan, ReportHelpers;

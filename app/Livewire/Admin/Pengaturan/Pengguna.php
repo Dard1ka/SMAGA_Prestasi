@@ -24,6 +24,7 @@ use App\Models\User;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\Url;
@@ -115,11 +116,24 @@ final class Pengguna extends Component
     {
         Gate::authorize('create', User::class);
 
-        $this->validate(
+        // Every problem at once (QA5 #65): the confirmation and the account's own fields in one answer.
+        $errors = Validator::make(
+            ['new' => $this->new],
             ['new.password' => ['required', 'string', 'same:new.password_confirmation']],
             ['new.password.same' => 'Konfirmasi kata sandi tidak cocok.'],
             ['new.password' => 'kata sandi sementara'],
-        );
+        )->errors()->toArray();
+
+        foreach (CreateStaffAccount::validator($this->new)->errors()->toArray() as $key => $messages) {
+            $errors['new.'.$key] ??= $messages;
+        }
+
+        if ($errors !== []) {
+            throw ValidationException::withMessages($errors);
+        }
+
+        // Like Livewire's validate(): a passing check drops the messages of the previous try.
+        $this->resetErrorBag();
 
         if (! $this->passwordRecentlyConfirmed()) {
             return;
@@ -429,15 +443,20 @@ final class Pengguna extends Component
 
     public function render(): View
     {
-        $staff = $this->staff();
-        $target = $this->targetId !== null ? $staff->firstWhere('id', $this->targetId) : null;
+        // The search narrows the table only (QA5): the Kepala Sekolah, the candidates to replace them and the
+        // account of an open dialog always come from every staff account.
+        $all = $this->staff();
+        $term = mb_strtolower(trim($this->search));
+        $staff = $term === '' ? $all : $all->filter(fn (User $u): bool => str_contains(mb_strtolower((string) $u->name), $term)
+            || str_contains(mb_strtolower((string) $u->username), $term))->values();
+        $target = $this->targetId !== null ? $all->firstWhere('id', $this->targetId) : null;
 
         return view('livewire.admin.pengaturan.pengguna', [
             'staff' => $staff,
             'target' => $target,
-            'principal' => $staff->first(fn (User $u) => $u->hasRole(RoleName::KepalaSekolah->value) && $u->canLogIn()),
+            'principal' => $all->first(fn (User $u) => $u->hasRole(RoleName::KepalaSekolah->value) && $u->canLogIn()),
             'pending' => PrincipalReplacement::query()->pending()->with(['fromUser:id,name', 'toUser:id,name'])->latest('created_at')->first(),
-            'principalCandidates' => $staff
+            'principalCandidates' => $all
                 ->filter(fn (User $u) => $u->canLogIn() && ! $u->hasAnyRole([RoleName::Admin->value, RoleName::KepalaSekolah->value]))
                 ->mapWithKeys(fn (User $u) => [(string) $u->getKey() => $u->name.' ('.$u->username.')'])
                 ->all(),
@@ -451,17 +470,13 @@ final class Pengguna extends Component
         ]);
     }
 
-    /** @return Collection<int, User> non-student accounts, Kepala Sekolah first, then by role and name */
+    /** @return Collection<int, User> every non-student account, Kepala Sekolah first, then by role and name */
     private function staff(): Collection
     {
         $order = [RoleName::KepalaSekolah->value, RoleName::Admin->value, RoleName::Kesiswaan->value, RoleName::TataUsaha->value, RoleName::Humas->value, RoleName::Guru->value];
-        $term = trim($this->search);
 
         return User::query()
             ->whereDoesntHave('student')
-            ->when($term !== '', fn ($q) => $q->where(fn ($w) => $w
-                ->where('name', 'like', '%'.addcslashes($term, '%_\\').'%')
-                ->orWhere('username', 'like', '%'.addcslashes($term, '%_\\').'%')))
             ->with(['roles'])
             ->get(['id', 'name', 'username', 'email', 'status', 'two_factor_confirmed_at', 'last_login_at', 'deleted_at'])
             ->sortBy(fn (User $u) => sprintf('%02d-%s', ($i = array_search($u->getRoleNames()->first(), $order, true)) === false ? 99 : $i, mb_strtolower($u->name)))

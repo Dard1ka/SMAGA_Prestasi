@@ -7,6 +7,10 @@
  |
  | Hooks (see the component docs in resources/views/components/sth):
  |   data-sth-open="<dialog id>" · data-sth-close · data-sth-autoopen        <x-sth.modal>, mobile menu
+ |   data-sth-on-close="<method>" on a <dialog>: calls that Livewire method whenever the dialog closes
+ |       (close button, Esc, click outside)                                  <x-sth.modal on-close>
+ |   data-sth-countdown="<seconds>" + [data-sth-countdown-text] inside: the text counts down m:ss every
+ |       second; a new value from the server (wire:poll) starts it again     activation "Kirim ulang dalam"
  |   window events: sth-modal-open / sth-modal-close {id} · sth-toast {message, tone, key?}
  |                  sth-toast-clear {key} — remove the toasts raised with that key (a failure that is over)
  |                  sth-form-invalid {form} — bring the first validation error into view
@@ -95,6 +99,15 @@ document.addEventListener(
         const opener = dialogOpeners.get(dialog);
         dialogOpeners.delete(dialog);
         if (opener?.isConnected && opener.offsetParent !== null) opener.focus();
+
+        // <x-sth.modal on-close="…">: the server resets what the dialog showed (e.g. ?kelas=), however it closed.
+        const method = dialog.getAttribute('data-sth-on-close');
+        if (method && /^[A-Za-z_][A-Za-z0-9_]*$/.test(method)) {
+            // Livewire.all() gives the components (Livewire.find() gives only the $wire proxy).
+            const id = dialog.closest('[wire\\:id]')?.getAttribute('wire:id');
+            const component = id ? (window.Livewire?.all?.() || []).find((c) => c.id === id) : null;
+            component?.$wire?.$call(method);
+        }
     },
     true,
 );
@@ -105,6 +118,30 @@ window.addEventListener('sth-modal-close', (event) => {
     if (id) closeDialog(document.getElementById(id));
     else document.querySelectorAll('dialog[open]').forEach(closeDialog);
 });
+
+/* ---------------------------------------------------------------- countdown */
+
+// "Kirim ulang dalam 0:54": the server polls every 5 s (and shows the button at 0); this ticks the text in between.
+const countdowns = new WeakMap();
+
+function tickCountdowns() {
+    document.querySelectorAll('[data-sth-countdown]').forEach((element) => {
+        const seconds = Number.parseInt(element.getAttribute('data-sth-countdown') || '', 10);
+        const text = element.querySelector('[data-sth-countdown-text]');
+        if (!Number.isFinite(seconds) || !text) return;
+
+        let state = countdowns.get(element);
+        if (!state || state.seconds !== seconds) {
+            state = { seconds, end: Date.now() + seconds * 1000 };
+            countdowns.set(element, state);
+        }
+
+        const left = Math.max(0, Math.ceil((state.end - Date.now()) / 1000));
+        text.textContent = `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`;
+    });
+}
+
+window.setInterval(tickCountdowns, 1000);
 
 /* ---------------------------------------------------------------- toasts */
 

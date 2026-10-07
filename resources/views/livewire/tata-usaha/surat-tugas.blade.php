@@ -4,6 +4,19 @@
     Buttons never go grey: a failed submit lists what is wrong (data-sth-error-summary) and the page jumps there.
 --}}
 <div class="flex flex-col gap-[22px]">
+    @if ($searching)
+        {{-- Top bar search (backlog #60): the queue lists only the matching registrations. --}}
+        <div class="flex flex-col gap-1">
+            <div class="flex flex-wrap items-center gap-2 text-sm">
+                <span class="muted">Hasil pencarian "{{ $q }}"</span>
+                <x-sth.button variant="quiet" size="sm" wire:click="$set('q', '')">Hapus pencarian</x-sth.button>
+            </div>
+            @if ($queue->isEmpty())
+                <p class="m-0 text-sm text-muted">Tidak ada pendaftaran yang cocok. Coba nama lomba atau nama siswa lain.</p>
+            @endif
+        </div>
+    @endif
+
     @if ($queue->isNotEmpty() || $registration)
         <nav aria-label="Antrean surat" class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
             @foreach ($queue as $item)
@@ -35,7 +48,9 @@
         </nav>
     @endif
 
-    @if (! $registration)
+    @if (! $registration && $queueTotal > 0)
+        {{-- A search found nothing: the sentence under "Hasil pencarian" says so; the queue itself is not empty. --}}
+    @elseif (! $registration)
         <x-sth.empty-state icon="mail" title="Belum ada surat untuk dibuat">
             Pendaftaran yang disetujui Kepala Sekolah muncul di sini.
             @if (Route::has('tu.surat.arsip'))

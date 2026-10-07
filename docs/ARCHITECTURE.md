@@ -130,7 +130,8 @@ skips the mail (the bell entry is still stored) for a frozen account, and for an
 notification is an `AdminNotice`. A frozen account gets no reset code. Proven end to end by
 `tests/E2E/support/email-scenario.php` (re-run with the M1 code on 2026-10-05: 122 mails, 0 missing, 0 unexpected,
 0 leaks, 0 failed jobs). The M1 and M2 rows below (talent restore / review request, the deleted appreciation event,
-the released appreciation) are covered by Pest only: the scenario has no step for them yet (CLAUDE.md backlog #46).
+the released appreciation) and the guru notices of QA5 (D-110) are covered by Pest only: the scenario has no step for
+them yet (CLAUDE.md backlog #46).
 
 | event (Action) | recipients |
 |---|---|
@@ -148,10 +149,10 @@ the released appreciation) are covered by Pest only: the scenario has no step fo
 | Letters sent / revised (`SendLetters`, `RevokeLetter`) | members (siswa letter), guru pembimbing (guru letter); a revocation also goes to the Kepala Sekolah |
 | Report window opened, reminders 14 and 3 days before the deadline | the ketua |
 | Report submitted / resubmitted (`SubmitReport`) | every Kesiswaan |
-| Report verified / revision requested / rejected | all confirmed members; on verification also every Humas ("ready for publication") |
-| Publication published, appreciation scheduled | the student; a scheduled publication that became due also every Humas (`PublicationDue`, "Waktunya upload publikasi": since D-107 it points to the caption and the data for the flyer on the publication page, it no longer promises a flyer) |
-| Appreciation event deleted (`DeleteAppreciationEvent`, kind `appreciation.cancelled`) | every student with a scheduled row on it who can log in; confirming an event notifies nobody (D-87) |
-| Appreciation released (`ReleaseAppreciation`, kind `appreciation.released`, "Jadwal apresiasi berubah") | the student of that achievement when the account can log in; the event itself goes on (D-97) |
+| Report verified / revision requested / rejected | all confirmed members; the guru pembimbing of the registration (`BinaanReportDecided`, "Yth. …", link to the binaan page; only an active guru account, D-110); on verification also every Humas ("ready for publication") |
+| Publication published, appreciation scheduled | the student (an appreciation also the guru pembimbing, `BinaanAppreciationNotice` kind `appreciation.binaan_scheduled`, D-110); a scheduled publication that became due also every Humas (`PublicationDue`, "Waktunya upload publikasi": since D-107 it points to the caption and the data for the flyer on the publication page, it no longer promises a flyer) |
+| Appreciation event deleted (`DeleteAppreciationEvent`, kind `appreciation.cancelled`) | every student with a scheduled row on it who can log in; each guru pembimbing of those rows once, listing all their binaan on the event (`appreciation.binaan_cancelled`, D-110); confirming an event notifies nobody (D-87) |
+| Appreciation released (`ReleaseAppreciation`, kind `appreciation.released`, "Jadwal apresiasi berubah") | the student of that achievement when the account can log in, and the guru pembimbing (`appreciation.binaan_released`, D-110); the event itself goes on (D-97) |
 | Talent stage changed / application rejected / restored (`MoveTalentStage`, `RejectTalentApplication`, `RestoreTalentApplication`) | the student, with the optional note for the student (D-85, D-86): the text typed for that decision, or the saved draft when the action has no note field (D-96); the notification of a restore names the stage the choice is in again (D-104); the guru pembina is not notified; a new application notifies nobody (backlog #40) |
 | Talent review requested (`RequestTalentReview`, kind `talent.review_requested`) | every Kesiswaan |
 | Account frozen (failed logins before activation / "Bukan saya?") | Admins (+ Kesiswaan for failed logins) |
@@ -310,6 +311,60 @@ No migration in M3. Details per area: `docs/dev-notes/M3.md`, `M3-A`, `M3-C`, `M
   (`ImportStudents::TEMPLATE_TEXT_COLUMNS`). Toasts take an optional `key`; `sth-toast-clear {key}` removes them.
 - **Audit**: no new event. New property `rejected_from` on `talent.restored`; `filters.tahap` of `talent.exported`
   may list several statuses; `inline: true` on `file.downloaded`; nothing writes `publication.flyer_generated` now.
+
+### 8f. Rules added by QA5 (D-109…D-112, retest of M3 on 2026-10-07)
+No migration. Details: `docs/dev-notes/QA5.md`.
+- **Talent restore** (D-109): `RestoreTalentApplication::handle(User, TalentApplication, ?string $studentNote = null,
+  ?TalentStatus $to = null, int|string|null $mentorId = null)`. A given `$mentorId` must be an active guru (error key
+  `mentor_id`, "Pilih guru pembina dari daftar."); null keeps the guru pembina already on the row. A restore into
+  `pembinaan` without any guru pembina is refused under `mentor_id` (`MENTOR_MESSAGE`), and so is one whose recorded
+  pembina can no longer log in or lost the guru role (`INACTIVE_MENTOR_MESSAGE`); the other targets need none and keep
+  the recorded pembina as it is. The dialog preselects the recorded pembina only while
+  `RestoreTalentApplication::isActiveGuru()` (the list it shows).
+  The chosen guru is written with the restore and is in the audit (`mentor_id`). The assessment date stays optional.
+- **Talenta export** (D-111): the file always follows the screen's filters (jenis, cabang, kelas, `q`) plus the chosen
+  statuses. `Talenta::filledStatuses()` = statuses with at least one row under those filters; the dialog disables the
+  others ("Kosong"), preselects only filled statuses of the open tab, and sends `semua` when every filled status is
+  ticked. A choice with no rows is refused in the dialog (`EXPORT_EMPTY_CHOICE`) and by `export()` with a toast
+  (`EXPORT_NOTHING`, no file, no audit row).
+- **Guru notices** (D-110): `BinaanReportDecided::verified(Report, Collection $achievements)` / `revision(Report,
+  string $competitionName, string $note)` / `rejected(…)` (base `Verification\Notice`, own `toMail()` greeting
+  "Yth. <full name>,", route `guru.binaan.show`); `BinaanAppreciationNotice::scheduled(Appreciation)` /
+  `released(AppreciationEvent, Appreciation)` / `cancelled(AppreciationEvent, iterable)` (kind constants `SCHEDULED`,
+  `RELEASED`, `CANCELLED`; links to the binaan page when all rows are of one registration, else `guru.beranda`).
+  Recipients: `RequestReportRevision::mentorUser(Report)`, `RecordAppreciation::mentorUser(Achievement)` /
+  `mentorsFor(iterable $achievements)` (three queries for any number of rows; `DeleteAppreciationEvent` uses it inside
+  its locked transaction), all `User::gurus()->canLogIn()` on the registration's `mentor_id`. Names and capaian only, never NIS/NISN.
+- **Screens**: `VerifyCompetition::notifiesSubmitter(?User $submitter, User $actor)` decides the reject toast ("Lomba
+  ditolak." when nobody is told: own entry, archived or frozen submitter). `FortifyServiceProvider::confirmPasswordBack()`
+  skips an address that is itself behind `password.confirm` and then uses the Referer, else `home`. Admin › Pengguna
+  computes the Kepala Sekolah row, the replacement candidates and the dialog target from every staff account, not from
+  the filtered table. Guru › detail binaan: "Laporan perlu direvisi" while the report is `perlu_revisi`; the sent
+  letters open in the preview popup (D-112). Humas › Apresiasi labels an archived student "(Alumni)" instead of the
+  last class (as D-80). Humas › Publikasi: the panel of a published row is titled "Detail publikasi". `/aktivasi`
+  has a plain POST "Keluar" form on every step. Kepala Sekolah › Persetujuan: `Persetujuan::modeAndPlace()` prints
+  "Daring" once.
+- **Retest 2 (full sweep, same day)**: one search box per screen (D-90): a page with its own search box passes
+  `'search' => false` to the layout (TU Arsip surat, Kesiswaan Kelola lomba / Talenta / Database prestasi / Status
+  aktivasi, Guru Siswa binaan / Lomba, Kepala Sekolah Surat, Admin Pengaturan / Pengguna / Status aktivasi / Arsip
+  otomatis / Log audit; Humas Arsip already did); the top bar labels say what their target finds (Kesiswaan "Cari lomba", TU "Cari lomba atau siswa");
+  `TataUsaha\SuratTugas` has `#[Url] q` (lomba or member name; the badge counts the whole queue; `updatedQ()` opens the
+  first match when nothing was open). Every throttled
+  route has its own counter: `throttle:N,M,<prefix>` (`publik` 60, `verifikasi-surat` 30, `berkas` 60,
+  `berkas-publik` 30, `bukan-saya` 20); an unnamed `throttle:N,M` is keyed by user / IP only and would share one
+  counter with every other such route. `<x-sth.modal on-close="method">` renders `data-sth-on-close`, and `app.js`
+  calls that Livewire method on the dialog's `close` event (Status aktivasi: `closeClass`, so `?kelas=` goes however
+  the popup is closed). `data-sth-countdown="<seconds>"` + `[data-sth-countdown-text]`: `app.js` ticks m:ss every second
+  (activation "Kirim ulang dalam"). `/siswa/tur` sets the flash `TurMenu::FORCE_KEY` instead of `?tur=1`.
+  `CreateStaffAccount::validator(array)` returns the form's checks without saving, so "Tambah pengguna" shows them with
+  its password check at once; `Publikasi::schedule()` and `CreateAppreciationEvent` also collect every field error
+  before answering. `AuditLog::EVENT_LABELS` covers every event key the app writes (a test scans `app/`). Status sistem
+  "Staf aktif" = staff with status `active` (+ "N belum aktivasi").
+- **Demo data** (local only): `DemoGuideline` has a kind `inovasi` (invention fairs, read from the lomba name) and
+  per-kind rules, conduct, schedule labels and awards; `DemoLetterBasis::for(string $key, CarbonImmutable $issuedOn)`
+  gives every demo letter the number and date of the invitation it answers (DemoSeeder and
+  `DemoFileRefresher::fillLetterBasis()`, which `--lengkapi` runs; without it `missing()` feeds the hint
+  "Jalankan dengan --lengkapi untuk melengkapi: …").
 
 ## 9. Environments
 - Dev: `docker compose up` → app (php-fpm 8.4 + nginx on 127.0.0.1:8080), mysql 8.4 (127.0.0.1:3307), mailpit (127.0.0.1:8025), vite, scheduler, queue worker. Because the repo is bind-mounted from a Windows drive, the dev php-fpm workers read a cached config and keep compiled views in the container's own filesystem (`docker/php/fpm.dev.conf`, `docker/php/dev-cache.sh`; pool env only, never the command line), so after editing PHP, Blade, `config/` or `.env` run `reload.bat`; the test suite refuses to run on a cached config (D-91).

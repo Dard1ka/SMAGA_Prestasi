@@ -184,7 +184,8 @@ final class DatabasePrestasi extends Component
             'moreActive' => count(array_filter(self::MORE_FILTERS, fn (string $key): bool => $this->{$key} !== '')),
             'canExport' => Gate::allows('export', Achievement::class),
             'detail' => $this->detailId !== null ? $this->detail($this->detailId, $formatter) : null,
-        ])->layoutData(['badges' => $this->kesiswaanBadges()]);
+            // One search box per screen (D-90, backlog #60): this page has its own, so the top bar shows none.
+        ])->layoutData(['badges' => $this->kesiswaanBadges(), 'search' => false]);
     }
 
     protected function returnUrl(): string

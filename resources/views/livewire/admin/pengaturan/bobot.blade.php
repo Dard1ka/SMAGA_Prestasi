@@ -54,7 +54,7 @@
 
         <x-sth.card as="section" class="flex flex-col gap-2">
             <p class="flex items-center gap-2 font-semibold"><x-sth.icon name="users" />Anggota tim mendapat poin penuh</p>
-            <p class="muted text-sm">Setiap anggota menerima poin yang sama dengan ketua (D-08). Perubahan bobot menghitung ulang poin semua prestasi yang sudah ada.</p>
+            <p class="muted text-sm">Setiap anggota menerima poin yang sama dengan ketua. Perubahan bobot menghitung ulang poin semua prestasi yang sudah ada.</p>
         </x-sth.card>
 
         <x-sth.input wire:model="note" label="Catatan perubahan" hint="Contoh: rapat kurikulum 12 Okt 2026." optional maxlength="255" />

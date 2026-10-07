@@ -11,6 +11,7 @@ use App\Actions\Publications\DeleteAppreciationEvent;
 use App\Actions\Publications\RecordAppreciation;
 use App\Actions\Publications\ReleaseAppreciation;
 use App\Enums\AppreciationStatus;
+use App\Enums\UserStatus;
 use App\Models\Achievement;
 use App\Models\Appreciation;
 use App\Models\AppreciationEvent;
@@ -93,6 +94,8 @@ class Apresiasi extends Component
     public function createEvent(CreateAppreciationEvent $action): void
     {
         $this->authorize('create', AppreciationEvent::class);
+        // Only this try's messages: a name filled in since the last try loses its old error.
+        $this->resetErrorBag(['name', 'heldOn']);
 
         try {
             $action->handle($this->actor(), $this->name, $this->heldOn);
@@ -481,7 +484,10 @@ class Apresiasi extends Component
             ->get()
             ->mapWithKeys(function (Achievement $achievement): array {
                 $name = (string) ($achievement->student?->user?->name ?? 'Siswa');
-                $class = $achievement->student?->classroom?->name;
+                // An alumnus shows "Alumni", never the last class (as on the ranking, D-80; QA5).
+                $class = $achievement->student?->user?->status === UserStatus::Archived
+                    ? 'Alumni'
+                    : $achievement->student?->classroom?->name;
                 $level = $achievement->level?->shortLabel();
 
                 return [(string) $achievement->getKey() => $name.($class !== null ? ' ('.$class.')' : '')

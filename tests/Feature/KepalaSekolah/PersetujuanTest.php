@@ -206,3 +206,15 @@ it('answers 404 for rows that are not in the queue', function (): void {
         ->call('approve', $approved->getKey())
         ->assertNotFound();
 });
+
+// QA5 (2026-10-07, QA Q1-27): an online lomba says "Daring" once, not "Daring · Daring" -------------------------
+
+it('names an online lomba once, and keeps the place of an offline one', function (): void {
+    F::registration(names: ['Farhan Aditya'], competition: ['name' => 'Lomba Peneliti Belia (LPB) 2026', 'mode' => 'daring', 'location' => 'Daring']);
+    F::registration(names: ['Hana Safira'], competition: ['name' => 'OSN Tingkat Kota Semarang 2026', 'mode' => 'luring', 'location' => 'Kota Semarang']);
+
+    Livewire::actingAs($this->kepsek)->test(Persetujuan::class)
+        ->assertDontSee('Daring · Daring')
+        ->assertSee('Daring')
+        ->assertSee('Luring · Kota Semarang');
+});

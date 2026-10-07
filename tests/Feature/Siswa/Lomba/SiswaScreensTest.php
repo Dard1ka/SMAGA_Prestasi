@@ -264,6 +264,10 @@ it('shows the tour until it is skipped, and again from /siswa/tur', function ():
     expect($user->fresh()->tour_seen_at)->not->toBeNull();
     $this->get(route('siswa.beranda'))->assertDontSee('Mulai tour');
 
-    $this->get(route('siswa.tour'))->assertRedirect(route('siswa.beranda', ['tur' => 1]));
-    $this->get(route('siswa.beranda', ['tur' => 1]))->assertSee('Mulai tour');
+    // QA5 retest: /siswa/tur forces the tour once (a session flash, not ?tur=1 in the address), so a reload after
+    // "Lewati" does not bring it back, and an old ?tur=1 link forces nothing.
+    $this->get(route('siswa.tour'))->assertRedirect(route('siswa.beranda'));
+    $this->get(route('siswa.beranda'))->assertSee('Mulai tour');
+    $this->get(route('siswa.beranda'))->assertDontSee('Mulai tour');
+    $this->get(route('siswa.beranda', ['tur' => 1]))->assertDontSee('Mulai tour');
 });

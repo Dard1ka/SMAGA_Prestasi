@@ -6,6 +6,7 @@ use App\Actions\Talent\MoveTalentStage;
 use App\Actions\Talent\RestoreTalentApplication;
 use App\Enums\RoleName;
 use App\Enums\TalentStatus;
+use App\Enums\UserStatus;
 use App\Models\TalentApplication;
 use App\Notifications\Talent\TalentApplicationRestored;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -76,7 +77,8 @@ it('restores a rejected choice into the stage Kesiswaan chooses', function (Tale
 it('names the stage the choice is back in, in the notification for the student', function (TalentStatus $to, string $sentence): void {
     $application = m3aRejected(TalentStatus::Pemetaan);
 
-    app(RestoreTalentApplication::class)->handle($this->kesiswaan, $application, null, $to);
+    // D-109: Peserta pembinaan needs a guru pembina.
+    app(RestoreTalentApplication::class)->handle($this->kesiswaan, $application, null, $to, $to === TalentStatus::Pembinaan ? $this->guru->getKey() : null);
 
     Notification::assertSentTo($application->student->user, TalentApplicationRestored::class, fn (TalentApplicationRestored $n): bool => str_contains($n->body, $sentence)
         && ! str_contains($n->body, 'Permintaan tinjau ulangmu')
@@ -137,7 +139,7 @@ it('puts the choice back into the pipeline at the chosen stage: the next move st
     $late = m3aRejected(TalentStatus::Terdaftar, ['student_id' => F::student('Hana Safira', 'X-8')->getKey()]);
 
     app(RestoreTalentApplication::class)->handle($this->kesiswaan, $early, null, TalentStatus::Terdaftar);
-    app(RestoreTalentApplication::class)->handle($this->kesiswaan, $late, null, TalentStatus::Pembinaan);
+    app(RestoreTalentApplication::class)->handle($this->kesiswaan, $late, null, TalentStatus::Pembinaan, $this->guru->getKey());
 
     // Back at the start: one step forward is Pemetaan, never a jump to where it was rejected.
     expect(fn () => app(MoveTalentStage::class)->handle($this->kesiswaan, $early->fresh(), TalentStatus::Pembinaan))->toThrow(ValidationException::class);
@@ -199,7 +201,7 @@ it('lets only Kesiswaan and Admin choose a stage', function (): void {
     expect($application->fresh()->status)->toBe(TalentStatus::TidakLolos);
     Notification::assertNothingSent();
 
-    app(RestoreTalentApplication::class)->handle(F::staff(RoleName::Admin, 'Operator STH'), $application, null, TalentStatus::Pembinaan);
+    app(RestoreTalentApplication::class)->handle(F::staff(RoleName::Admin, 'Operator STH'), $application, null, TalentStatus::Pembinaan, $this->guru->getKey());
 
     expect($application->fresh()->status)->toBe(TalentStatus::Pembinaan);
 });
@@ -217,4 +219,74 @@ it('refuses a chosen stage on a choice the student withdrew, and tells no archiv
 
     expect($archived->fresh()->status)->toBe(TalentStatus::Seleksi);
     Notification::assertNothingSent();
+});
+
+// QA5 (lead, 2026-10-07): a peserta pembinaan always has a guru pembina ---------------------------------------
+
+it('needs a guru pembina before a choice is restored into Peserta pembinaan', function (): void {
+    $application = m3aRejected(TalentStatus::Seleksi);
+
+    expect(fn () => app(RestoreTalentApplication::class)->handle($this->kesiswaan, $application, null, TalentStatus::Pembinaan))
+        ->toThrow(ValidationException::class, 'Peserta pembinaan perlu guru pembina. Pilih guru pembinanya.');
+
+    expect($application->fresh()->status)->toBe(TalentStatus::TidakLolos)
+        ->and(Activity::query()->where('event', 'talent.restored')->exists())->toBeFalse();
+    Notification::assertNothingSent();
+
+    // The guru chosen in the dialog becomes the pembina in the same step.
+    app(RestoreTalentApplication::class)->handle($this->kesiswaan, $application->fresh(), null, TalentStatus::Pembinaan, $this->guru->getKey());
+
+    $fresh = $application->fresh();
+    expect($fresh->status)->toBe(TalentStatus::Pembinaan)
+        ->and($fresh->mentor_id)->toBe($this->guru->getKey())
+        ->and(Activity::query()->where('event', 'talent.restored')->sole()->properties['mentor_id'])->toBe($this->guru->getKey());
+});
+
+it('keeps the pembina a choice already has when it goes back into Peserta pembinaan', function (): void {
+    $application = m3aRejected(TalentStatus::Seleksi, ['mentor_id' => $this->guru->getKey()]);
+
+    app(RestoreTalentApplication::class)->handle($this->kesiswaan, $application, null, TalentStatus::Pembinaan);
+
+    expect($application->fresh()->status)->toBe(TalentStatus::Pembinaan)
+        ->and($application->fresh()->mentor_id)->toBe($this->guru->getKey());
+});
+
+it('asks no pembina for the earlier stages, and only accepts an active guru as pembina', function (): void {
+    $application = m3aRejected(TalentStatus::Seleksi);
+
+    expect(fn () => app(RestoreTalentApplication::class)->handle($this->kesiswaan, $application, null, TalentStatus::Pembinaan, F::staff(RoleName::Humas, 'Mas Galih')->getKey()))
+        ->toThrow(ValidationException::class, 'Pilih guru pembina dari daftar.');
+
+    app(RestoreTalentApplication::class)->handle($this->kesiswaan, $application->fresh(), null, TalentStatus::Seleksi);
+
+    expect($application->fresh()->status)->toBe(TalentStatus::Seleksi)
+        ->and($application->fresh()->mentor_id)->toBeNull();
+});
+
+it('restores past a pembina who can no longer log in, and asks for another guru for Peserta pembinaan', function (): void {
+    $application = m3aRejected(TalentStatus::Seleksi, ['mentor_id' => $this->guru->getKey()]);
+    $this->guru->forceFill(['status' => UserStatus::Disabled])->save();
+
+    // Peserta pembinaan with that pembina: refused, whether the dialog sends the old id or nothing.
+    foreach ([null, $this->guru->getKey()] as $sent) {
+        expect(fn () => app(RestoreTalentApplication::class)->handle($this->kesiswaan, $application->fresh(), null, TalentStatus::Pembinaan, $sent))
+            ->toThrow(ValidationException::class, 'Guru pembina yang tercatat tidak aktif lagi. Pilih guru pembina lain.');
+    }
+
+    expect($application->fresh()->status)->toBe(TalentStatus::TidakLolos);
+
+    // An earlier stage asks no pembina, so the old one is no reason to refuse (the row keeps it, as it would anyway).
+    app(RestoreTalentApplication::class)->handle($this->kesiswaan, $application->fresh(), null, TalentStatus::Pemetaan, $this->guru->getKey());
+
+    expect($application->fresh()->status)->toBe(TalentStatus::Pemetaan)
+        ->and($application->fresh()->mentor_id)->toBe($this->guru->getKey());
+
+    // A new guru chosen for Peserta pembinaan replaces the inactive one.
+    $other = m3aRejected(TalentStatus::Seleksi, ['mentor_id' => $this->guru->getKey(), 'student_id' => F::student('Hana Safira', 'XI-3')->getKey()]);
+    $active = F::staff(RoleName::Guru, 'Bu Retno Wulandari');
+
+    app(RestoreTalentApplication::class)->handle($this->kesiswaan, $other, null, TalentStatus::Pembinaan, $active->getKey());
+
+    expect($other->fresh()->status)->toBe(TalentStatus::Pembinaan)
+        ->and($other->fresh()->mentor_id)->toBe($active->getKey());
 });

@@ -93,7 +93,9 @@ final class Ringkasan extends Component
             'stats' => [
                 'active' => Student::query()->whereHas('user', fn ($q) => $q->where('status', UserStatus::Active))->count(),
                 'pending' => Student::query()->whereHas('user', fn ($q) => $q->where('status', UserStatus::PendingActivation))->count(),
-                'staff' => User::query()->staff()->canLogIn()->count(),
+                // "Staf aktif" means activated, as for the student tiles; accounts still to activate are named (QA5, #62).
+                'staff' => User::query()->staff()->where('status', UserStatus::Active)->count(),
+                'staffPending' => User::query()->staff()->where('status', UserStatus::PendingActivation)->count(),
                 'dueSoon' => Student::query()
                     ->whereBetween('archive_at', [$today->toDateString(), $today->addDays(30)->toDateString()])
                     ->whereHas('user', fn ($q) => $q->where('status', '!=', UserStatus::Archived))

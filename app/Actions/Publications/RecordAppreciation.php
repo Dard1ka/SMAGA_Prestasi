@@ -8,8 +8,11 @@ use App\Enums\AppreciationStatus;
 use App\Models\Achievement;
 use App\Models\Appreciation;
 use App\Models\AppreciationEvent;
+use App\Models\Registration;
+use App\Models\Report;
 use App\Models\User;
 use App\Notifications\Publications\AppreciationScheduled;
+use App\Notifications\Publications\BinaanAppreciationNotice;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Collection;
@@ -20,7 +23,7 @@ use Illuminate\Validation\ValidationException;
 /**
  * Puts a verified achievement (student with publish consent) on an upcoming appreciation event that is not
  * yet confirmed as held: one `appreciations` row, status `dijadwalkan`, unique per achievement + event.
- * Audited; the student is notified after commit.
+ * Audited; the student and the guru pembimbing (D-110) are notified after commit.
  *
  * One achievement, one open event (M2-B, QA 2026-10-05 Q2-10): an achievement that is still scheduled on
  * another event that is not confirmed, or that was already appreciated on a confirmed event, is refused with
@@ -135,14 +138,65 @@ final class RecordAppreciation
         return $appreciation->status === AppreciationStatus::Selesai || $appreciation->event?->isCompleted() === true;
     }
 
+    /** The guru pembimbing who hears about a binaan's appreciation (D-110), or null; see mentorsFor(). */
+    public static function mentorUser(Achievement $achievement): ?User
+    {
+        return self::mentorsFor([$achievement])[(string) $achievement->getKey()] ?? null;
+    }
+
+    /**
+     * The guru pembimbing per achievement (D-110): the mentor of the achievement's registration while that account
+     * can log in and still holds the guru role. Three queries for any number of achievements, so deleting a big event
+     * does not look them up row by row while it holds its locks.
+     *
+     * @param  iterable<Achievement>  $achievements
+     * @return array<string, User> achievement id => guru (achievements without one are left out)
+     */
+    public static function mentorsFor(iterable $achievements): array
+    {
+        $reportOf = [];
+
+        foreach ($achievements as $achievement) {
+            if ($achievement->report_id !== null) {
+                $reportOf[(string) $achievement->getKey()] = (string) $achievement->report_id;
+            }
+        }
+
+        if ($reportOf === []) {
+            return [];
+        }
+
+        $registrationOf = Report::withTrashed()->whereKey(array_values(array_unique($reportOf)))->pluck('registration_id', 'id')->all();
+        $mentorOf = Registration::withTrashed()->whereKey(array_values(array_unique($registrationOf)))
+            ->whereNotNull('mentor_id')->pluck('mentor_id', 'id')->all();
+        $gurus = $mentorOf === [] ? [] : User::query()->gurus()->canLogIn()->whereKey(array_values(array_unique($mentorOf)))
+            ->get()->keyBy(fn (User $user): string => (string) $user->getKey())->all();
+
+        $result = [];
+
+        foreach ($reportOf as $achievementId => $reportId) {
+            $registrationId = $registrationOf[$reportId] ?? null;
+            $mentorId = $registrationId !== null ? ($mentorOf[$registrationId] ?? null) : null;
+
+            if ($mentorId !== null && isset($gurus[(string) $mentorId])) {
+                $result[$achievementId] = $gurus[(string) $mentorId];
+            }
+        }
+
+        return $result;
+    }
+
     private function notify(Appreciation $appreciation, Achievement $achievement): void
     {
-        $achievement->loadMissing(['student.user', 'competition']);
+        $achievement->loadMissing(['student.user', 'competition', 'report']);
         $appreciation->setRelation('achievement', $achievement);
+        $appreciation->loadMissing('event');
         $user = $achievement->student?->user;
 
         if ($user !== null && $user->canLogIn()) {
             $user->notify(AppreciationScheduled::for($appreciation));
         }
+
+        self::mentorUser($achievement)?->notify(BinaanAppreciationNotice::scheduled($appreciation));
     }
 }

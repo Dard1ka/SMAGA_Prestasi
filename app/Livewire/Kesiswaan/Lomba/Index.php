@@ -219,11 +219,17 @@ class Index extends Component
             return;
         }
 
-        // The reason is optional (D-103): the toast only promises a reason when one was written.
+        // The reason is optional (D-103): the toast only promises a reason when one was written, and only says the
+        // submitter was told when a notification really went out (not the verifier's own entry, QA5).
         $withReason = trim($this->rejectNote) !== '';
+        $told = VerifyCompetition::notifiesSubmitter($competition->submitter()->first(), $this->actor());
 
         $this->cancelReject();
-        $this->dispatch('sth-toast', message: $withReason ? 'Lomba ditolak. Pengirim menerima alasannya.' : 'Lomba ditolak. Pengirim diberi tahu.', tone: 'success');
+        $this->dispatch('sth-toast', message: match (true) {
+            ! $told => 'Lomba ditolak.',
+            $withReason => 'Lomba ditolak. Pengirim menerima alasannya.',
+            default => 'Lomba ditolak. Pengirim diberi tahu.',
+        }, tone: 'success');
     }
 
     public function close(string $id, CloseCompetition $close): void
@@ -265,7 +271,8 @@ class Index extends Component
             'queue' => $this->tab === 'verifikasi' ? $this->queueCards() : collect(),
             'statusFilters' => ['' => 'Semua'] + CompetitionStatus::options(),
             'pastLomba' => $this->pastLomba(),
-        ])->layoutData(['badges' => $this->kesiswaanBadges()]);
+            // One search box per screen (D-90, backlog #60): this page has its own, so the top bar shows none.
+        ])->layoutData(['badges' => $this->kesiswaanBadges(), 'search' => false]);
     }
 
     /** @return array{name: string, dates: string}|null the lomba in the "Tetap publikasikan?" dialog */

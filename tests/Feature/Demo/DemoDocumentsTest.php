@@ -253,3 +253,44 @@ it('only knows the people of the demo set as fictional', function (): void {
         ->and(DemoPeople::nameOr('Seseorang Yang Lain', DemoPeople::FALLBACK_STUDENT['name']))->toBe('Nadia Putri Anindya')
         ->and(DemoPeople::signers('OSN 2026', ['Ketua Panitia', 'Ketua Dewan Juri']))->toBe(DemoPeople::signers('OSN 2026', ['Ketua Panitia', 'Ketua Dewan Juri']));
 });
+
+// QA5 (2026-10-07): two juknis of one bidang no longer read the same -----------------------------------------
+
+/** All text of a juknis, without the name of the lomba and its organizer (those always differ). */
+function qa5JuknisText(DemoEvent $event): string
+{
+    $text = json_encode(DemoGuideline::juknis($event)->data['sections'], JSON_UNESCAPED_UNICODE);
+
+    return str_replace([$event->name, $event->organizer], '', (string) $text);
+}
+
+function qa5Event(string $name, string $organizer, Bidang $bidang, bool $team = false): DemoEvent
+{
+    return new DemoEvent(
+        name: $name, organizer: $organizer,
+        opensOn: CarbonImmutable::parse('2026-09-01'), closesOn: CarbonImmutable::parse('2026-10-01'),
+        startsOn: CarbonImmutable::parse('2026-10-17'), finalOn: CarbonImmutable::parse('2026-10-18'),
+        bidang: $bidang, level: Level::Nasional, team: $team, individual: ! $team, maxTeam: $team ? 3 : null,
+    );
+}
+
+it('writes its own juknis for a research paper and an invention fair, and for a sport and a martial art', function (): void {
+    $paper = qa5Event('Lomba Peneliti Belia (LPB) 2026', 'Center for Young Scientists', Bidang::Riset, team: true);
+    $fair = qa5Event('National Science and Invention Fair (NSIF) 2026', 'Penyelenggara swasta', Bidang::Riset, team: true);
+    $sport = qa5Event('O2SN Kota Semarang 2026', 'Puspresnas', Bidang::Olahraga);
+    $silat = qa5Event('Kejuaraan Pencak Silat Pelajar Jawa Tengah 2026', 'IPSI Jawa Tengah', Bidang::Olahraga);
+
+    expect(DemoGuideline::flavor($paper))->toBe('riset')
+        ->and(DemoGuideline::flavor($fair))->toBe('inovasi')
+        ->and(DemoGuideline::flavor($sport))->toBe('olahraga')
+        ->and(DemoGuideline::flavor($silat))->toBe('beladiri');
+
+    // Before QA5 these pairs were 96% and 93% the same text.
+    similar_text(qa5JuknisText($paper), qa5JuknisText($fair), $research);
+    similar_text(qa5JuknisText($sport), qa5JuknisText($silat), $sports);
+
+    expect($research)->toBeLessThan(75.0)
+        ->and($sports)->toBeLessThan(75.0)
+        ->and(qa5JuknisText($fair))->toContain('stan pameran', 'medali')
+        ->and(qa5JuknisText($silat))->toContain('kategori tanding', 'kategori seni');
+});

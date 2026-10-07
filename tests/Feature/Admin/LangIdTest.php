@@ -2,7 +2,9 @@
 
 declare(strict_types=1);
 
+use App\Actions\Accounts\ListUserSessions;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Validator;
 
 /**
@@ -63,4 +65,38 @@ it('ships valid JSON translations', function () {
     $lines = json_decode((string) file_get_contents(base_path('lang/id.json')), true, flags: JSON_THROW_ON_ERROR);
 
     expect($lines)->toBeArray()->not->toBeEmpty();
+});
+
+// QA5 retest (2026-10-07, backlog #67): decision codes such as "(D-08)" are for the team, not for the screen ----
+
+it('shows no decision codes in visible text or seeded data', function () {
+    $found = [];
+
+    foreach (File::allFiles(resource_path('views')) as $file) {
+        $text = preg_replace(['/\{\{--.*?--\}\}/s', '/<!--.*?-->/s', '/@php.*?@endphp/s'], '', $file->getContents());
+
+        foreach (preg_split('/\R/', (string) $text) as $line) {
+            if (preg_match('/\(D-\d+\)/', $line) === 1 && preg_match('/^\s*(\*|\/\/)/', $line) !== 1) {
+                $found[] = $file->getRelativePathname().': '.trim($line);
+            }
+        }
+    }
+
+    foreach (File::allFiles(database_path('seeders')) as $file) {
+        preg_match_all("/'[^'\n]*\(D-\d+\)[^'\n]*'/", $file->getContents(), $strings);
+        foreach ($strings[0] as $string) {
+            $found[] = $file->getRelativePathname().': '.$string;
+        }
+    }
+
+    expect($found)->toBe([]);
+});
+
+// QA5 retest (2026-10-07, backlog #67): "browser", not the formal "peramban" (D-89: everyday words) ------------
+
+it('says browser, not peramban, in the mail footer and the session list', function () {
+    $footer = __("If you're having trouble clicking the \":actionText\" button, copy and paste the URL below\ninto your web browser:");
+
+    expect($footer)->toContain('browser kamu')->not->toContain('peramban')
+        ->and(ListUserSessions::device('Mozilla/5.0 (X11; Linux) Lynx/2.9'))->toStartWith('Browser lain');
 });

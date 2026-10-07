@@ -55,6 +55,7 @@ use App\Models\User;
 use App\Models\WeightVersion;
 use Carbon\CarbonImmutable;
 use Database\Seeders\Support\Demo\DemoFileRefresher;
+use Database\Seeders\Support\Demo\DemoLetterBasis;
 use Database\Seeders\Support\DemoFiles;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Seeder;
@@ -478,7 +479,7 @@ final class DemoSeeder extends Seeder
                 'verified' => CarbonImmutable::parse($verified.' 10:00'),
             ], $file);
 
-            $this->issueLetters($registration, $siswaSeq, $guruSeq, $issued, null, null, $competitionKey);
+            $this->issueLetters($registration, $siswaSeq, $guruSeq, $issued, $competitionKey);
         }
     }
 
@@ -617,7 +618,7 @@ final class DemoSeeder extends Seeder
             'approved' => CarbonImmutable::parse('2026-09-05 10:00'),
             'updated' => CarbonImmutable::parse('2026-09-25 01:00'),
         ]);
-        $this->issueLetters($wice, 312, 1680, '2026-09-08', 'IYSA/WICE/INV/118/VIII/2026', '2026-08-28', 'wice26');
+        $this->issueLetters($wice, 312, 1680, '2026-09-08', 'wice26');
 
         // Kepala Sekolah queue (5), all registered 29 Sep.
         $this->registration('lpb26', ['nadia', 'dimas'], 'retno', RegistrationStatus::MenungguKepsek, CarbonImmutable::parse('2026-09-29 09:12'));
@@ -727,10 +728,12 @@ final class DemoSeeder extends Seeder
         return $registration;
     }
 
-    private function issueLetters(Registration $registration, int $siswaSequence, int $guruSequence, string $issuedOn, ?string $basisNumber, ?string $basisDate, string $slug): void
+    /** Both letters of a registration; they answer the invitation DemoLetterBasis gives the lomba's demo key (QA5). */
+    private function issueLetters(Registration $registration, int $siswaSequence, int $guruSequence, string $issuedOn, string $slug): void
     {
         $issued = CarbonImmutable::parse($issuedOn.' 10:00');
         $tu = $this->staff['tu'];
+        $basis = DemoLetterBasis::for($slug, $issued);
 
         foreach ([[LetterType::Siswa, $siswaSequence, 'surat-tugas-siswa-'], [LetterType::Guru, $guruSequence, 'surat-perintah-tugas-guru-']] as [$type, $sequence, $prefix]) {
             $number = $this->letterNumber->format((string) Setting::get($type->formatSetting()), $sequence, $issuedOn);
@@ -743,8 +746,8 @@ final class DemoSeeder extends Seeder
                 'year' => $issued->year,
                 'month' => $issued->month,
                 'issued_on' => $issuedOn,
-                'basis_number' => $basisNumber,
-                'basis_date' => $basisDate,
+                'basis_number' => $basis['number'],
+                'basis_date' => $basis['date'],
                 'file_id' => DemoFiles::pdf($prefix.$slug.'.pdf', FilePurpose::Letter, $tu->getKey(), 'Nomor '.$number)->getKey(),
                 'verification_code' => Letter::newVerificationCode(),
                 'generated_by' => $tu->getKey(),

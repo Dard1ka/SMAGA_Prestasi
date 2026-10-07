@@ -315,7 +315,7 @@ final class Navigation
             ],
             'kesiswaan' => [
                 'cta' => null,
-                'search' => ['placeholder' => 'Cari lomba atau siswa', 'route' => ['kesiswaan.lomba.index', 'kesiswaan.lomba']],
+                'search' => ['placeholder' => 'Cari lomba', 'route' => ['kesiswaan.lomba.index', 'kesiswaan.lomba']],
                 'sections' => [
                     ['label' => 'Menu', 'items' => [
                         ['key' => 'beranda', 'label' => 'Beranda', 'icon' => 'home', 'route' => ['kesiswaan.beranda']],
@@ -353,7 +353,7 @@ final class Navigation
             ],
             'tata_usaha' => [
                 'cta' => null,
-                'search' => ['placeholder' => 'Cari surat atau siswa', 'route' => ['tu.beranda', 'tu.surat.index', 'tu.surat']],
+                'search' => ['placeholder' => 'Cari lomba atau siswa', 'route' => ['tu.beranda', 'tu.surat.index', 'tu.surat']],
                 'sections' => [
                     ['label' => 'Menu', 'items' => [
                         ['key' => 'surat', 'label' => 'Antrean surat', 'icon' => 'mail', 'route' => ['tu.beranda', 'tu.surat.index', 'tu.surat'], 'match' => ['tu.surat.*'], 'badge' => 'tu.surat'],

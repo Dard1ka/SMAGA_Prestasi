@@ -1,6 +1,6 @@
-{{-- Right panel "Siapkan publikasi". $panel comes from Publikasi::panel(); form state is the component's properties. --}}
+{{-- Right panel "Siapkan publikasi" ("Detail publikasi" once it is out, QA5). $panel comes from Publikasi::panel(); form state is the component's properties. --}}
 <div class="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
-    <h2 id="pub-judul" class="m-0 text-lg leading-6 font-bold">Siapkan publikasi</h2>
+    <h2 id="pub-judul" class="m-0 text-lg leading-6 font-bold">{{ $panel['published'] ? 'Detail publikasi' : 'Siapkan publikasi' }}</h2>
     <x-sth.chip :tone="$panel['statusChip'][0]" size="sm">{{ $panel['statusChip'][1] }}</x-sth.chip>
 </div>
 <p class="m-0 text-[13px] font-semibold text-muted">{{ $panel['heading'] }}</p>

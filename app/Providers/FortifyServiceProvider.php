@@ -29,6 +29,7 @@ use Laravel\Fortify\Actions\PrepareAuthenticatedSession;
 use Laravel\Fortify\Actions\RedirectIfTwoFactorAuthenticatable;
 use Laravel\Fortify\Contracts\LoginResponse as LoginResponseContract;
 use Laravel\Fortify\Fortify;
+use Throwable;
 
 /**
  * Fortify wiring (owner: W1-C). Only login, logout, password confirmation and TOTP 2FA are used from Fortify;
@@ -143,14 +144,40 @@ class FortifyServiceProvider extends ServiceProvider
     /**
      * Where "Batal" on the password page goes (QA Q2-18, backlog #63): back to the screen that asked
      * (`url.intended`) when it is a page of this app (same scheme, host and port, as the error pages' "Kembali"
-     * in ErrorPageServiceProvider), else the beranda.
+     * in ErrorPageServiceProvider) that does not ask for the password itself; else the page the user came from;
+     * else the beranda.
      */
     public static function confirmPasswordBack(Request $request): string
     {
         $intended = $request->session()->get('url.intended');
 
-        return is_string($intended) && strlen($intended) <= 2000 && str_starts_with($intended, $request->getSchemeAndHttpHost().'/')
-            ? $intended
-            : route('home');
+        if (self::ownPage($request, $intended) && ! self::behindPassword($intended)) {
+            return $intended;
+        }
+
+        // QA5: the page that asked is itself behind the password (Admin › Pengaturan, Pengguna, 2FA): going back
+        // there only shows this page again. Back to where the user clicked (the Referer survives the redirect).
+        $referer = $request->headers->get('referer');
+
+        return self::ownPage($request, $referer) && ! self::behindPassword($referer) ? $referer : route('home');
+    }
+
+    /** @phpstan-assert-if-true string $url */
+    private static function ownPage(Request $request, mixed $url): bool
+    {
+        return is_string($url) && strlen($url) <= 2000 && str_starts_with($url, $request->getSchemeAndHttpHost().'/');
+    }
+
+    /** Does opening $url ask for the password again (the confirm page itself, or a route with `password.confirm`)? */
+    private static function behindPassword(string $url): bool
+    {
+        try {
+            $route = app('router')->getRoutes()->match(Request::create($url, 'GET'));
+        } catch (Throwable) {
+            return false;
+        }
+
+        return $route->getName() === 'password.confirm'
+            || collect($route->gatherMiddleware())->contains(fn (mixed $m): bool => is_string($m) && str_starts_with($m, 'password.confirm'));
     }
 }

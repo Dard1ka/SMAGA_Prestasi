@@ -56,7 +56,8 @@ it('lets Admin allow indexing of the aggregate pages but never of student pages'
 it('protects every public route with throttle 60/min and the public headers middleware', function (string $name): void {
     $middleware = app('router')->getRoutes()->getByName($name)->gatherMiddleware();
 
-    expect($middleware)->toContain('throttle:60,1')
+    // 60 per minute, counted apart from the other throttled routes (QA5 retest).
+    expect($middleware)->toContain('throttle:60,1,publik')
         ->and($middleware)->toContain(PublicPageHeaders::class)
         ->and($middleware)->not->toContain('auth');
 })->with(['public.home', 'public.prestasi', 'public.prestasi.siswa', 'public.lomba.pemenang', 'public.peringkat']);
