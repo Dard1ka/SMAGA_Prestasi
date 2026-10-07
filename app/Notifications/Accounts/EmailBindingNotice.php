@@ -53,16 +53,16 @@ final class EmailBindingNotice extends Notification implements ShouldQueue
 
         return $message
             ->action('Bukan saya, bekukan akun', $this->notMeUrl)
-            ->line('Link ini berlaku '.$this->validDays.' hari dan hanya bisa dipakai sekali. Jika memang kamu, abaikan email ini.')
+            ->line('Link ini berlaku '.$this->validDays.' hari dan hanya bisa dipakai sekali. Jika memang melakukannya sendiri, abaikan email ini.')
             ->salutation('SMAGA Talent Hub');
     }
 
     public function subject(): string
     {
         return match ($this->kind) {
-            self::CHANGED_OLD => 'Email akun SMAGA Talent Hub kamu diganti',
+            self::CHANGED_OLD => 'Email akun SMAGA Talent Hub diganti',
             self::CHANGED_NEW => 'Email ini sekarang dipakai di SMAGA Talent Hub',
-            default => 'Email kamu terhubung ke SMAGA Talent Hub',
+            default => 'Email ini terhubung ke SMAGA Talent Hub',
         };
     }
 
@@ -71,16 +71,16 @@ final class EmailBindingNotice extends Notification implements ShouldQueue
     {
         return match ($this->kind) {
             self::CHANGED_OLD => [
-                'Email akun SMAGA Talent Hub kamu baru saja diganti ke '.$this->newEmailMasked.'.',
-                'Jika bukan kamu yang menggantinya, bekukan akun sekarang lalu hubungi Admin atau Kesiswaan.',
+                'Email akun SMAGA Talent Hub baru saja diganti ke '.$this->newEmailMasked.'.',
+                'Jika tidak merasa menggantinya, bekukan akun sekarang lalu hubungi Admin atau Kesiswaan.',
             ],
             self::CHANGED_NEW => [
                 'Email ini baru saja dipasang di akun SMAGA Talent Hub atas nama '.$this->firstName.'.',
-                'Jika bukan kamu, bekukan akun itu lalu hubungi Admin atau Kesiswaan.',
+                'Jika tidak merasa melakukannya, bekukan akun itu lalu hubungi Admin atau Kesiswaan.',
             ],
             default => [
                 'Email ini baru saja dihubungkan ke akun SMAGA Talent Hub atas nama '.$this->firstName.'.',
-                'Jika bukan kamu, bekukan akun itu lalu hubungi Admin atau Kesiswaan.',
+                'Jika tidak merasa melakukannya, bekukan akun itu lalu hubungi Admin atau Kesiswaan.',
             ],
         };
     }

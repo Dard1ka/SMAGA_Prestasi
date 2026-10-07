@@ -158,7 +158,7 @@ it('saves the typed note as a draft, says when it is sent, and shows it again af
         ->set('panelStudentNote', 'Siapkan sertifikat SMP.')
         ->call('savePanel')
         ->assertHasNoErrors()
-        ->assertDispatched('sth-toast', message: 'Tersimpan. Catatan untuk siswa terkirim saat kamu menekan Lolos atau Tidak lolos.', tone: 'success')
+        ->assertDispatched('sth-toast', message: 'Tersimpan. Catatan untuk siswa terkirim saat Lolos atau Tidak lolos ditekan.', tone: 'success')
         ->assertSet('panelStudentNote', 'Siapkan sertifikat SMP.')
         ->assertSee('Draf tersimpan, belum terkirim.');
 

@@ -15,7 +15,7 @@
                 Tampilkan link sertifikat di halaman siswa
             </x-sth.checkbox>
         </x-sth.card>
-        <p class="text-sm muted">Nyalakan setelah sekolah memastikan persetujuan orang tua (U-04).</p>
+        <p class="text-sm muted">Nyalakan setelah sekolah memastikan persetujuan orang tua.</p>
         <div class="flex justify-end">
             <x-sth.button type="submit" wire:loading.attr="disabled" wire:target="save">Simpan</x-sth.button>
         </div>

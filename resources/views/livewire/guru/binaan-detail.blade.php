@@ -39,15 +39,15 @@
                     </div>
                     <dl class="m-0 grid grid-cols-1 gap-3 sm:grid-cols-3">
                         <div class="flex flex-col gap-0.5">
-                            <dt class="text-[12.5px] font-semibold text-muted">Hasil dilaporkan</dt>
+                            <dt class="text-xs font-semibold text-muted">Hasil dilaporkan</dt>
                             <dd class="m-0 font-bold">{{ $report['claimed'] ?? '–' }}</dd>
                         </div>
                         <div class="flex flex-col gap-0.5">
-                            <dt class="text-[12.5px] font-semibold text-muted">Hasil diverifikasi</dt>
+                            <dt class="text-xs font-semibold text-muted">Hasil diverifikasi</dt>
                             <dd class="m-0 font-bold">{{ $report['final'] ?? '–' }}</dd>
                         </div>
                         <div class="flex flex-col gap-0.5">
-                            <dt class="text-[12.5px] font-semibold text-muted">Dikirim</dt>
+                            <dt class="text-xs font-semibold text-muted">Dikirim</dt>
                             <dd class="num m-0 font-bold">{{ $report['submitted'] ?: '–' }}</dd>
                         </div>
                     </dl>
@@ -61,7 +61,7 @@
                                     <span class="inline-flex size-10 shrink-0 items-center justify-center rounded-tile bg-primary-tint text-primary-on-tint" aria-hidden="true"><x-sth.icon name="file" /></span>
                                     <span class="flex min-w-0 flex-1 flex-col">
                                         <span class="font-bold">{{ $file['kind'] }}</span>
-                                        <span class="ellip text-[12.5px] text-muted">{{ $file['name'] }}</span>
+                                        <span class="ellip text-xs text-muted">{{ $file['name'] }}</span>
                                     </span>
                                     @if ($file['preview'])
                                         {{-- Preview popup (<x-sth.preview>); the href stays the download. --}}
@@ -91,8 +91,8 @@
                         <tr wire:key="ach-{{ $loop->index }}">
                             <td class="font-bold">{{ $row['name'] }}</td>
                             <td>{{ $row['result'] }}</td>
-                            <td class="num hidden text-[13px] text-muted sm:table-cell">{{ $row['rumus'] }}</td>
-                            <td class="display num text-right text-base font-extrabold">{{ $row['points'] }}</td>
+                            <td class="num hidden text-xs text-muted sm:table-cell">{{ $row['rumus'] }}</td>
+                            <td class="display num text-right text-base font-bold">{{ $row['points'] }}</td>
                         </tr>
                     @endforeach
                 </x-sth.table>
@@ -109,7 +109,7 @@
                             <x-sth.avatar :name="$member['name']" size="sm" />
                             <span class="flex min-w-0 flex-1 flex-col">
                                 <span class="ellip font-bold">{{ $member['name'] }}</span>
-                                <span class="text-[12.5px] text-muted">{{ $member['meta'] }}</span>
+                                <span class="text-xs text-muted">{{ $member['meta'] }}</span>
                             </span>
                             <x-sth.chip :tone="$member['state'][1]" size="sm">{{ $member['state'][0] }}</x-sth.chip>
                         </li>
@@ -129,7 +129,7 @@
                                 <span class="inline-flex size-10 shrink-0 items-center justify-center rounded-tile bg-primary-tint text-primary-on-tint" aria-hidden="true"><x-sth.icon name="mail" /></span>
                                 <span class="flex min-w-0 flex-1 flex-col">
                                     <span class="font-bold">{{ $letter['title'] }}</span>
-                                    <span class="num ellip text-[12.5px] text-muted">{{ $letter['meta'] }}</span>
+                                    <span class="num ellip text-xs text-muted">{{ $letter['meta'] }}</span>
                                 </span>
                                 @if ($letter['preview'])
                                     {{-- Preview popup (<x-sth.preview>); the href stays the download. --}}

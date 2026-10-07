@@ -54,16 +54,16 @@
                 <div class="rounded-tile bg-subtle px-3 py-2.5">
                     @if ($confirm['row'])
                         <p class="m-0 font-semibold">{{ $confirm['row'] }}</p>
-                        <p class="m-0 text-[13px] text-muted">{{ $confirm['name'] }} · {{ $confirm['date'] }}</p>
+                        <p class="m-0 text-xs text-muted">{{ $confirm['name'] }} · {{ $confirm['date'] }}</p>
                     @else
                         <p class="m-0 font-semibold">{{ $confirm['name'] }}</p>
-                        <p class="m-0 text-[13px] text-muted">{{ $confirm['date'] }} · <span class="num">{{ $confirm['count'] }}</span> prestasi</p>
+                        <p class="m-0 text-xs text-muted">{{ $confirm['date'] }} · <span class="num">{{ $confirm['count'] }}</span> prestasi</p>
                     @endif
                 </div>
-                <p class="m-0 text-[14.5px]">{{ $confirm['text'] }}</p>
+                <p class="m-0 text-md">{{ $confirm['text'] }}</p>
             </div>
         @else
-            <p class="m-0 text-[14.5px] text-muted">Acara tidak ditemukan. Tutup lalu coba lagi.</p>
+            <p class="m-0 text-md text-muted">Acara tidak ditemukan. Tutup lalu coba lagi.</p>
         @endif
         <x-slot:footer>
             <x-sth.button variant="quiet" data-sth-close>Batal</x-sth.button>

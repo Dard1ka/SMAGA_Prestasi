@@ -3,7 +3,7 @@
     @include('livewire.partials.resume-download')
     <x-sth.card as="section" aria-labelledby="h-audit-filter" class="flex flex-col gap-4">
         <div class="flex flex-wrap items-center justify-between gap-3">
-            <h2 id="h-audit-filter" class="title-card">Saring log <span class="muted text-[13.5px] font-normal" wire:loading>Memuat…</span></h2>
+            <h2 id="h-audit-filter" class="title-card">Saring log <span class="muted text-sm font-normal" wire:loading>Memuat…</span></h2>
             <span class="flex flex-wrap gap-2">
                 @if ($filtered)
                     <x-sth.button variant="quiet" size="sm" icon="x" wire:click="resetFilters">Hapus filter</x-sth.button>
@@ -47,7 +47,7 @@
                     <td>
                         <span class="flex flex-col gap-1">
                             <span class="font-semibold">{{ $row['eventLabel'] }}</span>
-                            <span class="text-[12.5px] muted"><code>{{ $row['event'] }}</code>@if ($row['log'] !== '') · log {{ $row['log'] }}@endif</span>
+                            <span class="text-xs muted"><code>{{ $row['event'] }}</code>@if ($row['log'] !== '') · log {{ $row['log'] }}@endif</span>
                             @if ($row['reason'])
                                 <span class="text-sm">Alasan: {{ $row['reason'] }}</span>
                             @endif
@@ -58,17 +58,17 @@
                                         @if ($row['properties'])
                                             <div>
                                                 <span class="font-semibold">Properti</span>
-                                                <pre class="m-0 mt-1 max-h-64 overflow-auto rounded-control bg-subtle p-3 text-[12px] leading-snug whitespace-pre-wrap break-all">{{ $row['properties'] }}</pre>
+                                                <pre class="m-0 mt-1 max-h-64 overflow-auto rounded-control bg-subtle p-3 text-xs leading-snug whitespace-pre-wrap break-all">{{ $row['properties'] }}</pre>
                                             </div>
                                         @endif
                                         @if ($row['changes'])
                                             <div>
                                                 <span class="font-semibold">Perubahan data</span>
-                                                <pre class="m-0 mt-1 max-h-64 overflow-auto rounded-control bg-subtle p-3 text-[12px] leading-snug whitespace-pre-wrap break-all">{{ $row['changes'] }}</pre>
+                                                <pre class="m-0 mt-1 max-h-64 overflow-auto rounded-control bg-subtle p-3 text-xs leading-snug whitespace-pre-wrap break-all">{{ $row['changes'] }}</pre>
                                             </div>
                                         @endif
                                         @if ($row['hash'])
-                                            <span class="muted text-[12px] break-all">Hash: <code>{{ $row['hash'] }}</code></span>
+                                            <span class="muted text-xs break-all">Hash: <code>{{ $row['hash'] }}</code></span>
                                         @endif
                                     </div>
                                 </details>
@@ -79,7 +79,7 @@
                         <span class="flex flex-col">
                             <span>{{ $row['subject'] }}</span>
                             @if ($row['subjectId'] !== '')
-                                <span class="text-[12px] muted break-all"><code>{{ $row['subjectId'] }}</code></span>
+                                <span class="text-xs muted break-all"><code>{{ $row['subjectId'] }}</code></span>
                             @endif
                         </span>
                     </td>

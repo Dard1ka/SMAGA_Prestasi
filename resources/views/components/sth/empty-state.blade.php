@@ -17,12 +17,12 @@
     $heading = 'h'.min(max((int) $level, 2), 4);
 @endphp
 <div {{ $attributes->class(['flex flex-col items-center gap-3 px-6 py-12 text-center', 'card' => $card]) }}>
-    <span class="inline-flex size-14 items-center justify-center rounded-2xl bg-gray-bg text-gray">
+    <span class="inline-flex size-14 items-center justify-center rounded-card bg-gray-bg text-gray">
         <x-sth.icon :name="$icon" :size="26" />
     </span>
     <{{ $heading }} class="title-section">{{ $title }}</{{ $heading }}>
     @if ($slot->isNotEmpty())
-        <p class="m-0 max-w-md text-[14.5px] text-muted">{{ $slot }}</p>
+        <p class="m-0 max-w-md text-md text-muted">{{ $slot }}</p>
     @endif
     @isset($actions)
         <div class="mt-1 flex flex-wrap justify-center gap-2.5">{{ $actions }}</div>

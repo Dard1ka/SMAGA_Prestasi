@@ -4,7 +4,7 @@
         <h1 class="title-page">Lupa kata sandi</h1>
         <p class="muted">
             @if ($step === 1)
-                Kami kirim kode ke email yang terhubung dengan akunmu.
+                Kami kirim kode ke email yang terhubung dengan akun.
             @else
                 Masukkan kode dari email dan buat kata sandi baru.
             @endif

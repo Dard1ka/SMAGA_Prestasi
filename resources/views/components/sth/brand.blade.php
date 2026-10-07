@@ -28,7 +28,7 @@
     </span>
     @if ($wordmark)
         <span class="flex min-w-0 flex-col gap-0.5" @if ($href !== null) aria-hidden="true" @endif>
-            <span @class(['display text-[17px] leading-[1.15] font-extrabold', 'text-ink' => ! $inverse, 'text-white' => $inverse])>SMAGA Talent Hub</span>
+            <span @class(['display text-lg leading-[1.15] font-bold', 'text-ink' => ! $inverse, 'text-white' => $inverse])>SMAGA Talent Hub</span>
             <span @class(['text-xs leading-[1.3]', 'muted' => ! $inverse, 'text-primary-tint' => $inverse])>SMA Negeri 3 Semarang</span>
         </span>
     @endif

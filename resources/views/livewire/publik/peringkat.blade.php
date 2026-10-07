@@ -32,7 +32,7 @@
                 @endif
             </div>
             @if ($note)
-                <p id="peringkat-catatan" class="m-0 text-[13px] text-muted">{{ $note }}</p>
+                <p id="peringkat-catatan" class="m-0 text-xs text-muted">{{ $note }}</p>
             @endif
 
             <div class="flex flex-col gap-4" wire:loading.class="opacity-70">
@@ -44,7 +44,7 @@
                             <li wire:key="top-{{ $mode }}-{{ $row['position'] }}">
                                 <article class="card flex h-full min-w-0 flex-col gap-3.5 p-[18px]">
                                     <div class="flex items-center justify-between gap-2">
-                                        <span @class(['display num inline-flex size-9 shrink-0 items-center justify-center rounded-full text-base font-extrabold', 'bg-medal text-ink' => $row['rank'] === 1, 'bg-gray-bg text-gray' => $row['rank'] !== 1])><span class="sr-only">Peringkat </span>{{ $row['rank'] }}</span>
+                                        <span @class(['display num inline-flex size-9 shrink-0 items-center justify-center rounded-full text-base font-bold', 'bg-medal text-ink' => $row['rank'] === 1, 'bg-gray-bg text-gray' => $row['rank'] !== 1])><span class="sr-only">Peringkat </span>{{ $row['rank'] }}</span>
                                         <x-sth.chip class="num">{{ $row['count'] }} prestasi</x-sth.chip>
                                     </div>
                                     <div class="flex min-w-0 items-center gap-3">
@@ -56,21 +56,21 @@
                                                     @if ($row['alumni'] && $row['named'])
                                                         <x-sth.chip size="sm">Alumni</x-sth.chip>
                                                     @elseif ($row['kelas'])
-                                                        <span class="text-[13px] text-muted">{{ $row['kelas'] }}</span>
+                                                        <span class="text-xs text-muted">{{ $row['kelas'] }}</span>
                                                     @endif
                                                 </span>
                                             </div>
                                         @else
-                                            <span class="display inline-flex size-12 shrink-0 items-center justify-center rounded-tile bg-primary-tint text-sm font-extrabold text-primary-on-tint">{{ $row['kelas'] }}</span>
+                                            <span class="display inline-flex size-12 shrink-0 items-center justify-center rounded-tile bg-primary-tint text-sm font-bold text-primary-on-tint">{{ $row['kelas'] }}</span>
                                             <div class="flex min-w-0 flex-col gap-1">
                                                 <span class="text-base leading-5 font-bold">Kelas {{ $row['kelas'] }}</span>
-                                                <span class="text-[13px] text-muted">{{ $row['angkatan'] ? 'Angkatan '.$row['angkatan'].' · ' : '' }}{{ $row['students'] }} siswa berprestasi</span>
+                                                <span class="text-xs text-muted">{{ $row['angkatan'] ? 'Angkatan '.$row['angkatan'].' · ' : '' }}{{ $row['students'] }} siswa berprestasi</span>
                                             </div>
                                         @endif
                                     </div>
                                     <div class="mt-auto flex items-baseline gap-1.5">
-                                        <span class="display num text-[30px] leading-none font-extrabold">{{ $row['points_label'] }}</span>
-                                        <span class="text-[13px] font-semibold text-muted">poin</span>
+                                        <span class="display num text-3xl leading-none font-bold">{{ $row['points_label'] }}</span>
+                                        <span class="text-xs font-semibold text-muted">poin</span>
                                     </div>
                                 </article>
                             </li>
@@ -125,14 +125,14 @@
                                         <td class="num hidden sm:table-cell">{{ $row['students'] }}</td>
                                         <td class="num hidden sm:table-cell">{{ $row['count'] }}</td>
                                     @endif
-                                    <td class="display num text-right text-base font-extrabold">{{ $row['points_label'] }}</td>
+                                    <td class="display num text-right text-base font-bold">{{ $row['points_label'] }}</td>
                                 </tr>
                             @endforeach
                         </x-sth.table>
                     @endif
 
                     <div class="flex flex-wrap items-center justify-between gap-3">
-                        <span class="num text-[13px] text-muted">Menampilkan {{ $shown }} dari {{ $total }} {{ $noun }}</span>
+                        <span class="num text-xs text-muted">Menampilkan {{ $shown }} dari {{ $total }} {{ $noun }}</span>
                         @if ($hasMore)
                             <x-sth.button variant="quiet" size="sm" icon="chevron-down" wire:click="tampilkanLebih">Tampilkan lebih banyak</x-sth.button>
                         @endif
@@ -145,15 +145,15 @@
         <x-sth.card as="aside" aria-labelledby="h-cara" class="flex min-w-0 flex-col gap-3.5 p-[22px]">
             <div class="flex flex-col gap-1">
                 <h2 id="h-cara" class="title-section">Cara poin dihitung</h2>
-                <p class="m-0 text-[13.5px] text-muted">Contoh: Juara I Nasional ajang Puspresnas (Kategori A)</p>
+                <p class="m-0 text-sm text-muted">Contoh: Juara I Nasional ajang Puspresnas (Kategori A)</p>
             </div>
             <x-sth.rumus-poin :tingkat="$weights['example']['tingkat']" :capaian="$weights['example']['capaian']"
                 :penyelenggara="$weights['example']['penyelenggara']" :total="$weights['example']['total']" label="Contoh rumus poin" />
             <div class="h-px bg-line" aria-hidden="true"></div>
 
             @foreach ([['Bobot capaian', 'Capaian', $weights['results']]] as [$tableCaption, $column, $items])
-                <table class="w-full border-collapse text-[13px]">
-                    <caption class="pb-1.5 text-left text-[13.5px] font-bold text-ink">{{ $tableCaption }}</caption>
+                <table class="w-full border-collapse text-xs">
+                    <caption class="pb-1.5 text-left text-sm font-bold text-ink">{{ $tableCaption }}</caption>
                     <thead>
                         <tr>
                             <th scope="col" class="border-b border-line pb-[5px] text-left text-xs font-bold text-muted">{{ $column }}</th>
@@ -173,8 +173,8 @@
 
             <div class="grid gap-5 sm:grid-cols-2">
                 @foreach ([['Bobot tingkat', 'Tingkat', $weights['levels']], ['Bobot penyelenggara', 'Kategori', $weights['organizers']]] as [$tableCaption, $column, $items])
-                    <table class="w-full border-collapse text-[13px]">
-                        <caption class="pb-1.5 text-left text-[13.5px] font-bold text-ink">{{ $tableCaption }}</caption>
+                    <table class="w-full border-collapse text-xs">
+                        <caption class="pb-1.5 text-left text-sm font-bold text-ink">{{ $tableCaption }}</caption>
                         <thead>
                             <tr>
                                 <th scope="col" class="border-b border-line pb-[5px] text-left text-xs font-bold text-muted">{{ $column }}</th>
@@ -195,7 +195,7 @@
 
             <div class="flex items-center gap-2.5 rounded-tile bg-primary-tint px-3 py-2.5 text-primary-on-tint">
                 <x-sth.icon name="users" :size="18" />
-                <span class="text-[13.5px] font-semibold">Anggota tim masing-masing mendapat poin penuh.</span>
+                <span class="text-sm font-semibold">Anggota tim masing-masing mendapat poin penuh.</span>
             </div>
         </x-sth.card>
     </div>

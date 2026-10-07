@@ -1,5 +1,6 @@
 {{--
-    Siswa mobile tab bar (DESIGN-SPEC-v2 §4 Mobile): Beranda · Lomba · Lombaku · Peringkat · Profil.
+    Siswa mobile tab bar (DESIGN-SPEC-v2 §4 Mobile): Beranda · Lomba · Lomba saya · Peringkat · Portofolio
+    ("Lomba saya" and "Portofolio" are the sidebar's names; the mockup still shows "Lombaku" and "Profil").
     Fixed to the bottom below lg; the app layout adds bottom padding so content never hides behind it.
 
     <x-sth.tabbar />                          items from Navigation::tabbar() (current route)

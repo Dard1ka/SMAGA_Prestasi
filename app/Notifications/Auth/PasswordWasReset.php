@@ -33,10 +33,10 @@ class PasswordWasReset extends Notification implements ShouldQueue
         $firstName = strtok(trim((string) ($notifiable->name ?? '')), ' ') ?: 'Siswa';
 
         return (new PlainMailMessage)
-            ->subject('Kata sandi kamu sudah diganti')
+            ->subject('Kata sandi sudah diganti')
             ->greeting('Halo '.$firstName.',')
-            ->line('Kata sandi akun SMAGA Talent Hub kamu baru saja diganti lewat "Lupa kata sandi". Semua perangkat sudah dikeluarkan.')
-            ->line('Jika bukan kamu, segera hubungi Admin atau Kesiswaan.')
+            ->line('Kata sandi akun SMAGA Talent Hub baru saja diganti lewat "Lupa kata sandi". Semua perangkat sudah dikeluarkan.')
+            ->line('Jika tidak merasa menggantinya, segera hubungi Admin atau Kesiswaan.')
             ->salutation('SMAGA Talent Hub');
     }
 }

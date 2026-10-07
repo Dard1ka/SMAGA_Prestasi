@@ -147,7 +147,11 @@ it('submits through the Usulkan lomba sheet', function (): void {
         ->call('kirim')
         ->assertHasNoErrors()
         ->assertSet('sent', true)
-        ->assertSee('Usulan terkirim');
+        // The student's sheet keeps its own words ("Upload info lomba" is the guru's name for it).
+        ->assertSee('Usulkan lomba')
+        ->assertSee('Usulan terkirim')
+        ->assertSee('Usulkan lagi')
+        ->assertDontSee('Info lomba terkirim');
 
     $competition = Competition::query()->sole();
     expect($competition->status)->toBe(CompetitionStatus::MenungguVerifikasi)

@@ -224,6 +224,34 @@ results in `M3-C.md`); the Talenta restore dialog and the Humas panel at phone w
 | Import siswa (#23) | the Excel template's NIS, NISN and No HP columns are Text, so leading zeros stay (QA4) |
 | local demo data (every screen that lists a demo file) | the demo files are realistic sample documents marked "CONTOH" on every page instead of 1 kB placeholders (D-106; local only) |
 
+## 6e. Screen changes of UI3 (D-117…D-119, visual direction "Tinta dan Sampul" of 2026-10-07)
+
+The look of every screen changed (tokens, one typeface, type scale, tags, covers); routes, Livewire classes and
+access rules did not. Spec: `docs/design/DESIGN-SPEC-v3.md`; details: `docs/dev-notes/UI3.md`. The mockup boards
+keep the old look. What changed beyond the stylesheet:
+
+| screen / part | change |
+|---|---|
+| all `layouts::app` screens | sidebar without the button above the menu; phone page title may wrap instead of being cut; stat tiles two per row on phones, quiet at 0 |
+| Siswa › Beranda | ink banner with the lintasan motif (`.spanduk`); the points box shows below lg only (the gold card carries them from lg) |
+| Siswa › Cari lomba, Beranda, Guru › Lomba | `<x-sth.lomba-card>` with `<x-sth.sampul>`: the lomba's poster (`files.cover`) or a template drawing of its bidang |
+| Siswa › Detail lomba, Undangan tim, Portofolio | cover = poster or drawing (detail: deep version); facts strip without icon boxes |
+| Siswa › tur menu | tip 1 points at the menu item "Cari lomba"; positions re-measured; tab names "Lomba saya", "Portofolio" |
+| Publik › Beranda | three sample cards straight on a grid, no blur blob; "Prestasi terbaru" bands show the bidang drawing |
+| Publik › halaman siswa | name on its own row on phones; "Terverifikasi …" is text, not a tag |
+| Masuk (`layouts::auth`) | ink panel with the motif and three straight sample cards; simple variant and error pages centred from lg |
+| Kepala Sekolah › Persetujuan | phones: decision buttons on their own row, no icon tile, long tag wraps |
+| Kesiswaan › Kelola lomba | no icon tile per row (bidang = dot + name), row actions "Ubah" / "Tutup" with text, table floor 880 px; form shows "Sampul di katalog sekarang" |
+| Kesiswaan › Talenta, Database prestasi; Guru tables | fixed tables get a floor and scroll inside their card on phones |
+| TU › Surat tugas | queue is one column on phones; the file row of an issued letter wraps its three buttons |
+| Status aktivasi, Arsip otomatis, Import siswa | warning stat tiles ("Kedaluwarsa", "Dibekukan", "Ditolak", …) are hidden at 0 |
+| Humas › Antrean publikasi | card band shows the bidang drawing |
+| staff screens, notifications | no "kamu" (D-119); Admin › Pengaturan › Halaman publik without "(U-04)" |
+| `/_dev/components` | new card "Sampul lomba" (12 drawings + deep versions), updated palette and type samples |
+
+New route: `GET /berkas/sampul/{file}` → `files.cover` (`FileController::cover`, signed-in users, FilePolicy; D-118).
+New component: `<x-sth.sampul>` (40 components). New support class: `App\Support\Sampul`.
+
 ## 7. Board checklist (24/24 mapped)
 Main (#1) · Prestasi-Bidang (#2) · Peringkat (#3) · Masuk (#4) · Aktivasi (#5) · Tur-Menu-Mobile (#6) ·
 Tur-Menu-Desktop (#7) · Beranda-Siswa (#8) · Beranda-Mobile (#9) · Katalog-Lomba (#10) ·

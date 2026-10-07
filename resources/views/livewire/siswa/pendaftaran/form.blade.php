@@ -39,7 +39,7 @@
                         </span>
                         <div class="flex flex-col">
                             <span class="font-semibold">Anggota konfirmasi</span>
-                            @if ($status['membersText'])<span class="num text-[13px] text-muted">{{ $status['membersText'] }}</span>@endif
+                            @if ($status['membersText'])<span class="num text-xs text-muted">{{ $status['membersText'] }}</span>@endif
                         </div>
                     </li>
                 @endif
@@ -63,7 +63,7 @@
                     <div class="flex items-center justify-between gap-2">
                         <span class="label" id="lbl-tim-kamu">Anggota tim</span>
                         @if ($status['slotsLeft'] !== null)
-                            <span class="num text-[13px] text-muted">sisa {{ $status['slotsLeft'] }} tempat</span>
+                            <span class="num text-xs text-muted">sisa {{ $status['slotsLeft'] }} tempat</span>
                         @endif
                     </div>
                     <ul aria-labelledby="lbl-tim-kamu" class="m-0 flex list-none flex-col gap-2 p-0">
@@ -72,7 +72,7 @@
                                 <x-sth.avatar :name="$row['name']" size="sm" />
                                 <div class="flex min-w-0 flex-1 flex-col">
                                     <span class="ellip font-semibold">{{ $row['name'] }}</span>
-                                    <span class="text-[13px] text-muted">{{ $row['meta'] }}</span>
+                                    <span class="text-xs text-muted">{{ $row['meta'] }}</span>
                                 </div>
                                 @if ($row['state'] === 'confirmed')
                                     <x-sth.chip tone="green" size="sm" icon="check">Konfirmasi</x-sth.chip>
@@ -92,7 +92,7 @@
                     @enderror
 
                     @if ($status['slotsLeft'] === 0)
-                        <p class="m-0 text-[13px] text-muted">Tim sudah penuh.</p>
+                        <p class="m-0 text-xs text-muted">Tim sudah penuh.</p>
                     @else
                         <x-sth.input wire:model.live.debounce.500ms="q" id="undang-anggota" type="search" label="Undang anggota pengganti" icon="search"
                                      placeholder="Cari nama, NIS, atau NISN" autocomplete="off" maxlength="60"
@@ -104,7 +104,7 @@
                                         <x-sth.avatar :name="$row['name']" size="sm" />
                                         <div class="flex min-w-0 flex-1 flex-col">
                                             <span class="ellip font-semibold">{{ $row['name'] }}</span>
-                                            <span class="text-[13px] text-muted">{{ $row['kelas'] }}{{ ($row['pending'] ?? false) ? ' · belum aktivasi akun' : '' }}</span>
+                                            <span class="text-xs text-muted">{{ $row['kelas'] }}{{ ($row['pending'] ?? false) ? ' · belum aktivasi akun' : '' }}</span>
                                         </div>
                                         @if ($row['declined'] ?? false)
                                             <x-sth.chip tone="gray" size="sm">Sudah menolak</x-sth.chip>
@@ -118,7 +118,7 @@
                             </ul>
                         @endif
                         @if ($searchNote)
-                            <p class="m-0 text-[13px] text-muted" role="status">{{ $searchNote }}</p>
+                            <p class="m-0 text-xs text-muted" role="status">{{ $searchNote }}</p>
                         @endif
                     @endif
                 </div>
@@ -163,7 +163,7 @@
                     'tim' => ['label' => 'Tim', 'icon' => 'users', 'disabled' => ! $teamAllowed],
                 ]" />
                 @if (! $individuAllowed || ! $teamAllowed)
-                    <p class="m-0 flex items-center gap-1.5 text-[13px] text-muted"><x-sth.icon name="info" :size="16" />Lomba ini khusus {{ $teamAllowed ? 'tim' : 'individu' }}.</p>
+                    <p class="m-0 flex items-center gap-1.5 text-xs text-muted"><x-sth.icon name="info" :size="16" />Lomba ini khusus {{ $teamAllowed ? 'tim' : 'individu' }}.</p>
                 @endif
             </div>
 
@@ -171,14 +171,14 @@
                 <div class="flex flex-col gap-2">
                     <div class="flex items-center justify-between gap-2">
                         <span class="label" id="lbl-anggota">Anggota tim @if ($maxTeam)(maks {{ $maxTeam }})@endif</span>
-                        <span class="num text-[13px] text-muted">{{ count($memberRows) + 1 }} orang</span>
+                        <span class="num text-xs text-muted">{{ count($memberRows) + 1 }} orang</span>
                     </div>
                     <ul aria-labelledby="lbl-anggota" class="m-0 flex list-none flex-col gap-2 p-0">
                         <li class="flex items-center gap-3 rounded-tile bg-page p-2.5">
                             <x-sth.avatar :name="auth()->user()->name" size="sm" />
                             <div class="flex min-w-0 flex-1 flex-col">
                                 <span class="flex items-center gap-2 font-semibold"><span class="ellip">{{ auth()->user()->name }}</span><x-sth.chip tone="blue" size="sm">Kamu</x-sth.chip></span>
-                                <span class="text-[13px] text-muted">Ketua · {{ $me?->classroom?->name }}</span>
+                                <span class="text-xs text-muted">Ketua · {{ $me?->classroom?->name }}</span>
                             </div>
                         </li>
                         @foreach ($memberRows as $row)
@@ -186,7 +186,7 @@
                                 <x-sth.avatar :name="$row['name']" size="sm" />
                                 <div class="flex min-w-0 flex-1 flex-col">
                                     <span class="ellip font-semibold">{{ $row['name'] }}</span>
-                                    <span class="text-[13px] text-muted">{{ $row['kelas'] }} · diundang setelah kamu kirim</span>
+                                    <span class="text-xs text-muted">{{ $row['kelas'] }} · diundang setelah kamu kirim</span>
                                 </div>
                                 <x-sth.icon-button icon="x" size="sm" ghost :label="'Hapus '.$row['name']" wire:click="hapus('{{ $row['id'] }}')" />
                             </li>
@@ -209,7 +209,7 @@
                                         <x-sth.avatar :name="$row['name']" size="sm" />
                                         <div class="flex min-w-0 flex-1 flex-col">
                                             <span class="ellip font-semibold">{{ $row['name'] }}</span>
-                                            <span class="text-[13px] text-muted">{{ $row['kelas'] }}{{ ($row['pending'] ?? false) ? ' · belum aktivasi akun' : '' }}</span>
+                                            <span class="text-xs text-muted">{{ $row['kelas'] }}{{ ($row['pending'] ?? false) ? ' · belum aktivasi akun' : '' }}</span>
                                         </div>
                                         @if ($row['busy'])
                                             <x-sth.chip tone="gray" size="sm">Sudah terdaftar</x-sth.chip>
@@ -223,11 +223,11 @@
                             </ul>
                         @endif
                         @if ($searchNote)
-                            <p class="m-0 text-[13px] text-muted" role="status">{{ $searchNote }}</p>
+                            <p class="m-0 text-xs text-muted" role="status">{{ $searchNote }}</p>
                         @endif
                     </div>
                 @else
-                    <p class="m-0 text-[13px] font-semibold text-orange">Tim sudah {{ $maxTeam }} orang. Hapus anggota untuk mengganti.</p>
+                    <p class="m-0 text-xs font-semibold text-orange">Tim sudah {{ $maxTeam }} orang. Hapus anggota untuk mengganti.</p>
                 @endunless
             @endif
 
@@ -237,7 +237,7 @@
                 <x-sth.checkbox wire:model.live="setuju" id="setuju">Data yang saya isi benar.</x-sth.checkbox>
                 <x-sth.button type="submit" icon="send" block wire:loading.attr="disabled" wire:target="kirim"
                               :disabled="! $setuju || ($type === 'tim' && $memberRows === [])" aria-describedby="kirim-help">Kirim pendaftaran</x-sth.button>
-                <p id="kirim-help" class="m-0 text-[13px] text-muted">
+                <p id="kirim-help" class="m-0 text-xs text-muted">
                     @if ($type === 'tim' && $memberRows === [])
                         Tambahkan minimal 1 anggota tim.
                     @elseif (! $setuju)

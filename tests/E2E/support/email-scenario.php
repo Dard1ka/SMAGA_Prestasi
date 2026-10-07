@@ -816,7 +816,7 @@ $scenario->step('1c', 'Sekar types the code from the mail, then chooses a new pa
     if (! $genuine) {
         throw new RuntimeException('The code in the OTP mail is not the issued code.');
     }
-}, [[$mail('sekar'), 'Email kamu terhubung ke SMAGA Talent Hub']]);
+}, [[$mail('sekar'), 'Email ini terhubung ke SMAGA Talent Hub']]);
 
 $others = ['wulan', 'galuh', 'bayu', 'laras', 'galang'];
 
@@ -827,14 +827,14 @@ $scenario->step('1d', 'Five more students activate the same way (Wulan + demo st
     }
 }, array_merge(...array_map(fn (string $key): array => [
     [$mail($key), 'Kode verifikasi email'],
-    [$mail($key), 'Email kamu terhubung ke SMAGA Talent Hub'],
+    [$mail($key), 'Email ini terhubung ke SMAGA Talent Hub'],
 ], $others)));
 
 $scenario->step('1e', 'A student whose name has an apostrophe (Ma\'ruf) activates: the name is printed correctly in both mail parts', function () use ($startActivation, $finishActivation, $scenario, $mail): void {
     $startActivation('maruf');
     $otp = $scenario->newest($mail('maruf'), 'Kode verifikasi email');
     $finishActivation('maruf');
-    $notice = $scenario->newest($mail('maruf'), 'Email kamu terhubung ke SMAGA Talent Hub');
+    $notice = $scenario->newest($mail('maruf'), 'Email ini terhubung ke SMAGA Talent Hub');
 
     $checks = [
         'OTP mail, text part says "Halo Ma\'ruf,"' => str_contains((string) $otp['Text'], "Halo Ma'ruf,"),
@@ -852,7 +852,7 @@ $scenario->step('1e', 'A student whose name has an apostrophe (Ma\'ruf) activate
     }
 }, [
     [$mail('maruf'), 'Kode verifikasi email'],
-    [$mail('maruf'), 'Email kamu terhubung ke SMAGA Talent Hub'],
+    [$mail('maruf'), 'Email ini terhubung ke SMAGA Talent Hub'],
 ]);
 
 // =================================================================================================================
@@ -1466,7 +1466,7 @@ $scenario->step('10c', 'Laras types the code: email changed (VerifyOtpCode + Cha
     app(ChangeEmail::class)->confirm($user, $otp);
     $scenario->note('bell notification "Email akun diganti" is database-only by design (no mail)');
 }, [
-    [$mail('laras'), 'Email akun SMAGA Talent Hub kamu diganti'],
+    [$mail('laras'), 'Email akun SMAGA Talent Hub diganti'],
     [$newLarasEmail, 'Email ini sekarang dipakai di SMAGA Talent Hub'],
 ]);
 
@@ -1479,7 +1479,7 @@ $scenario->step('10e', 'Bayu types the code + a new password (ResetPasswordWithC
     $new = $newPassword($siswa('bayu'));
     app(ResetPasswordWithCode::class)->handle($students['bayu'][0], $code, $new, $new);
     $passwords['bayu'] = $new;
-}, [[$mail('bayu'), 'Kata sandi kamu sudah diganti']]);
+}, [[$mail('bayu'), 'Kata sandi sudah diganti']]);
 
 $temporaryPassword = function () use ($scenario): string {
     $password = app(GenerateTemporaryPassword::class)->handle().'-'.random_int(1000, 9999);
@@ -1586,7 +1586,7 @@ $scenario->step('10m', '10 wrong passwords on a not-yet-activated account, Binta
 ]);
 
 $scenario->step('10n', '"Bukan saya?": the link in the notice to Laras\'s OLD address is used (FreezeAccountFromNotice)', function () use ($siswa, $mail, $scenario): void {
-    $text = $scenario->textOf($mail('laras'), 'Email akun SMAGA Talent Hub kamu diganti');
+    $text = $scenario->textOf($mail('laras'), 'Email akun SMAGA Talent Hub diganti');
 
     if (preg_match('~https?://\S+/akun/bukan-saya/([0-9A-Za-z]{26})\?\S*signature=[0-9a-f]+~', $text, $match) !== 1) {
         throw new RuntimeException('The notice mail carries no "Bukan saya?" link.');

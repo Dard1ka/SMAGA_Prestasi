@@ -24,7 +24,7 @@
     </section>
 
     <p class="m-0 flex items-baseline gap-2" aria-live="polite">
-        <span class="display num text-xl font-extrabold">{{ $page->total() }} lomba</span>
+        <span class="display num text-xl font-bold">{{ $page->total() }} lomba</span>
         @if ($page->total() > count($cards))
             <span class="num text-sm text-muted">Menampilkan {{ $page->firstItem() }}–{{ $page->lastItem() }} dari {{ $page->total() }}</span>
         @endif
@@ -47,7 +47,8 @@
                     :title="$card['title']" :href="$card['href']" :bidang="$card['bidang']" :tingkat="$card['tingkat']"
                     :status="$card['status']" :status-tone="$card['statusTone']" :peserta="$card['peserta']"
                     :penyelenggara="$card['penyelenggara']" :date="$card['date']" :place="$card['place']"
-                    :names="$card['names']" :count="$card['count']" :note="$card['note']" />
+                    :names="$card['names']" :count="$card['count']" :note="$card['note']"
+                    :seed="$card['id']" :poster="$card['poster']" />
             @endforeach
         </div>
 

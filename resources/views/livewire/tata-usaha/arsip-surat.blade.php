@@ -4,7 +4,7 @@
         <x-sth.input type="search" wire:model.live.debounce.400ms="q" label="Cari nomor surat atau lomba" hide-label icon="search"
                      placeholder="Cari nomor surat atau lomba" class="w-full sm:w-80" />
         <x-sth.select wire:model.live="jenis" label="Jenis surat" hide-label size="sm" :options="$typeOptions" class="w-52" />
-        <span class="muted text-[13.5px]" wire:loading>Memuat…</span>
+        <span class="muted text-sm" wire:loading>Memuat…</span>
     </div>
 
     @if ($letters->isEmpty())
@@ -39,7 +39,7 @@
                         @if ($letter->revoked_at)
                             <x-sth.chip tone="red" size="sm">Dicabut</x-sth.chip>
                             @if ($letter->replacement)
-                                <span class="muted block text-[12px]">diganti {{ $letter->replacement->full_number }}</span>
+                                <span class="muted block text-xs">diganti {{ $letter->replacement->full_number }}</span>
                             @endif
                         @elseif ($letter->sent_at)
                             <x-sth.chip tone="green" size="sm">Terkirim</x-sth.chip>
@@ -47,7 +47,7 @@
                             <x-sth.chip tone="orange" size="sm">Belum dikirim</x-sth.chip>
                         @endif
                         @if ($letter->version > 1)
-                            <span class="muted block text-[12px]">versi {{ $letter->version }}</span>
+                            <span class="muted block text-xs">versi {{ $letter->version }}</span>
                         @endif
                     </td>
                     <td class="text-right whitespace-nowrap">

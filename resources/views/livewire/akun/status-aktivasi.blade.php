@@ -1,11 +1,11 @@
 {{-- Status aktivasi (K9, K2; UI-MAP §4a/§5). Data prepared in App\Livewire\Akun\StatusAktivasi + App\Actions\Accounts\ActivationReport. --}}
 <div class="flex flex-col gap-[22px]">
     @include('livewire.partials.resume-download')
-    <section aria-label="Ringkasan aktivasi" class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <section aria-label="Ringkasan aktivasi" class="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
         <x-sth.stat-tile icon="check-circle" tone="green" label="Sudah aktif" :value="(string) $totals['aktif']" note="akun siswa" />
         <x-sth.stat-tile icon="clock" tone="gray" label="Belum aktivasi" :value="(string) $totals['belum']" note="masih dalam jendela" />
-        <x-sth.stat-tile icon="alert" tone="orange" label="Kedaluwarsa" :value="(string) $totals['kedaluwarsa']" note="perlu dibuka ulang" />
-        <x-sth.stat-tile icon="lock" tone="red" label="Dibekukan" :value="(string) $totals['dibekukan']" note="gagal masuk atau dilaporkan" />
+        <x-sth.stat-tile icon="alert" tone="orange" label="Kedaluwarsa" :value="(string) $totals['kedaluwarsa']" note="perlu dibuka ulang" zero="hide" />
+        <x-sth.stat-tile icon="lock" tone="red" label="Dibekukan" :value="(string) $totals['dibekukan']" note="gagal masuk atau dilaporkan" zero="hide" />
     </section>
 
     <div class="grid grid-cols-1 items-start gap-[22px] xl:grid-cols-[minmax(0,1fr)_360px]">
@@ -40,7 +40,7 @@
                                         <span class="h-1.5 w-16 overflow-hidden rounded-full bg-track" aria-hidden="true">
                                             <span class="block h-full rounded-full bg-green w-pct-{{ max(0, min(100, $class['activePct'])) }}"></span>
                                         </span>
-                                        <span class="num text-[13px]">{{ $class['activePct'] }}%</span>
+                                        <span class="num text-xs">{{ $class['activePct'] }}%</span>
                                     </div>
                                 </td>
                                 <td>
@@ -81,7 +81,7 @@
                         </div>
                     </div>
 
-                    <p class="m-0 border-b border-line bg-subtle px-4 py-2.5 text-[13.5px] text-muted" aria-live="polite">
+                    <p class="m-0 border-b border-line bg-subtle px-4 py-2.5 text-sm text-muted" aria-live="polite">
                         {{ $filteredCount }} siswa{{ $hasMore ? ', '.$rows->count().' tampil' : '' }}. Email dan NIS ditampilkan tersamar.
                     </p>
 
@@ -107,20 +107,20 @@
                                             <x-sth.avatar :name="$row['name']" size="sm" />
                                             <div class="flex min-w-0 flex-col">
                                                 <span class="ellip font-bold">{{ $row['name'] }}</span>
-                                                <span class="text-[12.5px] text-muted">{{ $row['classroom'] }} · <span class="num">{{ $row['nis'] }}</span></span>
+                                                <span class="text-xs text-muted">{{ $row['classroom'] }} · <span class="num">{{ $row['nis'] }}</span></span>
                                             </div>
                                         </div>
                                     </td>
                                     <td>
                                         <x-sth.chip :tone="$row['tone']" size="sm">{{ $row['stateLabel'] }}</x-sth.chip>
                                         @if ($row['expiresAt'] && $row['state'] === 'belum')
-                                            <span class="mt-1 block text-[12px] text-muted">s.d. {{ $row['expiresAt']->translatedFormat('j M H:i') }}</span>
+                                            <span class="mt-1 block text-xs text-muted">s.d. {{ $row['expiresAt']->translatedFormat('j M H:i') }}</span>
                                         @endif
                                     </td>
-                                    <td class="text-[13.5px]">{{ $row['email'] ?? '–' }}</td>
-                                    <td class="num text-[13.5px]">{{ $row['activatedAt']?->translatedFormat('j M Y H:i') ?? '–' }}</td>
-                                    <td class="num text-[13.5px]">{{ $row['lastLoginAt']?->translatedFormat('j M Y H:i') ?? '–' }}</td>
-                                    <td class="text-[13px]">
+                                    <td class="text-sm">{{ $row['email'] ?? '–' }}</td>
+                                    <td class="num text-sm">{{ $row['activatedAt']?->translatedFormat('j M Y H:i') ?? '–' }}</td>
+                                    <td class="num text-sm">{{ $row['lastLoginAt']?->translatedFormat('j M Y H:i') ?? '–' }}</td>
+                                    <td class="text-xs">
                                         @forelse ($row['flags'] as $flag)
                                             <x-sth.chip tone="orange" size="sm" class="h-auto min-h-6 py-0.5 whitespace-normal">{{ $flag }}</x-sth.chip>
                                         @empty
@@ -133,7 +133,7 @@
                                         @elseif ($row['action'] === 'cair')
                                             <x-sth.button variant="soft" size="sm" wire:click="openUnfreeze({{ $row['userId'] }})">Buka pembekuan</x-sth.button>
                                         @elseif ($row['action'] === 'admin')
-                                            <span class="text-[12.5px] text-muted">Hubungi Admin</span>
+                                            <span class="text-xs text-muted">Hubungi Admin</span>
                                         @endif
                                     </td>
                                 </tr>
@@ -157,7 +157,7 @@
                         <x-sth.avatar :name="$account['name']" size="sm" />
                         <div class="flex min-w-0 flex-1 flex-col">
                             <span class="ellip font-bold">{{ $account['name'] }}</span>
-                            <span class="text-[12.5px] text-muted">
+                            <span class="text-xs text-muted">
                                 {{ $account['where'] }} · {{ $account['reason'] === 'not_me' ? 'laporan "Bukan saya"' : 'gagal masuk 10 kali' }}
                                 @if ($account['since']) · {{ $account['since']->translatedFormat('j M H:i') }}@endif
                             </span>
@@ -169,19 +169,19 @@
                         @endif
                     </div>
                 @empty
-                    <p class="m-0 text-[13.5px] text-muted">Tidak ada akun yang dibekukan.</p>
+                    <p class="m-0 text-sm text-muted">Tidak ada akun yang dibekukan.</p>
                 @endforelse
             </x-sth.card>
 
             <x-sth.card as="section" aria-labelledby="h-k7" class="flex flex-col gap-3">
                 <x-sth.page-header id="h-k7" title="Kata sandi awal dicoba di akun aktif" :level="3" subtitle="7 hari terakhir. Bisa berarti pemilik asli terkunci." />
                 @forelse ($k7 as $i => $alert)
-                    <p wire:key="k7-{{ $i }}" class="m-0 text-[13.5px]">
+                    <p wire:key="k7-{{ $i }}" class="m-0 text-sm">
                         <span class="font-bold">{{ $alert['name'] }}</span>
                         <span class="text-muted">{{ $alert['classroom'] ? '· '.$alert['classroom'] : '' }} · {{ $alert['at']->translatedFormat('j M H:i') }}</span>
                     </p>
                 @empty
-                    <p class="m-0 text-[13.5px] text-muted">Tidak ada.</p>
+                    <p class="m-0 text-sm text-muted">Tidak ada.</p>
                 @endforelse
             </x-sth.card>
 
@@ -192,7 +192,7 @@
                         <x-sth.input wire:model="windowDays" type="number" inputmode="numeric" min="1" max="30" label="Hari (1–30)" class="w-32" />
                         <x-sth.button type="submit" variant="soft" size="sm" wire:loading.attr="disabled" wire:target="saveWindow">Simpan</x-sth.button>
                     </form>
-                    <p class="m-0 text-[12.5px] text-muted">Berlaku untuk impor berikutnya. Siswa yang sudah diimpor: pakai "Buka ulang" (72 jam).</p>
+                    <p class="m-0 text-xs text-muted">Berlaku untuk impor berikutnya. Siswa yang sudah diimpor: pakai "Buka ulang" (72 jam).</p>
                 </x-sth.card>
             @endif
         </aside>
@@ -213,7 +213,7 @@
                     @endforeach
                 </div>
 
-                <p class="m-0 text-[13.5px] text-muted" aria-live="polite">
+                <p class="m-0 text-sm text-muted" aria-live="polite">
                     {{ $classDialog['count'] }} siswa{{ $classDialog['hasMore'] ? ', '.$classDialog['rows']->count().' tampil' : '' }}.
                 </p>
 
@@ -233,20 +233,20 @@
                                 <td>
                                     <div class="flex min-w-0 flex-col">
                                         <span class="font-bold">{{ $row['name'] }}</span>
-                                        <span class="text-[12.5px] text-muted">NIS <span class="num">{{ $row['nis'] }}</span></span>
-                                        <span class="text-[12.5px] text-muted">{{ $row['email'] ?? 'Belum ada email' }}</span>
+                                        <span class="text-xs text-muted">NIS <span class="num">{{ $row['nis'] }}</span></span>
+                                        <span class="text-xs text-muted">{{ $row['email'] ?? 'Belum ada email' }}</span>
                                     </div>
                                 </td>
                                 <td>
                                     <x-sth.chip :tone="$row['tone']" size="sm">{{ $row['stateLabel'] }}</x-sth.chip>
                                     @if ($row['expiresAt'] && $row['state'] === 'belum')
-                                        <span class="mt-1 block text-[12px] text-muted">s.d. {{ $row['expiresAt']->translatedFormat('j M H:i') }}</span>
+                                        <span class="mt-1 block text-xs text-muted">s.d. {{ $row['expiresAt']->translatedFormat('j M H:i') }}</span>
                                     @endif
                                     @foreach ($row['flags'] as $flag)
                                         <x-sth.chip tone="orange" size="sm" class="mt-1 h-auto min-h-6 py-0.5 whitespace-normal">{{ $flag }}</x-sth.chip>
                                     @endforeach
                                 </td>
-                                <td class="text-[13px]">
+                                <td class="text-xs">
                                     <span class="block"><span class="text-muted">Aktivasi</span> <span class="num">{{ $row['activatedAt']?->translatedFormat('j M Y H:i') ?? '–' }}</span></span>
                                     <span class="block"><span class="text-muted">Login</span> <span class="num">{{ $row['lastLoginAt']?->translatedFormat('j M Y H:i') ?? '–' }}</span></span>
                                 </td>
@@ -256,7 +256,7 @@
                                     @elseif ($row['action'] === 'cair')
                                         <x-sth.button variant="soft" size="sm" aria-haspopup="dialog" wire:click="openUnfreeze({{ $row['userId'] }})">Buka pembekuan</x-sth.button>
                                     @elseif ($row['action'] === 'admin')
-                                        <span class="text-[12.5px] text-muted">Hubungi Admin</span>
+                                        <span class="text-xs text-muted">Hubungi Admin</span>
                                     @endif
                                 </td>
                             </tr>
@@ -270,7 +270,7 @@
                 @endif
             </div>
         @else
-            <p class="m-0 text-[14.5px] text-muted">Pilih kelas dari tabel Per kelas.</p>
+            <p class="m-0 text-md text-muted">Pilih kelas dari tabel Per kelas.</p>
         @endif
         <x-slot:footer>
             <x-sth.button variant="quiet" data-sth-close>Tutup</x-sth.button>
@@ -287,7 +287,7 @@
                 <div class="flex flex-col gap-1">
                     <p class="m-0 font-semibold">{{ $target['name'] }}@if ($target['classroom']) <span class="font-medium text-muted">· {{ $target['classroom'] }}</span>@endif</p>
                     @if ($target['reopen'])
-                        <p class="m-0 text-[14.5px]">
+                        <p class="m-0 text-md">
                             @if ($target['reopen']['kept'])
                                 Pembekuan dibuka. Batas aktivasi tetap <span class="num font-semibold">{{ $target['reopen']['until'] }}</span>.
                             @elseif ($target['reopen']['unfreezes'])

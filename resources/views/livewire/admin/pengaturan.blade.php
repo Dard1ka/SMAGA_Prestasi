@@ -7,7 +7,7 @@
                     <a href="{{ route('admin.pengaturan', ['tab' => $key]) }}"
                        @if ($tab === $key) aria-current="page" @endif
                        @class([
-                           'flex min-h-11 items-center gap-3 rounded-control px-3.5 text-[14.5px] font-semibold whitespace-nowrap no-underline',
+                           'flex min-h-11 items-center gap-3 rounded-control px-3.5 text-md font-semibold whitespace-nowrap no-underline',
                            'bg-primary-tint text-primary-on-tint' => $tab === $key,
                            'text-ink-2 hover:bg-hover hover:text-ink' => $tab !== $key,
                        ])>

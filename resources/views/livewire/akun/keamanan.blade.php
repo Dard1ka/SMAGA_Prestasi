@@ -16,7 +16,7 @@
                 />
                 <x-sth.input wire:model="password_confirmation" type="password" label="Ulangi kata sandi baru" autocomplete="new-password" revealable />
                 <div class="flex flex-wrap items-center justify-between gap-3">
-                    <p class="m-0 text-[13.5px] text-muted">Perangkat lain akan dikeluarkan.</p>
+                    <p class="m-0 text-sm text-muted">Perangkat lain akan dikeluarkan.</p>
                     <x-sth.button type="submit" wire:loading.attr="disabled" wire:target="changePassword">Ganti kata sandi</x-sth.button>
                 </div>
             </form>
@@ -42,14 +42,14 @@
             @if ($codeSentTo === null)
                 <form wire:submit="sendEmailCode" class="flex flex-col gap-4" novalidate>
                     <x-sth.input wire:model="newEmail" type="email" label="Email baru" hint="Kode 6 angka dikirim ke email ini." autocomplete="email" inputmode="email" autocapitalize="none" spellcheck="false" />
-                    <x-sth.input wire:model="emailPassword" type="password" label="Kata sandi" hint="Untuk memastikan ini kamu." autocomplete="current-password" revealable />
+                    <x-sth.input wire:model="emailPassword" type="password" label="Kata sandi" hint="Untuk memastikan ini pemilik akun." autocomplete="current-password" revealable />
                     <div class="flex justify-end">
                         <x-sth.button type="submit" variant="soft" wire:loading.attr="disabled" wire:target="sendEmailCode">Kirim kode</x-sth.button>
                     </div>
                 </form>
             @else
                 <form wire:submit="confirmEmail" class="flex flex-col gap-4" novalidate>
-                    <p class="m-0 text-[14px]">Kode 6 angka dikirim ke <strong>{{ $codeSentTo }}</strong>. Berlaku 10 menit.</p>
+                    <p class="m-0 text-sm">Kode 6 angka dikirim ke <strong>{{ $codeSentTo }}</strong>. Berlaku 10 menit.</p>
                     @if ($testMode)
                         <x-sth.alert tone="warning">Mode uji: kode apa pun diterima.</x-sth.alert>
                     @endif
@@ -60,18 +60,18 @@
                     </div>
                 </form>
             @endif
-            <p class="m-0 text-[13px] text-muted">Email lama dan email baru mendapat pemberitahuan dengan link "Bukan saya?".</p>
+            <p class="m-0 text-xs text-muted">Email lama dan email baru mendapat pemberitahuan dengan link "Bukan saya?".</p>
         </x-sth.card>
     </div>
 
     <div class="flex flex-col gap-[22px]">
         {{-- Perangkat --}}
         <x-sth.card as="section" aria-labelledby="h-perangkat" class="flex flex-col gap-4">
-            <x-sth.page-header id="h-perangkat" title="Perangkat yang masuk" subtitle="Keluarkan perangkat yang tidak kamu kenal." />
+            <x-sth.page-header id="h-perangkat" title="Perangkat yang masuk" subtitle="Keluarkan perangkat yang tidak dikenal." />
             @if (! $sessionsAvailable)
                 <x-sth.alert>Daftar perangkat tidak tersedia di server ini.</x-sth.alert>
             @elseif ($sessions === [])
-                <p class="m-0 text-[13.5px] text-muted">Tidak ada perangkat lain.</p>
+                <p class="m-0 text-sm text-muted">Tidak ada perangkat lain.</p>
             @else
                 <ul class="flex flex-col divide-y divide-line" aria-label="Perangkat">
                     @foreach ($sessions as $session)
@@ -79,7 +79,7 @@
                             <span class="inline-flex size-10 shrink-0 items-center justify-center rounded-tile bg-subtle text-muted"><x-sth.icon name="user" /></span>
                             <div class="flex min-w-0 flex-1 flex-col">
                                 <span class="font-semibold">{{ $session['device'] }}</span>
-                                <span class="text-[12.5px] text-muted">
+                                <span class="text-xs text-muted">
                                     @if ($session['ip'])<span class="num">{{ $session['ip'] }}</span> · @endif
                                     aktif {{ $session['lastActive']->diffForHumans() }}
                                 </span>
@@ -117,6 +117,6 @@
             </x-sth.card>
         @endif
 
-        <x-sth.alert title="Ada yang mencurigakan?">Jika ada perangkat atau perubahan yang bukan kamu, ganti kata sandi lalu hubungi Admin atau Kesiswaan.</x-sth.alert>
+        <x-sth.alert title="Ada yang mencurigakan?">Jika ada perangkat atau perubahan yang tidak dikenal, ganti kata sandi lalu hubungi Admin atau Kesiswaan.</x-sth.alert>
     </div>
 </div>

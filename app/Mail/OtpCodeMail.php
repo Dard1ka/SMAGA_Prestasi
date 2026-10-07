@@ -51,8 +51,8 @@ class OtpCodeMail extends Mailable implements ShouldBeEncrypted, ShouldQueue
             text: 'auth.mail.otp-code-text',
             with: [
                 'intro' => $this->purpose === self::PURPOSE_RESET_PASSWORD
-                    ? 'Kamu meminta atur ulang kata sandi SMAGA Talent Hub.'
-                    : 'Kamu sedang menghubungkan email ke akun SMAGA Talent Hub.',
+                    ? 'Ada permintaan atur ulang kata sandi SMAGA Talent Hub.'
+                    : 'Email ini sedang dihubungkan ke akun SMAGA Talent Hub.',
                 // The text/plain part must not HTML-escape the name ("Ma'ruf", not "Ma&#039;ruf").
                 'firstNameText' => new HtmlString($this->firstName),
             ],

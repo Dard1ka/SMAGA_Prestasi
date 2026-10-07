@@ -29,5 +29,5 @@
         <td class="num hidden sm:table-cell">{{ $row['students'] }}</td>
     @endif
     <td class="num hidden sm:table-cell">{{ $row['count'] }}</td>
-    <td class="display num text-right text-base font-extrabold">{{ $row['points_label'] }}</td>
+    <td class="display num text-right text-base font-bold">{{ $row['points_label'] }}</td>
 </tr>

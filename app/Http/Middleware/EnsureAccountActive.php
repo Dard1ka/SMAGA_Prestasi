@@ -17,7 +17,7 @@ use Symfony\Component\HttpFoundation\Response;
  */
 class EnsureAccountActive
 {
-    public const MESSAGE = 'Sesi kamu sudah berakhir. Silakan masuk lagi.';
+    public const MESSAGE = 'Sesi sudah berakhir. Silakan masuk lagi.';
 
     public function __construct(private readonly RevokeUserSessions $revokeSessions) {}
 

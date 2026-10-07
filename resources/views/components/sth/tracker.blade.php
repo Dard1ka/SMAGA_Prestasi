@@ -52,7 +52,7 @@
                 <span @class(['sg', $segment[$step['state']]])></span>
             @endforeach
         </div>
-        <p class="m-0 text-[12.5px] leading-[1.3] font-semibold text-ink-2">
+        <p class="m-0 text-xs leading-[1.3] font-semibold text-ink-2">
             Tahap <span class="num">{{ $phase }}</span> dari 6 · {{ $labels[$phase] }}@if ($currentState === 'act')<span class="sr-only">, perlu tindakan</span>@endif
         </p>
     </div>

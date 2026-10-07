@@ -6,13 +6,13 @@
     <ol class="m-0 grid list-none grid-cols-1 gap-3 p-0 sm:grid-cols-3" aria-label="Langkah import">
         @foreach ([1 => ['Download template', 'Kolom sesuai format sekolah'], 2 => ['Upload file', $preview ? $preview['fileName'] : '.xlsx atau .csv, maks 2 MB'], 3 => ['Periksa & impor', $imported ? 'Selesai' : ($preview ? $total.' baris terbaca' : 'Belum ada file')]] as $n => [$label, $sub])
             <li @class(['card flex items-center gap-3 p-3.5', 'border-primary' => $step === $n])>
-                <span @class(['inline-flex size-9 shrink-0 items-center justify-center rounded-full text-sm font-extrabold',
+                <span @class(['inline-flex size-9 shrink-0 items-center justify-center rounded-full text-sm font-bold',
                     'bg-primary text-white' => $step === $n, 'bg-green-bg text-green' => $step > $n, 'bg-gray-bg text-gray' => $step < $n])>
                     @if ($step > $n)<x-sth.icon name="check" :size="18" label="Selesai" />@else{{ $n }}@endif
                 </span>
                 <span class="flex min-w-0 flex-col">
                     <span class="font-bold" @if ($step === $n) aria-current="step" @endif>{{ $label }}</span>
-                    <span class="ellip text-[12.5px] text-muted">{{ $sub }}</span>
+                    <span class="ellip text-xs text-muted">{{ $sub }}</span>
                 </span>
             </li>
         @endforeach
@@ -27,8 +27,8 @@
                         <li><x-sth.chip size="sm">{{ $column }}</x-sth.chip></li>
                     @endforeach
                 </ul>
-                <p class="m-0 text-[13px] text-muted">Tanggal lahir DD-MM-YYYY. Format kolom NIS dan NISN sebagai teks.</p>
-                <p class="m-0 text-[13px] text-muted">Isi semua siswa dari semua angkatan dengan kelasnya sekarang, lalu upload lagi setiap tahun ajaran baru. Siswa yang sudah terdaftar hanya pindah ke kelas di file. Akun dan kata sandinya tidak berubah.</p>
+                <p class="m-0 text-xs text-muted">Tanggal lahir DD-MM-YYYY. Format kolom NIS dan NISN sebagai teks.</p>
+                <p class="m-0 text-xs text-muted">Isi semua siswa dari semua angkatan dengan kelasnya sekarang, lalu upload lagi setiap tahun ajaran baru. Siswa yang sudah terdaftar hanya pindah ke kelas di file. Akun dan kata sandinya tidak berubah.</p>
                 <x-sth.button variant="soft" icon="download" wire:click="downloadTemplate">Download template Excel</x-sth.button>
             </x-sth.card>
 
@@ -37,7 +37,7 @@
                 <x-sth.select wire:model.live="schoolYear" label="Tahun ajaran data" :options="$yearOptions" hint="Dipakai untuk menghitung kelas XII dan tanggal arsip." />
                 <x-sth.file-drop wire:model="file" label="File data siswa" accept=".xlsx,.csv" icon="upload"
                     :title="$preview ? $preview['fileName'] : 'Pilih file atau seret ke sini'" hint=".xlsx atau .csv · maks. 2 MB · pakai template dari langkah 1" />
-                <p wire:loading wire:target="file" class="m-0 text-[13px] text-muted">Membaca file…</p>
+                <p wire:loading wire:target="file" class="m-0 text-xs text-muted">Membaca file…</p>
                 @error('school_year')<x-sth.alert tone="error">{{ $message }}</x-sth.alert>@enderror
             </x-sth.card>
         </div>
@@ -46,7 +46,7 @@
             <div class="flex flex-wrap items-center justify-between gap-2">
                 <h2 id="h-periksa" class="title-card m-0">3 · Periksa & impor</h2>
                 @if ($preview)
-                    <span class="text-[13px] text-muted">{{ $preview['fileName'] }} · Tahun ajaran {{ $preview['schoolYear'] }}</span>
+                    <span class="text-xs text-muted">{{ $preview['fileName'] }} · Tahun ajaran {{ $preview['schoolYear'] }}</span>
                 @endif
             </div>
 
@@ -87,11 +87,11 @@
                         @endif
                     </x-sth.alert>
                 @else
-                    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                    <div class="grid grid-cols-2 gap-3 xl:grid-cols-4">
                         <x-sth.stat-tile icon="check-circle" tone="green" label="Siswa baru" :value="(string) $summary['new']" note="akun dibuat" />
                         <x-sth.stat-tile icon="users" tone="blue" label="Pindah kelas" :value="(string) $summary['moved']" note="kelas diperbarui" />
                         <x-sth.stat-tile icon="check" tone="gray" label="Tidak berubah" :value="(string) ($summary['unchanged'] + $summary['skipped'])" note="sudah di kelas itu" />
-                        <x-sth.stat-tile icon="alert" tone="red" label="Ditolak" :value="(string) $summary['rejected']" note="perlu diperbaiki" />
+                        <x-sth.stat-tile icon="alert" tone="red" label="Ditolak" :value="(string) $summary['rejected']" note="perlu diperbaiki" zero="hide" />
                     </div>
                 @endif
                 @if ($archiveCorrections > 0 && ! $imported)
@@ -100,10 +100,10 @@
                     </x-sth.alert>
                 @endif
                 @if ($summary['skipped'] > 0)
-                    <p class="m-0 text-[13px] text-muted">{{ $summary['skipped'] }} baris adalah akun alumni (sudah diarsipkan) dan dilewati. Kalau siswanya masih bersekolah, minta Admin memulihkan akunnya dulu.</p>
+                    <p class="m-0 text-xs text-muted">{{ $summary['skipped'] }} baris adalah akun alumni (sudah diarsipkan) dan dilewati. Kalau siswanya masih bersekolah, minta Admin memulihkan akunnya dulu.</p>
                 @endif
                 @if ($sanitizedCount > 0)
-                    <p class="m-0 text-[13px] text-muted">{{ $sanitizedCount }} baris berisi sel yang diawali = + - @. Karakter itu dibuang (tanda "Sel dibersihkan"); periksa datanya sebelum mengimpor.</p>
+                    <p class="m-0 text-xs text-muted">{{ $sanitizedCount }} baris berisi sel yang diawali = + - @. Karakter itu dibuang (tanda "Sel dibersihkan"); periksa datanya sebelum mengimpor.</p>
                 @endif
 
                 <div class="seg self-start" role="group" aria-label="Tampilkan baris">
@@ -113,7 +113,7 @@
                 </div>
 
                 @if ($list === [])
-                    <p class="m-0 text-[13.5px] text-muted">{{ $filter === 'notes' ? 'Tidak ada baris dengan catatan.' : 'Tidak ada baris yang ditolak.' }}</p>
+                    <p class="m-0 text-sm text-muted">{{ $filter === 'notes' ? 'Tidak ada baris dengan catatan.' : 'Tidak ada baris yang ditolak.' }}</p>
                 @else
                     <x-sth.table caption="Preview {{ count($list) }} dari {{ $listTotal }} baris" caption-visible :card="false">
                         <x-slot:head>
@@ -139,13 +139,13 @@
                                     @if ($row['errors'] === [])
                                         <x-sth.chip :tone="$row['tone']" size="sm">{{ $row['status'] }}</x-sth.chip>
                                     @else
-                                        <span class="text-[13px] font-semibold text-red">{{ implode(' ', $row['errors']) }}</span>
+                                        <span class="text-xs font-semibold text-red">{{ implode(' ', $row['errors']) }}</span>
                                     @endif
                                     @if ($row['sanitized'] ?? false)
                                         <x-sth.chip tone="orange" size="sm">Sel dibersihkan</x-sth.chip>
                                     @endif
                                     @foreach ($row['notes'] as $note)
-                                        <span class="block text-[13px] text-orange">{{ $note }}</span>
+                                        <span class="block text-xs text-orange">{{ $note }}</span>
                                     @endforeach
                                 </td>
                             </tr>
@@ -153,7 +153,7 @@
                     </x-sth.table>
                 @endif
 
-                <div class="flex flex-col gap-1 text-[13px] text-muted">
+                <div class="flex flex-col gap-1 text-xs text-muted">
                     <span>Arsip otomatis = 18 bulan setelah awal kelas XII. Akun yang diarsipkan tidak bisa masuk.</span>
                     <span>Kata sandi awal hanya dibuat untuk siswa baru, otomatis sesuai pola sekolah. Kata sandi siswa lama tidak berubah.</span>
                 </div>

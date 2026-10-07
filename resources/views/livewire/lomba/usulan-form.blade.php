@@ -1,12 +1,13 @@
-{{-- "Usulkan lomba" sheet (board Katalog-Lomba). Opened by any data-sth-open="usul" button on the page. --}}
+{{-- "Usulkan lomba" sheet (board Katalog-Lomba). Opened by any data-sth-open="usul" button on the page.
+     $upload (Guru › Lomba): the sheet takes the words of its button there, "Upload info lomba". --}}
 <div>
-    <x-sth.modal id="usul" title="Usulkan lomba" description="Kesiswaan akan memeriksa lalu memasukkannya ke katalog." variant="sheet">
+    <x-sth.modal id="usul" :title="$upload ? 'Upload info lomba' : 'Usulkan lomba'" description="Kesiswaan akan memeriksa lalu memasukkannya ke katalog." variant="sheet">
         @if ($sent)
             <div role="status" class="flex flex-col items-center gap-2 py-4 text-center">
                 <span class="inline-flex size-14 items-center justify-center rounded-full bg-green-bg text-green"><x-sth.icon name="check" :size="28" /></span>
-                <h3 class="title-card m-0">Usulan terkirim</h3>
+                <h3 class="title-card m-0">{{ $upload ? 'Info lomba terkirim' : 'Usulan terkirim' }}</h3>
                 <p class="m-0 font-semibold">{{ $sentName }}</p>
-                <p class="m-0 text-sm text-muted">Kamu akan dapat notifikasi setelah Kesiswaan memeriksanya.</p>
+                <p class="m-0 text-sm text-muted">Notifikasi dikirim setelah Kesiswaan memeriksanya.</p>
             </div>
         @else
             <form id="usul-form" wire:submit="kirim" class="flex flex-col gap-4" novalidate>
@@ -23,11 +24,11 @@
 
         <x-slot:footer>
             @if ($sent)
-                <x-sth.button variant="quiet" wire:click="ulang">Usulkan lagi</x-sth.button>
+                <x-sth.button variant="quiet" wire:click="ulang">{{ $upload ? 'Upload lagi' : 'Usulkan lagi' }}</x-sth.button>
                 <x-sth.button data-sth-close wire:click="ulang">Tutup</x-sth.button>
             @else
                 <x-sth.button variant="quiet" data-sth-close>Batal</x-sth.button>
-                <x-sth.button type="submit" form="usul-form" icon="send" wire:loading.attr="disabled" wire:target="kirim,brosur">Kirim usulan</x-sth.button>
+                <x-sth.button type="submit" form="usul-form" icon="send" wire:loading.attr="disabled" wire:target="kirim,brosur">{{ $upload ? 'Kirim info lomba' : 'Kirim usulan' }}</x-sth.button>
             @endif
         </x-slot:footer>
     </x-sth.modal>

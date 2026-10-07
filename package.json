@@ -7,8 +7,7 @@
         "dev": "vite"
     },
     "devDependencies": {
-        "@fontsource/plus-jakarta-sans": "^5.1.0",
-        "@fontsource/urbanist": "^5.1.0",
+        "@fontsource/public-sans": "^5.3.0",
         "@tailwindcss/vite": "^4.1.0",
         "concurrently": "^10.0.3",
         "laravel-vite-plugin": "^3.1",

@@ -9,10 +9,12 @@ use App\Domain\Points\PointCalculator;
 use App\Domain\Points\WeightTable;
 use App\Enums\Participation;
 use App\Enums\ResultType;
+use App\Http\Controllers\FileController;
 use App\Livewire\Siswa\Pendaftaran\Form;
 use App\Models\Competition;
 use App\Models\WeightVersion;
 use App\Rules\ExternalUrl;
+use App\Support\Sampul;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Gate;
@@ -45,7 +47,7 @@ class Detail extends Component
 
     public function render(): View
     {
-        $competition = Competition::query()->with('juknisFile')->findOrFail($this->competitionId);
+        $competition = Competition::query()->with(['juknisFile', 'coverFile'])->findOrFail($this->competitionId);
         abort_unless(Gate::inspect('view', $competition)->allowed(), 404);
 
         $registrants = LombaPresenter::registrants([$competition->getKey()])[$competition->getKey()] ?? [];
@@ -62,7 +64,33 @@ class Detail extends Component
             'links' => $this->links($competition),
             'penyelenggara' => LombaPresenter::penyelenggara($competition),
             'paragraphs' => $this->paragraphs($competition->description),
+            'poster' => $this->poster($competition),
         ])->title($competition->name);
+    }
+
+    /**
+     * The lomba's own poster (D-118): `src` = the small picture for the cover (`files.cover`), the rest opens the
+     * whole file in the preview popup ("Lihat poster"; `files.show`, audited like every other file link).
+     * Null when there is no poster or this user would not get it: the cover then shows the bidang drawing.
+     *
+     * @return array{src: string, href: string, preview: ?string, previewType: ?string, name: string}|null
+     */
+    private function poster(Competition $competition): ?array
+    {
+        $src = Sampul::poster($competition);
+        $file = $competition->coverFile;
+
+        if ($src === null || $file === null) {
+            return null;
+        }
+
+        return [
+            'src' => $src,
+            'href' => route('files.show', $file),
+            'preview' => FileController::previewUrl($file),
+            'previewType' => FileController::previewType($file),
+            'name' => 'Poster '.$competition->name,
+        ];
     }
 
     /** @return list<array{icon: string, label: string, value: string}> */

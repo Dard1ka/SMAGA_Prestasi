@@ -42,8 +42,8 @@
     <div class="grid grid-cols-[12px_minmax(0,1fr)] items-center gap-1 sm:flex sm:gap-2.5" aria-hidden="true">
         <span class="rt-op text-center">=</span>
         <div class="rt rt-gold flex-row items-center justify-between gap-2.5 px-3.5 py-3 sm:flex-col sm:items-start sm:justify-start sm:gap-0.5 sm:py-2.5">
-            <span class="rt-l text-[13px] sm:text-xs">{{ $resultLabel }}</span>
-            <span class="rt-v text-2xl leading-7 sm:text-xl sm:leading-6">{{ $r }} <span class="font-sans text-sm font-bold sm:text-[13px]">poin</span></span>
+            <span class="rt-l text-xs sm:text-xs">{{ $resultLabel }}</span>
+            <span class="rt-v text-2xl leading-7 sm:text-xl sm:leading-6">{{ $r }} <span class="font-sans text-sm font-bold sm:text-xs">poin</span></span>
         </div>
     </div>
 </div>

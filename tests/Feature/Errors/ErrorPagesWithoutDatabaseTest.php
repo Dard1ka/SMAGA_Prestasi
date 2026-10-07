@@ -37,7 +37,7 @@ it('renders the error pages for a guest without a database', function (int $stat
         ->assertSee('Kembali ke beranda')
         ->assertSee('href="'.route('public.home').'"', false);
 })->with([
-    [403, 'Kamu tidak punya akses ke halaman ini.'],
+    [403, 'Tidak ada akses ke halaman ini.'],
     [404, 'Halaman tidak ditemukan.'],
     [419, 'Halaman kedaluwarsa. Muat ulang lalu coba lagi.'],
     [500, 'Terjadi kesalahan di server.'],

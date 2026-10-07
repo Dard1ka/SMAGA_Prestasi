@@ -111,7 +111,7 @@ final class Navigation
      * @param  bool  $preview  dev showcase: missing routes render as normal '#' links instead of disabled
      * @return array{
      *     role: ?string, roleLabel: string, homeUrl: string,
-     *     cta: ?array<string, mixed>, search: ?array<string, mixed>,
+     *     search: ?array<string, mixed>,
      *     sections: list<array{label: string, items: list<array<string, mixed>>}>,
      *     tabbar: list<array<string, mixed>>,
      *     user: array{name: string, meta: string, initials: string},
@@ -128,7 +128,7 @@ final class Navigation
         $currentRoute ??= Route::currentRouteName();
         $role = self::resolveRole($user, $role, $currentRoute);
         $badges = array_merge(self::resolvedBadges($user, $role, array_map('strval', array_keys($badges))), $badges);
-        $definition = $role !== null ? self::definitions()[$role] : ['cta' => null, 'search' => null, 'sections' => []];
+        $definition = $role !== null ? self::definitions()[$role] : ['search' => null, 'sections' => []];
 
         $sections = [];
         $flat = [];
@@ -166,7 +166,6 @@ final class Navigation
             'role' => $role,
             'roleLabel' => self::roleLabel($role),
             'homeUrl' => self::homeUrl($role),
-            'cta' => $definition['cta'] !== null ? self::item($definition['cta'], [], $preview) : null,
             'search' => self::search($definition['search']),
             'sections' => $sections,
             'tabbar' => $role === 'siswa' ? self::tabbar($currentRoute, $active, $preview) : [],
@@ -185,9 +184,9 @@ final class Navigation
         $defs = [
             ['key' => 'beranda', 'label' => 'Beranda', 'icon' => 'home', 'route' => ['siswa.beranda'], 'aliases' => []],
             ['key' => 'lomba', 'label' => 'Lomba', 'icon' => 'search', 'route' => ['siswa.lomba.index', 'siswa.katalog'], 'match' => ['siswa.lomba.*', 'siswa.katalog*'], 'aliases' => ['cari-lomba']],
-            ['key' => 'lombaku', 'label' => 'Lombaku', 'icon' => 'clipboard', 'route' => ['siswa.lomba-saya.index', 'siswa.lomba-saya'], 'match' => ['siswa.lomba-saya*', 'siswa.lapor*'], 'aliases' => ['lomba-saya']],
+            ['key' => 'lombaku', 'label' => 'Lomba saya', 'icon' => 'clipboard', 'route' => ['siswa.lomba-saya.index', 'siswa.lomba-saya'], 'match' => ['siswa.lomba-saya*', 'siswa.lapor*'], 'aliases' => ['lomba-saya']],
             ['key' => 'peringkat', 'label' => 'Peringkat', 'icon' => 'bars', 'route' => ['siswa.peringkat', 'peringkat', 'public.peringkat'], 'aliases' => []],
-            ['key' => 'profil', 'label' => 'Profil', 'icon' => 'user', 'route' => ['siswa.portofolio'], 'match' => ['siswa.portofolio*', 'siswa.talenta*', 'akun.*'], 'aliases' => ['portofolio', 'profil-talenta']],
+            ['key' => 'profil', 'label' => 'Portofolio', 'icon' => 'award', 'route' => ['siswa.portofolio'], 'match' => ['siswa.portofolio*', 'siswa.talenta*', 'akun.*'], 'aliases' => ['portofolio', 'profil-talenta']],
         ];
 
         $items = array_map(fn (array $def): array => self::item($def, [], $preview), $defs);
@@ -273,7 +272,7 @@ final class Navigation
      * Raw menu definitions per role. 'route' = candidate route names (first existing wins),
      * 'match' = extra route-name patterns that mark the item current, 'query' = required query values.
      *
-     * @return array<string, array{cta: ?array<string, mixed>, search: ?array<string, mixed>, sections: list<array{label: string, items: list<array<string, mixed>>}>}>
+     * @return array<string, array{search: ?array<string, mixed>, sections: list<array{label: string, items: list<array<string, mixed>>}>}>
      */
     public static function definitions(): array
     {
@@ -284,7 +283,6 @@ final class Navigation
 
         return [
             'siswa' => [
-                'cta' => $cariLomba,
                 'search' => ['placeholder' => 'Cari lomba', 'route' => ['siswa.lomba.index', 'siswa.katalog']],
                 'sections' => [
                     ['label' => 'Menu', 'items' => [
@@ -304,7 +302,6 @@ final class Navigation
                 ],
             ],
             'guru' => [
-                'cta' => null,
                 'search' => ['placeholder' => 'Cari siswa binaan', 'route' => ['guru.beranda', 'guru.binaan', 'guru.siswa']],
                 'sections' => [
                     ['label' => 'Menu', 'items' => [
@@ -314,7 +311,6 @@ final class Navigation
                 ],
             ],
             'kesiswaan' => [
-                'cta' => null,
                 'search' => ['placeholder' => 'Cari lomba', 'route' => ['kesiswaan.lomba.index', 'kesiswaan.lomba']],
                 'sections' => [
                     ['label' => 'Menu', 'items' => [
@@ -336,7 +332,6 @@ final class Navigation
                 ],
             ],
             'kepala_sekolah' => [
-                'cta' => null,
                 'search' => ['placeholder' => 'Cari siswa atau lomba', 'route' => ['kepsek.persetujuan.index', 'kepsek.persetujuan']],
                 'sections' => [
                     ['label' => 'Menu', 'items' => [
@@ -352,7 +347,6 @@ final class Navigation
                 ],
             ],
             'tata_usaha' => [
-                'cta' => null,
                 'search' => ['placeholder' => 'Cari lomba atau siswa', 'route' => ['tu.beranda', 'tu.surat.index', 'tu.surat']],
                 'sections' => [
                     ['label' => 'Menu', 'items' => [
@@ -363,7 +357,6 @@ final class Navigation
                 ],
             ],
             'humas' => [
-                'cta' => null,
                 'search' => ['placeholder' => 'Cari prestasi atau siswa', 'route' => ['humas.beranda', 'humas.publikasi.index', 'humas.publikasi']],
                 'sections' => [
                     ['label' => 'Menu', 'items' => [
@@ -375,7 +368,6 @@ final class Navigation
                 ],
             ],
             'admin' => [
-                'cta' => null,
                 'search' => ['placeholder' => 'Cari nama, NIS, atau NISN', 'route' => ['admin.pengguna.index', 'admin.pengguna']],
                 'sections' => [
                     ['label' => 'Menu', 'items' => [

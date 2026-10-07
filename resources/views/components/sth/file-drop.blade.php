@@ -52,9 +52,9 @@
     <label for="{{ $id }}" class="drop" data-sth-drop @if ($error) aria-invalid="true" @endif>
         <span class="drop-ic"><x-sth.icon :name="$icon" /></span>
         <span class="flex min-w-0 flex-col gap-0.5">
-            <span class="ellip text-[14.5px] font-bold text-ink" data-sth-file-name data-empty="{{ $placeholder }}">{{ $title }}</span>
+            <span class="ellip text-md font-bold text-ink" data-sth-file-name data-empty="{{ $placeholder }}">{{ $title }}</span>
             @if ($hint)
-                <span id="{{ $id }}-hint" class="text-[13px] text-muted">{{ $hint }}</span>
+                <span id="{{ $id }}-hint" class="text-xs text-muted">{{ $hint }}</span>
             @endif
         </span>
         <input

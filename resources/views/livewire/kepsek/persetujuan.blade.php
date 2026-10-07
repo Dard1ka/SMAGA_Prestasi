@@ -8,11 +8,11 @@
             </label>
             <span class="hidden h-6 w-px bg-line sm:block" aria-hidden="true"></span>
             <x-sth.select wire:model.live="bidang" label="Saring bidang" hide-label size="sm" :options="$bidangOptions" class="w-44" />
-            <span class="muted num text-[13.5px]" wire:loading.remove>{{ count($pendingIds) }} menunggu</span>
-            <span class="muted text-[13.5px]" wire:loading>Memuat…</span>
+            <span class="muted num text-sm" wire:loading.remove>{{ count($pendingIds) }} menunggu</span>
+            <span class="muted text-sm" wire:loading>Memuat…</span>
             {{-- QA6 (Q1-10): one click used to approve every ticked row; the dialog below lists them first. --}}
             <x-sth.button class="ml-auto" icon="check" data-sth-open="setujui-terpilih" aria-haspopup="dialog" :disabled="$checkedCount === 0">
-                Setujui terpilih (<span class="num">{{ $checkedCount }}</span>)
+                <span>Setujui terpilih (<span class="num">{{ $checkedCount }}</span>)</span>
             </x-sth.button>
         </div>
 
@@ -49,11 +49,13 @@
 
                     <div class="flex min-w-0 flex-1 flex-col gap-3">
                         <div class="flex flex-wrap items-start gap-3.5">
-                            <span class="cover-{{ $bidangKey }} inline-flex size-12 shrink-0 items-center justify-center rounded-tile" aria-hidden="true">
+                            {{-- Phones: no icon tile (the bidang tag says it) and the two decision buttons get their own row,
+                                 so the title keeps the full width instead of being squeezed to one word per line. --}}
+                            <span class="cover-{{ $bidangKey }} hidden size-12 shrink-0 items-center justify-center rounded-tile sm:inline-flex" aria-hidden="true">
                                 <x-sth.icon :name="$bidangKey" :size="24" />
                             </span>
                             <div class="flex min-w-0 flex-1 flex-col gap-1.5">
-                                <h3 class="m-0 text-[17px] leading-snug font-bold">{{ $title }}</h3>
+                                <h3 class="m-0 text-lg leading-snug font-bold">{{ $title }}</h3>
                                 <div class="flex flex-wrap items-center gap-1.5">
                                     @if ($competition?->level)
                                         <x-sth.chip>{{ $competition->level->shortLabel() }}</x-sth.chip>
@@ -62,7 +64,7 @@
                                         <x-sth.chip :bidang="$competition->bidang" />
                                     @endif
                                     @if ($row->isTeam())
-                                        <x-sth.chip tone="green" icon="check">Tim {{ $members->count() }} · semua sudah konfirmasi</x-sth.chip>
+                                        <x-sth.chip tone="green" icon="check" class="chip-wrap">Tim {{ $members->count() }} · semua sudah konfirmasi</x-sth.chip>
                                     @else
                                         <x-sth.chip>Individu</x-sth.chip>
                                     @endif
@@ -70,21 +72,21 @@
                             </div>
 
                             @if ($pending)
-                                <div class="flex shrink-0 gap-2">
+                                <div class="flex w-full shrink-0 gap-2 *:flex-1 sm:w-auto sm:*:flex-none">
                                     <x-sth.button size="sm" icon="check" wire:click="approve('{{ $row->id }}')" wire:loading.attr="disabled">Setujui</x-sth.button>
                                     <x-sth.button size="sm" variant="quiet" wire:click="openReject('{{ $row->id }}')"
                                                   aria-expanded="{{ $rejecting === $row->id ? 'true' : 'false' }}" aria-controls="tolak-{{ $row->id }}">Tolak</x-sth.button>
                                 </div>
                             @elseif ($state === 'ok')
-                                <x-sth.chip tone="green" icon="check" class="shrink-0">Disetujui · masuk antrean TU</x-sth.chip>
+                                <x-sth.chip tone="green" icon="check" class="chip-wrap shrink-0">Disetujui · masuk antrean TU</x-sth.chip>
                             @elseif ($state === 'tolak')
-                                <x-sth.chip tone="red" icon="x" class="shrink-0">Ditolak · siswa diberi tahu</x-sth.chip>
+                                <x-sth.chip tone="red" icon="x" class="chip-wrap shrink-0">Ditolak · siswa diberi tahu</x-sth.chip>
                             @endif
                         </div>
 
                         <dl class="m-0 grid grid-cols-2 gap-4 sm:grid-cols-5 sm:pl-[62px]">
                             <div class="col-span-2 flex min-w-0 flex-col gap-1">
-                                <dt class="text-xs font-semibold tracking-wide text-muted uppercase">Peserta</dt>
+                                <dt class="text-xs font-semibold text-muted">Peserta</dt>
                                 <dd class="m-0 flex min-w-0 items-start gap-2">
                                     <x-sth.avatar-stack :names="$members->map(fn ($m) => $m->student?->user?->name ?? '')->all()" :max="3" />
                                     <span class="min-w-0 text-sm font-semibold">
@@ -95,21 +97,21 @@
                                 </dd>
                             </div>
                             <div class="flex min-w-0 flex-col gap-1">
-                                <dt class="text-xs font-semibold tracking-wide text-muted uppercase">Pembimbing</dt>
+                                <dt class="text-xs font-semibold text-muted">Pembimbing</dt>
                                 <dd class="m-0 text-sm font-semibold">{{ $mentorName }}</dd>
                             </div>
                             <div class="flex min-w-0 flex-col gap-1">
-                                <dt class="text-xs font-semibold tracking-wide text-muted uppercase">Jadwal lomba</dt>
+                                <dt class="text-xs font-semibold text-muted">Jadwal lomba</dt>
                                 <dd class="m-0 flex flex-col gap-0.5">
                                     <span class="num text-sm font-semibold">{{ $competition?->starts_on?->translatedFormat('j M Y') ?? '-' }}</span>
-                                    <span class="muted text-[12.5px]">{{ \App\Livewire\Kepsek\Persetujuan::modeAndPlace($competition) }}</span>
+                                    <span class="muted text-xs">{{ \App\Livewire\Kepsek\Persetujuan::modeAndPlace($competition) }}</span>
                                 </dd>
                             </div>
                             <div class="flex min-w-0 flex-col gap-1">
-                                <dt class="text-xs font-semibold tracking-wide text-muted uppercase">Didaftarkan</dt>
+                                <dt class="text-xs font-semibold text-muted">Didaftarkan</dt>
                                 <dd class="m-0 flex flex-col gap-0.5">
                                     <span class="num text-sm font-semibold">{{ $row->created_at?->translatedFormat('j M') }}</span>
-                                    <span class="muted text-[12.5px]">{{ $row->isTeam() ? 'oleh ketua tim' : 'oleh siswa' }}</span>
+                                    <span class="muted text-xs">{{ $row->isTeam() ? 'oleh ketua tim' : 'oleh siswa' }}</span>
                                 </dd>
                             </div>
                         </dl>
@@ -128,7 +130,7 @@
                         @endif
 
                         @if ($state === 'tolak' && $row->principal_note)
-                            <p class="m-0 text-[13px] text-red sm:pl-[62px]">Alasan: {{ $row->principal_note }}</p>
+                            <p class="m-0 text-xs text-red sm:pl-[62px]">Alasan: {{ $row->principal_note }}</p>
                         @endif
                     </div>
                 </div>
@@ -154,7 +156,7 @@
             @foreach ($selectedRows as $row)
                 <li wire:key="setujui-{{ $row->id }}" class="flex flex-col gap-0.5 rounded-tile border border-line p-3">
                     <span class="text-sm font-bold">{{ $row->competition?->name }}{{ $row->branch ? ' · '.$row->branch : '' }}</span>
-                    <span class="muted text-[13px]">{{ $row->members->map(fn ($m) => $m->student?->user?->name)->filter()->implode(', ') }}</span>
+                    <span class="muted text-xs">{{ $row->members->map(fn ($m) => $m->student?->user?->name)->filter()->implode(', ') }}</span>
                 </li>
             @endforeach
         </ul>
@@ -177,7 +179,7 @@
                 <div class="flex items-center gap-3">
                     <span class="inline-flex size-10 shrink-0 items-center justify-center rounded-control {{ $tone }}" aria-hidden="true"><x-sth.icon :name="$icon" /></span>
                     <span class="flex-1 text-sm font-semibold">{{ $label }}</span>
-                    <span class="display num text-2xl font-extrabold">{{ $value }}</span>
+                    <span class="display num text-2xl font-bold">{{ $value }}</span>
                 </div>
             @endforeach
         </x-sth.card>
@@ -186,18 +188,18 @@
             <div class="flex items-baseline justify-between gap-3">
                 <h2 id="terdekat-title" class="title-card">Lomba terdekat</h2>
                 @if (Route::has('kepsek.beranda'))
-                    <a class="lnk text-[13.5px]" href="{{ route('kepsek.beranda') }}">Dashboard</a>
+                    <a class="lnk text-sm" href="{{ route('kepsek.beranda') }}">Dashboard</a>
                 @endif
             </div>
             @forelse ($upcoming as $item)
                 <div class="flex items-center gap-3">
                     <span class="flex h-[50px] w-[46px] shrink-0 flex-col items-center justify-center rounded-control border border-line bg-page">
-                        <span class="display num text-lg leading-none font-extrabold">{{ $item['day'] }}</span>
-                        <span class="text-[11.5px] font-bold tracking-wide text-muted uppercase">{{ $item['month'] }}</span>
+                        <span class="display num text-lg leading-none font-bold">{{ $item['day'] }}</span>
+                        <span class="text-xs font-bold text-muted">{{ $item['month'] }}</span>
                     </span>
                     <span class="flex min-w-0 flex-col gap-0.5">
                         <span class="text-sm leading-snug font-bold">{{ $item['name'] }}</span>
-                        <span class="muted text-[12.5px]">{{ $item['meta'] }}</span>
+                        <span class="muted text-xs">{{ $item['meta'] }}</span>
                     </span>
                 </div>
             @empty

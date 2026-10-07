@@ -1,6 +1,6 @@
 {{-- Admin "Status sistem": counts, blockers, quick links, latest Admin audit entries (aggregate data only). --}}
 <div class="flex flex-col gap-6">
-    <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <div class="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
         <x-sth.stat-tile icon="users" tone="green" label="Siswa aktif" :value="(string) $stats['active']" note="sudah aktivasi" />
         <x-sth.stat-tile icon="clock" tone="orange" label="Belum aktivasi" :value="(string) $stats['pending']" note="akun siswa" />
         <x-sth.stat-tile icon="shield" tone="blue" label="Staf aktif" :value="(string) $stats['staff']" :note="$stats['staffPending'] > 0 ? $stats['staffPending'].' belum aktivasi' : 'semua peran staf'" :href="route('admin.pengguna.index')" />

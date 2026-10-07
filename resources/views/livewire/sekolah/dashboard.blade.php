@@ -10,13 +10,13 @@
             <x-sth.chip tone="orange" icon="info">Data contoh</x-sth.chip>
         @endif
         <x-sth.select wire:model.live="tahun" label="Tahun ajaran" hide-label size="sm" :options="$yearOptions" class="w-44" />
-        <span class="muted text-[13.5px]" wire:loading>Memuat…</span>
+        <span class="muted text-sm" wire:loading>Memuat…</span>
         @if ($laporanUrl)
             <x-sth.button variant="quiet" size="sm" icon="download" href="{{ $laporanUrl }}" class="ml-auto">Download laporan</x-sth.button>
         @endif
     </div>
 
-    <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <div class="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
         <x-sth.stat-tile icon="award" tone="gold" label="Prestasi terverifikasi" :value="number_format($kpi['prestasi'], 0, ',', '.')" :note="$kpi['prestasiNote']" />
         <x-sth.stat-tile icon="users" tone="blue" label="Siswa berprestasi" :value="number_format($kpi['siswa'], 0, ',', '.')" note="Minimal 1 prestasi terverifikasi" />
         <x-sth.stat-tile icon="check-circle" tone="orange" label="Menunggu persetujuan" :value="$kpi['menunggu']" :note="$approvalUrl ? 'Tinjau pendaftaran' : 'Pendaftaran siswa'" :href="$approvalUrl" />
@@ -33,13 +33,13 @@
                         Prestasi per tahun ajaran
                     @endif
                 </h2>
-                <p class="muted m-0 text-[13.5px]">Prestasi terverifikasi per tahun ajaran dan bidang. {{ $currentYear }} masih berjalan.</p>
+                <p class="muted m-0 text-sm">Prestasi terverifikasi per tahun ajaran dan bidang. {{ $currentYear }} masih berjalan.</p>
             </div>
 
             @if ($perYear['years'] === [])
                 <x-sth.empty-state icon="bars" :card="false" title="Belum ada prestasi terverifikasi">Grafik muncul setelah Kesiswaan memverifikasi laporan hasil.</x-sth.empty-state>
             @else
-                <ul class="m-0 flex list-none flex-wrap gap-x-4 gap-y-1 p-0 text-[13px] font-semibold" aria-label="Keterangan warna">
+                <ul class="m-0 flex list-none flex-wrap gap-x-4 gap-y-1 p-0 text-xs font-semibold" aria-label="Keterangan warna">
                     @foreach (\App\Livewire\Sekolah\Dashboard::CHART_ORDER as $bidang)
                         <li class="inline-flex items-center gap-1.5"><span class="size-2.5 rounded-full {{ $chartBg[$bidang->cssKey()] }}" aria-hidden="true"></span>{{ $bidang->label() }}</li>
                     @endforeach
@@ -49,7 +49,7 @@
                     <div class="absolute inset-0 flex flex-col-reverse justify-between">
                         @foreach ($perYear['ticks'] as $tick)
                             <div class="relative h-px bg-line-soft">
-                                <span class="num absolute -top-2 -left-8 w-6 text-right text-[11px] leading-none text-muted">{{ $tick }}</span>
+                                <span class="num absolute -top-2 -left-8 w-6 text-right text-xs leading-none text-muted">{{ $tick }}</span>
                             </div>
                         @endforeach
                     </div>
@@ -59,7 +59,7 @@
                                 @foreach ($year['bars'] as $bar)
                                     <div class="relative flex h-full w-4 items-end sm:w-6">
                                         <span class="relative w-full rounded-t-[6px] {{ $chartBg[$bar['bidang']->cssKey()] }} h-pct-{{ $bar['pct'] }}" title="{{ $bar['bidang']->label() }} · {{ $bar['value'] }}">
-                                            <span class="num absolute -top-4 left-1/2 -translate-x-1/2 text-[11px] leading-none font-bold text-ink-2">{{ $bar['value'] }}</span>
+                                            <span class="num absolute -top-4 left-1/2 -translate-x-1/2 text-xs leading-none font-bold text-ink-2">{{ $bar['value'] }}</span>
                                         </span>
                                     </div>
                                 @endforeach
@@ -70,8 +70,8 @@
                 <div class="ml-8 flex justify-around gap-3 px-2" aria-hidden="true">
                     @foreach ($perYear['years'] as $year)
                         <div class="flex flex-1 flex-col items-center text-center">
-                            <span class="num text-[13px] font-bold">{{ $year['year'] }}</span>
-                            <span class="muted text-[12px]">{{ $year['total'] }} prestasi{{ $year['running'] ? ' · berjalan' : '' }}</span>
+                            <span class="num text-xs font-bold">{{ $year['year'] }}</span>
+                            <span class="muted text-xs">{{ $year['total'] }} prestasi{{ $year['running'] ? ' · berjalan' : '' }}</span>
                         </div>
                     @endforeach
                 </div>
@@ -111,7 +111,7 @@
                         Prestasi per bidang
                     @endif
                 </h2>
-                <p class="muted m-0 text-[13.5px]">{{ $tahun === '' ? 'Kumulatif' : 'Tahun ajaran '.$tahun }} {{ $kpi['prestasi'] }} prestasi. Pilih bidang untuk detail.</p>
+                <p class="muted m-0 text-sm">{{ $tahun === '' ? 'Kumulatif' : 'Tahun ajaran '.$tahun }} {{ $kpi['prestasi'] }} prestasi. Pilih bidang untuk detail.</p>
             </div>
             <ul class="m-0 flex list-none flex-col gap-3 p-0">
                 @foreach ($perBidang as $row)
@@ -122,14 +122,14 @@
                             <span class="flex items-baseline justify-between gap-2">
                                 <span class="text-sm font-bold">{{ $row['bidang']->label() }}</span>
                                 @if ($prestasiRoute)
-                                    <a class="lnk text-[12.5px]" href="{{ route($prestasiRoute, ['bidang' => $row['bidang']->value] + ($tahun !== '' ? ['tahun' => $tahun] : [])) }}">Lihat siswa<span class="sr-only"> {{ $row['bidang']->label() }}</span></a>
+                                    <a class="lnk text-xs" href="{{ route($prestasiRoute, ['bidang' => $row['bidang']->value] + ($tahun !== '' ? ['tahun' => $tahun] : [])) }}">Lihat siswa<span class="sr-only"> {{ $row['bidang']->label() }}</span></a>
                                 @endif
                             </span>
                             <span class="block h-2.5 w-full rounded-full bg-subtle" aria-hidden="true">
                                 <span class="block h-full rounded-full {{ $chartBg[$key] }} w-pct-{{ $row['pct'] }}"></span>
                             </span>
                         </span>
-                        <span class="display num w-8 text-right text-lg font-extrabold">{{ $row['value'] }}</span>
+                        <span class="display num w-8 text-right text-lg font-bold">{{ $row['value'] }}</span>
                     </li>
                 @endforeach
             </ul>
@@ -140,7 +140,7 @@
         <x-sth.card as="section" class="flex flex-col gap-4" aria-labelledby="per-tingkat-title">
             <div class="flex flex-col gap-1">
                 <h2 id="per-tingkat-title" class="title-card">{{ $perLevel['nationalUp'] }} prestasi nasional ke atas</h2>
-                <p class="muted m-0 text-[13.5px]">Prestasi per tingkat lomba, {{ $tahun === '' ? 'kumulatif' : 'tahun ajaran '.$tahun }}.</p>
+                <p class="muted m-0 text-sm">Prestasi per tingkat lomba, {{ $tahun === '' ? 'kumulatif' : 'tahun ajaran '.$tahun }}.</p>
             </div>
             <ul class="m-0 flex list-none flex-col gap-3 p-0">
                 @foreach ($perLevel['rows'] as $row)
@@ -153,17 +153,17 @@
                     </li>
                 @endforeach
             </ul>
-            <p class="muted m-0 text-[12.5px]">Nasional dan internasional: {{ $perLevel['nationalUp'] }} dari {{ $perLevel['total'] }} prestasi.</p>
+            <p class="muted m-0 text-xs">Nasional dan internasional: {{ $perLevel['nationalUp'] }} dari {{ $perLevel['total'] }} prestasi.</p>
         </x-sth.card>
 
         <x-sth.card as="section" class="flex flex-col gap-3" aria-labelledby="teratas-title">
             <div class="flex items-baseline justify-between gap-3">
                 <div class="flex flex-col gap-1">
                     <h2 id="teratas-title" class="title-card">Siswa teratas</h2>
-                    <p class="muted m-0 text-[13.5px]">Poin kumulatif semua tahun.</p>
+                    <p class="muted m-0 text-sm">Poin kumulatif semua tahun.</p>
                 </div>
                 @if ($peringkatUrl)
-                    <a class="lnk text-[13.5px]" href="{{ $peringkatUrl }}">Lihat peringkat</a>
+                    <a class="lnk text-sm" href="{{ $peringkatUrl }}">Lihat peringkat</a>
                 @endif
             </div>
             @if ($top === [])
@@ -176,7 +176,7 @@
                             <x-sth.avatar :name="$student['name']" size="sm" />
                             <span class="flex min-w-0 flex-1 flex-col">
                                 <span class="ellip text-sm font-bold">{{ $student['name'] }}</span>
-                                <span class="muted text-[12.5px]">{{ $student['meta'] }}@if ($student['alumni']) · Alumni @endif</span>
+                                <span class="muted text-xs">{{ $student['meta'] }}@if ($student['alumni']) · Alumni @endif</span>
                             </span>
                             <x-sth.chip tone="gold" class="num">{{ $student['points'] }}</x-sth.chip>
                         </li>
@@ -192,7 +192,7 @@
                     <span class="cnt">{{ count($attention) }}</span>
                 @endif
             </div>
-            <p class="muted m-0 text-[13.5px]">Urut dari yang paling mendesak.</p>
+            <p class="muted m-0 text-sm">Urut dari yang paling mendesak.</p>
             @forelse ($attention as $item)
                 <div class="flex items-start gap-3">
                     <span class="mt-0.5 inline-flex size-9 shrink-0 items-center justify-center rounded-control {{ $toneBg[$item['tone']] ?? $toneBg['gray'] }}" aria-hidden="true"><x-sth.icon name="alert" :size="18" /></span>
@@ -202,7 +202,7 @@
                         @else
                             <span class="text-sm font-bold">{{ $item['title'] }}</span>
                         @endif
-                        <span class="muted text-[12.5px]">{{ $item['note'] }}</span>
+                        <span class="muted text-xs">{{ $item['note'] }}</span>
                     </span>
                 </div>
             @empty

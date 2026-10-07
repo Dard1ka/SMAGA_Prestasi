@@ -3,8 +3,8 @@
 <div class="flex flex-col gap-[18px]">
     <x-slot:lead>
         <nav aria-label="Breadcrumb">
-            <ol class="m-0 flex list-none flex-wrap items-center gap-1.5 p-0 text-[14.5px]">
-                <li><a class="lnk text-[14.5px]" href="{{ route('siswa.lomba.index') }}"><x-sth.icon name="chevron-left" :size="18" />Cari lomba</a></li>
+            <ol class="m-0 flex list-none flex-wrap items-center gap-1.5 p-0 text-md">
+                <li><a class="lnk text-md" href="{{ route('siswa.lomba.index') }}"><x-sth.icon name="chevron-left" :size="18" />Cari lomba</a></li>
                 <li class="inline-flex text-placeholder" aria-hidden="true"><x-sth.icon name="chevron-right" :size="16" /></li>
                 <li aria-current="page" class="ellip max-w-[46vw] font-semibold text-ink-2">{{ $competition->name }}</li>
             </ol>
@@ -20,13 +20,20 @@
     <div class="grid grid-cols-1 items-start gap-[18px] lg:grid-cols-[minmax(0,1fr)_380px]">
         <div class="flex min-w-0 flex-col gap-[18px]">
             <x-sth.card as="section" padding="none" class="overflow-hidden" aria-labelledby="h-lomba">
-                <div class="cover-{{ $bidangKey }} relative flex h-36 items-start gap-2 p-4 sm:h-40">
+                {{-- The one big cover of this page: the lomba's poster, else the deep template drawing of its bidang. --}}
+                <x-sth.sampul :bidang="$bidangKey" :seed="$competition->getKey()" :src="$poster['src'] ?? null"
+                              tone="pekat" alt="Poster {{ $competition->name }}" class="h-36 items-start gap-2 p-4 sm:h-40">
                     <x-sth.chip tone="glass">{{ \App\Livewire\Siswa\Lomba\LombaPresenter::tingkat($competition) }}</x-sth.chip>
                     <x-sth.chip :tone="$window['tone']">{{ $window['label'] }}</x-sth.chip>
-                    <x-sth.icon :name="$bidangKey" :size="72" class="absolute right-5 bottom-4 opacity-70" />
-                </div>
+                    @if ($poster)
+                        {{-- The cover shows the poster small; this opens the whole file in the preview popup (href = download). --}}
+                        <x-sth.button variant="white" size="sm" icon="image" :href="$poster['href']" :navigate="false" class="ml-auto self-end"
+                                      :data-sth-preview="$poster['preview']" :data-sth-preview-type="$poster['previewType']"
+                                      :data-sth-preview-name="$poster['name']" aria-haspopup="dialog">Lihat poster</x-sth.button>
+                    @endif
+                </x-sth.sampul>
                 <div class="flex flex-col gap-3 p-5">
-                    <h1 id="h-lomba" class="title-page m-0 text-2xl sm:text-[28px]">{{ $competition->name }}</h1>
+                    <h1 id="h-lomba" class="title-page m-0 text-2xl sm:text-3xl">{{ $competition->name }}</h1>
                     <div class="flex flex-wrap items-center justify-between gap-3">
                         <div class="flex flex-wrap items-center gap-2">
                             @if ($competition->bidang)
@@ -37,9 +44,9 @@
                         <div class="flex items-center gap-2">
                             @if ($registrants !== [])
                                 <x-sth.avatar-stack :names="$registrants" />
-                                <span class="text-[13px] text-muted"><span class="num">{{ count($registrants) }}</span> siswa SMAGA sudah mendaftar</span>
+                                <span class="text-xs text-muted"><span class="num">{{ count($registrants) }}</span> siswa SMAGA sudah mendaftar</span>
                             @else
-                                <span class="text-[13px] text-muted">Belum ada siswa SMAGA yang mendaftar</span>
+                                <span class="text-xs text-muted">Belum ada siswa SMAGA yang mendaftar</span>
                             @endif
                         </div>
                     </div>
@@ -98,7 +105,7 @@
                         <ol class="m-0 flex list-none flex-col p-0">
                             @foreach ($jadwal as $row)
                                 <li class="grid grid-cols-[110px_minmax(0,1fr)] items-center gap-x-4 gap-y-1 border-b border-line py-3 last:border-b-0 sm:grid-cols-[130px_minmax(0,1fr)_auto]">
-                                    <span class="display num text-[15px] font-bold">{{ $row['date'] }}</span>
+                                    <span class="display num text-md font-bold">{{ $row['date'] }}</span>
                                     <span class="font-semibold">{{ $row['label'] }}</span>
                                     @if ($row['chip'])
                                         <x-sth.chip :tone="$row['tone']" size="sm" class="col-start-2 justify-self-start sm:col-start-auto sm:justify-self-end">{{ $row['chip'] }}</x-sth.chip>
@@ -113,20 +120,20 @@
                     <ul class="m-0 flex list-none flex-col gap-3 p-0">
                         @if ($competition->juknisFile)
                             <li class="flex items-center gap-3 rounded-tile border border-line p-3">
-                                <span class="inline-flex size-10 shrink-0 items-center justify-center rounded-[10px] bg-red-bg text-red" aria-hidden="true"><x-sth.icon name="file" /></span>
+                                <span class="inline-flex size-10 shrink-0 items-center justify-center rounded-control bg-red-bg text-red" aria-hidden="true"><x-sth.icon name="file" /></span>
                                 <div class="flex min-w-0 flex-1 flex-col">
                                     <span class="ellip font-bold">{{ $competition->juknisFile->original_name }}</span>
-                                    <span class="num text-[13px] text-muted">{{ $competition->juknisFile->isImage() ? 'Gambar' : 'PDF' }} · {{ \App\Livewire\Siswa\Lomba\LombaPresenter::fileSize($competition->juknisFile->size) }}</span>
+                                    <span class="num text-xs text-muted">{{ $competition->juknisFile->isImage() ? 'Gambar' : 'PDF' }} · {{ \App\Livewire\Siswa\Lomba\LombaPresenter::fileSize($competition->juknisFile->size) }}</span>
                                 </div>
                                 <x-sth.button variant="quiet" size="sm" icon="download" :href="route('files.show', $competition->juknisFile)">Download</x-sth.button>
                             </li>
                         @endif
                         @foreach ($links as $link)
                             <li class="flex items-center gap-3 rounded-tile border border-line p-3">
-                                <span class="inline-flex size-10 shrink-0 items-center justify-center rounded-[10px] bg-primary-tint text-primary" aria-hidden="true"><x-sth.icon name="link" /></span>
+                                <span class="inline-flex size-10 shrink-0 items-center justify-center rounded-control bg-primary-tint text-primary" aria-hidden="true"><x-sth.icon name="link" /></span>
                                 <div class="flex min-w-0 flex-1 flex-col">
                                     <span class="font-bold">{{ $link['label'] }}</span>
-                                    <span class="ellip text-[13px] text-muted">Link ke situs luar: {{ $link['host'] }}</span>
+                                    <span class="ellip text-xs text-muted">Link ke situs luar: {{ $link['host'] }}</span>
                                 </div>
                                 <a class="btn btn-quiet btn-sm" href="{{ $link['url'] }}" target="_blank" rel="nofollow noopener noreferrer ugc">Buka<span class="sr-only"> {{ $link['label'] }} ({{ $link['host'] }}, tab baru)</span></a>
                             </li>

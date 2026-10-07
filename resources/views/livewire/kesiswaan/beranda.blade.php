@@ -1,6 +1,6 @@
 {{-- Kesiswaan beranda: queue sizes and the next items (no mockup board). Data prepared in App\Livewire\Kesiswaan\Beranda. --}}
 <div class="flex flex-col gap-[22px]">
-    <section aria-label="Ringkasan" class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <section aria-label="Ringkasan" class="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
         @foreach ($stats as $stat)
             <x-sth.stat-tile :icon="$stat['icon']" :tone="$stat['tone']" :label="$stat['label']" :value="$stat['value']" :note="$stat['note']" :href="$stat['href']" />
         @endforeach
@@ -14,10 +14,10 @@
             @forelse ($reports as $item)
                 <a href="{{ route('kesiswaan.verifikasi.show', $item['id']) }}" class="flex flex-col gap-0.5 rounded-tile border border-line p-3 text-ink no-underline hover:border-line-input hover:text-ink">
                     <span class="font-bold">{{ $item['title'] }}</span>
-                    <span class="text-[13px] text-muted">{{ $item['sub'] }} · {{ $item['when'] }}</span>
+                    <span class="text-xs text-muted">{{ $item['sub'] }} · {{ $item['when'] }}</span>
                 </a>
             @empty
-                <p class="m-0 text-[13.5px] text-muted">Tidak ada laporan yang menunggu.</p>
+                <p class="m-0 text-sm text-muted">Tidak ada laporan yang menunggu.</p>
             @endforelse
         </x-sth.card>
 
@@ -28,10 +28,10 @@
             @forelse ($uploads as $item)
                 <div class="flex flex-col gap-0.5 rounded-tile border border-line p-3">
                     <span class="font-bold">{{ $item['title'] }}</span>
-                    <span class="text-[13px] text-muted">{{ $item['sub'] }} · {{ $item['when'] }}</span>
+                    <span class="text-xs text-muted">{{ $item['sub'] }} · {{ $item['when'] }}</span>
                 </div>
             @empty
-                <p class="m-0 text-[13.5px] text-muted">Antrean kosong.</p>
+                <p class="m-0 text-sm text-muted">Antrean kosong.</p>
             @endforelse
         </x-sth.card>
 
@@ -42,11 +42,11 @@
                     @if ($item['bidang'])<x-sth.bidang-tile :bidang="$item['bidang']" size="sm" />@endif
                     <span class="flex min-w-0 flex-col">
                         <span class="ellip font-bold">{{ $item['title'] }}</span>
-                        <span class="text-[13px] text-muted">Batas {{ $item['date'] }}</span>
+                        <span class="text-xs text-muted">Batas {{ $item['date'] }}</span>
                     </span>
                 </div>
             @empty
-                <p class="m-0 text-[13.5px] text-muted">Belum ada lomba yang dibuka.</p>
+                <p class="m-0 text-sm text-muted">Belum ada lomba yang dibuka.</p>
             @endforelse
         </x-sth.card>
     </div>

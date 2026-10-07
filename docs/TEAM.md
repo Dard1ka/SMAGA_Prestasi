@@ -34,7 +34,7 @@ dicek terhadap `docs/SECURITY.md` §4 oleh I sebelum rilis.
 - Review kode semua PR; menjaga `CLAUDE.md` tetap benar.
 
 ### S — frontend & fitur (35%)
-- Komponen design system `<x-sth.*>`, layout per peran, token dari DESIGN-SPEC-v2.
+- Komponen design system `<x-sth.*>`, layout per peran, token dari DESIGN-SPEC-v3 (tampilan) dan DESIGN-SPEC-v2 (alur, data fiktif).
 - Semua layar sesuai `docs/UI-MAP.md`:
   - **Siswa:** beranda (desktop + mobile), katalog + usulkan lomba, detail lomba + daftar tim,
     lomba saya (tracker, surat, lapor), lapor hasil (mobile), portofolio, profil talenta, tur menu.

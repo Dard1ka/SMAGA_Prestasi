@@ -129,7 +129,7 @@ it('offers restore, not the forward actions, on a tidak lolos row inside "Semua"
         // The panel of the rejected row: "Pulihkan" only, with the earlier stage named.
         ->call('showPanel', $rejected->getKey())
         ->assertViewHas('panel', fn (array $panel): bool => $panel['restorable'] === true && $panel['next'] === null && $panel['final'] === true)
-        ->assertSee('Tahap sebelumnya: Seleksi/asesmen. Pulihkan untuk mengembalikannya ke tahap yang kamu pilih.')
+        ->assertSee('Tahap sebelumnya: Seleksi/asesmen. Pulihkan untuk mengembalikannya ke tahap yang dipilih.')
         ->assertDontSeeHtml('wire:click="advance"')
         ->assertDontSeeHtml('wire:click="askReject"')
         // A forged forward click on the rejected row does nothing.
@@ -314,7 +314,7 @@ it('preselects Terdaftar and says so when the earlier stage was never recorded',
 
     Livewire::actingAs($this->kesiswaan)->test(Talenta::class)
         ->call('showPanel', $rejected->getKey())
-        ->assertSee('Siswa sudah diberi tahu. Pulihkan untuk mengembalikannya ke tahap yang kamu pilih.')
+        ->assertSee('Siswa sudah diberi tahu. Pulihkan untuk mengembalikannya ke tahap yang dipilih.')
         ->assertDontSee('Tahap sebelumnya:')
         ->call('askRestore', $rejected->getKey())
         ->assertSet('restoreTo', 'terdaftar')

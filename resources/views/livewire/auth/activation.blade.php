@@ -26,7 +26,7 @@
     @if ($step === 1)
         <div class="flex flex-col gap-2">
             <h1 class="title-page">Hubungkan email</h1>
-            <p class="muted">Untuk memulihkan akun kalau kamu lupa kata sandi.</p>
+            <p class="muted">Untuk memulihkan akun kalau lupa kata sandi.</p>
         </div>
 
         <div class="flex items-center gap-3">
@@ -125,7 +125,7 @@
         @endif
     @else
         <div class="flex flex-col gap-2">
-            <h1 class="title-page">Akun kamu sudah aktif</h1>
+            <h1 class="title-page">Akun sudah aktif</h1>
             <p class="muted">
                 @if ($isStudent)
                     Sekarang kamu bisa daftar lomba dan pantau prestasimu.
@@ -159,7 +159,7 @@
     @if ($step < 4)
         <form method="POST" action="{{ route('logout') }}" class="flex flex-wrap items-center justify-center gap-x-2 border-t border-line pt-4 text-sm">
             @csrf
-            <span class="muted">Bukan akun kamu?</span>
+            <span class="muted">Salah akun?</span>
             <x-sth.button type="submit" variant="quiet" size="sm" icon="logout">Keluar</x-sth.button>
         </form>
     @endif

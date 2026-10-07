@@ -25,13 +25,12 @@
     <dl class="m-0 grid {{ $cols }}">
         @foreach ($items as $item)
             <div class="flex flex-col gap-0.5 border-line px-4 py-3.5 lg:border-l lg:first:border-l-0">
-                <dt class="flex flex-col items-start gap-2 text-[12.5px] font-semibold text-muted">
-                    <span class="inline-flex size-[34px] items-center justify-center rounded-[10px] bg-primary-tint text-primary" aria-hidden="true">
-                        <x-sth.icon :name="$item['icon'] ?? 'info'" :size="18" />
-                    </span>
+                {{-- Icon next to the label, no tinted box: five boxes in a row said nothing the labels do not. --}}
+                <dt class="flex items-center gap-1.5 text-xs font-semibold text-muted">
+                    <x-sth.icon :name="$item['icon'] ?? 'info'" :size="16" />
                     {{ $item['label'] }}
                 </dt>
-                <dd class="num m-0 text-[15px] font-bold">{{ $item['value'] }}</dd>
+                <dd class="num m-0 text-md font-semibold text-ink">{{ $item['value'] }}</dd>
             </div>
         @endforeach
     </dl>

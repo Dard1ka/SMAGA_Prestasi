@@ -18,7 +18,7 @@
         </div>
         <div class="flex shrink-0 flex-col gap-px rounded-tile bg-page px-3.5 py-2.5 sm:w-36">
             <span class="text-xs font-semibold text-muted">Siswa berprestasi</span>
-            <span class="display num text-2xl leading-7 font-extrabold">{{ $winners['count'] }}</span>
+            <span class="display num text-2xl leading-7 font-bold">{{ $winners['count'] }}</span>
         </div>
     </x-sth.card>
 
@@ -54,5 +54,5 @@
             </x-sth.card>
         @endforeach
     </div>
-    <p class="m-0 text-[13px] text-muted">Anggota tim masing-masing mendapat poin penuh. Nama siswa tampil bila ada persetujuan publikasi.</p>
+    <p class="m-0 text-xs text-muted">Anggota tim masing-masing mendapat poin penuh. Nama siswa tampil bila ada persetujuan publikasi.</p>
 </div>

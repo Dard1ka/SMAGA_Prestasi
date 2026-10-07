@@ -26,7 +26,7 @@
         </div>
     </form>
 
-    <div class="grid gap-4 sm:grid-cols-2">
+    <div class="grid grid-cols-2 gap-3 sm:gap-4">
         <x-sth.stat-tile icon="archive" tone="orange" label="Akan diarsipkan 30 hari ke depan" :value="(string) $dueSoon" note="akun siswa" />
         <x-sth.stat-tile icon="clock" tone="blue" label="Jadwal arsip otomatis" value="01.00 WIB" note="setiap hari, akun alumni tidak bisa login" />
     </div>

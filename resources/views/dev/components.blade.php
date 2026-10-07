@@ -27,11 +27,11 @@
         'send', 'lock', 'filter', 'dots'];
 
     $swatches = [
-        'Dasar' => [['bg-page', 'page', '#F4F5FB'], ['bg-surface border border-line', 'surface', '#FFFFFF'], ['bg-line', 'line', '#E7E9F3'], ['bg-line-input', 'line-input', '#DCDFEC'], ['bg-ink', 'ink', '#151A33'], ['bg-ink-2', 'ink-2', '#4A5068'], ['bg-muted', 'muted', '#666C84'], ['bg-placeholder', 'placeholder', '#8A90A6']],
-        'Primer' => [['bg-primary', 'primary', '#3148D6'], ['bg-primary-hover', 'primary-hover', '#2638B0'], ['bg-primary-tint', 'primary-tint', '#ECEFFF'], ['bg-primary-on-tint', 'primary-on-tint', '#2A3CB8'], ['bg-focus', 'focus', '#A9B6F5']],
+        'Dasar' => [['bg-page', 'page', '#F3F5F8'], ['bg-surface border border-line', 'surface', '#FFFFFF'], ['bg-line', 'line', '#DDE2E9'], ['bg-line-strong', 'line-strong', '#C3C9D3'], ['bg-line-input', 'line-input', '#7F8794'], ['bg-ink', 'ink', '#141A2B'], ['bg-ink-2', 'ink-2', '#3A4254'], ['bg-muted', 'muted', '#566072'], ['bg-placeholder', 'placeholder', '#687184']],
+        'Primer' => [['bg-primary', 'primary', '#1B2A4E'], ['bg-primary-hover', 'primary-hover', '#111C38'], ['bg-primary-tint', 'primary-tint', '#E9EDF4'], ['bg-link', 'link', '#1C4A9C'], ['bg-focus', 'focus', '#2F6FDE']],
         'Bidang' => [['bg-sains', 'sains', '#1D56AD'], ['bg-sains-bg', 'sains-bg', '#E6F0FF'], ['bg-riset', 'riset', '#5534B8'], ['bg-riset-bg', 'riset-bg', '#F0EBFF'], ['bg-seni', 'seni', '#A61F54'], ['bg-seni-bg', 'seni-bg', '#FDE8F0'], ['bg-olahraga', 'olahraga', '#0B6577'], ['bg-olahraga-bg', 'olahraga-bg', '#E0F4F8']],
         'Grafik' => [['bg-sains-chart', 'sains-chart', '#3D7BE0'], ['bg-riset-chart', 'riset-chart', '#7B5CE0'], ['bg-seni-chart', 'seni-chart', '#D6457E'], ['bg-olahraga-chart', 'olahraga-chart', '#1690A6']],
-        'Status & emas' => [['bg-green', 'green', '#1B6B45'], ['bg-green-bg', 'green-bg', '#E4F5EA'], ['bg-orange', 'orange', '#9A3F00'], ['bg-orange-bg', 'orange-bg', '#FFEEDD'], ['bg-red', 'red', '#B42318'], ['bg-red-bg', 'red-bg', '#FDECEA'], ['bg-gray', 'gray', '#4A5068'], ['bg-gray-bg', 'gray-bg', '#EEF0F6'], ['bg-gold', 'gold', '#6B4E00'], ['bg-gold-bg', 'gold-bg', '#FFF3D1'], ['bg-medal', 'medal', '#F2B63A']],
+        'Status & emas' => [['bg-green', 'green', '#1B6B45'], ['bg-green-bg', 'green-bg', '#E4F3EA'], ['bg-orange', 'orange', '#9A3F00'], ['bg-orange-bg', 'orange-bg', '#FDEBD8'], ['bg-red', 'red', '#B42318'], ['bg-red-bg', 'red-bg', '#FCEAE7'], ['bg-gray', 'gray', '#3A4254'], ['bg-gray-bg', 'gray-bg', '#E8EBF0'], ['bg-blue', 'blue', '#1C4A9C'], ['bg-blue-bg', 'blue-bg', '#E8EEF9'], ['bg-gold', 'gold', '#6B4E00'], ['bg-gold-bg', 'gold-bg', '#FBF0CC'], ['bg-medal', 'medal', '#E0A82A']],
     ];
 
     $catalog = [
@@ -64,12 +64,12 @@
         <div class="flex flex-wrap items-center gap-2">
             <span class="label mr-1">Menu peran</span>
             @foreach (\App\Support\Navigation::ROLES as $r)
-                <a href="{{ route('dev.components', ['role' => $r]) }}" class="fchip h-9 px-3.5 text-[13.5px]" @if ($r === $role) aria-current="page" aria-pressed="true" @endif>{{ \App\Support\Navigation::roleLabel($r) }}</a>
+                <a href="{{ route('dev.components', ['role' => $r]) }}" class="fchip h-9 px-3.5 text-sm" @if ($r === $role) aria-current="page" aria-pressed="true" @endif>{{ \App\Support\Navigation::roleLabel($r) }}</a>
             @endforeach
         </div>
         <nav aria-label="Bagian" class="flex flex-wrap gap-x-4 gap-y-0">
             @foreach ($sections as $anchor => $name)
-                <a class="lnk text-[13.5px] font-semibold" href="#{{ $anchor }}">{{ $name }}</a>
+                <a class="lnk text-sm font-semibold" href="#{{ $anchor }}">{{ $name }}</a>
             @endforeach
         </nav>
     </x-sth.card>
@@ -85,7 +85,7 @@
                         @foreach ($list as [$class, $token, $hex])
                             <div class="flex flex-col gap-1.5">
                                 <span class="h-12 rounded-tile {{ $class }}"></span>
-                                <span class="text-[12.5px] font-bold">{{ $token }}</span>
+                                <span class="text-xs font-bold">{{ $token }}</span>
                                 <span class="text-xs text-muted uppercase">{{ $hex }}</span>
                             </div>
                         @endforeach
@@ -94,16 +94,16 @@
             @endforeach
             <div class="grid gap-3 border-t border-line pt-4 sm:grid-cols-2">
                 <div class="flex flex-col gap-1">
-                    <p class="title-page">Judul halaman 30/800</p>
+                    <p class="title-page">Judul halaman 28/700 (24 di ponsel)</p>
                     <p class="title-section">Judul bagian 20/700</p>
-                    <p class="title-card">Judul kartu 17/700</p>
-                    <p class="display num m-0 text-[28px] font-extrabold">104 poin · #14</p>
+                    <p class="title-card">Judul kartu 18/600</p>
+                    <p class="display num m-0 text-3xl font-bold">104 poin · #14</p>
                 </div>
                 <div class="flex flex-col gap-1">
-                    <p class="m-0">Body 15/500 (16 di ponsel). Plus Jakarta Sans.</p>
-                    <p class="m-0 text-[13px] text-muted">Kecil 13 · muted #666C84</p>
-                    <p class="label m-0">Label 13/600</p>
-                    <p class="m-0 text-xs text-muted">Minimum 12</p>
+                    <p class="m-0">Body 16/400. Public Sans, satu keluarga huruf.</p>
+                    <p class="m-0 text-md">Kontrol dan sel tabel 15 (text-md)</p>
+                    <p class="label m-0">Label 14/600</p>
+                    <p class="m-0 text-xs text-muted">Terkecil 13 (text-xs) · muted #566072</p>
                 </div>
             </div>
         </x-sth.card>
@@ -178,7 +178,7 @@
                 <x-sth.chip bidang="olahraga" icon />
             </div>
             <div class="flex flex-wrap items-center gap-3">
-                <div class="cover-riset flex h-16 items-start rounded-tile p-3"><x-sth.chip tone="glass">Nasional</x-sth.chip></div>
+                <x-sth.sampul bidang="riset" seed="contoh" class="h-16 w-40 items-start rounded-tile p-3"><x-sth.chip tone="glass">Nasional</x-sth.chip></x-sth.sampul>
                 <x-sth.badge>2</x-sth.badge>
                 <x-sth.badge tone="gray">8</x-sth.badge>
                 @foreach (['sains', 'riset', 'seni', 'olahraga'] as $b)
@@ -187,12 +187,32 @@
                 <x-sth.bidang-tile bidang="riset" size="sm" />
             </div>
         </x-sth.card>
+
+        {{-- Sampul lomba: the 12 template drawings (class names written out here; <x-sth.sampul> picks one from the lomba id). --}}
+        <x-sth.card class="flex flex-col gap-4">
+            <div class="flex flex-col gap-1">
+                <h3 class="title-card">Sampul lomba</h3>
+                <p class="m-0 text-sm text-muted">Poster asli kalau ada, kalau tidak gambar bidang. Tiga variasi per bidang, dipilih dari ID lomba. Versi pekat untuk sampul besar halaman detail.</p>
+            </div>
+            <div class="grid grid-cols-2 gap-3 md:grid-cols-3">
+                @foreach (['sains', 'riset', 'seni', 'olahraga'] as $b)
+                    @foreach ([1, 2, 3] as $n)
+                        <div class="sampul sampul-{{ $b }}-{{ $n }} h-24 items-start rounded-tile p-2.5"><x-sth.chip tone="glass" size="sm">{{ $b }} {{ $n }}</x-sth.chip></div>
+                    @endforeach
+                @endforeach
+            </div>
+            <div class="grid grid-cols-2 gap-3 md:grid-cols-4">
+                @foreach (['sains-2', 'riset-3', 'seni-1', 'olahraga-2'] as $k)
+                    <div class="sampul sampul-pekat sampul-{{ $k }} h-24 items-start rounded-tile p-2.5"><x-sth.chip tone="glass" size="sm">{{ $k }} pekat</x-sth.chip></div>
+                @endforeach
+            </div>
+        </x-sth.card>
     </section>
 
     {{-- Kartu & stat tile --}}
     <section id="kartu" @unless ($show('kartu')) hidden @endunless aria-labelledby="h-kartu" class="flex flex-col gap-3 scroll-mt-6">
         <x-sth.page-header id="h-kartu" title="Kartu & stat tile" />
-        <div class="grid grid-cols-1 gap-[18px] sm:grid-cols-2 xl:grid-cols-4">
+        <div class="grid grid-cols-2 gap-3 sm:gap-[18px] xl:grid-cols-4">
             <x-sth.stat-tile icon="trophy" tone="blue" label="Lomba aktif" value="6" note="pendaftaran dibuka" />
             <x-sth.stat-tile icon="users" tone="green" label="Pendaftar bulan ini" value="39" note="siswa di 7 lomba" />
             <x-sth.stat-tile icon="inbox" tone="orange" label="Usulan lomba" value="3" note="menunggu ditinjau" href="#kartu" />
@@ -203,7 +223,7 @@
                 <div class="flex items-center gap-3">
                     <x-sth.bidang-tile bidang="riset" />
                     <div class="flex min-w-0 flex-col items-start gap-1">
-                        <h3 class="title-card"><a class="ttl-link" href="#kartu">WICE 2026</a> <span class="font-sans text-[13px] font-medium text-muted">· Internasional · Tim 3</span></h3>
+                        <h3 class="title-card"><a class="ttl-link" href="#kartu">WICE 2026</a> <span class="font-sans text-xs font-medium text-muted">· Internasional · Tim 3</span></h3>
                         <x-sth.chip tone="orange" icon="clock" size="sm">Menunggu laporan · batas 8 Nov</x-sth.chip>
                     </div>
                 </div>
@@ -213,18 +233,18 @@
                 <div class="flex items-center gap-3">
                     <span class="inline-flex size-11 shrink-0 items-center justify-center rounded-full bg-medal text-white" aria-hidden="true"><x-sth.icon name="award" /></span>
                     <div class="flex min-w-0 flex-1 flex-col">
-                        <h3 class="m-0 font-sans text-[13px] font-bold tracking-normal text-gold">Poin prestasi</h3>
-                        <p class="m-0 flex items-baseline gap-1.5"><span class="display num text-[34px] leading-[1.1] font-extrabold">104</span><span class="text-sm font-semibold text-gold">poin</span></p>
+                        <h3 class="m-0 font-sans text-xs font-bold tracking-normal text-gold">Poin prestasi</h3>
+                        <p class="m-0 flex items-baseline gap-1.5"><span class="display num text-4xl leading-[1.1] font-bold">104</span><span class="text-sm font-semibold text-gold">poin</span></p>
                     </div>
-                    <x-sth.link href="#kartu" icon-right="chevron-right" class="self-start text-[13.5px]">Peringkat</x-sth.link>
+                    <x-sth.link href="#kartu" icon-right="chevron-right" class="self-start text-sm">Peringkat</x-sth.link>
                 </div>
             </x-sth.card>
             <x-sth.card tone="warn" padding="sm" class="flex items-center gap-3.5">
                 <span class="inline-flex size-11 shrink-0 items-center justify-center rounded-tile bg-orange-bg text-orange"><x-sth.icon name="upload" /></span>
                 <div class="flex min-w-0 flex-1 flex-col gap-0.5">
                     <x-sth.chip tone="orange" size="sm" class="self-start">Perlu tindakan</x-sth.chip>
-                    <p class="m-0 text-[16.5px] leading-tight font-bold">WICE 2026 · laporan hasil</p>
-                    <p class="num m-0 text-[13.5px] font-semibold text-orange">Batas 8 Nov 2026 · 39 hari lagi</p>
+                    <p class="m-0 text-base leading-tight font-bold">WICE 2026 · laporan hasil</p>
+                    <p class="num m-0 text-sm font-semibold text-orange">Batas 8 Nov 2026 · 39 hari lagi</p>
                 </div>
             </x-sth.card>
         </div>
@@ -271,7 +291,7 @@
     {{-- Tabel & empty state --}}
     <section id="tabel" @unless ($show('tabel')) hidden @endunless aria-labelledby="h-tabel" class="flex flex-col gap-3 scroll-mt-6">
         <x-sth.page-header id="h-tabel" title="Tabel & kosong" />
-        <x-sth.table caption="Katalog lomba SMAGA, 5 lomba" fixed class="min-w-0">
+        <x-sth.table caption="Katalog lomba SMAGA, 5 lomba" fixed class="min-w-0" table-class="min-w-[880px]">
             <x-slot:head>
                 <th scope="col" class="w-[38%] min-w-[280px]">Lomba</th>
                 <th scope="col" class="w-32">Bidang</th>
@@ -288,7 +308,7 @@
                             <x-sth.bidang-tile :bidang="$row['bidang']" size="sm" />
                             <div class="flex min-w-0 flex-col gap-0.5">
                                 <span class="leading-[1.35] font-bold">{{ $row['title'] }}</span>
-                                <span class="ellip text-[12.5px] text-muted">{{ $row['sub'] }}</span>
+                                <span class="ellip text-xs text-muted">{{ $row['sub'] }}</span>
                             </div>
                         </div>
                     </td>
@@ -297,7 +317,7 @@
                     <td>
                         <div class="flex flex-col gap-0.5">
                             <span class="num">{{ $row['batas'] }}</span>
-                            @if ($row['soon'])<span class="text-[12.5px] font-bold text-orange">{{ $row['soon'] }}</span>@endif
+                            @if ($row['soon'])<span class="text-xs font-bold text-orange">{{ $row['soon'] }}</span>@endif
                         </div>
                     </td>
                     <td class="num">{{ $row['count'] }} siswa</td>
@@ -328,11 +348,11 @@
             <x-sth.avatar name="Drs. Bambang Hartono, M.Pd." />
             <div class="flex items-center gap-2">
                 <x-sth.avatar-stack :names="['Raka Pradipta', 'Bima Satria Wicaksono', 'Yoga Pratama']" />
-                <span class="text-[12.5px] text-muted">3 siswa SMAGA mendaftar</span>
+                <span class="text-xs text-muted">3 siswa SMAGA mendaftar</span>
             </div>
             <div class="flex items-center gap-2">
                 <x-sth.avatar-stack size="sm" :names="['Hana Safira', 'Aurelia Maharani', 'Rizky Maulana', 'Citra Ayu Lestari', 'Salsabila Kirana']" />
-                <span class="text-[12.5px] text-muted">5 siswa</span>
+                <span class="text-xs text-muted">5 siswa</span>
             </div>
         </x-sth.card>
     </section>
@@ -361,8 +381,8 @@
                 ['key' => 'katalog', 'label' => 'Katalog', 'count' => 8],
                 ['key' => 'usulan', 'label' => 'Usulan lomba', 'count' => 3],
             ]" />
-            <x-sth.tab-panel tabs="demo-kelola" name="katalog" active class="text-[13px] text-muted">Urut dari batas daftar terdekat</x-sth.tab-panel>
-            <x-sth.tab-panel tabs="demo-kelola" name="usulan" class="text-[13px] text-muted">Semua upload menunggu verifikasi</x-sth.tab-panel>
+            <x-sth.tab-panel tabs="demo-kelola" name="katalog" active class="text-xs text-muted">Urut dari batas daftar terdekat</x-sth.tab-panel>
+            <x-sth.tab-panel tabs="demo-kelola" name="usulan" class="text-xs text-muted">Semua upload menunggu verifikasi</x-sth.tab-panel>
         </x-sth.card>
     </section>
 

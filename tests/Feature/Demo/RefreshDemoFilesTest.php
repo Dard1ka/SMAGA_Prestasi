@@ -17,6 +17,7 @@ use Database\Seeders\Support\Demo\DemoDocumentKind;
 use Database\Seeders\Support\Demo\DemoDocumentResolver;
 use Database\Seeders\Support\Demo\DemoFileRefresher;
 use Database\Seeders\Support\Demo\DemoPdfRenderer;
+use Database\Seeders\Support\DemoCoverArt;
 use Database\Seeders\Support\DemoFiles;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Env;
@@ -94,7 +95,8 @@ it('keeps the tiny placeholder files when the demo data is seeded in the test su
 
     expect(DemoFiles::realistic())->toBeFalse()
         ->and(Env::get('APP_ENV'))->toBe('testing')
-        ->and($files)->toHaveCount(98)
+        ->and($files)->toHaveCount(105) // 98 PDFs + the covers of 7 lomba (DemoCoversTest)
+        ->and($files->where('mime', 'application/pdf'))->toHaveCount(98)
         ->and($files->max('size'))->toBeLessThan(2048)
         ->and($files->every(fn (File $f): bool => Storage::disk('local')->size($f->path) === $f->size))->toBeTrue();
 
@@ -132,7 +134,8 @@ it('works out the right document for every demo file from what it is attached to
     $kinds = [];
     $ids = [];
 
-    foreach (File::query()->where('path', 'like', 'demo/%')->orderBy('id')->get() as $file) {
+    // The PDFs: a cover is a drawn poster (DemoCoverArt), not a document of the resolver.
+    foreach (File::query()->where('path', 'like', 'demo/%')->where('mime', 'application/pdf')->orderBy('id')->get() as $file) {
         [$document, $note] = $resolver->resolve($file);
 
         expect($note)->toBeNull("{$file->original_name}: {$note}");
@@ -405,15 +408,27 @@ it('renders and scans every demo file of a full local seed (slow, STH_DEMO_FULL=
         $placeholder, $summary['total'], $realistic, $second, (int) round($summary['bytes'] / 1024), implode("\n", DemoFileRefresher::lines($summary)),
     ));
 
-    expect($summary['total'])->toBe(98)
-        ->and(array_sum($summary['written']))->toBe(98)
+    // 98 PDFs + the covers of 7 lomba.
+    expect($summary['total'])->toBe(105)
+        ->and(array_sum($summary['written']))->toBe(105)
+        ->and($summary['written'][DemoCoverArt::LABEL])->toBe(7)
         ->and($summary['skipped'])->toBe([])
         ->and($summary['general'])->toBe([])
-        ->and($again['unchanged'])->toBe(98)
+        ->and($again['unchanged'])->toBe(105)
         ->and($again['written'])->toBe([]);
 
     foreach (File::query()->where('path', 'like', 'demo/%')->get() as $file) {
         $bytes = (string) Storage::disk('local')->get($file->path);
+
+        if ($file->purpose === FilePurpose::Cover) {
+            [$width, $height, $type] = getimagesizefromstring($bytes);
+
+            expect([$width, $height, $type])->toBe([DemoCoverArt::WIDTH, DemoCoverArt::HEIGHT, IMAGETYPE_JPEG], $file->original_name)
+                ->and($file->size)->toBe(strlen($bytes))->toBeLessThan(300 * 1024)
+                ->and(substr($bytes, 0, 256))->toContain('CONTOH', 'bukan poster resmi');
+
+            continue;
+        }
 
         expect(PdfScanner::hasActiveContent($bytes))->toBeFalse($file->original_name)
             // The letters carry the two emblems of the school's letterhead and the sample signature (about 155 kB).

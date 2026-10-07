@@ -78,26 +78,30 @@ class TurMenu extends Component
     }
 
     /**
-     * Sidebar targets. `top` = the item's top edge in the 264px sticky sidebar (px from the viewport top);
-     * classes are literal so Tailwind picks them up.
+     * Sidebar targets. `spot` = the item's top edge in the 264px sticky sidebar (px from the viewport top), `pop` =
+     * spot − 20 so the arrow points at the item's middle. The numbers follow the sidebar's own metrics (brand 40px,
+     * gap 18px, section label 28px, items 44px + 4px; components/sth/sidebar + .nav / .nav-sec in app.css): measure
+     * again when one of those changes. Since the "Cari lomba" button above the menu is gone (one way to each place),
+     * tip 1 points at the menu item. Classes are literal so Tailwind picks them up.
      *
      * @return array<int, array<string, string>>
      */
     public static function desktopTips(): array
     {
         return [
-            1 => ['title' => 'Cari lomba', 'text' => 'Cari lomba dari sekolah dan daftar di sini.', 'icon' => 'search', 'label' => 'Cari lomba', 'cta' => '1', 'spot' => 'top-[80px]', 'pop' => 'top-[60px]'],
-            2 => ['title' => 'Lomba saya', 'text' => 'Pantau status, download surat tugas, dan laporkan hasil.', 'icon' => 'clipboard', 'label' => 'Lomba saya', 'cta' => '', 'spot' => 'top-[269px]', 'pop' => 'top-[249px]'],
-            3 => ['title' => 'Portofolio', 'text' => 'Semua prestasi dan sertifikatmu.', 'icon' => 'award', 'label' => 'Portofolio', 'cta' => '', 'spot' => 'top-[317px]', 'pop' => 'top-[297px]'],
-            4 => ['title' => 'Peringkat', 'text' => 'Lihat poin dan posisimu.', 'icon' => 'bars', 'label' => 'Peringkat', 'cta' => '', 'spot' => 'top-[365px]', 'pop' => 'top-[345px]'],
-            5 => ['title' => 'Profil talenta', 'text' => 'Atur minat dan bakatmu.', 'icon' => 'user', 'label' => 'Profil talenta', 'cta' => '', 'spot' => 'top-[455px]', 'pop' => 'top-[435px]'],
-            self::DONE => ['title' => 'Siap dipakai!', 'text' => 'Tour ini bisa dibuka lagi di menu Bantuan.', 'icon' => 'help', 'label' => 'Bantuan', 'cta' => '', 'spot' => 'top-[503px]', 'pop' => 'top-[394px]'],
+            1 => ['title' => 'Cari lomba', 'text' => 'Cari lomba dari sekolah dan daftar di sini.', 'icon' => 'search', 'label' => 'Cari lomba', 'spot' => 'top-[160px]', 'pop' => 'top-[140px]'],
+            2 => ['title' => 'Lomba saya', 'text' => 'Pantau status, download surat tugas, dan laporkan hasil.', 'icon' => 'clipboard', 'label' => 'Lomba saya', 'spot' => 'top-[208px]', 'pop' => 'top-[188px]'],
+            3 => ['title' => 'Portofolio', 'text' => 'Semua prestasi dan sertifikatmu.', 'icon' => 'award', 'label' => 'Portofolio', 'spot' => 'top-[256px]', 'pop' => 'top-[236px]'],
+            4 => ['title' => 'Peringkat', 'text' => 'Lihat poin dan posisimu.', 'icon' => 'bars', 'label' => 'Peringkat', 'spot' => 'top-[304px]', 'pop' => 'top-[284px]'],
+            5 => ['title' => 'Profil talenta', 'text' => 'Atur minat dan bakatmu.', 'icon' => 'user', 'label' => 'Profil talenta', 'spot' => 'top-[394px]', 'pop' => 'top-[374px]'],
+            self::DONE => ['title' => 'Siap dipakai!', 'text' => 'Tour ini bisa dibuka lagi di menu Bantuan.', 'icon' => 'help', 'label' => 'Bantuan', 'spot' => 'top-[538px]', 'pop' => 'top-[429px]'],
         ];
     }
 
     /**
      * Tab bar targets (5 equal columns, 6px side padding). `spot` places the replica over the tab,
-     * `arrow` points the popover's arrow at its centre.
+     * `arrow` points the popover's arrow at its centre. Titles and labels are the tab bar's own names, which
+     * are the menu names (Navigation::tabbar()).
      *
      * @return array<int, array<string, string>>
      */
@@ -105,9 +109,9 @@ class TurMenu extends Component
     {
         return [
             1 => ['title' => 'Lomba', 'text' => 'Cari lomba dari sekolah dan daftar di sini.', 'icon' => 'search', 'label' => 'Lomba', 'spot' => 'left-[calc(6px+(100vw-12px)/5)]', 'arrow' => 'left-[calc(6px+(100vw-12px)*3/10-24px)]'],
-            2 => ['title' => 'Lombaku', 'text' => 'Pantau status, download surat tugas, dan laporkan hasil.', 'icon' => 'clipboard', 'label' => 'Lombaku', 'spot' => 'left-[calc(6px+(100vw-12px)*2/5)]', 'arrow' => 'left-[calc(6px+(100vw-12px)/2-24px)]'],
+            2 => ['title' => 'Lomba saya', 'text' => 'Pantau status, download surat tugas, dan laporkan hasil.', 'icon' => 'clipboard', 'label' => 'Lomba saya', 'spot' => 'left-[calc(6px+(100vw-12px)*2/5)]', 'arrow' => 'left-[calc(6px+(100vw-12px)/2-24px)]'],
             3 => ['title' => 'Peringkat', 'text' => 'Lihat poin dan posisimu.', 'icon' => 'bars', 'label' => 'Peringkat', 'spot' => 'left-[calc(6px+(100vw-12px)*3/5)]', 'arrow' => 'left-[calc(6px+(100vw-12px)*7/10-24px)]'],
-            4 => ['title' => 'Profil', 'text' => 'Portofolio prestasi dan data talentamu.', 'icon' => 'user', 'label' => 'Profil', 'spot' => 'left-[calc(6px+(100vw-12px)*4/5)]', 'arrow' => 'left-[calc(6px+(100vw-12px)*9/10-24px)]'],
+            4 => ['title' => 'Portofolio', 'text' => 'Prestasi dan data talentamu.', 'icon' => 'award', 'label' => 'Portofolio', 'spot' => 'left-[calc(6px+(100vw-12px)*4/5)]', 'arrow' => 'left-[calc(6px+(100vw-12px)*9/10-24px)]'],
         ];
     }
 }

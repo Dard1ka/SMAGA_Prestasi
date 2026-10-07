@@ -103,7 +103,7 @@ it('lists every pending upload in the queue, from any role incl. Kesiswaan itsel
     Livewire::withQueryParams(['tab' => 'verifikasi'])->actingAs($this->kesiswaan)->test(Index::class)
         ->assertSee('ISPO 2027')->assertSee('Usulan siswa')
         ->assertSee('Lomba Guru Upload')->assertSee('Upload guru')
-        ->assertSee('Lomba Kesiswaan Sendiri')->assertSee('Upload kamu')
+        ->assertSee('Lomba Kesiswaan Sendiri')->assertSee('Upload sendiri')
         ->assertSee('Perlu dilengkapi')
         ->assertDontSee('Lomba Peneliti Belia (LPB) 2026');
 
@@ -258,7 +258,7 @@ it('filters talent rows by stage and marks tidak lolos from the panel without a 
         ->assertHasNoErrors()
         ->assertSet('panelDone', 'Tidak lolos dari tahap Terdaftar. Siswa diberi tahu.')
         // M3-A: the stage is chosen in the "Pulihkan" dialog; the panel names the earlier one.
-        ->assertSee('Tahap sebelumnya: Terdaftar. Pulihkan untuk mengembalikannya ke tahap yang kamu pilih.');
+        ->assertSee('Tahap sebelumnya: Terdaftar. Pulihkan untuk mengembalikannya ke tahap yang dipilih.');
 
     expect($a->fresh()->status)->toBe(TalentStatus::TidakLolos)
         ->and($a->fresh()->student_note)->toBeNull();

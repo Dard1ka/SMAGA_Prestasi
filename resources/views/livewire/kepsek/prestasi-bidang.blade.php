@@ -14,7 +14,7 @@
     <div class="flex flex-wrap items-end gap-3">
         <x-sth.select wire:model.live="tahun" label="Tahun ajaran" :options="$yearOptions" placeholder="Semua tahun" class="w-full sm:w-[200px]" />
         <x-sth.select wire:model.live="tingkat" label="Tingkat" :options="$levelOptions" placeholder="Semua tingkat" class="w-full sm:w-[200px]" />
-        <span class="muted text-[13.5px]" wire:loading>Memuat…</span>
+        <span class="muted text-sm" wire:loading>Memuat…</span>
         @if ($laporanUrl)
             <x-sth.button variant="quiet" size="sm" icon="file" href="{{ $laporanUrl }}" class="sm:ml-auto">Buka laporan</x-sth.button>
         @endif
@@ -25,18 +25,18 @@
         <x-sth.card as="section" aria-labelledby="h-bidang" class="flex min-w-0 flex-col gap-3.5">
             <div class="flex items-baseline justify-between gap-2">
                 <h2 id="h-bidang" class="m-0 text-lg font-bold">Bidang</h2>
-                <span class="num text-[13px] font-semibold text-muted">{{ $total }} prestasi</span>
+                <span class="num text-xs font-semibold text-muted">{{ $total }} prestasi</span>
             </div>
             <div class="grid grid-cols-1 gap-2.5 min-[420px]:grid-cols-2 lg:grid-cols-1">
                 @foreach ($tiles as $b)
                     @php $on = $b['value'] === $selected->value; @endphp
                     <button type="button" wire:click="pilihBidang('{{ $b['value'] }}')" aria-pressed="{{ $on ? 'true' : 'false' }}"
-                        @class(['flex w-full cursor-pointer items-center gap-3 rounded-2xl border-2 p-3 text-left', $onClass[$b['key']] => $on, 'border-line bg-surface hover:bg-subtle' => ! $on])>
+                        @class(['flex w-full cursor-pointer items-center gap-3 rounded-card border-2 p-3 text-left', $onClass[$b['key']] => $on, 'border-line bg-surface hover:bg-subtle' => ! $on])>
                         <span class="cover-{{ $b['key'] }} inline-flex size-10 shrink-0 items-center justify-center rounded-control"><x-sth.icon :name="$b['key']" /></span>
                         <span class="flex min-w-0 flex-1 flex-col gap-2">
                             <span class="flex items-baseline justify-between gap-2">
-                                <span class="text-[15px] font-bold text-ink">{{ $b['label'] }}</span>
-                                <span class="display num text-[22px] leading-[26px] font-extrabold {{ $numClass[$b['key']] }}">{{ $b['count'] }}<span class="sr-only"> prestasi</span></span>
+                                <span class="text-md font-bold text-ink">{{ $b['label'] }}</span>
+                                <span class="display num text-xl leading-[26px] font-bold {{ $numClass[$b['key']] }}">{{ $b['count'] }}<span class="sr-only"> prestasi</span></span>
                             </span>
                             <span class="flex items-center gap-2">
                                 <span class="block h-1.5 flex-1 overflow-hidden rounded-full bg-ink/10" aria-hidden="true">
@@ -57,7 +57,7 @@
                     <h2 id="h-siswa" class="m-0 text-lg font-bold">Siswa berprestasi</h2>
                     <x-sth.chip size="sm" :bidang="$selected" />
                 </div>
-                <span class="text-[13px] text-muted">Urut menurut poin di bidang ini. Semua nama tampil (data internal).</span>
+                <span class="text-xs text-muted">Urut menurut poin di bidang ini. Semua nama tampil (data internal).</span>
             </div>
 
             @if ($students === [])
@@ -70,11 +70,11 @@
                         @php $on = $s['id'] === $siswa; @endphp
                         <li wire:key="ks-{{ $s['id'] }}">
                             <button type="button" wire:click="pilihSiswa('{{ $s['id'] }}')" aria-pressed="{{ $on ? 'true' : 'false' }}"
-                                @class(['flex w-full cursor-pointer items-center gap-3 rounded-2xl border-2 px-3 py-2.5 text-left', 'border-primary bg-primary-tint' => $on, 'border-transparent bg-surface hover:bg-page' => ! $on])>
+                                @class(['flex w-full cursor-pointer items-center gap-3 rounded-card border-2 px-3 py-2.5 text-left', 'border-primary bg-primary-tint' => $on, 'border-transparent bg-surface hover:bg-page' => ! $on])>
                                 <x-sth.avatar :name="$s['name']" size="sm" />
                                 <span class="flex min-w-0 flex-1 flex-col">
-                                    <span class="truncate text-[14.5px] font-bold text-ink">{{ $s['name'] }}</span>
-                                    <span class="text-[12.5px] text-muted">
+                                    <span class="truncate text-md font-bold text-ink">{{ $s['name'] }}</span>
+                                    <span class="text-xs text-muted">
                                         {{ $s['kelas'] !== '' ? $s['kelas'] : '–' }} · {{ $s['count'] }} prestasi · {{ $s['best'] }}
                                     </span>
                                 </span>
@@ -88,7 +88,7 @@
                 </ul>
                 @if ($hasMore)
                     <div class="flex flex-wrap items-center justify-between gap-2">
-                        <span class="text-[12.5px] text-muted">Menampilkan {{ count($students) }} dari {{ $studentTotal }} siswa</span>
+                        <span class="text-xs text-muted">Menampilkan {{ count($students) }} dari {{ $studentTotal }} siswa</span>
                         <x-sth.button variant="quiet" size="sm" icon="chevron-down" wire:click="tampilkanLebih">Tampilkan lebih banyak</x-sth.button>
                     </div>
                 @endif
@@ -103,7 +103,7 @@
                         <x-sth.avatar :name="$detail['name']" />
                         <div class="flex min-w-0 flex-col">
                             <h2 class="m-0 truncate text-lg font-bold">{{ $detail['name'] }}</h2>
-                            <span class="text-[13px] text-muted">
+                            <span class="text-xs text-muted">
                                 {{ $detail['kelas'] !== '' ? 'Kelas '.$detail['kelas'] : 'Kelas –' }} · {{ $detail['count'] }} prestasi · {{ $detail['pointsLabel'] }} poin
                                 @isset($statusChip[$detail['status']]) · {{ $statusChip[$detail['status']][1] }} @endisset
                             </span>
@@ -119,8 +119,8 @@
                                 <x-sth.chip :tone="$item['podium'] ? 'gold' : 'gray'" size="sm">{{ $item['capaian'] }}</x-sth.chip>
                                 <span class="num ml-auto text-sm font-bold">{{ $item['points'] }} poin</span>
                             </span>
-                            <span class="text-[14.5px] font-bold">{{ $item['lomba'] }}</span>
-                            <span class="text-[12.5px] text-muted">
+                            <span class="text-md font-bold">{{ $item['lomba'] }}</span>
+                            <span class="text-xs text-muted">
                                 {{ $item['tingkat'] }} · {{ $item['date'] }}@if ($item['organizer'] !== '') · {{ $item['organizer'] }}@endif @if ($item['mentor'] !== '') · Pembimbing {{ $item['mentor'] }}@endif
                             </span>
                         </li>

@@ -9,7 +9,7 @@
     </span>
     <span class="flex min-w-0 flex-1 flex-col">
         <span class="ellip text-sm font-bold">{{ $name }}</span>
-        <span class="muted num text-[12.5px]">Siap dikirim · {{ $sizeText }}</span>
+        <span class="muted num text-xs">Siap dikirim · {{ $sizeText }}</span>
     </span>
     <x-sth.icon-button icon="trash" :label="$removeLabel" size="sm" wire:click="{{ $remove }}" />
 </div>

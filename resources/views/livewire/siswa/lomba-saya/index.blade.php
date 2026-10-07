@@ -34,8 +34,8 @@
                                     <x-sth.bidang-tile :bidang="$card['bidang']" size="sm" />
                                 @endif
                                 <span class="flex min-w-0 flex-1 flex-col">
-                                    <span class="display ellip text-[16px] font-bold">{{ $card['title'] }}</span>
-                                    <span class="muted text-[13px]">{{ $card['meta'] }}</span>
+                                    <span class="display ellip text-base font-bold">{{ $card['title'] }}</span>
+                                    <span class="muted text-xs">{{ $card['meta'] }}</span>
                                 </span>
                                 <x-sth.icon name="chevron-right" :size="18" class="text-muted" />
                             </span>

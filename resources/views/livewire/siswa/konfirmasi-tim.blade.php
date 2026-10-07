@@ -2,12 +2,11 @@
 @php($bidangKey = $competition->bidang?->cssKey() ?? 'sains')
 <div class="mx-auto flex w-full max-w-[760px] flex-col gap-[18px]">
     <x-sth.card as="section" padding="none" class="overflow-hidden" aria-labelledby="h-undangan">
-        <div class="cover-{{ $bidangKey }} relative flex h-28 items-start gap-2 p-4">
+        <x-sth.sampul :bidang="$bidangKey" :seed="$competition->getKey()" :src="\App\Support\Sampul::poster($competition)" class="h-28 items-start gap-2 p-4">
             @if ($competition->bidang)
                 <x-sth.chip tone="glass">{{ $competition->bidang->label() }}</x-sth.chip>
             @endif
-            <x-sth.icon :name="$bidangKey" :size="60" class="absolute right-5 bottom-3 opacity-70" />
-        </div>
+        </x-sth.sampul>
         <div class="flex flex-col gap-2 p-5">
             <p class="m-0 text-sm font-semibold text-muted">Undangan tim</p>
             <h2 id="h-undangan" class="title-page m-0 text-2xl">{{ $competition->name }}</h2>
@@ -34,7 +33,7 @@
                             <span class="ellip">{{ $member['name'] }}</span>
                             @if ($member['me'])<x-sth.chip tone="blue" size="sm">Kamu</x-sth.chip>@endif
                         </span>
-                        <span class="text-[13px] text-muted">{{ $member['role'] }} · {{ $member['kelas'] }}</span>
+                        <span class="text-xs text-muted">{{ $member['role'] }} · {{ $member['kelas'] }}</span>
                     </div>
                     <x-sth.chip :tone="$member['state'][1]" size="sm">{{ $member['state'][0] }}</x-sth.chip>
                 </li>

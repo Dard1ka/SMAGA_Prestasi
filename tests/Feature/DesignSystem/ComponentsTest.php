@@ -130,7 +130,7 @@ it('renders a lomba card with cover, chips, meta and a contextual link', functio
     $this->blade('<x-sth.lomba-card title="National Science and Invention Fair (NSIF) 2026" href="/siswa/lomba/1" bidang="riset"
         tingkat="Nasional" status="Dibuka · 20 hari lagi" peserta="Tim maks 3" penyelenggara="Penyelenggara swasta · Kategori D"
         date="7 Nov 2026" place="Daring" :names="[\'Raka Pradipta\', \'Bima Satria Wicaksono\', \'Yoga Pratama\']" :count="3" />')
-        ->assertSee('cover-riset', false)
+        ->assertSee('sampul sampul-riset-', false)
         ->assertSee('Dibuka · 20 hari lagi')
         ->assertSee('3</span> siswa SMAGA mendaftar', false)
         ->assertSee('href="/siswa/lomba/1"', false)

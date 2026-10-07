@@ -25,7 +25,8 @@ use Throwable;
  * 4. stored on the private `local` disk under a random path ("lampiran/Y/m/<ulid>.<ext>", extension from the
  *    sniffed MIME) and recorded as an App\Models\File (sha256 + size of the stored bytes).
  * 5. UploadLimits (B2): 30 stored uploads per user per hour, 200 MB stored per student; refused as InvalidUpload.
- * Files are served only by App\Http\Controllers\FileController after App\Policies\FilePolicy.
+ * Files are served only by App\Http\Controllers\FileController after App\Policies\FilePolicy. Lomba cards show a
+ * cover through a smaller JPEG made from the stored file (CoverThumbnail, kept under "sampul/" on the same disk).
  *
  * Usage: $file = app(StoreUpload::class)->store($upload, FilePurpose::Juknis, $actor);
  *        catch InvalidUpload → $e->toValidationException('brosur').
@@ -176,10 +177,14 @@ final class StoreUpload
         return $file;
     }
 
-    /** Remove a stored file (e.g. when the surrounding transaction failed). */
+    /**
+     * Remove a stored file (e.g. when the surrounding transaction failed). A cover takes the small picture made
+     * from it along (CoverThumbnail), so no derived file outlives its original.
+     */
     public function discard(File $file): void
     {
         $file->storage()->delete($file->path);
+        CoverThumbnail::forget($file);
         $file->delete();
     }
 

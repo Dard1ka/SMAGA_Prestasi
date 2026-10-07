@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Enums\RoleName;
+use App\Livewire\Siswa\TurMenu;
 use App\Support\Navigation;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Route;
@@ -40,9 +41,21 @@ it('builds the siswa menu from the spec with disabled items for missing routes',
         ->and($items['beranda']['disabled'])->toBe(! Route::has('siswa.beranda'))
         ->and($items['beranda']['href'])->toBe(Route::has('siswa.beranda') ? route('siswa.beranda') : '#')
         ->and($items['lomba-saya']['badge'])->toBe(2)
-        ->and($nav['cta']['label'])->toBe('Cari lomba')
+        ->and($nav)->not->toHaveKey('cta') // one way to each place: "Cari lomba" is a menu item, no button above the menu
         ->and($nav['tabbar'])->toHaveCount(5)
+        // One name per page: the tab bar says what the sidebar says ("Lomba saya", "Portofolio").
+        ->and(array_column($nav['tabbar'], 'label'))->toBe(['Beranda', 'Lomba', 'Lomba saya', 'Peringkat', 'Portofolio'])
+        ->and($items['lomba-saya']['label'])->toBe('Lomba saya')
+        ->and($items['portofolio']['label'])->toBe('Portofolio')
         ->and($nav['user'])->toBe(['name' => 'Nadia Putri Anindya', 'meta' => 'Siswa · XI-4', 'initials' => 'NA']);
+});
+
+it('draws the tab replicas of the mobile menu tour with the tab bar labels', function (): void {
+    // Siswa\TurMenu covers a tab with a copy of it: a tab that is renamed must be renamed there too.
+    $tabs = array_column(Navigation::tabbar('none'), 'label');
+
+    expect(array_column(TurMenu::mobileTips(), 'label'))->toBe(array_slice($tabs, 1))
+        ->and(array_column(TurMenu::mobileTips(), 'title'))->toBe(array_slice($tabs, 1));
 });
 
 it('marks the matching route as current and links existing routes', function (): void {

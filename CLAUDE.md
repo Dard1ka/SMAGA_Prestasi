@@ -32,11 +32,12 @@ consent flags (D-16, SECURITY §3m-7).
 ## 2. Sources of truth (read before changing behaviour)
 | file | content |
 |---|---|
-| `docs/DECISIONS.md` | decision log D-01…D-116 (D-45…D-61 = backlog wave + W4 product choices, *sementara*; D-62…D-65 = security hardening, *final*; D-66…D-77 = Q1 security/performance pass and the lead's follow-up choices; D-78…D-91 = §D6, the lead's choices after the hand test of 2026-10-04; D-92…D-102 = §D7, the rules changed by the fixes after the QA pass of 2026-10-05; D-103…D-108 = §D8, the lead's six requests of 2026-10-06 (wave M3) and the schema change of QA4; D-109…D-112 = §D9, the lead's answers after the retest of M3 on 2026-10-07 (QA5); D-113…D-116 = §D10, the explore round after PR 14 (QA6)), U-01…U-06, open questions §F. **Wins over everything.** |
+| `docs/DECISIONS.md` | decision log D-01…D-119 (D-45…D-61 = backlog wave + W4 product choices, *sementara*; D-62…D-65 = security hardening, *final*; D-66…D-77 = Q1 security/performance pass and the lead's follow-up choices; D-78…D-91 = §D6, the lead's choices after the hand test of 2026-10-04; D-92…D-102 = §D7, the rules changed by the fixes after the QA pass of 2026-10-05; D-103…D-108 = §D8, the lead's six requests of 2026-10-06 (wave M3) and the schema change of QA4; D-109…D-112 = §D9, the lead's answers after the retest of M3 on 2026-10-07 (QA5); D-113…D-116 = §D10, the explore round after PR 14 (QA6); D-117…D-119 = §D11, the visual direction v3 "Tinta dan Sampul", lomba covers and the staff copy rule (UI3)), U-01…U-06, open questions §F. **Wins over everything.** |
 | `docs/ARCHITECTURE.md` | binding contract: data model, enums, state machine, domain rules |
 | `docs/SECURITY.md` | threat model, top-10 risks §1, controls §3a–§3m (K1–K12), pre-release checklist §4 |
 | `docs/TALENT-FORM.md` | talent types/branches (seed source for `talent_types`, `talent_branches`) |
-| `docs/design/DESIGN-SPEC-v2.md`, `docs/design/mockup-v2/` | visual spec, 24-screen mockup, fictional data set §5 |
+| `docs/design/DESIGN-SPEC-v3.md` | **the look** since D-117 ("Tinta dan Sampul"): rules, tokens, type scale, covers, banner motif, what must not come back |
+| `docs/design/DESIGN-SPEC-v2.md`, `docs/design/mockup-v2/` | product flow §1, component list §4, fictional data set §5, icons §6, 24-screen mockup (their *look* is history: v3 replaced it) |
 | `docs/UI-MAP.md` | every screen → route → Livewire class → access → owner → milestone |
 | `docs/TEAM.md` | task split (user 40 / S 35 / I 25), milestones M0–M4, acceptance criteria |
 | `docs/dev-notes/` | what each agent/person actually built; read all of them before working |
@@ -71,8 +72,10 @@ conflict silently: write it in your dev-note and ask the lead (the user).
    in production env/compose files (D-15, SECURITY §3b).
 8. `migrate:fresh`, `migrate:reset`, `db:wipe` and demo seeders run **only against the local Docker DB**.
    Production migrations are forward-only.
-9. **UI copy**: Bahasa Indonesia, short, sentence case, students addressed as "kamu", buttons are verbs,
-   no emoji, no dark theme, decimal comma (`1,00`). Everyday words, not formal ones: **upload, download,
+9. **UI copy**: Bahasa Indonesia, short, sentence case, students addressed as "kamu", **staff never** (guru,
+   Kesiswaan, Kepala Sekolah, TU, Humas, Admin: a sentence without a pronoun, "Anda" only where it breaks without
+   one; D-119), buttons are verbs, no emoji, no dark theme, decimal comma (`1,00`), no internal codes such as
+   "(D-08)" on a screen. Everyday words, not formal ones: **upload, download,
    link, preview** (with prefixes: di-upload, men-download), never unggah, unduh, tautan, pratinjau
    (D-89; also in mails, validation messages and tests). Code, identifiers, comments, commits: English
    (Indonesian domain terms are fine; existing identifiers such as the tab key `unggahan` stay).
@@ -108,8 +111,8 @@ docker compose run --rm --no-deps node sh -c "npm ci && npm run build"
 One-off commands use **`docker compose run --rm --no-deps app <cmd>`**. `--no-deps` skips starting
 MySQL: fine for composer, Pint and the test suite. For DB commands start MySQL first
 (`docker compose up -d mysql`) or use `docker compose exec app <cmd>` while the stack runs.
-**Demo files (D-106):** a local demo seed (`APP_ENV=local`) now renders about 98 realistic sample PDFs for the
-demo files, about 30 s more on the lead's laptop; `STH_DEMO_FILES=placeholder` in the command's process env skips
+**Demo files (D-106):** a local demo seed (`APP_ENV=local`) now renders about 98 realistic sample PDFs and draws 7
+cover posters (D-118; `--lengkapi` also adds the posters to an already seeded database) for the demo files, about 30 s more on the lead's laptop; `STH_DEMO_FILES=placeholder` in the command's process env skips
 that and keeps the 1 kB placeholders. The test suite always keeps the placeholders.
 **Test safety:** compose does not inject `.env` as process env and every `<env>` in `phpunit.xml` has
 `force="true"`, so `php artisan test` always runs on in-memory SQLite (`APP_ENV=testing`) and can never
@@ -182,6 +185,7 @@ app/Livewire/<Role>/ full-page screens per role, mirror the mockup (docs/UI-MAP.
 app/Providers/       AppServiceProvider, FortifyServiceProvider, NavigationServiceProvider (the one resolver of the
                      sidebar counts, D-100), ErrorPageServiceProvider (links of the error pages, redirect after login, D-101)
 app/Support/Navigation.php        sidebar menus per role; badge keys, counts come from the resolver (§7)
+app/Support/Sampul.php            cover of a lomba: poster address or template drawing class (§7, D-118)
 app/Support/Leaderboard/PersonalRank.php   a student's own rank among active students (D-37)
 resources/views/components/sth/   design-system components <x-sth.*>; layouts in resources/views/layouts
 routes/web.php       public pages + auth       routes/siswa.php  /siswa, names siswa.*
@@ -343,6 +347,11 @@ logs in through `POST /login` and expects a 403/404 on the next GET would see th
   `default-src 'none'; frame-ancestors 'self'`, no `sandbox`); every other answer and `files.public` keep `DENY` /
   `sandbox`. HEAD = same policy check, no bytes, not audited; a preview is `file.downloaded` with `inline: true`.
   A screen builds the link with `FileController::previewUrl($file)` and `previewType($file)` (null = download only).
+  **Cover pictures** (D-118, *sementara*): `files.cover` (`GET /berkas/sampul/{file}`, signed-in users, `FilePolicy::view`,
+  own throttle) sends only a small progressive JPEG of a `purpose = cover` file (`App\Domain\Files\CoverThumbnail`, long
+  side ≤ 640 px, kept under `sampul/` on the private disk as derived data), `Cache-Control: private, max-age=86400` + ETag,
+  and is **not audited**; everything else about files is unchanged. Views never call it directly: `App\Support\Sampul::poster()`
+  asks `CompetitionPolicy::view` first. An intended address under `/berkas/sampul/` is dropped at login (`FortifyServiceProvider`).
 - **Settings**: `Setting::get(SettingKey::…)` / `Setting::put()` (defaults in `SettingKey::defaultValue()`,
   seeded by `SettingSeeder`), exactly these keys: `report_deadline_days` (45), `archive_months_after_grade12` (18),
   `signature_file_id`, `signer_name` / `signer_rank` / `signer_nip`, `letter_format_siswa` / `letter_format_guru`
@@ -401,19 +410,38 @@ logs in through `POST /login` and expects a 403/404 on the next GET would see th
   `Storage::fake()` (one shared folder, wiped on start, breaks concurrent runs).
 
 ## 7. Design system
-- Spec: `docs/design/DESIGN-SPEC-v2.md` ("Behance edu-soft"): Urbanist (display) + Plus Jakarta Sans
-  (body); primary `#3148D6`; one colour = one meaning (bidang colours, gold only for points/medals,
-  status green/orange/red/gray/blue); 20px card radius; AA contrast; ≥ 44px touch targets on mobile;
-  every input has a label; status chips always carry text.
-- Mockup: `docs/design/mockup-v2/*.dc.html` (24 boards, `canvas.json`), notes in
+- Spec: **`docs/design/DESIGN-SPEC-v3.md`** ("Tinta dan Sampul", D-117; it replaced the look of v2 on 2026-10-07):
+  a calm ink frame and pictures where people browse. Ink navy `#1B2A4E` on cool neutral `#F3F5F8`; **one**
+  typeface (Public Sans 400–700) on a fixed scale `text-xs 13 · sm 14 · md 15 · base 16 · lg 18 · xl 20 · 2xl 24 ·
+  3xl 28 · 4xl 36 · 5xl 44`, **nothing smaller than 13px and no `text-[Npx]`** (only the scaled paper preview of a
+  letter in `tata-usaha/partials` is exempt); radius 6 controls · 8 tiles · 10 cards · 4 tags; one colour = one
+  meaning (status green/orange/red/gray/blue, gold only for points/medals, bidang colours), the frame itself is
+  ink and gray; no gradients, glow shadows, blur, tilted cards or page wash; AA contrast (input border 3.6:1,
+  focus ring 4.7:1); ≥ 44px touch targets on touch devices; every input has a label; status tags always carry text.
+- **Covers** (D-118): `<x-sth.sampul :bidang :seed :src tone="terang|pekat">`. A lomba shows its own poster
+  (`competitions.cover_file_id`, address from `App\Support\Sampul::poster($competition)` → route `files.cover`)
+  whole in the middle over a blurred copy of itself (two `<img data-sth-sampul>`; `app.js` drops them when the
+  file fails to load), else one of three template drawings of its bidang (`.sampul-<bidang>-<1..3>`, variant from
+  the lomba id via `Sampul::variant()`; SVG files in `resources/images/sampul`, hashed by Vite). `LombaPresenter::card()`
+  passes `id` + `poster`; give `<x-sth.lomba-card>` `:seed` and `:poster`. Public pages and Humas use the drawing
+  only. `.spanduk` = the ink banner with the "lintasan" motif (six dots = the six steps of Jejak Prestasi) on the
+  student home and the login panel (`.spanduk-tinggi`).
+- Component changes of v3: tags are squared (`.chip`: tinted = status/gold, `tone="gray"` outlined, a bidang tag =
+  dot + name, `.chip-wrap` may take two lines); `<x-sth.stat-tile zero="quiet|hide|show">` (quiet at 0 by default,
+  `hide` for warning tiles) in `grid-cols-2 … xl:grid-cols-4`; the sidebar has no button above the menu (the
+  student's "Cari lomba" is a menu item + the one banner button); a `fixed` `<x-sth.table>` gets a floor
+  (`table-class="min-w-[720px]"`) so it scrolls on phones instead of squeezing a column; the tab bar uses the
+  menu names ("Lomba saya", "Portofolio"). `Siswa\TurMenu::desktopTips()` / `mobileTips()` hold pixel positions
+  of the sidebar and tab bar: measure again when `.nav`, `.nav-sec`, the sidebar gaps or `.tabbar` change.
+- Mockup: `docs/design/mockup-v2/*.dc.html` (24 boards, `canvas.json`; layout and flow reference, **old look**), notes in
   `docs/design/mockup-v2-notes/`. Live canvas: https://claude.ai/artifact/7m2XGmACRwHFfYQ9EaeV2m.
   The `.dc.html` files are design references with inline styles: rebuild them with components and
   Tailwind, don't paste their markup.
-- Tokens (Tailwind v4 `@theme`, spec colours only) + helmet classes in `resources/css/app.css`; fonts
-  self-hosted via `@fontsource/*`. Layouts `<x-layouts::app|public|auth|mobile>` (Livewire:
-  `#[Layout('layouts::app')]`), menus from `App\Support\Navigation`. 39 components `<x-sth.*>` (button,
-  chip, card, stat-tile, form fields that forward `wire:model` + `$errors`, table, tabs, tracker,
-  rumus-poin, lomba-card, modal, toast, preview, …), each documented at the top of its file; contracts in
+- Tokens (Tailwind v4 `@theme`, spec colours only; `--text-*` and `--radius-*` hold the scale above) + helmet
+  classes in `resources/css/app.css`; font self-hosted via `@fontsource/public-sans`. Layouts
+  `<x-layouts::app|public|auth|mobile>` (Livewire: `#[Layout('layouts::app')]`), menus from
+  `App\Support\Navigation`. 40 components `<x-sth.*>` (button, chip, card, stat-tile, form fields that forward
+  `wire:model` + `$errors`, table, tabs, tracker, rumus-poin, lomba-card, sampul, modal, toast, preview, …), each documented at the top of its file; contracts in
   `docs/dev-notes/W1-D.md`. **No `style=""` and no inline JS** (CSP nonce): use tokens/`w-pct-*`,
   `data-sth-*` hooks and Livewire events `sth-modal-open|close`, `sth-toast`. Hooks added by M1 (all in
   `resources/js/app.js`): event `sth-badges {badges: {key: count}}` updates `[data-sth-badge="<key>"]` in the
@@ -554,6 +582,18 @@ unanswered team invitation; D-116 a letter not issued yet takes the invitation a
 never over a field TU typed for it (D-83 stays: two forms). Do not bring back: "Setujui terpilih" or TU "Kirim" without a
 confirmation, "Tidak ditemukan" for a letter TU could print, a past assessment date for a new schedule.
 
+The visual direction v3 and what came with it on 2026-10-07 (UI3), **D-117…D-119** (DECISIONS §D11, `docs/dev-notes/UI3.md`
++ `UI3-A`, `UI3-B`; the lead chose palette and typeface and left the open points to the worker): D-117 the look is "Tinta
+dan Sampul" (`docs/design/DESIGN-SPEC-v3.md`: ink navy frame, Public Sans only, fixed type scale with nothing under 13px,
+squared tags, no gradients / glows / tilts, covers always filled, the lintasan banner), **final**; D-118 a lomba's cover is its
+own poster or a template drawing of its bidang, posters are served by `files.cover` (final for the order of covers,
+*sementara* for "not audited, private cache for a day" and "posters only after login"); D-119 staff are never addressed as
+"kamu", the tab bar uses the menu names, no internal codes on a screen, **final**. Do not bring back: the v2 look (indigo
+`#3148D6`, the lavender page wash, gradient covers, pills, Urbanist / Plus Jakarta Sans, `shadow-primary` glows, tilted or
+blurred decoration), `text-[Npx]` sizes or anything under 13px outside the letter preview, an empty cover, the "Cari lomba"
+button above the student menu, "Lombaku" / "Profil" as tab names, "kamu" on a staff screen, a cover `<img>` that points at
+`files.show`.
+
 Known stale text (do not "fix" code to match it): SECURITY.md §0/§3a still say `sm4g4_DD-MM-YYYY`;
 DESIGN-SPEC-v2 §1 and the Admin-Pengaturan mockup still show 30 days (and the mockup's WICE deadline
 24 Okt is now **8 Nov 2026**); SECURITY/DECISIONS call the OTP flag `STH_OTP_DEV_BYPASS`; SECURITY says
@@ -571,6 +611,10 @@ Stale since M2 (D-92…D-101): the last sentence of D-79's Keputusan and the "Si
 password") and `M1.md` / `catatan.md` §5 ("email scenario not re-run": it was, on 2026-10-05); `docs/dev-notes/W1-D.md`
 (badge resolver `fn ($user, $role)`: it now also gets `$except`); the old texts of K2, K4 and K10 in SECURITY §3a,
 kept as history next to a dated M2 note.
+Stale since UI3 (D-117…D-119): every picture of the old look: the mockup boards, the canvas, `DESIGN-SPEC-v2.md` §2–§3 (its §1,
+§4 contracts, §5 and §6 stay valid), screenshots in older PRs and in `panduan-uji-manual-sth.html`; `docs/dev-notes/W1-D.md`
+(tokens, fonts, the `cta` of `Navigation::for()`, 38 components); comments in views that still say "DESIGN-SPEC-v2 §4" point
+at the component contract, not at the look; SECURITY §3d "setiap download dicatat" (one exception: `files.cover`, dated note).
 Stale since M3 (D-103…D-108): the mockup board `Humas-Publikasi` (flyer mock-up, template select, "flyer otomatis
 memakai inisial"; mockups are design history and are not edited); the lomba half of D-95 ("alasan menolak lomba
 minimal 10 karakter"), D-86's "kembali ke tahap sebelum ditolak" and the flyer sentences of D-47, D-71 and D-75 (each
@@ -623,7 +667,7 @@ IPs, which breaks the per-IP login/OTP limits). The noreply mailbox would then b
 SMTP host must not be `mail.<domain>` (proxied) and its hourly send limit needs asking.
 
 ## 10. Status
-Last updated: 2026-10-07 (waves 1–2 done, W3-A integration pass, backlog wave B1–B6, W4 integration, D1 docs sync, CI green on GitHub, Q1 end-to-end/security/performance pass, PERF1 by S, M1 = the lead's 18 hand-test changes, M2 = fixes after the QA pass, QA4 by S, M3 = the lead's six requests of 2026-10-06, QA5 = fixes after the retest of M3, QA6 = explore round after PR 14). Update this section whenever a milestone moves.
+Last updated: 2026-10-07 (waves 1–2 done, W3-A integration pass, backlog wave B1–B6, W4 integration, D1 docs sync, CI green on GitHub, Q1 end-to-end/security/performance pass, PERF1 by S, M1 = the lead's 18 hand-test changes, M2 = fixes after the QA pass, QA4 by S, M3 = the lead's six requests of 2026-10-06, QA5 = fixes after the retest of M3, QA6 = explore round after PR 14, UI3 = visual direction v3). Update this section whenever a milestone moves.
 M1 2026-10-05 (`docs/dev-notes/M1.md`, plain summary for the team in `catatan.md`; branch `feat/ui-uji-manual-m1`): full suite `--parallel --processes=4` → **1767 passed (8945 assertions)**, exit 0 (680 s); `pint --test` clean (610 files); `npm run build` OK; the four M1 migrations ran on the local MySQL. Dev page times after `reload.bat` + warm-up, all seven roles: 150–540 ms per menu, login 0.75–0.93 s (`catatan.md` §2). Not re-run after M1: the email scenario and the Playwright smoke (backlog).
 M2 2026-10-06 (`docs/dev-notes/M2.md` + `M2-A`…`M2-C`, D-92…D-101, plain summary in `catatan.md` §6; same branch): fixes for the 12 most important findings of the QA pass of 2026-10-05 (64 findings; the rest is backlog #57–#68) and the Trivy fix in `docker/Dockerfile.prod`; two migrations run on the local MySQL; suite numbers: TEST-RESULTS in `docs/dev-notes/M2.md`. PR 9 (M1 + M2) merged into `main` on 2026-10-06 (`b4b6f77`).
 Follow-up 2026-10-06 (D-102, `docs/dev-notes/M2.md` "Follow-up", branch `fix/auth-back-setelah-keluar`): the two leftovers of the browser check (account name back on the second Back; next login on the previous account's page) fixed, tested and checked in Chrome + Chromium. `dokumentasi.md` (repo root) lists the test data left in the lead's local database, which the lead chose not to wipe.
@@ -636,6 +680,8 @@ Persetujuan checkboxes, the guru letter takes the invitation typed for the stude
 the chosen letter, the QR page knows an issued letter before "Kirim", no past assessment date, long student words wrap
 in the Talenta panel, the ketua can withdraw an unanswered invitation (and sees who has not activated), the registrant
 count on Detail lomba updates. No migration. Suite numbers: TEST-RESULTS in `docs/dev-notes/QA6.md`.
+
+UI3 2026-10-07 (`docs/dev-notes/UI3.md` + `UI3-A`, `UI3-B`, D-117…D-119; on top of PR 15, **not committed**): the lead's request to apply the UI audit of 2026-10-06 in full: new tokens and one typeface, the type scale in 78 files, covers (`<x-sth.sampul>`, 24 template drawings, posters through `files.cover`), the ink banner, calmer components, five broken phone layouts fixed, staff copy without "kamu". No migration. Full suite `--parallel --processes=4` → **2315 passed, 1 skipped (13923 assertions)**, exit 0 (559 s); `pint --test` clean (664 files); `composer audit` clean; `npm run build` OK. Browser: 77 pages at 1440 and 390 px plus 50 dialogs / popups / tour steps / special states (204 screenshots), every page measured (no sideways scroll, one font family, nothing under 13px, no gradient).
 
 | area | owner | state (details in `docs/dev-notes/<ID>.md`) |
 |---|---|---|
@@ -669,6 +715,7 @@ count on Detail lomba updates. No migration. Suite numbers: TEST-RESULTS in `doc
 | M3 the lead's six requests of 2026-10-06 (`docs/dev-notes/M3.md` + `M3-A`, `M3-C`, `M3-D`, `M3-E`, D-103…D-107): lomba rejection reason optional (coordinator); Talenta "Pulihkan" to a chosen stage + "Download data" with a status choice (M3-A); file preview popup with the hooks `data-sth-preview*` and `data-sth-copy` (M3-C, three more screens by the coordinator); realistic demo documents + `sth:demo:refresh-files` (M3-D); Humas "Data untuk flyer" instead of the flyer generator (M3-E) | – | built; no migration; browser spot checks in Chromium only (SPOT-CHECKS in `docs/dev-notes/M3.md`); open: backlog #69–#74 |
 | QA5 fixes after the retest of M3 on 2026-10-07 (`docs/dev-notes/QA5.md`, D-109…D-112): five bugs, the lead's answers (guru pembina for a restore into Peserta pembinaan, export follows the screen filters, guru pembimbing notices for reports and appreciation), small UX items, demo juknis per kind and demo letter invitations | – | built; no migration; `--lengkapi` run on the local database; browser check of Talenta at 1366 px and its download dialog |
 | QA6 explore round after PR 14 on 2026-10-07 (`docs/dev-notes/QA6.md`, D-113…D-116): confirmations (bulk approve, Kirim), letters (shared invitation fields, Koreksi from Arsip, QR before Kirim), talent (assessment date, long words), team invitations (withdraw, not activated), registrant count | – | built; no migration; browser check of Talenta (Kesiswaan); Kepala Sekolah, TU and student screens render-tested only |
+| UI3 visual direction v3 "Tinta dan Sampul" on 2026-10-07 (`docs/dev-notes/UI3.md` + `UI3-A`, `UI3-B`, D-117…D-119): tokens + Public Sans + type scale, `<x-sth.sampul>` and `files.cover`, banner motif, component and phone-layout fixes, staff copy | – (lead's request; touches S and user files) | built; no migration; full suite green; every page checked in the browser at 1440 and 390 px; backend owner still has to review D-118 (*sementara*) |
 
 Verified 2026-10-01 (W3-A, details in `docs/dev-notes/W3-A.md`): `php artisan test` → **925 passed (3726 assertions)** twice in a
 row (SQLite; `--parallel --processes=4` also 925 passed twice); `pint --test` clean; `npm run build` OK; `composer audit` clean; prod compose `config -q` OK;
@@ -744,7 +791,7 @@ QA4 and M3 (2026-10-06) closed or changed parts of #39, #46, #55, #57, #63, #65,
 | 64 | Admin › Log audit (Q2-33, Q2-35): ~~16 events still show their raw key~~ (done QA5: every key the app writes has a label, a test scans `app/`), the Subjek column shows ids, details are raw JSON (the new properties `previous_expires_at`, `past_dates`, `student_note_from_draft` too), the CSV uses commas while the Status aktivasi CSV uses semicolons | QA, M2-B | S + user |
 | 65 | Forms and lists (QA) [S unless noted]: ~~validation messages appear one at a time in Usulkan lomba, Kelola lomba, Tambah pengguna, Jadwalkan, Buat acara (Q1-08, Q2-28)~~ (done QA5 for Tambah pengguna, Jadwalkan, Buat acara; Kelola lomba and Usulkan lomba already showed every error); "Tambah prestasi" is one select without search (Q2-20); ~~one long word from a student makes Kesiswaan › Talenta scroll sideways (Q2-29)~~ (done QA6); Kepala Sekolah › Persetujuan: ~~"Pilih semua" does not follow the selection~~ (follows it on 2026-10-07), ~~bulk approve and TU's "Kirim" have no confirmation (Q1-10)~~ (done QA6); native `confirm()` in Import and "Tandai dipublikasikan" (Q2-34); ~~tour highlight about 23 px off~~ (within 1 px on 2026-10-07; the tour also no longer comes back on reload, QA5), last button "Lanjut" on step 5 of 5 before the closing card (Q1-09); ~~"Kirim ulang" countdown jumps every 5 s (Q1-24)~~ (done QA5); the note for the guru pembina is cut at about 300 letters (Q2-21); ~~Humas › Arsip: empty Flyer column (Q2-19)~~ (done M3-E: the column is gone, the last cell is "Lihat"); Database prestasi: no sorting (Q2-23, see #32) | QA | S |
 | 66 | Import and teams (QA): ~~the Excel template's NIS/NISN columns are not Text (leading zeros are lost)~~ (done QA4, No HP too) and the "rows to check" file lacks NISN and birth date (Q1-21) [user + S]; ~~a student who is not activated can be invited to a team, and an open invitation cannot be withdrawn (Q1-22)~~ (done QA6, D-115: the search marks "belum aktivasi akun", the ketua withdraws an unanswered invitation) | QA | user + S |
-| 67 | Wording (Q1-27, Q1-28, Q2-36; together with #56): ~~"peramban" in the mail footer~~ (done QA5, also the session list), ~~"Daring · Daring"~~ (done QA5), mixed "Anda" / "kamu" for staff, ~~internal codes such as "(D-08)" on Admin screens~~ (done QA5), "1000" vs "1.000". Speed and phone width (ringkasan §5, §6): Kepala Sekolah › Laporan PDF 8.7 s and letter PDF 1.7–3.4 s without a "sedang dibuat" text (~~flyer PNG 3.3 s~~: no longer applies, STH makes no flyer since D-107), portfolio PDF 878 kB for one empty page (fonts not subset), ~~Kepala Sekolah dashboard scrolls 107 px sideways at phone width (Q2-31)~~ (no longer reproduces at 390 px, QA5 retest), touch targets under 44 px (Q2-32; see also #53) | QA | S + user |
+| 67 | Wording (Q1-27, Q1-28, Q2-36; together with #56): ~~"peramban" in the mail footer~~ (done QA5, also the session list), ~~"Daring · Daring"~~ (done QA5), ~~mixed "Anda" / "kamu" for staff~~ (done UI3, D-119), ~~internal codes such as "(D-08)" on Admin screens~~ (done QA5; the last one, "(U-04)", UI3), "1000" vs "1.000". Speed and phone width (ringkasan §5, §6): Kepala Sekolah › Laporan PDF 8.7 s and letter PDF 1.7–3.4 s without a "sedang dibuat" text (~~flyer PNG 3.3 s~~: no longer applies, STH makes no flyer since D-107), portfolio PDF 878 kB for one empty page (fonts not subset), ~~Kepala Sekolah dashboard scrolls 107 px sideways at phone width (Q2-31)~~ (no longer reproduces at 390 px, QA5 retest), touch targets under 44 px (Q2-32; see also #53) | QA | S + user |
 | 68 | Small leftovers of the M2 notes: optional demo rows (a pending student with less than 72 h left, a talent row with a `student_note_draft`); optional `data-sth-back` hook for a real history back on the error pages ("Kembali" is a plain link to the Referer); an unknown address has no session, so its 404 links to `/` even for a signed-in visitor; Fortify's login keeps the guest session row from before the login (no `user_id`); the temporary password an Admin types for staff is not checked against the common-password list; `docs/dev-notes/W1-D.md` still shows the old badge resolver signature | M2-A…M2-C | user + S |
 | 69 | Preview popup (D-105) on the screens that still only download a file: Kesiswaan › Kelola lomba, drawer "Periksa lomba" (`Kesiswaan\Lomba\Form`, juknis), Siswa › Detail lomba (`livewire/siswa/lomba/detail.blade.php`, juknis), Siswa › Lomba saya (`Siswa\LombaSaya\Index`), Guru › Lomba (`Guru\Lomba`, juknis): the three attributes shown at the top of `components/sth/preview.blade.php`. Surat tugas: the guru detail uses the popup since QA5 (D-112); Siswa › Lomba saya and the TU screens still only download | M3-C | S |
 | 70 | Browser check of M3 (only Chromium so far): the popup in Firefox, Safari, Edge and on a real phone (iOS Safari with a PDF in a frame; whether the viewer accepts `default-src 'none'` on the inline PDF), behind the production Apache (`Header setifempty X-Frame-Options` must keep `SAMEORIGIN`; read, not run), "Download" inside the dialog, the real clipboard for "Salin data", a student account (Portofolio, Profil talenta); Talenta: the restore dialog and the download dialog at phone width, "Pilih semua status", password page → automatic download with the chosen statuses; Humas: "Data untuk flyer" at phone width; the realistic demo PDFs in a PDF viewer and on paper | M3-A, M3-C, M3-D, M3-E | I |
@@ -753,6 +800,7 @@ QA4 and M3 (2026-10-06) closed or changed parts of #39, #46, #55, #57, #63, #65,
 | 73 | The E2E seed (`tests/E2E/support/setup-app.sh` runs with `APP_ENV=local`) now renders about 98 demo PDFs (about 30 s on the lead's laptop): set `STH_DEMO_FILES=placeholder` on the E2E app service if that time matters in CI. A real `migrate:fresh --seed` on MySQL with the realistic documents has not been run yet (the seeder's refresh ran only in a test) | M3-D | I |
 | 74 | Small leftovers of the M3 notes: one JPG evidence in the demo data so the image path of the popup can be tried by hand; `FileController::previewType()` could move to `App\Models\File`; Admin › Log audit has no "preview" label for `file.downloaded` with `inline: true`, prints the new property `rejected_from` (`talent.restored`) and a `filters.tahap` with several statuses (`talent.exported`) as stored, and keeps the label `publication.flyer_generated` for old rows only (with #64); the comment in `livewire/partials/resume-download.blade.php` still says the call is a literal "export"; Esc does not close the popup while keyboard focus is inside the PDF viewer; `letters.printed` is null for demo letters; whether Tailwind reads `database/seeders/demo/*.blade.php` as a source was not checked; the invented signer names of the sample certificates were not searched for real namesakes; a dompdf PDF with an SVG can differ by one unused font entry between an empty and a filled `storage/app/pdf-fonts` (harmless unless letter hashes are compared) | M3-A, M3-C, M3-D, M3-E | user + S |
 | 75 | Small leftovers of QA6: `w2cDraft()` in `tests/Feature/TataUsaha/SuratTugasTest.php` prints the fixed letter date 2026-10-01 and `IssueLetters` refuses a date older than one year, so those tests fail from 2027-10-02 (move to a date relative to today, with the month / year assertions); one line on "Batalkan undangan" and its mail in PANDUAN-PENGGUNA (Siswa); a browser click-through of the QA6 dialogs (Kepala Sekolah "Setujui terpilih", TU "Kirim", Arsip › Koreksi, "Batalkan undangan"), render-tested only | QA6 | S + I |
+| 76 | UI3 leftovers (`docs/dev-notes/UI3.md`): the backend owner's review of D-118 (`files.cover` is not audited and may stay in the browser for a day; posters only after login; old cover files stay when a cover is replaced: `UpdateCompetition` never calls `StoreUpload::discard()`); the cover in the preview popup on Kesiswaan › "Periksa lomba" and Guru › Lomba; posters on public pages; Publik › Prestasi per bidang opens with an empty right panel; menu name vs page title (Kepsek, TU, Humas) and the formal words in staff mails (`UI3-B.md`); `docs/dev-notes/W1-D.md` and the mockups show the old look | UI3 | user + S |
 
 ## 11. Team, ownership and agent protocol
 - **user** (lead, backend core, 40%): `app/{Enums,Models,Domain,Actions,Policies,Http,Providers,

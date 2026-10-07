@@ -2,5 +2,5 @@
 @include('errors.layout', [
     'code' => 403,
     'title' => 'Akses ditolak',
-    'message' => 'Kamu tidak punya akses ke halaman ini.',
+    'message' => 'Tidak ada akses ke halaman ini.',
 ])

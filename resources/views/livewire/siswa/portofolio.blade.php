@@ -25,7 +25,7 @@
             </x-sth.button>
         </div>
 
-        <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <div class="grid grid-cols-2 gap-3 xl:grid-cols-4">
             <x-sth.stat-tile icon="award" tone="gold" label="Poin kumulatif" :value="$totalPoints" />
             <x-sth.stat-tile icon="bars" tone="blue" label="Peringkat sekolah" :value="$rank !== null ? '#'.$rank : '–'" note="dari siswa aktif" />
             <x-sth.stat-tile icon="trophy" tone="green" label="Prestasi" :value="$achievementCount" />
@@ -50,22 +50,22 @@
                     <div class="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
                         @foreach ($achievements as $item)
                             <x-sth.card as="article" padding="none" class="flex flex-col overflow-hidden" aria-labelledby="pr-{{ $item['id'] }}" wire:key="pr-{{ $item['id'] }}">
-                                <div @class(['flex h-24 items-start justify-between gap-2 p-3.5', 'cover-'.($item['bidang']?->cssKey() ?? 'sains')])>
+                                <x-sth.sampul :bidang="$item['bidang']" :seed="$item['seed']" :src="$item['poster']" class="h-20 items-start justify-between gap-2 p-3 sm:h-24">
                                     <x-sth.chip tone="glass" size="sm">{{ $item['level'] }}</x-sth.chip>
                                     <x-sth.chip tone="gold" icon="award" size="sm">{{ $item['result'] }}</x-sth.chip>
-                                </div>
+                                </x-sth.sampul>
                                 <div class="flex flex-1 flex-col gap-2.5 p-4">
                                     @if ($item['bidang'])
                                         <span><x-sth.chip :bidang="$item['bidang']" size="sm" /></span>
                                     @endif
                                     <h3 id="pr-{{ $item['id'] }}" class="title-card">{{ $item['title'] }}</h3>
-                                    <div class="flex flex-col text-[13px]">
+                                    <div class="flex flex-col text-xs">
                                         <span class="muted">{{ $item['organizer'] }}</span>
                                         <span class="muted">{{ $item['date'] }}</span>
                                     </div>
                                     <div class="flex flex-wrap items-center gap-2">
                                         <x-sth.chip tone="gold" class="num">{{ $item['points'] }} poin</x-sth.chip>
-                                        <span class="muted num text-[13px]">{{ $item['formula'] }}</span>
+                                        <span class="muted num text-xs">{{ $item['formula'] }}</span>
                                     </div>
                                     @if ($item['certificateUrl'])
                                         {{-- With a preview the click opens the popup (<x-sth.preview>); the href stays the download. --}}
@@ -79,7 +79,7 @@
                                             <span class="flex size-10 shrink-0 items-center justify-center rounded-control bg-gold-bg text-gold" aria-hidden="true"><x-sth.icon name="file" /></span>
                                             <span class="flex flex-col">
                                                 <span class="text-sm font-bold">Sertifikat</span>
-                                                <span class="muted text-[12.5px]">Terverifikasi · {{ $item['certificatePreview'] ? 'buka' : 'download' }}</span>
+                                                <span class="muted text-xs">Terverifikasi · {{ $item['certificatePreview'] ? 'buka' : 'download' }}</span>
                                             </span>
                                             <x-sth.icon :name="$item['certificatePreview'] ? 'eye' : 'download'" :size="18" class="ml-auto text-muted" />
                                         </a>
@@ -106,7 +106,7 @@
                                         @endif
                                         <span class="flex min-w-0 flex-1 flex-col">
                                             <span class="ellip text-sm font-bold">{{ $row['title'] }}</span>
-                                            <span class="muted text-[13px]">{{ $row['date'] }}</span>
+                                            <span class="muted text-xs">{{ $row['date'] }}</span>
                                         </span>
                                         <x-sth.chip :tone="$row['status']->tone()" size="sm">{{ $row['status']->label() }}</x-sth.chip>
                                     </a>
@@ -134,13 +134,13 @@
                             @endif
                             <div class="flex min-w-0 flex-col gap-1">
                                 <span class="flex flex-wrap items-center gap-2">
-                                    <span class="display text-[15px] font-bold">{{ $talent['title'] }}</span>
+                                    <span class="display text-md font-bold">{{ $talent['title'] }}</span>
                                     @if ($talent['bidang'])
                                         <x-sth.chip :bidang="$talent['bidang']" size="sm" />
                                     @endif
                                 </span>
                                 <span><x-sth.chip :tone="$talent['status']->tone()" size="sm">{{ $talent['status']->label() }}</x-sth.chip></span>
-                                <span class="muted text-[13px]">{{ $talent['info'] }}</span>
+                                <span class="muted text-xs">{{ $talent['info'] }}</span>
                             </div>
                         </li>
                     @endforeach

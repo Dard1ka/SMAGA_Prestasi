@@ -4,13 +4,16 @@ declare(strict_types=1);
 
 namespace Database\Seeders\Support\Demo;
 
+use App\Domain\Files\CoverThumbnail;
 use App\Enums\FilePurpose;
 use App\Enums\ReportFileKind;
+use App\Models\Competition;
 use App\Models\File;
 use App\Models\Letter;
 use App\Models\Report;
 use App\Models\ReportFile;
 use Carbon\CarbonImmutable;
+use Database\Seeders\Support\DemoCoverArt;
 use Database\Seeders\Support\DemoFiles;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
@@ -19,29 +22,36 @@ use RuntimeException;
 use Throwable;
 
 /**
- * Turns the placeholder PDFs of the local demo data into realistic sample documents (LOCAL ONLY: refuses to run
- * unless APP_ENV=local). Used by DemoSeeder right after seeding and by `php artisan sth:demo:refresh-files` for a
- * database that was seeded earlier.
+ * Turns the placeholder PDFs of the local demo data into realistic sample documents, and the placeholder covers of
+ * the demo lomba into drawn posters (LOCAL ONLY: refuses to run unless APP_ENV=local). Used by DemoSeeder right
+ * after seeding and by `php artisan sth:demo:refresh-files` for a database that was seeded earlier.
  *
  * What it touches, and nothing else:
  * - `files` rows on the `local` disk whose path is "demo/<name>.pdf" (what DemoFiles writes) with MIME
- *   application/pdf. Files uploaded by hand live in other folders and are never read or changed;
- * - of such a row: the bytes of the file at the SAME path (so no orphan file), `size` and `sha256`.
+ *   application/pdf, and rows with purpose `cover` whose path is "demo/<name>.jpg" with MIME image/jpeg. Files
+ *   uploaded by hand live in other folders and are never read or changed;
+ * - of such a row: the bytes of the file at the SAME path (so no orphan file), `size` and `sha256`;
+ * - of a cover whose bytes it replaced: the small picture the app keeps of it (CoverThumbnail::forget(), a derived
+ *   file under sampul/ that the next request makes again).
  *
  * Running it again changes nothing: every PDF carries the identifier of the document it was rendered from
- * (DemoPdfRenderer::id), so an up-to-date file is neither rendered nor written again. A template or data change
- * gives another identifier and the file is renewed.
+ * (DemoPdfRenderer::id) and every poster the identifier of what it was drawn from (DemoCoverArt::id), so an
+ * up-to-date file is neither made nor written again. A template, drawing or data change gives another identifier
+ * and the file is renewed.
  *
- * attachMissing() and fillLetterBasis() are the exceptions to "no other table" and only run when asked for
- * (`--lengkapi`): they add the research report file a fresh seed attaches to demo reports that have a research
- * title, and the invitation number and date a fresh seed gives the demo letters (QA5). missing() counts both
- * without changing anything, for the hint the command prints without `--lengkapi`.
+ * attachMissing(), attachMissingCovers() and fillLetterBasis() are the exceptions to "no other table" and only run
+ * when asked for (`--lengkapi`): they add the research report file a fresh seed attaches to demo reports that have
+ * a research title, the cover a fresh seed gives the demo lomba of DemoCoverArt::POSTERS, and the invitation number
+ * and date a fresh seed gives the demo letters (QA5). missing() counts all three without changing anything, for
+ * the hint the command prints without `--lengkapi`.
  */
 final class DemoFileRefresher
 {
     public const DIRECTORY = DemoFiles::DIRECTORY;
 
     private const DEMO_PDF_PATH = '~^'.self::DIRECTORY.'/[A-Za-z0-9_-]+\.pdf$~';
+
+    private const DEMO_COVER_PATH = '~^'.self::DIRECTORY.'/[A-Za-z0-9_-]+\.jpg$~';
 
     public function __construct(
         private readonly DemoDocumentResolver $resolver,
@@ -73,6 +83,29 @@ final class DemoFileRefresher
             }
 
             $summary['total']++;
+
+            if (self::isCover($file)) {
+                try {
+                    $written = $this->refreshCover($file, $force);
+                } catch (Throwable $e) {
+                    report($e);
+                    $summary['skipped']['gagal dibuat'] = ($summary['skipped']['gagal dibuat'] ?? 0) + 1;
+                    $progress?->__invoke($file, 'gagal: '.$e->getMessage());
+
+                    continue;
+                }
+
+                if ($written) {
+                    $summary['written'][DemoCoverArt::LABEL] = ($summary['written'][DemoCoverArt::LABEL] ?? 0) + 1;
+                } else {
+                    $summary['unchanged']++;
+                }
+
+                $summary['bytes'] += $file->size;
+                $progress?->__invoke($file, $written ? DemoCoverArt::LABEL : 'sudah terbaru');
+
+                continue;
+            }
 
             if (preg_match(self::DEMO_PDF_PATH, $file->path) !== 1 || $file->mime !== 'application/pdf') {
                 $summary['skipped']['bukan PDF demo'] = ($summary['skipped']['bukan PDF demo'] ?? 0) + 1;
@@ -156,6 +189,31 @@ final class DemoFileRefresher
     }
 
     /**
+     * Adds the cover a fresh demo seed gives the lomba of DemoCoverArt::POSTERS to those that have none in an older
+     * demo database. A "demo lomba" is one with such a name whose juknis lives in demo/, so a lomba somebody typed
+     * in with the same name is left alone. Inserts one `files` row (the placeholder, drawn by the next refresh())
+     * and sets `competitions.cover_file_id`, without model events and so without an audit entry. Only on request.
+     *
+     * @return int number of lomba that got a cover
+     */
+    public function attachMissingCovers(): int
+    {
+        self::assertLocal();
+
+        $added = 0;
+
+        foreach ($this->competitionsWithoutCover() as $competition) {
+            $owner = $competition->submitted_by === null ? null : (int) $competition->submitted_by;
+            $file = DemoFiles::cover((string) DemoCoverArt::fileNameFor((string) $competition->name), $owner);
+
+            Competition::query()->whereKey($competition->getKey())->toBase()->update(['cover_file_id' => $file->getKey()]);
+            $added++;
+        }
+
+        return $added;
+    }
+
+    /**
      * Gives every demo letter (its PDF in demo/, named the way DemoSeeder names it) that lacks the number or the
      * date of the invitation it answers the values a fresh seed writes (DemoLetterBasis). A letter Tata Usaha made
      * is never touched. Written without model events, so no audit entry. Only on request.
@@ -184,13 +242,68 @@ final class DemoFileRefresher
     /**
      * What `--lengkapi` would add, without changing anything.
      *
-     * @return array{reports: int, letters: int}
+     * @return array{reports: int, letters: int, covers: int}
      */
     public function missing(): array
     {
         self::assertLocal();
 
-        return ['reports' => $this->reportsWithoutResearchFile()->count(), 'letters' => $this->lettersWithoutBasis()->count()];
+        return [
+            'reports' => $this->reportsWithoutResearchFile()->count(),
+            'letters' => $this->lettersWithoutBasis()->count(),
+            'covers' => $this->competitionsWithoutCover()->count(),
+        ];
+    }
+
+    /** A cover picture of the demo data: purpose `cover`, a JPEG at demo/<name>.jpg (what DemoFiles::cover() writes). */
+    private static function isCover(File $file): bool
+    {
+        return $file->purpose === FilePurpose::Cover
+            && $file->mime === 'image/jpeg'
+            && preg_match(self::DEMO_COVER_PATH, $file->path) === 1;
+    }
+
+    /**
+     * Draws the poster of a demo cover over the file at the same path, unless the stored picture is already the
+     * one this data gives (and $force is off).
+     *
+     * @return bool true = written, false = up to date
+     */
+    private function refreshCover(File $file, bool $force): bool
+    {
+        $disk = Storage::disk('local');
+        $spec = DemoCoverArt::describe($file->original_name, Competition::query()->where('cover_file_id', $file->getKey())->first());
+        $current = $disk->exists($file->path) ? (string) $disk->get($file->path) : null;
+        $bytes = ! $force && $current !== null && DemoCoverArt::hasId($current, DemoCoverArt::id($spec)) ? null : DemoCoverArt::render($spec);
+
+        if ($bytes !== null && $disk->put($file->path, $bytes) === false) {
+            throw new RuntimeException('Berkas tidak bisa ditulis.');
+        }
+
+        $stored = $bytes ?? (string) $current;
+
+        if ($bytes !== null || $file->size !== strlen($stored) || $file->sha256 !== hash('sha256', $stored)) {
+            $file->forceFill(['size' => strlen($stored), 'sha256' => hash('sha256', $stored)])->save();
+            // The app keeps a small picture of every cover it has shown; that one is of the old bytes.
+            CoverThumbnail::forget($file);
+        }
+
+        return $bytes !== null;
+    }
+
+    /**
+     * Demo lomba of DemoCoverArt::POSTERS (juknis in demo/) that have no cover.
+     *
+     * @return Collection<int, Competition>
+     */
+    private function competitionsWithoutCover(): Collection
+    {
+        return Competition::query()
+            ->whereNull('cover_file_id')
+            ->whereIn('name', DemoCoverArt::competitions())
+            ->whereHas('juknisFile', fn ($q) => $q->where('disk', 'local')->where('path', 'like', self::DIRECTORY.'/%'))
+            ->orderBy('id')
+            ->get();
     }
 
     /**

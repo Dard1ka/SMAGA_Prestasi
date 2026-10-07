@@ -2,14 +2,14 @@
 <div class="flex flex-col gap-[22px]">
     <div class="grid grid-cols-1 items-start gap-[22px] lg:grid-cols-[minmax(0,1fr)_340px]">
         <div class="flex min-w-0 flex-col gap-[18px]">
-            {{-- Hero (blue): greeting, open lomba, points. On phones it is the points banner of Beranda-Mobile. --}}
-            <section aria-labelledby="h-halo" class="relative overflow-hidden rounded-card bg-primary p-5 text-white shadow-primary sm:p-6">
-                <div class="pointer-events-none absolute -top-16 -right-10 size-56 rounded-full bg-white/10" aria-hidden="true"></div>
-                <div class="pointer-events-none absolute -bottom-24 right-40 size-48 rounded-full bg-white/10" aria-hidden="true"></div>
-                <div class="relative flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+            {{-- Banner (ink + "lintasan" motif: six dots = the six steps of Jejak Prestasi): greeting, open lomba and
+                 the one "Cari lomba" button of this screen. The points box shows below lg only; from lg the gold
+                 card on the right carries the points, so they are never written twice side by side. --}}
+            <section aria-labelledby="h-halo" class="spanduk rounded-card p-5 sm:p-6">
+                <div class="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
                     <div class="flex flex-col gap-2">
-                        <h2 id="h-halo" class="m-0 font-display text-[28px] leading-tight font-extrabold sm:text-[32px]">Halo, {{ $firstName }}</h2>
-                        <p class="m-0 text-[15px] text-white/85">
+                        <h2 id="h-halo" class="m-0 font-display text-3xl leading-tight font-bold">Halo, {{ $firstName }}</h2>
+                        <p class="m-0 text-md text-on-primary-soft">
                             @if ($openCount > 0)
                                 Ada <span class="num font-bold">{{ $openCount }}</span> lomba yang bisa kamu ikuti sekarang.
                             @else
@@ -18,12 +18,12 @@
                         </p>
                         <x-sth.button variant="white" size="sm" icon="search" :href="$links['katalog']" class="mt-1 self-start">Cari lomba</x-sth.button>
                     </div>
-                    <div class="flex items-center gap-3 self-start rounded-tile bg-white/15 px-4 py-3 sm:self-auto">
-                        <span class="inline-flex size-10 items-center justify-center rounded-full bg-white/20" aria-hidden="true"><x-sth.icon name="award" /></span>
+                    <div class="flex items-center gap-3 self-start rounded-tile bg-white/10 px-4 py-3 sm:self-auto lg:hidden">
+                        <span class="inline-flex size-10 items-center justify-center rounded-tile bg-medal text-ink" aria-hidden="true"><x-sth.icon name="award" /></span>
                         <div class="flex flex-col">
-                            <span class="text-[13px] text-white/80">Poin kamu</span>
+                            <span class="text-xs text-on-primary-soft">Poin kamu</span>
                             <span class="flex items-baseline gap-2">
-                                <span class="display num text-[26px] leading-none font-extrabold">{{ $points['total'] }}</span>
+                                <span class="display num text-2xl leading-none font-bold">{{ $points['total'] }}</span>
                                 @if ($points['rank'])
                                     <x-sth.chip tone="gold" size="sm" class="num">#{{ $points['rank'] }}</x-sth.chip>
                                 @endif
@@ -44,8 +44,8 @@
                         <span class="inline-flex size-11 shrink-0 items-center justify-center rounded-tile bg-orange-bg text-orange" aria-hidden="true"><x-sth.icon :name="$action['icon']" /></span>
                         <div class="flex min-w-0 flex-1 flex-col gap-0.5">
                             <x-sth.chip tone="orange" size="sm" class="self-start">Perlu tindakan</x-sth.chip>
-                            <h2 id="h-{{ $action['key'] }}" class="m-0 font-sans text-[16.5px] leading-tight font-bold">{{ $action['title'] }}</h2>
-                            <p class="num m-0 text-[13.5px] font-semibold text-orange">{{ $action['note'] }}</p>
+                            <h2 id="h-{{ $action['key'] }}" class="m-0 font-sans text-base leading-tight font-bold">{{ $action['title'] }}</h2>
+                            <p class="num m-0 text-sm font-semibold text-orange">{{ $action['note'] }}</p>
                         </div>
                     </div>
                     <x-sth.button size="sm" :href="$action['href']" class="self-start sm:self-center">{{ $action['button'] }}</x-sth.button>
@@ -72,7 +72,7 @@
                                     <x-sth.bidang-tile :bidang="$item['bidang']" />
                                     <div class="flex min-w-0 flex-col items-start gap-1">
                                         <h3 class="title-card m-0"><a class="ttl-link" href="{{ $item['href'] }}">{{ $item['title'] }}</a>
-                                            <span class="font-sans text-[13px] font-medium text-muted">· {{ $item['meta'] }}</span></h3>
+                                            <span class="font-sans text-xs font-medium text-muted">· {{ $item['meta'] }}</span></h3>
                                         <x-sth.chip :tone="$item['tone']" size="sm">{{ $item['label'] }}</x-sth.chip>
                                     </div>
                                 </div>
@@ -88,23 +88,23 @@
             {{-- Poin prestasi (desktop; phones see the points in the hero) --}}
             <x-sth.card as="section" tone="gold" aria-labelledby="h-poin" class="hidden flex-col gap-4 lg:flex">
                 <div class="flex items-center gap-3">
-                    <span class="inline-flex size-11 shrink-0 items-center justify-center rounded-full bg-medal text-white" aria-hidden="true"><x-sth.icon name="award" /></span>
+                    <span class="inline-flex size-11 shrink-0 items-center justify-center rounded-tile bg-medal text-ink" aria-hidden="true"><x-sth.icon name="award" /></span>
                     <div class="flex min-w-0 flex-1 flex-col">
-                        <h2 id="h-poin" class="m-0 font-sans text-[13px] font-bold tracking-normal text-gold">Poin prestasi</h2>
-                        <p class="m-0 flex items-baseline gap-1.5"><span class="display num text-[34px] leading-[1.1] font-extrabold">{{ $points['total'] }}</span><span class="text-sm font-semibold text-gold">poin</span></p>
+                        <h2 id="h-poin" class="m-0 font-sans text-xs font-bold tracking-normal text-gold">Poin prestasi</h2>
+                        <p class="m-0 flex items-baseline gap-1.5"><span class="display num text-4xl leading-[1.1] font-bold">{{ $points['total'] }}</span><span class="text-sm font-semibold text-gold">poin</span></p>
                     </div>
                     @if ($links['peringkat'])
-                        <x-sth.link :href="$links['peringkat']" icon-right="chevron-right" class="self-start text-[13.5px]">Peringkat</x-sth.link>
+                        <x-sth.link :href="$links['peringkat']" icon-right="chevron-right" class="self-start text-sm">Peringkat</x-sth.link>
                     @endif
                 </div>
                 <dl class="m-0 grid grid-cols-2 gap-3">
                     <div class="flex flex-col gap-0.5 rounded-tile bg-white/70 px-3.5 py-2.5">
-                        <dt class="text-[12.5px] font-semibold text-muted">Peringkat</dt>
-                        <dd class="display num m-0 text-xl font-extrabold">{{ $points['rank'] ? '#'.$points['rank'] : '–' }}</dd>
+                        <dt class="text-xs font-semibold text-muted">Peringkat</dt>
+                        <dd class="display num m-0 text-xl font-bold">{{ $points['rank'] ? '#'.$points['rank'] : '–' }}</dd>
                     </div>
                     <div class="flex flex-col gap-0.5 rounded-tile bg-white/70 px-3.5 py-2.5">
-                        <dt class="text-[12.5px] font-semibold text-muted">Prestasi</dt>
-                        <dd class="display num m-0 text-xl font-extrabold">{{ $points['count'] }}</dd>
+                        <dt class="text-xs font-semibold text-muted">Prestasi</dt>
+                        <dd class="display num m-0 text-xl font-bold">{{ $points['count'] }}</dd>
                     </div>
                 </dl>
             </x-sth.card>
@@ -122,12 +122,12 @@
                             <li wire:key="batas-{{ $row['id'] }}">
                                 <a href="{{ $row['href'] }}" class="flex items-center gap-3 rounded-tile p-2 hover:bg-hover">
                                     <span @class(['flex size-12 shrink-0 flex-col items-center justify-center rounded-tile leading-none', 'bg-orange-bg text-orange' => $row['urgent'], 'bg-page text-ink' => ! $row['urgent']])>
-                                        <span class="display num text-lg font-extrabold">{{ $row['day'] }}</span>
-                                        <span class="text-[11.5px] font-semibold">{{ $row['month'] }}</span>
+                                        <span class="display num text-lg font-bold">{{ $row['day'] }}</span>
+                                        <span class="text-xs font-semibold">{{ $row['month'] }}</span>
                                     </span>
                                     <span class="flex min-w-0 flex-col gap-0.5">
-                                        <span class="ellip text-[14.5px] font-bold text-ink">{{ $row['title'] }}</span>
-                                        <span class="text-[13px]">
+                                        <span class="ellip text-md font-bold text-ink">{{ $row['title'] }}</span>
+                                        <span class="text-xs">
                                             @if ($row['bidang'])<span class="text-muted">{{ $row['bidang'] }} · </span>@endif
                                             <span @class(['num', 'font-bold text-orange' => $row['urgent'], 'text-muted' => ! $row['urgent']])>{{ $row['left'] }}</span>
                                         </span>
@@ -153,7 +153,8 @@
                         :title="$card['title']" :href="$card['href']" :bidang="$card['bidang']" :tingkat="$card['tingkat']"
                         :status="$card['status']" :status-tone="$card['statusTone']" :peserta="$card['peserta']"
                         :penyelenggara="$card['penyelenggara']" :date="$card['date']" :place="$card['place']"
-                        :names="$card['names']" :count="$card['count']" :note="$card['note']" />
+                        :names="$card['names']" :count="$card['count']" :note="$card['note']"
+                        :seed="$card['id']" :poster="$card['poster']" />
                 @endforeach
             </div>
         </section>

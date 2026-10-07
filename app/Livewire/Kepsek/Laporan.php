@@ -33,7 +33,7 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
  * Also reachable by Admin (the shared dashboard links "Download laporan" here).
  */
 #[Title('Laporan prestasi')]
-#[Layout('layouts::app', ['subtitle' => 'Rekap prestasi per periode. File yang di-download diberi tanda nama kamu.'])]
+#[Layout('layouts::app', ['subtitle' => 'Rekap prestasi per periode. File yang di-download diberi tanda nama akun ini.'])]
 final class Laporan extends Component
 {
     use RequiresRecentPassword;

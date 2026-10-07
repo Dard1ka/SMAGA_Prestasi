@@ -31,7 +31,7 @@
                             <span class="flex size-10 shrink-0 items-center justify-center text-muted" aria-hidden="true"><x-sth.icon name="check-circle" /></span>
                             <div class="flex min-w-0 flex-1 flex-col">
                                 <span class="text-sm font-semibold text-ink-2">{{ $letter['title'] }}</span>
-                                <span class="muted text-[13px]">{{ $letter['meta'] }}</span>
+                                <span class="muted text-xs">{{ $letter['meta'] }}</span>
                             </div>
                         </li>
                     @else
@@ -39,9 +39,9 @@
                             <span class="flex size-10 shrink-0 items-center justify-center rounded-control bg-red-bg text-red" aria-hidden="true"><x-sth.icon name="file" /></span>
                             <div class="flex min-w-0 flex-1 flex-col">
                                 <span class="text-sm font-bold">{{ $letter['title'] }}</span>
-                                <span class="muted num ellip text-[13px]">{{ $letter['meta'] }}</span>
+                                <span class="muted num ellip text-xs">{{ $letter['meta'] }}</span>
                                 @if ($letter['note'])
-                                    <span class="muted text-[13px]">{{ $letter['note'] }}</span>
+                                    <span class="muted text-xs">{{ $letter['note'] }}</span>
                                 @endif
                             </div>
                             @if ($letter['href'])

@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Domain\Files\CoverThumbnail;
+use App\Enums\FilePurpose;
 use App\Models\File;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Route;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -18,6 +21,22 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  * - show():   GET /berkas/{file} (`files.show`), logged in + activated (+ staff 2FA), FilePolicy::view.
  * - publik(): GET /berkas/publik/{file} (`files.public`), guests too, FilePolicy::viewPublic only
  *             (verified certificates with publish consent while Admin enables public certificates).
+ * - cover():  GET /berkas/sampul/{file} (`files.cover`), logged in + activated (+ staff 2FA), only a File with
+ *             purpose `cover` and FilePolicy::view (the lomba it belongs to: published, or an usulan for its
+ *             submitter and the verifiers). Sends the small JPEG of the cover (CoverThumbnail, at most 640 px),
+ *             never the stored original.
+ *
+ * Cover pictures (`files.cover`) are for <img> on lomba cards, a dozen per page, so that route differs from the
+ * two above in three ways:
+ * - NOT audited. A poster shown in a list is not a download: one row per card and page view would bury the real
+ *   downloads in the audit log. The original of a cover is still only served by show(), audited as ever.
+ * - The browser may keep the picture: `Cache-Control: private, max-age=86400` (its own cache only, never a
+ *   proxy) with an `ETag`, and `If-None-Match` is answered with 304 before anything is read or made. A cover
+ *   File is never rewritten (a new cover is a new File, so a new address), which is what makes this safe.
+ * - Its own throttle counter (240 per minute per user), so a page of cards never uses up the download limit.
+ * Everything else is as above: inline with the download headers (`sandbox`, `nosniff`, never framed), and 404
+ * for a file that is not a cover, not yours, gone from the disk or not an image a picture can be made of (the
+ * card then shows its template cover). HEAD: the same answer without a body.
  *
  * Inline (`?tampil=1`, M3-C) is for the preview popup (`data-sth-preview`, resources/js/app.js) and for image
  * thumbnails. Only the types in INLINE_TYPES are ever inline; any other file stays an attachment whatever the
@@ -41,6 +60,9 @@ final class FileController extends Controller
     public const PREVIEW_PDF = 'pdf';
 
     public const PREVIEW_IMAGE = 'image';
+
+    /** Seconds a browser may show a cover picture (`files.cover`) from its own cache without asking again. */
+    public const COVER_MAX_AGE = 86400;
 
     /**
      * The only MIME types that are ever sent inline → the viewer the popup uses (`data-sth-preview-type`).
@@ -71,6 +93,19 @@ final class FileController extends Controller
         return route('files.show', ['file' => $file, self::INLINE_PARAMETER => 1]);
     }
 
+    /**
+     * The address of a lomba's cover picture for an <img> (`files.cover`), from `competitions.cover_file_id`;
+     * null when the lomba has no cover. Whether the viewer may see it is decided by the route, not here.
+     */
+    public static function coverUrl(?string $fileId): ?string
+    {
+        if ($fileId === null || $fileId === '' || ! Route::has('files.cover')) {
+            return null;
+        }
+
+        return route('files.cover', ['file' => $fileId]);
+    }
+
     public function show(Request $request, File $file): StreamedResponse
     {
         abort_unless(Gate::inspect('view', $file)->allowed(), 404);
@@ -83,6 +118,32 @@ final class FileController extends Controller
         abort_unless(Gate::inspect('viewPublic', $file)->allowed(), 404);
 
         return $this->stream($request, $file, 'file.public_downloaded', framablePdf: false);
+    }
+
+    public function cover(Request $request, File $file): Response
+    {
+        abort_unless($file->purpose === FilePurpose::Cover && Gate::inspect('view', $file)->allowed(), 404);
+        abort_unless($file->storage()->exists($file->path), 404);
+
+        $response = new Response('', 200, [
+            'Content-Type' => CoverThumbnail::MIME,
+            'Content-Disposition' => 'inline',
+            'X-Content-Type-Options' => 'nosniff',
+            'Content-Security-Policy' => "default-src 'none'; sandbox",
+            'Cache-Control' => 'private, max-age='.self::COVER_MAX_AGE,
+        ]);
+        $response->setEtag(CoverThumbnail::etag($file));
+
+        // The browser still holds this picture: 304, and nothing is read from the disk or made.
+        if ($response->isNotModified($request)) {
+            return $response;
+        }
+
+        $bytes = CoverThumbnail::bytes($file);
+        abort_if($bytes === null, 404);
+
+        // HEAD: the framework drops the body and keeps the length.
+        return $response->setContent($bytes)->header('Content-Length', (string) strlen($bytes));
     }
 
     private function stream(Request $request, File $file, string $event, bool $framablePdf): StreamedResponse

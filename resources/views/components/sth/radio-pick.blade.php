@@ -55,7 +55,7 @@
                 $option = is_array($option) ? $option : ['label' => $option];
                 $optionId = $groupId.'-'.\Illuminate\Support\Str::slug((string) $optionValue);
             @endphp
-            <label for="{{ $optionId }}" @class(['pick', 'min-h-10 text-[13.5px]' => $size === 'sm', 'flex-col gap-0.5 py-1.5' => isset($option['sub'])])>
+            <label for="{{ $optionId }}" @class(['pick', 'min-h-10 text-sm' => $size === 'sm', 'flex-col gap-0.5 py-1.5' => isset($option['sub'])])>
                 <input
                     type="{{ $multiple ? 'checkbox' : 'radio' }}"
                     id="{{ $optionId }}"
@@ -70,7 +70,7 @@
                 @if (! empty($option['icon']))
                     <x-sth.icon :name="$option['icon']" :size="18" />
                 @endif
-                <span @class(['display text-[15px] leading-4 font-extrabold' => isset($option['sub'])])>{{ $option['label'] }}</span>
+                <span @class(['display text-md leading-4 font-bold' => isset($option['sub'])])>{{ $option['label'] }}</span>
                 @isset($option['sub'])
                     <span class="pick-sub leading-[14px]">{{ $option['sub'] }}</span>
                 @endisset

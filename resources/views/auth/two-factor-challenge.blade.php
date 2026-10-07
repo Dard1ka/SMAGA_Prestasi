@@ -3,7 +3,7 @@
     <div class="flex flex-col gap-6">
         <div class="flex flex-col gap-2">
             <h1 class="title-page">Verifikasi dua langkah</h1>
-            <p class="muted">Masukkan 6 angka dari aplikasi autentikator di HP kamu.</p>
+            <p class="muted">Masukkan 6 angka dari aplikasi autentikator di HP.</p>
         </div>
 
         <form method="POST" action="{{ route('two-factor.login.store') }}" class="flex flex-col gap-4" novalidate>

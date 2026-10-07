@@ -60,7 +60,7 @@ final class ChangeEmail
         ])->validate();
 
         if ($email === mb_strtolower((string) $user->email)) {
-            throw ValidationException::withMessages(['email' => 'Ini sudah email akunmu.']);
+            throw ValidationException::withMessages(['email' => 'Email ini sudah dipakai akun ini.']);
         }
 
         return $this->otp->handle($user, self::PURPOSE, $email);

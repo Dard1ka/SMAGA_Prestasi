@@ -25,7 +25,7 @@ final class BinaanReportDecided extends Notice
         $first = $achievements->first();
         $names = $achievements->map(fn (Achievement $a): string => (string) ($a->student?->user?->name ?? 'Siswa'))->values();
         $team = $names->count() > 1;
-        $who = $team ? $names[0].' dan '.($names->count() - 1).' anggota timnya' : (string) ($names[0] ?? 'Siswa binaanmu');
+        $who = $team ? $names[0].' dan '.($names->count() - 1).' anggota timnya' : (string) ($names[0] ?? 'Siswa binaan');
         $points = (new PointFormatter)->format((string) ($first->points ?? '0'));
 
         return self::make(

@@ -14,13 +14,15 @@
     </x-sth.table>
 
     Props: caption · caption-visible · card (wrap in .card, default true) · fixed (table-layout: fixed)
+           table-class (classes for the <table>; a fixed table needs a floor such as "min-w-[720px]": below it the
+           table scrolls sideways inside its card instead of squeezing a column to nothing on phones)
     Slots: head (cells of the header row) · default (body rows) · foot (optional <tr>s)
     Empty lists: render <x-sth.empty-state> instead of an empty table.
 --}}
-@props(['caption', 'captionVisible' => false, 'card' => true, 'fixed' => false])
+@props(['caption', 'captionVisible' => false, 'card' => true, 'fixed' => false, 'tableClass' => null])
 <div {{ $attributes->class(['card overflow-hidden' => $card]) }}>
     <div class="tbl-wrap">
-        <table @class(['tbl', 'table-fixed' => $fixed])>
+        <table @class(['tbl', 'table-fixed' => $fixed, $tableClass])>
             <caption @class(['tbl-caption' => $captionVisible, 'sr-only' => ! $captionVisible])>{{ $caption }}</caption>
             @isset($head)
                 <thead>

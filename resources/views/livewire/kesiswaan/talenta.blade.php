@@ -1,7 +1,7 @@
 {{-- Talenta siswa (board Kesiswaan-Talenta). Data prepared in App\Livewire\Kesiswaan\Talenta. --}}
 <div class="flex flex-col gap-[22px]">
     @include('livewire.partials.resume-download')
-    <section aria-label="Ringkasan tahap" class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <section aria-label="Ringkasan tahap" class="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
         <x-sth.stat-tile icon="inbox" tone="gray" label="Terdaftar" :value="(string) $counts['terdaftar']" note="belum dipetakan" />
         <x-sth.stat-tile icon="users" tone="blue" label="Pemetaan" :value="(string) $counts['pemetaan']" note="sedang dipetakan" />
         <x-sth.stat-tile icon="clock" tone="orange" label="Seleksi/asesmen" :value="(string) $counts['seleksi']" note="menunggu hasil" />
@@ -26,9 +26,9 @@
         <x-sth.card padding="none" class="flex min-w-0 flex-col">
             <div class="flex flex-col gap-3 border-b border-line p-4">
                 <div class="flex flex-wrap gap-2" role="group" aria-label="Jenis talenta">
-                    <button type="button" class="fchip h-9 px-3.5 text-[13.5px]" wire:click="setJenis('')" aria-pressed="{{ $jenis === '' ? 'true' : 'false' }}">Semua</button>
+                    <button type="button" class="fchip h-9 px-3.5 text-sm" wire:click="setJenis('')" aria-pressed="{{ $jenis === '' ? 'true' : 'false' }}">Semua</button>
                     @foreach ($types as $type)
-                        <button type="button" class="fchip h-9 px-3.5 text-[13.5px]" wire:click="setJenis('{{ $type->code->value }}')" aria-pressed="{{ $jenis === $type->code->value ? 'true' : 'false' }}">
+                        <button type="button" class="fchip h-9 px-3.5 text-sm" wire:click="setJenis('{{ $type->code->value }}')" aria-pressed="{{ $jenis === $type->code->value ? 'true' : 'false' }}">
                             {{ $type->code->label() }}<span class="sr-only">, {{ $type->bidang->label() }}</span>
                         </button>
                     @endforeach
@@ -42,9 +42,9 @@
 
             <div class="flex min-h-14 flex-wrap items-center gap-3 border-b border-line bg-subtle px-4 py-2.5" aria-live="polite">
                 @if ($checked === [])
-                    <span class="text-[13.5px] text-muted">{{ $shownText }} · Centang baris untuk pindah tahap sekaligus.</span>
+                    <span class="text-sm text-muted">{{ $shownText }} · Centang baris untuk pindah tahap sekaligus.</span>
                 @else
-                    <span class="text-[13.5px] font-bold">{{ count($checked) }} dipilih</span>
+                    <span class="text-sm font-bold">{{ count($checked) }} dipilih</span>
                     <x-sth.button size="sm" icon="check" wire:click="bulkAdvance" wire:loading.attr="disabled">Pindahkan ke {{ $bulkNext }}</x-sth.button>
                     <x-sth.button variant="danger" size="sm" wire:click="askBulkReject" aria-haspopup="dialog">Tidak lolos</x-sth.button>
                     <x-sth.button variant="quiet" size="sm" wire:click="cancelBulk">Batal pilih</x-sth.button>
@@ -56,7 +56,7 @@
                     <x-sth.empty-state icon="search" title="Tidak ada pilihan talenta" :card="false">Ubah filter atau tahap.</x-sth.empty-state>
                 </div>
             @else
-                <x-sth.table caption="Daftar pilihan talenta" :card="false" fixed>
+                <x-sth.table caption="Daftar pilihan talenta" :card="false" fixed table-class="min-w-[720px]">
                     <x-slot:head>
                         <th scope="col" class="w-12">
                             <input type="checkbox" class="cek" aria-label="Pilih semua baris yang tampil" wire:click="toggleAll" @checked(count($checked) > 0 && count($checked) >= $rows->count())>
@@ -75,17 +75,17 @@
                                     <x-sth.avatar :name="$row['name']" size="sm" class="hidden 2xl:inline-flex" />
                                     <div class="flex min-w-0 flex-col">
                                         <span class="ellip font-bold">{{ $row['name'] }}</span>
-                                        <span class="text-[12.5px] text-muted">{{ $row['class'] }} · <span class="num">{{ $row['nis'] }}</span></span>
+                                        <span class="text-xs text-muted">{{ $row['class'] }} · <span class="num">{{ $row['nis'] }}</span></span>
                                     </div>
                                 </div>
                             </td>
                             <td>
                                 <div class="flex flex-col">
                                     <span class="font-bold">{{ $row['type'] }} <span class="font-medium">· {{ $row['branch'] }}</span></span>
-                                    <span class="text-[12.5px] text-muted">{{ $row['bidang']?->label() }}{{ $row['hasEvidence'] ? ' · ada bukti' : '' }}</span>
+                                    <span class="text-xs text-muted">{{ $row['bidang']?->label() }}{{ $row['hasEvidence'] ? ' · ada bukti' : '' }}</span>
                                 </div>
                             </td>
-                            <td class="num whitespace-nowrap text-[13.5px]">{{ $row['points'] !== null ? $row['points'].' · '.$row['prestasi'] : '–' }}</td>
+                            <td class="num whitespace-nowrap text-sm">{{ $row['points'] !== null ? $row['points'].' · '.$row['prestasi'] : '–' }}</td>
                             <td>
                                 <div class="flex flex-col items-start gap-1">
                                     <x-sth.chip :tone="$row['status']->tone()" size="sm" class="h-auto min-h-6 py-0.5 whitespace-normal">{{ $row['status']->label() }}</x-sth.chip>
@@ -112,25 +112,25 @@
                         <x-sth.button variant="quiet" size="sm" wire:click="showMore">Tampilkan lebih banyak</x-sth.button>
                     </div>
                 @elseif ($capped)
-                    <p class="m-0 p-4 text-center text-[13px] text-muted">Menampilkan {{ $rows->count() }} baris pertama. Persempit filter untuk melihat lainnya.</p>
+                    <p class="m-0 p-4 text-center text-xs text-muted">Menampilkan {{ $rows->count() }} baris pertama. Persempit filter untuk melihat lainnya.</p>
                 @endif
             @endif
         </x-sth.card>
 
         <x-sth.card as="aside" aria-label="Detail talenta" class="flex flex-col gap-4">
             @if ($panel === null)
-                <p class="m-0 text-[13.5px] text-muted">Pilih baris untuk melihat detail.</p>
+                <p class="m-0 text-sm text-muted">Pilih baris untuk melihat detail.</p>
             @else
                 <div class="flex items-start gap-3">
                     <x-sth.avatar :name="$panel['name']" size="lg" />
                     <div class="flex min-w-0 flex-1 flex-col gap-0.5">
                         <span class="title-card">{{ $panel['name'] }}</span>
-                        <span class="text-[13px] text-muted">{{ $panel['meta'] }}</span>
+                        <span class="text-xs text-muted">{{ $panel['meta'] }}</span>
                     </div>
                     @if ($panel['points'])
                         <div class="flex flex-col items-end gap-0.5">
                             <x-sth.chip tone="gold" size="sm" class="num">{{ $panel['points'] }} poin</x-sth.chip>
-                            <span class="text-[12px] text-muted">{{ $panel['prestasi'] }} prestasi di STH</span>
+                            <span class="text-xs text-muted">{{ $panel['prestasi'] }} prestasi di STH</span>
                         </div>
                     @endif
                 </div>
@@ -141,7 +141,7 @@
                         @foreach ($panel['choices'] as $choice)
                             <button type="button" wire:click="showPanel('{{ $choice['id'] }}')" aria-pressed="{{ $choice['current'] ? 'true' : 'false' }}"
                                 @class(['flex items-center justify-between gap-2 rounded-control border px-3 py-2 text-left', 'border-primary bg-primary-wash' => $choice['current'], 'border-line bg-surface' => ! $choice['current']])>
-                                <span class="text-[13.5px] font-bold">{{ $choice['label'] }}</span>
+                                <span class="text-sm font-bold">{{ $choice['label'] }}</span>
                                 <x-sth.chip :tone="$choice['status']->tone()" size="sm">{{ $choice['status']->label() }}</x-sth.chip>
                             </button>
                         @endforeach
@@ -152,8 +152,8 @@
                     <div class="flex items-center gap-3 rounded-tile border border-line p-3">
                         <span class="inline-flex size-10 items-center justify-center rounded-tile bg-primary-tint text-primary"><x-sth.icon name="file" /></span>
                         <span class="flex min-w-0 flex-1 flex-col">
-                            <span class="ellip text-[13.5px] font-bold">{{ $panel['evidence']['name'] }}</span>
-                            <span class="text-[12.5px] text-muted">Bukti dukung · {{ $panel['evidence']['size'] }}</span>
+                            <span class="ellip text-sm font-bold">{{ $panel['evidence']['name'] }}</span>
+                            <span class="text-xs text-muted">Bukti dukung · {{ $panel['evidence']['size'] }}</span>
                         </span>
                         @if ($panel['evidence']['url'])
                             <x-sth.button variant="quiet" size="sm" icon="eye" :href="$panel['evidence']['url']" aria-haspopup="dialog"
@@ -162,11 +162,11 @@
                         @endif
                     </div>
                 @else
-                    <p class="m-0 rounded-tile border border-dashed border-line-dashed p-3 text-[13px] text-muted">Tidak ada bukti dukung · Opsional</p>
+                    <p class="m-0 rounded-tile border border-dashed border-line-dashed p-3 text-xs text-muted">Tidak ada bukti dukung · Opsional</p>
                 @endif
 
                 {{-- The student types these: one long word (a link, a handle) wraps inside the card (QA6, Q2-29). --}}
-                <dl class="m-0 grid grid-cols-[110px_minmax(0,1fr)] gap-x-3 gap-y-1.5 text-[13.5px]">
+                <dl class="m-0 grid grid-cols-[110px_minmax(0,1fr)] gap-x-3 gap-y-1.5 text-sm">
                     <dt class="text-muted">Minat</dt><dd class="m-0 [overflow-wrap:anywhere]">{{ $panel['minat'] ?? '–' }}</dd>
                     <dt class="text-muted">Organisasi</dt><dd class="m-0 [overflow-wrap:anywhere]">{{ $panel['organisasi'] ?? '–' }}</dd>
                     <dt class="text-muted">Prestasi SMP</dt><dd class="m-0 [overflow-wrap:anywhere]">{{ $panel['smp'] ?? '–' }}</dd>
@@ -180,13 +180,13 @@
 
                 @if ($panel['review'])
                     <x-sth.alert tone="warning" title="Siswa minta ditinjau ulang">
-                        <span class="block text-[13px] text-muted">{{ $panel['review']['at'] }}</span>
+                        <span class="block text-xs text-muted">{{ $panel['review']['at'] }}</span>
                         <span class="block whitespace-pre-line break-words">{{ $panel['review']['message'] ?? 'Tanpa pesan.' }}</span>
                     </x-sth.alert>
                 @endif
 
                 @if ($panel['studentNote'])
-                    <div class="flex flex-col gap-1 rounded-tile bg-subtle p-3 text-[13.5px]">
+                    <div class="flex flex-col gap-1 rounded-tile bg-subtle p-3 text-sm">
                         <span class="label">Catatan terakhir untuk siswa</span>
                         <span class="whitespace-pre-line break-words">{{ $panel['studentNote'] }}</span>
                     </div>
@@ -202,7 +202,7 @@
                     @unless ($panel['final'])
                         {{-- "Simpan" keeps this text as a draft on the row; only a decision sends it (Q2-14). --}}
                         <x-sth.textarea wire:model="panelStudentNote" label="Catatan untuk siswa" optional rows="3" maxlength="1000"
-                            :hint="($panel['hasDraft'] ? 'Draf tersimpan, belum terkirim. ' : '').'Dibaca siswa di notifikasi dan Profil talenta. Terkirim saat kamu menekan Lolos atau Tidak lolos. Simpan hanya menyimpan draf.'" />
+                            :hint="($panel['hasDraft'] ? 'Draf tersimpan, belum terkirim. ' : '').'Dibaca siswa di notifikasi dan Profil talenta. Terkirim saat Lolos atau Tidak lolos ditekan. Simpan hanya menyimpan draf.'" />
                     @endunless
                     @error('panel')<x-sth.alert tone="error">{{ $message }}</x-sth.alert>@enderror
                 </div>
@@ -219,7 +219,7 @@
                     @endif
                     <x-sth.button variant="quiet" wire:click="savePanel" wire:loading.attr="disabled">Simpan</x-sth.button>
                 </div>
-                <p class="m-0 text-[13px] text-muted">{{ $panelDone ?? 'Siswa menerima notifikasi setiap perubahan tahap.' }}</p>
+                <p class="m-0 text-xs text-muted">{{ $panelDone ?? 'Siswa menerima notifikasi setiap perubahan tahap.' }}</p>
             @endif
         </x-sth.card>
     </div>
@@ -232,14 +232,14 @@
                     <span class="font-bold"><span class="num">{{ $rejecting['count'] }}</span> pilihan talenta</span> ditandai tidak lolos. Tiap pilihan bisa dipulihkan lagi nanti.
                 </p>
                 @if ($rejecting['skipped'] > 0)
-                    <p class="m-0 text-[13px] text-muted">
+                    <p class="m-0 text-xs text-muted">
                         <span class="num">{{ $rejecting['skipped'] }}</span> pilihan yang dicentang sudah final (Peserta pembinaan atau Tidak lolos) dan dilewati.
                     </p>
                 @endif
                 <x-sth.textarea wire:model="bulkNote" label="Catatan untuk siswa" optional rows="3" maxlength="1000"
                     hint="Catatan yang sama terkirim ke semua siswa yang dipilih." />
                 @if ($rejecting['drafts'] > 0)
-                    <p class="m-0 text-[13px] text-muted">
+                    <p class="m-0 text-xs text-muted">
                         <span class="num">{{ $rejecting['drafts'] }}</span> pilihan punya catatan untuk siswa yang tersimpan. Kalau kolom di atas kosong, catatan itu yang terkirim.
                     </p>
                 @endif
@@ -248,15 +248,15 @@
                     <span class="font-bold">{{ $rejecting['name'] }}</span> · {{ $rejecting['talent'] }} tidak lolos dari tahap {{ $rejecting['from'] }}. Bisa dipulihkan lagi nanti.
                 </p>
                 @if ($rejecting['note'])
-                    <div class="flex flex-col gap-1 rounded-tile bg-subtle p-3 text-[13.5px]">
+                    <div class="flex flex-col gap-1 rounded-tile bg-subtle p-3 text-sm">
                         <span class="label">Catatan untuk siswa</span>
                         <span class="whitespace-pre-line break-words">{{ $rejecting['note'] }}</span>
                     </div>
                 @else
-                    <p class="m-0 text-[13.5px] text-muted">Tanpa catatan untuk siswa.</p>
+                    <p class="m-0 text-sm text-muted">Tanpa catatan untuk siswa.</p>
                 @endif
             @else
-                <p class="m-0 text-[14.5px] text-muted">Tidak ada yang dipilih. Tutup lalu coba lagi.</p>
+                <p class="m-0 text-md text-muted">Tidak ada yang dipilih. Tutup lalu coba lagi.</p>
             @endif
         </form>
         <x-slot:footer>
@@ -298,7 +298,7 @@
             <div class="flex flex-wrap gap-2">
                 <x-sth.button variant="quiet" size="sm" wire:click="selectAllExport" wire:loading.attr="disabled">Pilih semua status</x-sth.button>
             </div>
-            <p class="m-0 text-[13px] text-muted">{{ $exportScope }}</p>
+            <p class="m-0 text-xs text-muted">{{ $exportScope }}</p>
         </form>
         <x-slot:footer>
             <x-sth.button variant="quiet" data-sth-close>Batal</x-sth.button>

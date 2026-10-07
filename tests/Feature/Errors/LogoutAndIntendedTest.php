@@ -74,7 +74,7 @@ it('sends the first page after login to the beranda when the role may not open i
     $this->get(route('home'))->assertRedirect(route('kesiswaan.beranda'));
 
     // Only that first page: opening the address again later is an ordinary 403.
-    $this->get(route('admin.beranda'))->assertForbidden()->assertSee('Kamu tidak punya akses ke halaman ini.');
+    $this->get(route('admin.beranda'))->assertForbidden()->assertSee('Tidak ada akses ke halaman ini.');
 });
 
 it('sends the first page after login to the beranda when it is not this user\'s record', function (): void {
@@ -196,4 +196,26 @@ it('never redirects a form post or a JSON request after login', function (): voi
     $this->assertAuthenticatedAs($admin);
 
     $this->getJson(route('kepsek.persetujuan.index'))->assertForbidden();
+});
+
+// A cover picture is not a page (D-118) ------------------------------------------------------------------
+
+/*
+| UI3: lomba cards show the poster with <img src="/berkas/sampul/{file}">. A catalog left open after the session
+| ended keeps asking for those pictures; the guest redirect stores the last one as the intended address. The next
+| login must open the beranda, not a bare picture. Any other intended address is kept.
+*/
+
+it('never sends a login to a cover picture', function (): void {
+    $kesiswaan = H::staff(RoleName::Kesiswaan);
+    $cover = route('files.cover', ['file' => '01m48q6222n2w5rv56btxa3v42']);
+
+    $this->get($cover)->assertRedirect(route('login'));
+    expect(session('url.intended'))->toBe($cover);
+
+    $this->from('/login')->post('/login', ['identifier' => 'staf.kesiswaan@example.test', 'password' => H::PASSWORD])
+        ->assertRedirect(route('home'));
+    $this->assertAuthenticatedAs($kesiswaan);
+
+    expect(session()->has('url.intended'))->toBeFalse();
 });

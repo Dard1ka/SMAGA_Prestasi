@@ -31,7 +31,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  */
 #[Title('Surat atas nama saya')]
 // One search box per screen (D-90, backlog #60): this page has its own, so the top bar shows none.
-#[Layout('layouts::app', ['subtitle' => 'Semua surat tugas yang terbit dengan nama dan tanda tangan Anda.', 'search' => false])]
+#[Layout('layouts::app', ['subtitle' => 'Semua surat tugas yang terbit dengan nama dan tanda tangan Kepala Sekolah.', 'search' => false])]
 final class SuratSaya extends Component
 {
     use WithPagination;

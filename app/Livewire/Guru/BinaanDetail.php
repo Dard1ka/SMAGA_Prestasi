@@ -31,7 +31,7 @@ use Livewire\Component;
  * pembimbing (RegistrationPolicy::viewAsMentor); anyone else gets 404. Read-only.
  */
 #[Title('Detail binaan')]
-#[Layout('layouts::app', ['subtitle' => 'Jejak prestasi siswa binaanmu.'])]
+#[Layout('layouts::app', ['subtitle' => 'Jejak prestasi siswa binaan.'])]
 final class BinaanDetail extends Component
 {
     use PresentsBinaan, ReportHelpers;

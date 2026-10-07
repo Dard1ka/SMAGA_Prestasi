@@ -6,13 +6,14 @@
     <x-sth.avatar name="Nadia Putri Anindya" />                 decorative (name is next to it)
     <x-sth.avatar name="Nadia Putri Anindya" size="lg" labelled /> role="img" aria-label (stand-alone)
 
-    Props: name · size xs (26) | sm (32) | md (38, default) | lg (40) | xl (48) · src (consented photo URL)
+    Props: name · size xs (28) | sm (32) | md (38, default) | lg (40) | xl (48) · src (consented photo URL)
+           (initials are 13px even in the smallest avatar: nothing on screen is smaller, DESIGN-SPEC-v3 §2)
            labelled (announce the name; default decorative)
 --}}
 @props(['name' => '', 'size' => 'md', 'src' => null, 'labelled' => false])
 @php
     $sizes = [
-        'xs' => 'size-[26px] text-[10px]',
+        'xs' => 'size-7 text-xs tracking-tight',
         'sm' => 'size-8 text-xs',
         'md' => 'size-[38px] text-sm',
         'lg' => 'size-10 text-sm',

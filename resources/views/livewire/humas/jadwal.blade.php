@@ -5,7 +5,7 @@
 
         @if ($overdue !== [])
             <x-sth.card tone="warn" padding="sm" as="section" aria-labelledby="jadwal-lewat" class="flex flex-col gap-2">
-                <h3 id="jadwal-lewat" class="m-0 flex items-center gap-2 text-[15px] font-bold text-orange">
+                <h3 id="jadwal-lewat" class="m-0 flex items-center gap-2 text-md font-bold text-orange">
                     <x-sth.icon name="clock" :size="18" />Lewat jadwal, belum ditandai terbit
                 </h3>
                 <ul class="m-0 flex list-none flex-col gap-2 p-0">
@@ -18,7 +18,7 @@
 
         @forelse ($days as $day)
             <x-sth.card as="section" padding="sm" wire:key="day-{{ $day['key'] }}" aria-labelledby="hari-{{ $day['key'] }}" class="flex flex-col gap-2">
-                <h3 id="hari-{{ $day['key'] }}" class="m-0 flex items-center gap-2 text-[15px] font-bold">
+                <h3 id="hari-{{ $day['key'] }}" class="m-0 flex items-center gap-2 text-md font-bold">
                     <x-sth.icon name="calendar" :size="18" class="text-primary" />{{ $day['label'] }}
                 </h3>
                 <ul class="m-0 flex list-none flex-col gap-2 p-0">
@@ -51,8 +51,8 @@
                 <x-sth.card as="article" padding="sm" wire:key="event-{{ $event['id'] }}" class="flex flex-col gap-2">
                     <div class="flex flex-wrap items-start justify-between gap-2">
                         <div class="min-w-0">
-                            <h3 class="m-0 text-[15px] leading-snug font-bold">{{ $event['name'] }}</h3>
-                            <p class="m-0 text-[13px] text-muted">{{ $event['date'] }}</p>
+                            <h3 class="m-0 text-md leading-snug font-bold">{{ $event['name'] }}</h3>
+                            <p class="m-0 text-xs text-muted">{{ $event['date'] }}</p>
                         </div>
                         <x-sth.chip tone="blue" size="sm" class="num">{{ $event['count'] }} prestasi</x-sth.chip>
                     </div>
@@ -60,8 +60,8 @@
                         <ul class="m-0 flex list-none flex-col gap-1.5 p-0">
                             @foreach ($event['items'] as $row)
                                 <li wire:key="apr-{{ $row['id'] }}" class="flex flex-col rounded-tile bg-subtle px-3 py-2">
-                                    <span class="text-[13.5px] font-semibold">{{ $row['student'] }}</span>
-                                    <span class="text-[12.5px] text-muted">{{ $row['headline'] }}</span>
+                                    <span class="text-sm font-semibold">{{ $row['student'] }}</span>
+                                    <span class="text-xs text-muted">{{ $row['headline'] }}</span>
                                     @if ($row['consentWithdrawn'])
                                         <x-sth.chip tone="orange" size="sm" class="mt-1 self-start">Izin dicabut</x-sth.chip>
                                     @endif
@@ -69,7 +69,7 @@
                             @endforeach
                         </ul>
                     @else
-                        <p class="m-0 text-[13px] text-muted">Belum ada prestasi di acara ini.</p>
+                        <p class="m-0 text-xs text-muted">Belum ada prestasi di acara ini.</p>
                     @endif
                 </x-sth.card>
             @empty
