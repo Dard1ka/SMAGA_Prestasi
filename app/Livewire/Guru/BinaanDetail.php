@@ -56,7 +56,7 @@ final class BinaanDetail extends Component
                 'members.student:id,user_id,classroom_id',
                 'members.student.user:id,name',
                 'members.student.classroom:id,name',
-                'letters',
+                'letters.file',
             ])
             ->find($this->registrationId);
 
@@ -79,6 +79,8 @@ final class BinaanDetail extends Component
             'chip' => $chip,
             'tone' => $tone,
             'deadline' => $deadline,
+            // A report sent back for a revision also waits in menunggu_laporan: it was sent, not missing (QA5).
+            'revising' => $report?->status === ReportStatus::PerluRevisi,
             'facts' => array_values(array_filter([
                 ['icon' => 'trophy', 'label' => 'Tingkat', 'value' => $competition?->level?->label() ?? '–'],
                 ['icon' => 'calendar', 'label' => 'Tanggal lomba', 'value' => self::dateRange($competition?->starts_on, $competition?->final_on) ?: '–'],
@@ -156,8 +158,9 @@ final class BinaanDetail extends Component
 
     /**
      * Letters the guru may open (LetterPolicy::view: the mentor sees both letters only after TU sent them).
+     * "Buka" shows the PDF in the preview popup; the link itself stays the download (QA5, D-105's open point).
      *
-     * @return list<array{title: string, meta: string, href: string}>
+     * @return list<array{title: string, meta: string, href: string, name: string, preview: ?string, previewType: ?string}>
      */
     private function letterRows(Registration $registration): array
     {
@@ -168,6 +171,9 @@ final class BinaanDetail extends Component
                 'title' => $letter->type === LetterType::Guru ? 'Surat perintah tugas guru' : 'Surat tugas siswa',
                 'meta' => trim($letter->full_number.' · '.self::longDate($letter->issued_on), ' ·'),
                 'href' => route('files.show', $letter->file_id),
+                'name' => (string) ($letter->file?->original_name ?? 'surat-tugas.pdf'),
+                'preview' => $letter->file !== null ? FileController::previewUrl($letter->file) : null,
+                'previewType' => $letter->file !== null ? FileController::previewType($letter->file) : null,
             ])->values()->all();
     }
 }

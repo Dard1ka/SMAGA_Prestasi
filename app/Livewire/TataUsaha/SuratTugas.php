@@ -34,6 +34,7 @@ use Illuminate\Validation\ValidationException;
 use InvalidArgumentException;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\Title;
+use Livewire\Attributes\Url;
 use Livewire\Component;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -103,6 +104,10 @@ class SuratTugas extends Component
 
     public string $tab = 'siswa';
 
+    /** Top bar search (backlog #60): lomba or student name; the badge still counts the whole queue. */
+    #[Url(as: 'q', except: '')]
+    public string $q = '';
+
     /** B3: the current letter being corrected (cabut + new version), set only by startRevision(). */
     #[Locked]
     public ?string $revisingId = null;
@@ -122,13 +127,26 @@ class SuratTugas extends Component
             abort_unless($registration->status === RegistrationStatus::Disetujui || $registration->letters()->exists(), 404);
             $target = $registration;
         } else {
-            $target = $this->queueQuery()->first();
+            $target = $this->searched($this->queueQuery())->first();
         }
 
-        if ($target === null) {
-            return;
+        if ($target !== null) {
+            $this->select($target);
         }
+    }
 
+    /** A search that found nothing left no registration open: open the first match once there is one again. */
+    public function updatedQ(): void
+    {
+        Gate::authorize('viewQueue', Letter::class);
+
+        if ($this->registrationId === null && ($target = $this->searched($this->queueQuery())->first()) !== null) {
+            $this->select($target);
+        }
+    }
+
+    private function select(Registration $target): void
+    {
         $this->registrationId = $target->getKey();
         $target->loadMissing('competition');
         $letters = $target->letters()->get();
@@ -340,15 +358,18 @@ class SuratTugas extends Component
     {
         Gate::authorize('viewQueue', Letter::class);
 
-        $queue = $this->queueQuery()
+        $queue = $this->searched($this->queueQuery())
             ->with(['competition', 'members' => fn ($q) => $q->whereNotNull('confirmed_at')->whereNull('declined_at'), 'letters'])
             ->get();
+        $total = trim($this->q) === '' ? $queue->count() : $this->queueQuery()->count();
 
         $registration = $this->registrationId !== null ? $this->selectedOrNull() : null;
         $letters = $registration?->letters()->with('file')->orderBy('type', 'desc')->get() ?? new Collection;
 
         $data = [
             'queue' => $queue,
+            'queueTotal' => $total,
+            'searching' => trim($this->q) !== '',
             'registration' => $registration,
             'letters' => $letters,
             'signature' => $this->signatureName(),
@@ -396,7 +417,7 @@ class SuratTugas extends Component
 
         return view('livewire.tata-usaha.surat-tugas', $data)->layoutData([
             'subtitle' => 'Pendaftaran yang sudah disetujui Kepala Sekolah.',
-            'badges' => ['tu.surat' => $queue->count()],
+            'badges' => ['tu.surat' => $total],
         ]);
     }
 
@@ -404,6 +425,25 @@ class SuratTugas extends Component
     private function queueQuery(): Builder
     {
         return Registration::query()->awaitingLetters()->orderBy('principal_decided_at')->orderBy('created_at');
+    }
+
+    /**
+     * @param  Builder<Registration>  $query
+     * @return Builder<Registration>
+     */
+    private function searched(Builder $query): Builder
+    {
+        $term = mb_substr(trim($this->q), 0, 100);
+
+        if ($term === '') {
+            return $query;
+        }
+
+        $like = '%'.str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $term).'%';
+
+        return $query->where(fn (Builder $q) => $q
+            ->whereHas('competition', fn (Builder $c) => $c->withTrashed()->where('name', 'like', $like))
+            ->orWhereHas('members.student.user', fn (Builder $u) => $u->where('name', 'like', $like)));
     }
 
     /** The sidebar is rendered once per page load: tell it the queue count after an action changed it. */

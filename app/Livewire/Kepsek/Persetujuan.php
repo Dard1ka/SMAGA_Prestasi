@@ -350,6 +350,17 @@ class Persetujuan extends Component
         return $user;
     }
 
+    /** "Luring · Kota Semarang"; an online lomba whose place is "Daring" too says it once (QA5, Q1-27). */
+    public static function modeAndPlace(?Competition $competition): string
+    {
+        $mode = (string) ($competition?->mode?->label() ?? '');
+        $place = trim((string) ($competition?->location ?? ''));
+
+        return $place === '' || mb_strtolower($place) === mb_strtolower($mode)
+            ? $mode
+            : ($mode === '' ? $place : $mode.' · '.$place);
+    }
+
     private static function escapeLike(string $value): string
     {
         return str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $value);

@@ -20,7 +20,8 @@ use Livewire\Component;
  * (links, server state); every child authorizes itself again. Route: admin.pengaturan (password.confirm).
  */
 #[Title('Pengaturan')]
-#[Layout('layouts::app', ['subtitle' => 'Aturan poin, batas waktu, surat, dan akun.'])]
+// One search box per screen (D-90, backlog #60): this page has its own, so the top bar shows none.
+#[Layout('layouts::app', ['subtitle' => 'Aturan poin, batas waktu, surat, dan akun.', 'search' => false])]
 final class Pengaturan extends Component
 {
     public const TABS = [

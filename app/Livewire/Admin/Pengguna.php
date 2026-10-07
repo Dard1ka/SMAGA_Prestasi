@@ -16,7 +16,8 @@ use Livewire\Component;
  * (App\Livewire\Admin\Pengaturan\Pengguna) as its own page, so the topbar search (?q=) lands here.
  */
 #[Title('Pengguna & peran')]
-#[Layout('layouts::app', ['subtitle' => 'Akun staf, peran, dan bantuan akun siswa.'])]
+// One search box per screen (D-90, backlog #60): this page has its own, so the top bar shows none.
+#[Layout('layouts::app', ['subtitle' => 'Akun staf, peran, dan bantuan akun siswa.', 'search' => false])]
 final class Pengguna extends Component
 {
     public function mount(): void

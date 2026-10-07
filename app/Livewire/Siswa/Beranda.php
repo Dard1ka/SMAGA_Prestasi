@@ -29,7 +29,7 @@ use Livewire\Component;
  * Siswa · Beranda (UI-MAP #8/#9, boards Beranda-Siswa + Beranda-Mobile, one responsive component):
  * hero, "Perlu tindakan" (team invites, reports due), Lomba saya (compact trackers), rekomendasi,
  * points card, nearest registration deadlines. Own data only. The first-run tour (Siswa\TurMenu)
- * is embedded here and shows itself until users.tour_seen_at is set, or with ?tur=1.
+ * is embedded here and shows itself until users.tour_seen_at is set, or once after /siswa/tur (TurMenu::FORCE_KEY).
  */
 #[Layout('layouts::app')]
 #[Title('Beranda')]

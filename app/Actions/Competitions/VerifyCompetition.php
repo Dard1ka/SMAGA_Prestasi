@@ -127,13 +127,22 @@ final class VerifyCompetition
 
         $submitter = $result->submitter()->first();
 
-        if ($submitter !== null && ! $submitter->is($actor) && $submitter->canLogIn()) {
+        if (self::notifiesSubmitter($submitter, $actor)) {
             $submitter->notify($decision === CompetitionStatus::Dipublikasikan
                 ? CompetitionPublished::for($result, $submitter->hasRole(RoleName::Siswa->value))
                 : CompetitionRejected::for($result, $note));
         }
 
         return $result;
+    }
+
+    /**
+     * Is the submitter told about the decision? Not the verifier's own entry, not an account that can no longer log
+     * in. The screen asks the same before its toast says "Pengirim diberi tahu" (QA5).
+     */
+    public static function notifiesSubmitter(?User $submitter, User $actor): bool
+    {
+        return $submitter !== null && ! $submitter->is($actor) && $submitter->canLogIn();
     }
 
     /**

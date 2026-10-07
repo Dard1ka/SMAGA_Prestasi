@@ -78,7 +78,8 @@
 
         <div class="flex flex-wrap items-center justify-between gap-2">
             @if ($resendIn > 0)
-                <p class="text-sm muted" wire:poll.5s>Kirim ulang dalam {{ intdiv($resendIn, 60) }}:{{ str_pad((string) ($resendIn % 60), 2, '0', STR_PAD_LEFT) }}</p>
+                {{-- wire:poll keeps the server's count and shows the button at 0; data-sth-countdown ticks every second (QA5). --}}
+                <p class="text-sm muted" wire:poll.5s data-sth-countdown="{{ $resendIn }}">Kirim ulang dalam <span class="num" data-sth-countdown-text>{{ intdiv($resendIn, 60) }}:{{ str_pad((string) ($resendIn % 60), 2, '0', STR_PAD_LEFT) }}</span></p>
             @else
                 <button type="button" class="lnk" wire:click="resendCode">Kirim ulang kode</button>
             @endif
@@ -151,5 +152,15 @@
         @endif
 
         <x-sth.button size="lg" block wire:click="start">Mulai</x-sth.button>
+    @endif
+
+    {{-- QA5 (Q1-11): a plain POST form, so the account can be left on a shared school computer while activating.
+         Not on the finished screen: the account is active there and "Mulai" leads on (the top bar has Keluar). --}}
+    @if ($step < 4)
+        <form method="POST" action="{{ route('logout') }}" class="flex flex-wrap items-center justify-center gap-x-2 border-t border-line pt-4 text-sm">
+            @csrf
+            <span class="muted">Bukan akun kamu?</span>
+            <x-sth.button type="submit" variant="quiet" size="sm" icon="logout">Keluar</x-sth.button>
+        </form>
     @endif
 </div>

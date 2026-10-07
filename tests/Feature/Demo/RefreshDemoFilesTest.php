@@ -421,3 +421,49 @@ it('renders and scans every demo file of a full local seed (slow, STH_DEMO_FULL=
             ->and(m3dPageText($bytes))->toContain('bukan dokumen resmi');
     }
 })->skip(fn (): bool => Env::get('STH_DEMO_FULL') !== '1', 'slow: set STH_DEMO_FULL=1 to render every demo file');
+
+// QA5 (2026-10-07): a demo surat tugas names the invitation it answers ----------------------------------------
+
+it('gives every demo letter the number and date of the invitation it answers', function (): void {
+    m3dSeedDemo();
+
+    $letters = Letter::query()->whereHas('file', fn ($q) => $q->where('path', 'like', 'demo/%'))->get();
+
+    expect($letters)->not->toBeEmpty()
+        ->and($letters->filter(fn (Letter $l): bool => blank($l->basis_number) || $l->basis_date === null))->toBeEmpty()
+        // The invitation is older than the letter that answers it.
+        ->and($letters->filter(fn (Letter $l): bool => $l->basis_date->gte($l->issued_on)))->toBeEmpty();
+});
+
+it('fills the invitation of an older demo letter only with --lengkapi, and says when there is something to fill', function (): void {
+    m3dSeedDemo();
+
+    $older = Letter::query()->whereHas('file', fn ($q) => $q->where('path', 'like', 'demo/%'))->orderBy('id')->firstOrFail();
+    $number = $older->basis_number;
+    $older->forceFill(['basis_number' => null, 'basis_date' => null])->save();
+
+    // Without --lengkapi nothing is added, but the command says what --lengkapi would do.
+    m3dAsLocal(fn () => test()->artisan('sth:demo:refresh-files', ['--berkas' => ['tidak-ada-*']])
+        ->expectsOutputToContain('Jalankan dengan --lengkapi untuk melengkapi: 1 surat demo tanpa nomor undangan.')
+        ->assertExitCode(0)
+        ->run());
+
+    expect($older->fresh()->basis_number)->toBeNull();
+
+    m3dAsLocal(fn () => test()->artisan('sth:demo:refresh-files', ['--berkas' => ['tidak-ada-*'], '--lengkapi' => true])
+        ->expectsOutputToContain('Nomor dan tanggal surat undangan dilengkapi pada 1 surat demo.')
+        ->assertExitCode(0)
+        ->run());
+
+    expect($older->fresh()->basis_number)->toBe($number)
+        ->and($older->fresh()->basis_date)->not->toBeNull();
+
+    // A letter made by Tata Usaha (not in demo/) is never touched.
+    $real = Letter::query()->whereHas('file', fn ($q) => $q->where('path', 'like', 'demo/%'))->orderByDesc('id')->firstOrFail();
+    $real->file->forceFill(['path' => 'surat/2026/buatan-tu.pdf'])->save();
+    $real->forceFill(['basis_number' => null, 'basis_date' => null])->save();
+
+    m3dAsLocal(fn () => test()->artisan('sth:demo:refresh-files', ['--berkas' => ['tidak-ada-*'], '--lengkapi' => true])->assertExitCode(0)->run());
+
+    expect($real->fresh()->basis_number)->toBeNull();
+});

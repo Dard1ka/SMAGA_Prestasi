@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Actions\Talent\RestoreTalentApplication;
 use App\Enums\RoleName;
 use App\Enums\TalentStatus;
+use App\Enums\UserStatus;
 use App\Livewire\Kesiswaan\Talenta;
 use App\Models\TalentApplication;
 use App\Notifications\Talent\TalentApplicationRejected;
@@ -217,20 +218,32 @@ it('asks where the choice goes back to, with the earlier stage preselected and m
         ->assertSee('Kembalikan ke tahap')
         ->assertViewHas('restoring', fn (array $restoring): bool => $restoring['from'] === 'Pemetaan' && $restoring['options'] === [
             'terdaftar' => ['label' => 'Terdaftar', 'sub' => 'Tahap 1'],
-            'pemetaan' => ['label' => 'Pemetaan', 'sub' => 'Tahap sebelumnya'],
+            'pemetaan' => ['label' => 'Pemetaan', 'sub' => 'Tahap 2 · tahap sebelumnya'],
             'seleksi' => ['label' => 'Seleksi/asesmen', 'sub' => 'Tahap 3'],
             'pembinaan' => ['label' => 'Peserta pembinaan', 'sub' => 'Tahap 4'],
         ])
         ->assertSeeHtml(['id="f-restoreTo-terdaftar"', 'id="f-restoreTo-pemetaan"', 'id="f-restoreTo-seleksi"', 'id="f-restoreTo-pembinaan"'])
         ->assertDontSeeHtml('id="f-restoreTo-tidak-lolos"')
-        ->assertSee('Tahap sebelumnya');
+        ->assertSee('Tahap 2 · tahap sebelumnya')
+        ->assertSee('Guru pembina')
+        ->assertSee('Wajib kalau dipulihkan ke Peserta pembinaan.');
 
     // Opening the dialog changed nothing and told nobody.
     expect($rejected->fresh()->status)->toBe(TalentStatus::TidakLolos);
     Notification::assertNothingSent();
 
+    $guru = F::staff(RoleName::Guru, 'Pak Hendra Kusuma');
+
     $component->set('restoreTo', 'pembinaan')
         ->set('restoreNote', 'Selamat bergabung di pembinaan.')
+        ->call('restore')
+        ->assertHasErrors(['restoreMentor'])
+        ->assertSee('Peserta pembinaan perlu guru pembina. Pilih guru pembinanya.')
+        ->assertNotDispatched('sth-modal-close');
+
+    expect($rejected->fresh()->status)->toBe(TalentStatus::TidakLolos);
+
+    $component->set('restoreMentor', (string) $guru->getKey())
         ->call('restore')
         ->assertHasNoErrors()
         ->assertSet('restoreId', null)
@@ -241,7 +254,8 @@ it('asks where the choice goes back to, with the earlier stage preselected and m
     $fresh = $rejected->fresh();
     expect($fresh->status)->toBe(TalentStatus::Pembinaan)
         ->and($fresh->rejected_from)->toBeNull()
-        ->and($fresh->student_note)->toBe('Selamat bergabung di pembinaan.');
+        ->and($fresh->student_note)->toBe('Selamat bergabung di pembinaan.')
+        ->and($fresh->mentor_id)->toBe($guru->getKey());
 
     $log = Activity::query()->where('event', 'talent.restored')->sole();
     expect($log->properties['from'])->toBe('tidak_lolos')
@@ -260,6 +274,7 @@ it('restores to every stage of the pipeline from the dialog', function (string $
         ->call('setTahap', 'tidak_lolos')
         ->call('askRestore', $rejected->getKey())
         ->set('restoreTo', $to)
+        ->set('restoreMentor', (string) F::staff(RoleName::Guru, 'Pak Hendra Kusuma')->getKey())
         ->call('restore')
         ->assertHasNoErrors()
         ->assertDispatched('sth-toast', message: 'Dipulihkan ke tahap '.$status->label().'. Siswa diberi tahu.', tone: 'success')
@@ -376,11 +391,11 @@ it('opens a dialog for "Download data (Excel)" with the statuses of the open tab
         // Tab "Semua": every status is ticked.
         ->assertSet('exportStatuses', M3A_STATUSES)
         ->assertSee('Pilih status yang masuk ke file Excel.')
-        ->assertSee('Semua jenis, cabang, dan kelas masuk ke file.')
+        ->assertSee('File mengikuti filter di layar. Saat ini tidak ada filter jenis, cabang, kelas, atau pencarian.')
         ->assertSee('Pilih semua status')
         ->assertViewHas('exportOptions', fn (array $options): bool => array_keys($options) === M3A_STATUSES
-            && $options['seleksi'] === ['label' => 'Seleksi/asesmen', 'sub' => '1 pilihan']
-            && $options['tidak_lolos'] === ['label' => 'Tidak lolos', 'sub' => '1 pilihan'])
+            && $options['seleksi'] === ['label' => 'Seleksi/asesmen', 'sub' => '1 pilihan', 'disabled' => false]
+            && $options['tidak_lolos'] === ['label' => 'Tidak lolos', 'sub' => '1 pilihan', 'disabled' => false])
         ->assertSeeHtml(['id="f-exportStatuses-terdaftar"', 'id="f-exportStatuses-tidak-lolos"'])
         // Another tab: only its status is ticked; "Pilih semua status" ticks the rest.
         ->call('setTahap', 'seleksi')
@@ -635,3 +650,67 @@ it('checks the permission again inside every new action', function (string $meth
     'download' => ['download', []],
     'export' => ['export', ['semua']],
 ]);
+
+// QA5 (2026-10-07): a status without rows is marked and never makes an empty file --------------------------
+
+it('marks a status without rows as empty, leaves it unticked and never downloads an empty file', function (): void {
+    F::application(F::student('Bima Satria Wicaksono', 'XII-7'), TalentStatus::Seleksi, 'Fisika');
+    session()->put('auth.password_confirmed_at', time());
+
+    $component = Livewire::actingAs($this->kesiswaan)->test(Talenta::class)
+        ->call('askExport')
+        // Tab "Semua": only the statuses that have rows are ticked.
+        ->assertSet('exportStatuses', ['seleksi'])
+        ->assertViewHas('exportOptions', fn (array $options): bool => $options['seleksi'] === ['label' => 'Seleksi/asesmen', 'sub' => '1 pilihan', 'disabled' => false]
+            && $options['terdaftar'] === ['label' => 'Terdaftar', 'sub' => 'Kosong', 'disabled' => true]
+            && $options['tidak_lolos'] === ['label' => 'Tidak lolos', 'sub' => 'Kosong', 'disabled' => true])
+        ->call('selectAllExport')
+        ->assertSet('exportStatuses', ['seleksi']);
+
+    // A tick on an empty status (forged, the box is disabled) asks for another choice, no file.
+    $component->set('exportStatuses', ['terdaftar'])
+        ->call('download')
+        ->assertHasErrors(['exportStatuses'])
+        ->assertSee('Status yang dipilih belum punya data. Pilih status lain atau ubah filter.')
+        ->assertNoFileDownloaded();
+
+    // A direct call for an empty status (e.g. the open tab is empty) says so instead of an empty file.
+    $component->call('export', 'terdaftar')
+        ->assertNoFileDownloaded()
+        ->assertDispatched('sth-toast', message: 'Tidak ada pilihan talenta dengan status dan filter ini. Tidak ada yang di-download.', tone: 'error');
+
+    expect(Activity::query()->where('event', 'talent.exported')->exists())->toBeFalse();
+});
+
+it('opens the dialog of an empty tab with nothing ticked', function (): void {
+    F::application(F::student('Bima Satria Wicaksono', 'XII-7'), TalentStatus::Seleksi, 'Fisika');
+
+    Livewire::actingAs($this->kesiswaan)->test(Talenta::class)
+        ->call('setTahap', 'tidak_lolos')
+        ->call('askExport')
+        ->assertSet('exportStatuses', []);
+});
+
+it('does not preselect a guru pembina who is no longer in the list of the restore dialog', function (): void {
+    $rejected = m3aTidakLolos('Citra Ayu Lestari', 'XI-2', TalentStatus::Seleksi, 'Fisika');
+    $gone = F::staff(RoleName::Guru, 'Pak Hendra Kusuma');
+    $active = F::staff(RoleName::Guru, 'Bu Retno Wulandari');
+    $rejected->forceFill(['mentor_id' => $gone->getKey()])->save();
+    $gone->forceFill(['status' => UserStatus::Archived])->save();
+
+    Livewire::actingAs($this->kesiswaan)->test(Talenta::class)
+        ->call('setTahap', 'tidak_lolos')
+        ->call('askRestore', $rejected->getKey())
+        ->assertSet('restoreMentor', '')
+        ->set('restoreTo', 'terdaftar')
+        ->call('restore')
+        ->assertHasNoErrors();
+
+    expect($rejected->fresh()->status)->toBe(TalentStatus::Terdaftar);
+
+    $rejected->fresh()->forceFill(['status' => TalentStatus::TidakLolos, 'mentor_id' => $active->getKey()])->save();
+
+    Livewire::actingAs($this->kesiswaan)->test(Talenta::class)
+        ->call('askRestore', $rejected->getKey())
+        ->assertSet('restoreMentor', (string) $active->getKey());
+});

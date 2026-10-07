@@ -29,19 +29,27 @@ final class CreateAppreciationEvent
         Gate::forUser($actor)->authorize('create', AppreciationEvent::class);
 
         $name = trim((string) preg_replace('/\s+/u', ' ', $name));
+        // Name and date are checked together, so an empty form names both fields at once (QA5 #65).
+        $errors = [];
 
         if ($name === '') {
-            throw ValidationException::withMessages(['name' => 'Isi nama acara.']);
+            $errors['name'] = 'Isi nama acara.';
+        } elseif (mb_strlen($name) > self::NAME_MAX) {
+            $errors['name'] = 'Nama acara maksimal 200 karakter.';
         }
 
-        if (mb_strlen($name) > self::NAME_MAX) {
-            throw ValidationException::withMessages(['name' => 'Nama acara maksimal 200 karakter.']);
+        try {
+            $date = self::date($heldOn);
+
+            if ($date->lessThan(CarbonImmutable::today())) {
+                $errors['held_on'] = 'Tanggal acara tidak boleh lewat.';
+            }
+        } catch (ValidationException $e) {
+            $errors['held_on'] = (string) ($e->errors()['held_on'][0] ?? 'Isi tanggal acara.');
         }
 
-        $date = self::date($heldOn);
-
-        if ($date->lessThan(CarbonImmutable::today())) {
-            throw ValidationException::withMessages(['held_on' => 'Tanggal acara tidak boleh lewat.']);
+        if ($errors !== []) {
+            throw ValidationException::withMessages($errors);
         }
 
         return DB::transaction(function () use ($actor, $name, $date): AppreciationEvent {

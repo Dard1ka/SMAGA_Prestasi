@@ -199,7 +199,8 @@
     </div>
 
     {{-- Students of one class ("Lihat"). Opened by showClass(), or on page load with ?kelas=<id>. --}}
-    <x-sth.modal id="aktivasi-kelas" size="lg" :open="$openClassOnLoad"
+    {{-- on-close: X, Esc and a click outside reset ?kelas= too, not only "Tutup" (QA5 retest, #63). --}}
+    <x-sth.modal id="aktivasi-kelas" size="lg" :open="$openClassOnLoad" on-close="closeClass"
         :title="$classDialog ? 'Kelas '.$classDialog['name'] : 'Status aktivasi kelas'"
         description="Email dan NIS ditampilkan tersamar.">
         @if ($classDialog)
@@ -272,7 +273,7 @@
             <p class="m-0 text-[14.5px] text-muted">Pilih kelas dari tabel Per kelas.</p>
         @endif
         <x-slot:footer>
-            <x-sth.button variant="quiet" data-sth-close wire:click="closeClass">Tutup</x-sth.button>
+            <x-sth.button variant="quiet" data-sth-close>Tutup</x-sth.button>
         </x-slot:footer>
     </x-sth.modal>
 

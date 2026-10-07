@@ -324,3 +324,54 @@ it('requests the Kepala Sekolah replacement from the Pengguna tab', function ():
 
     expect(PrincipalReplacement::query()->pending()->count())->toBe(1);
 });
+
+// QA5 (2026-10-07): the staff search filters the table only, never the Kepala Sekolah -----------------------
+
+it('keeps the Kepala Sekolah while the staff search finds nobody', function (): void {
+    A::staff(RoleName::KepalaSekolah, ['name' => 'Drs. Bambang Hartono, M.Pd.', 'username' => 'kepsek']);
+
+    Livewire::actingAs($this->admin)->test(Pengguna::class)
+        ->set('search', 'Hana')
+        ->assertSee('Tidak ada akun yang cocok')
+        ->assertDontSee('Belum ada akun Kepala Sekolah')
+        ->assertDontSee('Tetapkan Kepala Sekolah');
+});
+
+it('still offers every staff member as the new Kepala Sekolah while the search shows a few', function (): void {
+    $retno = A::staff(RoleName::Guru, ['name' => 'Retno Wulandari, S.Pd.', 'username' => 'retno.w']);
+    A::staff(RoleName::Guru, ['name' => 'Hendra Kusuma, S.Pd.', 'username' => 'hendra.k']);
+
+    Livewire::actingAs($this->admin)->test(Pengguna::class)
+        ->set('search', 'hendra')
+        ->assertViewHas('principalCandidates', fn (array $candidates): bool => array_key_exists((string) $retno->getKey(), $candidates));
+});
+
+// QA5 retest (2026-10-07, backlog #65): an empty "Tambah pengguna" form shows every problem at once -----------
+
+it('shows every error of the create form in one go, not the password first and the rest later', function (): void {
+    $this->actingAs($this->admin);
+    session(A::passwordConfirmed());
+
+    Livewire::test(Pengguna::class)
+        ->set('new.password', 'Sementara-2026!z')
+        ->set('new.password_confirmation', 'lain')
+        ->call('createStaff')
+        // The role is preselected (Guru), so it cannot be missing.
+        ->assertHasErrors(['new.password', 'new.name', 'new.username']);
+
+    expect(User::query()->where('name', '')->exists())->toBeFalse();
+});
+
+it('clears the old errors of the create form once it passes', function (): void {
+    $this->actingAs($this->admin);
+    session(A::passwordConfirmed());
+
+    Livewire::test(Pengguna::class)
+        ->set('new.password', 'Sementara-2026!z')
+        ->set('new.password_confirmation', 'lain')
+        ->call('createStaff')
+        ->assertHasErrors(['new.password', 'new.name', 'new.username'])
+        ->set('new', ['name' => 'Mas Galih Prasetyo', 'username' => 'galih.p', 'email' => '', 'role' => 'humas', 'honorific' => 'Mas', 'nip' => '', 'rank' => '', 'position' => '', 'password' => 'Sementara-2026!z', 'password_confirmation' => 'Sementara-2026!z'])
+        ->call('createStaff')
+        ->assertHasNoErrors();
+});

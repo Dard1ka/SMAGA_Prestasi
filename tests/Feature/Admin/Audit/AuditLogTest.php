@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Actions\Registrations\AwaitReport;
+use App\Actions\Registrations\StartCompetition;
 use App\Actions\Reports\ExportAuditLog;
 use App\Actions\Reports\ExportCells;
 use App\Enums\RoleName;
@@ -10,6 +12,7 @@ use App\Models\User;
 use App\Notifications\Admin\LargeExportNotice;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Notification;
 use Livewire\Livewire;
 use Spatie\Activitylog\Models\Activity;
@@ -143,4 +146,53 @@ it('asks for the password before the CSV download from the screen', function ():
     session(A::passwordConfirmed());
     Livewire::test(AuditLog::class)->set('pelaku', 'sistem')->call('export')->assertFileDownloaded();
     expect(Activity::query()->where('event', 'audit.exported')->count())->toBe(1);
+});
+
+// QA5 retest (2026-10-07, backlog #64): every event the app writes has an Indonesian label --------------------
+
+/** Event keys the app passes to ->event(): the quoted ones and the EVENT_* constants of the Actions. */
+function qa5AuditEventKeys(): array
+{
+    $keys = [];
+
+    foreach (File::allFiles(app_path()) as $file) {
+        $code = $file->getContents();
+
+        preg_match_all('/->event\(([^;]*?)\)\s*(?:->|;)/s', $code, $calls);
+        foreach ($calls[1] as $argument) {
+            preg_match_all("/'([a-z_]+\.[a-z_.]+)'/", $argument, $quoted);
+            array_push($keys, ...$quoted[1]);
+        }
+
+        preg_match_all("/const EVENT_[A-Z_]+ = '([a-z_]+\.[a-z_.]+)'/", $code, $constants);
+        array_push($keys, ...$constants[1]);
+    }
+
+    // Built at runtime from a variable: SetNewPassword's reasons, FileController, SchedulePublication, the scheduled
+    // TimelineTransition steps ('registration.'.$to->value) and the model event of a restored soft-deleted row.
+    array_push($keys, 'password.changed', 'account.password_reset', 'file.downloaded', 'file.public_downloaded',
+        'publication.scheduled', 'publication.rescheduled', 'restored');
+    foreach ([StartCompetition::class, AwaitReport::class] as $step) {
+        $keys[] = 'registration.'.app($step)->to()->value;
+    }
+
+    return array_values(array_unique($keys));
+}
+
+it('has a label for every event the app writes to the audit log', function (): void {
+    $keys = qa5AuditEventKeys();
+
+    expect(count($keys))->toBeGreaterThan(60)
+        ->and(array_values(array_diff($keys, array_keys(AuditLog::EVENT_LABELS))))->toBe([]);
+});
+
+it('never prints an event key twice when a row has no label', function (): void {
+    activity('talent')->causedBy($this->admin)->event('talent.applied')->log('talent.applied');
+    activity('file')->causedBy($this->tu)->event('file.downloaded')->log('file.downloaded');
+
+    $this->actingAs($this->admin)->get(route('admin.audit.index'))
+        ->assertOk()
+        ->assertSee('Siswa mendaftar talenta')
+        ->assertSee('Berkas di-download')
+        ->assertDontSee('file.downloaded file.downloaded');
 });

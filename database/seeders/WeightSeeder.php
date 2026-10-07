@@ -24,7 +24,7 @@ class WeightSeeder extends Seeder
 
         $version = WeightVersion::query()->create([
             'effective_at' => self::DEFAULT_EFFECTIVE_AT,
-            'note' => 'Bobot bawaan (D-08)',
+            'note' => 'Bobot bawaan',
         ]);
 
         foreach (WeightTable::defaults()->toRows() as $row) {

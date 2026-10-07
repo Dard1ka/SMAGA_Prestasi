@@ -7,9 +7,12 @@ namespace Database\Seeders\Support\Demo;
 use App\Enums\FilePurpose;
 use App\Enums\ReportFileKind;
 use App\Models\File;
+use App\Models\Letter;
 use App\Models\Report;
 use App\Models\ReportFile;
+use Carbon\CarbonImmutable;
 use Database\Seeders\Support\DemoFiles;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use RuntimeException;
@@ -29,8 +32,10 @@ use Throwable;
  * (DemoPdfRenderer::id), so an up-to-date file is neither rendered nor written again. A template or data change
  * gives another identifier and the file is renewed.
  *
- * attachMissing() is the one exception to "no other table" and only runs when asked for (`--lengkapi`): it adds
- * the research report file a fresh seed attaches to demo reports that have a research title.
+ * attachMissing() and fillLetterBasis() are the exceptions to "no other table" and only run when asked for
+ * (`--lengkapi`): they add the research report file a fresh seed attaches to demo reports that have a research
+ * title, and the invitation number and date a fresh seed gives the demo letters (QA5). missing() counts both
+ * without changing anything, for the hint the command prints without `--lengkapi`.
  */
 final class DemoFileRefresher
 {
@@ -137,20 +142,8 @@ final class DemoFileRefresher
         self::assertLocal();
 
         $added = 0;
-        $reports = Report::query()
-            ->whereNotNull('research_title')
-            ->where('research_title', '!=', '')
-            ->whereDoesntHave('files', fn ($q) => $q->where('kind', ReportFileKind::LaporanRiset))
-            ->with('files.file')
-            ->get();
 
-        foreach ($reports as $report) {
-            $files = $report->files->map(fn (ReportFile $rf): ?File => $rf->file)->filter();
-
-            if ($files->isEmpty() || $files->contains(fn (File $f): bool => ! str_starts_with($f->path, self::DIRECTORY.'/'))) {
-                continue;
-            }
-
+        foreach ($this->reportsWithoutResearchFile() as $report) {
             ReportFile::query()->create([
                 'report_id' => $report->getKey(),
                 'kind' => ReportFileKind::LaporanRiset,
@@ -160,6 +153,81 @@ final class DemoFileRefresher
         }
 
         return $added;
+    }
+
+    /**
+     * Gives every demo letter (its PDF in demo/, named the way DemoSeeder names it) that lacks the number or the
+     * date of the invitation it answers the values a fresh seed writes (DemoLetterBasis). A letter Tata Usaha made
+     * is never touched. Written without model events, so no audit entry. Only on request.
+     *
+     * @return int number of letters filled
+     */
+    public function fillLetterBasis(): int
+    {
+        self::assertLocal();
+
+        $filled = 0;
+
+        foreach ($this->lettersWithoutBasis() as $letter) {
+            $basis = DemoLetterBasis::for((string) DemoLetterBasis::keyOf($letter), CarbonImmutable::parse($letter->issued_on->toDateString()));
+
+            Letter::query()->whereKey($letter->getKey())->update([
+                'basis_number' => filled($letter->basis_number) ? $letter->basis_number : $basis['number'],
+                'basis_date' => $letter->basis_date?->toDateString() ?? $basis['date'],
+            ]);
+            $filled++;
+        }
+
+        return $filled;
+    }
+
+    /**
+     * What `--lengkapi` would add, without changing anything.
+     *
+     * @return array{reports: int, letters: int}
+     */
+    public function missing(): array
+    {
+        self::assertLocal();
+
+        return ['reports' => $this->reportsWithoutResearchFile()->count(), 'letters' => $this->lettersWithoutBasis()->count()];
+    }
+
+    /**
+     * Demo reports (every evidence file in demo/) with a research title and no research report file.
+     *
+     * @return Collection<int, Report>
+     */
+    private function reportsWithoutResearchFile(): Collection
+    {
+        return Report::query()
+            ->whereNotNull('research_title')
+            ->where('research_title', '!=', '')
+            ->whereDoesntHave('files', fn ($q) => $q->where('kind', ReportFileKind::LaporanRiset))
+            ->with('files.file')
+            ->get()
+            ->filter(function (Report $report): bool {
+                $files = $report->files->map(fn (ReportFile $rf): ?File => $rf->file)->filter();
+
+                return $files->isNotEmpty() && ! $files->contains(fn (File $f): bool => ! str_starts_with($f->path, self::DIRECTORY.'/'));
+            })
+            ->values();
+    }
+
+    /**
+     * Demo letters without the invitation's number or date.
+     *
+     * @return Collection<int, Letter>
+     */
+    private function lettersWithoutBasis(): Collection
+    {
+        return Letter::query()
+            ->where(fn ($q) => $q->whereNull('basis_number')->orWhere('basis_number', '')->orWhereNull('basis_date'))
+            ->whereHas('file', fn ($q) => $q->where('disk', 'local')->where('path', 'like', self::DIRECTORY.'/%'))
+            ->with('file')
+            ->get()
+            ->filter(fn (Letter $letter): bool => DemoLetterBasis::keyOf($letter) !== null)
+            ->values();
     }
 
     /**

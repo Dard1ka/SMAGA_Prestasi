@@ -34,7 +34,8 @@ use Spatie\Activitylog\Models\Activity;
  * name or an exact NIS/NISN.
  */
 #[Title('Arsip otomatis')]
-#[Layout('layouts::app', ['subtitle' => 'Akun siswa diarsipkan 18 bulan setelah mulai kelas XII.'])]
+// One search box per screen (D-90, backlog #60): this page has its own, so the top bar shows none.
+#[Layout('layouts::app', ['subtitle' => 'Akun siswa diarsipkan 18 bulan setelah mulai kelas XII.', 'search' => false])]
 final class ArsipOtomatis extends Component
 {
     use RequiresRecentPassword;

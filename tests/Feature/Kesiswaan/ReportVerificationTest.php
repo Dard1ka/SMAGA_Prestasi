@@ -18,6 +18,7 @@ use App\Models\RegistrationMember;
 use App\Models\WeightValue;
 use App\Models\WeightVersion;
 use App\Notifications\Verification\AchievementReadyForPublication;
+use App\Notifications\Verification\BinaanReportDecided;
 use App\Notifications\Verification\ReportRejected;
 use App\Notifications\Verification\ReportRevisionRequested;
 use App\Notifications\Verification\ReportVerified;
@@ -187,4 +188,42 @@ it('flushes the public page cache after a verification (W3-A)', function (): voi
     app(VerifyReport::class)->handle($this->kesiswaan, $report, ResultType::Juara1, F::allChecks());
 
     expect((int) Cache::get(PublicAchievements::VERSION_KEY, 1))->toBe($version + 1);
+});
+
+// QA5 (lead, 2026-10-07): the guru pembimbing hears every decision on a binaan report -----------------------
+
+it('tells the guru pembimbing about every decision on a binaan report', function (string $decision, string $title, string $body): void {
+    $guru = F::staff(RoleName::Guru, 'Retno Wulandari, S.Pd.');
+    $report = F::pendingReport(F::student('Nadia Putri Anindya', 'XI-4'), [], ResultType::Juara2, $guru);
+
+    match ($decision) {
+        'verified' => app(VerifyReport::class)->handle($this->kesiswaan, $report, ResultType::Juara2, F::allChecks()),
+        'revision' => app(RequestReportRevision::class)->handle($this->kesiswaan, $report, 'Sertifikat belum terbaca.'),
+        'rejected' => app(RejectReport::class)->handle($this->kesiswaan, $report, 'Bukan lomba yang didaftarkan.'),
+    };
+
+    Notification::assertSentToTimes($guru, BinaanReportDecided::class, 1);
+    Notification::assertSentTo($guru, BinaanReportDecided::class, function (BinaanReportDecided $n) use ($guru, $title, $body, $report): bool {
+        $mail = $n->toMail($guru);
+
+        return str_starts_with($n->title, $title)
+            && str_contains($n->body, $body)
+            && $n->toArray($guru)['url'] === route('guru.binaan.show', $report->registration_id)
+            && html_entity_decode((string) $mail->greeting, ENT_QUOTES | ENT_HTML5) === 'Yth. Retno Wulandari, S.Pd.,';
+    });
+})->with([
+    'verified' => ['verified', 'Laporan binaan diverifikasi: ', 'Nadia Putri Anindya meraih Juara II.'],
+    'revision' => ['revision', 'Laporan binaan perlu revisi: ', 'Catatan Kesiswaan: Sertifikat belum terbaca.'],
+    'rejected' => ['rejected', 'Laporan binaan ditolak: ', 'Alasan: Bukan lomba yang didaftarkan.'],
+]);
+
+it('tells no guru when the report has no pembimbing or the guru cannot log in', function (): void {
+    app(VerifyReport::class)->handle($this->kesiswaan, F::pendingReport(), ResultType::Juara3, F::allChecks());
+
+    $frozen = F::staff(RoleName::Guru, 'Hendra Kusuma, S.Pd., M.Si.');
+    $frozen->forceFill(['status' => 'disabled'])->save();
+    app(RequestReportRevision::class)->handle($this->kesiswaan, F::pendingReport(mentor: $frozen), 'Sertifikat belum terbaca.');
+
+    Notification::assertNothingSentTo($frozen);
+    Notification::assertSentTimes(BinaanReportDecided::class, 0);
 });

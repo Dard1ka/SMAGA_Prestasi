@@ -30,7 +30,8 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  * through SuratTugas::streamLetter (LetterPolicy::view + audit `letter.downloaded`). `letter.view`.
  */
 #[Title('Surat atas nama saya')]
-#[Layout('layouts::app', ['subtitle' => 'Semua surat tugas yang terbit dengan nama dan tanda tangan Anda.'])]
+// One search box per screen (D-90, backlog #60): this page has its own, so the top bar shows none.
+#[Layout('layouts::app', ['subtitle' => 'Semua surat tugas yang terbit dengan nama dan tanda tangan Anda.', 'search' => false])]
 final class SuratSaya extends Component
 {
     use WithPagination;

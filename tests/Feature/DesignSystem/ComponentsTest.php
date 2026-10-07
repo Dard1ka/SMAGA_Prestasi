@@ -146,6 +146,19 @@ it('renders a native dialog with a labelled title and a close button', function 
         ->assertSee('data-sth-close', false);
 });
 
+// QA5 retest (2026-10-07, backlog #63): a dialog whose state lives on the server resets it however it is closed --
+
+it('tells the page when a dialog with on-close is closed, by any button, Esc or a click outside', function (): void {
+    $this->blade('<x-sth.modal id="kelas" title="Kelas X-1" on-close="closeClass">Isi</x-sth.modal>')
+        ->assertSee('data-sth-on-close="closeClass"', false);
+
+    $this->blade('<x-sth.modal id="usul" title="Usulkan lomba">Isi</x-sth.modal>')
+        ->assertDontSee('data-sth-on-close', false);
+
+    // app.js calls that Livewire method on the dialog's close event (the browser fires it for every way of closing).
+    expect(file_get_contents(resource_path('js/app.js')))->toContain('data-sth-on-close');
+});
+
 it('renders a table with a caption and column headers', function (): void {
     $this->blade('<x-sth.table caption="Katalog lomba"><x-slot:head><th scope="col">Lomba</th></x-slot:head><tr><td>OSN</td></tr></x-sth.table>')
         ->assertSee('<caption class="sr-only">Katalog lomba</caption>', false)

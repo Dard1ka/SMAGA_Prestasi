@@ -121,3 +121,15 @@ it('links the role landings from the menus (UI-MAP .beranda names first)', funct
         expect($roleItems[$key]['route'])->toBe($route);
     }
 });
+
+// QA5 retest (2026-10-07, backlog #62): "Staf aktif" counts activated staff accounts only ------------------------
+
+it('counts only activated staff as active on the status page and names the rest', function (): void {
+    $admin = A::admin();
+    A::staff(RoleName::Kesiswaan, ['name' => 'Dwi Rahayu']);
+    A::staff(RoleName::Humas, ['name' => 'Uji Humas Dua'])->forceFill(['status' => 'pending_activation'])->save();
+
+    Livewire\Livewire::actingAs($admin)->test(Ringkasan::class)
+        ->assertViewHas('stats', fn (array $stats): bool => $stats['staff'] === 2 && $stats['staffPending'] === 1)
+        ->assertSee('1 belum aktivasi');
+});

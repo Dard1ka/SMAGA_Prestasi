@@ -103,6 +103,10 @@ class Talenta extends Component
     /** `export('semua')`: every status, whatever tab is open. */
     public const EXPORT_ALL = 'semua';
 
+    public const EXPORT_EMPTY_CHOICE = 'Status yang dipilih belum punya data. Pilih status lain atau ubah filter.';
+
+    public const EXPORT_NOTHING = 'Tidak ada pilihan talenta dengan status dan filter ini. Tidak ada yang di-download.';
+
     public const SAVED_WITH_DRAFT = 'Tersimpan. Catatan untuk siswa terkirim saat kamu menekan Lolos atau Tidak lolos.';
 
     #[Url(as: 'tahap', except: 'semua')]
@@ -160,6 +164,9 @@ class Talenta extends Component
 
     /** Stage ticked in the "Pulihkan" dialog; restore() accepts only RestoreTalentApplication::TARGETS. */
     public string $restoreTo = '';
+
+    /** Guru pembina in the "Pulihkan" dialog (user id or ''); required for Peserta pembinaan (D-109). */
+    public string $restoreMentor = '';
 
     /**
      * Statuses ticked in the "Download data" dialog; download() keeps only real TalentStatus values.
@@ -383,14 +390,16 @@ class Talenta extends Component
         $this->restoreNote = '';
         // The stage before the rejection stays the preselected choice (Terdaftar when it is unknown).
         $this->restoreTo = $application->restoreTarget()->value;
-        $this->resetErrorBag(['restoreNote', 'restoreTo']);
+        // Preselect the row's pembina only while the dialog lists that guru (an active guru account).
+        $this->restoreMentor = RestoreTalentApplication::isActiveGuru($application->mentor_id) ? (string) $application->mentor_id : '';
+        $this->resetErrorBag(['restoreNote', 'restoreTo', 'restoreMentor']);
         $this->dispatch('sth-modal-open', id: self::RESTORE_DIALOG);
     }
 
     /** Confirm in the dialog: back into the stage Kesiswaan ticked (M3-A), the student is told. */
     public function restore(RestoreTalentApplication $restore): void
     {
-        $this->resetErrorBag(['restoreNote', 'restoreTo']);
+        $this->resetErrorBag(['restoreNote', 'restoreTo', 'restoreMentor']);
         $application = $this->find((string) $this->restoreId);
         $this->authorize('restore', $application);
         $to = TalentStatus::tryFrom($this->restoreTo);
@@ -402,12 +411,18 @@ class Talenta extends Component
         }
 
         try {
-            $restored = $restore->handle($this->actor(), $application, $this->restoreNote, $to);
+            $restored = $restore->handle($this->actor(), $application, $this->restoreNote, $to, $this->restoreMentor);
         } catch (ValidationException $e) {
             $errors = $e->errors();
 
             if (isset($errors['student_note'])) {
                 $this->addError('restoreNote', (string) ($errors['student_note'][0] ?? 'Periksa catatan.'));
+
+                return;
+            }
+
+            if (isset($errors['mentor_id'])) {
+                $this->addError('restoreMentor', (string) ($errors['mentor_id'][0] ?? RestoreTalentApplication::MENTOR_MESSAGE));
 
                 return;
             }
@@ -543,7 +558,8 @@ class Talenta extends Component
     {
         $this->authorize('manage', TalentApplication::class);
         $this->resetErrorBag('exportStatuses');
-        $this->exportStatuses = self::statusValues($this->tabStatuses());
+        // An empty status cannot be ticked (QA5): the open tab's status only when it has rows.
+        $this->exportStatuses = array_values(array_intersect(self::statusValues($this->tabStatuses()), $this->filledStatuses()));
         $this->dispatch('sth-modal-open', id: self::EXPORT_DIALOG);
     }
 
@@ -552,7 +568,7 @@ class Talenta extends Component
     {
         $this->authorize('manage', TalentApplication::class);
         $this->resetErrorBag('exportStatuses');
-        $this->exportStatuses = self::statusValues(TalentStatus::cases());
+        $this->exportStatuses = $this->filledStatuses();
     }
 
     /**
@@ -575,9 +591,18 @@ class Talenta extends Component
             return null;
         }
 
+        if ($this->baseQuery()->whereIn('status', self::statusValues($chosen))->doesntExist()) {
+            $this->addError('exportStatuses', self::EXPORT_EMPTY_CHOICE);
+
+            return null;
+        }
+
         $this->dispatch('sth-modal-close', id: self::EXPORT_DIALOG);
 
-        return $this->export($recipients, self::exportArgument($chosen));
+        // Every status that has rows is ticked (the empty ones cannot be): that is "every status" for the file.
+        $every = array_diff($this->filledStatuses(), self::statusValues($chosen)) === [];
+
+        return $this->export($recipients, $every ? self::EXPORT_ALL : self::exportArgument($chosen));
     }
 
     /**
@@ -603,6 +628,12 @@ class Talenta extends Component
 
         $values = self::statusValues($statuses);
         $count = $this->baseQuery()->whereIn('status', $values)->count();
+
+        if ($count === 0) {
+            $this->dispatch('sth-toast', message: self::EXPORT_NOTHING, tone: 'error');
+
+            return null;
+        }
 
         if ($count > self::EXPORT_MAX_ROWS) {
             $this->dispatch('sth-toast', message: 'Terlalu banyak baris ('.number_format($count, 0, ',', '.').'). Persempit filter, maks. '
@@ -747,6 +778,14 @@ class Talenta extends Component
         return $chosen !== [] && count($chosen) === count($asked) ? $chosen : null;
     }
 
+    /** @return list<string> the status values that have rows inside jenis, cabang, kelas and search, in pipeline order */
+    private function filledStatuses(): array
+    {
+        $counts = $this->counts();
+
+        return array_values(array_filter(self::statusValues(TalentStatus::cases()), fn (string $status): bool => ($counts[$status] ?? 0) > 0));
+    }
+
     /** @return list<TalentStatus> the statuses the open tab lists ("Semua" = every one) */
     private function tabStatuses(): array
     {
@@ -820,7 +859,8 @@ class Talenta extends Component
             'rejecting' => $this->rejecting(),
             'exportOptions' => self::exportOptions($counts),
             'exportScope' => $this->exportScope(),
-        ])->layoutData(['badges' => $this->kesiswaanBadges()]);
+            // One search box per screen (D-90, backlog #60): this page has its own, so the top bar shows none.
+        ])->layoutData(['badges' => $this->kesiswaanBadges(), 'search' => false]);
     }
 
     /** Where Fortify sends the user back after the password confirmation (RequiresRecentPassword). */
@@ -1035,7 +1075,7 @@ class Talenta extends Component
         foreach (RestoreTalentApplication::TARGETS as $stage) {
             $options[$stage->value] = [
                 'label' => $stage->label(),
-                'sub' => $stage === $previous ? 'Tahap sebelumnya' : 'Tahap '.$stage->step(),
+                'sub' => 'Tahap '.$stage->step().($stage === $previous ? ' · tahap sebelumnya' : ''),
             ];
         }
 
@@ -1061,9 +1101,12 @@ class Talenta extends Component
         $options = [];
 
         foreach (TalentStatus::cases() as $status) {
+            $n = $counts[$status->value] ?? 0;
             $options[$status->value] = [
                 'label' => $status->label(),
-                'sub' => number_format($counts[$status->value] ?? 0, 0, ',', '.').' pilihan',
+                'sub' => $n > 0 ? number_format($n, 0, ',', '.').' pilihan' : 'Kosong',
+                // QA5: a status without rows cannot be ticked, so no empty Excel file is made by accident.
+                'disabled' => $n === 0,
             ];
         }
 
@@ -1076,7 +1119,7 @@ class Talenta extends Component
         $others = $this->describeOtherFilters();
 
         return $others === []
-            ? 'Semua jenis, cabang, dan kelas masuk ke file.'
+            ? 'File mengikuti filter di layar. Saat ini tidak ada filter jenis, cabang, kelas, atau pencarian.'
             : 'Filter yang sedang dipakai ikut berlaku: '.implode('; ', $others).'.';
     }
 
@@ -1130,6 +1173,7 @@ class Talenta extends Component
         $this->restoreId = null;
         $this->restoreNote = '';
         $this->restoreTo = '';
+        $this->restoreMentor = '';
         $this->dispatch('sth-modal-close', id: self::RESTORE_DIALOG);
     }
 

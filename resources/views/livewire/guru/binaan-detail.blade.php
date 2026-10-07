@@ -12,7 +12,11 @@
 
     <x-sth.card as="section" aria-label="Jejak prestasi" class="flex flex-col gap-4">
         <x-sth.tracker :status="$status" :dates="$trackerDates" />
-        @if ($deadline)
+        @if ($deadline && $revising)
+            <x-sth.alert :tone="$deadline['overdue'] ? 'error' : 'warning'" title="Laporan perlu direvisi">
+                Ketua tim memperbaiki laporan dari akunnya. Catatan Kesiswaan ada di Laporan hasil. Batas lapor {{ $deadline['dueText'] }}.
+            </x-sth.alert>
+        @elseif ($deadline)
             <x-sth.alert :tone="$deadline['overdue'] ? 'error' : 'warning'" title="Laporan hasil belum dikirim">
                 Batas lapor {{ $deadline['dueText'] }}. Ketua tim mengirim laporan dari akunnya.
             </x-sth.alert>
@@ -127,7 +131,14 @@
                                     <span class="font-bold">{{ $letter['title'] }}</span>
                                     <span class="num ellip text-[12.5px] text-muted">{{ $letter['meta'] }}</span>
                                 </span>
-                                <x-sth.icon-button icon="download" :label="'Download '.$letter['title'].' (PDF)'" :href="$letter['href']" size="sm" />
+                                @if ($letter['preview'])
+                                    {{-- Preview popup (<x-sth.preview>); the href stays the download. --}}
+                                    <x-sth.button variant="quiet" size="sm" icon="eye" :href="$letter['href']" aria-haspopup="dialog"
+                                        :data-sth-preview="$letter['preview']" :data-sth-preview-type="$letter['previewType']"
+                                        :data-sth-preview-name="$letter['name']">Buka<span class="sr-only"> {{ $letter['title'] }}</span></x-sth.button>
+                                @else
+                                    <x-sth.icon-button icon="download" :label="'Download '.$letter['title'].' (PDF)'" :href="$letter['href']" size="sm" />
+                                @endif
                             </li>
                         @endforeach
                     </ul>

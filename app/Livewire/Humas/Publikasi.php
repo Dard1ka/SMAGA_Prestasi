@@ -23,6 +23,7 @@ use Illuminate\Auth\AuthenticationException;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
@@ -116,7 +117,8 @@ class Publikasi extends Component
     {
         $publication = $this->selected();
 
-        $this->validate([
+        // Date, time, caption and channels are checked together, so nothing waits for a second try (QA5 #65).
+        $errors = Validator::make(['date' => $this->date, 'time' => $this->time], [
             'date' => ['required', 'date_format:Y-m-d'],
             'time' => ['required', 'date_format:H:i'],
         ], [
@@ -124,7 +126,22 @@ class Publikasi extends Component
             'date.date_format' => 'Pilih tanggal publikasi.',
             'time.required' => 'Pilih jam publikasi.',
             'time.date_format' => 'Pilih jam publikasi.',
-        ]);
+        ])->errors()->toArray();
+
+        foreach ([fn () => PublicationInput::caption($this->caption, required: true), fn () => PublicationInput::channels($this->channels)] as $check) {
+            try {
+                $check();
+            } catch (ValidationException $e) {
+                $errors += $e->errors();
+            }
+        }
+
+        if ($errors !== []) {
+            throw ValidationException::withMessages($errors);
+        }
+
+        // Like Livewire's validate(): a passing check drops the messages of the previous try.
+        $this->resetErrorBag();
 
         $at = CarbonImmutable::createFromFormat('Y-m-d H:i', $this->date.' '.$this->time, (string) config('app.timezone'));
 

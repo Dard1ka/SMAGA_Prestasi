@@ -396,3 +396,52 @@ it('shows an empty state without publications', function (): void {
         ->test(Publikasi::class)
         ->assertSee('Belum ada prestasi untuk dipublikasikan');
 });
+
+// QA5 (2026-10-07): a published publication is not "prepared" any more ------------------------------------------
+
+it('heads the panel "Detail publikasi" for a publication that is already out', function (): void {
+    $ready = HumasFixtures::publication(studentName: 'Nadia Putri Anindya', competitionName: 'OPSI 2026');
+    $out = HumasFixtures::publication(studentName: 'Salsabila Kirana', competitionName: 'FLS3N Provinsi 2026', publicationState: ['status' => PublicationStatus::Dipublikasikan, 'channels' => ['instagram'], 'published_at' => now()]);
+
+    Livewire::actingAs($this->humas)->test(Publikasi::class)
+        ->call('select', $ready->getKey())
+        ->assertSeeHtml('id="pub-judul" class="m-0 text-lg leading-6 font-bold">Siapkan publikasi')
+        ->call('select', $out->getKey())
+        ->assertSeeHtml('id="pub-judul" class="m-0 text-lg leading-6 font-bold">Detail publikasi')
+        ->assertDontSeeHtml('font-bold">Siapkan publikasi');
+});
+
+// QA5 retest (2026-10-07, backlog #65): "Jadwalkan" with nothing filled in names every missing field at once ---
+
+it('names every missing field of the schedule form at once', function (): void {
+    HumasFixtures::publication();
+
+    Livewire::actingAs($this->humas)
+        ->test(Publikasi::class)
+        ->set('caption', '')
+        ->set('channels', [])
+        ->set('date', '')
+        ->set('time', '')
+        ->call('schedule')
+        ->assertHasErrors(['date', 'time', 'caption', 'channels']);
+});
+
+it('drops the errors of fields that are now filled when the schedule is still refused', function (): void {
+    HumasFixtures::publication();
+
+    Livewire::actingAs($this->humas)
+        ->test(Publikasi::class)
+        ->set('caption', '')
+        ->set('channels', [])
+        ->set('date', '')
+        ->set('time', '')
+        ->call('schedule')
+        ->assertHasErrors(['date', 'time', 'caption', 'channels'])
+        ->set('caption', 'Selamat!')
+        ->set('channels', ['instagram'])
+        ->set('date', now()->subDay()->format('Y-m-d'))
+        ->set('time', '09:00')
+        ->call('schedule')
+        ->assertHasErrors(['date'])
+        ->assertHasNoErrors(['caption', 'channels', 'time']);
+});

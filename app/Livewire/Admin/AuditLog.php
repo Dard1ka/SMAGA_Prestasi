@@ -26,7 +26,8 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
  * from the last 15 minutes and is itself audited. `audit.view` only (Admin).
  */
 #[Title('Log audit')]
-#[Layout('layouts::app', ['subtitle' => 'Semua perubahan penting tercatat di sini. Tidak bisa diubah atau dihapus.'])]
+// One search box per screen (D-90, backlog #60): this page has its own, so the top bar shows none.
+#[Layout('layouts::app', ['subtitle' => 'Semua perubahan penting tercatat di sini. Tidak bisa diubah atau dihapus.', 'search' => false])]
 final class AuditLog extends Component
 {
     use RequiresRecentPassword;
@@ -105,9 +106,39 @@ final class AuditLog extends Component
         'two_factor.recovery_codes_regenerated' => 'Kode pemulihan 2FA dibuat ulang',
         'weight.published' => 'Bobot poin diubah',
         'weight.recomputed' => 'Poin dihitung ulang',
+        // QA5 retest (backlog #64): the events that still showed their code.
+        'appreciation.event_created' => 'Acara apresiasi dibuat',
+        'appreciation.event_completed' => 'Acara apresiasi selesai',
+        'appreciation.recorded' => 'Prestasi dijadwalkan untuk apresiasi',
+        'competition.published' => 'Lomba dipublikasikan',
+        'competition.rejected' => 'Lomba ditolak',
+        'file.downloaded' => 'Berkas di-download',
+        'file.public_downloaded' => 'Berkas publik di-download',
+        'password.changed' => 'Kata sandi diganti',
+        'account.password_reset' => 'Kata sandi direset lewat kode email',
+        'publication.scheduled' => 'Publikasi dijadwalkan',
+        'publication.rescheduled' => 'Jadwal publikasi diubah',
+        'registration.members_invited' => 'Anggota tim diundang',
+        'registration.member_confirmed' => 'Anggota tim menerima undangan',
+        'registration.member_declined' => 'Anggota tim menolak undangan',
+        'registration.invitations_expired' => 'Undangan tim kedaluwarsa',
+        'registration.laporan_dikirim' => 'Laporan hasil dikirim siswa',
+        'registration.berlangsung' => 'Lomba dimulai (otomatis)',
+        'registration.menunggu_laporan' => 'Menunggu laporan hasil (otomatis)',
+        'security.initial_password_on_active' => 'Kata sandi dari sekolah dicoba pada akun aktif',
+        'security.reset_volume' => 'Banyak reset akun dalam satu jam',
+        'setting.activation_window' => 'Masa aktivasi diubah',
+        'talent.applied' => 'Siswa mendaftar talenta',
+        'talent.cancelled' => 'Pilihan talenta dibatalkan siswa',
+        'talent.stage_changed' => 'Tahap talenta diubah',
+        'talent.rejected' => 'Pilihan talenta tidak lolos',
+        'talent.assessment_updated' => 'Jadwal asesmen talenta diubah',
+        'talent_profile.saved' => 'Profil talenta disimpan',
+        'weight.recompute_skipped' => 'Hitung ulang poin dilewati',
         'created' => 'Data dibuat',
         'updated' => 'Data diubah',
         'deleted' => 'Data dihapus',
+        'restored' => 'Data dipulihkan',
     ];
 
     #[Url(except: '')]

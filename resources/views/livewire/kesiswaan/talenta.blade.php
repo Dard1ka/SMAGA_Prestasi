@@ -20,7 +20,9 @@
         <x-sth.button variant="quiet" size="sm" icon="download" wire:click="askExport" aria-haspopup="dialog">Download data (Excel)</x-sth.button>
     </div>
 
-    <div class="grid grid-cols-1 items-start gap-[22px] xl:grid-cols-[1fr_340px] 2xl:grid-cols-[1fr_392px]">
+    {{-- QA5: at 1366 px (the school laptops) the panel is slimmer and the table drops the avatar and narrows its
+         fixed columns, so the student's name stays readable next to the open panel. --}}
+    <div class="grid grid-cols-1 items-start gap-[22px] xl:grid-cols-[minmax(0,1fr)_300px] 2xl:grid-cols-[minmax(0,1fr)_392px]">
         <x-sth.card padding="none" class="flex min-w-0 flex-col">
             <div class="flex flex-col gap-3 border-b border-line p-4">
                 <div class="flex flex-wrap gap-2" role="group" aria-label="Jenis talenta">
@@ -60,9 +62,9 @@
                             <input type="checkbox" class="cek" aria-label="Pilih semua baris yang tampil" wire:click="toggleAll" @checked(count($checked) > 0 && count($checked) >= $rows->count())>
                         </th>
                         <th scope="col">Siswa</th>
-                        <th scope="col" class="w-40">Talenta</th>
+                        <th scope="col" class="w-36 2xl:w-40">Talenta</th>
                         <th scope="col" class="w-20">Prestasi</th>
-                        <th scope="col" class="w-40">Status</th>
+                        <th scope="col" class="w-32 2xl:w-40">Status</th>
                         <th scope="col" class="w-24"><span class="sr-only">Aksi</span></th>
                     </x-slot:head>
                     @foreach ($rows as $row)
@@ -70,7 +72,7 @@
                             <td><input type="checkbox" class="cek" value="{{ $row['id'] }}" wire:model.live="checked" aria-label="Pilih {{ $row['name'] }}, {{ $row['type'] }} {{ $row['branch'] }}"></td>
                             <td>
                                 <div class="flex min-w-0 items-center gap-2.5">
-                                    <x-sth.avatar :name="$row['name']" size="sm" />
+                                    <x-sth.avatar :name="$row['name']" size="sm" class="hidden 2xl:inline-flex" />
                                     <div class="flex min-w-0 flex-col">
                                         <span class="ellip font-bold">{{ $row['name'] }}</span>
                                         <span class="text-[12.5px] text-muted">{{ $row['class'] }} · <span class="num">{{ $row['nis'] }}</span></span>
@@ -275,6 +277,9 @@
                 </p>
                 <x-sth.radio-pick wire:model="restoreTo" label="Kembalikan ke tahap" :value="$restoreTo" :columns="2" size="sm" :options="$restoring['options']"
                     :hint="$restoring['from'] ? null : 'Tahap sebelumnya tidak tercatat, jadi Terdaftar yang dipilih.'" />
+                {{-- D-109: Peserta pembinaan always has a guru pembina; the current one is preselected. --}}
+                <x-sth.select wire:model="restoreMentor" label="Guru pembina" placeholder="Belum ditentukan" :options="$mentors"
+                    hint="Wajib kalau dipulihkan ke Peserta pembinaan." />
             @endif
             <x-sth.textarea wire:model="restoreNote" label="Catatan untuk siswa" optional rows="3" maxlength="1000"
                 hint="Dibaca siswa di notifikasi dan Profil talenta." />

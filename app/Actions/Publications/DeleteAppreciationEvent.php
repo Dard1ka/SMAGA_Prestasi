@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace App\Actions\Publications;
 
 use App\Enums\AppreciationStatus;
+use App\Models\Achievement;
 use App\Models\Appreciation;
 use App\Models\AppreciationEvent;
 use App\Models\User;
 use App\Notifications\Publications\AppreciationCancelled;
+use App\Notifications\Publications\BinaanAppreciationNotice;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -19,7 +21,8 @@ use Illuminate\Validation\ValidationException;
  * cancelled. Only while the event is not confirmed as held; a confirmed event, or one that already has a
  * `selesai` row, is the record and stays. The scheduled rows are deleted, which releases the achievements
  * (they can go on another event). Every student who had a row and can log in was told "Kamu masuk daftar
- * apresiasi" and is now told the event is off (one notice per student, after commit). Audited: actor, time,
+ * apresiasi" and is now told the event is off (one notice per student, after commit); so is each guru pembimbing,
+ * once for all their binaan on the event (D-110). Audited: actor, time,
  * event name and date, number of rows. Returns the number of released rows.
  */
 final class DeleteAppreciationEvent
@@ -35,7 +38,7 @@ final class DeleteAppreciationEvent
         // Permission first (403 for other roles); the state is answered below with a message.
         $gate->authorize('update', $event);
 
-        /** @var array{0: int, 1: list<array{0: User, 1: AppreciationCancelled}>} $result */
+        /** @var array{0: int, 1: list<array{0: User, 1: AppreciationCancelled|BinaanAppreciationNotice}>} $result */
         $result = DB::transaction(function () use ($actor, $event, $gate): array {
             /** @var AppreciationEvent $locked */
             $locked = AppreciationEvent::query()->whereKey($event->getKey())->lockForUpdate()->firstOrFail();
@@ -48,7 +51,7 @@ final class DeleteAppreciationEvent
 
             $rows = Appreciation::query()
                 ->where('appreciation_event_id', $locked->getKey())
-                ->with(['achievement.student.user', 'achievement.competition'])
+                ->with(['achievement.student.user', 'achievement.competition', 'achievement.report'])
                 ->lockForUpdate()
                 ->get();
 
@@ -58,6 +61,7 @@ final class DeleteAppreciationEvent
             }
 
             $notices = self::notices($locked, $rows);
+            $mentorNotices = self::mentorNotices($locked, $rows);
 
             if ($rows->isNotEmpty()) {
                 Appreciation::query()->whereKey($rows->modelKeys())->delete();
@@ -78,7 +82,7 @@ final class DeleteAppreciationEvent
 
             $locked->delete();
 
-            return [$rows->count(), $notices];
+            return [$rows->count(), [...$notices, ...$mentorNotices]];
         });
 
         foreach ($result[1] as [$user, $notification]) {
@@ -106,6 +110,35 @@ final class DeleteAppreciationEvent
             /** @var User $user */
             $user = $group->first()->achievement->student->user;
             $notices[] = [$user, AppreciationCancelled::for($event, $group)];
+        }
+
+        return $notices;
+    }
+
+    /**
+     * One notice per guru pembimbing who can log in, listing every binaan row on the event (D-110).
+     *
+     * @param  Collection<int, Appreciation>  $rows
+     * @return list<array{0: User, 1: BinaanAppreciationNotice}>
+     */
+    private static function mentorNotices(AppreciationEvent $event, Collection $rows): array
+    {
+        $notices = [];
+        $mentors = [];
+        $perMentor = [];
+        $mentorOf = RecordAppreciation::mentorsFor($rows->map(fn (Appreciation $row): ?Achievement => $row->achievement)->filter());
+
+        foreach ($rows as $row) {
+            $mentor = $mentorOf[(string) $row->achievement_id] ?? null;
+
+            if ($mentor !== null) {
+                $mentors[$mentor->getKey()] = $mentor;
+                $perMentor[$mentor->getKey()][] = $row;
+            }
+        }
+
+        foreach ($perMentor as $id => $group) {
+            $notices[] = [$mentors[$id], BinaanAppreciationNotice::cancelled($event, $group)];
         }
 
         return $notices;

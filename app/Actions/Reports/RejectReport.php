@@ -10,6 +10,7 @@ use App\Enums\ReportStatus;
 use App\Models\Registration;
 use App\Models\Report;
 use App\Models\User;
+use App\Notifications\Verification\BinaanReportDecided;
 use App\Notifications\Verification\ReportRejected;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -17,7 +18,8 @@ use Illuminate\Support\Facades\Gate;
 /**
  * Kesiswaan rejects a laporan hasil (reason required): report → ditolak, no achievements, and the
  * registration laporan_dikirim → selesai (the only terminal transition the state machine allows; the
- * tracker shows it as ended without points). The members get the reason (queued).
+ * tracker shows it as ended without points). The members get the reason (queued), and so does the guru
+ * pembimbing (D-110).
  */
 final class RejectReport
 {
@@ -64,6 +66,8 @@ final class RejectReport
         foreach (RequestReportRevision::memberUsers($locked) as $user) {
             $user->notify(ReportRejected::for($locked, $competitionName, $note));
         }
+
+        RequestReportRevision::mentorUser($locked)?->notify(BinaanReportDecided::rejected($locked, $competitionName, $note));
 
         return $locked;
     }

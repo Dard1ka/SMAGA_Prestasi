@@ -83,7 +83,7 @@ it('forwards an activated student from /beranda and the tour link to the siswa l
     $this->actingAs(H::activeStudent()->user);
 
     $this->get(route('home'))->assertRedirect(route('siswa.beranda'));
-    $this->get(route('siswa.tour'))->assertRedirect(route('siswa.beranda', ['tur' => 1]));
+    $this->get(route('siswa.tour'))->assertRedirect(route('siswa.beranda'));
 });
 
 it('keeps the placeholder home for an account without an area role', function (): void {

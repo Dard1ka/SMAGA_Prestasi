@@ -39,7 +39,8 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  * cross-class lookups and the CSV; its class filter is `?kelas_daftar=`.
  */
 #[Title('Status aktivasi')]
-#[Layout('layouts::app', ['subtitle' => 'Aktivasi akun siswa per kelas.'])]
+// One search box per screen (D-90, backlog #60): this page has its own, so the top bar shows none.
+#[Layout('layouts::app', ['subtitle' => 'Aktivasi akun siswa per kelas.', 'search' => false])]
 final class StatusAktivasi extends Component
 {
     use RequiresRecentPassword;

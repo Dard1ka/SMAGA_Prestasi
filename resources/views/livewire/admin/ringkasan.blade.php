@@ -3,7 +3,7 @@
     <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <x-sth.stat-tile icon="users" tone="green" label="Siswa aktif" :value="(string) $stats['active']" note="sudah aktivasi" />
         <x-sth.stat-tile icon="clock" tone="orange" label="Belum aktivasi" :value="(string) $stats['pending']" note="akun siswa" />
-        <x-sth.stat-tile icon="shield" tone="blue" label="Staf aktif" :value="(string) $stats['staff']" note="semua peran staf" :href="route('admin.pengguna.index')" />
+        <x-sth.stat-tile icon="shield" tone="blue" label="Staf aktif" :value="(string) $stats['staff']" :note="$stats['staffPending'] > 0 ? $stats['staffPending'].' belum aktivasi' : 'semua peran staf'" :href="route('admin.pengguna.index')" />
         <x-sth.stat-tile icon="archive" tone="gray" label="Diarsipkan 30 hari lagi" :value="(string) $stats['dueSoon']" note="arsip otomatis" :href="route('admin.pengaturan', ['tab' => 'batas'])" />
     </div>
 

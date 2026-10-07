@@ -11,8 +11,9 @@ use Livewire\Component;
 
 /**
  * First-run menu tour (UI-MAP #6/#7, boards Tur-Menu-Desktop + Tur-Menu-Mobile), embedded in
- * Siswa\Beranda. Shows while users.tour_seen_at is null, or when forced (/siswa/tur → ?tur=1, e.g. from
- * Bantuan). "Lewati" and "Mulai" store tour_seen_at. Desktop tips point at the sidebar (5 tips),
+ * Siswa\Beranda. Shows while users.tour_seen_at is null, or once after /siswa/tur (e.g. from Bantuan), which
+ * sets the session flash FORCE_KEY (before QA5 it was ?tur=1, which brought the tour back on every reload).
+ * "Lewati" and "Mulai" store tour_seen_at. Desktop tips point at the sidebar (5 tips),
  * mobile tips at the tab bar (4 tips); both share one step counter: 0 welcome · 1–5 tips · 6 done.
  * Spotlights are replicas drawn above the scrim at the menu item's position (no page scripts).
  */
@@ -23,6 +24,9 @@ class TurMenu extends Component
     public const DESKTOP_TIPS = 5;
 
     public const MOBILE_TIPS = 4;
+
+    /** Session flash set by /siswa/tur: show the tour on the next page load even when it was seen. */
+    public const FORCE_KEY = 'sth.tour_forced';
 
     #[Locked]
     public bool $show = false;

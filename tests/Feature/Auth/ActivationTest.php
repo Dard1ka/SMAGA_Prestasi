@@ -782,3 +782,40 @@ it('refuses a staff password built from the username, the email name, the own na
     'own name' => ['Kusumawati-77-ok', PasswordPolicy::MSG_OWN_NAME],
     'common password' => ['password12345', PasswordPolicy::MSG_TOO_COMMON],
 ]);
+
+// QA5 (2026-10-07, QA Q1-11): a student can leave the activation screen on a shared school computer ------------
+
+it('offers "Keluar" on every activation step', function (): void {
+    $user = H::pendingStudent()->user;
+
+    $html = $this->actingAs($user)->get(route('aktivasi'))->assertOk()->getContent();
+
+    expect($html)->toContain('action="'.route('logout').'"')
+        ->and($html)->toContain('Keluar');
+    expect(substr_count($html, 'name="_token"'))->toBeGreaterThanOrEqual(1);
+
+    $this->post(route('logout'))->assertRedirect();
+    $this->assertGuest();
+});
+
+// QA5 retest (2026-10-07) ------------------------------------------------------------------------------------
+
+it('counts the resend wait down every second, not in 5-second jumps (backlog #65)', function (): void {
+    [$component] = m1bToCodeStep(H::pendingStudent()->user);
+
+    // The server still swaps in "Kirim ulang kode" at 0 (wire:poll); app.js ticks the text in between.
+    $component->assertSeeHtml('data-sth-countdown="')
+        ->assertSeeHtml('data-sth-countdown-text');
+
+    expect(file_get_contents(resource_path('js/app.js')))->toContain('data-sth-countdown');
+});
+
+it('offers "Keluar" while the activation is open, not on the finished screen', function (): void {
+    $user = H::pendingStudent()->user;
+
+    m1bToPasswordStep($user)
+        ->assertSee('Bukan akun kamu?')
+        ->call('keepPassword')
+        ->assertSet('step', Activation::STEP_DONE)
+        ->assertDontSee('Bukan akun kamu?');
+});

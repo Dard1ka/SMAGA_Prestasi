@@ -11,6 +11,7 @@ use App\Models\Competition;
 use App\Models\Registration;
 use App\Models\Report;
 use App\Models\User;
+use App\Notifications\Verification\BinaanReportDecided;
 use App\Notifications\Verification\ReportRevisionRequested;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -19,7 +20,7 @@ use Illuminate\Validation\ValidationException;
 /**
  * Kesiswaan asks for a corrected report ("Minta revisi", note required): report → perlu_revisi,
  * registration laporan_dikirim → menunggu_laporan, so the leader can send it again (SubmitReport re-uses
- * the row). The members get the note (queued).
+ * the row). The members get the note (queued), and so does the guru pembimbing (D-110).
  */
 final class RequestReportRevision
 {
@@ -66,6 +67,8 @@ final class RequestReportRevision
         foreach (self::memberUsers($locked) as $user) {
             $user->notify(ReportRevisionRequested::for($locked, $competitionName, $note));
         }
+
+        self::mentorUser($locked)?->notify(BinaanReportDecided::revision($locked, $competitionName, $note));
 
         return $locked;
     }
@@ -118,5 +121,16 @@ final class RequestReportRevision
         }
 
         return $users;
+    }
+
+    /**
+     * The guru pembimbing of the report's registration who hears about a decision (D-110): an active account that
+     * still holds the guru role, else null (no guru, frozen, archived or role taken away).
+     */
+    public static function mentorUser(Report $report): ?User
+    {
+        $mentorId = Registration::withTrashed()->whereKey($report->registration_id)->value('mentor_id');
+
+        return $mentorId === null ? null : User::query()->gurus()->canLogIn()->whereKey($mentorId)->first();
     }
 }

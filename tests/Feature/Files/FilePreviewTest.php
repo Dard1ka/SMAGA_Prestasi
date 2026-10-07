@@ -256,8 +256,8 @@ it('never makes a file of the public route framable', function (string $mime, st
 it('keeps login, activation, staff 2FA and the throttle on the file route', function (): void {
     $middleware = Route::getRoutes()->getByName('files.show')->gatherMiddleware();
 
-    expect($middleware)->toContain('auth')->toContain('active')->toContain('activated')->toContain('staff.2fa')->toContain('throttle:60,1')
-        ->and(Route::getRoutes()->getByName('files.public')->gatherMiddleware())->toContain('throttle:30,1');
+    expect($middleware)->toContain('auth')->toContain('active')->toContain('activated')->toContain('staff.2fa')->toContain('throttle:60,1,berkas')
+        ->and(Route::getRoutes()->getByName('files.public')->gatherMiddleware())->toContain('throttle:30,1,berkas-publik');
 });
 
 it('counts a preview against the same limit as a download', function (): void {

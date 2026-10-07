@@ -164,7 +164,7 @@ it('opens the certificate of the Database prestasi drawer in the popup', functio
 
 // Guru › Siswa binaan detail ------------------------------------------------------------------------
 
-it('opens the evidence of an own binaan in the popup and leaves the letter link alone', function (): void {
+it('opens the evidence and the sent letter of an own binaan in the popup, both links staying the download', function (): void {
     $retno = GuruFixtures::guru('Retno Wulandari, S.Pd.');
     $hendra = GuruFixtures::guru('Hendra Kusuma, S.Pd., M.Si.');
     $nadia = GuruFixtures::student('Nadia Putri Anindya', 'XI-4');
@@ -187,10 +187,12 @@ it('opens the evidence of an own binaan in the popup and leaves the letter link 
 
     $html = (string) $response->getContent();
 
-    // The letter keeps its plain download link: exactly one link opens the popup.
-    $response->assertSee('href="'.route('files.show', $letterFile).'"', false);
-    expect(substr_count($html, 'data-sth-preview="'))->toBe(1)
-        ->and($html)->not->toContain(route('files.show', $letterFile).'?tampil=1');
+    // QA5 (D-112): the sent letter opens in the popup too, its href stays the download. Exactly these two links.
+    foreach (m3cPreviewAttributes($letterFile, 'pdf') as $attribute) {
+        $response->assertSee($attribute, false);
+    }
+
+    expect(substr_count($html, 'data-sth-preview="'))->toBe(2);
 
     // Another guru gets neither the page nor the file, inline or not.
     $this->actingAs($hendra)->get(route('guru.binaan.show', $registration))->assertNotFound();

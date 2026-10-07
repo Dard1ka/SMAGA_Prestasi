@@ -16,6 +16,7 @@ use App\Livewire\Publik\PemenangLomba;
 use App\Livewire\Publik\Peringkat;
 use App\Livewire\Publik\PrestasiBidang;
 use App\Livewire\Publik\PrestasiSiswa;
+use App\Livewire\Siswa\TurMenu;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -29,7 +30,9 @@ use Illuminate\Support\Facades\Route;
 // --- W2-D: public pages (no login, D-16/D-31; throttle 60/min/IP, SECURITY §3m-7) ---
 // Data only through App\Livewire\Publik\Data\PublicAchievements (column allowlist, consent, cache).
 // PublicPageHeaders adds X-Robots-Tag: noindex unless Admin allowed indexing (student pages: always).
-Route::middleware(['throttle:60,1', PublicPageHeaders::class])->group(function (): void {
+// QA5 retest: every throttled route has its own counter (3rd parameter = key prefix). Unnamed `throttle:N,M`
+// limits share one counter per user or IP, so browsing public pages used up the QR letter check (429).
+Route::middleware(['throttle:60,1,publik', PublicPageHeaders::class])->group(function (): void {
     Route::livewire('/', Beranda::class)->name('public.home');
     Route::livewire('/prestasi', PrestasiBidang::class)->name('public.prestasi');
     Route::livewire('/prestasi/siswa/{slug}', PrestasiSiswa::class)
@@ -47,7 +50,7 @@ Route::middleware(['throttle:60,1', PublicPageHeaders::class])->group(function (
 // tidak terdaftar." page instead of the generic 404 (the controller only looks up 32 hex characters).
 Route::get('/verifikasi-surat/{code}', LetterVerificationController::class)
     ->where('code', '[^/]{1,128}')
-    ->middleware('throttle:30,1')
+    ->middleware('throttle:30,1,verifikasi-surat')
     ->name('public.surat.verifikasi');
 // --- end W2-C ---
 
@@ -100,17 +103,18 @@ Route::middleware(['auth', 'active'])->group(function (): void {
     })->middleware(['activated', 'staff.2fa'])->name('home');
 
     // W2-A1: after activation (and from Bantuan) → Tur-Menu overlay on siswa.beranda (docs/UI-MAP.md #6/#7).
-    Route::get('/siswa/tur', fn () => redirect()->route('siswa.beranda', ['tur' => 1]))
+    // QA5 retest: forced once through a session flash, not ?tur=1, so a reload after "Lewati" shows no tour.
+    Route::get('/siswa/tur', fn () => redirect()->route('siswa.beranda')->with(TurMenu::FORCE_KEY, true))
         ->middleware(['activated', 'role:siswa'])->name('siswa.tour');
 
     // W2-A1: policy-checked file download (SECURITY §3d); purposes → App\Policies\FilePolicy.
     Route::get('/berkas/{file}', [FileController::class, 'show'])
-        ->middleware(['activated', 'staff.2fa', 'throttle:60,1'])->name('files.show');
+        ->middleware(['activated', 'staff.2fa', 'throttle:60,1,berkas'])->name('files.show');
 });
 
 // W2-A1: public certificate link (guests too) — FilePolicy::viewPublic only (consent + Admin switch), else 404.
 Route::get('/berkas/publik/{file}', [FileController::class, 'publik'])
-    ->middleware('throttle:30,1')->name('files.public');
+    ->middleware('throttle:30,1,berkas-publik')->name('files.public');
 
 // --- B1: Akun › Keamanan, Notifikasi (every role), K8 "Bukan saya?" (docs/dev-notes/B1.md, UI-MAP §2) ---
 // Keamanan/Notifikasi act only on the signed-in user (no ids in the URL). `staff.2fa` only affects staff.
@@ -122,6 +126,6 @@ Route::middleware(['auth', 'active', 'activated', 'staff.2fa'])->group(function 
 // Signed, single-use link from the email-binding notice (7 days). Guests too; GET only shows the page.
 Route::livewire('/akun/bukan-saya/{notice}', BukanSaya::class)
     ->whereUlid('notice')
-    ->middleware(['signed', 'throttle:20,1'])
+    ->middleware(['signed', 'throttle:20,1,bukan-saya'])
     ->name('akun.bukan-saya');
 // --- end B1 ---

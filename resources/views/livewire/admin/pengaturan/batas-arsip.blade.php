@@ -6,7 +6,7 @@
         <x-sth.card as="section" aria-labelledby="h-batas-laporan" class="flex flex-col gap-3">
             <h3 id="h-batas-laporan" class="title-card">Batas laporan hasil</h3>
             <x-sth.input wire:model.live.debounce.400ms="reportDeadlineDays" type="number" min="1" max="365" inputmode="numeric"
-                         label="Hari setelah tanggal final" hint="Default 45 hari (D-25). Laporan lewat batas tampil di dashboard sekolah." />
+                         label="Hari setelah tanggal final" hint="Default 45 hari. Laporan lewat batas tampil di dashboard sekolah." />
             @if ($deadlineExample)
                 <p class="text-sm muted">Contoh: {{ $deadlineExample }}</p>
             @endif

@@ -80,7 +80,7 @@ final class ListUserSessions
             str_contains($ua, 'firefox') || str_contains($ua, 'fxios') => 'Firefox',
             str_contains($ua, 'chrome') || str_contains($ua, 'crios') => 'Chrome',
             str_contains($ua, 'safari') => 'Safari',
-            default => 'Peramban lain',
+            default => 'Browser lain',
         };
 
         $os = match (true) {

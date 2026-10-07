@@ -30,7 +30,8 @@ use Livewire\Component;
  * it (D-27). Only the guru's own uploads are listed; a lomba the guru may not view (CompetitionPolicy) → 404.
  */
 #[Title('Lomba')]
-#[Layout('layouts::app', ['subtitle' => 'Katalog lomba sekolah dan info lomba yang kamu upload.'])]
+// One search box per screen (D-90, backlog #60): this page has its own, so the top bar shows none.
+#[Layout('layouts::app', ['subtitle' => 'Katalog lomba sekolah dan info lomba yang kamu upload.', 'search' => false])]
 final class Lomba extends Component
 {
     public const STEP = 12;

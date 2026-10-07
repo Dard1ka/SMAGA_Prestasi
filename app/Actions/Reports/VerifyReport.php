@@ -18,6 +18,7 @@ use App\Models\Report;
 use App\Models\User;
 use App\Models\WeightVersion;
 use App\Notifications\Verification\AchievementReadyForPublication;
+use App\Notifications\Verification\BinaanReportDecided;
 use App\Notifications\Verification\ReportVerified;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -29,7 +30,8 @@ use Illuminate\Validation\ValidationException;
  * Kesiswaan verifies a laporan hasil (UI-MAP #17): all four evidence checks ticked, final capaian set
  * (may differ from the student's claim). Creates one Achievement per confirmed member with full points
  * from the ACTIVE weight version (snapshot), report → diverifikasi, registration → selesai, one Humas
- * publication row (`siap`) per achievement. Notifies the members and Humas (queued, after commit).
+ * publication row (`siap`) per achievement. Notifies the members, the guru pembimbing (D-110) and Humas (queued,
+ * after commit).
  */
 final class VerifyReport
 {
@@ -118,7 +120,7 @@ final class VerifyReport
         // New verified achievements change the public pages (W2-D request): drop the cached results.
         PublicAchievements::flush();
 
-        $this->notify($achievements);
+        $this->notify($lockedReport, $achievements);
 
         return $achievements;
     }
@@ -147,7 +149,7 @@ final class VerifyReport
     }
 
     /** @param Collection<int, Achievement> $achievements */
-    private function notify(Collection $achievements): void
+    private function notify(Report $report, Collection $achievements): void
     {
         $achievements->load(['student.user', 'competition']);
 
@@ -157,6 +159,10 @@ final class VerifyReport
             if ($user !== null && $user->canLogIn()) {
                 $user->notify(ReportVerified::for($achievement));
             }
+        }
+
+        if ($achievements->isNotEmpty()) {
+            RequestReportRevision::mentorUser($report)?->notify(BinaanReportDecided::verified($report, $achievements));
         }
 
         $humas = User::query()->role(RoleName::Humas->value)->canLogIn()->get();

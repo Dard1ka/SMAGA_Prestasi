@@ -159,5 +159,5 @@
         </section>
     @endif
 
-    <livewire:siswa.tur-menu :paksa="request()->boolean('tur')" />
+    <livewire:siswa.tur-menu :paksa="(bool) session(\App\Livewire\Siswa\TurMenu::FORCE_KEY, false)" />
 </div>

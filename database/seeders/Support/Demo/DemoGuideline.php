@@ -15,8 +15,9 @@ use Illuminate\Support\Str;
  * What an organizer hands out about a lomba, for the demo data (LOCAL ONLY): the juknis (petunjuk teknis, several
  * pages), a one-page brochure, a one-page poster, and a plain one-page note for a file nothing else fits.
  *
- * The wording is ours and follows the kind of lomba (olimpiade, riset, robotik, seni, film, debat, olahraga, bela
- * diri), which is read from the bidang and the name. The schedule is built from the lomba's own dates. Contact
+ * The wording is ours and follows the kind of lomba (olimpiade, riset, inovasi, robotik, seni, film, debat, olahraga,
+ * bela diri), which is read from the bidang and the name. Since QA5 the rules for participants, the conduct, the
+ * schedule labels and the awards follow the kind too, so two juknis of one bidang no longer read alike. The schedule is built from the lomba's own dates. Contact
  * data is obviously fictional: an example.test address and a phone number that says it is a sample.
  */
 final class DemoGuideline
@@ -34,43 +35,46 @@ final class DemoGuideline
     ];
 
     private const EMBLEMS = [
-        'olimpiade' => 'atom', 'riset' => 'lampu', 'robot' => 'lampu', 'seni' => 'bunga', 'film' => 'bunga',
-        'debat' => 'buku', 'olahraga' => 'obor', 'beladiri' => 'obor', 'umum' => 'perisai',
+        'olimpiade' => 'atom', 'riset' => 'lampu', 'inovasi' => 'atom', 'robot' => 'lampu', 'seni' => 'bunga',
+        'film' => 'bunga', 'debat' => 'buku', 'olahraga' => 'obor', 'beladiri' => 'perisai', 'umum' => 'perisai',
     ];
 
     private const PURPOSES = [
         'olimpiade' => 'mengukur kemampuan, menumbuhkan budaya belajar, dan menjaring bibit unggul di bidang sains',
         'riset' => 'menuangkan gagasan, meneliti masalah di sekitarnya, dan menyampaikan hasilnya secara ilmiah',
+        'inovasi' => 'mewujudkan gagasan menjadi purwarupa atau produk yang berguna dan memperagakannya di depan juri dan pengunjung',
         'robot' => 'merancang, membuat, dan memprogram robot untuk menyelesaikan tantangan yang diberikan',
         'seni' => 'menampilkan karya terbaik, mengasah kreativitas, dan menumbuhkan kecintaan pada seni dan budaya',
         'film' => 'bercerita melalui film pendek dan mengasah kemampuan membuat karya audio-visual',
         'debat' => 'berpikir kritis, menyusun argumen, dan menyampaikan pendapat secara santun',
         'olahraga' => 'bertanding secara sportif, mengukur hasil latihan, dan menjaring atlet pelajar berprestasi',
-        'beladiri' => 'bertanding secara sportif, mengukur hasil latihan, dan menjaring atlet pelajar berprestasi',
+        'beladiri' => 'menguji teknik dan mental bertanding dalam bela diri, menjunjung sportivitas, dan menjaring pesilat dan atlet bela diri pelajar',
         'umum' => 'menunjukkan kemampuan terbaiknya dan belajar dari peserta lain',
     ];
 
     private const TAGLINES = [
         'olimpiade' => 'Uji kemampuanmu, raih prestasi terbaikmu.',
         'riset' => 'Dari rasa ingin tahu menjadi karya yang bermanfaat.',
+        'inovasi' => 'Dari gagasan menjadi karya yang dipamerkan.',
         'robot' => 'Rancang, rakit, dan taklukkan tantangannya.',
         'seni' => 'Panggung untuk karya dan kreativitasmu.',
         'film' => 'Ceritakan duniamu dalam satu film pendek.',
         'debat' => 'Sampaikan gagasanmu dengan argumen terbaik.',
         'olahraga' => 'Bertanding sportif, raih prestasi tertinggi.',
-        'beladiri' => 'Bertanding sportif, raih prestasi tertinggi.',
+        'beladiri' => 'Teknik terlatih, mental juara, sportif sampai akhir.',
         'umum' => 'Tunjukkan kemampuan terbaikmu.',
     ];
 
     private const CATEGORIES = [
         'olimpiade' => ['Matematika', 'Fisika, Kimia, dan Biologi', 'Informatika dan Astronomi'],
         'riset' => ['Sains dan teknologi', 'Lingkungan dan energi', 'Sosial humaniora'],
+        'inovasi' => ['Teknologi terapan', 'Lingkungan dan energi', 'Kesehatan dan pangan'],
         'robot' => ['Robot pengikut garis', 'Robot pemindah barang', 'Robot kreatif'],
         'seni' => ['Penampilan tunggal', 'Penampilan kelompok', 'Penampilan favorit penonton'],
         'film' => ['Film fiksi pendek', 'Film dokumenter pendek', 'Poster film terbaik'],
         'debat' => ['Tim terbaik', 'Pembicara terbaik', 'Tim favorit'],
         'olahraga' => ['Putra', 'Putri', 'Beregu'],
-        'beladiri' => ['Kelas tanding putra', 'Kelas tanding putri', 'Seni tunggal'],
+        'beladiri' => ['Kategori tanding putra', 'Kategori tanding putri', 'Kategori seni'],
         'umum' => ['Perorangan', 'Tim', 'Favorit'],
     ];
 
@@ -88,6 +92,13 @@ final class DemoGuideline
             'Finalis mempresentasikan karyanya selama 10 menit, dilanjutkan tanya jawab 10 menit di depan dewan juri.',
             'Finalis menyiapkan poster ilmiah ukuran A1 dan, bila ada, purwarupa karyanya.',
             'Karya harus asli, belum pernah menjadi juara pada lomba sejenis, dan bebas plagiarisme.',
+        ],
+        'inovasi' => [
+            'Peserta mengirim abstrak karya, foto purwarupa, dan video peragaan paling lama 3 menit sebelum pendaftaran ditutup.',
+            'Dewan juri menilai berkas dan menetapkan karya yang lolos ke babak pameran.',
+            'Setiap karya yang lolos mendapat satu stan pameran berukuran 2 x 2 meter. Peserta menata stan sendiri dan membawa purwarupa yang dapat diperagakan.',
+            'Penjurian dilakukan di stan pameran: peserta memperagakan karya dan menjawab pertanyaan juri selama 15 menit.',
+            'Medali emas, perak, dan perunggu diberikan menurut nilai karya, bukan peringkat, sehingga satu kategori dapat memiliki lebih dari satu peraih medali.',
         ],
         'robot' => [
             'Tim melakukan daftar ulang dan pemeriksaan robot sebelum babak pertama.',
@@ -125,11 +136,11 @@ final class DemoGuideline
             'Protes diajukan secara tertulis oleh guru pendamping paling lambat 15 menit setelah pertandingan selesai.',
         ],
         'beladiri' => [
-            'Peserta mengikuti penimbangan badan dan pemeriksaan kesehatan sebelum bertanding.',
-            'Pertandingan memakai peraturan induk organisasi cabang olahraga yang berlaku.',
-            'Pertandingan memakai sistem gugur. Undian dilakukan pada pertemuan teknis.',
-            'Peserta wajib memakai pelindung badan dan perlengkapan bertanding sesuai ketentuan.',
-            'Protes diajukan secara tertulis oleh guru pendamping paling lambat 15 menit setelah pertandingan selesai.',
+            'Lomba terdiri atas kategori tanding, dibagi per kelas berat badan putra dan putri, dan kategori seni (tunggal, ganda, dan regu).',
+            'Peserta kategori tanding mengikuti penimbangan badan sehari sebelum bertanding. Peserta yang beratnya tidak sesuai kelasnya dinyatakan gugur.',
+            'Kategori tanding memakai sistem gugur, tiga babak tiap partai. Undian bagan dilakukan pada pertemuan teknis.',
+            'Kategori seni dinilai lima juri dari kebenaran gerak, kemantapan, dan penghayatan.',
+            'Peserta membawa sendiri pakaian bela diri dan pelindung badan sesuai peraturan induk organisasi.',
         ],
         'umum' => [
             'Peserta melakukan daftar ulang sebelum kegiatan dimulai.',
@@ -143,13 +154,136 @@ final class DemoGuideline
     private const CRITERIA = [
         'olimpiade' => ['Kriteria Penilaian', ['No', 'Komponen', 'Bobot'], [['1', 'Tes pilihan ganda (penyisihan)', '40%'], ['2', 'Soal uraian (final)', '40%'], ['3', 'Pemecahan masalah (final)', '20%']]],
         'riset' => ['Kriteria Penilaian', ['No', 'Aspek', 'Bobot'], [['1', 'Orisinalitas dan kebaruan gagasan', '25%'], ['2', 'Metode penelitian', '25%'], ['3', 'Hasil dan pembahasan', '20%'], ['4', 'Manfaat dan peluang penerapan', '15%'], ['5', 'Presentasi dan tanya jawab', '15%']]],
+        'inovasi' => ['Penilaian Karya', ['No', 'Unsur', 'Bobot'], [['1', 'Kebaruan karya dibanding produk yang sudah ada', '30%'], ['2', 'Fungsi dan unjuk kerja purwarupa', '25%'], ['3', 'Manfaat bagi masyarakat dan peluang usaha', '20%'], ['4', 'Tata stan dan peragaan', '15%'], ['5', 'Penguasaan karya saat tanya jawab', '10%']]],
         'robot' => ['Kriteria Penilaian', ['No', 'Aspek', 'Bobot'], [['1', 'Ketepatan menyelesaikan misi', '40%'], ['2', 'Waktu tempuh', '30%'], ['3', 'Rancangan dan kerapian robot', '20%'], ['4', 'Kerja sama tim', '10%']]],
         'seni' => ['Kriteria Penilaian', ['No', 'Aspek', 'Bobot'], [['1', 'Teknik dan penguasaan materi', '35%'], ['2', 'Penghayatan dan ekspresi', '30%'], ['3', 'Kreativitas', '20%'], ['4', 'Penampilan', '15%']]],
         'film' => ['Kriteria Penilaian', ['No', 'Aspek', 'Bobot'], [['1', 'Cerita dan pesan', '35%'], ['2', 'Penyutradaraan', '25%'], ['3', 'Sinematografi dan suara', '25%'], ['4', 'Kesesuaian dengan tema', '15%']]],
         'debat' => ['Kriteria Penilaian', ['No', 'Aspek', 'Bobot'], [['1', 'Isi argumen', '40%'], ['2', 'Cara penyampaian', '30%'], ['3', 'Strategi dan kerja sama tim', '30%']]],
         'olahraga' => ['Penentuan Pemenang', ['No', 'Babak', 'Ketentuan'], [['1', 'Penyisihan', 'Sistem gugur; pemenang maju ke babak berikutnya'], ['2', 'Semifinal', 'Pemenang maju ke final; yang kalah meraih peringkat III bersama'], ['3', 'Final', 'Pemenang meraih Juara I, lawannya Juara II']]],
-        'beladiri' => ['Penentuan Pemenang', ['No', 'Babak', 'Ketentuan'], [['1', 'Penyisihan', 'Sistem gugur; pemenang maju ke babak berikutnya'], ['2', 'Semifinal', 'Pemenang maju ke final; yang kalah meraih peringkat III bersama'], ['3', 'Final', 'Pemenang meraih Juara I, lawannya Juara II']]],
+        'beladiri' => ['Penentuan Juara', ['No', 'Kategori', 'Ketentuan'], [['1', 'Kategori tanding', 'Per kelas berat badan: pemenang final Juara I, lawannya Juara II, kedua semifinalis yang kalah Juara III bersama'], ['2', 'Kategori seni', 'Nilai tertinggi dari lima juri; bila sama, penampilan dengan waktu paling tepat yang menang'], ['3', 'Juara umum', 'Kontingen dengan medali emas terbanyak']]],
         'umum' => ['Kriteria Penilaian', ['No', 'Aspek', 'Bobot'], [['1', 'Penguasaan materi', '40%'], ['2', 'Kreativitas', '30%'], ['3', 'Penampilan', '30%']]],
+    ];
+
+    /** flavor => three rules for participants of this kind of lomba (after the three that hold everywhere) */
+    private const RULES = [
+        'olimpiade' => [
+            'Setiap peserta hanya boleh mengikuti satu bidang lomba.',
+            'Peserta belum pernah meraih medali emas olimpiade tingkat internasional di bidang yang sama.',
+            'Peserta membawa kartu peserta yang dicetak dari laman pendaftaran pada hari tes.',
+        ],
+        'riset' => [
+            'Satu tim mengirim paling banyak dua karya, dan setiap siswa hanya tercatat pada satu tim.',
+            'Karya dibimbing satu guru pembimbing yang namanya tercantum pada naskah.',
+            'Naskah memakai format penulisan dari panitia, paling banyak 20 halaman tanpa lampiran.',
+        ],
+        'inovasi' => [
+            'Satu karya dikerjakan paling banyak oleh tiga siswa dan didampingi satu guru pembimbing.',
+            'Karya berupa purwarupa atau produk yang dapat diperagakan, bukan hanya gagasan di atas kertas.',
+            'Peserta bertanggung jawab atas keamanan purwarupa selama pameran, termasuk bahan dan sumber listriknya.',
+        ],
+        'robot' => [
+            'Setiap tim terdiri atas dua sampai tiga siswa dan satu guru pendamping.',
+            'Robot tidak boleh merusak lintasan atau membahayakan peserta lain.',
+            'Komponen robot dibawa sendiri; panitia hanya menyediakan sumber listrik di area tim.',
+        ],
+        'seni' => [
+            'Setiap sekolah mengirim paling banyak satu peserta atau satu kelompok untuk tiap cabang.',
+            'Materi penampilan belum pernah dibawakan pada lomba tingkat yang sama tahun ini.',
+            'Peserta mengirim judul materi dan rekaman pengiring, bila ada, sebelum pendaftaran ditutup.',
+        ],
+        'film' => [
+            'Satu tim produksi beranggotakan paling banyak lima siswa dari sekolah yang sama.',
+            'Setiap tim hanya boleh mengirim satu film.',
+            'Film memakai teks terjemahan bahasa Indonesia bila dialognya berbahasa daerah atau asing.',
+        ],
+        'debat' => [
+            'Setiap tim terdiri atas tiga pembicara dan boleh membawa satu cadangan.',
+            'Setiap sekolah mengirim paling banyak dua tim.',
+            'Debat memakai bahasa Indonesia yang baik dan benar.',
+        ],
+        'olahraga' => [
+            'Peserta berusia paling tinggi 18 tahun pada hari pertama pertandingan, dibuktikan dengan akta kelahiran.',
+            'Peserta dalam keadaan sehat, dibuktikan dengan surat keterangan dokter.',
+            'Setiap sekolah mengirim paling banyak satu peserta atau satu regu untuk tiap nomor.',
+        ],
+        'beladiri' => [
+            'Peserta terdaftar sebagai anggota perguruan atau klub yang diakui induk organisasi bela diri.',
+            'Peserta kategori tanding hanya boleh turun di satu kelas berat badan.',
+            'Peserta melampirkan surat keterangan sehat dari dokter dan surat izin orang tua.',
+        ],
+        'umum' => [
+            'Setiap sekolah menunjuk satu guru pendamping yang bertanggung jawab atas pesertanya.',
+            'Data peserta yang sudah dikirim tidak dapat diganti setelah pendaftaran ditutup, kecuali atas persetujuan panitia.',
+            'Ketentuan biaya pendaftaran, bila ada, diumumkan di laman pendaftaran.',
+        ],
+    ];
+
+    /** flavor => three conduct rules (after the one about arriving or joining on time) */
+    private const CONDUCT = [
+        'olimpiade' => [
+            'Peserta duduk sesuai nomor peserta dan tidak meninggalkan ruang tes pada 30 menit pertama.',
+            'Bekerja sama, menyontek, atau membawa catatan ke ruang tes berakibat diskualifikasi.',
+            'Lembar soal dan lembar jawaban diserahkan kepada pengawas saat waktu habis.',
+        ],
+        'riset' => [
+            'Finalis hadir bersama seluruh anggota tim saat presentasi.',
+            'Karya yang terbukti menjiplak atau memakai data palsu dibatalkan, juga bila sudah diumumkan sebagai juara.',
+            'Poster ilmiah dipasang di tempat yang ditentukan panitia paling lambat satu jam sebelum presentasi.',
+        ],
+        'inovasi' => [
+            'Peserta menjaga stan pameran selama jam pameran dan tidak meninggalkan purwarupa tanpa penjaga.',
+            'Bahan mudah terbakar, bahan kimia berbahaya, dan hewan hidup tidak boleh dibawa ke area pameran.',
+            'Stan dibongkar dan dibersihkan oleh peserta setelah penutupan.',
+        ],
+        'robot' => [
+            'Hanya anggota tim yang terdaftar yang boleh masuk area perbaikan robot.',
+            'Robot yang melanggar ukuran atau berat yang ditetapkan tidak boleh bertanding.',
+            'Tim yang tidak hadir setelah dipanggil tiga kali dinyatakan gugur pada ronde itu.',
+        ],
+        'seni' => [
+            'Peserta yang tidak hadir saat nomor undiannya dipanggil tampil di urutan terakhir.',
+            'Penonton tidak memotret dengan lampu kilat selama penampilan berlangsung.',
+            'Peserta merapikan properti dari panggung segera setelah tampil.',
+        ],
+        'film' => [
+            'Film yang terbukti memakai karya orang lain tanpa izin didiskualifikasi.',
+            'Nomine hadir pada malam penganugerahan atau mengirim wakil timnya.',
+            'Film tidak diunggah ke media sosial sebelum pemenang diumumkan.',
+        ],
+        'debat' => [
+            'Peserta menghormati lawan dan tidak menyerang pribadi pembicara.',
+            'Pembicara tidak menerima bantuan dari pelatih atau penonton selama ronde berlangsung.',
+            'Tim yang terlambat lebih dari 10 menit dinyatakan kalah pada ronde itu.',
+        ],
+        'olahraga' => [
+            'Peserta memakai nomor punggung yang dibagikan panitia selama pertandingan.',
+            'Peserta yang tidak hadir 15 menit setelah dipanggil dinyatakan kalah walk out.',
+            'Tindakan tidak sportif terhadap lawan, wasit, atau panitia berakibat diskualifikasi.',
+        ],
+        'beladiri' => [
+            'Peserta memotong kuku dan tidak memakai perhiasan atau benda keras selama bertanding.',
+            'Peserta yang tidak hadir di gelanggang setelah tiga kali dipanggil dinyatakan kalah.',
+            'Pelatih memberi arahan hanya dari sudut yang ditentukan dan pada waktu istirahat.',
+        ],
+        'umum' => [
+            'Peserta menjaga ketertiban, kebersihan, dan sportivitas selama kegiatan.',
+            'Segala bentuk kecurangan berakibat pembatalan keikutsertaan.',
+            'Panitia tidak bertanggung jawab atas kehilangan barang pribadi peserta.',
+        ],
+    ];
+
+    /** flavor => names of the four schedule rows (registration, meeting, the lomba, announcement) */
+    private const STAGES = [
+        'olimpiade' => ['Pendaftaran peserta', 'Pengiriman kartu peserta dan tata cara tes', 'Tes penyisihan dan final', 'Pengumuman pemenang'],
+        'riset' => ['Pendaftaran dan pengiriman naskah', 'Pengumuman finalis dan pertemuan teknis', 'Presentasi finalis', 'Pengumuman pemenang'],
+        'inovasi' => ['Pendaftaran, abstrak, dan video purwarupa', 'Pengumuman karya yang lolos pameran', 'Pameran dan penjurian di stan', 'Pengumuman peraih medali'],
+        'robot' => ['Pendaftaran tim', 'Pertemuan teknis dan pemeriksaan robot', 'Pertandingan robot', 'Pengumuman pemenang'],
+        'seni' => ['Pendaftaran dan pengiriman judul materi', 'Pertemuan teknis dan undian tampil', 'Penampilan peserta', 'Pengumuman pemenang'],
+        'film' => ['Pendaftaran dan pengiriman film', 'Pengumuman nomine', 'Pemutaran film nomine', 'Malam penganugerahan'],
+        'debat' => ['Pendaftaran tim', 'Pertemuan teknis dan pembagian ruang', 'Ronde penyisihan sampai final', 'Pengumuman pemenang'],
+        'olahraga' => ['Pendaftaran dan berkas atlet', 'Pertemuan teknis dan undian', 'Pertandingan', 'Penyerahan medali'],
+        'beladiri' => ['Pendaftaran dan berkas atlet', 'Pertemuan teknis, undian, dan penimbangan', 'Pertandingan kategori tanding dan seni', 'Penyerahan medali'],
+        'umum' => ['Pendaftaran dan pengiriman berkas', 'Pertemuan teknis', 'Pelaksanaan lomba', 'Pengumuman pemenang'],
     ];
 
     public static function juknis(DemoEvent $event): DemoDocument
@@ -190,34 +324,33 @@ final class DemoGuideline
                             'Peserta adalah siswa aktif SMA/MA/SMK sederajat pada tahun ajaran berjalan, dibuktikan dengan kartu pelajar atau surat keterangan dari sekolah.',
                             self::participation($event).'.',
                             'Peserta didaftarkan oleh sekolah dan membawa surat tugas dari kepala sekolah.',
-                            'Setiap sekolah menunjuk satu guru pendamping yang bertanggung jawab atas pesertanya.',
-                            'Data peserta yang sudah dikirim tidak dapat diganti setelah pendaftaran ditutup, kecuali atas persetujuan panitia.',
-                            'Ketentuan biaya pendaftaran, bila ada, diumumkan di laman pendaftaran.',
+                            ...self::RULES[$flavor],
                         ]],
                     ]],
                     ['Jadwal Kegiatan', [
-                        ['table', ['head' => ['No', 'Kegiatan', 'Waktu', 'Keterangan'], 'rows' => self::schedule($event), 'widths' => [8, 30, 32, 30]]],
+                        ['table', ['head' => ['No', 'Kegiatan', 'Waktu', 'Keterangan'], 'rows' => self::schedule($event, self::STAGES[$flavor]), 'widths' => [8, 30, 32, 30]]],
                     ]],
                     ['Mekanisme Lomba', [
                         ['ol', self::MECHANICS[$flavor]],
                     ]],
                     [$criteriaTitle, [
                         ['table', ['head' => $criteriaHead, 'rows' => $criteriaRows, 'widths' => $sport ? [8, 24, 68] : [8, 72, 20]]],
-                        ['p', $sport
-                            ? 'Hal teknis lain, seperti lama pertandingan dan cara pemberian nilai, mengikuti peraturan pertandingan yang berlaku dan disampaikan pada pertemuan teknis.'
-                            : 'Nilai akhir adalah jumlah nilai tiap komponen setelah dikalikan bobotnya. Bila nilai akhir sama, pemenang ditentukan dari nilai pada komponen dengan bobot terbesar.'],
+                        ['p', match (true) {
+                            $flavor === 'beladiri' => 'Lama babak, cara pemberian nilai, dan pelanggaran mengikuti peraturan pertandingan induk organisasi bela diri yang bersangkutan.',
+                            $sport => 'Hal teknis lain, seperti lama pertandingan dan cara pemberian nilai, mengikuti peraturan pertandingan yang berlaku dan disampaikan pada pertemuan teknis.',
+                            $flavor === 'inovasi' => 'Karya dengan nilai akhir 85 ke atas meraih medali emas, 75 sampai 84 medali perak, dan 65 sampai 74 medali perunggu.',
+                            default => 'Nilai akhir adalah jumlah nilai tiap komponen setelah dikalikan bobotnya. Bila nilai akhir sama, pemenang ditentukan dari nilai pada komponen dengan bobot terbesar.',
+                        }],
                     ]],
                     ['Penghargaan', [
-                        ['ol', self::awards($event, $sport)],
+                        ['ol', self::awards($event, $flavor)],
                     ]],
                     ['Tata Tertib', [
                         ['ol', [
                             $event->online
                                 ? 'Peserta bergabung ke ruang daring paling lambat 15 menit sebelum kegiatan dimulai dengan nama sesuai data pendaftaran.'
                                 : 'Peserta hadir paling lambat 30 menit sebelum kegiatan dimulai dan memakai seragam sekolah atau kostum yang ditentukan.',
-                            'Peserta menjaga ketertiban, kebersihan, dan sportivitas selama kegiatan.',
-                            'Segala bentuk kecurangan berakibat pembatalan keikutsertaan.',
-                            'Panitia tidak bertanggung jawab atas kehilangan barang pribadi peserta.',
+                            ...self::CONDUCT[$flavor],
                         ]],
                     ]],
                     ['Narahubung', [
@@ -321,16 +454,21 @@ final class DemoGuideline
 
     // Content helpers ----------------------------------------------------------------------------------
 
-    /** olimpiade | riset | robot | seni | film | debat | olahraga | beladiri | umum */
+    /** Words in a lomba name that mark an invention fair (inovasi), not a research paper (riset). */
+    private const INVENTION_WORDS = ['invention', 'inventor', 'inovasi', 'krenova', 'fiksi', 'nsif', 'wice', 'wseec', 'expo', 'fair'];
+
+    /** olimpiade | riset | inovasi | robot | seni | film | debat | olahraga | beladiri | umum */
     public static function flavor(DemoEvent $event): string
     {
         $name = mb_strtolower($event->name);
+        $words = preg_split('/[^\p{L}\p{N}]+/u', $name, -1, PREG_SPLIT_NO_EMPTY) ?: [];
 
         return match (true) {
             str_contains($name, 'debat') || str_contains($name, 'ldbi') => 'debat',
             str_contains($name, 'film') => 'film',
             str_contains($name, 'robot') => 'robot',
             str_contains($name, 'silat') || str_contains($name, 'karate') || str_contains($name, 'taekwondo') => 'beladiri',
+            array_intersect($words, self::INVENTION_WORDS) !== [] => 'inovasi',
             $event->bidang === Bidang::Sains => 'olimpiade',
             $event->bidang === Bidang::Riset => 'riset',
             $event->bidang === Bidang::SeniBudaya => 'seni',
@@ -342,10 +480,12 @@ final class DemoGuideline
     /**
      * Registration, technical meeting, the lomba and the announcement, from the lomba's own dates.
      *
+     * @param  list<string>|null  $stages  the four row names; null = the general ones
      * @return list<list<string>>
      */
-    public static function schedule(DemoEvent $event): array
+    public static function schedule(DemoEvent $event, ?array $stages = null): array
     {
+        [$register, $meet, $hold, $announce] = $stages ?? self::STAGES['umum'];
         $meeting = $event->closesOn->addDays(3);
 
         if ($meeting->gte($event->startsOn)) {
@@ -360,10 +500,10 @@ final class DemoGuideline
         $place = $event->online ? 'Daring' : self::clip($event->location ?? 'Diumumkan panitia', 60);
 
         $rows = [
-            ['Pendaftaran dan pengiriman berkas', self::range($event->opensOn, $event->closesOn), 'Melalui laman pendaftaran'],
-            ['Pertemuan teknis', $meeting->locale('id')->translatedFormat('j F Y'), 'Daring, link dikirim lewat email'],
-            ['Pelaksanaan lomba', self::range($event->startsOn, $event->finalOn), $place],
-            ['Pengumuman pemenang', $announcement->locale('id')->translatedFormat('j F Y'), $event->online ? 'Laman kegiatan' : 'Saat penutupan kegiatan'],
+            [$register, self::range($event->opensOn, $event->closesOn), 'Melalui laman pendaftaran'],
+            [$meet, $meeting->locale('id')->translatedFormat('j F Y'), 'Daring, link dikirim lewat email'],
+            [$hold, self::range($event->startsOn, $event->finalOn), $place],
+            [$announce, $announcement->locale('id')->translatedFormat('j F Y'), $event->online ? 'Laman kegiatan' : 'Saat penutupan kegiatan'],
         ];
 
         return array_map(fn (array $row, int $i): array => [(string) ($i + 1), ...$row], $rows, array_keys($rows));
@@ -394,18 +534,41 @@ final class DemoGuideline
     }
 
     /** @return list<string> */
-    private static function awards(DemoEvent $event, bool $sport): array
+    private static function awards(DemoEvent $event, string $flavor): array
     {
         $staged = in_array($event->level, [Level::Sekolah, Level::Kota, Level::Provinsi], true)
             && in_array($event->organizerType, [OrganizerType::PemerintahPusat, OrganizerType::PemerintahDaerah], true);
 
+        [$winners, $runnersUp] = match ($flavor) {
+            'inovasi' => [
+                'Karya terbaik memperoleh medali emas, perak, atau perunggu sesuai nilainya, beserta sertifikat medali.',
+                'Penghargaan khusus diberikan untuk stan terbaik dan karya pilihan pengunjung.',
+            ],
+            'beladiri' => [
+                'Juara I, II, dan III setiap kelas tanding dan setiap nomor seni memperoleh medali dan piagam.',
+                'Kontingen dengan medali emas terbanyak meraih piala juara umum.',
+            ],
+            'olahraga' => [
+                'Juara I, II, dan III memperoleh medali, piagam penghargaan, dan dana pembinaan.',
+                'Peraih peringkat III bersama memperoleh medali dan piagam penghargaan.',
+            ],
+            'film' => [
+                'Film terbaik, sutradara terbaik, dan sinematografi terbaik memperoleh trofi dan sertifikat.',
+                'Setiap nomine memperoleh sertifikat nomine dan filmnya diputar pada malam penganugerahan.',
+            ],
+            'debat' => [
+                'Juara I, II, dan III memperoleh trofi, sertifikat, dan dana pembinaan.',
+                'Pembicara terbaik babak penyisihan dan final memperoleh sertifikat penghargaan.',
+            ],
+            default => [
+                'Juara I, II, dan III memperoleh trofi, sertifikat, dan dana pembinaan.',
+                'Finalis memperoleh sertifikat finalis.',
+            ],
+        };
+
         return [
-            $sport
-                ? 'Juara I, II, dan III memperoleh medali, piagam penghargaan, dan dana pembinaan.'
-                : 'Juara I, II, dan III memperoleh trofi, sertifikat, dan dana pembinaan.',
-            $sport
-                ? 'Peraih peringkat III bersama memperoleh medali dan piagam penghargaan.'
-                : 'Finalis memperoleh sertifikat finalis.',
+            $winners,
+            $runnersUp,
             'Seluruh peserta dan guru pendamping memperoleh sertifikat elektronik.',
             $staged
                 ? 'Juara I berhak diusulkan mengikuti jenjang berikutnya sesuai ketentuan penyelenggara.'
