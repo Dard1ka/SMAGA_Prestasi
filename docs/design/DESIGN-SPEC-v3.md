@@ -40,8 +40,12 @@ white cards with text only is tiring to look at. So:
 5. **Covers are always filled** (§5), and the banner motif is the tracker (§6).
 6. **Staff screens stay calm.** Tables, forms and work queues carry no pictures. There the colour comes
    from status tags, the icon tile of a stat tile, and the bidang dot.
-7. **One way to each place, one name per thing.** The student's "Cari lomba" is a menu item plus the one
-   button on the home banner. The tab bar uses the menu's names ("Lomba saya", "Portofolio").
+7. **One way to each place, one name per thing.** A screen does not repeat a menu item as a button or link:
+   the student's "Cari lomba" is the menu item (tab "Lomba" on phones) and the search box, nothing on the
+   home banner; "Masuk" is in the public header only; a button that already sits at the top of a page is not
+   repeated in its empty state. Still fine: a "see all" link next to a short list, a breadcrumb, the one next
+   step of an empty list ("Cari lomba" when a student has no lomba yet), and the one button of the public
+   hero ("Lihat prestasi"). The tab bar uses the menu's names ("Lomba saya", "Portofolio").
 8. **Copy** (D-119): students are addressed as "kamu". Staff (guru, Kesiswaan, Kepala Sekolah, Tata Usaha,
    Humas, Admin) get sentences without a pronoun, "Anda" only where a sentence breaks without one. No
    internal codes such as "(D-08)" or "(U-04)" on a screen. The rest of CLAUDE.md §3.9 is unchanged.
@@ -58,7 +62,7 @@ white cards with text only is tiring to look at. So:
 | primary (ink navy) | `primary #1B2A4E` · `primary-hover #111C38` · `primary-tint #E9EDF4` · `primary-tint-hover #DCE2EC` · `primary-soft #8794B3` · `on-primary-soft #CDD4E6` |
 | links, focus | `link #1C4A9C` · `link-hover #143670` · `focus #2F6FDE` (2 px ring, 4.7:1) |
 | status | `green #1B6B45 / #E4F3EA` · `orange #9A3F00 / #FDEBD8` (`orange-line`, `orange-wash`) · `red #B42318 / #FCEAE7` (`red-line`) · `gray #3A4254 / #E8EBF0` · `blue #1C4A9C / #E8EEF9` |
-| gold | `gold #6B4E00` on `gold-bg #FBF0CC` · `gold-line #EAD8A0` · `medal #E0A82A` |
+| gold | `gold #6B4E00` on `gold-bg #FBF0CC` · `gold-line #EAD8A0` · `medal #E0A82A` (rank 1) · `medal-2 #C2C9D4` (silver, rank 2) · `medal-3 #D39A6A` (bronze, rank 3) |
 | bidang | `sains #1D56AD`, `riset #5534B8`, `seni #A61F54`, `olahraga #0B6577`; each with `-bg` (tile), `-cover` (flat cover field) and `-chart` (dot, chart series) |
 
 Type scale (rem; the page title is `text-2xl` on phones and `text-3xl` from lg):
@@ -89,6 +93,10 @@ only kept so old class names do not break.
 - **Stat tile** `<x-sth.stat-tile>`: 40 px icon tile + label 14 / value 28 / note 13. On phones two per row
   (`grid-cols-2 … xl:grid-cols-4`) with the icon above the text. New prop `zero`: `quiet` (default: gray
   icon and muted number at 0), `hide` (a warning tile such as "Dibekukan" is not rendered at 0), `show`.
+- **Brand mark** `<x-sth.brand>` (D-120): the crest of SMA Negeri 3 Semarang, 40 px high (36 px in the public
+  header), with the wordmark beside it; on ink it stands on a white tile. It is the one colourful thing in the
+  frame, which is why the frame is ink. The file is a small raster picture (class `.brand-mark`): not larger than
+  about 56 px until the school gives a vector file. Never redraw or recolour it.
 - **Sidebar**: current item = tinted row with bold ink text. Section labels in sentence case. No button
   above the menu. Count badges are ink navy.
 - **Tables** `.tbl`: head 13/600, cells 15, row padding 12. A `fixed` table gets a floor
@@ -96,8 +104,18 @@ only kept so old class names do not break.
 - **Forms**: inputs 46 px, radius 6, 16 px text at every width, border `line-input`. Pick tiles and segmented
   controls keep their behaviour; the selected state is ink, not indigo.
 - **Tracker**: ink for done/current, orange only for "needs action".
-- **Facts strip** `<x-sth.facts>`: icon next to the label, no tinted box.
+- **Facts strip** `<x-sth.facts>`: icon next to the label, no tinted box. Its columns follow its own width
+  (container query): one row only when every cell gets about 138 px, else three or two per row. `plain` = no
+  card of its own, for use inside `<x-sth.lomba-head>`.
 - **Avatars**: smallest size 28 px so 13 px initials fit.
+- **Boxes of one grid are the same height** (`auto-rows-fr` on the grid, `h-full` on a linked tile): stat tiles,
+  bidang tiles, pick tiles (`<x-sth.radio-pick columns>`), also when one label takes two lines. Two boxes that
+  open a page side by side share one grid row (Siswa › Beranda: banner and points card).
+- **Pick tiles**: text centred, also on two lines. A grid of long labels shows two per row on phones
+  (`phone-columns="2"`, e.g. the ten capaian). **Points formula** `<x-sth.rumus-poin>`: on a narrow phone
+  "× Penyelenggara" moves to a second row; a label never leaves its tile.
+- **Top three of a ranking**: one row with the medal (gold, silver, bronze: `bg-medal`, `bg-medal-2`,
+  `bg-medal-3`) and the name, below a line the points on the left and the count on the right. No avatar there.
 - **Public header**: solid white, no blur. **Dialogs**: radius 12.
 
 ## 5. Sampul (covers) — new component `<x-sth.sampul>`
@@ -105,40 +123,65 @@ only kept so old class names do not break.
 Every lomba has a cover, in this order:
 
 1. **Its own poster** when Kesiswaan uploaded one ("Sampul" in Kelola lomba, JPG/PNG/WEBP ≤ 3 MB;
-   `competitions.cover_file_id`). Served by `files.cover` (D-118) as a small JPEG. A poster is usually
-   portrait and the cover is wide: it is shown **whole in the middle over a blurred copy of itself** (two
-   `<img>`, never an inline background; when the file cannot be loaded, `app.js` removes both and the
-   template drawing shows).
+   `competitions.cover_file_id`). Served by `files.cover` (D-118) as a small JPEG, drawn with `<img>`, never
+   an inline background; when the file cannot be loaded, `app.js` removes the image and the template
+   drawing shows.
 2. Otherwise a **template drawing of its bidang**: 3 per bidang (Sains: kisi molekul, orbit, gelombang ·
    Riset: grafik, sebar data, jaringan · Seni Budaya: kawung, parang, gringsing · Olahraga: lapangan,
    lintasan, jaring). Plain lines and shapes, no gradient, our own SVG files in `resources/images/sampul`.
    The variant comes from the lomba id (`App\Support\Sampul::variant()`), so one lomba always shows the same
    drawing and the lomba of one bidang do not all look alike.
 
-Two styles of each drawing: **terang** (light; cards, many on a page) and **pekat** (deep; the single big
-cover of a detail page, `tone="pekat"`). Sizes: card 96 px (phones) / 124 px, detail 144 / 160 px, a band on
-small cards 56–64 px. Where: lomba cards (Cari lomba, Beranda, Guru › Lomba), Detail lomba, Undangan tim,
-Portofolio, the public "Prestasi terbaru" cards and home collage, the Humas queue cards. Public pages and
-Humas show the template drawing only (the poster route needs a login, D-118).
+Two styles of each drawing: **terang** (light; cards, many on a page) and **pekat** (deep; the drawing of a
+detail page, `tone="pekat"`).
+
+**The cover stands on the left, portrait, the text beside it** (the lead's choice after seeing the first build,
+which showed a portrait poster small in the middle of a wide band). Three shapes, `bentuk` of `<x-sth.sampul>`:
+
+| bentuk | where | what it does |
+|---|---|---|
+| `tegak` | the lomba card, a "capsule" (`<x-sth.lomba-card>`: Cari lomba, Beranda, Guru › Lomba) and the prestasi cards of Portofolio | one box, always 3:4, 104 px wide on a card under 440 px and 148 px from there; the poster fills it (a little of its sides or bottom may be cut) |
+| `utuh` | the head of a lomba page (`<x-sth.lomba-head>`: Detail lomba, Undangan tim) | the poster whole, at its own proportions (104 / 168 / 216 px wide by the width of the card); "Perbesar" under it opens the file in the preview popup |
+| `lebar` | a band on a small card: the public "Prestasi terbaru" cards, the Humas queue (template drawings only) | 56–64 px high; a poster would show whole in the middle over a blurred copy of itself |
+
+A template drawing is 360 × 160 with its subject on the right; a portrait box shows a part about 120 wide, and
+each drawing says which (`background-position` per class in `app.css`). Public pages and Humas show the template
+drawing only (the poster route needs a login, D-118). The upload field in Kelola lomba says a portrait poster
+(A4 or 4:5) fits best and shows the card's own box.
+
+**Capsule**: poster left; right of it status, title, bidang / tingkat / peserta tags, penyelenggara, date and
+place; under both a line with the registered students and "Lihat detail" (stretched over the card, so the whole
+capsule opens the lomba). A grid of capsules takes its columns from its own width, so a card never gets much
+narrower than a phone: `grid-cols-1 @min-[900px]:grid-cols-2 @min-[1360px]:grid-cols-3` inside an `@container`.
+**Head of a lomba page**: poster left; beside it status, name, penyelenggara, who registered, then the key facts
+(`<x-sth.facts plain>`); on a phone the facts run under the poster. Everything else of the page stays below.
 
 Small bidang surfaces (icon tiles in lists, `.cover-<bidang>`) are one flat colour.
 
 ## 6. Spanduk (banner) — class `.spanduk`
 
-The student home banner ("Halo, Nadia") and the brand panel of the login page are ink navy with one motif,
-**lintasan**: arcs with six dots = the six steps of Jejak Prestasi (four done in gold, the current one
-ringed, the next one open). On narrow banners the dots are left out so none sits under the text
-(`motif/lintasan-polos.svg`). `.spanduk-tinggi` = the tall auth panel. The sample cards on the login panel
-and on the public home are kept, straight and on one grid.
+The student home banner ("Halo, Nadia"), the hero of the public home and the brand panel of the login page are
+ink navy with one motif, **lintasan**: arcs with six dots = the six steps of Jejak Prestasi (four done in gold,
+the current one ringed, the next one open). On narrow banners the dots are left out so none sits under the text
+(`motif/lintasan-polos.svg`). `.spanduk-tinggi` = the tall auth panel. **Nothing floats on or beside a banner**:
+the sample cards of v2 (login panel, public home) are gone; a banner holds its text, at most one button, and the
+motif.
 
 ## 7. What must not come back
 
-Gradient covers and the page wash, `shadow-primary` glows, tilted (`rotate-*`) or blurred decoration, pill
-tags, a second typeface, `text-[Npx]` sizes and anything below 13 px, an "eyebrow pill" above a headline, the
-"Cari lomba" button above the student menu, "Lombaku" / "Profil" as tab names, "kamu" on a staff screen.
+Gradient covers and the page wash, `shadow-primary` glows, tilted (`rotate-*`) or blurred decoration, a card
+floating beside a hero headline, pill tags, a second typeface, `text-[Npx]` sizes and anything below 13 px, an
+"eyebrow pill" above a headline, the "Cari lomba" button above the student menu or on the home banner, a menu
+item repeated as a button on the same screen, "Lombaku" / "Profil" as tab names, "kamu" on a staff screen, a
+portrait poster shown small in the middle of a wide band on a lomba or prestasi card, the shield icon as the
+brand mark.
 
 ## 8. Checking a screen
 
 `/_dev/components` (local) shows every component, the 12 cover drawings and the type scale. A screen PR
 still includes screenshots at 1440 and 390 px. Things worth measuring on a new screen: no sideways scroll at
-390 px, no computed font size below 13 px, one font family, no `background-image: …gradient`.
+390 px, no computed font size below 13 px, one font family, no `background-image: …gradient`. Also look at it
+at **1366 / 1280 px** (the school's laptops: a column next to a side panel gets narrow) and at **360 px**
+(small Android phones): no text may touch or cover other text, be cut without "…", or leave its box. A box
+whose width depends on a side panel takes its columns from a container query (`@container` +
+`@min-[…]:grid-cols-n`), not from the window width.

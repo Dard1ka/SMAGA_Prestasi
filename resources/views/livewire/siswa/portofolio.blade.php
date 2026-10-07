@@ -25,7 +25,7 @@
             </x-sth.button>
         </div>
 
-        <div class="grid grid-cols-2 gap-3 xl:grid-cols-4">
+        <div class="grid auto-rows-fr grid-cols-2 gap-3 xl:grid-cols-4">
             <x-sth.stat-tile icon="award" tone="gold" label="Poin kumulatif" :value="$totalPoints" />
             <x-sth.stat-tile icon="bars" tone="blue" label="Peringkat sekolah" :value="$rank !== null ? '#'.$rank : '–'" note="dari siswa aktif" />
             <x-sth.stat-tile icon="trophy" tone="green" label="Prestasi" :value="$achievementCount" />
@@ -34,7 +34,7 @@
     </x-sth.card>
 
     <div class="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
-        <div class="flex min-w-0 flex-col gap-4">
+        <div class="@container flex min-w-0 flex-col gap-4">
             <x-sth.tabs panels id="porto" label="Bagian portofolio" active="prestasi" :items="[
                 ['key' => 'prestasi', 'label' => 'Prestasi', 'count' => $achievementCount],
                 ['key' => 'riwayat', 'label' => 'Riwayat lomba', 'count' => $registrationCount],
@@ -47,45 +47,55 @@
                         Prestasi muncul di sini setelah laporan hasilmu diverifikasi Kesiswaan.
                     </x-sth.empty-state>
                 @else
-                    <div class="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
+                    {{-- Capsules like the lomba cards: the cover of the lomba stands on the left (3:4), the prestasi
+                         beside it; points and the certificate run under both. Columns follow the list's own width. --}}
+                    <div class="grid grid-cols-1 gap-4 @min-[700px]:grid-cols-2 @min-[1100px]:grid-cols-3">
                         @foreach ($achievements as $item)
-                            <x-sth.card as="article" padding="none" class="flex flex-col overflow-hidden" aria-labelledby="pr-{{ $item['id'] }}" wire:key="pr-{{ $item['id'] }}">
-                                <x-sth.sampul :bidang="$item['bidang']" :seed="$item['seed']" :src="$item['poster']" class="h-20 items-start justify-between gap-2 p-3 sm:h-24">
-                                    <x-sth.chip tone="glass" size="sm">{{ $item['level'] }}</x-sth.chip>
-                                    <x-sth.chip tone="gold" icon="award" size="sm">{{ $item['result'] }}</x-sth.chip>
-                                </x-sth.sampul>
-                                <div class="flex flex-1 flex-col gap-2.5 p-4">
-                                    @if ($item['bidang'])
-                                        <span><x-sth.chip :bidang="$item['bidang']" size="sm" /></span>
-                                    @endif
-                                    <h3 id="pr-{{ $item['id'] }}" class="title-card">{{ $item['title'] }}</h3>
-                                    <div class="flex flex-col text-xs">
-                                        <span class="muted">{{ $item['organizer'] }}</span>
-                                        <span class="muted">{{ $item['date'] }}</span>
+                            <article class="card @container" aria-labelledby="pr-{{ $item['id'] }}" wire:key="pr-{{ $item['id'] }}">
+                                <div class="flex h-full flex-col gap-2.5 p-3 @min-[440px]:p-3.5">
+                                    <div class="flex items-start gap-3 @min-[440px]:gap-4">
+                                        <x-sth.sampul :bidang="$item['bidang']" :seed="$item['seed']" :src="$item['poster']" bentuk="tegak"
+                                                      class="w-[104px] shrink-0 rounded-tile @min-[440px]:w-[148px]" />
+                                        <div class="flex min-w-0 flex-1 flex-col items-start gap-2">
+                                            <x-sth.chip tone="gold" icon="award">{{ $item['result'] }}</x-sth.chip>
+                                            <h3 id="pr-{{ $item['id'] }}" class="title-card text-base @min-[440px]:text-lg">{{ $item['title'] }}</h3>
+                                            <div class="flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
+                                                @if ($item['bidang'])
+                                                    <x-sth.chip :bidang="$item['bidang']" />
+                                                @endif
+                                                <x-sth.chip tone="gray">{{ $item['level'] }}</x-sth.chip>
+                                            </div>
+                                            <div class="flex flex-col gap-0.5 text-sm leading-[1.35] text-muted">
+                                                <span>{{ $item['organizer'] }}</span>
+                                                <span class="num">{{ $item['date'] }}</span>
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div class="flex flex-wrap items-center gap-2">
-                                        <x-sth.chip tone="gold" class="num">{{ $item['points'] }} poin</x-sth.chip>
-                                        <span class="muted num text-xs">{{ $item['formula'] }}</span>
+                                    <div class="mt-auto flex flex-col gap-2.5 border-t border-line pt-2.5">
+                                        <div class="flex flex-wrap items-center gap-2">
+                                            <x-sth.chip tone="gold" class="num">{{ $item['points'] }} poin</x-sth.chip>
+                                            <span class="muted num text-xs">{{ $item['formula'] }}</span>
+                                        </div>
+                                        @if ($item['certificateUrl'])
+                                            {{-- With a preview the click opens the popup (<x-sth.preview>); the href stays the download. --}}
+                                            <a href="{{ $item['certificateUrl'] }}" class="flex items-center gap-3 rounded-tile border border-line p-2.5 text-ink no-underline hover:bg-hover"
+                                                @if ($item['certificatePreview'])
+                                                    data-sth-preview="{{ $item['certificatePreview'] }}"
+                                                    data-sth-preview-type="{{ $item['certificatePreviewType'] }}"
+                                                    data-sth-preview-name="{{ $item['certificateName'] }}"
+                                                    aria-haspopup="dialog"
+                                                @endif>
+                                                <span class="flex size-10 shrink-0 items-center justify-center rounded-control bg-gold-bg text-gold" aria-hidden="true"><x-sth.icon name="file" /></span>
+                                                <span class="flex flex-col">
+                                                    <span class="text-sm font-bold">Sertifikat</span>
+                                                    <span class="muted text-xs">Terverifikasi · {{ $item['certificatePreview'] ? 'buka' : 'download' }}</span>
+                                                </span>
+                                                <x-sth.icon :name="$item['certificatePreview'] ? 'eye' : 'download'" :size="18" class="ml-auto text-muted" />
+                                            </a>
+                                        @endif
                                     </div>
-                                    @if ($item['certificateUrl'])
-                                        {{-- With a preview the click opens the popup (<x-sth.preview>); the href stays the download. --}}
-                                        <a href="{{ $item['certificateUrl'] }}" class="mt-auto flex items-center gap-3 rounded-tile border border-line p-2.5 text-ink no-underline hover:bg-hover"
-                                            @if ($item['certificatePreview'])
-                                                data-sth-preview="{{ $item['certificatePreview'] }}"
-                                                data-sth-preview-type="{{ $item['certificatePreviewType'] }}"
-                                                data-sth-preview-name="{{ $item['certificateName'] }}"
-                                                aria-haspopup="dialog"
-                                            @endif>
-                                            <span class="flex size-10 shrink-0 items-center justify-center rounded-control bg-gold-bg text-gold" aria-hidden="true"><x-sth.icon name="file" /></span>
-                                            <span class="flex flex-col">
-                                                <span class="text-sm font-bold">Sertifikat</span>
-                                                <span class="muted text-xs">Terverifikasi · {{ $item['certificatePreview'] ? 'buka' : 'download' }}</span>
-                                            </span>
-                                            <x-sth.icon :name="$item['certificatePreview'] ? 'eye' : 'download'" :size="18" class="ml-auto text-muted" />
-                                        </a>
-                                    @endif
                                 </div>
-                            </x-sth.card>
+                            </article>
                         @endforeach
                     </div>
                 @endif

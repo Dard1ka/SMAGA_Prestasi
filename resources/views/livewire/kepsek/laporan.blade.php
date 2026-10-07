@@ -35,12 +35,9 @@
         @if ($canExport)
             <p class="m-0 text-sm muted">Download memuat nama siswa (tanpa NIS/NISN), diberi tanda nama akun ini dan waktu download, dan tercatat di log audit.</p>
         @endif
-        @if ($suratUrl)
-            <x-sth.link :href="$suratUrl" icon="mail" icon-right="chevron-right">Surat atas nama saya</x-sth.link>
-        @endif
     </x-sth.card>
 
-    <div class="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4" wire:loading.class="opacity-70">
+    <div class="grid auto-rows-fr grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4" wire:loading.class="opacity-70">
         <x-sth.stat-tile icon="award" tone="gold" label="Prestasi terverifikasi" :value="number_format($summary['totals']['prestasi'], 0, ',', '.')" :note="$pointsTotal.' poin'" />
         <x-sth.stat-tile icon="users" tone="blue" label="Siswa berprestasi" :value="number_format($summary['totals']['siswa'], 0, ',', '.')" note="minimal 1 prestasi" />
         <x-sth.stat-tile icon="trophy" tone="green" label="Lomba" :value="number_format($summary['totals']['lomba'], 0, ',', '.')" note="dengan hasil terverifikasi" />

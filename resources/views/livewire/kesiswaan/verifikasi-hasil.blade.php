@@ -109,7 +109,7 @@
                         </div>
                     </div>
 
-                    <x-sth.radio-pick wire:model.live="finalResult" label="Capaian" :columns="5" size="sm" :options="$resultOptions" />
+                    <x-sth.radio-pick wire:model.live="finalResult" label="Capaian" :columns="5" :phone-columns="2" size="sm" :options="$resultOptions" />
 
                     <x-sth.card tone="gold" padding="sm" class="flex flex-col gap-2">
                         <span class="label">{{ $detail['pointsLabel'] }}</span>

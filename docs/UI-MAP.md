@@ -232,25 +232,34 @@ keep the old look. What changed beyond the stylesheet:
 
 | screen / part | change |
 |---|---|
-| all `layouts::app` screens | sidebar without the button above the menu; phone page title may wrap instead of being cut; stat tiles two per row on phones, quiet at 0 |
-| Siswa › Beranda | ink banner with the lintasan motif (`.spanduk`); the points box shows below lg only (the gold card carries them from lg) |
-| Siswa › Cari lomba, Beranda, Guru › Lomba | `<x-sth.lomba-card>` with `<x-sth.sampul>`: the lomba's poster (`files.cover`) or a template drawing of its bidang |
-| Siswa › Detail lomba, Undangan tim, Portofolio | cover = poster or drawing (detail: deep version); facts strip without icon boxes |
+| every screen with the brand (sidebar, public header, auth, error pages) | the brand mark is the crest of SMA Negeri 3 Semarang (D-120), also as the tab icon |
+| all `layouts::app` screens | sidebar without the button above the menu; phone page title may wrap instead of being cut; stat tiles two per row on phones, quiet at 0; below lg the top bar has no search icon when a tab opens that page (siswa: tab "Lomba") |
+| Siswa › Beranda | ink banner with the lintasan motif (`.spanduk`), no button on it, in one grid row with the points card (same height from lg); the points box shows below lg only; no "Katalog" and "Peringkat" links (the menu has both); the sentence under the greeting counts the open lomba this student is not in yet: "Masih ada N lomba yang bisa kamu daftar." |
+| Siswa › Cari lomba, Beranda, Guru › Lomba | `<x-sth.lomba-card>` is a capsule: the lomba's poster (`files.cover`) or a template drawing of its bidang stands on the left (3:4), the text beside it; two capsules per row on a laptop, one on a phone (columns from the list's own width); Beranda recommends up to four |
+| Siswa › Detail lomba, Undangan tim | head `<x-sth.lomba-head>`: the poster whole on the left ("Perbesar" opens it in the preview popup; else the deep drawing), beside it status, name, penyelenggara, who registered and the key facts; tabs and the rest below |
+| Siswa › Portofolio | prestasi cards are capsules too: the lomba's cover on the left (3:4), hasil, name, tags, penyelenggara and date beside it; points and the certificate under both |
 | Siswa › tur menu | tip 1 points at the menu item "Cari lomba"; positions re-measured; tab names "Lomba saya", "Portofolio" |
-| Publik › Beranda | three sample cards straight on a grid, no blur blob; "Prestasi terbaru" bands show the bidang drawing |
+| Publik › Beranda | the hero is one ink banner (no cards beside the headline, "Masuk" only in the header); the four bidang tiles are always the same size; "Prestasi terbaru" bands show the bidang drawing |
 | Publik › halaman siswa | name on its own row on phones; "Terverifikasi …" is text, not a tag |
-| Masuk (`layouts::auth`) | ink panel with the motif and three straight sample cards; simple variant and error pages centred from lg |
+| Masuk (`layouts::auth`) | ink panel with brand, headline and the motif (no sample cards); simple variant and error pages centred from lg |
 | Kepala Sekolah › Persetujuan | phones: decision buttons on their own row, no icon tile, long tag wraps |
-| Kesiswaan › Kelola lomba | no icon tile per row (bidang = dot + name), row actions "Ubah" / "Tutup" with text, table floor 880 px; form shows "Sampul di katalog sekarang" |
+| Kesiswaan › Kelola lomba | no icon tile per row (bidang = dot + name), row actions "Ubah" / "Tutup" with text, table floor 880 px; form shows "Sampul di katalog sekarang" in the card's 3:4 box and says a portrait poster fits best |
 | Kesiswaan › Talenta, Database prestasi; Guru tables | fixed tables get a floor and scroll inside their card on phones |
 | TU › Surat tugas | queue is one column on phones; the file row of an issued letter wraps its three buttons |
 | Status aktivasi, Arsip otomatis, Import siswa | warning stat tiles ("Kedaluwarsa", "Dibekukan", "Ditolak", …) are hidden at 0 |
 | Humas › Antrean publikasi | card band shows the bidang drawing |
+| Peringkat (publik and siswa) | top three: medal (gold, silver, bronze) + name in one row, points and count below a line |
+| Admin › Status sistem | no "Pintasan" column (it repeated four menu items) |
+| Kepala Sekolah › Persetujuan, Laporan; Guru › Lomba; Siswa › Cari lomba | links and empty-state buttons that repeated a menu item or the page's own button are gone |
+| Kesiswaan › Verifikasi hasil, Siswa › Laporkan hasil | capaian tiles: text centred, two per row on phones; the points formula keeps every label inside its tile (on a 360 px phone "× Penyelenggara" takes a second row) |
+| Siswa › Profil talenta | talent type tiles follow the card's width (three per row from 540 px, else two; no icon tile on phones under 390 px) |
+| Publik › Prestasi per bidang | first column 300 px, so the three year labels of the chart no longer touch |
+| Kepala Sekolah / Admin › Dashboard | a "Perlu perhatian" link may take two lines instead of leaving its card |
 | staff screens, notifications | no "kamu" (D-119); Admin › Pengaturan › Halaman publik without "(U-04)" |
 | `/_dev/components` | new card "Sampul lomba" (12 drawings + deep versions), updated palette and type samples |
 
 New route: `GET /berkas/sampul/{file}` → `files.cover` (`FileController::cover`, signed-in users, FilePolicy; D-118).
-New component: `<x-sth.sampul>` (40 components). New support class: `App\Support\Sampul`.
+New components: `<x-sth.sampul>`, `<x-sth.lomba-head>` (41 components). New support class: `App\Support\Sampul`.
 
 ## 7. Board checklist (24/24 mapped)
 Main (#1) · Prestasi-Bidang (#2) · Peringkat (#3) · Masuk (#4) · Aktivasi (#5) · Tur-Menu-Mobile (#6) ·

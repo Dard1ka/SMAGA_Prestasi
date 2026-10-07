@@ -1,6 +1,6 @@
 {{-- Guru · Siswa binaan (backlog #3, B4). Data prepared in App\Livewire\Guru\Binaan (own binaan only). --}}
 <div class="flex flex-col gap-[22px]">
-    <section aria-label="Ringkasan binaan" class="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
+    <section aria-label="Ringkasan binaan" class="grid auto-rows-fr grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
         <x-sth.stat-tile icon="users" tone="blue" label="Siswa binaan" :value="(string) $counts['siswa']" note="lomba dan talenta" />
         <x-sth.stat-tile icon="trophy" tone="blue" label="Lomba berjalan" :value="(string) $counts['aktif']" note="belum selesai" />
         <x-sth.stat-tile icon="clock" tone="orange" label="Menunggu laporan" :value="(string) $counts['laporan']" :note="$counts['verifikasi'].' menunggu verifikasi'" />

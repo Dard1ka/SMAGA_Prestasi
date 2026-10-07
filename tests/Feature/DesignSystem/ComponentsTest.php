@@ -121,6 +121,13 @@ it('renders pick buttons and segmented controls as real radios', function (): vo
         ->assertSee('type="checkbox"', false)
         ->assertSee('name="minat[]"', false);
 
+    // A tile with a second line is .pick-2; a grid of long labels shows two per row on phones. Same-height rows.
+    $this->blade('<x-sth.radio-pick name="capaian" label="Capaian" :columns="5" :phone-columns="2" :options="[\'khusus\' => [\'label\' => \'Penghargaan khusus\', \'sub\' => \'0,30\']]" />')
+        ->assertSee('grid auto-rows-fr grid-cols-2 sm:grid-cols-5', false)
+        ->assertSee('class="pick pick-2"', false);
+    $this->blade('<x-sth.radio-pick name="kategori" label="Kategori" :columns="5" :options="[\'A\' => [\'label\' => \'A\', \'sub\' => \'1,00\']]" />')
+        ->assertSee('grid auto-rows-fr grid-cols-3 sm:grid-cols-5', false);
+
     $this->blade('<x-sth.segmented name="peserta" label="Daftar sebagai" value="tim" :options="[\'individu\' => \'Individu\', \'tim\' => \'Tim\']" />')
         ->assertSee('class="seg-btn"', false)
         ->assertSee('value="tim"', false);
@@ -135,6 +142,34 @@ it('renders a lomba card with cover, chips, meta and a contextual link', functio
         ->assertSee('3</span> siswa SMAGA mendaftar', false)
         ->assertSee('href="/siswa/lomba/1"', false)
         ->assertSee('Lihat detail<span class="sr-only"> National Science and Invention Fair (NSIF) 2026</span>', false);
+});
+
+it('shows the school crest as the brand mark, on a white tile where the ground is ink', function (): void {
+    // D-120: the crest replaced the shield icon. It is a CSS picture (.brand-mark), so Blade builds no asset address.
+    $this->blade('<x-sth.brand />')
+        ->assertSee('role="img" aria-label="Lambang SMA Negeri 3 Semarang"', false)
+        ->assertSee('brand-mark h-10', false)
+        ->assertSee('SMAGA Talent Hub')
+        ->assertSee('SMA Negeri 3 Semarang')
+        ->assertDontSee('<svg', false)
+        ->assertDontSee('<img', false);
+
+    // As a link the whole brand has one name; the picture is then decoration.
+    $this->blade('<x-sth.brand size="sm" href="/" />')
+        ->assertSee('aria-label="SMAGA Talent Hub, beranda"', false)
+        ->assertSee('brand-mark h-9', false)
+        ->assertDontSee('role="img"', false);
+
+    $this->blade('<x-sth.brand inverse />')
+        ->assertSee('bg-white', false)
+        ->assertSee('brand-mark h-8', false)
+        ->assertSee('text-white', false);
+
+    expect(file_exists(resource_path('images/brand/lambang-sma3.png')))->toBeTrue()
+        ->and(file_get_contents(resource_path('css/app.css')))->toContain("url('../images/brand/lambang-sma3.png')")
+        ->and(file_exists(public_path('favicon.ico')))->toBeTrue()
+        ->and(file_exists(public_path('icon-192.png')))->toBeTrue()
+        ->and(file_exists(public_path('favicon.svg')))->toBeFalse();
 });
 
 it('renders a native dialog with a labelled title and a close button', function (): void {

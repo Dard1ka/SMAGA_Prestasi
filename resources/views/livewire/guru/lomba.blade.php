@@ -24,7 +24,7 @@
         @endif
     </div>
 
-    <div class="flex flex-col gap-4" wire:loading.class="opacity-70">
+    <div class="@container flex flex-col gap-4" wire:loading.class="opacity-70">
         @if ($total === 0)
             @if ($isCatalog)
                 <x-sth.empty-state icon="search" title="Belum ada lomba yang cocok">
@@ -33,15 +33,10 @@
             @else
                 <x-sth.empty-state icon="upload" title="Belum ada info lomba yang di-upload">
                     Kesiswaan memeriksa setiap upload sebelum tampil di katalog.
-                    @if ($canUpload)
-                        <x-slot:actions>
-                            <x-sth.button variant="soft" size="sm" data-sth-open="usul" aria-haspopup="dialog">Upload info lomba</x-sth.button>
-                        </x-slot:actions>
-                    @endif
                 </x-sth.empty-state>
             @endif
         @elseif ($isCatalog)
-            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            <div class="grid grid-cols-1 gap-4 @min-[900px]:grid-cols-2 @min-[1360px]:grid-cols-3">
                 @foreach ($cards as $card)
                     <x-sth.lomba-card wire:key="lomba-{{ $card['id'] }}"
                         :title="$card['title']" :href="$card['href']" :bidang="$card['bidang']" :tingkat="$card['tingkat']"

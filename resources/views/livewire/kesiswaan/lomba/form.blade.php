@@ -81,18 +81,19 @@
             <div class="flex flex-col gap-2">
                 <x-sth.file-drop wire:model="cover" label="Sampul" accept=".jpg,.jpeg,.png,.webp" icon="image"
                     :title="$cover ? $cover->getClientOriginalName() : ($competition?->coverFile ? 'Ganti poster' : 'Pilih gambar poster')"
-                    hint="JPG, PNG, atau WEBP, maks 3 MB. Tampil di kartu dan halaman lomba. Tanpa poster, sampul memakai gambar bidang." optional />
+                    hint="JPG, PNG, atau WEBP, maks 3 MB. Paling pas poster tegak (portrait), misalnya A4 atau 4:5. Tanpa poster, sampul memakai gambar bidang." optional />
                 @if ($competition?->coverFile && ! $cover)
                     <x-sth.checkbox wire:model.live="removeCover">Hapus poster, pakai gambar bidang</x-sth.checkbox>
                 @endif
                 <p wire:loading wire:target="cover" class="m-0 text-xs text-muted">Meng-upload…</p>
                 @if ($competition)
-                    {{-- What the catalog shows for this lomba now: its stored poster, else the drawing of its bidang. --}}
+                    {{-- What the catalog card shows for this lomba now, in the card's own 3:4 box: its stored poster
+                         (the box may cut a little of the sides or bottom), else the drawing of its bidang. --}}
                     <div class="flex flex-col gap-1.5">
                         <span class="text-xs font-semibold text-muted">Sampul di katalog sekarang</span>
-                        <x-sth.sampul :bidang="$form['bidang'] ?? null" :seed="$competition->getKey()"
+                        <x-sth.sampul :bidang="$form['bidang'] ?? null" :seed="$competition->getKey()" bentuk="tegak"
                                       :src="$removeCover ? null : \App\Support\Sampul::poster($competition)"
-                                      class="h-[124px] w-full max-w-[360px] rounded-tile border border-line" />
+                                      class="w-[136px] rounded-tile border border-line" />
                     </div>
                 @endif
             </div>

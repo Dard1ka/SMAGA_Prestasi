@@ -87,18 +87,21 @@
                 <span class="muted text-xs">Penjaringan pembinaan talenta {{ $year }}</span>
             </div>
 
-            <div role="group" aria-labelledby="lbl-jenis" class="flex flex-col gap-2.5">
+            {{-- The tiles follow the width of this card (container query): three per row from 540px, else two, so
+                 "Seni Budaya" stays inside its tile next to the side column of a 1280px laptop; on a phone
+                 narrower than 390px the icon tile is left out (the tag carries the bidang colour). --}}
+            <div role="group" aria-labelledby="lbl-jenis" class="@container flex flex-col gap-2.5">
                 <span id="lbl-jenis" class="label inline-flex items-center gap-2">
                     <span @class(['inline-flex size-6 items-center justify-center rounded-full text-xs font-bold', 'bg-primary text-white' => $selectedType === null, 'bg-green-bg text-green' => $selectedType !== null]) aria-hidden="true">1</span>
                     Pilih jenis talenta
                 </span>
-                <div class="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                <div class="grid auto-rows-fr grid-cols-2 gap-2 @min-[540px]:grid-cols-3">
                     @foreach ($types as $type)
                         <button type="button" wire:key="jenis-{{ $type->id }}" wire:click="pilihJenis('{{ $type->id }}')"
                             aria-pressed="{{ $jenis === $type->id ? 'true' : 'false' }}"
-                            @class(['pick flex min-h-14 items-center justify-start gap-3 px-3 text-left', 'pick-on' => $jenis === $type->id])>
-                            <x-sth.bidang-tile :bidang="$type->bidang" size="sm" />
-                            <span class="flex flex-col items-start gap-1">
+                            @class(['pick flex min-h-14 min-w-0 items-center justify-start gap-3 px-3 text-left', 'pick-on' => $jenis === $type->id])>
+                            <x-sth.bidang-tile :bidang="$type->bidang" size="sm" class="@max-[309px]:hidden" />
+                            <span class="flex min-w-0 flex-col items-start gap-1">
                                 <span class="font-bold">{{ $type->code->label() }}</span>
                                 <x-sth.chip :bidang="$type->bidang" size="sm" />
                             </span>

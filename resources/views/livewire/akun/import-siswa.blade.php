@@ -87,7 +87,7 @@
                         @endif
                     </x-sth.alert>
                 @else
-                    <div class="grid grid-cols-2 gap-3 xl:grid-cols-4">
+                    <div class="grid auto-rows-fr grid-cols-2 gap-3 xl:grid-cols-4">
                         <x-sth.stat-tile icon="check-circle" tone="green" label="Siswa baru" :value="(string) $summary['new']" note="akun dibuat" />
                         <x-sth.stat-tile icon="users" tone="blue" label="Pindah kelas" :value="(string) $summary['moved']" note="kelas diperbarui" />
                         <x-sth.stat-tile icon="check" tone="gray" label="Tidak berubah" :value="(string) ($summary['unchanged'] + $summary['skipped'])" note="sudah di kelas itu" />

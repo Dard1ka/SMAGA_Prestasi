@@ -230,6 +230,45 @@ it('lets the invitee decline', function (): void {
 
 // --- beranda + tur -----------------------------------------------------------------------------
 
+it('counts on the banner only the open lomba this student can still register for', function (): void {
+    // The lead, 2026-10-08: "masih ada 5 lomba yang bisa kamu daftar". The number is the student's own:
+    // an open lomba they already registered for (or were invited to) is not one they can still register for.
+    F::openCompetition(['name' => 'OSN Tingkat Kota Semarang 2026']);
+    F::openCompetition(['name' => 'O2SN Kota Semarang 2026']);
+    $team = F::teamCompetition(3, ['name' => 'Lomba Peneliti Belia (LPB) 2026']);
+    F::openCompetition(['name' => 'Lomba yang sudah ditutup', 'registration_closes_at' => now()->subDay()]);
+
+    // Nobody registered yet: three lomba are open for everyone, the closed one never counts.
+    $this->actingAs(F::user($this->nadia))->get(route('siswa.beranda'))
+        ->assertOk()
+        ->assertSee('Masih ada <span class="num font-bold">3</span> lomba yang bisa kamu daftar.', false)
+        ->assertDontSee('bisa kamu ikuti');
+
+    // Nadia registers a team with Dimas: one lomba less for both of them (Dimas is invited), not for Keisha.
+    app(CreateRegistration::class)->handle(F::user($this->nadia), $team, RegistrationType::Tim, [$this->dimas->getKey()], $this->guru->id);
+
+    foreach ([[$this->nadia, 2], [$this->dimas, 2], [$this->keisha, 3]] as [$student, $left]) {
+        $this->actingAs(F::user($student))->get(route('siswa.beranda'))
+            ->assertOk()
+            ->assertSee('Masih ada <span class="num font-bold">'.$left.'</span> lomba yang bisa kamu daftar.', false);
+    }
+
+    // The recommendations come from the same list: the lomba Nadia is in is not recommended to her.
+    $html = $this->actingAs(F::user($this->nadia))->get(route('siswa.beranda'))->getContent();
+    expect(substr_count($html, 'wire:key="rekom-'))->toBe(2);
+
+    // A student who is in every open lomba is told so; with nothing open the sentence says that instead.
+    Competition::query()->whereKeyNot($team->getKey())->update(['registration_closes_at' => now()->subDay()]);
+    $this->actingAs(F::user($this->nadia))->get(route('siswa.beranda'))
+        ->assertSee('Kamu sudah terdaftar di semua lomba yang sedang dibuka.')
+        ->assertDontSee('Masih ada');
+
+    Competition::query()->update(['registration_closes_at' => now()->subDay()]);
+    $this->actingAs(F::user($this->nadia))->get(route('siswa.beranda'))
+        ->assertSee('Belum ada lomba yang dibuka. Kamu bisa mengusulkan lomba.')
+        ->assertDontSee('Masih ada');
+});
+
 it('shows invitations, own registrations and deadlines on the beranda', function (): void {
     $lomba = F::teamCompetition(3, ['name' => 'Lomba Peneliti Belia (LPB) 2026']);
     app(CreateRegistration::class)->handle(F::user($this->nadia), $lomba, RegistrationType::Tim, [$this->dimas->getKey()], $this->guru->id);

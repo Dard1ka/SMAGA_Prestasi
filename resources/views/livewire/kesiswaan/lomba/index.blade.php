@@ -1,6 +1,6 @@
 {{-- Kelola lomba & antrean verifikasi (board Kesiswaan-Kelola-Lomba). Data prepared in App\Livewire\Kesiswaan\Lomba\Index. --}}
 <div class="flex flex-col gap-[22px]">
-    <section aria-label="Ringkasan" class="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
+    <section aria-label="Ringkasan" class="grid auto-rows-fr grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
         @foreach ($stats as $stat)
             <x-sth.stat-tile :icon="$stat['icon']" :tone="$stat['tone']" :label="$stat['label']" :value="$stat['value']" :note="$stat['note']" :href="$stat['href']" />
         @endforeach

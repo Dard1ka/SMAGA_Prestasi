@@ -1,5 +1,5 @@
 {{-- Siswa · Cari lomba (board Katalog-Lomba). Data prepared in App\Livewire\Siswa\Lomba\Katalog + LombaPresenter. --}}
-<div class="flex flex-col gap-[18px]">
+<div class="@container flex flex-col gap-[18px]">
     <x-slot:actions>
         <x-sth.button variant="quiet" icon="plus" data-sth-open="usul" aria-haspopup="dialog">Usulkan lomba</x-sth.button>
     </x-slot:actions>
@@ -33,15 +33,16 @@
     @if ($cards === [])
         <x-sth.empty-state icon="search" :title="$filtered ? 'Belum ada lomba yang cocok' : 'Belum ada lomba di katalog'">
             {{ $filtered ? 'Coba ubah filter, atau usulkan lomba baru.' : 'Usulkan lomba yang ingin kamu ikuti.' }}
-            <x-slot:actions>
-                @if ($filtered)
+            {{-- "Usulkan lomba" is the page's own button at the top; it is not repeated here. --}}
+            @if ($filtered)
+                <x-slot:actions>
                     <x-sth.button variant="quiet" size="sm" wire:click="hapusFilter">Hapus filter</x-sth.button>
-                @endif
-                <x-sth.button variant="soft" size="sm" data-sth-open="usul" aria-haspopup="dialog">Usulkan lomba</x-sth.button>
-            </x-slot:actions>
+                </x-slot:actions>
+            @endif
         </x-sth.empty-state>
     @else
-        <div class="grid grid-cols-1 gap-[18px] sm:grid-cols-2 xl:grid-cols-3">
+        {{-- Capsules: the columns follow the width of the list, so a card is never much narrower than a phone. --}}
+        <div class="grid grid-cols-1 gap-[18px] @min-[900px]:grid-cols-2 @min-[1360px]:grid-cols-3">
             @foreach ($cards as $card)
                 <x-sth.lomba-card wire:key="lomba-{{ $card['id'] }}"
                     :title="$card['title']" :href="$card['href']" :bidang="$card['bidang']" :tingkat="$card['tingkat']"

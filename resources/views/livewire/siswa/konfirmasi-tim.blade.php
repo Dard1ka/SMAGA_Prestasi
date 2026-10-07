@@ -1,23 +1,21 @@
 {{-- Siswa · Undangan tim (confirm/decline). Data + rules: App\Livewire\Siswa\KonfirmasiTim. --}}
 @php($bidangKey = $competition->bidang?->cssKey() ?? 'sains')
 <div class="mx-auto flex w-full max-w-[760px] flex-col gap-[18px]">
-    <x-sth.card as="section" padding="none" class="overflow-hidden" aria-labelledby="h-undangan">
-        <x-sth.sampul :bidang="$bidangKey" :seed="$competition->getKey()" :src="\App\Support\Sampul::poster($competition)" class="h-28 items-start gap-2 p-4">
+    {{-- Same head as Detail lomba: poster on the left, the invitation, the name and the key facts beside it. --}}
+    <x-sth.lomba-head :bidang="$bidangKey" :seed="$competition->getKey()" :poster="\App\Support\Sampul::poster($competition)" :facts="$facts"
+                      alt="Poster {{ $competition->name }}" aria-labelledby="h-undangan">
+        <div class="flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
+            <span class="text-sm font-semibold text-muted">Undangan tim</span>
             @if ($competition->bidang)
-                <x-sth.chip tone="glass">{{ $competition->bidang->label() }}</x-sth.chip>
-            @endif
-        </x-sth.sampul>
-        <div class="flex flex-col gap-2 p-5">
-            <p class="m-0 text-sm font-semibold text-muted">Undangan tim</p>
-            <h2 id="h-undangan" class="title-page m-0 text-2xl">{{ $competition->name }}</h2>
-            <p class="m-0 text-sm text-muted">{{ \App\Livewire\Siswa\Lomba\LombaPresenter::penyelenggara($competition) }}</p>
-            @if ($detailUrl)
-                <x-sth.link :href="$detailUrl" icon-right="chevron-right" class="self-start">Lihat detail lomba</x-sth.link>
+                <x-sth.chip :bidang="$competition->bidang" />
             @endif
         </div>
-    </x-sth.card>
-
-    <x-sth.facts :items="$facts" />
+        <h2 id="h-undangan" class="title-page m-0 text-xl @min-[460px]:text-2xl">{{ $competition->name }}</h2>
+        <p class="m-0 text-sm text-muted">{{ \App\Livewire\Siswa\Lomba\LombaPresenter::penyelenggara($competition) }}</p>
+        @if ($detailUrl)
+            <x-sth.link :href="$detailUrl" icon-right="chevron-right" class="self-start">Lihat detail lomba</x-sth.link>
+        @endif
+    </x-sth.lomba-head>
 
     <x-sth.card as="section" aria-labelledby="h-tim" class="flex flex-col gap-3">
         <div class="flex items-center justify-between gap-3">

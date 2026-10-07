@@ -162,6 +162,17 @@ it('puts Notifikasi and Keamanan akun in the avatar menu of every role', functio
         ->and($html)->toContain('Keamanan akun');
 });
 
+it('leaves the phone search icon out when a tab already opens that page', function (): void {
+    // One way to each place: below lg the siswa tab "Lomba" is Cari lomba. Staff have no tab bar and keep the icon.
+    $render = fn (array $nav): string => Blade::render('<x-sth.topbar :nav="$nav" title="Beranda" />', ['nav' => $nav]);
+    $siswa = $render(Navigation::for(['name' => 'Nadia Putri Anindya', 'meta' => 'Siswa · XI-4'], 'siswa', [], 'none'));
+    $staff = $render(Navigation::for(['name' => 'Ibu Dwi Rahayu', 'roles' => ['kesiswaan']], 'kesiswaan', [], 'none'));
+
+    expect($siswa)->toContain('id="cari-atas"') // the text box of lg and up stays
+        ->and($siswa)->not->toContain('aria-label="Cari lomba"')
+        ->and($staff)->toContain('aria-label="Cari lomba"');
+});
+
 it('covers exactly the roles of App\Enums\RoleName', function (): void {
     $roles = array_map(fn (RoleName $r): string => $r->value, RoleName::cases());
 

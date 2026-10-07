@@ -19,41 +19,27 @@
 
     <div class="grid grid-cols-1 items-start gap-[18px] lg:grid-cols-[minmax(0,1fr)_380px]">
         <div class="flex min-w-0 flex-col gap-[18px]">
-            <x-sth.card as="section" padding="none" class="overflow-hidden" aria-labelledby="h-lomba">
-                {{-- The one big cover of this page: the lomba's poster, else the deep template drawing of its bidang. --}}
-                <x-sth.sampul :bidang="$bidangKey" :seed="$competition->getKey()" :src="$poster['src'] ?? null"
-                              tone="pekat" alt="Poster {{ $competition->name }}" class="h-36 items-start gap-2 p-4 sm:h-40">
-                    <x-sth.chip tone="glass">{{ \App\Livewire\Siswa\Lomba\LombaPresenter::tingkat($competition) }}</x-sth.chip>
+            {{-- Head: the poster on the left (whole; "Perbesar" opens the file in the preview popup), beside it the
+                 status, the name, who organises it, who registered and the five key facts. The rest stays below. --}}
+            <x-sth.lomba-head :bidang="$bidangKey" :seed="$competition->getKey()" :poster="$poster" :facts="$facts"
+                              alt="Poster {{ $competition->name }}" aria-labelledby="h-lomba">
+                <div class="flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
                     <x-sth.chip :tone="$window['tone']">{{ $window['label'] }}</x-sth.chip>
-                    @if ($poster)
-                        {{-- The cover shows the poster small; this opens the whole file in the preview popup (href = download). --}}
-                        <x-sth.button variant="white" size="sm" icon="image" :href="$poster['href']" :navigate="false" class="ml-auto self-end"
-                                      :data-sth-preview="$poster['preview']" :data-sth-preview-type="$poster['previewType']"
-                                      :data-sth-preview-name="$poster['name']" aria-haspopup="dialog">Lihat poster</x-sth.button>
+                    @if ($competition->bidang)
+                        <x-sth.chip :bidang="$competition->bidang" />
                     @endif
-                </x-sth.sampul>
-                <div class="flex flex-col gap-3 p-5">
-                    <h1 id="h-lomba" class="title-page m-0 text-2xl sm:text-3xl">{{ $competition->name }}</h1>
-                    <div class="flex flex-wrap items-center justify-between gap-3">
-                        <div class="flex flex-wrap items-center gap-2">
-                            @if ($competition->bidang)
-                                <x-sth.chip :bidang="$competition->bidang" />
-                            @endif
-                            <span class="text-sm text-muted">{{ $penyelenggara }}</span>
-                        </div>
-                        <div class="flex items-center gap-2">
-                            @if ($registrants !== [])
-                                <x-sth.avatar-stack :names="$registrants" />
-                                <span class="text-xs text-muted"><span class="num">{{ count($registrants) }}</span> siswa SMAGA sudah mendaftar</span>
-                            @else
-                                <span class="text-xs text-muted">Belum ada siswa SMAGA yang mendaftar</span>
-                            @endif
-                        </div>
-                    </div>
                 </div>
-            </x-sth.card>
-
-            <x-sth.facts :items="$facts" />
+                <h1 id="h-lomba" class="title-page m-0 text-xl @min-[460px]:text-2xl @min-[640px]:text-3xl">{{ $competition->name }}</h1>
+                <p class="m-0 text-sm text-muted">{{ $penyelenggara }}</p>
+                <div class="flex flex-wrap items-center gap-2">
+                    @if ($registrants !== [])
+                        <x-sth.avatar-stack :names="$registrants" />
+                        <span class="text-xs text-muted"><span class="num">{{ count($registrants) }}</span> siswa SMAGA sudah mendaftar</span>
+                    @else
+                        <span class="text-xs text-muted">Belum ada siswa SMAGA yang mendaftar</span>
+                    @endif
+                </div>
+            </x-sth.lomba-head>
 
             <x-sth.card as="section" aria-label="Info lomba" class="flex flex-col gap-4">
                 <x-sth.tabs panels id="info-lomba" label="Info lomba" active="tentang" :items="[

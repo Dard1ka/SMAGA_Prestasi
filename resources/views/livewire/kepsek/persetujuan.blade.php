@@ -185,12 +185,7 @@
         </x-sth.card>
 
         <x-sth.card as="section" padding="none" class="flex flex-col gap-3 p-[18px]" aria-labelledby="terdekat-title">
-            <div class="flex items-baseline justify-between gap-3">
-                <h2 id="terdekat-title" class="title-card">Lomba terdekat</h2>
-                @if (Route::has('kepsek.beranda'))
-                    <a class="lnk text-sm" href="{{ route('kepsek.beranda') }}">Dashboard</a>
-                @endif
-            </div>
+            <h2 id="terdekat-title" class="title-card">Lomba terdekat</h2>
             @forelse ($upcoming as $item)
                 <div class="flex items-center gap-3">
                     <span class="flex h-[50px] w-[46px] shrink-0 flex-col items-center justify-center rounded-control border border-line bg-page">

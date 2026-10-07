@@ -192,7 +192,22 @@
         <x-sth.card class="flex flex-col gap-4">
             <div class="flex flex-col gap-1">
                 <h3 class="title-card">Sampul lomba</h3>
-                <p class="m-0 text-sm text-muted">Poster asli kalau ada, kalau tidak gambar bidang. Tiga variasi per bidang, dipilih dari ID lomba. Versi pekat untuk sampul besar halaman detail.</p>
+                <p class="m-0 text-sm text-muted">Poster asli kalau ada, kalau tidak gambar bidang. Tiga variasi per bidang, dipilih dari ID lomba. Di kartu lomba dan halaman detail sampul berdiri tegak di kiri (3:4); pita lebar dipakai di kartu prestasi dan publikasi. Versi pekat untuk halaman detail.</p>
+            </div>
+            {{-- Portrait (bentuk="tegak"): the part of each drawing a card shows. --}}
+            <div class="grid grid-cols-4 gap-3 sm:grid-cols-6 lg:grid-cols-12">
+                @foreach (['sains', 'riset', 'seni', 'olahraga'] as $b)
+                    @foreach ([1, 2, 3] as $n)
+                        <div class="sampul sampul-tegak sampul-{{ $b }}-{{ $n }} rounded-tile" title="{{ $b }} {{ $n }}"></div>
+                    @endforeach
+                @endforeach
+            </div>
+            <div class="grid grid-cols-4 gap-3 sm:grid-cols-6 lg:grid-cols-12">
+                @foreach (['sains', 'riset', 'seni', 'olahraga'] as $b)
+                    @foreach ([1, 2, 3] as $n)
+                        <div class="sampul sampul-tegak sampul-pekat sampul-{{ $b }}-{{ $n }} rounded-tile" title="{{ $b }} {{ $n }} pekat"></div>
+                    @endforeach
+                @endforeach
             </div>
             <div class="grid grid-cols-2 gap-3 md:grid-cols-3">
                 @foreach (['sains', 'riset', 'seni', 'olahraga'] as $b)
@@ -212,7 +227,7 @@
     {{-- Kartu & stat tile --}}
     <section id="kartu" @unless ($show('kartu')) hidden @endunless aria-labelledby="h-kartu" class="flex flex-col gap-3 scroll-mt-6">
         <x-sth.page-header id="h-kartu" title="Kartu & stat tile" />
-        <div class="grid grid-cols-2 gap-3 sm:gap-[18px] xl:grid-cols-4">
+        <div class="grid auto-rows-fr grid-cols-2 gap-3 sm:gap-[18px] xl:grid-cols-4">
             <x-sth.stat-tile icon="trophy" tone="blue" label="Lomba aktif" value="6" note="pendaftaran dibuka" />
             <x-sth.stat-tile icon="users" tone="green" label="Pendaftar bulan ini" value="39" note="siswa di 7 lomba" />
             <x-sth.stat-tile icon="inbox" tone="orange" label="Usulan lomba" value="3" note="menunggu ditinjau" href="#kartu" />
@@ -426,11 +441,11 @@
     </section>
 
     {{-- Kartu lomba --}}
-    <section id="lomba" @unless ($show('lomba')) hidden @endunless aria-labelledby="h-lomba" class="flex flex-col gap-3 scroll-mt-6">
+    <section id="lomba" @unless ($show('lomba')) hidden @endunless aria-labelledby="h-lomba" class="@container flex flex-col gap-3 scroll-mt-6">
         <x-sth.page-header id="h-lomba" title="Rekomendasi untukmu" subtitle="Sesuai bidang minatmu: Riset & Sains">
             <x-slot:actions><x-sth.link href="#lomba" icon-right="chevron-right">Lihat semua lomba</x-sth.link></x-slot:actions>
         </x-sth.page-header>
-        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <div class="grid grid-cols-1 gap-4 @min-[900px]:grid-cols-2 @min-[1360px]:grid-cols-3">
             @foreach ($catalog as $c)
                 <x-sth.lomba-card
                     :title="$c['title']" href="#lomba" :bidang="$c['bidang']" :tingkat="$c['tingkat']"
@@ -456,6 +471,21 @@
                 ['icon' => 'pin', 'label' => 'Lokasi', 'value' => 'Daring'],
                 ['icon' => 'users', 'label' => 'Peserta', 'value' => 'Tim maks 3'],
             ]" />
+            {{-- Head of a lomba page: poster (or the deep drawing) on the left, name and facts beside it. --}}
+            <x-sth.lomba-head bidang="riset" seed="contoh-nsif" aria-label="Contoh kepala halaman lomba" :facts="[
+                ['icon' => 'clock', 'label' => 'Batas daftar', 'value' => '20 Okt 2026'],
+                ['icon' => 'calendar', 'label' => 'Tanggal lomba', 'value' => '7 Nov 2026'],
+                ['icon' => 'trophy', 'label' => 'Tingkat', 'value' => 'Nasional'],
+                ['icon' => 'pin', 'label' => 'Pelaksanaan', 'value' => 'Daring'],
+                ['icon' => 'users', 'label' => 'Peserta', 'value' => 'Tim maks 3'],
+            ]">
+                <div class="flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
+                    <x-sth.chip tone="green">Dibuka · 13 hari lagi</x-sth.chip>
+                    <x-sth.chip bidang="riset" />
+                </div>
+                <p class="title-page m-0 text-xl @min-[460px]:text-2xl @min-[640px]:text-3xl">National Science and Invention Fair (NSIF) 2026</p>
+                <p class="m-0 text-sm text-muted">Penyelenggara swasta · Kategori D</p>
+            </x-sth.lomba-head>
             <div class="grid gap-3 lg:grid-cols-2">
                 <x-sth.alert>Baru pertama masuk? Kamu akan diminta mengganti kata sandi dan menghubungkan email.</x-sth.alert>
                 <x-sth.alert tone="success">Pendaftaran terkirim. Menunggu persetujuan Kepala Sekolah.</x-sth.alert>

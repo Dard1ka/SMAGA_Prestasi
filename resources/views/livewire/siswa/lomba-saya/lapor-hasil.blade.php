@@ -23,7 +23,7 @@
         {{-- Hasil + perkiraan poin --}}
         <section aria-labelledby="{{ $formId }}-hasil" @class(['flex flex-col gap-4', 'card p-5' => ! $inline])>
             <{{ $h }} id="{{ $formId }}-hasil" class="title-card">Hasil yang diraih</{{ $h }}>
-            <x-sth.radio-pick wire:model.live="hasil" label="Hasil yang diraih" hide-label class="text-center" :options="$resultOptions" :columns="$inline ? 5 : 2" size="sm" />
+            <x-sth.radio-pick wire:model.live="hasil" label="Hasil yang diraih" hide-label :options="$resultOptions" :columns="$inline ? 5 : 2" :phone-columns="2" size="sm" />
 
             <div class="flex flex-col gap-2">
                 <p class="label m-0">Perkiraan poin <span class="muted font-medium">(final setelah diverifikasi)</span></p>

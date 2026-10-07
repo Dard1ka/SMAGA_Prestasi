@@ -16,7 +16,7 @@
         @endif
     </div>
 
-    <div class="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
+    <div class="grid auto-rows-fr grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
         <x-sth.stat-tile icon="award" tone="gold" label="Prestasi terverifikasi" :value="number_format($kpi['prestasi'], 0, ',', '.')" :note="$kpi['prestasiNote']" />
         <x-sth.stat-tile icon="users" tone="blue" label="Siswa berprestasi" :value="number_format($kpi['siswa'], 0, ',', '.')" note="Minimal 1 prestasi terverifikasi" />
         <x-sth.stat-tile icon="check-circle" tone="orange" label="Menunggu persetujuan" :value="$kpi['menunggu']" :note="$approvalUrl ? 'Tinjau pendaftaran' : 'Pendaftaran siswa'" :href="$approvalUrl" />
@@ -198,7 +198,8 @@
                     <span class="mt-0.5 inline-flex size-9 shrink-0 items-center justify-center rounded-control {{ $toneBg[$item['tone']] ?? $toneBg['gray'] }}" aria-hidden="true"><x-sth.icon name="alert" :size="18" /></span>
                     <span class="flex min-w-0 flex-col gap-0.5">
                         @if ($item['url'])
-                            <a class="lnk text-sm font-bold" href="{{ $item['url'] }}">{{ $item['title'] }}</a>
+                            {{-- May take two lines: in the narrow card of a 1280px laptop the sentence does not fit on one. --}}
+                            <a class="lnk text-sm leading-[1.35] font-bold whitespace-normal" href="{{ $item['url'] }}">{{ $item['title'] }}</a>
                         @else
                             <span class="text-sm font-bold">{{ $item['title'] }}</span>
                         @endif

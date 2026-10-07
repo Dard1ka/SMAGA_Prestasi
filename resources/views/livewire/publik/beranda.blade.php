@@ -1,72 +1,23 @@
 {{-- Publik · Beranda prestasi (board `Main`). Data: PublicAchievements::overview()/recent()/ranking(). --}}
 @php
     $barClass = ['sains' => 'bg-sains-chart', 'riset' => 'bg-riset-chart', 'seni' => 'bg-seni-chart', 'olahraga' => 'bg-olahraga-chart'];
-    $latest = $recent[0] ?? null;
     $top = array_values($top);
     $chartText = collect($overview['years'])->map(fn (array $y) => $y['tahun'].($y['current'] ? ' (berjalan)' : '').': '.$y['total'].' prestasi')->implode('; ');
 @endphp
 <div class="flex flex-col gap-6">
-    {{-- Hero --}}
-    <section aria-labelledby="hero-title" class="grid items-center gap-8 xl:grid-cols-[minmax(0,1fr)_560px] xl:gap-10">
-        <div class="flex flex-col items-start gap-3.5 py-2 xl:py-6">
-            <p class="m-0 inline-flex items-center gap-2 text-sm font-semibold text-ink-2"><x-sth.icon name="award" :size="16" />Prestasi SMA Negeri 3 Semarang</p>
-            <h1 id="hero-title" class="m-0 max-w-[600px] text-4xl leading-[1.06] font-bold tracking-[-0.02em] text-balance md:text-5xl">Prestasi siswa SMAGA, dalam satu tempat.</h1>
-            <p class="m-0 text-lg leading-normal text-ink-2">Capaian lomba siswa yang sudah diverifikasi sekolah.</p>
-            <div class="flex flex-wrap items-center gap-3 pt-2.5">
-                <x-sth.button :href="route('public.prestasi')" icon-right="chevron-right">Lihat prestasi</x-sth.button>
-                @if (\Illuminate\Support\Facades\Route::has('login'))
-                    <x-sth.button variant="quiet" :href="route('login')">Masuk</x-sth.button>
-                @endif
-            </div>
-        </div>
-
-        {{-- Three sample cards on one grid, straight: latest achievement, the bidang with the most, the total. --}}
-        <div aria-hidden="true" class="hidden grid-cols-[minmax(0,1fr)_236px] items-center gap-4 xl:grid">
-            @if ($latest)
-                <div class="card flex flex-col gap-2.5 p-[18px]">
-                    <div class="flex items-center gap-3">
-                        <span class="inline-flex size-[46px] items-center justify-center rounded-tile bg-medal text-ink"><x-sth.icon name="award" :size="24" /></span>
-                        <x-sth.chip tone="gold">{{ $latest['result_label'] }} {{ $latest['level_label'] }}</x-sth.chip>
-                    </div>
-                    <div class="flex flex-col gap-0.5">
-                        <span class="display text-xl leading-tight font-bold">{{ $latest['lomba'] }}</span>
-                        <span class="text-xs leading-snug text-muted">{{ $latest['organizer'] }}</span>
-                    </div>
-                    @php $person = $latest['people'][0]; @endphp
-                    <div class="flex items-center gap-2.5">
-                        @include('livewire.publik.partials.avatar', ['person' => $person, 'size' => 'xs'])
-                        <span class="truncate text-sm font-bold">{{ $person['name'] }}</span>
-                        @if ($person['kelas_label'])<span class="text-xs text-muted">{{ $person['kelas_label'] }}</span>@endif
-                    </div>
-                </div>
-            @else
-                <span></span>
-            @endif
-            <div class="flex flex-col gap-4">
-                @if ($overview['top_bidang'])
-                    <div class="card overflow-hidden">
-                        <x-sth.sampul :bidang="$overview['top_bidang']['key']" seed="bidang-terbanyak" class="h-24 items-start p-3">
-                            <x-sth.chip tone="glass">Bidang terbanyak</x-sth.chip>
-                        </x-sth.sampul>
-                        <div class="flex flex-col gap-0.5 px-4 pt-3 pb-3.5">
-                            <span class="display text-base font-bold">Bidang {{ $overview['top_bidang']['label'] }}</span>
-                            <span class="text-xs text-muted">{{ $overview['top_bidang']['count'] }} prestasi terverifikasi</span>
-                        </div>
-                    </div>
-                @endif
-                <div class="card flex items-center gap-3 px-4 py-3.5">
-                    <span class="inline-flex size-10 shrink-0 items-center justify-center rounded-control bg-gold-bg text-gold"><x-sth.icon name="check" /></span>
-                    <div class="flex flex-col">
-                        <span class="display num text-3xl leading-[1.1] font-bold">{{ number_format($overview['total'], 0, ',', '.') }}</span>
-                        <span class="text-xs text-muted">prestasi terverifikasi</span>
-                    </div>
-                </div>
-            </div>
+    {{-- Hero: one ink banner (lintasan motif on the right). Nothing floats beside the headline, and "Masuk" is
+         only in the header. --}}
+    <section aria-labelledby="hero-title" class="spanduk rounded-card px-5 py-8 sm:px-8 sm:py-10 xl:px-10 xl:py-12">
+        <div class="flex max-w-[640px] flex-col items-start gap-3.5">
+            <p class="m-0 inline-flex items-center gap-2 text-sm font-semibold text-on-primary-soft"><x-sth.icon name="award" :size="16" />Prestasi SMA Negeri 3 Semarang</p>
+            <h1 id="hero-title" class="m-0 text-4xl leading-[1.06] font-bold tracking-[-0.02em] text-balance text-white md:text-5xl">Prestasi siswa SMAGA, dalam satu tempat.</h1>
+            <p class="m-0 text-lg leading-normal text-on-primary-soft">Capaian lomba siswa yang sudah diverifikasi sekolah.</p>
+            <x-sth.button variant="white" :href="route('public.prestasi')" icon-right="chevron-right" class="mt-2.5">Lihat prestasi</x-sth.button>
         </div>
     </section>
 
     {{-- Stat tiles --}}
-    <section aria-label="Ringkasan prestasi" class="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4 xl:gap-5">
+    <section aria-label="Ringkasan prestasi" class="grid auto-rows-fr grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4 xl:gap-5">
         <x-sth.stat-tile icon="award" tone="gold" label="Prestasi terverifikasi" :value="number_format($overview['total'], 0, ',', '.')"
             :note="$overview['since'] ? 'Sejak '.$overview['since'] : 'Belum ada data'" />
         <x-sth.stat-tile icon="trophy" tone="blue" label="Nasional & internasional" :value="number_format($overview['nasional'] + $overview['internasional'], 0, ',', '.')"
@@ -80,17 +31,15 @@
     <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px] xl:grid-cols-[minmax(0,1fr)_400px]">
         {{-- Per bidang + per tahun ajaran --}}
         <x-sth.card as="section" aria-labelledby="h-bidang" class="flex min-w-0 flex-col gap-4 p-[22px]">
-            <x-sth.page-header id="h-bidang" title="Prestasi per bidang">
-                <x-slot:actions>
-                    <x-sth.link :href="route('public.prestasi')" icon-right="chevron-right">Lihat siswa per bidang</x-sth.link>
-                </x-slot:actions>
-            </x-sth.page-header>
+            {{-- No "Lihat siswa per bidang" link: the four tiles below go there. --}}
+            <x-sth.page-header id="h-bidang" title="Prestasi per bidang" />
 
             <div class="grid gap-6 xl:grid-cols-[minmax(0,400px)_minmax(0,1fr)] xl:gap-7">
-                <ul class="m-0 grid list-none grid-cols-1 content-start gap-3 p-0 min-[420px]:grid-cols-2">
+                {{-- auto-rows-fr + h-full: the four tiles are always the same size, also when a name takes two lines. --}}
+                <ul class="m-0 grid auto-rows-fr list-none grid-cols-1 content-start gap-3 p-0 min-[420px]:grid-cols-2">
                     @foreach ($overview['bidang'] as $b)
                         <li>
-                            <a href="{{ route('public.prestasi', ['bidang' => $b['value']]) }}" class="cover-{{ $b['key'] }} flex min-h-[72px] items-center gap-3 rounded-card px-4 py-3.5 no-underline hover:shadow-card">
+                            <a href="{{ route('public.prestasi', ['bidang' => $b['value']]) }}" class="cover-{{ $b['key'] }} flex h-full min-h-[76px] items-center gap-3 rounded-card px-4 py-3.5 no-underline hover:shadow-card">
                                 <span class="inline-flex size-11 shrink-0 items-center justify-center rounded-tile bg-white"><x-sth.icon :name="$b['key']" :size="22" /></span>
                                 <span class="flex min-w-0 flex-1 flex-col gap-0.5">
                                     <span class="text-sm leading-[18px] font-bold text-ink">{{ $b['label'] }}</span>
@@ -183,7 +132,7 @@
                 <ol class="m-0 flex list-none flex-col gap-1 p-0">
                     @foreach ($top as $row)
                         <li class="flex min-h-11 items-center gap-3">
-                            <span @class(['num inline-flex size-[26px] shrink-0 items-center justify-center rounded-full text-xs font-bold', 'bg-medal text-ink' => $row['rank'] === 1, 'bg-gray-bg text-gray' => $row['rank'] !== 1])><span class="sr-only">Peringkat </span>{{ $row['rank'] }}</span>
+                            <span @class(['num inline-flex size-[26px] shrink-0 items-center justify-center rounded-full text-xs font-bold', 'bg-medal text-ink' => $row['rank'] === 1, 'bg-medal-2 text-ink' => $row['rank'] === 2, 'bg-medal-3 text-ink' => $row['rank'] === 3, 'bg-gray-bg text-gray' => $row['rank'] > 3])><span class="sr-only">Peringkat </span>{{ $row['rank'] }}</span>
                             @include('livewire.publik.partials.avatar', ['person' => $row, 'size' => 'sm'])
                             <span class="flex min-w-0 flex-1 flex-col">
                                 @include('livewire.publik.partials.person-name', ['person' => $row, 'class' => 'text-sm leading-[18px]'])

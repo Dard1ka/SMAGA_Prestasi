@@ -91,6 +91,8 @@
     --color-gold-bg: #fbf0cc;
     --color-gold-line: #ead8a0;
     --color-medal: #e0a82a;
+    --color-medal-2: #c2c9d4; /* silver: rank 2 */
+    --color-medal-3: #d39a6a; /* bronze: rank 3 */
 
     /* Status (one colour = one meaning) */
     --color-green: #1b6b45; /* done / approved */
@@ -762,6 +764,54 @@
         box-shadow: 0 8px 22px -8px rgb(0 0 0 / 0.55);
     }
 
+    /* Portrait covers (lomba card, detail page): the poster stands on the left, the text beside it.
+       "tegak" = the poster box of a card: always 3:4, the poster fills it (a little of its sides or bottom
+       may be cut; the detail page shows it whole). "utuh" = the one poster of a detail page: whole, at its
+       own proportions (3:4 until it has loaded, and for a template drawing). */
+    .sampul-tegak,
+    .sampul-utuh:not(.sampul-poster) {
+        aspect-ratio: 3 / 4;
+    }
+
+    .sampul-tegak.sampul-poster,
+    .sampul-utuh.sampul-poster {
+        background-color: var(--color-subtle);
+    }
+
+    .sampul-utuh.sampul-poster {
+        display: block;
+    }
+
+    .sampul-isi {
+        position: absolute;
+        inset: 0;
+        z-index: -1;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        object-position: center top;
+    }
+
+    .sampul-utuh .sampul-isi {
+        position: static;
+        display: block;
+        height: auto;
+        max-height: 30rem;
+        aspect-ratio: auto 3 / 4;
+    }
+
+    /* A template drawing is 360 x 160 with its subject on the right. A portrait box shows a part about
+       120 wide: each drawing says which part (the patterns of Seni Budaya repeat, any part will do). */
+    :is(.sampul-tegak, .sampul-utuh).sampul-sains-1 { background-position: 73% 50%; }
+    :is(.sampul-tegak, .sampul-utuh).sampul-sains-2 { background-position: 84% 50%; }
+    :is(.sampul-tegak, .sampul-utuh).sampul-sains-3 { background-position: 60% 50%; }
+    :is(.sampul-tegak, .sampul-utuh).sampul-riset-1 { background-position: 91% 50%; }
+    :is(.sampul-tegak, .sampul-utuh).sampul-riset-2 { background-position: 87% 50%; }
+    :is(.sampul-tegak, .sampul-utuh).sampul-riset-3 { background-position: 83% 50%; }
+    :is(.sampul-tegak, .sampul-utuh).sampul-olahraga-1 { background-position: 79% 50%; }
+    :is(.sampul-tegak, .sampul-utuh).sampul-olahraga-2 { background-position: 100% 50%; }
+    :is(.sampul-tegak, .sampul-utuh).sampul-olahraga-3 { background-position: 84% 50%; }
+
     /* ---------- Spanduk (ink banner with the "lintasan" motif) ----------
        Arcs with six dots = the six steps of Jejak Prestasi. Student home banner and the auth panel. */
     .spanduk {
@@ -981,6 +1031,7 @@
         background: var(--color-surface);
         color: var(--color-ink);
         font: 600 var(--text-md) var(--font-sans);
+        text-align: center;
         cursor: pointer;
         transition:
             border-color 0.15s,
@@ -1018,6 +1069,19 @@
     .pick:has(input:checked) .pick-sub,
     .pick-on .pick-sub {
         color: var(--color-ink-2);
+    }
+
+    /* Two-line tile (label + weight): less side padding so a long label fits its grid cell. The padding
+       shrinks with the thicker border of the chosen tile, so nothing moves when the choice changes. */
+    .pick-2 {
+        flex-direction: column;
+        gap: 2px;
+        padding: 6px 8px;
+    }
+
+    .pick-2.pick-on,
+    .pick-2:has(input:checked) {
+        padding: 5px 7px;
     }
 
     /* Segmented control (Individu | Tim). Built from radios; .seg-on for button-based use. */
@@ -1159,6 +1223,17 @@
         font-size: var(--text-sm);
         font-weight: 500;
         line-height: 20px;
+    }
+
+    /* ---------- Brand mark (<x-sth.brand>) ----------
+       The crest of SMA Negeri 3 Semarang (D-120). Height from the caller (h-10, h-9); the width follows.
+       The file is a small raster picture (119 x 160, cut out of the JPEG the school gave): fine up to
+       about 56px high. Ask the school for a vector file before showing it larger. */
+    .brand-mark {
+        display: inline-block;
+        flex-shrink: 0;
+        aspect-ratio: 119 / 160;
+        background: url('../images/brand/lambang-sma3.png') center / contain no-repeat;
     }
 
     /* ---------- Sidebar nav ---------- */

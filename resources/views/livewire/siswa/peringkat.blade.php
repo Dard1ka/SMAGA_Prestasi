@@ -65,34 +65,32 @@
             <ol class="m-0 grid list-none gap-4 p-0 sm:grid-cols-3" aria-label="{{ $caption }}, tiga teratas">
                 @foreach ($top as $row)
                     <li wire:key="top-{{ $isSiswa ? 's' : 'k' }}-{{ $row['position'] }}">
-                        <article @class(['card flex h-full min-w-0 flex-col gap-3.5 p-[18px]', 'border-primary ring-2 ring-primary' => $row['me']])>
-                            <div class="flex items-center justify-between gap-2">
-                                <span @class(['display num inline-flex size-9 shrink-0 items-center justify-center rounded-full text-base font-bold', 'bg-medal text-ink' => $row['rank'] === 1, 'bg-gray-bg text-gray' => $row['rank'] !== 1])><span class="sr-only">Peringkat </span>{{ $row['rank'] }}</span>
+                        <article @class(['card flex h-full min-w-0 flex-col p-[18px]', 'border-primary ring-2 ring-primary' => $row['me']])>
+                            <div class="flex min-w-0 items-start gap-3.5">
+                                <span @class(['display num inline-flex size-11 shrink-0 items-center justify-center rounded-full text-lg font-bold text-ink', 'bg-medal' => $row['rank'] === 1, 'bg-medal-2' => $row['rank'] === 2, 'bg-medal-3' => $row['rank'] === 3, 'bg-gray-bg' => $row['rank'] > 3])><span class="sr-only">Peringkat </span>{{ $row['rank'] }}</span>
+                                @if ($isSiswa)
+                                    <div class="flex min-w-0 flex-col gap-0.5">
+                                        @include('livewire.publik.partials.person-name', ['person' => $row, 'class' => 'text-lg leading-6', 'wrap' => true])
+                                        @if ($row['kelas'])<span class="text-sm text-muted">{{ $row['kelas'] }}</span>@endif
+                                    </div>
+                                @else
+                                    <div class="flex min-w-0 flex-col gap-0.5">
+                                        <span class="text-lg leading-6 font-bold">Kelas {{ $row['kelas'] }}</span>
+                                        <span class="text-sm text-muted">{{ $row['students'] }} siswa berprestasi</span>
+                                    </div>
+                                @endif
+                            </div>
+                            <div class="mt-auto pt-4"><div class="flex items-baseline justify-between gap-3 border-t border-line-soft pt-3">
+                                <span class="flex items-baseline gap-1.5">
+                                    <span class="display num text-3xl leading-none font-bold">{{ $row['points_label'] }}</span>
+                                    <span class="text-sm font-semibold text-muted">poin</span>
+                                </span>
                                 @if ($row['me'])
                                     <x-sth.chip tone="blue">{{ $isSiswa ? 'Kamu' : 'Kelasmu' }}</x-sth.chip>
                                 @else
-                                    <x-sth.chip class="num">{{ $row['count'] }} prestasi</x-sth.chip>
+                                    <span class="num text-sm text-muted">{{ $row['count'] }} prestasi</span>
                                 @endif
-                            </div>
-                            <div class="flex min-w-0 items-center gap-3">
-                                @if ($isSiswa)
-                                    @include('livewire.publik.partials.avatar', ['person' => $row, 'size' => 'xl'])
-                                    <div class="flex min-w-0 flex-col gap-1">
-                                        @include('livewire.publik.partials.person-name', ['person' => $row, 'class' => 'text-base leading-5'])
-                                        @if ($row['kelas'])<span class="text-xs text-muted">{{ $row['kelas'] }}</span>@endif
-                                    </div>
-                                @else
-                                    <span class="display inline-flex size-12 shrink-0 items-center justify-center rounded-tile bg-primary-tint text-sm font-bold text-primary-on-tint">{{ $row['kelas'] }}</span>
-                                    <div class="flex min-w-0 flex-col gap-1">
-                                        <span class="text-base leading-5 font-bold">Kelas {{ $row['kelas'] }}</span>
-                                        <span class="text-xs text-muted">{{ $row['students'] }} siswa berprestasi</span>
-                                    </div>
-                                @endif
-                            </div>
-                            <div class="mt-auto flex items-baseline gap-1.5">
-                                <span class="display num text-3xl leading-none font-bold">{{ $row['points_label'] }}</span>
-                                <span class="text-xs font-semibold text-muted">poin</span>
-                            </div>
+                            </div></div>
                         </article>
                     </li>
                 @endforeach

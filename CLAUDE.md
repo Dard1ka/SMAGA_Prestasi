@@ -32,7 +32,7 @@ consent flags (D-16, SECURITY §3m-7).
 ## 2. Sources of truth (read before changing behaviour)
 | file | content |
 |---|---|
-| `docs/DECISIONS.md` | decision log D-01…D-119 (D-45…D-61 = backlog wave + W4 product choices, *sementara*; D-62…D-65 = security hardening, *final*; D-66…D-77 = Q1 security/performance pass and the lead's follow-up choices; D-78…D-91 = §D6, the lead's choices after the hand test of 2026-10-04; D-92…D-102 = §D7, the rules changed by the fixes after the QA pass of 2026-10-05; D-103…D-108 = §D8, the lead's six requests of 2026-10-06 (wave M3) and the schema change of QA4; D-109…D-112 = §D9, the lead's answers after the retest of M3 on 2026-10-07 (QA5); D-113…D-116 = §D10, the explore round after PR 14 (QA6); D-117…D-119 = §D11, the visual direction v3 "Tinta dan Sampul", lomba covers and the staff copy rule (UI3)), U-01…U-06, open questions §F. **Wins over everything.** |
+| `docs/DECISIONS.md` | decision log D-01…D-120 (D-45…D-61 = backlog wave + W4 product choices, *sementara*; D-62…D-65 = security hardening, *final*; D-66…D-77 = Q1 security/performance pass and the lead's follow-up choices; D-78…D-91 = §D6, the lead's choices after the hand test of 2026-10-04; D-92…D-102 = §D7, the rules changed by the fixes after the QA pass of 2026-10-05; D-103…D-108 = §D8, the lead's six requests of 2026-10-06 (wave M3) and the schema change of QA4; D-109…D-112 = §D9, the lead's answers after the retest of M3 on 2026-10-07 (QA5); D-113…D-116 = §D10, the explore round after PR 14 (QA6); D-117…D-120 = §D11, the visual direction v3 "Tinta dan Sampul", lomba covers, the staff copy rule and the school crest as the brand mark (UI3)), U-01…U-06, open questions §F. **Wins over everything.** |
 | `docs/ARCHITECTURE.md` | binding contract: data model, enums, state machine, domain rules |
 | `docs/SECURITY.md` | threat model, top-10 risks §1, controls §3a–§3m (K1–K12), pre-release checklist §4 |
 | `docs/TALENT-FORM.md` | talent types/branches (seed source for `talent_types`, `talent_branches`) |
@@ -418,18 +418,34 @@ logs in through `POST /login` and expects a 403/404 on the next GET would see th
   meaning (status green/orange/red/gray/blue, gold only for points/medals, bidang colours), the frame itself is
   ink and gray; no gradients, glow shadows, blur, tilted cards or page wash; AA contrast (input border 3.6:1,
   focus ring 4.7:1); ≥ 44px touch targets on touch devices; every input has a label; status tags always carry text.
-- **Covers** (D-118): `<x-sth.sampul :bidang :seed :src tone="terang|pekat">`. A lomba shows its own poster
-  (`competitions.cover_file_id`, address from `App\Support\Sampul::poster($competition)` → route `files.cover`)
-  whole in the middle over a blurred copy of itself (two `<img data-sth-sampul>`; `app.js` drops them when the
-  file fails to load), else one of three template drawings of its bidang (`.sampul-<bidang>-<1..3>`, variant from
-  the lomba id via `Sampul::variant()`; SVG files in `resources/images/sampul`, hashed by Vite). `LombaPresenter::card()`
-  passes `id` + `poster`; give `<x-sth.lomba-card>` `:seed` and `:poster`. Public pages and Humas use the drawing
-  only. `.spanduk` = the ink banner with the "lintasan" motif (six dots = the six steps of Jejak Prestasi) on the
-  student home and the login panel (`.spanduk-tinggi`).
+- **Covers** (D-118): `<x-sth.sampul :bidang :seed :src bentuk="lebar|tegak|utuh" tone="terang|pekat">`. A lomba
+  shows its own poster (`competitions.cover_file_id`, address from `App\Support\Sampul::poster($competition)` →
+  route `files.cover`; `<img data-sth-sampul>`, `app.js` drops it when the file fails to load), else one of three
+  template drawings of its bidang (`.sampul-<bidang>-<1..3>`, variant from the lomba id via `Sampul::variant()`; SVG
+  files in `resources/images/sampul`, hashed by Vite). **The cover stands on the left, portrait, the text beside
+  it**: `<x-sth.lomba-card>` is a capsule (`bentuk="tegak"`, also the prestasi cards of Portofolio: one 3:4 box the poster fills; `LombaPresenter::card()`
+  passes `id` + `poster`, give the card `:seed` and `:poster`; its grid takes the columns from its own width:
+  `grid-cols-1 @min-[900px]:grid-cols-2 @min-[1360px]:grid-cols-3` inside an `@container`), and
+  `<x-sth.lomba-head :bidang :seed :poster :facts>` heads Detail lomba and Undangan tim (`bentuk="utuh"`: the
+  poster whole, "Perbesar" opens it in the preview popup; name and key facts beside it, the rest of the page
+  below). `bentuk="lebar"` (a band; a poster whole in the middle over a blurred copy) is left for small cards
+  (public "Prestasi terbaru", Humas). Public pages and Humas use the drawing only. `.spanduk` = the ink banner with the "lintasan" motif (six dots = the six steps of Jejak Prestasi) on the
+  student home, the hero of the public home and the login panel (`.spanduk-tinggi`); nothing floats on or beside it
+  (no sample cards).
+- **Brand mark** (D-120): `<x-sth.brand>` shows the crest of SMA Negeri 3 Semarang (CSS class `.brand-mark`,
+  `resources/images/brand/lambang-sma3.png`; on ink it stands on a white tile), and the tab icons in `public/` are
+  the same crest. A small raster file: not above about 56px until the school gives a vector file; never redrawn or
+  recoloured. The `shield` icon is an ordinary icon now (2FA, Log audit).
 - Component changes of v3: tags are squared (`.chip`: tinted = status/gold, `tone="gray"` outlined, a bidang tag =
   dot + name, `.chip-wrap` may take two lines); `<x-sth.stat-tile zero="quiet|hide|show">` (quiet at 0 by default,
-  `hide` for warning tiles) in `grid-cols-2 … xl:grid-cols-4`; the sidebar has no button above the menu (the
-  student's "Cari lomba" is a menu item + the one banner button); a `fixed` `<x-sth.table>` gets a floor
+  `hide` for warning tiles) in `grid-cols-2 … xl:grid-cols-4`; the sidebar has no button above the menu, and no
+  screen repeats a menu item as a button or link (the student's "Cari lomba" is the menu item and the search box;
+  "Masuk" only in the public header; no page button repeated in its empty state); boxes of one grid are the same
+  height (`auto-rows-fr`: stat tiles, bidang tiles, `<x-sth.radio-pick columns>`); the top three of a ranking carry
+  gold / silver / bronze medals (`bg-medal`, `bg-medal-2`, `bg-medal-3`); pick tiles centre their text and a grid
+  of long labels shows two per row on phones (`phone-columns="2"`); a box whose width depends on a side panel
+  takes its columns from a container query (`@container` + `@min-[…]:grid-cols-n`: `<x-sth.facts>`, the talent
+  type tiles), so no text leaves its box at 1280 / 1366 px or on a 360 px phone; a `fixed` `<x-sth.table>` gets a floor
   (`table-class="min-w-[720px]"`) so it scrolls on phones instead of squeezing a column; the tab bar uses the
   menu names ("Lomba saya", "Portofolio"). `Siswa\TurMenu::desktopTips()` / `mobileTips()` hold pixel positions
   of the sidebar and tab bar: measure again when `.nav`, `.nav-sec`, the sidebar gaps or `.tabbar` change.
@@ -440,8 +456,8 @@ logs in through `POST /login` and expects a 403/404 on the next GET would see th
 - Tokens (Tailwind v4 `@theme`, spec colours only; `--text-*` and `--radius-*` hold the scale above) + helmet
   classes in `resources/css/app.css`; font self-hosted via `@fontsource/public-sans`. Layouts
   `<x-layouts::app|public|auth|mobile>` (Livewire: `#[Layout('layouts::app')]`), menus from
-  `App\Support\Navigation`. 40 components `<x-sth.*>` (button, chip, card, stat-tile, form fields that forward
-  `wire:model` + `$errors`, table, tabs, tracker, rumus-poin, lomba-card, sampul, modal, toast, preview, …), each documented at the top of its file; contracts in
+  `App\Support\Navigation`. 41 components `<x-sth.*>` (button, chip, card, stat-tile, form fields that forward
+  `wire:model` + `$errors`, table, tabs, tracker, rumus-poin, lomba-card, lomba-head, sampul, modal, toast, preview, …), each documented at the top of its file; contracts in
   `docs/dev-notes/W1-D.md`. **No `style=""` and no inline JS** (CSP nonce): use tokens/`w-pct-*`,
   `data-sth-*` hooks and Livewire events `sth-modal-open|close`, `sth-toast`. Hooks added by M1 (all in
   `resources/js/app.js`): event `sth-badges {badges: {key: count}}` updates `[data-sth-badge="<key>"]` in the
@@ -588,11 +604,14 @@ dan Sampul" (`docs/design/DESIGN-SPEC-v3.md`: ink navy frame, Public Sans only, 
 squared tags, no gradients / glows / tilts, covers always filled, the lintasan banner), **final**; D-118 a lomba's cover is its
 own poster or a template drawing of its bidang, posters are served by `files.cover` (final for the order of covers,
 *sementara* for "not audited, private cache for a day" and "posters only after login"); D-119 staff are never addressed as
-"kamu", the tab bar uses the menu names, no internal codes on a screen, **final**. Do not bring back: the v2 look (indigo
+"kamu", the tab bar uses the menu names, no internal codes on a screen, **final**; D-120 the brand mark is the crest
+of SMA Negeri 3 Semarang (the lead's request of the same day; it adjusts D-20 and the last sentence of D-84 for app
+screens), **final**. Do not bring back: the v2 look (indigo
 `#3148D6`, the lavender page wash, gradient covers, pills, Urbanist / Plus Jakarta Sans, `shadow-primary` glows, tilted or
-blurred decoration), `text-[Npx]` sizes or anything under 13px outside the letter preview, an empty cover, the "Cari lomba"
-button above the student menu, "Lombaku" / "Profil" as tab names, "kamu" on a staff screen, a cover `<img>` that points at
-`files.show`.
+blurred decoration), `text-[Npx]` sizes or anything under 13px outside the letter preview, an empty cover, a portrait poster
+shown small in the middle of a wide band on a lomba card or a lomba page, the shield icon as the brand mark, a card floating beside a hero headline, the "Cari lomba" button above the student menu or on the home banner, a menu item
+repeated as a button on the same screen, "Lombaku" / "Profil" as tab names, "kamu" on a staff screen, a cover `<img>`
+that points at `files.show`.
 
 Known stale text (do not "fix" code to match it): SECURITY.md §0/§3a still say `sm4g4_DD-MM-YYYY`;
 DESIGN-SPEC-v2 §1 and the Admin-Pengaturan mockup still show 30 days (and the mockup's WICE deadline
@@ -667,7 +686,7 @@ IPs, which breaks the per-IP login/OTP limits). The noreply mailbox would then b
 SMTP host must not be `mail.<domain>` (proxied) and its hourly send limit needs asking.
 
 ## 10. Status
-Last updated: 2026-10-07 (waves 1–2 done, W3-A integration pass, backlog wave B1–B6, W4 integration, D1 docs sync, CI green on GitHub, Q1 end-to-end/security/performance pass, PERF1 by S, M1 = the lead's 18 hand-test changes, M2 = fixes after the QA pass, QA4 by S, M3 = the lead's six requests of 2026-10-06, QA5 = fixes after the retest of M3, QA6 = explore round after PR 14, UI3 = visual direction v3). Update this section whenever a milestone moves.
+Last updated: 2026-10-08 (waves 1–2 done, W3-A integration pass, backlog wave B1–B6, W4 integration, D1 docs sync, CI green on GitHub, Q1 end-to-end/security/performance pass, PERF1 by S, M1 = the lead's 18 hand-test changes, M2 = fixes after the QA pass, QA4 by S, M3 = the lead's six requests of 2026-10-06, QA5 = fixes after the retest of M3, QA6 = explore round after PR 14, UI3 = visual direction v3 and the lead's review of it). Update this section whenever a milestone moves.
 M1 2026-10-05 (`docs/dev-notes/M1.md`, plain summary for the team in `catatan.md`; branch `feat/ui-uji-manual-m1`): full suite `--parallel --processes=4` → **1767 passed (8945 assertions)**, exit 0 (680 s); `pint --test` clean (610 files); `npm run build` OK; the four M1 migrations ran on the local MySQL. Dev page times after `reload.bat` + warm-up, all seven roles: 150–540 ms per menu, login 0.75–0.93 s (`catatan.md` §2). Not re-run after M1: the email scenario and the Playwright smoke (backlog).
 M2 2026-10-06 (`docs/dev-notes/M2.md` + `M2-A`…`M2-C`, D-92…D-101, plain summary in `catatan.md` §6; same branch): fixes for the 12 most important findings of the QA pass of 2026-10-05 (64 findings; the rest is backlog #57–#68) and the Trivy fix in `docker/Dockerfile.prod`; two migrations run on the local MySQL; suite numbers: TEST-RESULTS in `docs/dev-notes/M2.md`. PR 9 (M1 + M2) merged into `main` on 2026-10-06 (`b4b6f77`).
 Follow-up 2026-10-06 (D-102, `docs/dev-notes/M2.md` "Follow-up", branch `fix/auth-back-setelah-keluar`): the two leftovers of the browser check (account name back on the second Back; next login on the previous account's page) fixed, tested and checked in Chrome + Chromium. `dokumentasi.md` (repo root) lists the test data left in the lead's local database, which the lead chose not to wipe.
@@ -681,7 +700,7 @@ the chosen letter, the QR page knows an issued letter before "Kirim", no past as
 in the Talenta panel, the ketua can withdraw an unanswered invitation (and sees who has not activated), the registrant
 count on Detail lomba updates. No migration. Suite numbers: TEST-RESULTS in `docs/dev-notes/QA6.md`.
 
-UI3 2026-10-07 (`docs/dev-notes/UI3.md` + `UI3-A`, `UI3-B`, D-117…D-119; on top of PR 15, branch `feat/ui-tinta-dan-sampul`): the lead's request to apply the UI audit of 2026-10-06 in full: new tokens and one typeface, the type scale in 78 files, covers (`<x-sth.sampul>`, 24 template drawings, posters through `files.cover`), the ink banner, calmer components, five broken phone layouts fixed, staff copy without "kamu". No migration. Full suite `--parallel --processes=4` → **2315 passed, 1 skipped (13923 assertions)**, exit 0 (559 s); `pint --test` clean (664 files); `composer audit` clean; `npm run build` OK. Browser: 77 pages at 1440 and 390 px plus 50 dialogs / popups / tour steps / special states (204 screenshots), every page measured (no sideways scroll, one font family, nothing under 13px, no gradient).
+UI3 2026-10-07 (`docs/dev-notes/UI3.md` + `UI3-A`, `UI3-B`, D-117…D-119; on top of PR 15, branch `feat/ui-tinta-dan-sampul`): the lead's request to apply the UI audit of 2026-10-06 in full: new tokens and one typeface, the type scale in 78 files, covers (`<x-sth.sampul>`, 24 template drawings, posters through `files.cover`), the ink banner, calmer components, five broken phone layouts fixed, staff copy without "kamu". No migration. Full suite `--parallel --processes=4` → **2315 passed, 1 skipped (13923 assertions)**, exit 0 (559 s); `pint --test` clean (664 files); `composer audit` clean; `npm run build` OK. Browser: 77 pages at 1440 and 390 px plus 50 dialogs / popups / tour steps / special states (204 screenshots), every page measured (no sideways scroll, one font family, nothing under 13px, no gradient). Review of the look by the lead on localhost, 2026-10-07/08 (same note, D-120; branch `feat/ui-kapsul-dan-lambang`): no floating cards, one way to each place, same-height boxes, gold / silver / bronze medals, the lomba card as a capsule (poster portrait on the left) with `<x-sth.lomba-head>` for Detail lomba and Undangan tim and the same capsule in Portofolio, the school crest as the brand mark and tab icon, the student banner counting the lomba that student can still register for, and text that left its box at 1366 / 1280 / 360 px. No migration. Full suite → **2320 passed, 1 skipped (13992 assertions)**, exit 0; `pint` clean; `npm run build` OK; text scan on 76 pages at 1440, 1366, 1280, 390 and 360 px.
 
 | area | owner | state (details in `docs/dev-notes/<ID>.md`) |
 |---|---|---|
@@ -715,7 +734,7 @@ UI3 2026-10-07 (`docs/dev-notes/UI3.md` + `UI3-A`, `UI3-B`, D-117…D-119; on to
 | M3 the lead's six requests of 2026-10-06 (`docs/dev-notes/M3.md` + `M3-A`, `M3-C`, `M3-D`, `M3-E`, D-103…D-107): lomba rejection reason optional (coordinator); Talenta "Pulihkan" to a chosen stage + "Download data" with a status choice (M3-A); file preview popup with the hooks `data-sth-preview*` and `data-sth-copy` (M3-C, three more screens by the coordinator); realistic demo documents + `sth:demo:refresh-files` (M3-D); Humas "Data untuk flyer" instead of the flyer generator (M3-E) | – | built; no migration; browser spot checks in Chromium only (SPOT-CHECKS in `docs/dev-notes/M3.md`); open: backlog #69–#74 |
 | QA5 fixes after the retest of M3 on 2026-10-07 (`docs/dev-notes/QA5.md`, D-109…D-112): five bugs, the lead's answers (guru pembina for a restore into Peserta pembinaan, export follows the screen filters, guru pembimbing notices for reports and appreciation), small UX items, demo juknis per kind and demo letter invitations | – | built; no migration; `--lengkapi` run on the local database; browser check of Talenta at 1366 px and its download dialog |
 | QA6 explore round after PR 14 on 2026-10-07 (`docs/dev-notes/QA6.md`, D-113…D-116): confirmations (bulk approve, Kirim), letters (shared invitation fields, Koreksi from Arsip, QR before Kirim), talent (assessment date, long words), team invitations (withdraw, not activated), registrant count | – | built; no migration; browser check of Talenta (Kesiswaan); Kepala Sekolah, TU and student screens render-tested only |
-| UI3 visual direction v3 "Tinta dan Sampul" on 2026-10-07 (`docs/dev-notes/UI3.md` + `UI3-A`, `UI3-B`, D-117…D-119): tokens + Public Sans + type scale, `<x-sth.sampul>` and `files.cover`, banner motif, component and phone-layout fixes, staff copy | – (lead's request; touches S and user files) | built; no migration; full suite green; every page checked in the browser at 1440 and 390 px; backend owner still has to review D-118 (*sementara*) |
+| UI3 visual direction v3 "Tinta dan Sampul" on 2026-10-07 and the lead's review of it on 2026-10-07/08 (`docs/dev-notes/UI3.md` + `UI3-A`, `UI3-B`, D-117…D-120): tokens + Public Sans + type scale, `<x-sth.sampul>` and `files.cover`, banner motif, component and phone-layout fixes, staff copy; then capsules (`<x-sth.lomba-card>`, `<x-sth.lomba-head>`, Portofolio), the school crest as brand mark, one way to each place, same-height boxes | – (lead's request; touches S and user files) | built; no migration; full suite green; every page checked in the browser at 1440 and 390 px, after the review also a text scan at 1366, 1280 and 360 px; backend owner still has to review D-118 (*sementara*); the school should give a larger or vector crest (D-120) |
 
 Verified 2026-10-01 (W3-A, details in `docs/dev-notes/W3-A.md`): `php artisan test` → **925 passed (3726 assertions)** twice in a
 row (SQLite; `--parallel --processes=4` also 925 passed twice); `pint --test` clean; `npm run build` OK; `composer audit` clean; prod compose `config -q` OK;

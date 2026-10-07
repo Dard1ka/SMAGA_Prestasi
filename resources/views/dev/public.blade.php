@@ -1,31 +1,21 @@
 {{-- Local preview of layouts::public (/_dev/components/public). Fictional data, DESIGN-SPEC-v2 §5. --}}
 <x-layouts::public title="Preview publik" current="beranda" robots="noindex">
-    <section aria-labelledby="hero-title" class="grid items-center gap-10 lg:grid-cols-[minmax(0,1fr)_480px]">
-        <div class="flex flex-col items-start gap-3.5">
-            <p class="m-0 inline-flex items-center gap-2 text-sm font-semibold text-ink-2"><x-sth.icon name="award" :size="16" />Prestasi SMA Negeri 3 Semarang</p>
-            <h1 id="hero-title" class="m-0 max-w-[600px] text-4xl leading-[1.06] font-bold tracking-[-0.02em] text-balance md:text-5xl">Prestasi siswa SMAGA, dalam satu tempat.</h1>
-            <p class="m-0 text-lg leading-normal text-ink-2">Capaian lomba siswa yang sudah diverifikasi sekolah.</p>
-            <div class="flex flex-wrap items-center gap-3 pt-2.5">
-                <x-sth.button href="#bidang" icon-right="arrow-right">Lihat prestasi</x-sth.button>
-                <x-sth.button variant="quiet" :href="route('dev.components.auth')">Masuk</x-sth.button>
-            </div>
-        </div>
-        <div class="card overflow-hidden" aria-hidden="true">
-            <x-sth.sampul bidang="sains" seed="bidang-terbanyak" class="h-28 items-start p-3">
-                <x-sth.chip tone="glass">Bidang terbanyak</x-sth.chip>
-            </x-sth.sampul>
-            <div class="flex flex-col gap-0.5 px-4 pt-3 pb-3.5">
-                <span class="display text-base font-bold">Bidang Sains</span>
-                <span class="text-xs text-muted">29 prestasi terverifikasi</span>
-            </div>
+    {{-- Hero: one ink banner (lintasan motif on the right). Nothing floats beside the headline, and "Masuk" is
+         only in the header. --}}
+    <section aria-labelledby="hero-title" class="spanduk rounded-card px-5 py-8 sm:px-8 sm:py-10 xl:px-10 xl:py-12">
+        <div class="flex max-w-[640px] flex-col items-start gap-3.5">
+            <p class="m-0 inline-flex items-center gap-2 text-sm font-semibold text-on-primary-soft"><x-sth.icon name="award" :size="16" />Prestasi SMA Negeri 3 Semarang</p>
+            <h1 id="hero-title" class="m-0 text-4xl leading-[1.06] font-bold tracking-[-0.02em] text-balance text-white md:text-5xl">Prestasi siswa SMAGA, dalam satu tempat.</h1>
+            <p class="m-0 text-lg leading-normal text-on-primary-soft">Capaian lomba siswa yang sudah diverifikasi sekolah.</p>
+            <x-sth.button variant="white" :href="'#bidang'" icon-right="chevron-right" class="mt-2.5">Lihat prestasi</x-sth.button>
         </div>
     </section>
 
     <section id="bidang" aria-labelledby="h-bidang" class="flex flex-col gap-3">
         <x-sth.page-header id="h-bidang" title="Prestasi per bidang" subtitle="Kumulatif 93 prestasi" />
-        <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <div class="grid auto-rows-fr grid-cols-2 gap-4 lg:grid-cols-4">
             @foreach ([['sains', 'Sains', 29], ['riset', 'Riset', 24], ['seni', 'Seni Budaya', 21], ['olahraga', 'Olahraga', 19]] as [$key, $name, $total])
-                <a href="#bidang" class="cover-{{ $key }} flex items-center gap-3 rounded-card px-4 py-3.5 no-underline">
+                <a href="#bidang" class="cover-{{ $key }} flex h-full items-center gap-3 rounded-card px-4 py-3.5 no-underline">
                     <span class="inline-flex size-11 shrink-0 items-center justify-center rounded-tile bg-white"><x-sth.icon :name="$key" :size="22" /></span>
                     <span class="flex flex-col">
                         <span class="text-md font-bold text-ink">{{ $name }}</span>

@@ -8,7 +8,7 @@
     };
 @endphp
 <div class="flex flex-col gap-[22px]">
-    <div class="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
+    <div class="grid auto-rows-fr grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
         <x-sth.stat-tile icon="clock" tone="red" label="Diarsipkan malam ini" :value="(string) $stats['tonight']" note="tanggal arsip sudah lewat" zero="hide" />
         <x-sth.stat-tile icon="archive" tone="orange" label="Dalam 30 hari" :value="(string) $stats['soon']" note="akun siswa" zero="hide" />
         <x-sth.stat-tile icon="users" tone="gray" label="Sudah diarsipkan" :value="(string) $stats['archived']" note="alumni, tidak bisa login" />

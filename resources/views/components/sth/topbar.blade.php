@@ -22,6 +22,9 @@
     $user = $nav['user'];
     $query = $search ? request()->query($search['name']) : null;
     $query = is_string($query) ? $query : '';
+    // One way to each place: below lg the search icon is left out when a tab of the tab bar opens the same page
+    // (siswa: tab "Lomba" = Cari lomba, where the search box is).
+    $searchInTabs = $search !== null && collect($nav['tabbar'] ?? [])->contains(fn (array $tab): bool => ($tab['href'] ?? null) === $search['action']);
 @endphp
 <header {{ $attributes->class('flex items-center justify-between gap-3 lg:gap-6') }}>
     <div class="flex min-w-0 items-center gap-3">
@@ -53,7 +56,9 @@
                 <x-sth.icon name="search" class="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-placeholder" />
                 <input class="input pl-11" id="cari-atas" type="search" name="{{ $search['name'] }}" value="{{ $query }}" placeholder="{{ $search['placeholder'] }}" autocomplete="off">
             </form>
-            <x-sth.icon-button icon="search" :label="$search['placeholder']" :href="$search['action']" class="lg:hidden" />
+            @unless ($searchInTabs)
+                <x-sth.icon-button icon="search" :label="$search['placeholder']" :href="$search['action']" class="lg:hidden" />
+            @endunless
         @endif
 
         {{-- B1: bell → notifikasi.index; unread count badge (99+) instead of the plain dot. --}}

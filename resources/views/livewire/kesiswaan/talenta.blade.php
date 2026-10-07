@@ -1,7 +1,7 @@
 {{-- Talenta siswa (board Kesiswaan-Talenta). Data prepared in App\Livewire\Kesiswaan\Talenta. --}}
 <div class="flex flex-col gap-[22px]">
     @include('livewire.partials.resume-download')
-    <section aria-label="Ringkasan tahap" class="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
+    <section aria-label="Ringkasan tahap" class="grid auto-rows-fr grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
         <x-sth.stat-tile icon="inbox" tone="gray" label="Terdaftar" :value="(string) $counts['terdaftar']" note="belum dipetakan" />
         <x-sth.stat-tile icon="users" tone="blue" label="Pemetaan" :value="(string) $counts['pemetaan']" note="sedang dipetakan" />
         <x-sth.stat-tile icon="clock" tone="orange" label="Seleksi/asesmen" :value="(string) $counts['seleksi']" note="menunggu hasil" />

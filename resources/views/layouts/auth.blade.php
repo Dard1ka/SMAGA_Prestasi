@@ -1,6 +1,6 @@
 {{--
     Account pages (Masuk board). Two variants:
-    - split (default): ink brand panel (.spanduk, lintasan motif) with three straight sample cards on the
+    - split (default): ink brand panel (.spanduk: brand, headline, lintasan motif) on the
       left (lg+), form column on the right (max 400px) with "Lihat prestasi sekolah" top-right. Below lg: brand on top, form only.
     - simple: brand on top, one card (max 440px), centred on the screen from lg — lupa kata sandi, keamanan, desktop aktivasi.
     The page brings its own <h1> and form; use <x-sth.input>, <x-sth.button size="lg" block>, <x-sth.alert>.
@@ -33,40 +33,12 @@
     @else
         <div class="flex min-h-dvh">
             <div class="hidden w-[560px] shrink-0 flex-col py-6 pl-6 lg:flex" aria-hidden="true">
-                <div class="spanduk spanduk-tinggi flex-1 rounded-card p-10">
+                {{-- Ink panel: brand, one headline, the lintasan motif at the bottom. No sample cards floating on it. --}}
+                <div class="spanduk spanduk-tinggi flex flex-1 flex-col rounded-card p-10">
                     <x-sth.brand inverse />
-                    <p class="display mt-16 max-w-[380px] text-5xl font-bold tracking-[-0.02em] text-white">Prestasimu, tercatat rapi.</p>
-                    <p class="mt-3.5 max-w-[360px] text-base leading-[1.55] text-on-primary-soft">Daftar lomba, pantau surat tugas, dan kumpulkan poin prestasi.</p>
-
-                    {{-- Three sample cards on one grid, straight (fictional demo data): a lomba, points, a letter. --}}
-                    <div class="absolute inset-x-10 bottom-[176px] grid grid-cols-[240px_minmax(0,1fr)] items-end gap-4 [@media(max-height:760px)]:hidden">
-                        <div class="row-span-2 overflow-hidden rounded-card bg-white text-ink shadow-float">
-                            <x-sth.sampul bidang="riset" seed="lpb-2026" class="h-[92px] items-start p-3">
-                                <span class="chip c-glass chip-sm">Nasional</span>
-                            </x-sth.sampul>
-                            <div class="flex flex-col gap-[7px] px-3.5 pt-3 pb-3.5">
-                                <span class="chip b-riset chip-sm self-start">Riset</span>
-                                <span class="display text-base leading-[1.25] font-bold">LPB 2026 · Nasional</span>
-                                <span class="flex items-center gap-1.5 text-xs text-muted"><x-sth.icon name="calendar" :size="15" />17 Okt 2026 · Daring</span>
-                            </div>
-                        </div>
-                        <div class="flex flex-col gap-2.5 rounded-card bg-white p-3.5 text-ink shadow-float">
-                            <div class="flex items-center gap-2.5">
-                                <span class="inline-flex size-10 shrink-0 items-center justify-center rounded-tile bg-medal text-ink"><x-sth.icon name="award" /></span>
-                                <span class="chip c-gold num h-7 text-sm">+68 poin</span>
-                            </div>
-                            <span class="text-xs text-muted">OPSI 2026 · Juara II</span>
-                        </div>
-                        <div class="flex flex-col gap-3 rounded-card bg-white p-3.5 text-ink shadow-float">
-                            <div class="flex items-center gap-2.5">
-                                <span class="inline-flex size-9 shrink-0 items-center justify-center rounded-control bg-green-bg text-green"><x-sth.icon name="mail" :size="18" /></span>
-                                <span class="flex flex-col">
-                                    <span class="text-sm leading-[1.3] font-bold">Surat tugas terbit</span>
-                                    <span class="text-xs text-muted">WICE 2026</span>
-                                </span>
-                            </div>
-                            <x-sth.tracker :phase="4" compact class="[&_p]:hidden" />
-                        </div>
+                    <div class="my-auto flex flex-col gap-3.5 pb-28">
+                        <p class="display m-0 max-w-[420px] text-5xl font-bold tracking-[-0.02em] text-balance text-white">Prestasimu, tercatat rapi.</p>
+                        <p class="m-0 max-w-[380px] text-lg leading-[1.55] text-on-primary-soft">Daftar lomba, pantau surat tugas, dan kumpulkan poin prestasi.</p>
                     </div>
                 </div>
             </div>

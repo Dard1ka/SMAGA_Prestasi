@@ -1,6 +1,6 @@
 {{-- Kepala Sekolah · Surat atas nama saya (SECURITY §3m-5, backlog #6, B5). Read-only list of issued letters. --}}
 <div class="flex flex-col gap-[22px]">
-    <div class="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
+    <div class="grid auto-rows-fr grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
         <x-sth.stat-tile icon="mail" tone="blue" label="Surat atas nama saya" :value="(string) $stats['total']" :note="$since ? 'sejak '.$since->translatedFormat('j M Y') : 'semua surat'" />
         <x-sth.stat-tile icon="calendar" tone="green" label="Bulan ini" :value="(string) $stats['month']" note="surat terbit" />
         <x-sth.stat-tile icon="clock" :tone="$stats['today'] > \App\Livewire\Kepsek\SuratSaya::DAILY_ALERT ? 'red' : 'gray'" label="Hari ini" :value="(string) $stats['today']" :note="'wajar sampai '.\App\Livewire\Kepsek\SuratSaya::DAILY_ALERT.' surat/hari'" />
