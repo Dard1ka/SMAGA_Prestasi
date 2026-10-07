@@ -1,4 +1,4 @@
-# UI3 — visual direction v3 "Tinta dan Sampul" (D-117…D-119)  ·  status: done (not committed)
+# UI3 — visual direction v3 "Tinta dan Sampul" (D-117…D-119)  ·  status: done (branch `feat/ui-tinta-dan-sampul`)
 
 The lead's request of 2026-10-07: apply the UI audit of 2026-10-06 to the current `main` (PR 15), every work package,
 with the choices that were still open following the worker's recommendation. Spec: `docs/design/DESIGN-SPEC-v3.md`.
