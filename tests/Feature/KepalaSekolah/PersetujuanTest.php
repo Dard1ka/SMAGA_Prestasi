@@ -218,3 +218,34 @@ it('names an online lomba once, and keeps the place of an offline one', function
         ->assertSee('Daring')
         ->assertSee('Luring · Kota Semarang');
 });
+
+// QA6: explore round 3 after PR 14 (2026-10-07) ----------------------------------------------------
+
+it('asks before a bulk approve and lists what it will approve (QA6, #65 Q1-10)', function (): void {
+    Notification::fake();
+    $a = F::registration(names: ['Nadia Putri Anindya']);
+    $b = F::registration(names: ['Hana Safira']);
+
+    $component = Livewire::actingAs($this->kepsek)->test(Persetujuan::class)
+        ->assertSeeHtml('data-sth-open="setujui-terpilih"')
+        ->assertDontSeeHtml('wire:click="approveSelected"')
+        ->set('selected', [$a->getKey(), $b->getKey()])
+        ->assertSee('Setujui 2 pendaftaran?')
+        ->assertSeeHtml('wire:click="approveSelected"');
+
+    expect($component->viewData('selectedRows')->modelKeys())->toEqualCanonicalizing([$a->getKey(), $b->getKey()]);
+
+    $component->call('approveSelected')->assertDispatched('sth-modal-close', id: 'setujui-terpilih');
+
+    expect($a->fresh()->status)->toBe(RegistrationStatus::Disetujui)
+        ->and($b->fresh()->status)->toBe(RegistrationStatus::Disetujui);
+});
+
+it('names the student on every checkbox, so two rows of one lomba are told apart (QA6)', function (): void {
+    F::registration(names: ['Nadia Putri Anindya']);
+    F::registration(names: ['Hana Safira']);
+
+    Livewire::actingAs($this->kepsek)->test(Persetujuan::class)
+        ->assertSeeHtml('aria-label="Pilih Nadia Putri Anindya, National Science and Invention Fair (NSIF) 2026"')
+        ->assertSeeHtml('aria-label="Pilih Hana Safira, National Science and Invention Fair (NSIF) 2026"');
+});

@@ -38,14 +38,14 @@ it('moves one stage forward, saves pembina + assessment date and notifies the st
 
     app(MoveTalentStage::class)->handle($this->kesiswaan, $application, TalentStatus::Pemetaan, [
         'mentor_id' => (string) $this->guru->getKey(),
-        'assessment_on' => '2026-10-07',
+        'assessment_on' => today()->addDays(7)->format('Y-m-d'),
         'note' => 'Nilai sains SMP kuat.',
     ]);
 
     $application->refresh();
     expect($application->status)->toBe(TalentStatus::Pemetaan)
         ->and($application->mentor_id)->toBe($this->guru->getKey())
-        ->and($application->assessment_on->format('Y-m-d'))->toBe('2026-10-07')
+        ->and($application->assessment_on->format('Y-m-d'))->toBe(today()->addDays(7)->format('Y-m-d'))
         ->and($application->note)->toBe('Nilai sains SMP kuat.');
 
     Notification::assertSentTo($studentUser, TalentStageChanged::class, fn (TalentStageChanged $n): bool => str_contains($n->body, 'Pemetaan'));
@@ -125,7 +125,7 @@ it('accepts only guru accounts as pembina and a valid date', function (): void {
     expect(fn () => app(UpdateTalentAssessment::class)->handle($this->kesiswaan, $application, ['mentor_id' => $this->kesiswaan->getKey()]))->toThrow(ValidationException::class)
         ->and(fn () => app(UpdateTalentAssessment::class)->handle($this->kesiswaan, $application, ['assessment_on' => '2026-02-31']))->toThrow(ValidationException::class);
 
-    app(UpdateTalentAssessment::class)->handle($this->kesiswaan, $application, ['mentor_id' => $this->guru->getKey(), 'assessment_on' => '2026-10-09']);
+    app(UpdateTalentAssessment::class)->handle($this->kesiswaan, $application, ['mentor_id' => $this->guru->getKey(), 'assessment_on' => today()->addDays(2)->format('Y-m-d')]);
 
     expect($application->fresh()->mentor_id)->toBe($this->guru->getKey())
         ->and($application->fresh()->status)->toBe(TalentStatus::Terdaftar);
@@ -339,4 +339,49 @@ it('moves the note of rows rejected before the change to the student note and re
         ->and($unknown->fresh()->restoreTarget())->toBe(TalentStatus::Terdaftar)
         ->and($open->fresh()->note)->toBe('Catatan pembina lama.')
         ->and($open->fresh()->student_note)->toBeNull();
+});
+
+// QA6: explore round 3 after PR 14 (2026-10-07) ----------------------------------------------------
+
+it('refuses a new assessment date before today and keeps one that was saved earlier (QA6, #62 Q2-13)', function (): void {
+    $application = F::application();
+    $update = fn (array $details) => app(UpdateTalentAssessment::class)->handle($this->kesiswaan, $application->fresh(), $details);
+    $yesterday = today()->subDay()->format('Y-m-d');
+
+    foreach (['2020-01-15', $yesterday] as $past) {
+        try {
+            $update(['assessment_on' => $past]);
+            $this->fail('A past assessment date was accepted: '.$past);
+        } catch (ValidationException $e) {
+            expect($e->errors()['assessment_on'][0])->toBe('Jadwal asesmen tidak boleh sebelum hari ini.');
+        }
+    }
+
+    // The same rule for a stage move with details.
+    expect(fn () => app(MoveTalentStage::class)->handle($this->kesiswaan, $application->fresh(), TalentStatus::Pemetaan, ['assessment_on' => $yesterday]))
+        ->toThrow(ValidationException::class);
+
+    $update(['assessment_on' => today()->format('Y-m-d')]);
+    expect($application->fresh()->assessment_on->format('Y-m-d'))->toBe(today()->format('Y-m-d'));
+
+    // The assessment took place: saving the panel later (another note) keeps its date.
+    $application->forceFill(['assessment_on' => $yesterday])->save();
+    $update(['assessment_on' => $yesterday, 'note' => 'Sudah asesmen.']);
+
+    expect($application->fresh()->note)->toBe('Sudah asesmen.')
+        ->and($application->fresh()->assessment_on->format('Y-m-d'))->toBe($yesterday);
+});
+
+it('keeps a saved past assessment date when a stage move or a rejection sends the panel fields again (QA6 review)', function (): void {
+    $yesterday = today()->subDay()->format('Y-m-d');
+
+    $moved = F::application();
+    $moved->forceFill(['assessment_on' => $yesterday])->save();
+    app(MoveTalentStage::class)->handle($this->kesiswaan, $moved->fresh(), TalentStatus::Pemetaan, ['assessment_on' => $yesterday]);
+    expect($moved->fresh()->status)->toBe(TalentStatus::Pemetaan);
+
+    $rejected = F::application(F::student('Rizky Maulana', 'XI-1'), TalentStatus::Seleksi, 'Kimia');
+    $rejected->forceFill(['assessment_on' => $yesterday])->save();
+    app(RejectTalentApplication::class)->handle($this->kesiswaan, $rejected->fresh(), null, ['assessment_on' => $yesterday]);
+    expect($rejected->fresh()->status)->toBe(TalentStatus::TidakLolos);
 });

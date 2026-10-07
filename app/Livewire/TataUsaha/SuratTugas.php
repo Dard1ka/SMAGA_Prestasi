@@ -56,6 +56,17 @@ class SuratTugas extends Component
     /** Key of this screen's error toasts: `sth-toast-clear` with it takes them away again (app.js). */
     private const TOAST_KEY = 'surat-tugas';
 
+    /** "Kirim" asks first once every letter exists (QA6, Q1-10): the send cannot be taken back. */
+    public const SEND_DIALOG = 'kirim-surat';
+
+    /**
+     * What both letters print about the invitation and the event (QA6, Q1-15, D-116). A letter that is not made yet
+     * takes these from the other letter when TU typed them there or that letter was issued with them, but never over a
+     * field TU typed for this letter itself, not even an emptied one or one set back to the lomba value (D-83: two
+     * forms, never one shared draft). The number, the letter date and "Hal" stay per letter.
+     */
+    private const SHARED_FIELDS = ['dasarDari', 'dasarNomor', 'dasarTanggal', 'hari', 'tanggal', 'pukul', 'tempat'];
+
     /** Action error key → form field (per letter). */
     private const ERROR_MAP = [
         'number' => 'nomor',
@@ -112,7 +123,20 @@ class SuratTugas extends Component
     #[Locked]
     public ?string $revisingId = null;
 
+    /** "Koreksi" on Arsip surat names its letter (QA6, Q1-13): read once in mount(), emptied when the correction ends. */
+    #[Url(as: 'koreksi', except: '')]
+    public string $koreksi = '';
+
     public string $alasan = '';
+
+    /**
+     * Form keys TU typed per letter during this visit (`siswa` / `guru` => list of keys), so carrySharedFields() can
+     * tell a typed value from a prefill even when they are equal.
+     *
+     * @var array<string, list<string>>
+     */
+    #[Locked]
+    public array $typed = [];
 
     /** A submit failed: show the summary of what is still wrong (cleared by the next success or tab change). */
     #[Locked]
@@ -133,6 +157,8 @@ class SuratTugas extends Component
         if ($target !== null) {
             $this->select($target);
         }
+
+        $this->openCorrection();
     }
 
     /** A search that found nothing left no registration open: open the first match once there is one again. */
@@ -148,6 +174,7 @@ class SuratTugas extends Component
     private function select(Registration $target): void
     {
         $this->registrationId = $target->getKey();
+        $this->typed = [];
         $target->loadMissing('competition');
         $letters = $target->letters()->get();
 
@@ -160,12 +187,73 @@ class SuratTugas extends Component
         // Open on the first letter that still has to be made.
         $missing = SendLetters::missing($target, $letters);
         $this->tab = $missing !== [] ? $missing[0]->value : 'siswa';
+        $this->carrySharedFields($target, $letters);
+    }
+
+    /** `?koreksi=<letter>` from Arsip surat: that letter's correction form, else just the page. */
+    private function openCorrection(): void
+    {
+        $letterId = $this->koreksi;
+        $this->koreksi = '';
+
+        if ($letterId === '' || $this->registrationId === null) {
+            return;
+        }
+
+        $letter = Letter::query()->where('registration_id', $this->registrationId)->current()->whereKey($letterId)->first();
+
+        if ($letter !== null && Gate::allows('revoke', $letter)) {
+            $this->startRevision((string) $letter->getKey());
+            $this->koreksi = (string) $letter->getKey();
+        }
+    }
+
+    /**
+     * See SHARED_FIELDS. Only into a letter that is not issued yet, never while correcting.
+     *
+     * @param  Collection<int, Letter>|null  $letters
+     */
+    private function carrySharedFields(Registration $registration, ?Collection $letters = null): void
+    {
+        if ($this->revisingId !== null) {
+            return;
+        }
+
+        $letters ??= $registration->letters()->get();
+
+        foreach (LetterType::cases() as $into) {
+            if ($letters->firstWhere('type', $into) !== null) {
+                continue;
+            }
+
+            foreach (LetterType::cases() as $from) {
+                if ($from === $into) {
+                    continue;
+                }
+
+                $issued = $letters->firstWhere('type', $from) !== null;
+
+                foreach (self::SHARED_FIELDS as $key) {
+                    $theirs = trim((string) ($this->{$from->value}[$key] ?? ''));
+
+                    if ($theirs !== '' && ! $this->typedIn($into, $key) && ($issued || $this->typedIn($from, $key))) {
+                        $this->{$into->value}[$key] = $theirs;
+                    }
+                }
+            }
+        }
+    }
+
+    private function typedIn(LetterType $type, string $key): bool
+    {
+        return in_array($key, $this->typed[$type->value] ?? [], true);
     }
 
     public function setTab(string $tab): void
     {
         $registration = $this->selected();
         $this->tab = $tab === 'guru' && $registration->mentor_id !== null ? 'guru' : 'siswa';
+        $this->carrySharedFields($registration);
         $this->clearFailure();
     }
 
@@ -205,6 +293,7 @@ class SuratTugas extends Component
 
         $this->clearFailure();
         $this->{$letterType->value} = LetterDraft::fromLetter($letter, $registration);
+        $this->carrySharedFields($registration);
         $missing = SendLetters::missing($registration, $registration->letters()->get());
 
         $this->dispatch('sth-toast', tone: 'success', message: $missing !== []
@@ -243,7 +332,7 @@ class SuratTugas extends Component
 
         $this->resetErrorBag();
         $this->clearFailure();
-        $this->reset('revisingId', 'alasan');
+        $this->reset('revisingId', 'alasan', 'koreksi');
 
         if ($letter !== null) {
             $this->{$letter->type->value} = LetterDraft::fromLetter($letter, $registration);
@@ -267,7 +356,7 @@ class SuratTugas extends Component
         }
 
         $this->clearFailure();
-        $this->reset('revisingId', 'alasan');
+        $this->reset('revisingId', 'alasan', 'koreksi');
         $this->{$type->value} = LetterDraft::fromLetter($new, $registration);
         $this->dispatch('sth-toast', tone: 'success', message: $new->sent_at !== null
             ? 'Surat lama dicabut. Versi baru '.$new->full_number.' terkirim.'
@@ -316,6 +405,7 @@ class SuratTugas extends Component
     {
         $registration = $this->selected();
         $this->resetErrorBag();
+        $this->dispatch('sth-modal-close', id: self::SEND_DIALOG);
 
         try {
             $send->handle($this->user(), $registration);
@@ -557,6 +647,10 @@ class SuratTugas extends Component
     {
         $key = $type->value.'.'.$field;
         $this->resetErrorBag([$key, 'umum', 'kirim']);
+
+        if (in_array($field, self::SHARED_FIELDS, true) && ! $this->typedIn($type, $field)) {
+            $this->typed[$type->value][] = $field;
+        }
 
         if ($field !== 'nomor') {
             return;

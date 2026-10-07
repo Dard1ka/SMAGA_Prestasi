@@ -255,8 +255,12 @@ it('keeps an unsent correction for the normal send step', function (): void {
         return str_contains($n->toArray(new User)['message'], '400.3.8/315/MRD/X/2026');
     });
 
-    // Never sent → never valid publicly.
-    $this->get('/verifikasi-surat/'.$old->verification_code)->assertNotFound()->assertSee('Tidak ditemukan');
+    // QA6 (D-113): revoked before it was sent, yet TU could print it: the QR says "Dicabut", not "Tidak ditemukan".
+    $this->get('/verifikasi-surat/'.$old->verification_code)
+        ->assertOk()
+        ->assertSee('Dicabut')
+        ->assertSee('400.3.8/315/MRD/X/2026')
+        ->assertDontSee('Tidak ditemukan');
 });
 
 it('needs the signature image for the new version', function (): void {

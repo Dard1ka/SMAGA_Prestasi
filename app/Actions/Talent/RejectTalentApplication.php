@@ -35,7 +35,7 @@ final class RejectTalentApplication
         // A text passed for this rejection wins (an empty one = no note); null = send the saved draft, if any.
         $noteGiven = $studentNote !== null;
         $givenNote = TalentNote::clean($studentNote, 'student_note');
-        $clean = $details === null ? [] : $this->assessment->validated($details);
+        $clean = $details === null ? [] : $this->assessment->validated($details, $application);
 
         [$locked, $from, $studentNote] = DB::transaction(function () use ($actor, $application, $noteGiven, $givenNote, $clean): array {
             /** @var TalentApplication $locked */

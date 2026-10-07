@@ -56,6 +56,9 @@ class Persetujuan extends Component
 
     public const MAX = 200;
 
+    /** "Setujui terpilih" asks first and lists the ticked rows (QA6, Q1-10): one click approved a whole page. */
+    public const BULK_DIALOG = 'setujui-terpilih';
+
     /** Rows on screen (clamped to STEP…MAX in visibleQuery()). */
     public int $limit = self::STEP;
 
@@ -115,6 +118,7 @@ class Persetujuan extends Component
         Gate::authorize('viewApprovalQueue', Registration::class);
 
         $ids = array_values(array_intersect(array_map('strval', $this->selected), $this->pendingIds()));
+        $this->dispatch('sth-modal-close', id: self::BULK_DIALOG);
 
         if ($ids === []) {
             $this->dispatch('sth-toast', message: 'Pilih pendaftaran dulu.', tone: 'warning');
@@ -202,6 +206,7 @@ class Persetujuan extends Component
 
         return view('livewire.kepsek.persetujuan', [
             'rows' => $rows,
+            'selectedRows' => $rows->whereIn('id', array_intersect($this->selected, $pendingIds))->values(),
             'more' => $this->limit < self::MAX ? max(0, $matching - count($pendingIds)) : 0,
             'pendingIds' => $pendingIds,
             'allChecked' => $pendingIds !== [] && array_diff($pendingIds, $this->selected) === [],

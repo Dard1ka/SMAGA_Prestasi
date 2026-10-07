@@ -130,8 +130,8 @@ skips the mail (the bell entry is still stored) for a frozen account, and for an
 notification is an `AdminNotice`. A frozen account gets no reset code. Proven end to end by
 `tests/E2E/support/email-scenario.php` (re-run with the M1 code on 2026-10-05: 122 mails, 0 missing, 0 unexpected,
 0 leaks, 0 failed jobs). The M1 and M2 rows below (talent restore / review request, the deleted appreciation event,
-the released appreciation) and the guru notices of QA5 (D-110) are covered by Pest only: the scenario has no step for
-them yet (CLAUDE.md backlog #46).
+the released appreciation), the guru notices of QA5 (D-110) and the withdrawn invitation of QA6 (D-115) are covered by
+Pest only: the scenario has no step for them yet (CLAUDE.md backlog #46).
 
 | event (Action) | recipients |
 |---|---|
@@ -141,6 +141,7 @@ them yet (CLAUDE.md backlog #46).
 | Lomba submitted or added (`SubmitCompetition`, `CreateCompetition`) | every holder of `competition.verify` except the actor |
 | Lomba published / rejected (`VerifyCompetition`) | the submitter (not when the verifier is the submitter); a rejection carries "Alasan Kesiswaan: …" when a reason was written, else `CompetitionRejected::NO_REASON` (D-103) |
 | Team invitation (`CreateRegistration`, `InviteMembers`) | the invited students |
+| Invitation withdrawn by the ketua (`WithdrawInvitation`, kind `registration.invitation_withdrawn`, D-115) | the student whose unanswered invitation was withdrawn (when the account can log in); the Kepala Sekolah when the team is complete after it, as after a decline |
 | Member accepted / declined (`ConfirmMembership`, `DeclineMembership`), invitations expired | the ketua |
 | Registration waiting for approval (individual: at once; team: when complete) | holders of `registration.approve` (Kepala Sekolah) |
 | Registration approved (`ApproveRegistration`) | all members, the guru pembimbing, every Tata Usaha |
@@ -365,6 +366,32 @@ No migration. Details: `docs/dev-notes/QA5.md`.
   gives every demo letter the number and date of the invitation it answers (DemoSeeder and
   `DemoFileRefresher::fillLetterBasis()`, which `--lengkapi` runs; without it `missing()` feeds the hint
   "Jalankan dengan --lengkapi untuk melengkapi: …").
+
+### 8g. Rules added by QA6 (D-113…D-116, explore round after PR 14 on 2026-10-07)
+No migration. Details: `docs/dev-notes/QA6.md`.
+- **Letter verification** (D-113, *sementara*): `/verifikasi-surat/{code}` knows every issued letter, sent or not:
+  "Sah" while current, "Dicabut" once revoked, with the replacement's number as soon as it is issued.
+- **Assessment date** (D-114): `UpdateTalentAssessment::validated(array $details, ?TalentApplication $current = null)`
+  refuses a date before today (Asia/Jakarta) unless it equals the date already saved on `$current`
+  ("Jadwal asesmen tidak boleh sebelum hari ini."). `MoveTalentStage`, `RejectTalentApplication` and the "Tidak lolos"
+  pre-check of `Kesiswaan\Talenta` pass the row.
+- **Withdrawn invitation** (D-115): `WithdrawInvitation::handle(User $actor, Registration, string $studentId)`,
+  authorized with `RegistrationPolicy::invite`; under `lockForUpdate()` only an anggota row without `confirmed_at` and
+  `declined_at` is deleted (errors under `members`: "Undangan tidak ditemukan.", "… sudah konfirmasi, undangannya tidak
+  bisa dibatalkan.", "… sudah menolak undangan ini."); then `ConfirmMembership::advanceIfTeamReady()` (D-36). Audit
+  `registration.invitation_withdrawn` (`student_id`). Member search results carry `pending` (account not activated).
+- **Letters form** (D-116): `TataUsaha\SuratTugas::SHARED_FIELDS` (dasarDari, dasarNomor, dasarTanggal, hari, tanggal,
+  pukul, tempat) go from one letter to a letter that is not issued yet when TU typed them in the source form or the
+  source letter is issued; never into a key TU typed for the target itself (`#[Locked] $typed`, keys per letter for
+  this visit, reset when another registration opens), never while correcting. `?koreksi=<letter id>` (from Arsip surat) opens
+  that current letter's correction form in `mount()`; the parameter is emptied when the correction ends.
+- **Confirmations** (Q1-10): Kepala Sekolah › Persetujuan "Setujui terpilih" opens `Persetujuan::BULK_DIALOG` listing
+  the ticked rows; TU "Kirim" opens `SuratTugas::SEND_DIALOG` once every letter exists (a missing letter is still named
+  at once). Both actions close their dialog (`sth-modal-close`). The Persetujuan checkboxes name the student
+  ("Pilih <name>[ dkk.], <lomba>").
+- **Screens**: `Siswa\Pendaftaran\Form::CHANGED` (`pendaftaran-berubah`) after send, cancel, invite and withdraw;
+  `Siswa\Lomba\Detail` listens and counts the registrants again. Kesiswaan › Talenta: the student's own texts in the
+  detail panel wrap inside the card (`grid-cols-[110px_minmax(0,1fr)]`, `[overflow-wrap:anywhere]`).
 
 ## 9. Environments
 - Dev: `docker compose up` → app (php-fpm 8.4 + nginx on 127.0.0.1:8080), mysql 8.4 (127.0.0.1:3307), mailpit (127.0.0.1:8025), vite, scheduler, queue worker. Because the repo is bind-mounted from a Windows drive, the dev php-fpm workers read a cached config and keep compiled views in the container's own filesystem (`docker/php/fpm.dev.conf`, `docker/php/dev-cache.sh`; pool env only, never the command line), so after editing PHP, Blade, `config/` or `.env` run `reload.bat`; the test suite refuses to run on a cached config (D-91).
