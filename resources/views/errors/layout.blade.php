@@ -26,7 +26,7 @@
 <body class="page min-h-dvh">
     <a href="#konten" class="skip-link">Lewati ke konten</a>
 
-    <div class="flex min-h-dvh flex-col items-center px-4 py-8 sm:py-12">
+    <div class="flex min-h-dvh flex-col items-center px-4 py-8 sm:py-12 lg:justify-center">
         <x-sth.brand :href="url('/')" :navigate="false" />
 
         <main id="konten" tabindex="-1" class="card mt-8 w-full max-w-[440px] p-6 outline-none sm:p-8">

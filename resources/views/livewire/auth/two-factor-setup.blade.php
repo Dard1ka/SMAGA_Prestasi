@@ -25,7 +25,7 @@
         <ol class="flex flex-col gap-4">
             <li class="flex flex-col gap-3">
                 <p><span class="font-semibold">1.</span> Pindai kode QR ini dengan aplikasi autentikator.</p>
-                <img src="{{ $qrDataUri }}" alt="Kode QR verifikasi dua langkah" width="192" height="192" class="rounded-xl border border-line bg-white p-2">
+                <img src="{{ $qrDataUri }}" alt="Kode QR verifikasi dua langkah" width="192" height="192" class="rounded-card border border-line bg-white p-2">
                 <p class="text-sm muted">Tidak bisa memindai? Masukkan kunci ini: <span class="font-mono font-semibold">{{ $secret }}</span></p>
             </li>
             <li>

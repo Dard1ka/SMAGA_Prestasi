@@ -30,20 +30,26 @@
     $p = $fmt($penyelenggara, true, 2);
     $r = $fmt($total, false, 1);
 @endphp
-{{-- Phones: factors in one grid row, then "=" + a full-width gold row (Lapor-Hasil-Mobile). From 640px: one inline row. --}}
+{{-- Phones: the factors share one row and fill it; each "×" stays with the factor after it, so on a narrow
+     phone (360px) "× Penyelenggara" moves to a second row instead of spilling out of its tile. Then "=" + a
+     full-width gold row (Lapor-Hasil-Mobile). From 640px: one inline row. --}}
 <div role="group" aria-label="{{ $label }}: {{ $t }} × {{ $c }} × {{ $p }} = {{ $r }} poin" {{ $attributes->class('flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2.5') }}>
-    <div class="grid grid-cols-[minmax(0,1fr)_12px_minmax(0,1fr)_12px_minmax(0,1.4fr)] items-center gap-1 sm:flex sm:gap-2.5" aria-hidden="true">
-        <div class="rt px-[11px] sm:px-3.5"><span class="rt-l">Tingkat</span><span class="rt-v">{{ $t }}</span></div>
-        <span class="rt-op text-center">×</span>
-        <div class="rt px-[11px] sm:px-3.5"><span class="rt-l">Capaian</span><span class="rt-v">{{ $c }}</span></div>
-        <span class="rt-op text-center">×</span>
-        <div class="rt px-[11px] sm:px-3.5"><span class="rt-l">Penyelenggara</span><span class="rt-v">{{ $p }}</span></div>
+    <div class="flex flex-wrap items-center gap-1 sm:gap-2.5" aria-hidden="true">
+        <div class="rt flex-auto px-2 sm:flex-none sm:px-3.5"><span class="rt-l">Tingkat</span><span class="rt-v">{{ $t }}</span></div>
+        <div class="flex flex-auto items-center gap-1 sm:flex-none sm:gap-2.5">
+            <span class="rt-op w-3 shrink-0 text-center sm:w-auto">×</span>
+            <div class="rt flex-auto px-2 sm:px-3.5"><span class="rt-l">Capaian</span><span class="rt-v">{{ $c }}</span></div>
+        </div>
+        <div class="flex flex-auto items-center gap-1 sm:flex-none sm:gap-2.5">
+            <span class="rt-op w-3 shrink-0 text-center sm:w-auto">×</span>
+            <div class="rt flex-auto px-2 sm:px-3.5"><span class="rt-l">Penyelenggara</span><span class="rt-v">{{ $p }}</span></div>
+        </div>
     </div>
     <div class="grid grid-cols-[12px_minmax(0,1fr)] items-center gap-1 sm:flex sm:gap-2.5" aria-hidden="true">
         <span class="rt-op text-center">=</span>
         <div class="rt rt-gold flex-row items-center justify-between gap-2.5 px-3.5 py-3 sm:flex-col sm:items-start sm:justify-start sm:gap-0.5 sm:py-2.5">
-            <span class="rt-l text-[13px] sm:text-xs">{{ $resultLabel }}</span>
-            <span class="rt-v text-2xl leading-7 sm:text-xl sm:leading-6">{{ $r }} <span class="font-sans text-sm font-bold sm:text-[13px]">poin</span></span>
+            <span class="rt-l text-xs sm:text-xs">{{ $resultLabel }}</span>
+            <span class="rt-v text-2xl leading-7 sm:text-xl sm:leading-6">{{ $r }} <span class="font-sans text-sm font-bold sm:text-xs">poin</span></span>
         </div>
     </div>
 </div>

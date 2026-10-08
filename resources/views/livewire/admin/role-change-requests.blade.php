@@ -50,7 +50,7 @@
 
             @if ($recent->isNotEmpty())
                 <div class="flex flex-col gap-2">
-                    <h4 class="m-0 text-[15px] font-bold">Terakhir</h4>
+                    <h4 class="m-0 text-md font-bold">Terakhir</h4>
                     <ul class="m-0 flex list-none flex-col gap-1.5 p-0 text-sm">
                         @foreach ($recent as $r)
                             <li wire:key="peran-selesai-{{ $r->id }}" class="flex flex-wrap items-center gap-2">

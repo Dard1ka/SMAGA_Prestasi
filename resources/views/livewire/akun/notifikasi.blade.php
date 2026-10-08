@@ -16,7 +16,7 @@
 
     @if ($items->isEmpty())
         <x-sth.empty-state icon="bell" :title="$filter === 'belum' ? 'Tidak ada notifikasi baru' : 'Belum ada notifikasi'">
-            Kabar tentang lomba, surat, dan akunmu muncul di sini.
+            Kabar tentang lomba, surat, dan akun muncul di sini.
         </x-sth.empty-state>
     @else
         <x-sth.card as="section" padding="none" class="overflow-hidden" aria-label="Daftar notifikasi">
@@ -34,9 +34,9 @@
                                 @if ($item['unread'])<span class="sr-only">(belum dibaca)</span>@endif
                             </p>
                             @if ($item['body'])
-                                <p class="m-0 text-[14px] text-ink-2">{{ $item['body'] }}</p>
+                                <p class="m-0 text-sm text-ink-2">{{ $item['body'] }}</p>
                             @endif
-                            <p class="m-0 text-[12.5px] text-muted">{{ $item['at']?->diffForHumans() }}</p>
+                            <p class="m-0 text-xs text-muted">{{ $item['at']?->diffForHumans() }}</p>
                         </div>
                         <div class="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
                             @if ($item['hasTarget'])

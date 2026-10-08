@@ -4,7 +4,7 @@
     1. Nama / Pangkat/Gol / NIP / Jabatan, each with its colon, a brace and "Terlampir".
     Vars: $content (LetterContent) · $number (issued or typed number, or null) · $tpl / $letterTemplate (optional)
 --}}
-<div class="relative mx-auto flex w-full max-w-[560px] flex-col overflow-hidden border border-line bg-white px-5 py-6 font-[family-name:Arial,Helvetica,sans-serif] text-[11px] leading-[14px] text-ink shadow-card sm:min-h-[792px] sm:py-[18px] sm:pr-[40px] sm:pl-[52px]" aria-label="Preview surat perintah tugas guru">
+<div class="relative mx-auto flex w-full max-w-[560px] flex-col overflow-hidden border border-line bg-white px-5 py-6 font-[family-name:Arial,Helvetica,sans-serif] text-[11px] leading-[14px] text-ink shadow-card sm:min-h-[792px] sm:py-[18px] sm:pr-[40px] sm:pl-[52px] [overflow-wrap:anywhere]" aria-label="Preview surat perintah tugas guru">
     <div class="pointer-events-none absolute inset-0 flex items-center justify-center select-none" aria-hidden="true">
         <span class="-rotate-[30deg] font-sans text-[64px] font-bold tracking-[0.2em] text-line-soft">PREVIEW</span>
     </div>

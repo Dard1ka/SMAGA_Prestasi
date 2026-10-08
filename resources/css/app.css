@@ -1,26 +1,29 @@
 /*
  | SMAGA Talent Hub — design tokens and component classes.
- | Source of truth: docs/design/DESIGN-SPEC-v2.md (§2 colours/fonts, §3 helmet CSS, §4 components).
+ | Source of truth: docs/design/DESIGN-SPEC-v3.md ("Tinta dan Sampul", D-117; it replaces the look of
+ | DESIGN-SPEC-v2, whose component contracts and helmet class names stay).
  |
  | - Tokens live in @theme below. The default Tailwind palette is switched OFF (--color-*: initial) so
  |   only spec colours exist: bg-page, text-ink, text-muted, bg-primary, bg-green-bg text-green, …
- | - The helmet classes of the mockups (.btn, .card, .chip, .c-green, .b-riset, .cover-seni, .input,
- |   .nav, .badge, .avatar, .pick, .tab, .muted, .num, …) are real classes here, so mockup markup maps
- |   1:1. Layout/spacing uses Tailwind utilities. Never use style="" (CSP style-src has no
- |   'unsafe-inline'); for data-driven widths/heights use w-pct-{0..100} / h-pct-{0..100} or SVG attrs.
+ | - The helmet classes (.btn, .card, .chip, .c-green, .b-riset, .cover-seni, .input, .nav, .badge,
+ |   .avatar, .pick, .tab, .muted, .num, …) are real classes here. Layout/spacing uses Tailwind
+ |   utilities. Never use style="" (CSP style-src has no 'unsafe-inline'); for data-driven widths/heights
+ |   use w-pct-{0..100} / h-pct-{0..100} or SVG attrs.
+ | - Type: ONE family (Public Sans) and a fixed scale, text-xs 13 · sm 14 · md 15 · base 16 · lg 18 ·
+ |   xl 20 · 2xl 24 · 3xl 28 · 4xl 36 · 5xl 44. Nothing on screen is smaller than 13px. Do not write
+ |   text-[Npx]; the only exception is the scaled paper preview of a letter (tata-usaha/partials).
+ | - Shape: radius 6 (controls) · 8 (tiles) · 10 (cards) · 4 (tags). No gradients, no glow shadows, no
+ |   tilted or blurred decoration. Colour carries meaning only: status, points, bidang.
  | - Fonts are self-hosted via @fontsource (latin subset only) — no external requests (CSP font-src 'self').
+ |   Cover art and the banner motif are our own SVG files in resources/images (hashed by Vite).
  */
 /* source(none): scan only the paths below (not docs/ mockups, tests, vendor) — faster, no stray utilities. */
 @import 'tailwindcss' source(none);
 
-@import '@fontsource/plus-jakarta-sans/latin-400.css';
-@import '@fontsource/plus-jakarta-sans/latin-500.css';
-@import '@fontsource/plus-jakarta-sans/latin-600.css';
-@import '@fontsource/plus-jakarta-sans/latin-700.css';
-@import '@fontsource/plus-jakarta-sans/latin-800.css';
-@import '@fontsource/urbanist/latin-600.css';
-@import '@fontsource/urbanist/latin-700.css';
-@import '@fontsource/urbanist/latin-800.css';
+@import '@fontsource/public-sans/latin-400.css';
+@import '@fontsource/public-sans/latin-500.css';
+@import '@fontsource/public-sans/latin-600.css';
+@import '@fontsource/public-sans/latin-700.css';
 
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../views';
@@ -33,95 +36,119 @@
     --color-*: initial;
     --color-white: #ffffff;
 
-    /* Surfaces & lines */
-    --color-page: #f4f5fb;
+    /* Surfaces & lines (cool neutral, no tint wash) */
+    --color-page: #f3f5f8;
     --color-surface: #ffffff;
-    --color-subtle: #f8f9fd; /* table head, soft tiles */
-    --color-hover: #f1f2fa; /* nav / row hover */
-    --color-line: #e7e9f3; /* card + section borders */
-    --color-line-soft: #eef0f6; /* table row dividers */
-    --color-line-input: #dcdfec; /* input borders */
-    --color-line-dashed: #c9cee2; /* upload drop zones */
-    --color-track: #e3e6f2; /* upcoming tracker segment, disabled button */
-    --color-scrim: rgb(21 26 51 / 0.42);
+    --color-subtle: #f6f7f9; /* table head, soft tiles */
+    --color-hover: #eceff3; /* nav / row hover */
+    --color-line: #dde2e9; /* card + section borders */
+    --color-line-soft: #e8ebf0; /* table row dividers */
+    --color-line-strong: #c3c9d3; /* quiet buttons, filter buttons, pick tiles */
+    --color-line-input: #7f8794; /* input borders: 3.6:1 on white (WCAG 1.4.11) */
+    --color-line-dashed: #9aa2af; /* upload drop zones */
+    --color-track: #d8dde5; /* upcoming tracker segment, disabled button */
+    --color-scrim: rgb(20 26 43 / 0.45);
 
     /* Text */
-    --color-ink: #151a33;
-    --color-ink-2: #4a5068;
-    --color-muted: #666c84;
-    --color-placeholder: #8a90a6;
+    --color-ink: #141a2b;
+    --color-ink-2: #3a4254;
+    --color-muted: #566072;
+    --color-placeholder: #687184;
 
-    /* Primary = actions, links, current */
-    --color-primary: #3148d6;
-    --color-primary-hover: #2638b0;
-    --color-primary-tint: #ecefff;
-    --color-primary-tint-hover: #dfe4ff;
-    --color-primary-on-tint: #2a3cb8;
-    --color-primary-soft: #8fa0ee; /* current (not action) tracker segment */
-    --color-primary-wash: #f5f7ff;
-    --color-on-primary-soft: #dce1ff; /* secondary text on the blue auth panel */
-    --color-focus: #a9b6f5;
+    /* Primary = ink navy: actions and the current item. Links are --color-link. */
+    --color-primary: #1b2a4e;
+    --color-primary-hover: #111c38;
+    --color-primary-tint: #e9edf4;
+    --color-primary-tint-hover: #dce2ec;
+    --color-primary-on-tint: #1b2a4e;
+    --color-primary-soft: #8794b3; /* current (not action) tracker segment */
+    --color-primary-wash: #f5f7fa;
+    --color-on-primary-soft: #cdd4e6; /* secondary text on the ink banner / auth panel */
+    --color-focus: #2f6fde; /* focus ring: 4.7:1 on white */
+    --color-link: #1c4a9c;
+    --color-link-hover: #143670;
 
-    /* Bidang identity: fg on bg (chips), cover gradient (cover, cover-2), chart series */
+    /* Bidang identity: fg on bg (tiles), flat cover field, chart series / dot */
     --color-sains: #1d56ad;
     --color-sains-bg: #e6f0ff;
-    --color-sains-cover: #dce9ff;
-    --color-sains-cover-2: #c3d8ff;
+    --color-sains-cover: #d9e6fb;
     --color-sains-chart: #3d7be0;
     --color-riset: #5534b8;
     --color-riset-bg: #f0ebff;
-    --color-riset-cover: #eee7ff;
-    --color-riset-cover-2: #d9ccff;
+    --color-riset-cover: #e5ddf8;
     --color-riset-chart: #7b5ce0;
     --color-seni: #a61f54;
     --color-seni-bg: #fde8f0;
-    --color-seni-cover: #ffe6ef;
-    --color-seni-cover-2: #ffcfe0;
+    --color-seni-cover: #f8dce6;
     --color-seni-chart: #d6457e;
     --color-olahraga: #0b6577;
     --color-olahraga-bg: #e0f4f8;
-    --color-olahraga-cover: #ddf4f8;
-    --color-olahraga-cover-2: #bfe8f0;
+    --color-olahraga-cover: #d2ecf0;
     --color-olahraga-chart: #1690a6;
 
     /* Achievement gold: points and medals only */
     --color-gold: #6b4e00;
-    --color-gold-bg: #fff3d1;
-    --color-gold-line: #f3df9e;
-    --color-medal: #f2b63a;
+    --color-gold-bg: #fbf0cc;
+    --color-gold-line: #ead8a0;
+    --color-medal: #e0a82a;
+    --color-medal-2: #c2c9d4; /* silver: rank 2 */
+    --color-medal-3: #d39a6a; /* bronze: rank 3 */
 
     /* Status (one colour = one meaning) */
     --color-green: #1b6b45; /* done / approved */
-    --color-green-bg: #e4f5ea;
+    --color-green-bg: #e4f3ea;
     --color-orange: #9a3f00; /* needs action / deadline */
-    --color-orange-bg: #ffeedd;
-    --color-orange-line: #ffd9b8;
-    --color-orange-wash: #fff8f1;
+    --color-orange-bg: #fdebd8;
+    --color-orange-line: #f3cfa8;
+    --color-orange-wash: #fff8f0;
     --color-red: #b42318; /* rejected / error */
-    --color-red-bg: #fdecea;
-    --color-red-line: #f3c4be;
-    --color-gray: #4a5068; /* waiting / neutral */
-    --color-gray-bg: #eef0f6;
-    --color-blue: #2a3cb8; /* in progress / info */
-    --color-blue-bg: #ecefff;
+    --color-red-bg: #fceae7;
+    --color-red-line: #efc1ba;
+    --color-gray: #3a4254; /* waiting / neutral */
+    --color-gray-bg: #e8ebf0;
+    --color-blue: #1c4a9c; /* in progress / info */
+    --color-blue-bg: #e8eef9;
 
-    /* Type */
-    --font-sans: 'Plus Jakarta Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
-    --font-display: 'Urbanist', 'Plus Jakarta Sans', system-ui, sans-serif;
+    /* Type: one family. --font-display stays as a name (h1–h3, .display, big numbers). */
+    --font-sans: 'Public Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --font-display: 'Public Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
     --font-mono: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
 
-    /* Radii: control 12 · tile 14 · card 20 · pill = rounded-full */
-    --radius-control: 12px;
-    --radius-tile: 14px;
-    --radius-card: 20px;
+    /* Type scale (rem, so a larger browser font size is respected). Smallest step = 13px. */
+    --text-xs: 0.8125rem; /* 13: captions, tags, table heads */
+    --text-xs--line-height: 1.4;
+    --text-sm: 0.875rem; /* 14: labels, hints, meta */
+    --text-sm--line-height: 1.45;
+    --text-md: 0.9375rem; /* 15: controls and table cells */
+    --text-md--line-height: 1.5;
+    --text-base: 1rem; /* 16: body */
+    --text-base--line-height: 1.5;
+    --text-lg: 1.125rem; /* 18: card titles */
+    --text-lg--line-height: 1.35;
+    --text-xl: 1.25rem; /* 20: section titles */
+    --text-xl--line-height: 1.3;
+    --text-2xl: 1.5rem; /* 24: page title on phones, big numbers */
+    --text-2xl--line-height: 1.2;
+    --text-3xl: 1.75rem; /* 28: page title, stat values */
+    --text-3xl--line-height: 1.15;
+    --text-4xl: 2.25rem; /* 36: hero headline on phones, points */
+    --text-4xl--line-height: 1.1;
+    --text-5xl: 2.75rem; /* 44: hero headline */
+    --text-5xl--line-height: 1.06;
 
-    /* Shadows */
-    --shadow-card: 0 1px 2px rgb(20 24 60 / 0.04), 0 10px 28px -18px rgb(20 24 60 / 0.18);
-    --shadow-primary: 0 8px 18px -10px rgb(49 72 214 / 0.65);
-    --shadow-hero: 0 14px 30px -18px rgb(49 72 214 / 0.8);
-    --shadow-pop: 0 18px 40px -16px rgb(20 24 60 / 0.38);
-    --shadow-drawer: -24px 0 48px -24px rgb(20 24 60 / 0.35);
-    --shadow-float: 0 26px 44px -20px rgb(8 14 60 / 0.6);
+    /* Radii: tag 4 · control 6 · tile 8 · card 10 (dialogs 12) */
+    --radius-tag: 4px;
+    --radius-control: 6px;
+    --radius-tile: 8px;
+    --radius-card: 10px;
+
+    /* Shadows: one hairline for cards, depth only for things that float. No coloured glow. */
+    --shadow-card: 0 1px 2px rgb(20 26 43 / 0.05);
+    --shadow-primary: 0 0 #0000;
+    --shadow-hero: 0 0 #0000;
+    --shadow-pop: 0 14px 34px -14px rgb(20 26 43 / 0.3);
+    --shadow-drawer: -18px 0 40px -22px rgb(20 26 43 / 0.3);
+    --shadow-float: 0 10px 24px -14px rgb(20 26 43 / 0.35);
 }
 
 /* Data-driven sizes without inline styles: class="w-pct-{{ $pct }}" (0–100, safelisted above). */
@@ -142,17 +169,15 @@
         background-color: var(--color-page);
         color: var(--color-ink);
         font-family: var(--font-sans);
-        font-size: 16px;
-        font-weight: 500;
+        font-size: var(--text-base);
+        font-weight: 400;
         line-height: 1.5;
+        /* A word wider than its line (a long name typed by a person) breaks instead of running out of its box (QA7).
+           break-word leaves min-content alone, so tables and flex rows size as before; a flex or grid column that
+           grows to its longest word needs [overflow-wrap:anywhere] on that column. */
+        overflow-wrap: break-word;
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
-    }
-
-    @media (min-width: 64rem) {
-        body {
-            font-size: 15px;
-        }
     }
 
     h1,
@@ -164,20 +189,20 @@
     }
 
     a {
-        color: var(--color-primary);
+        color: var(--color-link);
     }
 
     a:hover {
-        color: var(--color-primary-hover);
+        color: var(--color-link-hover);
     }
 
     :where(a, button, input, select, textarea, summary, dialog, [tabindex]):focus-visible {
-        outline: 3px solid var(--color-focus);
+        outline: 2px solid var(--color-focus);
         outline-offset: 2px;
     }
 
     ::selection {
-        background: var(--color-primary-tint);
+        background: var(--color-blue-bg);
         color: var(--color-ink);
     }
 
@@ -198,46 +223,42 @@
 }
 
 @layer components {
-    /* ---------- Page wash (top of every page) ---------- */
+    /* ---------- Page ---------- */
     .page {
         background-color: var(--color-page);
-        background-image:
-            radial-gradient(900px 320px at 88% -8%, #ece8ff 0%, rgb(236 232 255 / 0) 70%),
-            radial-gradient(760px 300px at 28% -14%, #e2f0ff 0%, rgb(226 240 255 / 0) 70%);
-        background-size: 100% 1000px;
-        background-repeat: no-repeat;
     }
 
     /* ---------- Type helpers ---------- */
     .title-page {
         margin: 0;
         font-family: var(--font-display);
-        font-size: 24px;
-        font-weight: 800;
-        line-height: 1.15;
-        letter-spacing: -0.01em;
+        font-size: var(--text-2xl);
+        font-weight: 700;
+        line-height: 1.2;
+        letter-spacing: -0.015em;
     }
 
     @media (min-width: 64rem) {
         .title-page {
-            font-size: 30px;
+            font-size: var(--text-3xl);
+            line-height: 1.15;
         }
     }
 
     .title-section {
         margin: 0;
         font-family: var(--font-display);
-        font-size: 20px;
+        font-size: var(--text-xl);
         font-weight: 700;
-        line-height: 1.2;
+        line-height: 1.25;
     }
 
     .title-card {
         margin: 0;
         font-family: var(--font-display);
-        font-size: 17px;
-        font-weight: 700;
-        line-height: 1.3;
+        font-size: var(--text-lg);
+        font-weight: 600;
+        line-height: 1.35;
     }
 
     .muted {
@@ -248,10 +269,17 @@
         font-variant-numeric: tabular-nums;
     }
 
+    /* Big numbers read better with proportional digits; tabular digits are for table columns. */
+    .display.num,
+    .display .num,
+    .title-page .num {
+        font-variant-numeric: proportional-nums;
+    }
+
     .label {
-        font-size: 13px;
+        font-size: var(--text-sm);
         font-weight: 600;
-        line-height: 16px;
+        line-height: 1.3;
         color: var(--color-ink-2);
     }
 
@@ -296,7 +324,7 @@
         padding: 0 18px;
         border-radius: var(--radius-control);
         border: 1px solid transparent;
-        font: 600 15px/1 var(--font-sans);
+        font: 600 var(--text-md) / 1 var(--font-sans);
         white-space: nowrap;
         text-decoration: none;
         cursor: pointer;
@@ -310,7 +338,6 @@
     .btn-primary {
         background: var(--color-primary);
         color: var(--color-white);
-        box-shadow: var(--shadow-primary);
     }
 
     .btn-primary:hover {
@@ -321,22 +348,22 @@
     .btn-quiet {
         background: var(--color-surface);
         color: var(--color-ink);
-        border-color: var(--color-line-input);
+        border-color: var(--color-line-strong);
     }
 
     .btn-quiet:hover {
-        background: var(--color-page);
+        background: var(--color-subtle);
         color: var(--color-ink);
     }
 
     .btn-soft {
         background: var(--color-primary-tint);
-        color: var(--color-primary-on-tint);
+        color: var(--color-ink);
     }
 
     .btn-soft:hover {
         background: var(--color-primary-tint-hover);
-        color: var(--color-primary-on-tint);
+        color: var(--color-ink);
     }
 
     .btn-danger {
@@ -350,15 +377,15 @@
         color: var(--color-red);
     }
 
-    /* On the blue hero / auth panel only. */
+    /* On the ink banner / auth panel only. */
     .btn-white {
         background: var(--color-white);
-        color: var(--color-primary-on-tint);
+        color: var(--color-ink);
     }
 
     .btn-white:hover {
         background: var(--color-primary-tint);
-        color: var(--color-primary-on-tint);
+        color: var(--color-ink);
     }
 
     .btn-white:focus-visible {
@@ -368,13 +395,12 @@
     .btn-sm {
         height: 36px;
         padding: 0 14px;
-        font-size: 14px;
-        border-radius: 10px;
+        font-size: var(--text-sm);
     }
 
     .btn-lg {
         height: 50px;
-        font-size: 16px;
+        font-size: var(--text-base);
     }
 
     .btn:disabled,
@@ -382,7 +408,6 @@
         background: var(--color-track);
         color: var(--color-muted);
         border-color: transparent;
-        box-shadow: none;
         cursor: not-allowed;
     }
 
@@ -403,14 +428,13 @@
     }
 
     .icon-btn:hover {
-        background: var(--color-page);
+        background: var(--color-subtle);
         color: var(--color-ink);
     }
 
     .icon-btn-sm {
         width: 36px;
         height: 36px;
-        border-radius: 10px;
     }
 
     .icon-btn-ghost {
@@ -431,7 +455,7 @@
         width: 8px;
         height: 8px;
         border-radius: 999px;
-        background: var(--color-primary);
+        background: var(--color-orange);
         border: 2px solid var(--color-white);
     }
 
@@ -448,17 +472,21 @@
         }
     }
 
-    /* Inline text link with optional chevron (.lnk in the mockups). */
+    /* Inline text link with optional chevron. */
     .lnk {
         display: inline-flex;
         align-items: center;
         gap: 4px;
         min-height: 36px;
-        font-size: 14px;
-        font-weight: 700;
+        font-size: var(--text-md);
+        font-weight: 600;
         white-space: nowrap;
         text-decoration: none;
-        border-radius: 8px;
+        border-radius: var(--radius-control);
+    }
+
+    .lnk:hover {
+        text-decoration: underline;
     }
 
     .ttl-link {
@@ -467,7 +495,7 @@
     }
 
     .ttl-link:hover {
-        color: var(--color-primary-hover);
+        color: var(--color-link-hover);
         text-decoration: underline;
     }
 
@@ -489,23 +517,37 @@
         border-color: var(--color-orange-line);
     }
 
-    /* ---------- Chips ---------- */
+    /* ---------- Tags (class name .chip kept) ----------
+       Squared tags, not pills. Tinted = a status (or gold for points). Neutral facts (tingkat, peserta)
+       are outlined; a bidang is a colour dot + its name. */
     .chip {
         display: inline-flex;
         align-items: center;
         gap: 6px;
-        height: 26px;
-        padding: 0 10px;
-        border-radius: 999px;
-        font-size: 12.5px;
+        height: 24px;
+        padding: 0 8px;
+        border-radius: var(--radius-tag);
+        font-size: var(--text-xs);
         font-weight: 600;
         line-height: 1;
         white-space: nowrap;
     }
 
     .chip-sm {
-        height: 24px;
-        font-size: 12px;
+        height: 22px;
+        padding: 0 7px;
+    }
+
+    /* A long tag in a narrow column takes two lines instead of pushing the page wider (phones). */
+    .chip-wrap {
+        height: auto;
+        min-height: 24px;
+        max-width: 100%;
+        padding-block: 3px;
+        line-height: 1.3;
+        white-space: normal;
+        /* A typed name (penyelenggara) may hold a word longer than the line (QA7). */
+        overflow-wrap: anywhere;
     }
 
     .c-blue {
@@ -529,8 +571,9 @@
     }
 
     .c-gray {
-        background: var(--color-gray-bg);
-        color: var(--color-gray);
+        background: var(--color-surface);
+        box-shadow: inset 0 0 0 1px var(--color-line-strong);
+        color: var(--color-ink-2);
     }
 
     .c-gold {
@@ -538,11 +581,13 @@
         color: var(--color-gold);
     }
 
+    /* On a cover image: solid white so it reads on any poster. */
     .c-glass {
-        background: rgb(255 255 255 / 0.82);
+        background: var(--color-white);
         color: var(--color-ink);
     }
 
+    /* Bidang colours as a surface (tiles, legend swatches). */
     .b-sains {
         background: var(--color-sains-bg);
         color: var(--color-sains);
@@ -563,37 +608,254 @@
         color: var(--color-olahraga);
     }
 
+    /* A bidang tag: dot + name, no fill (the cover already carries the bidang colour). */
+    .chip.b-sains,
+    .chip.b-riset,
+    .chip.b-seni,
+    .chip.b-olahraga {
+        padding: 0;
+        background: transparent;
+        color: var(--color-ink-2);
+    }
+
+    .chip.b-sains::before,
+    .chip.b-riset::before,
+    .chip.b-seni::before,
+    .chip.b-olahraga::before {
+        content: '';
+        flex-shrink: 0;
+        width: 8px;
+        height: 8px;
+        border-radius: 999px;
+    }
+
+    .chip.b-sains::before {
+        background: var(--color-sains-chart);
+    }
+
+    .chip.b-riset::before {
+        background: var(--color-riset-chart);
+    }
+
+    .chip.b-seni::before {
+        background: var(--color-seni-chart);
+    }
+
+    .chip.b-olahraga::before {
+        background: var(--color-olahraga-chart);
+    }
+
+    /* With its own bidang icon the dot would say the same thing twice. */
+    .chip.b-sains:has(svg),
+    .chip.b-riset:has(svg),
+    .chip.b-seni:has(svg),
+    .chip.b-olahraga:has(svg) {
+        color: inherit;
+    }
+
+    .chip.b-sains:has(svg)::before,
+    .chip.b-riset:has(svg)::before,
+    .chip.b-seni:has(svg)::before,
+    .chip.b-olahraga:has(svg)::before {
+        display: none;
+    }
+
+    .chip.b-sains:has(svg) > svg {
+        color: var(--color-sains);
+    }
+
+    .chip.b-riset:has(svg) > svg {
+        color: var(--color-riset);
+    }
+
+    .chip.b-seni:has(svg) > svg {
+        color: var(--color-seni);
+    }
+
+    .chip.b-olahraga:has(svg) > svg {
+        color: var(--color-olahraga);
+    }
+
+    /* Small bidang surfaces (icon tiles in lists and tables): one flat colour, no gradient. */
     .cover-sains {
-        background-image: linear-gradient(135deg, var(--color-sains-cover), var(--color-sains-cover-2));
+        background-color: var(--color-sains-cover);
         color: var(--color-sains);
     }
 
     .cover-riset {
-        background-image: linear-gradient(135deg, var(--color-riset-cover), var(--color-riset-cover-2));
+        background-color: var(--color-riset-cover);
         color: var(--color-riset);
     }
 
     .cover-seni {
-        background-image: linear-gradient(135deg, var(--color-seni-cover), var(--color-seni-cover-2));
+        background-color: var(--color-seni-cover);
         color: var(--color-seni);
     }
 
     .cover-olahraga {
-        background-image: linear-gradient(135deg, var(--color-olahraga-cover), var(--color-olahraga-cover-2));
+        background-color: var(--color-olahraga-cover);
         color: var(--color-olahraga);
     }
 
-    /* Filter pills (Katalog bidang filter). Use aria-pressed. */
+    /* ---------- Sampul (<x-sth.sampul>) ----------
+       Every lomba has a cover: its own poster when Kesiswaan uploaded one, else one of three template
+       drawings of its bidang (the variant comes from the lomba id, so a lomba always looks the same and
+       two neighbours of one bidang do not). "pekat" = the deep version, for the one big cover of a detail
+       page; cards use the light one. */
+    .sampul {
+        position: relative;
+        isolation: isolate;
+        display: flex;
+        overflow: hidden;
+        background-color: var(--color-subtle);
+        background-position: center;
+        background-repeat: no-repeat;
+        background-size: cover;
+    }
+
+    .sampul-sains-1 { background-color: var(--color-sains-cover); background-image: url('../images/sampul/sains-1.svg'); }
+    .sampul-sains-2 { background-color: var(--color-sains-cover); background-image: url('../images/sampul/sains-2.svg'); }
+    .sampul-sains-3 { background-color: var(--color-sains-cover); background-image: url('../images/sampul/sains-3.svg'); }
+    .sampul-riset-1 { background-color: var(--color-riset-cover); background-image: url('../images/sampul/riset-1.svg'); }
+    .sampul-riset-2 { background-color: var(--color-riset-cover); background-image: url('../images/sampul/riset-2.svg'); }
+    .sampul-riset-3 { background-color: var(--color-riset-cover); background-image: url('../images/sampul/riset-3.svg'); }
+    .sampul-seni-1 { background-color: var(--color-seni-cover); background-image: url('../images/sampul/seni-1.svg'); }
+    .sampul-seni-2 { background-color: var(--color-seni-cover); background-image: url('../images/sampul/seni-2.svg'); }
+    .sampul-seni-3 { background-color: var(--color-seni-cover); background-image: url('../images/sampul/seni-3.svg'); }
+    .sampul-olahraga-1 { background-color: var(--color-olahraga-cover); background-image: url('../images/sampul/olahraga-1.svg'); }
+    .sampul-olahraga-2 { background-color: var(--color-olahraga-cover); background-image: url('../images/sampul/olahraga-2.svg'); }
+    .sampul-olahraga-3 { background-color: var(--color-olahraga-cover); background-image: url('../images/sampul/olahraga-3.svg'); }
+
+    .sampul-pekat.sampul-sains-1 { background-color: var(--color-sains); background-image: url('../images/sampul/sains-1-pekat.svg'); }
+    .sampul-pekat.sampul-sains-2 { background-color: var(--color-sains); background-image: url('../images/sampul/sains-2-pekat.svg'); }
+    .sampul-pekat.sampul-sains-3 { background-color: var(--color-sains); background-image: url('../images/sampul/sains-3-pekat.svg'); }
+    .sampul-pekat.sampul-riset-1 { background-color: var(--color-riset); background-image: url('../images/sampul/riset-1-pekat.svg'); }
+    .sampul-pekat.sampul-riset-2 { background-color: var(--color-riset); background-image: url('../images/sampul/riset-2-pekat.svg'); }
+    .sampul-pekat.sampul-riset-3 { background-color: var(--color-riset); background-image: url('../images/sampul/riset-3-pekat.svg'); }
+    .sampul-pekat.sampul-seni-1 { background-color: var(--color-seni); background-image: url('../images/sampul/seni-1-pekat.svg'); }
+    .sampul-pekat.sampul-seni-2 { background-color: var(--color-seni); background-image: url('../images/sampul/seni-2-pekat.svg'); }
+    .sampul-pekat.sampul-seni-3 { background-color: var(--color-seni); background-image: url('../images/sampul/seni-3-pekat.svg'); }
+    .sampul-pekat.sampul-olahraga-1 { background-color: var(--color-olahraga); background-image: url('../images/sampul/olahraga-1-pekat.svg'); }
+    .sampul-pekat.sampul-olahraga-2 { background-color: var(--color-olahraga); background-image: url('../images/sampul/olahraga-2-pekat.svg'); }
+    .sampul-pekat.sampul-olahraga-3 { background-color: var(--color-olahraga); background-image: url('../images/sampul/olahraga-3-pekat.svg'); }
+
+    /* A real poster is usually portrait and the cover is wide: show it whole in the middle, over a blurred
+       copy of itself. Two <img> (never an inline background). When the image fails to load, app.js removes
+       both and .sampul-poster, so the template drawing underneath shows again. */
+    .sampul-poster {
+        background-image: none;
+        background-color: #10141f;
+    }
+
+    .sampul-latar {
+        position: absolute;
+        inset: -24px;
+        z-index: -1;
+        width: calc(100% + 48px);
+        max-width: none;
+        height: calc(100% + 48px);
+        object-fit: cover;
+        filter: blur(20px) saturate(1.15);
+        opacity: 0.9;
+    }
+
+    .sampul-gambar {
+        position: absolute;
+        inset: 0;
+        z-index: -1;
+        width: auto;
+        max-width: 100%;
+        height: 100%;
+        margin: auto;
+        object-fit: contain;
+        box-shadow: 0 8px 22px -8px rgb(0 0 0 / 0.55);
+    }
+
+    /* Portrait covers (lomba card, detail page): the poster stands on the left, the text beside it.
+       "tegak" = the poster box of a card: always 3:4, the poster fills it (a little of its sides or bottom
+       may be cut; the detail page shows it whole). "utuh" = the one poster of a detail page: whole, at its
+       own proportions (3:4 until it has loaded, and for a template drawing). */
+    .sampul-tegak,
+    .sampul-utuh:not(.sampul-poster) {
+        aspect-ratio: 3 / 4;
+    }
+
+    .sampul-tegak.sampul-poster,
+    .sampul-utuh.sampul-poster {
+        background-color: var(--color-subtle);
+    }
+
+    .sampul-utuh.sampul-poster {
+        display: block;
+    }
+
+    .sampul-isi {
+        position: absolute;
+        inset: 0;
+        z-index: -1;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        object-position: center top;
+    }
+
+    .sampul-utuh .sampul-isi {
+        position: static;
+        display: block;
+        height: auto;
+        max-height: 30rem;
+        aspect-ratio: auto 3 / 4;
+    }
+
+    /* A template drawing is 360 x 160 with its subject on the right. A portrait box shows a part about
+       120 wide: each drawing says which part (the patterns of Seni Budaya repeat, any part will do). */
+    :is(.sampul-tegak, .sampul-utuh).sampul-sains-1 { background-position: 73% 50%; }
+    :is(.sampul-tegak, .sampul-utuh).sampul-sains-2 { background-position: 84% 50%; }
+    :is(.sampul-tegak, .sampul-utuh).sampul-sains-3 { background-position: 60% 50%; }
+    :is(.sampul-tegak, .sampul-utuh).sampul-riset-1 { background-position: 91% 50%; }
+    :is(.sampul-tegak, .sampul-utuh).sampul-riset-2 { background-position: 87% 50%; }
+    :is(.sampul-tegak, .sampul-utuh).sampul-riset-3 { background-position: 83% 50%; }
+    :is(.sampul-tegak, .sampul-utuh).sampul-olahraga-1 { background-position: 79% 50%; }
+    :is(.sampul-tegak, .sampul-utuh).sampul-olahraga-2 { background-position: 100% 50%; }
+    :is(.sampul-tegak, .sampul-utuh).sampul-olahraga-3 { background-position: 84% 50%; }
+
+    /* ---------- Spanduk (ink banner with the "lintasan" motif) ----------
+       Arcs with six dots = the six steps of Jejak Prestasi. Student home banner and the auth panel. */
+    .spanduk {
+        position: relative;
+        overflow: hidden;
+        background-color: var(--color-primary);
+        background-image: url('../images/motif/lintasan.svg');
+        background-position: right bottom;
+        background-repeat: no-repeat;
+        background-size: auto 100%;
+        color: var(--color-white);
+    }
+
+    /* Tall panel (auth): the motif spans the width; its six dots stay in the lowest 170px, under the cards. */
+    .spanduk-tinggi {
+        background-size: 100% auto;
+    }
+
+    /* Narrow banners: arcs only and pushed to the edge, so no dot sits under the text. */
+    @media (max-width: 63.99rem) {
+        .spanduk:not(.spanduk-tinggi) {
+            background-image: url('../images/motif/lintasan-polos.svg');
+            background-position: right -90px bottom;
+        }
+    }
+
+    /* ---------- Filter buttons (Katalog bidang filter). Use aria-pressed. ---------- */
     .fchip {
         display: inline-flex;
         align-items: center;
         height: 40px;
-        padding: 0 16px;
-        border-radius: 999px;
-        border: 1px solid var(--color-line-input);
+        padding: 0 14px;
+        border-radius: var(--radius-control);
+        border: 1px solid var(--color-line-strong);
         background: var(--color-surface);
         color: var(--color-ink-2);
-        font: 600 14px var(--font-sans);
+        font: 600 var(--text-md) var(--font-sans);
         white-space: nowrap;
         text-decoration: none;
         cursor: pointer;
@@ -609,7 +871,6 @@
         background: var(--color-primary);
         border-color: var(--color-primary);
         color: var(--color-white);
-        box-shadow: 0 8px 18px -10px rgb(49 72 214 / 0.7);
     }
 
     .fchip-on:hover,
@@ -618,7 +879,7 @@
         color: var(--color-white);
     }
 
-    /* Count pill (nav badge, tab counts). */
+    /* Count (nav badge, tab counts). */
     .badge {
         margin-left: auto;
         display: inline-flex;
@@ -626,12 +887,13 @@
         justify-content: center;
         min-width: 22px;
         height: 22px;
-        padding: 0 7px;
+        padding: 0 6px;
         border-radius: 999px;
-        background: var(--color-primary-tint);
-        color: var(--color-primary-on-tint);
-        font-size: 12px;
+        background: var(--color-primary);
+        color: var(--color-white);
+        font-size: var(--text-xs);
         font-weight: 700;
+        line-height: 1;
         font-variant-numeric: tabular-nums;
     }
 
@@ -641,12 +903,13 @@
         justify-content: center;
         min-width: 22px;
         height: 22px;
-        padding: 0 7px;
+        padding: 0 6px;
         border-radius: 999px;
         background: var(--color-gray-bg);
         color: var(--color-gray);
-        font-size: 12px;
+        font-size: var(--text-xs);
         font-weight: 700;
+        line-height: 1;
         font-variant-numeric: tabular-nums;
     }
 
@@ -658,8 +921,8 @@
         justify-content: center;
         overflow: hidden;
         border-radius: 999px;
-        background: var(--color-primary-tint);
-        color: var(--color-primary-on-tint);
+        background: var(--color-primary-tint-hover);
+        color: var(--color-ink);
         font-weight: 700;
         line-height: 1;
     }
@@ -675,7 +938,7 @@
     }
 
     .stack .avatar {
-        margin-left: -8px;
+        margin-left: -6px;
         border: 2px solid var(--color-white);
     }
 
@@ -692,18 +955,19 @@
         border-radius: var(--radius-control);
         background: var(--color-surface);
         color: var(--color-ink);
-        font: 500 15px var(--font-sans);
+        font: 400 var(--text-base) var(--font-sans);
         transition: border-color 0.15s;
     }
 
     .input::placeholder {
         color: var(--color-placeholder);
+        opacity: 1;
     }
 
     .input:focus-visible {
         border-color: var(--color-primary);
-        outline: 3px solid var(--color-focus);
-        outline-offset: 2px;
+        outline: 2px solid var(--color-focus);
+        outline-offset: 1px;
     }
 
     textarea.input {
@@ -722,6 +986,7 @@
     .input:disabled,
     .input[readonly] {
         background: var(--color-page);
+        border-color: var(--color-line-strong);
         color: var(--color-muted);
     }
 
@@ -733,16 +998,9 @@
         border-color: var(--color-red);
     }
 
-    /* iOS zooms into inputs under 16px. */
-    @media (max-width: 63.99rem) {
-        .input {
-            font-size: 16px;
-        }
-    }
-
     .field-hint {
         margin: 0;
-        font-size: 13px;
+        font-size: var(--text-sm);
         line-height: 1.4;
         color: var(--color-muted);
     }
@@ -752,7 +1010,7 @@
         display: flex;
         align-items: center;
         gap: 6px;
-        font-size: 13px;
+        font-size: var(--text-sm);
         font-weight: 600;
         line-height: 1.4;
         color: var(--color-red);
@@ -775,11 +1033,12 @@
         gap: 8px;
         min-height: 44px;
         padding: 0 14px;
-        border: 1px solid var(--color-line-input);
-        border-radius: var(--radius-tile);
+        border: 1px solid var(--color-line-strong);
+        border-radius: var(--radius-control);
         background: var(--color-surface);
         color: var(--color-ink);
-        font: 600 14.5px var(--font-sans);
+        font: 600 var(--text-md) var(--font-sans);
+        text-align: center;
         cursor: pointer;
         transition:
             border-color 0.15s,
@@ -795,11 +1054,11 @@
         border: 2px solid var(--color-primary);
         padding: 0 13px;
         background: var(--color-primary-tint);
-        color: var(--color-primary-on-tint);
+        color: var(--color-ink);
     }
 
     .pick:has(input:focus-visible) {
-        outline: 3px solid var(--color-focus);
+        outline: 2px solid var(--color-focus);
         outline-offset: 2px;
     }
 
@@ -809,14 +1068,27 @@
     }
 
     .pick-sub {
-        font-size: 12px;
+        font-size: var(--text-xs);
         font-weight: 600;
         color: var(--color-muted);
     }
 
     .pick:has(input:checked) .pick-sub,
     .pick-on .pick-sub {
-        color: var(--color-primary-on-tint);
+        color: var(--color-ink-2);
+    }
+
+    /* Two-line tile (label + weight): less side padding so a long label fits its grid cell. The padding
+       shrinks with the thicker border of the chosen tile, so nothing moves when the choice changes. */
+    .pick-2 {
+        flex-direction: column;
+        gap: 2px;
+        padding: 6px 8px;
+    }
+
+    .pick-2.pick-on,
+    .pick-2:has(input:checked) {
+        padding: 5px 7px;
     }
 
     /* Segmented control (Individu | Tim). Built from radios; .seg-on for button-based use. */
@@ -843,10 +1115,10 @@
         height: 40px;
         padding: 0 16px;
         border: 0;
-        border-radius: 10px;
+        border-radius: 5px;
         background: transparent;
         color: var(--color-ink-2);
-        font: 600 14.5px var(--font-sans);
+        font: 600 var(--text-md) var(--font-sans);
         white-space: nowrap;
         cursor: pointer;
     }
@@ -860,10 +1132,10 @@
     .seg-btn[aria-selected='true'],
     .seg-btn:has(input:checked) {
         background: var(--color-surface);
-        color: var(--color-primary-on-tint);
+        color: var(--color-ink);
         box-shadow:
-            0 1px 2px rgb(20 24 60 / 0.08),
-            0 4px 10px -6px rgb(20 24 60 / 0.3);
+            0 0 0 1px var(--color-line),
+            0 1px 2px rgb(20 26 43 / 0.12);
     }
 
     .seg-solid .seg-on,
@@ -876,7 +1148,7 @@
     }
 
     .seg-btn:has(input:focus-visible) {
-        outline: 3px solid var(--color-focus);
+        outline: 2px solid var(--color-focus);
         outline-offset: 2px;
     }
 
@@ -908,7 +1180,7 @@
     }
 
     .drop:focus-within {
-        outline: 3px solid var(--color-focus);
+        outline: 2px solid var(--color-focus);
         outline-offset: 2px;
     }
 
@@ -923,7 +1195,7 @@
         justify-content: center;
         width: 40px;
         height: 40px;
-        border-radius: 12px;
+        border-radius: var(--radius-control);
         background: var(--color-primary-tint);
         color: var(--color-primary);
     }
@@ -935,7 +1207,7 @@
         gap: 10px;
         padding: 12px 14px;
         border-radius: var(--radius-tile);
-        font-size: 13.5px;
+        font-size: var(--text-sm);
         font-weight: 500;
         line-height: 1.5;
     }
@@ -953,11 +1225,22 @@
         min-height: 40px;
         padding: 9px 12px;
         border-radius: var(--radius-control);
-        background: var(--color-page);
+        background: var(--color-subtle);
         color: var(--color-ink-2);
-        font-size: 13.5px;
-        font-weight: 600;
+        font-size: var(--text-sm);
+        font-weight: 500;
         line-height: 20px;
+    }
+
+    /* ---------- Brand mark (<x-sth.brand>) ----------
+       The crest of SMA Negeri 3 Semarang (D-120). Height from the caller (h-10, h-9); the width follows.
+       The file is a small raster picture (119 x 160, cut out of the JPEG the school gave): fine up to
+       about 56px high. Ask the school for a vector file before showing it larger. */
+    .brand-mark {
+        display: inline-block;
+        flex-shrink: 0;
+        aspect-ratio: 119 / 160;
+        background: url('../images/brand/lambang-sma3.png') center / contain no-repeat;
     }
 
     /* ---------- Sidebar nav ---------- */
@@ -966,11 +1249,11 @@
         align-items: center;
         gap: 12px;
         height: 44px;
-        padding: 0 14px;
+        padding: 0 12px;
         border-radius: var(--radius-control);
         color: var(--color-ink-2);
-        font-size: 14.5px;
-        font-weight: 600;
+        font-size: var(--text-md);
+        font-weight: 500;
         text-decoration: none;
     }
 
@@ -983,20 +1266,12 @@
         flex-shrink: 0;
     }
 
+    /* Current item: tinted row + bold ink text (no filled bar, no glow). */
     .nav-on,
     .nav-on:hover {
-        background: var(--color-primary);
-        color: var(--color-white);
-        box-shadow: 0 8px 18px -10px rgb(49 72 214 / 0.7);
-    }
-
-    .nav-on:hover {
-        background: var(--color-primary-hover);
-    }
-
-    .nav-on .badge {
-        background: var(--color-white);
-        color: var(--color-primary-on-tint);
+        background: var(--color-primary-tint);
+        color: var(--color-ink);
+        font-weight: 700;
     }
 
     .nav[aria-disabled='true'],
@@ -1006,13 +1281,13 @@
         cursor: not-allowed;
     }
 
+    /* 28px tall (18 + 8 + 2): Siswa\TurMenu::desktopTips() places its replicas with the sidebar's numbers. */
     .nav-sec {
-        padding: 8px 14px 2px;
-        color: var(--color-placeholder);
-        font-size: 11.5px;
-        font-weight: 700;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
+        padding: 8px 12px 2px;
+        color: var(--color-muted);
+        font-size: var(--text-xs);
+        font-weight: 600;
+        line-height: 18px;
     }
 
     /* ---------- Tabs ---------- */
@@ -1028,7 +1303,7 @@
         border-bottom: 3px solid transparent;
         background: none;
         color: var(--color-ink-2);
-        font: 600 15px var(--font-sans);
+        font: 600 var(--text-md) var(--font-sans);
         text-decoration: none;
         white-space: nowrap;
         cursor: pointer;
@@ -1048,10 +1323,10 @@
 
     .stab:focus-visible {
         outline-offset: -3px;
-        border-radius: 8px;
+        border-radius: var(--radius-control);
     }
 
-    /* Pill tabs (Kelola lomba: Katalog | Usulan siswa). */
+    /* Button tabs (Kelola lomba: Katalog | Usulan siswa). */
     .tabp {
         display: inline-flex;
         align-items: center;
@@ -1062,14 +1337,14 @@
         border-radius: var(--radius-control);
         background: transparent;
         color: var(--color-ink-2);
-        font: 600 14.5px var(--font-sans);
+        font: 600 var(--text-md) var(--font-sans);
         text-decoration: none;
         white-space: nowrap;
         cursor: pointer;
     }
 
     .tabp:hover {
-        background: var(--color-page);
+        background: var(--color-hover);
         color: var(--color-ink);
     }
 
@@ -1078,7 +1353,8 @@
     .tabp[aria-selected='true'],
     .tabp[aria-current='page'] {
         background: var(--color-primary-tint);
-        color: var(--color-primary-on-tint);
+        color: var(--color-ink);
+        font-weight: 700;
     }
 
     .tabp-on .cnt,
@@ -1086,13 +1362,8 @@
     .tabp[aria-current='page'] .cnt,
     .stab[aria-selected='true'] .cnt,
     .stab[aria-current='page'] .cnt {
-        background: var(--color-white);
-        color: var(--color-primary-on-tint);
-    }
-
-    .stab[aria-selected='true'] .cnt,
-    .stab[aria-current='page'] .cnt {
-        background: var(--color-primary-tint);
+        background: var(--color-primary);
+        color: var(--color-white);
     }
 
     /* ---------- Table ---------- */
@@ -1109,21 +1380,21 @@
     }
 
     .tbl th {
-        height: 42px;
+        height: 40px;
         padding: 0 12px;
         border-bottom: 1px solid var(--color-line);
         background: var(--color-subtle);
         color: var(--color-muted);
-        font-size: 12.5px;
-        font-weight: 700;
+        font-size: var(--text-xs);
+        font-weight: 600;
         text-align: left;
         white-space: nowrap;
     }
 
     .tbl td {
-        padding: 11px 12px;
+        padding: 12px;
         border-bottom: 1px solid var(--color-line-soft);
-        font-size: 14px;
+        font-size: var(--text-md);
         vertical-align: middle;
     }
 
@@ -1148,18 +1419,18 @@
     .tbl caption.tbl-caption {
         padding: 14px 18px 10px;
         font-family: var(--font-display);
-        font-size: 17px;
-        font-weight: 700;
+        font-size: var(--text-lg);
+        font-weight: 600;
         text-align: left;
     }
 
-    /* Icon tile in table rows (.cv): 40px bidang cover square. */
+    /* Icon tile in table rows (.cv): 40px bidang square. */
     .cv {
         display: inline-flex;
         flex-shrink: 0;
         align-items: center;
         justify-content: center;
-        border-radius: 12px;
+        border-radius: var(--radius-control);
     }
 
     /* ---------- Jejak Prestasi tracker ---------- */
@@ -1188,7 +1459,7 @@
         right: calc(-50% + 19px);
         height: 3px;
         border-radius: 999px;
-        background: var(--color-line-input);
+        background: var(--color-track);
     }
 
     .s-done .trk-line {
@@ -1208,7 +1479,7 @@
         width: 30px;
         height: 30px;
         border-radius: 999px;
-        font: 800 13px/1 var(--font-display);
+        font: 700 var(--text-xs) / 1 var(--font-display);
     }
 
     .s-done .trk-dot {
@@ -1243,7 +1514,7 @@
 
     .trk-lbl {
         color: var(--color-ink-2);
-        font-size: 13px;
+        font-size: var(--text-sm);
         font-weight: 600;
         line-height: 18px;
     }
@@ -1256,12 +1527,12 @@
 
     .trk-date {
         color: var(--color-muted);
-        font-size: 12px;
-        line-height: 16px;
+        font-size: var(--text-xs);
+        line-height: 17px;
     }
 
     .s-cur .trk-date {
-        color: var(--color-primary-on-tint);
+        color: var(--color-ink-2);
         font-weight: 600;
     }
 
@@ -1309,7 +1580,7 @@
     .sg {
         display: block;
         height: 6px;
-        border-radius: 999px;
+        border-radius: 2px;
         background: var(--color-track);
     }
 
@@ -1333,24 +1604,24 @@
         min-width: 0;
         padding: 10px 14px;
         border-radius: var(--radius-tile);
-        background: var(--color-page);
+        background: var(--color-subtle);
     }
 
     .rt-l {
         color: var(--color-muted);
-        font-size: 12px;
+        font-size: var(--text-xs);
         font-weight: 600;
-        line-height: 16px;
+        line-height: 17px;
         white-space: nowrap;
     }
 
     .rt-v {
         color: var(--color-ink);
         font-family: var(--font-display);
-        font-size: 20px;
-        font-weight: 800;
+        font-size: var(--text-xl);
+        font-weight: 700;
         line-height: 24px;
-        font-variant-numeric: tabular-nums;
+        font-variant-numeric: proportional-nums;
         white-space: nowrap;
     }
 
@@ -1365,7 +1636,7 @@
 
     .rt-op {
         color: var(--color-placeholder);
-        font-size: 18px;
+        font-size: var(--text-lg);
         font-weight: 700;
     }
 
@@ -1380,8 +1651,7 @@
         height: 72px;
         padding: 0 56px;
         border-bottom: 1px solid var(--color-line);
-        background: rgb(255 255 255 / 0.9);
-        backdrop-filter: blur(8px);
+        background: var(--color-surface);
     }
 
     .pub-nav {
@@ -1396,8 +1666,8 @@
         border-top: 2px solid transparent;
         border-bottom: 2px solid transparent;
         color: var(--color-ink-2);
-        font-size: 15px;
-        font-weight: 600;
+        font-size: var(--text-md);
+        font-weight: 500;
         text-decoration: none;
     }
 
@@ -1409,6 +1679,7 @@
     .pub-link[aria-current='page'] {
         border-bottom-color: var(--color-primary);
         color: var(--color-ink);
+        font-weight: 700;
     }
 
     @media (max-width: 47.99rem) {
@@ -1430,7 +1701,7 @@
         height: 48px;
         padding: 0 16px;
         border-bottom: 1px solid var(--color-line);
-        background: rgb(255 255 255 / 0.9);
+        background: var(--color-surface);
     }
 
     /* ---------- Mobile tab bar (siswa) ---------- */
@@ -1443,22 +1714,27 @@
         display: grid;
         grid-template-columns: repeat(5, minmax(0, 1fr));
         height: calc(80px + env(safe-area-inset-bottom));
+        /* 6px side padding and 16px below: Siswa\TurMenu::mobileTips() places its replicas with these numbers. */
         padding: 8px 6px calc(16px + env(safe-area-inset-bottom));
         border-top: 1px solid var(--color-line);
         background: var(--color-surface);
     }
 
+    /* Labels are the menu names ("Lomba saya", "Portofolio"); on very narrow phones they may take two lines. */
     .tab {
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        gap: 4px;
+        gap: 3px;
+        min-width: 0;
         min-height: 52px;
         border-radius: var(--radius-tile);
         color: var(--color-muted);
-        font-size: 11.5px;
+        font-size: var(--text-xs);
         font-weight: 600;
+        line-height: 1.15;
+        text-align: center;
         text-decoration: none;
     }
 
@@ -1468,20 +1744,23 @@
 
     .tab-ic {
         display: flex;
+        flex-shrink: 0;
         align-items: center;
         justify-content: center;
         width: 48px;
         height: 28px;
-        border-radius: 999px;
+        border-radius: var(--radius-control);
     }
 
     .tab-on,
     .tab-on:hover {
-        color: var(--color-primary);
+        color: var(--color-ink);
+        font-weight: 700;
     }
 
     .tab-on .tab-ic {
         background: var(--color-primary-tint);
+        color: var(--color-primary);
     }
 
     .tab[aria-disabled='true'] {
@@ -1497,7 +1776,7 @@
         min-width: 232px;
         padding: 6px;
         border: 1px solid var(--color-line);
-        border-radius: 16px;
+        border-radius: var(--radius-card);
         background: var(--color-surface);
         box-shadow: var(--shadow-pop);
     }
@@ -1510,17 +1789,17 @@
         height: 40px;
         padding: 0 12px;
         border: 0;
-        border-radius: 10px;
+        border-radius: var(--radius-control);
         background: transparent;
         color: var(--color-ink);
-        font: 600 14px var(--font-sans);
+        font: 500 var(--text-md) var(--font-sans);
         text-align: left;
         text-decoration: none;
         cursor: pointer;
     }
 
     .menu-item:hover {
-        background: var(--color-page);
+        background: var(--color-hover);
         color: var(--color-ink);
     }
 
@@ -1549,9 +1828,9 @@
         width: min(560px, calc(100vw - 32px));
         max-height: calc(100dvh - 48px);
         overflow: hidden;
-        border-radius: 24px;
+        border-radius: 12px;
         background: var(--color-surface);
-        box-shadow: 0 40px 80px -30px rgb(8 12 40 / 0.65);
+        box-shadow: 0 30px 60px -30px rgb(20 26 43 / 0.55);
     }
 
     .dlg-lg .dlg-panel {
@@ -1614,7 +1893,7 @@
         width: min(300px, 88vw);
         height: 100%;
         max-height: none;
-        border-radius: 0 20px 20px 0;
+        border-radius: 0;
     }
 
     /* Bottom sheet on phones, centred dialog from 640px. */
@@ -1626,7 +1905,7 @@
     .dlg-sheet .dlg-panel {
         width: 100%;
         max-height: 92dvh;
-        border-radius: 24px 24px 0 0;
+        border-radius: 12px 12px 0 0;
     }
 
     @media (min-width: 40rem) {
@@ -1640,7 +1919,7 @@
 
         .dlg-sheet .dlg-panel {
             width: min(560px, calc(100vw - 32px));
-            border-radius: 24px;
+            border-radius: 12px;
         }
     }
 
@@ -1688,7 +1967,7 @@
         margin: 0;
         padding: 24px;
         color: var(--color-ink-2);
-        font-size: 14.5px;
+        font-size: var(--text-md);
         line-height: 1.5;
         text-align: center;
     }
@@ -1765,10 +2044,10 @@
         max-width: 520px;
         padding: 10px 10px 10px 12px;
         border: 1px solid var(--color-line);
-        border-radius: 16px;
+        border-radius: var(--radius-card);
         background: var(--color-surface);
         box-shadow: var(--shadow-pop);
-        font-size: 14px;
+        font-size: var(--text-sm);
         font-weight: 600;
         pointer-events: auto;
         animation: sth-rise 0.2s ease-out;
@@ -1781,7 +2060,7 @@
         justify-content: center;
         width: 32px;
         height: 32px;
-        border-radius: 10px;
+        border-radius: var(--radius-control);
     }
 }
 

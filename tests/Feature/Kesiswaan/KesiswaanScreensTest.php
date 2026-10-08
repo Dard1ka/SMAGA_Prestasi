@@ -103,7 +103,7 @@ it('lists every pending upload in the queue, from any role incl. Kesiswaan itsel
     Livewire::withQueryParams(['tab' => 'verifikasi'])->actingAs($this->kesiswaan)->test(Index::class)
         ->assertSee('ISPO 2027')->assertSee('Usulan siswa')
         ->assertSee('Lomba Guru Upload')->assertSee('Upload guru')
-        ->assertSee('Lomba Kesiswaan Sendiri')->assertSee('Upload kamu')
+        ->assertSee('Lomba Kesiswaan Sendiri')->assertSee('Upload sendiri')
         ->assertSee('Perlu dilengkapi')
         ->assertDontSee('Lomba Peneliti Belia (LPB) 2026');
 
@@ -258,7 +258,7 @@ it('filters talent rows by stage and marks tidak lolos from the panel without a 
         ->assertHasNoErrors()
         ->assertSet('panelDone', 'Tidak lolos dari tahap Terdaftar. Siswa diberi tahu.')
         // M3-A: the stage is chosen in the "Pulihkan" dialog; the panel names the earlier one.
-        ->assertSee('Tahap sebelumnya: Terdaftar. Pulihkan untuk mengembalikannya ke tahap yang kamu pilih.');
+        ->assertSee('Tahap sebelumnya: Terdaftar. Pulihkan untuk mengembalikannya ke tahap yang dipilih.');
 
     expect($a->fresh()->status)->toBe(TalentStatus::TidakLolos)
         ->and($a->fresh()->student_note)->toBeNull();
@@ -482,4 +482,24 @@ it('rejects a non-spreadsheet upload on the import screen', function (): void {
     Livewire::actingAs($this->admin)->test(ImportSiswa::class)
         ->set('file', UploadedFile::fake()->createWithContent('foto.png', 'not really'))
         ->assertHasErrors('file');
+});
+
+// QA7: explore round after UI3 (2026-10-08) ---------------------------------------------------------
+
+it('names every picture type the cover field takes when the file is refused (QA7)', function (): void {
+    $component = Livewire::actingAs($this->kesiswaan)->test(Form::class)
+        ->call('open')
+        ->set('form', F::form())
+        ->set('cover', UploadedFile::fake()->image('poster.gif'))
+        ->call('save')
+        ->assertHasErrors('cover');
+
+    expect($component->errors()->first('cover'))->toBe('Pilih gambar JPG, PNG, atau WEBP.');
+});
+
+it('lets the penyelenggara tag of a report take two lines instead of running out of the panel (QA7)', function (): void {
+    F::pendingReport();
+
+    Livewire::actingAs($this->kesiswaan)->test(VerifikasiHasil::class)
+        ->assertSeeHtml('chip c-gray chip-sm chip-wrap');
 });

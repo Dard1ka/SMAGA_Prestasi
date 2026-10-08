@@ -112,7 +112,7 @@ final class SubmitCompetition
             ->count();
 
         if ($recent >= self::DAILY_LIMIT) {
-            throw ValidationException::withMessages(['name' => 'Kamu sudah mengirim '.self::DAILY_LIMIT.' usulan hari ini. Coba lagi besok.']);
+            throw ValidationException::withMessages(['name' => 'Sudah '.self::DAILY_LIMIT.' kali mengirim hari ini. Coba lagi besok.']);
         }
     }
 

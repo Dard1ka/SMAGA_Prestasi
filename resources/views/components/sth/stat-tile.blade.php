@@ -1,17 +1,22 @@
 {{--
-    Stat tile, CrioEd style (DESIGN-SPEC-v2 §4): 44px tinted icon tile + label / big value / note.
+    Stat tile (DESIGN-SPEC-v3 §4): 40px tinted icon tile + label / big value / note. On phones the tiles
+    sit two per row (the caller's grid: grid-cols-2 … xl:grid-cols-4) with the icon above the text.
 
     <x-sth.stat-tile icon="trophy" tone="blue" label="Lomba aktif" value="6" note="pendaftaran dibuka" />
     <x-sth.stat-tile icon="inbox" tone="orange" label="Usulan lomba" :value="$pending" note="menunggu ditinjau"
                      href="{{ route('kesiswaan.lomba.index', ['tab' => 'verifikasi']) }}" />
+    <x-sth.stat-tile icon="lock" tone="red" label="Dibekukan" :value="$frozen" zero="hide" />
 
     Props: icon · tone blue|green|orange|red|gray|gold|sains|riset|seni|olahraga (match the meaning)
            label · value (already formatted, e.g. Number::format) · note · href (whole tile becomes a link)
+           zero  what a value of 0 looks like: quiet (default: gray icon, muted number, so a colour only
+                 shows where there is something to see) | hide (not rendered at all: for warning tiles such
+                 as "Dibekukan", "Ditolak" that only matter when they are not 0) | show (like any value)
 --}}
-@props(['icon' => 'bars', 'tone' => 'blue', 'label', 'value', 'note' => null, 'href' => null])
+@props(['icon' => 'bars', 'tone' => 'blue', 'label', 'value', 'note' => null, 'href' => null, 'zero' => 'quiet'])
 @php
     $tones = [
-        'blue' => 'bg-primary-tint text-primary',
+        'blue' => 'bg-blue-bg text-blue',
         'green' => 'bg-green-bg text-green',
         'orange' => 'bg-orange-bg text-orange',
         'red' => 'bg-red-bg text-red',
@@ -22,18 +27,22 @@
         'seni' => 'bg-seni-bg text-seni',
         'olahraga' => 'bg-olahraga-bg text-olahraga',
     ];
-    $toneClass = $tones[$tone] ?? $tones['blue'];
+    $isZero = in_array(trim((string) $value), ['0', '0,0', '0,00'], true);
+    $quiet = $isZero && $zero === 'quiet';
+    $toneClass = $quiet ? 'bg-gray-bg text-muted' : ($tones[$tone] ?? $tones['blue']);
     $tag = $href !== null ? 'a' : 'div';
 @endphp
-<{{ $tag }} @if ($href !== null) href="{{ $href }}" @endif {{ $attributes->class(['card flex items-center gap-3.5 p-[18px]', 'text-ink no-underline hover:border-line-input hover:text-ink' => $href !== null]) }}>
-    <span class="inline-flex size-11 shrink-0 items-center justify-center rounded-tile {{ $toneClass }}">
-        <x-sth.icon :name="$icon" />
-    </span>
-    <span class="flex min-w-0 flex-col gap-0.5">
-        <span class="muted text-[13px] font-semibold leading-snug">{{ $label }}</span>
-        <span class="display num text-[28px] leading-[1.1] font-extrabold text-ink">{{ $value }}</span>
-        @if ($note)
-            <span class="muted text-[12.5px] leading-snug">{{ $note }}</span>
-        @endif
-    </span>
-</{{ $tag }}>
+@if (! ($isZero && $zero === 'hide'))
+    <{{ $tag }} @if ($href !== null) href="{{ $href }}" @endif {{ $attributes->class(['card flex flex-col items-start gap-2 p-3.5 sm:flex-row sm:items-center sm:gap-3.5 sm:p-[18px]', 'text-ink no-underline hover:border-line-strong hover:text-ink' => $href !== null]) }}>
+        <span class="inline-flex size-9 shrink-0 items-center justify-center rounded-tile sm:size-10 {{ $toneClass }}">
+            <x-sth.icon :name="$icon" />
+        </span>
+        <span class="flex min-w-0 flex-col gap-0.5">
+            <span class="text-sm leading-snug font-medium text-ink-2">{{ $label }}</span>
+            <span @class(['display num text-2xl leading-[1.1] font-bold sm:text-3xl', 'text-ink' => ! $quiet, 'text-muted' => $quiet])>{{ $value }}</span>
+            @if ($note)
+                <span class="muted text-xs leading-snug">{{ $note }}</span>
+            @endif
+        </span>
+    </{{ $tag }}>
+@endif

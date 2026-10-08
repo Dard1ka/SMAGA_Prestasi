@@ -11,7 +11,9 @@
 
     Props: name · label (legend) · options (value => label | value => [label, sub, icon, disabled])
            value (string, or array with multiple) · multiple · columns (2–6, grid; default wraps)
-           size md (44px) | sm (40px) · hint · error · hide-label
+           phone-columns (2: a 5- or 6-column grid shows two per row below sm, for long labels such as
+           "Penghargaan khusus"; default three) · size md (44px) | sm (40px) · hint · error · hide-label
+    Tiles of one grid are the same height (auto-rows-fr) and their text is centred, also on two lines.
 --}}
 @props([
     'name' => null,
@@ -20,6 +22,7 @@
     'value' => null,
     'multiple' => false,
     'columns' => null,
+    'phoneColumns' => null,
     'size' => 'md',
     'hint' => null,
     'error' => null,
@@ -38,12 +41,15 @@
     $current = ($wireModel || $name === null) ? $value : (request()->hasSession() ? old($baseName, $value) : $value);
     $current = array_map(fn ($v) => $v instanceof \BackedEnum ? (string) $v->value : (string) $v, (array) $current);
     $grid = [
-        2 => 'grid grid-cols-2',
-        3 => 'grid grid-cols-3',
-        4 => 'grid grid-cols-2 sm:grid-cols-4',
-        5 => 'grid grid-cols-3 sm:grid-cols-5',
-        6 => 'grid grid-cols-3 sm:grid-cols-6',
+        2 => 'grid auto-rows-fr grid-cols-2',
+        3 => 'grid auto-rows-fr grid-cols-3',
+        4 => 'grid auto-rows-fr grid-cols-2 sm:grid-cols-4',
+        5 => 'grid auto-rows-fr grid-cols-3 sm:grid-cols-5',
+        6 => 'grid auto-rows-fr grid-cols-3 sm:grid-cols-6',
     ][(int) $columns] ?? 'flex flex-wrap';
+    if ((int) $phoneColumns === 2) {
+        $grid = str_replace('grid-cols-3 sm:', 'grid-cols-2 sm:', $grid);
+    }
 @endphp
 <fieldset {{ $attributes->whereDoesntStartWith('wire:model')->class('min-w-0') }} @if ($describedBy !== '') aria-describedby="{{ $describedBy }}" @endif>
     @if ($label)
@@ -55,7 +61,7 @@
                 $option = is_array($option) ? $option : ['label' => $option];
                 $optionId = $groupId.'-'.\Illuminate\Support\Str::slug((string) $optionValue);
             @endphp
-            <label for="{{ $optionId }}" @class(['pick', 'min-h-10 text-[13.5px]' => $size === 'sm', 'flex-col gap-0.5 py-1.5' => isset($option['sub'])])>
+            <label for="{{ $optionId }}" @class(['pick', 'min-h-10 text-sm' => $size === 'sm', 'pick-2' => isset($option['sub'])])>
                 <input
                     type="{{ $multiple ? 'checkbox' : 'radio' }}"
                     id="{{ $optionId }}"
@@ -70,7 +76,7 @@
                 @if (! empty($option['icon']))
                     <x-sth.icon :name="$option['icon']" :size="18" />
                 @endif
-                <span @class(['display text-[15px] leading-4 font-extrabold' => isset($option['sub'])])>{{ $option['label'] }}</span>
+                <span @class(['display text-md leading-4 font-bold' => isset($option['sub'])])>{{ $option['label'] }}</span>
                 @isset($option['sub'])
                     <span class="pick-sub leading-[14px]">{{ $option['sub'] }}</span>
                 @endisset

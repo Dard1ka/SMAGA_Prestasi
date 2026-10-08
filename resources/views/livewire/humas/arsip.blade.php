@@ -34,7 +34,7 @@
                     <td>
                         <span class="block">{{ $row['student'] }}</span>
                         @if ($row['class'])
-                            <span class="block text-[13px] text-muted">{{ $row['class'] }}</span>
+                            <span class="block text-xs text-muted">{{ $row['class'] }}</span>
                         @endif
                         @if ($row['consentWithdrawn'])
                             <x-sth.chip tone="orange" size="sm" class="mt-1">Izin dicabut</x-sth.chip>

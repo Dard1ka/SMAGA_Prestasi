@@ -1,7 +1,7 @@
 {{-- Kesiswaan · Database prestasi (backlog #4, B4). Data prepared in App\Livewire\Kesiswaan\DatabasePrestasi. --}}
 <div class="flex flex-col gap-[22px]">
     @include('livewire.partials.resume-download')
-    <section aria-label="Ringkasan" class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <section aria-label="Ringkasan" class="grid auto-rows-fr grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
         <x-sth.stat-tile icon="award" tone="blue" label="Prestasi" :value="$totals['count']" :note="$active === [] ? 'semua terverifikasi' : 'sesuai filter'" />
         <x-sth.stat-tile icon="users" tone="blue" label="Siswa berprestasi" :value="$totals['students']" note="siswa berbeda" />
         <x-sth.stat-tile icon="trophy" tone="gold" label="Total poin" :value="$totals['points']" note="jumlah poin prestasi" />
@@ -17,7 +17,7 @@
                 <x-sth.select wire:model.live="tingkat" label="Tingkat" placeholder="Semua tingkat" :options="$options['tingkat']" />
             </div>
             <details class="group" wire:ignore.self @if ($moreActive > 0) open @endif>
-                <summary class="lnk inline-flex cursor-pointer items-center gap-1.5 text-[13.5px]">
+                <summary class="lnk inline-flex cursor-pointer items-center gap-1.5 text-sm">
                     <x-sth.icon name="filter" :size="16" />
                     Filter lainnya @if ($moreActive > 0)<span class="num">({{ $moreActive }} aktif)</span>@endif
                 </summary>
@@ -35,7 +35,7 @@
 
         <div class="flex min-h-14 flex-wrap items-center justify-between gap-3 border-b border-line bg-subtle px-4 py-2.5">
             <div class="flex min-w-0 flex-wrap items-center gap-2" aria-live="polite">
-                <span class="num text-[13.5px] text-muted">
+                <span class="num text-sm text-muted">
                     @if ($page->total() > 0)
                         {{ $page->firstItem() }}–{{ $page->lastItem() }} dari {{ $totals['count'] }} prestasi
                     @else
@@ -63,7 +63,7 @@
                     </x-sth.empty-state>
                 </div>
             @else
-                <x-sth.table caption="Daftar prestasi terverifikasi" :card="false" fixed>
+                <x-sth.table caption="Daftar prestasi terverifikasi" :card="false" fixed table-class="min-w-[560px]">
                     <x-slot:head>
                         <th scope="col">Siswa</th>
                         <th scope="col">Lomba</th>
@@ -81,24 +81,24 @@
                                     <x-sth.avatar :name="$row['name']" size="sm" class="hidden sm:inline-flex" />
                                     <div class="flex min-w-0 flex-col">
                                         <span class="font-bold break-words">{{ $row['name'] }}</span>
-                                        <span class="text-[12.5px] text-muted">{{ $row['kelas'] }}@if ($row['nis']) · <span class="num">{{ $row['nis'] }}</span>@endif</span>
+                                        <span class="text-xs text-muted">{{ $row['kelas'] }}@if ($row['nis']) · <span class="num">{{ $row['nis'] }}</span>@endif</span>
                                     </div>
                                 </div>
                             </td>
                             <td>
                                 <div class="flex min-w-0 flex-col">
                                     <span class="font-semibold break-words">{{ $row['lomba'] }}</span>
-                                    <span class="text-[12.5px] text-muted">
+                                    <span class="text-xs text-muted">
                                         {{ collect([$row['organizer'], $row['tipe']])->filter()->implode(' · ') }}
                                         <span class="sm:hidden"> · {{ $row['capaian'] }}</span>
                                     </span>
                                 </div>
                             </td>
                             <td class="hidden lg:table-cell">@if ($row['bidang'])<x-sth.chip :bidang="$row['bidang']" size="sm" />@endif</td>
-                            <td class="hidden text-[13.5px] md:table-cell">{{ $row['tingkat'] }}</td>
-                            <td class="hidden sm:table-cell"><span @class(['text-[13.5px]', 'font-bold' => $row['podium']])>{{ $row['capaian'] }}</span></td>
-                            <td class="num hidden text-[13.5px] xl:table-cell">{{ $row['tahun'] }}</td>
-                            <td class="display num text-right text-base font-extrabold">{{ $row['points'] }}</td>
+                            <td class="hidden text-sm md:table-cell">{{ $row['tingkat'] }}</td>
+                            <td class="hidden sm:table-cell"><span @class(['text-sm', 'font-bold' => $row['podium']])>{{ $row['capaian'] }}</span></td>
+                            <td class="num hidden text-sm xl:table-cell">{{ $row['tahun'] }}</td>
+                            <td class="display num text-right text-base font-bold">{{ $row['points'] }}</td>
                             <td class="text-right">
                                 <x-sth.button variant="quiet" size="sm" wire:click="showDetail('{{ $row['id'] }}')" aria-haspopup="dialog">Detail<span class="sr-only"> prestasi {{ $row['name'] }}, {{ $row['lomba'] }}</span></x-sth.button>
                             </td>
@@ -124,7 +124,7 @@
                     <dl class="m-0 grid grid-cols-2 gap-3">
                         @foreach ($detail['student'] as $fact)
                             <div class="flex flex-col gap-0.5">
-                                <dt class="text-[12.5px] font-semibold text-muted">{{ $fact['label'] }}</dt>
+                                <dt class="text-xs font-semibold text-muted">{{ $fact['label'] }}</dt>
                                 <dd class="num m-0 font-bold">{{ $fact['value'] }}</dd>
                             </div>
                         @endforeach
@@ -141,7 +141,7 @@
                     <dl class="m-0 grid grid-cols-2 gap-3">
                         @foreach ($detail['competition'] as $fact)
                             <div class="flex flex-col gap-0.5">
-                                <dt class="text-[12.5px] font-semibold text-muted">{{ $fact['label'] }}</dt>
+                                <dt class="text-xs font-semibold text-muted">{{ $fact['label'] }}</dt>
                                 <dd class="m-0 font-bold">{{ $fact['value'] }}</dd>
                             </div>
                         @endforeach
@@ -155,7 +155,7 @@
                     </div>
                     <x-sth.rumus-poin :tingkat="$detail['rumus']['tingkat']" :capaian="$detail['rumus']['capaian']"
                         :penyelenggara="$detail['rumus']['penyelenggara']" :total="$detail['rumus']['total']" label="Rumus poin" />
-                    <p class="m-0 text-[13px] text-muted">
+                    <p class="m-0 text-xs text-muted">
                         Diverifikasi {{ $detail['verified'] }}@if ($detail['verifier']) oleh {{ $detail['verifier'] }}@endif.
                         @if ($detail['weightVersion'])Bobot versi {{ $detail['weightVersion'] }}.@endif
                     </p>
@@ -164,7 +164,7 @@
                 <section aria-labelledby="h-dp-tim" class="flex flex-col gap-2.5">
                     <h3 id="h-dp-tim" class="title-card m-0">{{ $detail['tipe'] ?? 'Peserta' }}</h3>
                     @if ($detail['mentor'])
-                        <p class="m-0 text-[13.5px]"><span class="text-muted">Pembimbing:</span> <span class="font-semibold">{{ $detail['mentor'] }}</span></p>
+                        <p class="m-0 text-sm"><span class="text-muted">Pembimbing:</span> <span class="font-semibold">{{ $detail['mentor'] }}</span></p>
                     @endif
                     @if (count($detail['members']) > 1)
                         <ul class="m-0 flex list-none flex-col gap-2 p-0">
@@ -173,7 +173,7 @@
                                     <x-sth.avatar :name="$member['name']" size="sm" />
                                     <span class="flex min-w-0 flex-col">
                                         <span class="font-bold">{{ $member['name'] }}</span>
-                                        <span class="text-[12.5px] text-muted">{{ $member['meta'] }}</span>
+                                        <span class="text-xs text-muted">{{ $member['meta'] }}</span>
                                     </span>
                                 </li>
                             @endforeach

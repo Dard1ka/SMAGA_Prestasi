@@ -107,7 +107,7 @@ class Talenta extends Component
 
     public const EXPORT_NOTHING = 'Tidak ada pilihan talenta dengan status dan filter ini. Tidak ada yang di-download.';
 
-    public const SAVED_WITH_DRAFT = 'Tersimpan. Catatan untuk siswa terkirim saat kamu menekan Lolos atau Tidak lolos.';
+    public const SAVED_WITH_DRAFT = 'Tersimpan. Catatan untuk siswa terkirim saat Lolos atau Tidak lolos ditekan.';
 
     #[Url(as: 'tahap', except: 'semua')]
     public string $tahap = 'semua';
@@ -1087,7 +1087,7 @@ class Talenta extends Component
     {
         return 'Siswa sudah diberi tahu. '
             .($previous !== null ? 'Tahap sebelumnya: '.$previous->label().'. ' : '')
-            .'Pulihkan untuk mengembalikannya ke tahap yang kamu pilih.';
+            .'Pulihkan untuk mengembalikannya ke tahap yang dipilih.';
     }
 
     /**

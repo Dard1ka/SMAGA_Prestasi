@@ -13,12 +13,13 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\ValidationException;
+use Livewire\Attributes\Locked;
 use Livewire\Component;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use Livewire\WithFileUploads;
 
 /**
- * "Usulkan lomba" sheet (board Katalog-Lomba; also for guru `guru.lomba.index`). Renders its own
+ * "Usulkan lomba" sheet (board Katalog-Lomba; for guru `guru.lomba.index` named "Upload info lomba"). Renders its own
  * <dialog id="usul">; open it with any `data-sth-open="usul"` button on the page.
  * Calls SubmitCompetition (menunggu_verifikasi, D-27; 5/day; brochure via StoreUpload, private).
  * The official link is validated (https, no IP) and never fetched (SECURITY §3m-1).
@@ -41,6 +42,13 @@ class UsulanForm extends Component
     public bool $sent = false;
 
     public string $sentName = '';
+
+    /**
+     * Guru › Lomba opens this sheet with the button "Upload info lomba", so the sheet uses those words
+     * (`<livewire:lomba.usulan-form :upload="true" />`). Only the wording differs; fields and rules are the same.
+     */
+    #[Locked]
+    public bool $upload = false;
 
     public function mount(): void
     {
@@ -124,7 +132,8 @@ class UsulanForm extends Component
 
     public function ulang(): void
     {
-        $this->reset();
+        // Everything but the wording the page chose.
+        $this->resetExcept('upload');
         $this->resetValidation();
     }
 

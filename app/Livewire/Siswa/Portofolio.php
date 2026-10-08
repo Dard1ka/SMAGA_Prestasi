@@ -15,6 +15,7 @@ use App\Models\Student;
 use App\Models\TalentApplication;
 use App\Models\User;
 use App\Support\Leaderboard\PersonalRank;
+use App\Support\Sampul;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\View\View;
@@ -148,6 +149,9 @@ final class Portofolio extends Component
             'id' => (string) $achievement->getKey(),
             'title' => $competition->name,
             'bidang' => $competition->bidang,
+            // Cover of the card: the lomba's poster, else a template drawing picked from its id (<x-sth.sampul>).
+            'seed' => (string) $competition->getKey(),
+            'poster' => Sampul::poster($competition),
             'level' => $achievement->level->shortLabel(),
             'result' => $achievement->result->label(),
             'organizer' => collect([$competition->organizer_name, $achievement->weight_category->label()])->filter()->implode(' · '),

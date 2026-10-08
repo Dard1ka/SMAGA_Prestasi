@@ -35,6 +35,9 @@ use Livewire\Component;
 #[Title('Beranda')]
 class Beranda extends Component
 {
+    /** "Rekomendasi untukmu": four capsules = two full rows of two; the view hides the fourth where it would stand alone. */
+    private const RECOMMENDATIONS = 4;
+
     public function render(): View
     {
         /** @var User $user */
@@ -43,10 +46,14 @@ class Beranda extends Component
         $today = CarbonImmutable::today();
 
         $points = $student ? $this->points($student) : ['total' => '0', 'rank' => null, 'count' => 0];
+        $openTotal = Competition::query()->openForRegistration()->count();
 
         return view('livewire.siswa.beranda', [
             'firstName' => strtok(trim((string) $user->name), ' ') ?: 'Siswa',
-            'openCount' => Competition::query()->openForRegistration()->count(),
+            // "Masih ada N lomba yang bisa kamu daftar": open lomba this student is not in yet (the lead, 2026-10-08).
+            // openTotal tells "nothing is open" from "you are in every open lomba" when N is 0.
+            'openCount' => $student ? $this->openFor($student)->count() : $openTotal,
+            'openTotal' => $openTotal,
             'actions' => $student ? $this->actions($student, $today) : [],
             'mine' => $student ? $this->myRegistrations($student) : [],
             'points' => $points,
@@ -201,6 +208,23 @@ class Beranda extends Component
     }
 
     /**
+     * Open lomba this student can still register for: published, registration open, and the student is not in a
+     * running registration of it (as ketua or as a member who has not declined). A rejected or cancelled
+     * registration does not count: the student may register again. The banner counts these and the
+     * recommendations are picked from them, so the two never disagree.
+     *
+     * @return Builder<Competition>
+     */
+    private function openFor(Student $student): Builder
+    {
+        return Competition::query()
+            ->openForRegistration()
+            ->whereDoesntHave('registrations', fn (Builder $r) => $r
+                ->whereIn('status', RegistrationStatus::nonFinal())
+                ->whereHas('members', fn (Builder $m) => $m->where('student_id', $student->getKey())->whereNull('declined_at')));
+    }
+
+    /**
      * Open lomba the student is not in yet, preferring the bidang of their talent applications.
      *
      * @return array{subtitle: ?string, cards: list<array<string, mixed>>}
@@ -216,19 +240,14 @@ class Beranda extends Component
             ->unique(fn ($b) => $b->value)
             ->values();
 
-        $base = Competition::query()
-            ->openForRegistration()
-            ->whereDoesntHave('registrations', fn (Builder $r) => $r
-                ->whereIn('status', RegistrationStatus::nonFinal())
-                ->whereHas('members', fn (Builder $m) => $m->where('student_id', $student->getKey())->whereNull('declined_at')))
-            ->orderBy('registration_closes_at');
+        $base = $this->openFor($student)->orderBy('registration_closes_at');
 
         $picked = $interests->isEmpty()
             ? new EloquentCollection
-            : (clone $base)->whereIn('bidang', $interests->map(fn ($b) => $b->value)->all())->limit(3)->get();
+            : (clone $base)->whereIn('bidang', $interests->map(fn ($b) => $b->value)->all())->limit(self::RECOMMENDATIONS)->get();
 
-        if ($picked->count() < 3) {
-            $picked = $picked->concat((clone $base)->whereKeyNot($picked->modelKeys())->limit(3 - $picked->count())->get());
+        if ($picked->count() < self::RECOMMENDATIONS) {
+            $picked = $picked->concat((clone $base)->whereKeyNot($picked->modelKeys())->limit(self::RECOMMENDATIONS - $picked->count())->get());
         }
 
         $registrants = LombaPresenter::registrants($picked);

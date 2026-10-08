@@ -3,7 +3,7 @@
     <div class="flex flex-col gap-6">
         <div class="flex flex-col gap-2">
             <h1 class="title-page">Konfirmasi kata sandi</h1>
-            <p class="muted">Demi keamanan, tulis kata sandi kamu sekali lagi.</p>
+            <p class="muted">Demi keamanan, tulis kata sandi sekali lagi.</p>
         </div>
 
         <form method="POST" action="{{ route('password.confirm.store') }}" class="flex flex-col gap-4" novalidate>

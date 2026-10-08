@@ -29,7 +29,7 @@ use Livewire\Component;
  */
 #[Title('Siswa binaan')]
 // One search box per screen (D-90, backlog #60): this page has its own, so the top bar shows none.
-#[Layout('layouts::app', ['subtitle' => 'Siswa yang kamu bimbing di lomba dan pembinaan talenta.', 'search' => false])]
+#[Layout('layouts::app', ['subtitle' => 'Siswa bimbingan di lomba dan pembinaan talenta.', 'search' => false])]
 final class Binaan extends Component
 {
     use PresentsBinaan, ReportHelpers;

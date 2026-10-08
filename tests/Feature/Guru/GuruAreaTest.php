@@ -259,7 +259,7 @@ it('opens the detail drawer for a visible lomba and 404 for an invisible one', f
     $foreign->forceFill(['submitted_by' => $this->hendra->getKey()])->save();
 
     Livewire::actingAs($this->retno)->withQueryParams(['lihat' => $this->nsif->getKey()])->test(Lomba::class)
-        ->assertSee('Siswa binaanmu di lomba ini')
+        ->assertSee('Siswa binaan di lomba ini')
         ->assertSee('Bima Satria Wicaksono')
         ->assertDontSee('Raka Pradipta');
 
@@ -289,6 +289,33 @@ it('uploads lomba info through the shared usulan form into the verification queu
         ->dispatch('usulan-terkirim')
         ->assertSet('tab', 'unggahan')
         ->assertSee('Olimpiade Guru Penggerak 2026');
+});
+
+it('names the upload sheet like the button that opens it, not "Usulkan lomba"', function (): void {
+    // One name per thing: the guru presses "Upload info lomba", so the shared sheet says that too.
+    $this->actingAs($this->retno)->get(route('guru.lomba.index'))
+        ->assertOk()
+        ->assertSee('Upload info lomba')
+        ->assertSee('Kirim info lomba')
+        ->assertDontSee('Usulkan lomba')
+        ->assertDontSee('Kirim usulan');
+
+    Livewire::actingAs($this->retno)->test(UsulanForm::class, ['upload' => true])
+        ->set('name', 'Lomba Karya Tulis Guru 2026')
+        ->set('organizer_name', 'Dinas Pendidikan')
+        ->set('website_url', 'https://lkt.example.id')
+        ->set('brosur', UploadedFile::fake()->createWithContent('juknis.pdf', "%PDF-1.4\n1 0 obj << /Type /Catalog >> endobj\ntrailer << /Root 1 0 R >>\n%%EOF"))
+        ->call('kirim')
+        ->assertHasNoErrors()
+        ->assertSee('Info lomba terkirim')
+        ->assertSee('Upload lagi')
+        ->assertDontSee('Usulan terkirim')
+        // "Upload lagi" empties the form and keeps the wording of the page.
+        ->call('ulang')
+        ->assertSet('sent', false)
+        ->assertSet('upload', true)
+        ->assertSee('Kirim info lomba')
+        ->assertDontSee('Kirim usulan');
 });
 
 it('enables the guru menu items and the topbar search', function (): void {

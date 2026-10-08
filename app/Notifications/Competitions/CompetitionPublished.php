@@ -15,7 +15,7 @@ final class CompetitionPublished extends Notice
         return new self(
             kind: 'competition.published',
             title: 'Lomba dipublikasikan: '.$competition->name,
-            body: 'Kesiswaan sudah memverifikasi lomba yang kamu kirim. Lomba ini sekarang tampil di katalog.',
+            body: 'Kesiswaan sudah memverifikasi lomba yang dikirim. Lomba ini sekarang tampil di katalog.',
             routeName: $toStudent ? 'siswa.lomba.show' : null,
             routeParameters: ['competition' => (string) $competition->getKey()],
             actionLabel: 'Lihat lomba',

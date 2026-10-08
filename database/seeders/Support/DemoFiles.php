@@ -11,13 +11,14 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 /**
- * Files of the local demo data: a `files` row + a PDF on the private `local` disk under demo/ with a random name.
- * Never used outside local seeding.
+ * Files of the local demo data: a `files` row + a PDF (or, for a lomba cover, a JPEG) on the private `local` disk
+ * under demo/ with a random name. Never used outside local seeding.
  *
- * pdf() writes a tiny placeholder (one page, "Berkas contoh - data fiktif"). After seeding, DemoSeeder lets
- * Support\Demo\DemoFileRefresher replace every placeholder by a realistic sample document (certificate, piagam,
- * research report, juknis, brochure, letter), but only when realistic() says so: a real local seed, never the
- * test suite, where the placeholders stay because rendering about a hundred PDFs takes most of a minute.
+ * pdf() writes a tiny placeholder (one page, "Berkas contoh - data fiktif"), cover() a tiny flat grey JPEG. After
+ * seeding, DemoSeeder lets Support\Demo\DemoFileRefresher replace every placeholder by a realistic sample document
+ * (certificate, piagam, research report, juknis, brochure, letter) or the drawn poster of the lomba (DemoCoverArt),
+ * but only when realistic() says so: a real local seed, never the test suite, where the placeholders stay because
+ * rendering about a hundred PDFs takes most of a minute.
  */
 final class DemoFiles
 {
@@ -67,7 +68,21 @@ final class DemoFiles
             'Nama berkas: '.$originalName,
         ]);
 
-        $path = self::DIRECTORY.'/'.Str::lower((string) Str::ulid()).'.pdf';
+        return self::store($bytes, 'pdf', 'application/pdf', $originalName, $purpose, $ownerUserId);
+    }
+
+    /**
+     * The cover picture of a demo lomba (purpose `cover`, image/jpeg): the placeholder of DemoCoverArt, which
+     * DemoFileRefresher replaces by the drawn poster. $originalName is one of the names in DemoCoverArt::POSTERS.
+     */
+    public static function cover(string $originalName, ?int $ownerUserId = null): File
+    {
+        return self::store(DemoCoverArt::placeholder(), 'jpg', 'image/jpeg', $originalName, FilePurpose::Cover, $ownerUserId);
+    }
+
+    private static function store(string $bytes, string $extension, string $mime, string $originalName, FilePurpose $purpose, ?int $ownerUserId): File
+    {
+        $path = self::DIRECTORY.'/'.Str::lower((string) Str::ulid()).'.'.$extension;
         Storage::disk('local')->put($path, $bytes);
 
         $file = new File;
@@ -75,7 +90,7 @@ final class DemoFiles
             'disk' => 'local',
             'path' => $path,
             'original_name' => $originalName,
-            'mime' => 'application/pdf',
+            'mime' => $mime,
             'size' => strlen($bytes),
             'sha256' => hash('sha256', $bytes),
             'purpose' => $purpose,

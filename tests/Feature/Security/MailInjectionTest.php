@@ -173,7 +173,7 @@ it('keeps a signed action URL and punctuation in the texts intact', function ():
         [new PasswordWasReset, 'Halo Nadia,', 'baru saja diganti lewat "Lupa kata sandi". Semua perangkat sudah dikeluarkan.'],
         [new LetterRevokedNotice('Ibu Siti', 'Surat Tugas', '400.3.8/313/MRD/X/2026', '400.3.8.6/14/2026', 'OSN', 'Salah tulis'), 'Penggantinya: nomor 400.3.8.6/14/2026.', 'Ibu Siti mencabut Surat Tugas nomor 400.3.8/313/MRD/X/2026 (OSN).'],
         [new RoleChangeNotice(RoleChangeNotice::REQUESTED, 'Raka', 'Sari', 'Tata Usaha', '3 Okt 2026, 09.00'), 'Raka meminta peran Sari diubah menjadi Tata Usaha.', 'Jika keliru, batalkan di menu Pengguna & peran.'],
-        [new SignatureReplaced('Raka'), 'Raka meng-upload gambar tanda tangan + stempel baru.', 'Jika bukan atas persetujuan Anda, hubungi Admin sekarang.'],
+        [new SignatureReplaced('Raka'), 'Raka meng-upload gambar tanda tangan + stempel baru.', 'Jika tanpa persetujuan Kepala Sekolah, hubungi Admin sekarang.'],
     ];
 
     foreach ($lines as [$notification, $first, $second]) {

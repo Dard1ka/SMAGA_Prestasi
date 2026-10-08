@@ -1,5 +1,5 @@
 {{--
-    App top bar (DESIGN-SPEC-v2 §4): left = page title (h1 30px Urbanist) + one-line subtitle, or the
+    App top bar (DESIGN-SPEC-v3 §4): left = page title (h1, .title-page) + one-line subtitle, or the
     `lead` slot (breadcrumb); right = actions slot, search (GET ?q= to the role's list page), bell with
     unread dot, avatar button with the account menu (Notifikasi, Keamanan akun, Keluar). Below lg a menu button
     opens the drawer <dialog id="sth-nav"> rendered by the app layout.
@@ -22,6 +22,9 @@
     $user = $nav['user'];
     $query = $search ? request()->query($search['name']) : null;
     $query = is_string($query) ? $query : '';
+    // One way to each place: below lg the search icon is left out when a tab of the tab bar opens the same page
+    // (siswa: tab "Lomba" = Cari lomba, where the search box is).
+    $searchInTabs = $search !== null && collect($nav['tabbar'] ?? [])->contains(fn (array $tab): bool => ($tab['href'] ?? null) === $search['action']);
 @endphp
 <header {{ $attributes->class('flex items-center justify-between gap-3 lg:gap-6') }}>
     <div class="flex min-w-0 items-center gap-3">
@@ -31,10 +34,11 @@
                 {{ $lead }}
             @else
                 @if ($title)
-                    <h1 class="title-page truncate">{{ $title }}</h1>
+                    {{-- Phones: one size down and free to wrap, so "Persetujuan" or "Dashboard prestasi" is never cut. --}}
+                    <h1 class="title-page max-sm:text-xl sm:truncate">{{ $title }}</h1>
                 @endif
                 @if ($subtitle)
-                    <p class="m-0 hidden text-[15px] leading-[1.4] text-muted sm:block">{{ $subtitle }}</p>
+                    <p class="m-0 hidden text-md leading-[1.4] text-muted sm:block">{{ $subtitle }}</p>
                 @endif
             @endisset
         </div>
@@ -52,7 +56,9 @@
                 <x-sth.icon name="search" class="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-placeholder" />
                 <input class="input pl-11" id="cari-atas" type="search" name="{{ $search['name'] }}" value="{{ $query }}" placeholder="{{ $search['placeholder'] }}" autocomplete="off">
             </form>
-            <x-sth.icon-button icon="search" :label="$search['placeholder']" :href="$search['action']" class="lg:hidden" />
+            @unless ($searchInTabs)
+                <x-sth.icon-button icon="search" :label="$search['placeholder']" :href="$search['action']" class="lg:hidden" />
+            @endunless
         @endif
 
         {{-- B1: bell → notifikasi.index; unread count badge (99+) instead of the plain dot. --}}
@@ -64,7 +70,7 @@
                 :disabled="$notifUrl === null"
             />
             @if ($count > 0)
-                <span class="pointer-events-none absolute -top-1 -right-1 min-w-5 rounded-full border-2 border-white bg-primary px-1 text-center text-[11px] leading-4 font-bold text-white" aria-hidden="true">{{ $count > 99 ? '99+' : $count }}</span>
+                <span class="pointer-events-none absolute -top-1 -right-1 min-w-5 rounded-full border-2 border-white bg-primary px-1 text-center text-xs leading-4 font-bold text-white" aria-hidden="true">{{ $count > 99 ? '99+' : $count }}</span>
             @endif
         </span>
 
@@ -76,7 +82,7 @@
             <div id="sth-user-menu" class="menu" hidden data-sth-menu-panel>
                 <div class="mb-1.5 border-b border-line px-3 pt-2 pb-2.5">
                     <p class="m-0 text-sm font-bold">{{ $user['name'] }}</p>
-                    <p class="m-0 text-[12.5px] text-muted">{{ $user['meta'] }}</p>
+                    <p class="m-0 text-xs text-muted">{{ $user['meta'] }}</p>
                 </div>
                 {{-- W4: account items of every role (siswa also has them in the sidebar "Akun" section). --}}
                 @if ($notifUrl)

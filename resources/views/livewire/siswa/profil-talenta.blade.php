@@ -8,7 +8,7 @@
                     <h2 id="h-pilihan" class="title-card">Talenta pilihanmu</h2>
                     <x-sth.chip class="num">{{ count($rows) }}</x-sth.chip>
                 </div>
-                <p class="muted m-0 text-[13px]"><span class="sr-only">Tahapan: </span>Terdaftar › Pemetaan › Seleksi/asesmen › Peserta pembinaan</p>
+                <p class="muted m-0 text-xs"><span class="sr-only">Tahapan: </span>Terdaftar › Pemetaan › Seleksi/asesmen › Peserta pembinaan</p>
             </div>
 
             @if ($undo)
@@ -31,7 +31,7 @@
                             @endif
                             <div class="flex min-w-0 flex-1 flex-col gap-1.5">
                                 <div class="flex flex-wrap items-center gap-2">
-                                    <h3 class="display m-0 text-[16px] font-bold">{{ $row['title'] }}</h3>
+                                    <h3 class="display m-0 text-base font-bold">{{ $row['title'] }}</h3>
                                     @if ($row['bidang'])
                                         <x-sth.chip :bidang="$row['bidang']" size="sm" />
                                     @endif
@@ -39,9 +39,9 @@
                                 </div>
                                 <span class="text-sm text-ink-2">{{ $row['info'] }}</span>
                                 @if ($row['note'])
-                                    <p class="m-0 rounded-control bg-subtle px-3 py-2 text-[13.5px] whitespace-pre-line break-words"><span class="font-bold">Catatan dari Kesiswaan:</span> {{ $row['note'] }}</p>
+                                    <p class="m-0 rounded-control bg-subtle px-3 py-2 text-sm whitespace-pre-line break-words"><span class="font-bold">Catatan dari Kesiswaan:</span> {{ $row['note'] }}</p>
                                 @endif
-                                <div class="muted flex flex-wrap items-center gap-2 text-[13px]">
+                                <div class="muted flex flex-wrap items-center gap-2 text-xs">
                                     @if ($row['step'] !== null)
                                         <span class="sg-row w-24" aria-hidden="true">
                                             @for ($i = 1; $i <= 4; $i++)
@@ -84,21 +84,24 @@
         <x-sth.card as="section" aria-labelledby="h-tambah" class="flex flex-col gap-5">
             <div class="flex flex-wrap items-baseline justify-between gap-2">
                 <h2 id="h-tambah" class="title-card">Tambah talenta</h2>
-                <span class="muted text-[13px]">Penjaringan pembinaan talenta {{ $year }}</span>
+                <span class="muted text-xs">Penjaringan pembinaan talenta {{ $year }}</span>
             </div>
 
-            <div role="group" aria-labelledby="lbl-jenis" class="flex flex-col gap-2.5">
+            {{-- The tiles follow the width of this card (container query): three per row from 540px, else two, so
+                 "Seni Budaya" stays inside its tile next to the side column of a 1280px laptop; on a phone
+                 narrower than 390px the icon tile is left out (the tag carries the bidang colour). --}}
+            <div role="group" aria-labelledby="lbl-jenis" class="@container flex flex-col gap-2.5">
                 <span id="lbl-jenis" class="label inline-flex items-center gap-2">
                     <span @class(['inline-flex size-6 items-center justify-center rounded-full text-xs font-bold', 'bg-primary text-white' => $selectedType === null, 'bg-green-bg text-green' => $selectedType !== null]) aria-hidden="true">1</span>
                     Pilih jenis talenta
                 </span>
-                <div class="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                <div class="grid auto-rows-fr grid-cols-2 gap-2 @min-[540px]:grid-cols-3">
                     @foreach ($types as $type)
                         <button type="button" wire:key="jenis-{{ $type->id }}" wire:click="pilihJenis('{{ $type->id }}')"
                             aria-pressed="{{ $jenis === $type->id ? 'true' : 'false' }}"
-                            @class(['pick flex min-h-14 items-center justify-start gap-3 px-3 text-left', 'pick-on' => $jenis === $type->id])>
-                            <x-sth.bidang-tile :bidang="$type->bidang" size="sm" />
-                            <span class="flex flex-col items-start gap-1">
+                            @class(['pick flex min-h-14 min-w-0 items-center justify-start gap-3 px-3 text-left', 'pick-on' => $jenis === $type->id])>
+                            <x-sth.bidang-tile :bidang="$type->bidang" size="sm" class="@max-[309px]:hidden" />
+                            <span class="flex min-w-0 flex-col items-start gap-1">
                                 <span class="font-bold">{{ $type->code->label() }}</span>
                                 <x-sth.chip :bidang="$type->bidang" size="sm" />
                             </span>
@@ -115,7 +118,7 @@
                         {{ $selectedType === null ? 'Pilih cabang' : ($selectedType->requiresBranch() ? 'Pilih cabang '.$selectedType->code->label() : 'Cabang') }}
                     </span>
                     @if ($branches !== [])
-                        <span class="muted num text-[13px]">{{ count($branches) }} cabang</span>
+                        <span class="muted num text-xs">{{ count($branches) }} cabang</span>
                     @endif
                 </div>
                 @if ($selectedType === null)
@@ -157,7 +160,7 @@
                         <x-sth.button icon="plus" wire:click="daftar" wire:loading.attr="disabled" wire:target="daftar,bukti"
                             :disabled="$helper !== null" :aria-describedby="$helper ? 'daftar-help' : null">Daftar penjaringan</x-sth.button>
                         @if ($helper)
-                            <span id="daftar-help" class="muted text-[13px]">{{ $helper }}</span>
+                            <span id="daftar-help" class="muted text-xs">{{ $helper }}</span>
                         @endif
                     </div>
                 </div>
@@ -169,16 +172,16 @@
         <x-sth.card as="section" aria-label="Data akun" class="flex items-center gap-3.5">
             <x-sth.avatar :name="$identity['name']" size="lg" />
             <div class="flex min-w-0 flex-col">
-                <span class="display text-[16px] font-bold">{{ $identity['name'] }}</span>
+                <span class="display text-base font-bold">{{ $identity['name'] }}</span>
                 <span class="num text-sm">{{ $identity['meta'] }}</span>
-                <span class="muted text-[12.5px]">Data diambil dari akunmu.</span>
+                <span class="muted text-xs">Data diambil dari akunmu.</span>
             </div>
         </x-sth.card>
 
         <x-sth.card as="section" aria-labelledby="h-riwayat" class="flex flex-col gap-4">
             <div class="flex flex-wrap items-baseline justify-between gap-2">
                 <h2 id="h-riwayat" class="title-card">Riwayat talenta</h2>
-                <span class="muted text-[13px]">Dipakai saat pemetaan</span>
+                <span class="muted text-xs">Dipakai saat pemetaan</span>
             </div>
 
             <form wire:submit="simpan" class="flex flex-col gap-4" novalidate>
@@ -192,7 +195,7 @@
                         @endforeach
                         @if (count($minat) < \App\Models\TalentProfile::MAX_INTERESTS)
                             <input id="minat-baru" type="text" wire:model="minatBaru" wire:keydown.enter.prevent="tambahMinat" maxlength="40"
-                                class="min-h-9 min-w-32 flex-1 border-0 bg-transparent px-1 text-[15px] outline-none" placeholder="Tambah minat" @error('minat') aria-invalid="true" aria-describedby="minat-error" @enderror>
+                                class="min-h-9 min-w-32 flex-1 border-0 bg-transparent px-1 text-md outline-none" placeholder="Tambah minat" @error('minat') aria-invalid="true" aria-describedby="minat-error" @enderror>
                             <x-sth.icon-button icon="plus" label="Tambah minat" size="sm" wire:click="tambahMinat" />
                         @endif
                     </div>
@@ -223,7 +226,7 @@
                                 @else
                                     <span class="ellip text-sm font-bold">{{ $file['name'] }}</span>
                                 @endif
-                                <span class="muted text-[12.5px]">Tersimpan</span>
+                                <span class="muted text-xs">Tersimpan</span>
                             </span>
                             <x-sth.icon-button icon="trash" label="Hapus {{ $file['name'] }}" size="sm" wire:click="hapusSertifikat('{{ $file['id'] }}')" />
                         </div>

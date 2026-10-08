@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Enums\RoleName;
+use App\Livewire\Siswa\TurMenu;
 use App\Support\Navigation;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Route;
@@ -40,9 +41,21 @@ it('builds the siswa menu from the spec with disabled items for missing routes',
         ->and($items['beranda']['disabled'])->toBe(! Route::has('siswa.beranda'))
         ->and($items['beranda']['href'])->toBe(Route::has('siswa.beranda') ? route('siswa.beranda') : '#')
         ->and($items['lomba-saya']['badge'])->toBe(2)
-        ->and($nav['cta']['label'])->toBe('Cari lomba')
+        ->and($nav)->not->toHaveKey('cta') // one way to each place: "Cari lomba" is a menu item, no button above the menu
         ->and($nav['tabbar'])->toHaveCount(5)
+        // One name per page: the tab bar says what the sidebar says ("Lomba saya", "Portofolio").
+        ->and(array_column($nav['tabbar'], 'label'))->toBe(['Beranda', 'Lomba', 'Lomba saya', 'Peringkat', 'Portofolio'])
+        ->and($items['lomba-saya']['label'])->toBe('Lomba saya')
+        ->and($items['portofolio']['label'])->toBe('Portofolio')
         ->and($nav['user'])->toBe(['name' => 'Nadia Putri Anindya', 'meta' => 'Siswa · XI-4', 'initials' => 'NA']);
+});
+
+it('draws the tab replicas of the mobile menu tour with the tab bar labels', function (): void {
+    // Siswa\TurMenu covers a tab with a copy of it: a tab that is renamed must be renamed there too.
+    $tabs = array_column(Navigation::tabbar('none'), 'label');
+
+    expect(array_column(TurMenu::mobileTips(), 'label'))->toBe(array_slice($tabs, 1))
+        ->and(array_column(TurMenu::mobileTips(), 'title'))->toBe(array_slice($tabs, 1));
 });
 
 it('marks the matching route as current and links existing routes', function (): void {
@@ -149,6 +162,17 @@ it('puts Notifikasi and Keamanan akun in the avatar menu of every role', functio
         ->and($html)->toContain('Keamanan akun');
 });
 
+it('leaves the phone search icon out when a tab already opens that page', function (): void {
+    // One way to each place: below lg the siswa tab "Lomba" is Cari lomba. Staff have no tab bar and keep the icon.
+    $render = fn (array $nav): string => Blade::render('<x-sth.topbar :nav="$nav" title="Beranda" />', ['nav' => $nav]);
+    $siswa = $render(Navigation::for(['name' => 'Nadia Putri Anindya', 'meta' => 'Siswa · XI-4'], 'siswa', [], 'none'));
+    $staff = $render(Navigation::for(['name' => 'Ibu Dwi Rahayu', 'roles' => ['kesiswaan']], 'kesiswaan', [], 'none'));
+
+    expect($siswa)->toContain('id="cari-atas"') // the text box of lg and up stays
+        ->and($siswa)->not->toContain('aria-label="Cari lomba"')
+        ->and($staff)->toContain('aria-label="Cari lomba"');
+});
+
 it('covers exactly the roles of App\Enums\RoleName', function (): void {
     $roles = array_map(fn (RoleName $r): string => $r->value, RoleName::cases());
 
@@ -167,3 +191,18 @@ it('builds initials from the first and last name, skipping honorifics and degree
     ['Keisha', 'K'],
     ['', ''],
 ]);
+
+// QA7: explore round after UI3 (2026-10-08) ---------------------------------------------------------
+
+it('marks no phone tab as the current page on the account pages (QA7)', function (): void {
+    $current = fn (string $route): array => array_values(array_column(
+        array_filter(Navigation::tabbar($route), fn (array $tab): bool => (bool) ($tab['current'] ?? false)),
+        'label',
+    ));
+
+    // The tab was "Profil" and covered the account pages; since D-119 it is "Portofolio", which they are not.
+    expect($current('akun.keamanan'))->toBe([])
+        ->and($current('notifikasi.index'))->toBe([])
+        ->and($current('siswa.portofolio'))->toBe(['Portofolio'])
+        ->and($current('siswa.talenta'))->toBe(['Portofolio']);
+});

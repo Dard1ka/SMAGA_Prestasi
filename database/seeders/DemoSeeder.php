@@ -6,6 +6,7 @@ namespace Database\Seeders;
 
 use App\Domain\Accounts\InitialPassword;
 use App\Domain\Archive\GraduationCalculator;
+use App\Domain\Files\CoverThumbnail;
 use App\Domain\Letters\LetterNumber;
 use App\Domain\Points\PointCalculator;
 use App\Domain\Points\WeightTable;
@@ -56,6 +57,7 @@ use App\Models\WeightVersion;
 use Carbon\CarbonImmutable;
 use Database\Seeders\Support\Demo\DemoFileRefresher;
 use Database\Seeders\Support\Demo\DemoLetterBasis;
+use Database\Seeders\Support\DemoCoverArt;
 use Database\Seeders\Support\DemoFiles;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Seeder;
@@ -347,9 +349,11 @@ final class DemoSeeder extends Seeder
         $this->letterNumber = new LetterNumber;
         $this->classrooms = Classroom::query()->pluck('id', 'name')->all();
 
-        // Placeholder PDFs of a previous demo seed are orphans after migrate:fresh; drop them.
+        // Placeholder PDFs of a previous demo seed are orphans after migrate:fresh; drop them. So are the small
+        // pictures the app made of the covers of that seed (CoverThumbnail: derived files, made again when asked for).
         if (File::query()->where('path', 'like', DemoFiles::DIRECTORY.'/%')->doesntExist()) {
             Storage::disk('local')->deleteDirectory(DemoFiles::DIRECTORY);
+            Storage::disk(CoverThumbnail::DISK)->deleteDirectory(CoverThumbnail::DIRECTORY);
         }
 
         Model::unguarded(fn () => DB::transaction(function (): void {
@@ -374,7 +378,8 @@ final class DemoSeeder extends Seeder
         ));
 
         // The files above are tiny placeholders. On a real local seed they become realistic sample documents
-        // (certificates, piagam, research report, juknis, brochures, letters); tests keep the placeholders.
+        // (certificates, piagam, research report, juknis, brochures, letters) and the covers become drawn posters;
+        // tests keep the placeholders.
         if (DemoFiles::realistic()) {
             foreach (DemoFileRefresher::lines(app(DemoFileRefresher::class)->refresh()) as $line) {
                 $this->command?->line($line);
@@ -552,6 +557,8 @@ final class DemoSeeder extends Seeder
 
         foreach ($catalog as $key => [$name, $bidang, $level, $organizer, $opens, $closes, $startsOn, $location, $mode, $participation, $maxTeam, $mentor, $juknis]) {
             [$organizerName, $organizerType, $category, $eventStatus] = self::ORGANIZERS[$organizer];
+            // Seven of the eight carry a cover (the list is DemoCoverArt::POSTERS); KRENOVA 2027 shows a card without one.
+            $cover = DemoCoverArt::fileNameFor($name);
 
             $this->competitions[$key] = Competition::query()->create([
                 'name' => $name,
@@ -574,6 +581,7 @@ final class DemoSeeder extends Seeder
                 'website_url' => 'https://example.org/lomba/'.Str::slug($name),
                 'registration_url' => 'https://example.org/daftar/'.Str::slug($name),
                 'juknis_file_id' => $juknis === null ? null : DemoFiles::pdf($juknis, FilePurpose::Juknis, $kesiswaan->getKey(), $name)->getKey(),
+                'cover_file_id' => $cover === null ? null : DemoFiles::cover($cover, $kesiswaan->getKey())->getKey(),
                 'status' => CompetitionStatus::Dipublikasikan,
                 'submitted_by' => $kesiswaan->getKey(),
                 'verified_by' => $kesiswaan->getKey(),

@@ -24,34 +24,30 @@
         @endif
     </div>
 
-    <div class="flex flex-col gap-4" wire:loading.class="opacity-70">
+    <div class="@container flex flex-col gap-4" wire:loading.class="opacity-70">
         @if ($total === 0)
             @if ($isCatalog)
                 <x-sth.empty-state icon="search" title="Belum ada lomba yang cocok">
                     Ubah pencarian, atau upload info lomba baru.
                 </x-sth.empty-state>
             @else
-                <x-sth.empty-state icon="upload" title="Belum ada info lomba yang kamu upload">
+                <x-sth.empty-state icon="upload" title="Belum ada info lomba yang di-upload">
                     Kesiswaan memeriksa setiap upload sebelum tampil di katalog.
-                    @if ($canUpload)
-                        <x-slot:actions>
-                            <x-sth.button variant="soft" size="sm" data-sth-open="usul" aria-haspopup="dialog">Upload info lomba</x-sth.button>
-                        </x-slot:actions>
-                    @endif
                 </x-sth.empty-state>
             @endif
         @elseif ($isCatalog)
-            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            <div class="grid grid-cols-1 gap-4 @min-[900px]:grid-cols-2 @min-[1360px]:grid-cols-3">
                 @foreach ($cards as $card)
                     <x-sth.lomba-card wire:key="lomba-{{ $card['id'] }}"
                         :title="$card['title']" :href="$card['href']" :bidang="$card['bidang']" :tingkat="$card['tingkat']"
                         :status="$card['status']" :status-tone="$card['statusTone']" :peserta="$card['peserta']"
                         :penyelenggara="$card['penyelenggara']" :date="$card['date']" :place="$card['place']"
-                        :names="$card['names']" :count="$card['count']" :note="$card['note']" heading="h2" />
+                        :names="$card['names']" :count="$card['count']" :note="$card['note']" heading="h2"
+                        :seed="$card['id']" :poster="$card['poster']" />
                 @endforeach
             </div>
         @else
-            <x-sth.table caption="Info lomba yang kamu upload, {{ $total }} lomba" fixed>
+            <x-sth.table caption="Info lomba yang di-upload, {{ $total }} lomba" fixed table-class="min-w-[520px]">
                 <x-slot:head>
                     <th scope="col">Lomba</th>
                     <th scope="col" class="hidden w-32 sm:table-cell">Dikirim</th>
@@ -63,17 +59,17 @@
                         <td>
                             <div class="flex min-w-0 flex-col">
                                 <span class="font-bold break-words">{{ $row['name'] }}</span>
-                                <span class="text-[12.5px] text-muted">{{ $row['organizer'] ?: 'Penyelenggara belum diisi' }}<span class="sm:hidden"> · {{ $row['sent'] }}</span></span>
+                                <span class="text-xs text-muted">{{ $row['organizer'] ?: 'Penyelenggara belum diisi' }}<span class="sm:hidden"> · {{ $row['sent'] }}</span></span>
                                 @if ($row['note'])
-                                    <span class="text-[12.5px] text-red">Catatan: {{ $row['note'] }}</span>
+                                    <span class="text-xs text-red">Catatan: {{ $row['note'] }}</span>
                                 @endif
                             </div>
                         </td>
-                        <td class="num hidden text-[13.5px] sm:table-cell">{{ $row['sent'] }}</td>
+                        <td class="num hidden text-sm sm:table-cell">{{ $row['sent'] }}</td>
                         <td>
                             <div class="flex flex-col items-start gap-1">
                                 <x-sth.chip :tone="$row['tone']" size="sm">{{ $row['status'] }}</x-sth.chip>
-                                @if ($row['checked'])<span class="num text-[12px] text-muted">Diperiksa {{ $row['checked'] }}</span>@endif
+                                @if ($row['checked'])<span class="num text-xs text-muted">Diperiksa {{ $row['checked'] }}</span>@endif
                             </div>
                         </td>
                         <td class="text-right"><x-sth.link :href="$row['href']">Lihat<span class="sr-only"> {{ $row['name'] }}</span></x-sth.link></td>
@@ -108,14 +104,14 @@
                 <dl class="m-0 grid grid-cols-1 gap-3 sm:grid-cols-2">
                     @foreach ($detail['facts'] as $fact)
                         <div class="flex flex-col gap-0.5">
-                            <dt class="text-[12.5px] font-semibold text-muted">{{ $fact['label'] }}</dt>
+                            <dt class="text-xs font-semibold text-muted">{{ $fact['label'] }}</dt>
                             <dd class="m-0 font-bold">{{ $fact['value'] }}</dd>
                         </div>
                     @endforeach
                 </dl>
 
                 @if ($detail['description'])
-                    <p class="m-0 text-[14.5px] whitespace-pre-line">{{ $detail['description'] }}</p>
+                    <p class="m-0 text-md whitespace-pre-line">{{ $detail['description'] }}</p>
                 @endif
 
                 @if ($detail['juknis'] || $detail['website'])
@@ -124,13 +120,13 @@
                             <x-sth.button variant="quiet" icon="download" :href="$detail['juknis']['href']">Download juknis · {{ $detail['juknis']['size'] }}</x-sth.button>
                         @endif
                         @if ($detail['website'])
-                            <span class="text-[13.5px]"><x-sth.link :href="$detail['website']" external icon-right="external">Website resmi</x-sth.link> <span class="text-muted">({{ $detail['websiteHost'] }})</span></span>
+                            <span class="text-sm"><x-sth.link :href="$detail['website']" external icon-right="external">Website resmi</x-sth.link> <span class="text-muted">({{ $detail['websiteHost'] }})</span></span>
                         @endif
                     </div>
                 @endif
 
                 <section aria-labelledby="h-binaan-lomba" class="flex flex-col gap-2">
-                    <h3 id="h-binaan-lomba" class="title-card m-0">Siswa binaanmu di lomba ini</h3>
+                    <h3 id="h-binaan-lomba" class="title-card m-0">Siswa binaan di lomba ini</h3>
                     @if ($detail['binaan'] === [])
                         <p class="m-0 text-sm text-muted">Belum ada.</p>
                     @else
@@ -139,7 +135,7 @@
                                 <li><a href="{{ $person['href'] }}" class="flex items-center gap-2.5 rounded-tile p-2 hover:bg-hover">
                                     <x-sth.avatar :name="$person['name']" size="sm" />
                                     <span class="font-bold text-ink">{{ $person['name'] }}</span>
-                                    @if ($person['kelas'])<span class="text-[12.5px] text-muted">{{ $person['kelas'] }}</span>@endif
+                                    @if ($person['kelas'])<span class="text-xs text-muted">{{ $person['kelas'] }}</span>@endif
                                 </a></li>
                             @endforeach
                         </ul>
@@ -153,6 +149,6 @@
     @endif
 
     @if ($canUpload)
-        <livewire:lomba.usulan-form />
+        <livewire:lomba.usulan-form :upload="true" />
     @endif
 </div>

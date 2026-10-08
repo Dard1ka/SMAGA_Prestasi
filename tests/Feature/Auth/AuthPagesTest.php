@@ -21,8 +21,8 @@ it('renders the login page without ever showing the initial password pattern', f
         ->assertSee('Pakai NIS atau NISN dan kata sandi dari sekolah.')
         // M1-B: one field for NIS, NISN or the email bound at activation; the note follows the new order.
         ->assertSee('NIS, NISN, atau email')
-        ->assertSee('Sudah aktivasi? Kamu juga bisa masuk pakai email. Guru dan staf: username atau email.')
-        ->assertSee('Kamu akan diminta menghubungkan email dulu. Setelah itu kamu boleh ganti kata sandi.')
+        ->assertSee('Sudah aktivasi? Bisa juga masuk pakai email. Guru dan staf: username atau email.')
+        ->assertSee('Nanti diminta menghubungkan email dulu. Setelah itu boleh ganti kata sandi.')
         ->assertSee('name="identifier"', false)
         ->assertSee(route('password.request'), false)
         ->assertDontSee('sm4g4')

@@ -8,13 +8,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="csrf-token" content="{{ csrf_token() }}">
 <meta name="color-scheme" content="light">
-<meta name="theme-color" content="#3148D6">
+<meta name="theme-color" content="#1B2A4E">
 @if (! empty($robots))
     <meta name="robots" content="{{ $robots }}">
 @endif
 <title>{{ ! empty($title) ? $title.' · ' : '' }}SMAGA Talent Hub</title>
+{{-- The crest of the school (D-120). A raster picture: there is no vector file of it, so no SVG icon. --}}
 <link rel="icon" href="{{ asset('favicon.ico') }}" sizes="32x32">
-<link rel="icon" href="{{ asset('favicon.svg') }}" type="image/svg+xml">
+<link rel="icon" href="{{ asset('icon-192.png') }}" type="image/png" sizes="192x192">
 <link rel="apple-touch-icon" href="{{ asset('apple-touch-icon.png') }}">
 @vite(['resources/css/app.css', 'resources/js/app.js'])
 @livewireStyles

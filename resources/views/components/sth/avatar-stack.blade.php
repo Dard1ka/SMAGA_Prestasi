@@ -19,7 +19,7 @@
             <x-sth.avatar :name="$person" :size="$size" />
         @endforeach
         @if ($rest > 0)
-            <span @class(['avatar num bg-gray-bg text-gray', 'size-[26px] text-[10px]' => $size === 'xs', 'size-8 text-xs' => $size === 'sm', 'size-[38px] text-sm' => $size === 'md'])>+{{ $rest }}</span>
+            <span @class(['avatar num bg-gray-bg text-gray', 'size-7 text-xs tracking-tight' => $size === 'xs', 'size-8 text-xs' => $size === 'sm', 'size-[38px] text-sm' => $size === 'md'])>+{{ $rest }}</span>
         @endif
     </span>
 @endif

@@ -432,6 +432,18 @@ Header tiap jawaban (diuji di `tests/Feature/Files/FilePreviewTest.php`):
 - **Volume upload dan MySQL dipisah** (idealnya partisi/disk berbeda). Alert saat disk ≥ 80%. Disk penuh membuat MySQL crash.
 - **ClamAV (opsional):** memuat signature butuh ≥ 1,2 GiB RAM (disarankan 3–4 GiB) dan dua kali lipat saat reload kecuali `ConcurrentDatabaseReload no`. Di server 8 GB yang dipakai bersama, jalankan hanya bila anggaran RAM §3j memungkinkan, dengan scan asinkron di queue (status `pending_scan`: file belum bisa diunduh role lain). Tanpa ClamAV, andalkan allowlist + re-encode + header `sandbox` + staf tidak membuka PDF di aplikasi desktop lama.
 
+**Pembaruan 7 Okt 2026 (UI3, D-118, *sementara*): rute gambar sampul `files.cover`.** Kartu lomba kini menampilkan poster yang di-upload Kesiswaan lewat `<img>`. `files.show` tidak cocok untuk itu: tiap permintaan menulis satu catatan audit, jawabannya `no-store`, dan berkasnya sampai 2048 px. Rute baru `GET /berkas/sampul/{file}` (`FileController::cover`) khusus untuk berkas ber-`purpose = cover`:
+
+| Hal | Aturan |
+|---|---|
+| Siapa | Hanya pengguna yang sudah login (`auth`, `active`, `activated`, `staff.2fa`), lalu `FilePolicy::view` seperti `files.show`: lomba yang dipublikasikan, atau pengusul dan verifikator untuk lomba yang belum. Tamu diarahkan ke halaman masuk; berkas lain, lomba yang tidak boleh dilihat, dan ID yang tidak ada dijawab 404 |
+| Isi | Bukan berkas asli: JPEG progresif yang diperkecil (sisi terpanjang paling besar 640 px, kualitas 80) dari `App\Domain\Files\CoverThumbnail`, dibuat saat pertama diminta dan disimpan di disk privat (`sampul/<id berkas>.jpg`, data turunan, boleh dihapus kapan saja). Hanya JPEG/PNG/WEBP hasil `StoreUpload` yang didekode |
+| Header | `Content-Type: image/jpeg`, `Content-Disposition: inline`, `nosniff`, CSP `default-src 'none'; sandbox`, `X-Frame-Options: DENY`, `ETag`, **`Cache-Control: private, max-age=86400`** |
+| Audit | **Tidak dicatat.** Poster lomba bukan data pribadi dan tampil di daftar; `files.show` untuk berkas yang sama tetap dicatat |
+| Batas | `throttle:240,1,berkas-sampul` per pengguna (penghitung sendiri) |
+
+Yang perlu ditinjau pemilik backend (alasan status *sementara*): (1) ini satu-satunya jawaban berkas yang tidak diaudit dan boleh disimpan browser; selama 24 jam browser yang sudah punya gambarnya tidak bertanya lagi ke server, juga setelah logout atau setelah lombanya ditutup; (2) alamat gambar sampul tidak pernah menjadi halaman tujuan setelah login (`FortifyServiceProvider`, listener `Login`), karena katalog yang masih terbuka setelah sesi habis akan terus meminta gambarnya; (3) poster lama tetap tersimpan saat sampul diganti atau dihapus (perilaku `UpdateCompetition` yang sudah ada, tidak diubah); (4) halaman publik dan Humas tidak menampilkan poster. Diuji di `tests/Feature/Files/CoverPictureTest.php`.
+
 ### 3e. Deployment subdomain `prestasi.sman3-smg.sch.id` di Apache 2.4.29 (host bersama)
 
 **Keputusan (30 Sep 2026, D-18):** STH berjalan di subdomain sendiri. Situs utama `https://sman3-smg.sch.id/` adalah aplikasi terpisah di server yang sama. Apache 2.4.29 (paket Ubuntu 18.04) di host menjadi TLS reverse proxy ke kontainer. Risiko "sub-path pada origin bersama" dari v1 **tidak berlaku lagi**.

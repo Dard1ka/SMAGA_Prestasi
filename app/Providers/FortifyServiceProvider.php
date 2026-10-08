@@ -42,6 +42,9 @@ class FortifyServiceProvider extends ServiceProvider
 
     public const CONFIRM_PASSWORD_DECAY_SECONDS = 60;
 
+    /** Path prefix of `files.cover`: such an address is dropped as the intended address at login (D-118). */
+    public const COVER_PATH = '/berkas/sampul/';
+
     public function register(): void
     {
         $this->app->singleton(LoginResponseContract::class, LoginResponse::class);
@@ -136,6 +139,18 @@ class FortifyServiceProvider extends ServiceProvider
         // that logs in next goes to its beranda instead (App\Http\Middleware\RememberLoggedOutAccount).
         Event::listen(Logout::class, [RememberLoggedOutAccount::class, 'loggedOut']);
         Event::listen(Login::class, [RememberLoggedOutAccount::class, 'loggedIn']);
+
+        // A cover picture is never a page to land on (D-118). A catalog left open after the session ended keeps
+        // asking for its <img> covers; the guest redirect stores the last one as the intended address, and the
+        // next login would open a bare picture instead of the beranda.
+        Event::listen(Login::class, function (): void {
+            $intended = session('url.intended');
+            $path = is_string($intended) ? (string) parse_url($intended, PHP_URL_PATH) : '';
+
+            if (str_starts_with($path, self::COVER_PATH)) {
+                session()->forget('url.intended');
+            }
+        });
 
         // Audit rows for TOTP enabled / confirmed / disabled / recovery codes regenerated (Fortify's events).
         Event::subscribe(TwoFactorAuditSubscriber::class);

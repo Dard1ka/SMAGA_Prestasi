@@ -54,7 +54,7 @@
                         <dd class="m-0 text-sm font-semibold">{{ $competitionName }}</dd>
                     @endif
                 </dl>
-                <x-sth.alert>Pastikan nomor dan nama lomba sama dengan surat yang kamu pegang.</x-sth.alert>
+                <x-sth.alert>Pastikan nomor dan nama lomba sama dengan surat yang dipegang.</x-sth.alert>
             </x-sth.card>
         @else
             <x-sth.card as="section" padding="lg" class="flex flex-col gap-3" aria-labelledby="hasil-verifikasi">

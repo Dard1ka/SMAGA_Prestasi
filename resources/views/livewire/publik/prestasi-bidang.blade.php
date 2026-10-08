@@ -21,23 +21,24 @@
         </div>
     </div>
 
-    <div class="grid items-start gap-5 lg:grid-cols-[260px_minmax(0,1fr)] xl:grid-cols-[260px_400px_minmax(0,1fr)]" wire:loading.class="opacity-70">
+    {{-- First column 300px: the three year labels of the chart ("2024/2025") need 78px each at 13px, plus air. --}}
+    <div class="grid items-start gap-5 lg:grid-cols-[300px_minmax(0,1fr)] xl:grid-cols-[300px_400px_minmax(0,1fr)]" wire:loading.class="opacity-70">
         {{-- Level 1: bidang --}}
         <x-sth.card as="section" aria-labelledby="h-bidang" class="flex min-w-0 flex-col gap-3.5">
             <div class="flex items-baseline justify-between gap-2">
                 <h2 id="h-bidang" class="m-0 text-lg font-bold">Bidang</h2>
-                <span class="num text-[13px] font-semibold text-muted">{{ $summary['total'] }} prestasi</span>
+                <span class="num text-xs font-semibold text-muted">{{ $summary['total'] }} prestasi</span>
             </div>
             <div class="grid grid-cols-1 gap-2.5 min-[420px]:grid-cols-2 lg:grid-cols-1">
                 @foreach ($summary['bidang'] as $b)
                     @php $on = $b['value'] === $bidang; @endphp
                     <button type="button" wire:click="pilihBidang('{{ $b['value'] }}')" aria-pressed="{{ $on ? 'true' : 'false' }}"
-                        @class(['flex w-full cursor-pointer items-center gap-3 rounded-2xl border-2 p-3 text-left', $onClass[$b['key']] => $on, 'border-line bg-surface hover:bg-subtle' => ! $on])>
+                        @class(['flex w-full cursor-pointer items-center gap-3 rounded-card border-2 p-3 text-left', $onClass[$b['key']] => $on, 'border-line bg-surface hover:bg-subtle' => ! $on])>
                         <span class="cover-{{ $b['key'] }} inline-flex size-10 shrink-0 items-center justify-center rounded-control"><x-sth.icon :name="$b['key']" /></span>
                         <span class="flex min-w-0 flex-1 flex-col gap-2">
                             <span class="flex items-baseline justify-between gap-2">
-                                <span class="text-[15px] font-bold text-ink">{{ $b['label'] }}</span>
-                                <span class="display num text-[22px] leading-[26px] font-extrabold {{ $numClass[$b['key']] }}">{{ $b['count'] }}<span class="sr-only"> prestasi</span></span>
+                                <span class="text-md font-bold text-ink">{{ $b['label'] }}</span>
+                                <span class="display num text-xl leading-[26px] font-bold {{ $numClass[$b['key']] }}">{{ $b['count'] }}<span class="sr-only"> prestasi</span></span>
                             </span>
                             <span class="flex items-center gap-2">
                                 <span class="block h-1.5 flex-1 overflow-hidden rounded-full bg-ink/10" aria-hidden="true">
@@ -54,10 +55,10 @@
 
             <div class="flex flex-col gap-2.5">
                 <div class="flex items-center justify-between gap-2">
-                    <h3 class="m-0 text-[15.5px] font-bold">Perkembangan per tahun</h3>
+                    <h3 class="m-0 text-base font-bold">Perkembangan per tahun</h3>
                     <x-sth.chip size="sm" :bidang="$bidang" />
                 </div>
-                <span class="text-[12.5px] text-muted">{{ $chartNote }}</span>
+                <span class="text-xs text-muted">{{ $chartNote }}</span>
                 <div role="img" aria-label="Perkembangan prestasi {{ $selected['label'] }} per tahun ajaran: {{ $chartText }}" class="flex flex-col gap-2">
                     <div class="grid h-[176px] grid-cols-3 gap-1.5 border-b border-line-input">
                         @foreach ($years as $year)
@@ -65,7 +66,7 @@
                             <div class="flex h-full items-end justify-center">
                                 <div class="flex h-[140px] w-10 items-end">
                                     <span @class(['relative block w-full rounded-t-[10px] rounded-b-[4px]', $barClass[$key], 'h-pct-'.$year['pct']])>
-                                        <span class="display num absolute bottom-full left-1/2 mb-1.5 -translate-x-1/2 text-base leading-5 font-extrabold">{{ $year['count'] }}</span>
+                                        <span class="display num absolute bottom-full left-1/2 mb-1.5 -translate-x-1/2 text-base leading-5 font-bold">{{ $year['count'] }}</span>
                                         @if ($dim)<span class="absolute inset-0 rounded-t-[10px] rounded-b-[4px] bg-surface/65"></span>@endif
                                     </span>
                                 </div>
@@ -75,7 +76,7 @@
                     <div class="grid grid-cols-3 gap-1.5">
                         @foreach ($years as $year)
                             <div class="flex flex-col items-center gap-px text-center">
-                                <span class="num text-[12.5px] font-bold">{{ $year['tahun'] }}</span>
+                                <span class="num text-xs font-bold">{{ $year['tahun'] }}</span>
                                 <span class="text-xs text-muted">{{ $year['current'] ? 'berjalan' : 'prestasi' }}</span>
                             </div>
                         @endforeach
@@ -91,7 +92,7 @@
                     <h2 id="h-siswa" class="m-0 text-lg font-bold">Siswa berprestasi</h2>
                     <x-sth.chip size="sm" :bidang="$bidang" />
                 </div>
-                <span class="text-[13px] text-muted">Urut menurut total poin</span>
+                <span class="text-xs text-muted">Urut menurut total poin</span>
             </div>
 
             @if ($students === [])
@@ -105,11 +106,11 @@
                         <li wire:key="st-{{ $loop->index }}-{{ $s['slug'] ?? 'anon' }}">
                             @if ($s['slug'] !== null)
                                 <button type="button" wire:click="pilihSiswa('{{ $s['slug'] }}')" aria-pressed="{{ $on ? 'true' : 'false' }}"
-                                    @class(['flex w-full cursor-pointer items-center gap-3 rounded-2xl border-2 px-3 py-2.5 text-left', 'border-primary bg-primary-tint' => $on, 'border-transparent bg-surface hover:bg-page' => ! $on])>
+                                    @class(['flex w-full cursor-pointer items-center gap-3 rounded-card border-2 px-3 py-2.5 text-left', 'border-primary bg-primary-tint' => $on, 'border-transparent bg-surface hover:bg-page' => ! $on])>
                                     @include('livewire.publik.partials.student-row', ['s' => $s])
                                 </button>
                             @else
-                                <div class="flex w-full items-center gap-3 rounded-2xl border-2 border-transparent px-3 py-2.5">
+                                <div class="flex w-full items-center gap-3 rounded-card border-2 border-transparent px-3 py-2.5">
                                     @include('livewire.publik.partials.student-row', ['s' => $s])
                                 </div>
                             @endif
@@ -118,11 +119,11 @@
                 </ul>
                 @if ($hasMore)
                     <div class="flex flex-wrap items-center justify-between gap-2">
-                        <span class="text-[12.5px] text-muted">Menampilkan {{ count($students) }} dari {{ $studentTotal }} siswa</span>
+                        <span class="text-xs text-muted">Menampilkan {{ count($students) }} dari {{ $studentTotal }} siswa</span>
                         <x-sth.button variant="quiet" size="sm" icon="chevron-down" wire:click="tampilkanLebih">Tampilkan lebih banyak</x-sth.button>
                     </div>
                 @endif
-                <p class="m-0 text-[12.5px] text-muted">Nama siswa tampil bila ada persetujuan publikasi.</p>
+                <p class="m-0 text-xs text-muted">Nama siswa tampil bila ada persetujuan publikasi.</p>
             @endif
         </x-sth.card>
 

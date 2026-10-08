@@ -16,9 +16,9 @@
                             @class(['card flex w-full cursor-pointer items-start gap-3 p-3.5 text-left', 'border-primary ring-2 ring-primary-soft' => $item['selected']])>
                             @if ($item['bidang'])<x-sth.bidang-tile :bidang="$item['bidang']" size="sm" />@endif
                             <span class="flex min-w-0 flex-1 flex-col gap-0.5">
-                                <span class="clamp2 text-[14.5px] leading-snug font-bold text-ink">{{ $item['name'] }}</span>
-                                <span class="ellip text-[13px] text-muted">{{ $item['student'] }}</span>
-                                <span class="text-[12.5px] text-muted">Klaim {{ $item['claim'] }} · {{ $item['when'] }}</span>
+                                <span class="clamp2 text-md leading-snug font-bold text-ink">{{ $item['name'] }}</span>
+                                <span class="ellip text-xs text-muted">{{ $item['student'] }}</span>
+                                <span class="text-xs text-muted">Klaim {{ $item['claim'] }} · {{ $item['when'] }}</span>
                             </span>
                         </button>
                     </li>
@@ -41,7 +41,8 @@
                         <div class="flex flex-wrap items-center gap-2">
                             @if ($detail['bidang'])<x-sth.chip :bidang="$detail['bidang']" icon size="sm" />@endif
                             <x-sth.chip size="sm">{{ $detail['tingkat'] }}</x-sth.chip>
-                            <x-sth.chip size="sm">{{ $detail['organizer'] ? $detail['organizer'].' · ' : '' }}kategori {{ $detail['kategori'] }}</x-sth.chip>
+                            {{-- A penyelenggara name can be long: this tag may take two lines (QA7). --}}
+                            <x-sth.chip size="sm" class="chip-wrap">{{ $detail['organizer'] ? $detail['organizer'].' · ' : '' }}kategori {{ $detail['kategori'] }}</x-sth.chip>
                         </div>
                         <h2 class="title-section m-0">{{ $detail['name'] }}</h2>
                     </div>
@@ -54,7 +55,7 @@
                         <span class="font-bold">
                             @foreach ($detail['members'] as $member){{ $member['name'] }}{{ $member['class'] ? ' · '.$member['class'] : '' }}@if (! $loop->last), @endif @endforeach
                         </span>
-                        <span class="text-[13px] text-muted">
+                        <span class="text-xs text-muted">
                             {{ $detail['team'] ? 'Tim '.count($detail['members']).' siswa' : 'Individu' }}{{ $detail['branch'] ? ' · '.$detail['branch'] : '' }}
                             · Dilaporkan {{ $detail['reportedAt'] }}{{ $detail['mentor'] ? ' · Pembimbing '.$detail['mentor'] : '' }}
                         </span>
@@ -72,7 +73,7 @@
                             @endif
                             <span class="flex min-w-0 flex-1 flex-col gap-0.5">
                                 <span class="ellip font-bold">{{ $file['name'] }}</span>
-                                <span class="text-[13px] text-muted">{{ $file['kind'] }}{{ $file['size'] ? ' · '.$file['size'] : '' }}</span>
+                                <span class="text-xs text-muted">{{ $file['kind'] }}{{ $file['size'] ? ' · '.$file['size'] : '' }}</span>
                             </span>
                             @if ($file['url'] && $file['preview'])
                                 {{-- Preview popup (<x-sth.preview>): the href stays the download for a browser without JavaScript. --}}
@@ -84,7 +85,7 @@
                             @endif
                         </div>
                     @empty
-                        <p class="m-0 text-[13.5px] text-muted">Tidak ada bukti terlampir.</p>
+                        <p class="m-0 text-sm text-muted">Tidak ada bukti terlampir.</p>
                     @endforelse
                 </div>
 
@@ -92,7 +93,7 @@
                     <div class="flex flex-col gap-1 rounded-tile bg-subtle p-3.5">
                         <span class="label">Judul penelitian</span>
                         <span class="font-bold">{{ $detail['researchTitle'] }}</span>
-                        @if ($detail['researchAbstract'])<p class="m-0 text-[13.5px] text-ink-2">{{ $detail['researchAbstract'] }}</p>@endif
+                        @if ($detail['researchAbstract'])<p class="m-0 text-sm text-ink-2">{{ $detail['researchAbstract'] }}</p>@endif
                     </div>
                 @endif
 
@@ -105,18 +106,18 @@
                         <div class="flex flex-col gap-0.5 rounded-tile border border-line p-3">
                             <span class="label">Penetapan Kesiswaan</span>
                             <span class="font-bold">{{ $detail['resultLabel'] }}</span>
-                            @if ($detail['changed'])<span class="text-[12.5px] font-bold text-orange">Diubah dari klaim</span>@endif
+                            @if ($detail['changed'])<span class="text-xs font-bold text-orange">Diubah dari klaim</span>@endif
                         </div>
                     </div>
 
-                    <x-sth.radio-pick wire:model.live="finalResult" label="Capaian" :columns="5" size="sm" :options="$resultOptions" />
+                    <x-sth.radio-pick wire:model.live="finalResult" label="Capaian" :columns="5" :phone-columns="2" size="sm" :options="$resultOptions" />
 
                     <x-sth.card tone="gold" padding="sm" class="flex flex-col gap-2">
                         <span class="label">{{ $detail['pointsLabel'] }}</span>
                         @if ($detail['points'] !== null)
                             <x-sth.rumus-poin :tingkat="$detail['wLevel']" :capaian="$detail['wResult']" :penyelenggara="$detail['wOrganizer']" :total="$detail['points']" result-label="Poin" />
                         @else
-                            <span class="text-[13.5px] text-ink-2">Tingkat atau kategori lomba belum diisi di katalog. Lengkapi dulu di Kelola lomba.</span>
+                            <span class="text-sm text-ink-2">Tingkat atau kategori lomba belum diisi di katalog. Lengkapi dulu di Kelola lomba.</span>
                         @endif
                     </x-sth.card>
 
@@ -140,15 +141,15 @@
                             <x-sth.button variant="quiet" wire:click="requestRevision" wire:loading.attr="disabled">Minta revisi</x-sth.button>
                             <x-sth.button variant="danger" icon="x" wire:click="reject" wire:loading.attr="disabled">Tolak</x-sth.button>
                         </div>
-                        <p class="m-0 text-[13px] text-muted">{{ $checkCount < 4 ? 'Lengkapi 4 pemeriksaan untuk memberi poin. ' : '' }}Prestasi terverifikasi otomatis masuk antrean Humas dan peringkat.</p>
+                        <p class="m-0 text-xs text-muted">{{ $checkCount < 4 ? 'Lengkapi 4 pemeriksaan untuk memberi poin. ' : '' }}Prestasi terverifikasi otomatis masuk antrean Humas dan peringkat.</p>
                     @elseif ($detail['ownMentee'])
-                        <x-sth.alert tone="warning">Kamu pembimbing lomba ini. Laporan binaanmu diverifikasi petugas Kesiswaan lain.</x-sth.alert>
+                        <x-sth.alert tone="warning">Laporan binaan sendiri diverifikasi petugas Kesiswaan lain.</x-sth.alert>
                     @endif
                 @else
                     <div class="flex flex-col gap-1 rounded-tile border border-line p-3">
                         <span class="label">Capaian akhir</span>
                         <span class="font-bold">{{ $detail['resultLabel'] }}</span>
-                        @if ($detail['studentNote'])<span class="text-[13.5px] text-ink-2">Catatan: {{ $detail['studentNote'] }}</span>@endif
+                        @if ($detail['studentNote'])<span class="text-sm text-ink-2">Catatan: {{ $detail['studentNote'] }}</span>@endif
                     </div>
                 @endif
             </x-sth.card>

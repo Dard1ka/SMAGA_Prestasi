@@ -293,8 +293,9 @@ class Publikasi extends Component
                 : null,
             'publishedOn' => $publication->published_at !== null ? 'Terbit '.HumasQueries::shortDate($publication->published_at) : null,
             'photo' => $facts->photoConsent,
-            'cover' => $cssKey !== null ? 'cover-'.$cssKey : 'bg-subtle',
-            'icon' => $cssKey,
+            // Cover band: the template drawing of the bidang, picked from the lomba id (<x-sth.sampul>).
+            'bidang' => $cssKey,
+            'seed' => (string) $publication->achievement?->competition_id,
             'border' => HumasQueries::bidangBorder($cssKey),
             'selected' => (string) $publication->getKey() === $this->selectedId,
         ];

@@ -76,7 +76,7 @@
                     </td>
                     <td>
                         @if ($isSelf)
-                            <span class="text-sm muted">Akun kamu</span>
+                            <span class="text-sm muted">Akun sendiri</span>
                         @else
                             <span class="flex flex-wrap justify-end gap-2">
                                 @if ($isPrincipal && $canReplace)
@@ -140,7 +140,7 @@
             @if ($studentAccount['canConsent'])
                 <form wire:submit="saveConsent" class="flex flex-col gap-3 rounded-tile border border-line p-4" aria-labelledby="h-persetujuan" novalidate>
                     <div>
-                        <h4 id="h-persetujuan" class="text-[15px] font-bold">Persetujuan publikasi</h4>
+                        <h4 id="h-persetujuan" class="text-md font-bold">Persetujuan publikasi</h4>
                         <p class="text-sm muted">Ubah sesuai formulir izin orang tua. Tanpa izin publikasi, halaman publik hanya menulis "Siswa kelas …".</p>
                     </div>
                     <x-sth.checkbox wire:model="photoConsent" label="Foto boleh dipakai di publikasi" />
@@ -258,14 +258,14 @@
         @if ($issuedPassword)
             <div class="flex flex-col gap-3">
                 <p class="m-0 rounded-tile border border-line bg-subtle px-4 py-3 text-center font-mono text-2xl font-bold tracking-[0.12em] select-all">{{ $issuedPassword }}</p>
-                <ul class="m-0 flex list-disc flex-col gap-1 pl-5 text-[13.5px] text-ink-2">
+                <ul class="m-0 flex list-disc flex-col gap-1 pl-5 text-sm text-ink-2">
                     <li>Berlaku 72 jam. Setelah itu siswa perlu reset lagi.</li>
                     <li>Siswa masuk dengan NIS/NISN dan kata sandi ini, menghubungkan email, lalu wajib membuat kata sandi baru. Kata sandi ini tidak bisa dipakai terus.</li>
                     <li>Huruf besar dan kecil dibedakan.</li>
                 </ul>
             </div>
         @else
-            <p class="m-0 text-[13.5px] text-muted">Kata sandi sementara sudah ditutup.</p>
+            <p class="m-0 text-sm text-muted">Kata sandi sementara sudah ditutup.</p>
         @endif
         <x-slot:footer>
             <x-sth.button wire:click="forgetIssuedPassword">Sudah saya berikan</x-sth.button>

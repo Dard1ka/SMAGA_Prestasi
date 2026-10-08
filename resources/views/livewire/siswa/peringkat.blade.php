@@ -9,25 +9,25 @@
         <div class="flex min-w-0 flex-1 items-center gap-3.5">
             <span class="inline-flex size-12 shrink-0 items-center justify-center rounded-full bg-medal text-white" aria-hidden="true"><x-sth.icon name="award" :size="24" /></span>
             <div class="flex min-w-0 flex-col gap-0.5">
-                <h2 id="h-posisi" class="m-0 font-sans text-[13px] font-bold tracking-normal text-gold">Posisimu</h2>
+                <h2 id="h-posisi" class="m-0 font-sans text-xs font-bold tracking-normal text-gold">Posisimu</h2>
                 @if ($summary['rank'])
                     <p class="m-0 flex flex-wrap items-baseline gap-x-2">
-                        <span class="display num text-[30px] leading-[1.1] font-extrabold">#{{ $summary['rank'] }}</span>
+                        <span class="display num text-3xl leading-[1.1] font-bold">#{{ $summary['rank'] }}</span>
                         <span class="text-sm font-semibold text-gold">dari siswa aktif</span>
                     </p>
                 @else
-                    <p class="m-0 text-[15px] font-bold">Belum ada prestasi terverifikasi.</p>
+                    <p class="m-0 text-md font-bold">Belum ada prestasi terverifikasi.</p>
                 @endif
             </div>
         </div>
         <dl class="m-0 grid grid-cols-2 gap-3 sm:w-72">
             <div class="flex flex-col gap-0.5 rounded-tile bg-white/70 px-3.5 py-2.5">
-                <dt class="text-[12.5px] font-semibold text-muted">Poin</dt>
-                <dd class="display num m-0 text-xl font-extrabold">{{ $summary['points'] }}</dd>
+                <dt class="text-xs font-semibold text-muted">Poin</dt>
+                <dd class="display num m-0 text-xl font-bold">{{ $summary['points'] }}</dd>
             </div>
             <div class="flex flex-col gap-0.5 rounded-tile bg-white/70 px-3.5 py-2.5">
-                <dt class="text-[12.5px] font-semibold text-muted">Prestasi</dt>
-                <dd class="display num m-0 text-xl font-extrabold">{{ $summary['count'] }}</dd>
+                <dt class="text-xs font-semibold text-muted">Prestasi</dt>
+                <dd class="display num m-0 text-xl font-bold">{{ $summary['count'] }}</dd>
             </div>
         </dl>
     </x-sth.card>
@@ -47,7 +47,7 @@
     </div>
 
     @if ($filtered && $isSiswa)
-        <p class="m-0 text-[13.5px] text-muted" role="status">
+        <p class="m-0 text-sm text-muted" role="status">
             @if ($me)
                 Di filter ini kamu di peringkat <span class="num font-bold text-ink">#{{ $me['rank'] }}</span> dengan <span class="num font-bold text-ink">{{ $me['points_label'] }}</span> poin.
             @else
@@ -65,34 +65,32 @@
             <ol class="m-0 grid list-none gap-4 p-0 sm:grid-cols-3" aria-label="{{ $caption }}, tiga teratas">
                 @foreach ($top as $row)
                     <li wire:key="top-{{ $isSiswa ? 's' : 'k' }}-{{ $row['position'] }}">
-                        <article @class(['card flex h-full min-w-0 flex-col gap-3.5 p-[18px]', 'border-primary ring-2 ring-primary' => $row['me']])>
-                            <div class="flex items-center justify-between gap-2">
-                                <span @class(['display num inline-flex size-9 shrink-0 items-center justify-center rounded-full text-base font-extrabold', 'bg-medal text-ink' => $row['rank'] === 1, 'bg-gray-bg text-gray' => $row['rank'] !== 1])><span class="sr-only">Peringkat </span>{{ $row['rank'] }}</span>
+                        <article @class(['card flex h-full min-w-0 flex-col p-[18px]', 'border-primary ring-2 ring-primary' => $row['me']])>
+                            <div class="flex min-w-0 items-start gap-3.5">
+                                <span @class(['display num inline-flex size-11 shrink-0 items-center justify-center rounded-full text-lg font-bold text-ink', 'bg-medal' => $row['rank'] === 1, 'bg-medal-2' => $row['rank'] === 2, 'bg-medal-3' => $row['rank'] === 3, 'bg-gray-bg' => $row['rank'] > 3])><span class="sr-only">Peringkat </span>{{ $row['rank'] }}</span>
+                                @if ($isSiswa)
+                                    <div class="flex min-w-0 flex-col gap-0.5">
+                                        @include('livewire.publik.partials.person-name', ['person' => $row, 'class' => 'text-lg leading-6', 'wrap' => true])
+                                        @if ($row['kelas'])<span class="text-sm text-muted">{{ $row['kelas'] }}</span>@endif
+                                    </div>
+                                @else
+                                    <div class="flex min-w-0 flex-col gap-0.5">
+                                        <span class="text-lg leading-6 font-bold">Kelas {{ $row['kelas'] }}</span>
+                                        <span class="text-sm text-muted">{{ $row['students'] }} siswa berprestasi</span>
+                                    </div>
+                                @endif
+                            </div>
+                            <div class="mt-auto pt-4"><div class="flex items-baseline justify-between gap-3 border-t border-line-soft pt-3">
+                                <span class="flex items-baseline gap-1.5">
+                                    <span class="display num text-3xl leading-none font-bold">{{ $row['points_label'] }}</span>
+                                    <span class="text-sm font-semibold text-muted">poin</span>
+                                </span>
                                 @if ($row['me'])
                                     <x-sth.chip tone="blue">{{ $isSiswa ? 'Kamu' : 'Kelasmu' }}</x-sth.chip>
                                 @else
-                                    <x-sth.chip class="num">{{ $row['count'] }} prestasi</x-sth.chip>
+                                    <span class="num text-sm text-muted">{{ $row['count'] }} prestasi</span>
                                 @endif
-                            </div>
-                            <div class="flex min-w-0 items-center gap-3">
-                                @if ($isSiswa)
-                                    @include('livewire.publik.partials.avatar', ['person' => $row, 'size' => 'xl'])
-                                    <div class="flex min-w-0 flex-col gap-1">
-                                        @include('livewire.publik.partials.person-name', ['person' => $row, 'class' => 'text-base leading-5'])
-                                        @if ($row['kelas'])<span class="text-[13px] text-muted">{{ $row['kelas'] }}</span>@endif
-                                    </div>
-                                @else
-                                    <span class="display inline-flex size-12 shrink-0 items-center justify-center rounded-tile bg-primary-tint text-sm font-extrabold text-primary-on-tint">{{ $row['kelas'] }}</span>
-                                    <div class="flex min-w-0 flex-col gap-1">
-                                        <span class="text-base leading-5 font-bold">Kelas {{ $row['kelas'] }}</span>
-                                        <span class="text-[13px] text-muted">{{ $row['students'] }} siswa berprestasi</span>
-                                    </div>
-                                @endif
-                            </div>
-                            <div class="mt-auto flex items-baseline gap-1.5">
-                                <span class="display num text-[30px] leading-none font-extrabold">{{ $row['points_label'] }}</span>
-                                <span class="text-[13px] font-semibold text-muted">poin</span>
-                            </div>
+                            </div></div>
                         </article>
                     </li>
                 @endforeach
@@ -126,14 +124,14 @@
             @endif
 
             <div class="flex flex-wrap items-center justify-between gap-3">
-                <span class="num text-[13px] text-muted">Menampilkan {{ $shown }} dari {{ $total }} {{ $isSiswa ? 'siswa' : 'kelas' }}</span>
+                <span class="num text-xs text-muted">Menampilkan {{ $shown }} dari {{ $total }} {{ $isSiswa ? 'siswa' : 'kelas' }}</span>
                 @if ($hasMore)
                     <x-sth.button variant="quiet" size="sm" icon="chevron-down" wire:click="tampilkanLebih">Tampilkan lebih banyak</x-sth.button>
                 @endif
             </div>
         @endif
 
-        <p class="m-0 text-[13px] text-muted">
+        <p class="m-0 text-xs text-muted">
             Nama siswa lain hanya tampil jika mereka setuju dipublikasikan. Alumni ada di
             <a href="{{ $publicUrl }}" class="font-semibold">peringkat publik</a>.
         </p>

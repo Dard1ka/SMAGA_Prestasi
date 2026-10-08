@@ -13,7 +13,7 @@
         ? $bidang
         : (is_string($bidang) ? \App\Enums\Bidang::tryFrom($bidang === 'seni' ? 'seni_budaya' : $bidang) : null);
     $key = $enum?->cssKey() ?? 'sains';
-    [$box, $iconSize] = ['sm' => ['size-10 rounded-control', 20], 'md' => ['size-12 rounded-tile', 24], 'lg' => ['size-14 rounded-2xl', 28]][$size] ?? ['size-12 rounded-tile', 24];
+    [$box, $iconSize] = ['sm' => ['size-10 rounded-control', 20], 'md' => ['size-12 rounded-tile', 24], 'lg' => ['size-14 rounded-card', 28]][$size] ?? ['size-12 rounded-tile', 24];
 @endphp
 <span {{ $attributes->class(['cover-'.$key, 'inline-flex shrink-0 items-center justify-center', $box]) }} aria-hidden="true">
     <x-sth.icon :name="$key" :size="$iconSize" />

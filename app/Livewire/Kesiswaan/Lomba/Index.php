@@ -489,7 +489,7 @@ class Index extends Component
     {
         return match (true) {
             $submitter === null => ['gray', 'Upload'],
-            $submitter->is($viewer) => ['blue', 'Upload kamu'],
+            $submitter->is($viewer) => ['blue', 'Upload sendiri'],
             $submitter->student !== null => ['blue', 'Usulan siswa'],
             $submitter->hasRole(RoleName::Guru->value) => ['blue', 'Upload guru'],
             default => ['blue', 'Upload staf'],

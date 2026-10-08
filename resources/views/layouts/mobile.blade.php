@@ -39,7 +39,7 @@
                     {{ $header }}
                 @else
                     @if ($title)
-                        <h1 class="m-0 text-2xl leading-[30px] font-extrabold">{{ $title }}</h1>
+                        <h1 class="m-0 text-2xl leading-[30px] font-bold">{{ $title }}</h1>
                     @endif
                     @if ($subtitle)
                         <p class="m-0 text-sm leading-5 text-muted">{{ $subtitle }}</p>

@@ -859,9 +859,42 @@ document.addEventListener('click', async (event) => {
     }
 });
 
+/* ---------------------------------------------------------------- cover posters */
+
+/*
+ | <x-sth.sampul> draws a lomba's own poster with two <img data-sth-sampul> (a blurred backdrop and the
+ | poster itself) over the template drawing of its bidang. When the poster cannot be loaded (deleted file,
+ | 404, 429, offline), both images go and the cover falls back to the drawing instead of a broken image.
+ | `error` does not bubble, so it is caught in the capture phase.
+ */
+function dropPoster(image) {
+    const cover = image.closest('.sampul');
+    if (!cover) return;
+    cover.querySelectorAll('img[data-sth-sampul]').forEach((img) => img.remove());
+    cover.classList.remove('sampul-poster');
+}
+
+document.addEventListener(
+    'error',
+    (event) => {
+        if (event.target instanceof HTMLImageElement && event.target.hasAttribute('data-sth-sampul')) {
+            dropPoster(event.target);
+        }
+    },
+    true,
+);
+
+// An image that already failed before this script ran (cached 404 on a fast page) fires no second event.
+function dropBrokenPosters() {
+    document.querySelectorAll('img[data-sth-sampul]').forEach((img) => {
+        if (img.complete && img.naturalWidth === 0) dropPoster(img);
+    });
+}
+
 /* ---------------------------------------------------------------- page load */
 
 function boot() {
+    dropBrokenPosters();
     document.querySelectorAll('[data-sth-toast]').forEach((toast) => {
         if (toast.dataset.armed) return;
         toast.dataset.armed = '1';

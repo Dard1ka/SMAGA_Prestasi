@@ -29,7 +29,7 @@ Isi: [Semua pengguna](#1-semua-pengguna) · [Siswa](#2-siswa) · [Guru pembimbin
    - **Akunmu baru direset Admin?** Tombol "Lewati" tidak ada. Kamu **wajib membuat kata sandi baru**, karena kata
      sandi sementara dari Admin tidak boleh dipakai terus.
 
-Setelah muncul "Akun kamu sudah aktif", tekan **Mulai**. Lain kali kamu bisa masuk pakai NIS, NISN, atau email itu.
+Setelah muncul "Akun sudah aktif", tekan **Mulai**. Lain kali kamu bisa masuk pakai NIS, NISN, atau email itu.
 
 **Masuk pertama kali (guru dan staf)**: langkahnya sama (email → kode → kata sandi), tetapi kata sandi sementara dari
 Admin **wajib** diganti. Sesudah itu pasang verifikasi dua langkah: pasang aplikasi authenticator di HP (mis. Google
@@ -278,7 +278,7 @@ nama sertifikat di rincian sebuah prestasi untuk melihatnya di jendela preview (
   dibatalkan") dan pendaftaran itu hilang dari daftar.
 - **Dashboard**: ringkasan prestasi per tahun.
 - **Prestasi per bidang**: rincian per bidang, siswa (20 per langkah), dan lomba.
-- **Surat atas nama saya**: semua surat tugas yang terbit atas nama Anda, termasuk yang dicabut (chip "Dicabut");
+- **Surat atas nama saya**: semua surat tugas yang terbit atas nama Kepala Sekolah, termasuk yang dicabut (chip "Dicabut");
   **Download** untuk menyimpan PDF-nya. Setiap koreksi surat oleh Tata Usaha juga dikirim ke **Notifikasi** Anda.
 - **Laporan**: pilih periode → **Download PDF** atau **Download Excel** (bertanda air dan tercatat).
 

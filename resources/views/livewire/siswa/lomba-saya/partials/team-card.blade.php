@@ -11,7 +11,7 @@
                 <div class="flex min-w-0 flex-1 flex-col items-start gap-1">
                     <span class="flex min-w-0 flex-col">
                         <span class="text-sm font-bold">{{ $member['name'] }}@if ($member['me'])<span class="muted font-semibold"> (kamu)</span>@endif</span>
-                        <span class="muted text-[13px]">{{ $member['meta'] }}</span>
+                        <span class="muted text-xs">{{ $member['meta'] }}</span>
                     </span>
                     @if ($d['isTeam'])
                         @if ($member['confirmed'])

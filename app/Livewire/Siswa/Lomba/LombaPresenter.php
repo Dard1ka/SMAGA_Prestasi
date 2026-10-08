@@ -8,6 +8,7 @@ use App\Enums\Participation;
 use App\Enums\RegistrationStatus;
 use App\Models\Competition;
 use App\Models\RegistrationMember;
+use App\Support\Sampul;
 use Carbon\CarbonImmutable;
 use DateTimeInterface;
 use Illuminate\Support\Collection;
@@ -187,6 +188,8 @@ final class LombaPresenter
             'count' => count($names),
             'note' => $window['key'] === 'segera' ? $window['note'] : null,
             'window' => $window['key'],
+            // Cover: the uploaded poster, else a template drawing picked from the id (App\Support\Sampul).
+            'poster' => Sampul::poster($competition),
         ];
     }
 }

@@ -117,3 +117,17 @@ it('makes new data visible after PublicAchievements::flush()', function (): void
 
     $this->get(route('public.home'))->assertOk()->assertSee('Keisha Larasati')->assertSee('NSIF 2026');
 });
+
+// QA7: explore round after UI3 (2026-10-08) ---------------------------------------------------------
+
+it('lets a long lomba name or penyelenggara wrap on the public cards instead of widening the page (QA7)', function (): void {
+    $data = publikDataSet();
+
+    $this->get(route('public.home'))
+        ->assertOk()
+        ->assertSee('class="flex flex-1 flex-col gap-1 px-[18px] pt-3.5 pb-4 [overflow-wrap:anywhere]"', false);
+
+    $this->get(route('public.prestasi.siswa', $data['f']->slug($data['nadia'])))
+        ->assertOk()
+        ->assertSee('class="flex min-w-0 flex-col gap-1 [overflow-wrap:anywhere]"', false);
+});

@@ -8,9 +8,9 @@
     };
 @endphp
 <div class="flex flex-col gap-[22px]">
-    <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <x-sth.stat-tile icon="clock" tone="red" label="Diarsipkan malam ini" :value="(string) $stats['tonight']" note="tanggal arsip sudah lewat" />
-        <x-sth.stat-tile icon="archive" tone="orange" label="Dalam 30 hari" :value="(string) $stats['soon']" note="akun siswa" />
+    <div class="grid auto-rows-fr grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
+        <x-sth.stat-tile icon="clock" tone="red" label="Diarsipkan malam ini" :value="(string) $stats['tonight']" note="tanggal arsip sudah lewat" zero="hide" />
+        <x-sth.stat-tile icon="archive" tone="orange" label="Dalam 30 hari" :value="(string) $stats['soon']" note="akun siswa" zero="hide" />
         <x-sth.stat-tile icon="users" tone="gray" label="Sudah diarsipkan" :value="(string) $stats['archived']" note="alumni, tidak bisa login" />
         <x-sth.stat-tile icon="calendar" tone="blue" label="Jadwal arsip" value="01.00 WIB" :note="'setiap hari · '.$stats['months'].' bulan setelah kelas XII'" />
     </div>
@@ -25,7 +25,7 @@
                 @if ($tab === 'segera')
                     <x-sth.select wire:model.live="hari" label="Rentang" hide-label size="sm" :options="$windowOptions" class="w-36" />
                 @endif
-                <span class="muted text-[13.5px]" wire:loading>Memuat…</span>
+                <span class="muted text-sm" wire:loading>Memuat…</span>
             </div>
         @endif
 
@@ -105,7 +105,7 @@
                 <x-sth.card as="section" aria-labelledby="h-arsip-run" class="flex flex-col gap-3">
                     <div class="flex flex-col gap-1">
                         <h2 id="h-arsip-run" class="title-card">Arsip otomatis</h2>
-                        <p class="muted m-0 text-[13.5px]">Akun yang diarsipkan per hari, setahun terakhir.</p>
+                        <p class="muted m-0 text-sm">Akun yang diarsipkan per hari, setahun terakhir.</p>
                     </div>
                     @forelse ($runs as $run)
                         <div class="flex items-center justify-between gap-3 border-b border-line-soft pb-2 last:border-0">
@@ -120,14 +120,14 @@
                 <x-sth.card as="section" aria-labelledby="h-arsip-manual" class="flex flex-col gap-3 xl:col-span-2">
                     <div class="flex flex-col gap-1">
                         <h2 id="h-arsip-manual" class="title-card">Perubahan oleh Admin</h2>
-                        <p class="muted m-0 text-[13.5px]">Pemulihan, perubahan tanggal arsip, dan arsip manual. Semua tercatat di log audit.</p>
+                        <p class="muted m-0 text-sm">Pemulihan, perubahan tanggal arsip, dan arsip manual. Semua tercatat di log audit.</p>
                     </div>
                     @forelse ($history as $row)
                         <div wire:key="riwayat-{{ $row['id'] }}" class="flex flex-wrap items-start gap-x-3 gap-y-1 border-b border-line-soft pb-2.5 last:border-0">
                             <x-sth.chip :tone="$row['tone']" size="sm">{{ $row['label'] }}</x-sth.chip>
                             <span class="flex min-w-0 flex-1 flex-col">
                                 <span class="text-sm font-bold">{{ $row['student'] }}@if ($row['to']) <span class="muted font-normal"> · arsip {{ \Carbon\CarbonImmutable::parse($row['to'])->translatedFormat('j M Y') }}</span>@endif</span>
-                                <span class="muted text-[12.5px]">{{ $row['actor'] }} · {{ $row['at']?->timezone(config('app.timezone'))->translatedFormat('j M Y H:i') }}@if ($row['reason'] !== '') · {{ $row['reason'] }}@endif</span>
+                                <span class="muted text-xs">{{ $row['actor'] }} · {{ $row['at']?->timezone(config('app.timezone'))->translatedFormat('j M Y H:i') }}@if ($row['reason'] !== '') · {{ $row['reason'] }}@endif</span>
                             </span>
                         </div>
                     @empty

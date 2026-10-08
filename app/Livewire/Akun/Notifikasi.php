@@ -21,7 +21,7 @@ use Livewire\WithPagination;
  * application (path + query of the stored URL; anything else is ignored), so no open redirect.
  */
 #[Title('Notifikasi')]
-#[Layout('layouts::app', ['subtitle' => 'Kabar terbaru untukmu.'])]
+#[Layout('layouts::app', ['subtitle' => 'Kabar terbaru untuk akun ini.'])]
 final class Notifikasi extends Component
 {
     use WithPagination;

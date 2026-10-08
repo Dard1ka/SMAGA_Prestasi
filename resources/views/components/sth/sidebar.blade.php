@@ -1,6 +1,7 @@
 {{--
-    Role sidebar (DESIGN-SPEC-v2 §4 app shell): brand → (siswa) "Cari lomba" button → grouped nav with
-    .nav-sec labels, pill current item and count badges → user card. Data comes from
+    Role sidebar (DESIGN-SPEC-v3 §4 app shell): brand → grouped nav with .nav-sec labels, a tinted current
+    item and count badges → user card. One way to each place: the student's "Cari lomba" is a menu item
+    only (the button that used to sit above the menu said the same thing twice). Data comes from
     App\Support\Navigation::for($user, $role, $badges) — the app layout passes it in.
 
     <x-sth.sidebar :nav="$nav" class="hidden lg:flex" />   desktop column (264px, sticky)
@@ -23,10 +24,6 @@
             <x-sth.icon-button icon="x" label="Tutup menu" size="sm" ghost data-sth-close />
         @endif
     </div>
-
-    @if ($nav['cta'])
-        <x-sth.button :href="$nav['cta']['href']" :disabled="$nav['cta']['disabled']" icon="search" block>{{ $nav['cta']['label'] }}</x-sth.button>
-    @endif
 
     <nav aria-label="Menu utama" class="flex flex-col gap-1">
         @foreach ($nav['sections'] as $section)
@@ -56,11 +53,11 @@
         @endforeach
     </nav>
 
-    <div class="mt-auto flex items-center gap-2.5 rounded-2xl bg-page p-3">
+    <div class="mt-auto flex items-center gap-2.5 rounded-card bg-page p-3">
         <x-sth.avatar :name="$nav['user']['name']" />
         <div class="flex min-w-0 flex-col gap-0.5">
             <span class="ellip text-sm leading-[1.3] font-bold">{{ $nav['user']['name'] }}</span>
-            <span class="text-[12.5px] leading-[1.3] text-muted">{{ $nav['user']['meta'] }}</span>
+            <span class="text-xs leading-[1.3] text-muted">{{ $nav['user']['meta'] }}</span>
         </div>
     </div>
 </aside>

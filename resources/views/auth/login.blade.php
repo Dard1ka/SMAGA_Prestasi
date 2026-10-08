@@ -17,7 +17,7 @@
             <x-sth.input
                 name="identifier"
                 label="NIS, NISN, atau email"
-                hint="Sudah aktivasi? Kamu juga bisa masuk pakai email. Guru dan staf: username atau email."
+                hint="Sudah aktivasi? Bisa juga masuk pakai email. Guru dan staf: username atau email."
                 autocomplete="username"
                 autocapitalize="none"
                 spellcheck="false"
@@ -43,7 +43,7 @@
             <x-sth.button type="submit" size="lg" block>Masuk</x-sth.button>
         </form>
 
-        <x-sth.alert>Baru pertama masuk? Kamu akan diminta menghubungkan email dulu. Setelah itu kamu boleh ganti kata sandi.</x-sth.alert>
+        <x-sth.alert>Baru pertama masuk? Nanti diminta menghubungkan email dulu. Setelah itu boleh ganti kata sandi.</x-sth.alert>
 
         <p class="text-sm muted">Kesulitan masuk? Hubungi admin sekolah.</p>
     </div>

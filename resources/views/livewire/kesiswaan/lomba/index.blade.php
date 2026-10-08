@@ -1,6 +1,6 @@
 {{-- Kelola lomba & antrean verifikasi (board Kesiswaan-Kelola-Lomba). Data prepared in App\Livewire\Kesiswaan\Lomba\Index. --}}
 <div class="flex flex-col gap-[22px]">
-    <section aria-label="Ringkasan" class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <section aria-label="Ringkasan" class="grid auto-rows-fr grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
         @foreach ($stats as $stat)
             <x-sth.stat-tile :icon="$stat['icon']" :tone="$stat['tone']" :label="$stat['label']" :value="$stat['value']" :note="$stat['note']" :href="$stat['href']" />
         @endforeach
@@ -31,27 +31,23 @@
                 Ubah filter atau tambah lomba baru.
             </x-sth.empty-state>
         @else
-            <x-sth.table caption="Katalog lomba SMAGA, {{ $rows->count() }} lomba ditampilkan" fixed>
+            <x-sth.table caption="Katalog lomba SMAGA, {{ $rows->count() }} lomba ditampilkan" fixed table-class="min-w-[880px]">
                 <x-slot:head>
-                    <th scope="col" class="w-[36%] min-w-[280px]">Lomba</th>
+                    <th scope="col" class="w-[36%] min-w-[240px]">Lomba</th>
                     <th scope="col" class="w-32">Bidang</th>
                     <th scope="col" class="w-24">Tingkat</th>
                     <th scope="col" class="w-32">Batas daftar</th>
                     <th scope="col" class="w-24">Pendaftar</th>
-                    <th scope="col" class="w-48">Status</th>
-                    <th scope="col" class="w-24"><span class="sr-only">Aksi</span></th>
+                    <th scope="col" class="w-44">Status</th>
+                    <th scope="col" class="w-40"><span class="sr-only">Aksi</span></th>
                 </x-slot:head>
                 @foreach ($rows as $row)
                     <tr wire:key="lomba-{{ $row['id'] }}">
                         <td>
-                            <div class="flex min-w-0 items-center gap-3">
-                                @if ($row['bidang'])
-                                    <x-sth.bidang-tile :bidang="$row['bidang']" size="sm" />
-                                @endif
-                                <div class="flex min-w-0 flex-col gap-0.5">
-                                    <span class="leading-[1.35] font-bold">{{ $row['name'] }}</span>
-                                    <span class="ellip text-[12.5px] text-muted">{{ $row['sub'] }}</span>
-                                </div>
+                            {{-- No icon tile here: the bidang has its own column (dot + name), and 25 rows stay calm. --}}
+                            <div class="flex min-w-0 flex-col gap-0.5">
+                                <span class="leading-[1.35] font-semibold">{{ $row['name'] }}</span>
+                                <span class="ellip text-xs text-muted">{{ $row['sub'] }}</span>
                             </div>
                         </td>
                         <td>@if ($row['bidang'])<x-sth.chip :bidang="$row['bidang']" />@else – @endif</td>
@@ -59,7 +55,7 @@
                         <td>
                             <div class="flex flex-col gap-0.5">
                                 <span class="num">{{ $row['batas'] }}</span>
-                                @if ($row['soon'])<span class="text-[12.5px] font-bold text-orange">{{ $row['soon'] }}</span>@endif
+                                @if ($row['soon'])<span class="text-xs font-bold text-orange">{{ $row['soon'] }}</span>@endif
                             </div>
                         </td>
                         <td class="num">{{ $row['count'] }} siswa</td>
@@ -67,10 +63,10 @@
                         <td>
                             <div class="flex items-center gap-1.5">
                                 @if ($row['canEdit'])
-                                    <x-sth.icon-button icon="edit" size="sm" :label="'Ubah '.$row['name']" wire:click="edit('{{ $row['id'] }}')" />
+                                    <x-sth.button variant="quiet" size="sm" :aria-label="'Ubah '.$row['name']" wire:click="edit('{{ $row['id'] }}')">Ubah</x-sth.button>
                                 @endif
                                 @if ($row['canClose'])
-                                    <x-sth.icon-button icon="archive" size="sm" :label="'Tutup '.$row['name']" wire:click="close('{{ $row['id'] }}')" wire:confirm="Tutup lomba ini? Lomba tidak tampil lagi di katalog siswa." />
+                                    <x-sth.button variant="quiet" size="sm" :aria-label="'Tutup '.$row['name']" wire:click="close('{{ $row['id'] }}')" wire:confirm="Tutup lomba ini? Lomba tidak tampil lagi di katalog siswa.">Tutup</x-sth.button>
                                 @endif
                             </div>
                         </td>
@@ -82,7 +78,7 @@
                     <x-sth.button variant="quiet" size="sm" wire:click="showMore">Tampilkan lebih banyak</x-sth.button>
                 </div>
             @elseif ($capped)
-                <p class="m-0 text-center text-[13px] text-muted">Menampilkan {{ $rows->count() }} lomba pertama. Persempit filter untuk melihat lainnya.</p>
+                <p class="m-0 text-center text-xs text-muted">Menampilkan {{ $rows->count() }} lomba pertama. Persempit filter untuk melihat lainnya.</p>
             @endif
         @endif
     @else
@@ -98,7 +94,7 @@
                             <x-sth.avatar :name="$item['submitter']" size="md" />
                             <div class="flex min-w-0 flex-1 flex-col gap-0.5">
                                 <span class="font-bold">{{ $item['submitter'] }}</span>
-                                <span class="text-[13px] text-muted">{{ $item['submitterMeta'] }} · {{ $item['when'] }}</span>
+                                <span class="text-xs text-muted">{{ $item['submitterMeta'] }} · {{ $item['when'] }}</span>
                             </div>
                             <x-sth.chip :tone="$item['source'][0]" size="sm">{{ $item['source'][1] }}</x-sth.chip>
                         </div>
@@ -108,14 +104,14 @@
                                 @if ($item['bidang'])<x-sth.chip :bidang="$item['bidang']" size="sm" />@endif
                                 <h3 class="title-card m-0">{{ $item['name'] }}</h3>
                             </div>
-                            <p class="m-0 text-[13.5px] text-muted">{{ $item['organizer'] ?? 'Penyelenggara belum diisi' }}</p>
+                            <p class="m-0 text-sm text-muted">{{ $item['organizer'] ?? 'Penyelenggara belum diisi' }}</p>
                             <div class="flex flex-wrap items-center gap-x-4 gap-y-1">
                                 @if ($item['website'])
                                     <x-sth.link :href="$item['website']" icon="link" external>{{ $item['websiteHost'] }}</x-sth.link>
                                 @elseif ($item['websiteInvalid'])
-                                    <span class="text-[13px] font-semibold text-orange">Link tidak valid</span>
+                                    <span class="text-xs font-semibold text-orange">Link tidak valid</span>
                                 @else
-                                    <span class="text-[13px] text-muted">Tanpa link</span>
+                                    <span class="text-xs text-muted">Tanpa link</span>
                                 @endif
                                 @if ($item['juknis'])
                                     @if ($item['juknis']['url'])
@@ -123,21 +119,21 @@
                                             :data-sth-preview="$item['juknis']['preview']" :data-sth-preview-type="$item['juknis']['previewType']"
                                             :data-sth-preview-name="$item['juknis']['name']">{{ $item['juknis']['name'] }} · {{ $item['juknis']['size'] }}</x-sth.link>
                                     @else
-                                        <span class="text-[13px] text-muted">{{ $item['juknis']['name'] }} · {{ $item['juknis']['size'] }}</span>
+                                        <span class="text-xs text-muted">{{ $item['juknis']['name'] }} · {{ $item['juknis']['size'] }}</span>
                                     @endif
                                 @endif
                             </div>
                         </div>
 
                         @if ($item['missing'] !== [])
-                            <p class="m-0 text-[13px] text-orange"><strong>Perlu dilengkapi:</strong> {{ implode(', ', $item['missing']) }}</p>
+                            <p class="m-0 text-xs text-orange"><strong>Perlu dilengkapi:</strong> {{ implode(', ', $item['missing']) }}</p>
                         @elseif ($item['dateProblem'])
-                            <p class="m-0 text-[13px] text-orange"><strong>Perlu diperbaiki:</strong> {{ $item['dateProblem'] }}</p>
+                            <p class="m-0 text-xs text-orange"><strong>Perlu diperbaiki:</strong> {{ $item['dateProblem'] }}</p>
                         @else
                             <x-sth.chip tone="green" icon="check" class="self-start">Data lengkap, siap dipublikasikan</x-sth.chip>
                         @endif
                         @if ($item['past'] !== [])
-                            <p class="m-0 text-[13px] text-orange"><strong>Tanggal sudah lewat:</strong> {{ implode(', ', $item['past']) }}</p>
+                            <p class="m-0 text-xs text-orange"><strong>Tanggal sudah lewat:</strong> {{ implode(', ', $item['past']) }}</p>
                         @endif
 
                         @if ($rejectingId === $item['id'])
@@ -172,12 +168,12 @@
             <div class="flex flex-col gap-3">
                 <div class="rounded-tile bg-subtle px-3 py-2.5">
                     <p class="m-0 font-semibold">{{ $pastLomba['name'] }}</p>
-                    <p class="m-0 text-[13px] text-muted">Sudah lewat: {{ $pastLomba['dates'] ?: 'tidak ada' }}</p>
+                    <p class="m-0 text-xs text-muted">Sudah lewat: {{ $pastLomba['dates'] ?: 'tidak ada' }}</p>
                 </div>
-                <p class="m-0 text-[14.5px]">Lomba terbit sebagai catatan. Siswa tidak bisa mendaftar lagi lewat STH.</p>
+                <p class="m-0 text-md">Lomba terbit sebagai catatan. Siswa tidak bisa mendaftar lagi lewat STH.</p>
             </div>
         @else
-            <p class="m-0 text-[14.5px] text-muted">Lomba tidak ditemukan. Tutup lalu coba lagi.</p>
+            <p class="m-0 text-md text-muted">Lomba tidak ditemukan. Tutup lalu coba lagi.</p>
         @endif
         <x-slot:footer>
             <x-sth.button variant="quiet" data-sth-close>Batal</x-sth.button>

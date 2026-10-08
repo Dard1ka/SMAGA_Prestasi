@@ -7,7 +7,7 @@
                     <h2 id="h-template-versi" class="title-card">
                         {{ $current->version > 0 ? 'Versi '.$current->version : 'Teks bawaan' }}
                     </h2>
-                    <p class="muted m-0 text-[13.5px]">
+                    <p class="muted m-0 text-sm">
                         @if ($current->version > 0 && $current->updatedAt)
                             Diubah {{ $current->updatedByName ?? '-' }}, {{ \Carbon\CarbonImmutable::parse($current->updatedAt)->timezone(config('app.timezone'))->translatedFormat('j M Y H:i') }}.
                         @else
@@ -69,7 +69,7 @@
                     <x-sth.chip tone="blue" size="sm">Versi {{ $item['version'] }}</x-sth.chip>
                     <span class="flex min-w-0 flex-1 flex-col">
                         <span class="text-sm font-semibold">{{ $item['by'] }} · {{ $item['at'] }}</span>
-                        <span class="muted text-[12.5px]">Diubah: {{ $item['changed'] !== '' ? $item['changed'] : '-' }}</span>
+                        <span class="muted text-xs">Diubah: {{ $item['changed'] !== '' ? $item['changed'] : '-' }}</span>
                     </span>
                     @if ($canEdit && $item['restorable'])
                         <x-sth.button variant="quiet" size="sm" wire:click="useVersion({{ $item['id'] }})">Pakai lagi<span class="sr-only"> versi {{ $item['version'] }}</span></x-sth.button>
@@ -89,7 +89,7 @@
                 <button type="button" class="seg-btn" wire:click="showPreview('guru')" aria-pressed="{{ $preview === 'guru' ? 'true' : 'false' }}">Surat guru</button>
             </div>
         </div>
-        <p class="muted m-0 text-[13px]">Contoh data fiktif. Tanda tangan asli tidak ditampilkan.</p>
+        <p class="muted m-0 text-xs">Contoh data fiktif. Tanda tangan asli tidak ditampilkan.</p>
         <div wire:loading.class="opacity-70">
             @if ($preview === 'guru')
                 @include('livewire.tata-usaha.partials.pratinjau-guru')

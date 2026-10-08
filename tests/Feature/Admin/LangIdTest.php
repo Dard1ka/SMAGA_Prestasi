@@ -97,6 +97,6 @@ it('shows no decision codes in visible text or seeded data', function () {
 it('says browser, not peramban, in the mail footer and the session list', function () {
     $footer = __("If you're having trouble clicking the \":actionText\" button, copy and paste the URL below\ninto your web browser:");
 
-    expect($footer)->toContain('browser kamu')->not->toContain('peramban')
+    expect($footer)->toContain('ke browser:')->not->toContain('peramban')
         ->and(ListUserSessions::device('Mozilla/5.0 (X11; Linux) Lynx/2.9'))->toStartWith('Browser lain');
 });

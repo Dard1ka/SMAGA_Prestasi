@@ -15,7 +15,7 @@
         <div class="flex flex-wrap items-center justify-between gap-3">
             <div class="flex flex-col gap-0.5">
                 <h2 id="h-periode" class="title-card">{{ $period->label }}</h2>
-                <p class="muted m-0 text-[13.5px]">Prestasi terverifikasi menurut tanggal final lomba.</p>
+                <p class="muted m-0 text-sm">Prestasi terverifikasi menurut tanggal final lomba.</p>
             </div>
             @if ($canExport)
                 <span class="flex flex-wrap gap-2">
@@ -33,14 +33,11 @@
             <x-sth.select wire:model.live="bidang" label="Bidang" placeholder="Semua bidang" :options="$bidangOptions" />
         </div>
         @if ($canExport)
-            <p class="m-0 text-sm muted">Download memuat nama siswa (tanpa NIS/NISN), diberi tanda nama kamu dan waktu download, dan tercatat di log audit.</p>
-        @endif
-        @if ($suratUrl)
-            <x-sth.link :href="$suratUrl" icon="mail" icon-right="chevron-right">Surat atas nama saya</x-sth.link>
+            <p class="m-0 text-sm muted">Download memuat nama siswa (tanpa NIS/NISN), diberi tanda nama akun ini dan waktu download, dan tercatat di log audit.</p>
         @endif
     </x-sth.card>
 
-    <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4" wire:loading.class="opacity-70">
+    <div class="grid auto-rows-fr grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4" wire:loading.class="opacity-70">
         <x-sth.stat-tile icon="award" tone="gold" label="Prestasi terverifikasi" :value="number_format($summary['totals']['prestasi'], 0, ',', '.')" :note="$pointsTotal.' poin'" />
         <x-sth.stat-tile icon="users" tone="blue" label="Siswa berprestasi" :value="number_format($summary['totals']['siswa'], 0, ',', '.')" note="minimal 1 prestasi" />
         <x-sth.stat-tile icon="trophy" tone="green" label="Lomba" :value="number_format($summary['totals']['lomba'], 0, ',', '.')" note="dengan hasil terverifikasi" />
@@ -79,7 +76,7 @@
     <section aria-labelledby="h-rincian" class="flex flex-col gap-2">
         <div class="flex flex-wrap items-baseline justify-between gap-2">
             <h2 id="h-rincian" class="title-card">Rincian prestasi</h2>
-            <span class="muted text-[13.5px]">
+            <span class="muted text-sm">
                 {{ $rowCount > count($preview) ? count($preview).' terbaru dari '.$rowCount.'. Download untuk daftar lengkap.' : $rowCount.' prestasi' }}
             </span>
         </div>

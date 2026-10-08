@@ -36,7 +36,7 @@ beforeEach(function (): void {
 
 dataset('error pages', [
     '401' => [401, 'Belum masuk', 'Masuk dulu untuk membuka halaman ini.'],
-    '403' => [403, 'Akses ditolak', 'Kamu tidak punya akses ke halaman ini.'],
+    '403' => [403, 'Akses ditolak', 'Tidak ada akses ke halaman ini.'],
     '404' => [404, 'Tidak ditemukan', 'Halaman tidak ditemukan.'],
     '405' => [405, 'Tidak bisa dibuka', 'Alamat ini tidak bisa dibuka langsung.'],
     '419' => [419, 'Kedaluwarsa', 'Halaman kedaluwarsa. Muat ulang lalu coba lagi.'],
@@ -90,7 +90,7 @@ it('stays the same small page with APP_DEBUG on', function (int $status, string 
     m2cAssertErrorPage($this->get('/_galat/'.$status), $status, $title, $sentence, route('public.home'));
     m2cAssertErrorPage($this->actingAs(H::staff(RoleName::Guru))->get('/_galat/'.$status), $status, $title, $sentence, route('home'));
 })->with([
-    '403' => [403, 'Akses ditolak', 'Kamu tidak punya akses ke halaman ini.'],
+    '403' => [403, 'Akses ditolak', 'Tidak ada akses ke halaman ini.'],
     '404' => [404, 'Tidak ditemukan', 'Halaman tidak ditemukan.'],
     '405' => [405, 'Tidak bisa dibuka', 'Alamat ini tidak bisa dibuka langsung.'],
     '419' => [419, 'Kedaluwarsa', 'Halaman kedaluwarsa. Muat ulang lalu coba lagi.'],
@@ -111,7 +111,7 @@ it('answers a role refusal in Indonesian, without the package message', function
     // Admin never opens the Kepala Sekolah approval queue (D-01): spatie's role middleware throws here.
     $response = $this->actingAs(H::staff(RoleName::Admin))->get(route('kepsek.persetujuan.index'));
 
-    m2cAssertErrorPage($response, 403, 'Akses ditolak', 'Kamu tidak punya akses ke halaman ini.', route('home'));
+    m2cAssertErrorPage($response, 403, 'Akses ditolak', 'Tidak ada akses ke halaman ini.', route('home'));
 })->with(['debug off' => [false], 'debug on' => [true]]);
 
 it('answers an unknown address and a wrong method with the small pages', function (bool $debug): void {

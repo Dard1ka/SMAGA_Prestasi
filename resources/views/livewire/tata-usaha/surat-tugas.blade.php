@@ -18,7 +18,7 @@
     @endif
 
     @if ($queue->isNotEmpty() || $registration)
-        <nav aria-label="Antrean surat" class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        <nav aria-label="Antrean surat" class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
             @foreach ($queue as $item)
                 @php
                     $key = $item->competition?->bidang?->cssKey() ?? 'sains';
@@ -31,9 +31,9 @@
                    @class(['pick flex items-center gap-3 p-3 text-left no-underline', 'pick-on' => $isOn])>
                     <span class="b-{{ $key }} inline-flex size-11 shrink-0 items-center justify-center rounded-tile" aria-hidden="true"><x-sth.icon :name="$key" /></span>
                     <span class="flex min-w-0 flex-1 flex-col gap-0.5">
-                        <span class="ellip text-[15px] font-bold text-ink">{{ $item->competition?->name }}</span>
-                        <span class="muted ellip text-[13px]">{{ $item->branch ? $item->branch.' · ' : '' }}{{ $item->isTeam() ? 'Tim '.$count.' siswa' : $count.' siswa' }}</span>
-                        <span @class(['text-[12.5px] font-semibold', 'text-green' => $made === 0, 'text-blue' => $made > 0])>
+                        <span class="ellip text-md font-bold text-ink">{{ $item->competition?->name }}</span>
+                        <span class="muted ellip text-xs">{{ $item->branch ? $item->branch.' · ' : '' }}{{ $item->isTeam() ? 'Tim '.$count.' siswa' : $count.' siswa' }}</span>
+                        <span @class(['text-xs font-semibold', 'text-green' => $made === 0, 'text-blue' => $made > 0])>
                             @if ($made === 0)
                                 Disetujui Kepala Sekolah · {{ $item->principal_decided_at?->translatedFormat('j M') }}
                             @elseif ($made < $needed)
@@ -71,17 +71,19 @@
         @endphp
 
         <div class="flex flex-col gap-3">
-            <div class="seg self-start" role="tablist" aria-label="Pilih surat">
+            {{-- On a phone the two tabs share the width and show the state under the name: both names with "belum
+                 dibuat" needed 180px more than a 390px screen (QA7). --}}
+            <div class="seg self-start max-sm:grid max-sm:w-full max-sm:auto-cols-fr max-sm:grid-flow-col" role="tablist" aria-label="Pilih surat">
                 @foreach ($tabs as $item)
                     <button type="button" role="tab" id="tab-{{ $item['key'] }}" aria-controls="panel-surat" wire:key="tab-{{ $item['key'] }}"
                             aria-selected="{{ $model === $item['key'] ? 'true' : 'false' }}"
-                            @class(['seg-btn', 'seg-on' => $model === $item['key']]) wire:click="setTab('{{ $item['key'] }}')">
+                            @class(['seg-btn max-sm:h-auto max-sm:min-h-10 max-sm:flex-col max-sm:gap-0 max-sm:py-1.5 max-sm:whitespace-normal', 'seg-on' => $model === $item['key']]) wire:click="setTab('{{ $item['key'] }}')">
                         {{ $item['label'] }}
-                        <span class="font-medium">· {{ $item['letter'] ? ($item['letter']->sent_at ? 'terkirim' : 'PDF siap') : 'belum dibuat' }}</span>
+                        <span class="font-medium"><span class="max-sm:hidden">· </span>{{ $item['letter'] ? ($item['letter']->sent_at ? 'terkirim' : 'PDF siap') : 'belum dibuat' }}</span>
                     </button>
                 @endforeach
             </div>
-            <p class="muted m-0 text-[13px]">
+            <p class="muted m-0 text-xs">
                 {{ $hasMentor ? 'Tiap surat punya nomor dan data sendiri. Buat PDF satu per satu, lalu kirim keduanya.' : 'Belum ada guru pembimbing, jadi hanya surat siswa yang dibuat.' }}
             </p>
         </div>
@@ -92,7 +94,7 @@
                     <h2 id="h-data-surat" class="title-card">
                         {{ $revising ? 'Koreksi '.$typeName : ($editing ? '1. Isi data '.$typeName : 'Data '.$typeName) }}
                     </h2>
-                    <span class="muted text-[13px]">
+                    <span class="muted text-xs">
                         {{ $revising ? 'Versi baru memakai nomor baru' : ($editing ? 'Semua kolom wajib, kecuali yang bertanda opsional' : 'PDF sudah dibuat') }}
                     </span>
                 </div>
@@ -165,7 +167,7 @@
                                 <span class="inline-flex h-12 w-16 shrink-0 items-center justify-center rounded-control border border-dashed border-line-dashed bg-surface text-muted" aria-hidden="true"><x-sth.icon name="image" /></span>
                                 <span class="flex min-w-0 flex-1 flex-col gap-0.5">
                                     <span class="ellip text-sm font-bold">{{ $signature }}</span>
-                                    <span class="muted text-[12.5px]">Tanda tangan dan stempel dipasang otomatis di surat.</span>
+                                    <span class="muted text-xs">Tanda tangan dan stempel dipasang otomatis di surat.</span>
                                 </span>
                             </div>
                         @endif
@@ -174,11 +176,11 @@
                             @if ($revising)
                                 <x-sth.button type="submit" variant="danger" icon="file" wire:loading.attr="disabled" wire:target="revise">Cabut dan terbitkan ulang</x-sth.button>
                                 <x-sth.button variant="quiet" wire:click="cancelRevision" wire:loading.attr="disabled">Batal</x-sth.button>
-                                <span wire:loading wire:target="revise" class="muted text-[13px]">Membuat PDF…</span>
+                                <span wire:loading wire:target="revise" class="muted text-xs">Membuat PDF…</span>
                             @else
                                 <x-sth.button type="submit" icon="file" wire:loading.attr="disabled" wire:target="generate">Buat PDF {{ $typeName }}</x-sth.button>
-                                <span wire:loading wire:target="generate" class="muted text-[13px]">Membuat PDF…</span>
-                                <p class="muted m-0 text-[13px]" wire:loading.remove wire:target="generate">Setelah dibuat, nomor dan isi surat tidak bisa diubah.</p>
+                                <span wire:loading wire:target="generate" class="muted text-xs">Membuat PDF…</span>
+                                <p class="muted m-0 text-xs" wire:loading.remove wire:target="generate">Setelah dibuat, nomor dan isi surat tidak bisa diubah.</p>
                             @endif
                         </div>
                     </form>
@@ -196,11 +198,13 @@
 
                     <div class="flex flex-wrap items-center gap-3 rounded-tile border border-line p-3">
                         <span class="inline-flex size-10 shrink-0 items-center justify-center rounded-control bg-red-bg text-red" aria-hidden="true"><x-sth.icon name="file" /></span>
-                        <span class="flex min-w-0 flex-1 flex-col gap-0.5">
-                            <span class="ellip text-sm font-bold">{{ $letter->file?->original_name }}</span>
-                            <span class="muted text-[12.5px]">{{ $letter->type->label() }} · {{ \Illuminate\Support\Number::fileSize((int) $letter->file?->size, 0) }}{{ $isGuru ? ' · dengan lampiran' : ' · '.$n.' siswa' }}</span>
+                        {{-- min-w-48: the three buttons wrap to their own row instead of squeezing the file name to nothing. --}}
+                        <span class="flex min-w-48 flex-1 flex-col gap-0.5">
+                            <span class="text-sm font-bold [overflow-wrap:anywhere]">{{ $letter->file?->original_name }}</span>
+                            <span class="muted text-xs">{{ $letter->type->label() }} · {{ \Illuminate\Support\Number::fileSize((int) $letter->file?->size, 0) }}{{ $isGuru ? ' · dengan lampiran' : ' · '.$n.' siswa' }}</span>
                         </span>
                         @if ($letter->file_id)
+                          <div class="flex flex-wrap gap-2">
                             <x-sth.button variant="quiet" size="sm" icon="download" wire:click="download('{{ $letter->id }}')">Download</x-sth.button>
                             <x-sth.button variant="quiet" size="sm" icon="external" href="{{ route('tu.surat.cetak', $letter) }}" target="_blank" rel="noopener" :navigate="false">
                                 Cetak<span class="sr-only"> {{ $letter->full_number }}, buka di tab baru</span>
@@ -208,10 +212,11 @@
                             <x-sth.button variant="quiet" size="sm" icon="edit" wire:click="startRevision('{{ $letter->id }}')">
                                 Koreksi<span class="sr-only"> {{ $letter->full_number }}</span>
                             </x-sth.button>
+                          </div>
                         @endif
                     </div>
 
-                    <p class="muted m-0 text-[13px]">
+                    <p class="muted m-0 text-xs">
                         Cetak membuka PDF di tab baru, lalu print dari sana. Nomor dan isi surat tidak bisa diubah: kalau ada yang salah, pakai Koreksi (surat lama dicabut, diganti versi baru).
                     </p>
 
@@ -224,7 +229,7 @@
             <x-sth.card as="section" class="flex min-w-0 flex-col gap-4" aria-labelledby="h-preview">
                 <div class="flex flex-wrap items-baseline justify-between gap-2">
                     <h2 id="h-preview" class="title-card">{{ $editing && ! $revising ? '2. Preview '.$typeName : 'Preview '.$typeName }}</h2>
-                    <span class="muted text-[13px]">{{ $editing ? 'Berubah saat data diisi' : ($printed ? 'Isi PDF yang sudah dibuat' : 'Menurut data sekarang, bisa beda dari PDF. Lihat isi persisnya lewat Cetak.') }}</span>
+                    <span class="muted text-xs">{{ $editing ? 'Berubah saat data diisi' : ($printed ? 'Isi PDF yang sudah dibuat' : 'Menurut data sekarang, bisa beda dari PDF. Lihat isi persisnya lewat Cetak.') }}</span>
                 </div>
                 <div wire:loading.class="opacity-70">
                     @if ($isGuru)
@@ -253,7 +258,7 @@
                     <li wire:key="kirim-{{ $item['key'] }}" class="flex flex-wrap items-center gap-3 rounded-tile border border-line p-3">
                         <span class="flex min-w-0 flex-1 flex-col gap-0.5">
                             <span class="text-sm font-bold">{{ $item['label'] }}</span>
-                            <span class="num muted text-[12.5px]">{{ $item['letter'] ? 'Nomor '.$item['letter']->full_number : 'PDF belum dibuat' }}</span>
+                            <span class="num muted text-xs">{{ $item['letter'] ? 'Nomor '.$item['letter']->full_number : 'PDF belum dibuat' }}</span>
                         </span>
                         @if (! $item['letter'])
                             <x-sth.chip tone="orange" icon="clock" size="sm">Belum dibuat</x-sth.chip>
@@ -279,9 +284,9 @@
                         <x-sth.button icon="send" :data-sth-open="\App\Livewire\TataUsaha\SuratTugas::SEND_DIALOG" aria-haspopup="dialog">Kirim ke siswa{{ $hasMentor ? ' dan guru' : '' }}</x-sth.button>
                     @endif
                     @if ($missing !== [])
-                        <p class="m-0 text-[13px] font-semibold text-orange">Belum bisa dikirim: buat dulu PDF {{ implode(' dan ', $missing) }}.</p>
+                        <p class="m-0 text-xs font-semibold text-orange">Belum bisa dikirim: buat dulu PDF {{ implode(' dan ', $missing) }}.</p>
                     @else
-                        <p class="muted m-0 text-[13px]">{{ $n > 1 ? 'Tiap anggota tim menerima surat yang sama.' : 'Siswa dan guru pembimbing menerima surat masing-masing.' }}</p>
+                        <p class="muted m-0 text-xs">{{ $n > 1 ? 'Tiap anggota tim menerima surat yang sama.' : 'Siswa dan guru pembimbing menerima surat masing-masing.' }}</p>
                     @endif
                 </div>
 
@@ -291,7 +296,7 @@
                         @foreach ($tabs as $item)
                             <li wire:key="kirim-cek-{{ $item['key'] }}" class="flex flex-col gap-0.5 rounded-tile border border-line p-3">
                                 <span class="text-sm font-bold">{{ $item['label'] }}</span>
-                                <span class="num muted text-[12.5px]">{{ $item['letter'] ? 'Nomor '.$item['letter']->full_number : 'PDF belum dibuat' }}</span>
+                                <span class="num muted text-xs">{{ $item['letter'] ? 'Nomor '.$item['letter']->full_number : 'PDF belum dibuat' }}</span>
                             </li>
                         @endforeach
                     </ul>
@@ -313,10 +318,10 @@
                             <span class="flex flex-wrap items-center gap-2">
                                 <span class="num text-sm font-bold">{{ $row['number'] }}</span>
                                 <x-sth.chip tone="red" size="sm">Dicabut</x-sth.chip>
-                                <span class="muted text-[12.5px]">{{ $row['type'] }} · versi {{ $row['version'] }}</span>
+                                <span class="muted text-xs">{{ $row['type'] }} · versi {{ $row['version'] }}</span>
                             </span>
-                            <span class="text-[13px] text-ink-2">{{ $row['revokedOn'] }} oleh {{ $row['by'] }}{{ $row['replacement'] ? ' · diganti '.$row['replacement'] : '' }}</span>
-                            <span class="text-[13px] text-ink-2">Alasan: {{ $row['reason'] }}</span>
+                            <span class="text-xs text-ink-2">{{ $row['revokedOn'] }} oleh {{ $row['by'] }}{{ $row['replacement'] ? ' · diganti '.$row['replacement'] : '' }}</span>
+                            <span class="text-xs text-ink-2">Alasan: {{ $row['reason'] }}</span>
                         </li>
                     @endforeach
                 </ul>

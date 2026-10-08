@@ -814,8 +814,8 @@ it('offers "Keluar" while the activation is open, not on the finished screen', f
     $user = H::pendingStudent()->user;
 
     m1bToPasswordStep($user)
-        ->assertSee('Bukan akun kamu?')
+        ->assertSee('Salah akun?')
         ->call('keepPassword')
         ->assertSet('step', Activation::STEP_DONE)
-        ->assertDontSee('Bukan akun kamu?');
+        ->assertDontSee('Salah akun?');
 });

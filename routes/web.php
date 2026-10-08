@@ -110,6 +110,11 @@ Route::middleware(['auth', 'active'])->group(function (): void {
     // W2-A1: policy-checked file download (SECURITY §3d); purposes → App\Policies\FilePolicy.
     Route::get('/berkas/{file}', [FileController::class, 'show'])
         ->middleware(['activated', 'staff.2fa', 'throttle:60,1,berkas'])->name('files.show');
+
+    // Cover picture of a lomba for <img> on cards: the small JPEG, signed-in users only, same FilePolicy, cached
+    // by the browser and not audited (FileController::cover). Its own counter: one catalog page loads a dozen.
+    Route::get('/berkas/sampul/{file}', [FileController::class, 'cover'])
+        ->middleware(['activated', 'staff.2fa', 'throttle:240,1,berkas-sampul'])->name('files.cover');
 });
 
 // W2-A1: public certificate link (guests too) — FilePolicy::viewPublic only (consent + Admin switch), else 404.

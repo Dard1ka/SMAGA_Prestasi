@@ -31,7 +31,7 @@ use Livewire\Component;
  */
 #[Title('Lomba')]
 // One search box per screen (D-90, backlog #60): this page has its own, so the top bar shows none.
-#[Layout('layouts::app', ['subtitle' => 'Katalog lomba sekolah dan info lomba yang kamu upload.', 'search' => false])]
+#[Layout('layouts::app', ['subtitle' => 'Katalog lomba sekolah dan info lomba yang di-upload.', 'search' => false])]
 final class Lomba extends Component
 {
     public const STEP = 12;

@@ -195,3 +195,21 @@ it('shows "Laporan terkirim" with the estimate after sending', function (): void
         ->assertSee('Medali emas')
         ->assertSee('perkiraan <span class="num">40</span> poin untuk setiap anggota', false);
 });
+
+// QA7: explore round after UI3 (2026-10-08) ---------------------------------------------------------
+
+it('wraps a long lomba name, penyelenggara or place in the head of a registration (QA7)', function (): void {
+    $this->actingAs($this->nadia->user)
+        ->get(route('siswa.lomba-saya.show', $this->wice))
+        ->assertOk()
+        ->assertSee('flex flex-col gap-4 [overflow-wrap:anywhere]', false);
+});
+
+it('lets the letter and member cards shrink to a phone instead of growing to a letter number (QA7)', function (): void {
+    // An implicit grid track grows to its widest unbreakable row (a number such as 400.3.8/901/MRD/X/2026 plus a
+    // button): 16px sideways at 390px, 46px at 360px. grid-cols-1 = minmax(0, 1fr).
+    $this->actingAs($this->nadia->user)
+        ->get(route('siswa.lomba-saya.show', $this->wice))
+        ->assertOk()
+        ->assertSee('class="grid grid-cols-1 gap-4 xl:grid-cols-2"', false);
+});

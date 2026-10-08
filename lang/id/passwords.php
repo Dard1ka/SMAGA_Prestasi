@@ -11,8 +11,8 @@ return [
     |
     */
 
-    'reset' => 'Kata sandi kamu sudah diganti.',
-    'sent' => 'Link atur ulang kata sandi sudah dikirim ke email kamu.',
+    'reset' => 'Kata sandi sudah diganti.',
+    'sent' => 'Link atur ulang kata sandi sudah dikirim ke email.',
     'throttled' => 'Tunggu sebentar sebelum mencoba lagi.',
     'token' => 'Link atur ulang kata sandi tidak valid.',
     'user' => 'Pengguna dengan email itu tidak ditemukan.',

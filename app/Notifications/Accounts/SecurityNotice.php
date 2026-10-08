@@ -37,7 +37,7 @@ final class SecurityNotice extends Notification implements ShouldQueue
         return new self(
             self::PASSWORD_CHANGED,
             'Kata sandi diganti',
-            'Kata sandi akunmu baru saja diganti dan perangkat lain sudah dikeluarkan. Jika bukan kamu, segera hubungi Admin atau Kesiswaan.',
+            'Kata sandi akun baru saja diganti dan perangkat lain sudah dikeluarkan. Jika tidak merasa menggantinya, segera hubungi Admin atau Kesiswaan.',
         );
     }
 
@@ -46,7 +46,7 @@ final class SecurityNotice extends Notification implements ShouldQueue
         return new self(
             self::EMAIL_CHANGED,
             'Email akun diganti',
-            'Email akunmu sekarang '.$newEmailMasked.'. Jika bukan kamu, segera hubungi Admin atau Kesiswaan.',
+            'Email akun sekarang '.$newEmailMasked.'. Jika tidak merasa menggantinya, segera hubungi Admin atau Kesiswaan.',
             false,
         );
     }

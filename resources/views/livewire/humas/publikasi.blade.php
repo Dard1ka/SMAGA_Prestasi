@@ -50,17 +50,17 @@
 
                     @forelse ($published as $card)
                         <article wire:key="pub-{{ $card['id'] }}" @class([
-                            'card relative flex flex-col gap-1 border-l-4 py-3 pr-3 pl-3.5 has-[button:focus-visible]:outline-3 has-[button:focus-visible]:outline-offset-2 has-[button:focus-visible]:outline-focus',
+                            'card relative flex flex-col gap-1 [overflow-wrap:anywhere] border-l-4 py-3 pr-3 pl-3.5 has-[button:focus-visible]:outline-3 has-[button:focus-visible]:outline-offset-2 has-[button:focus-visible]:outline-focus',
                             $card['border'],
                             'border-2 border-primary ring-4 ring-primary-tint' => $card['selected'],
                         ])>
-                            <h3 class="m-0 text-[14.5px] leading-snug font-bold">
+                            <h3 class="m-0 text-md leading-snug font-bold">
                                 <button type="button" wire:click="select('{{ $card['id'] }}')" class="cursor-pointer text-left outline-none after:absolute after:inset-0 after:content-['']" @if ($card['selected']) aria-current="true" @endif>
                                     {{ $card['title'] }}
                                 </button>
                             </h3>
-                            <p class="m-0 text-[12.5px] leading-snug text-muted">{{ $card['student'] }} · {{ $card['result'] }}</p>
-                            <p class="m-0 mt-0.5 flex items-center gap-1.5 text-[12.5px] font-semibold text-green">
+                            <p class="m-0 text-xs leading-snug text-muted">{{ $card['student'] }} · {{ $card['result'] }}</p>
+                            <p class="m-0 mt-0.5 flex items-center gap-1.5 text-xs font-semibold text-green">
                                 <x-sth.icon name="check" :size="14" />{{ $card['publishedOn'] }}
                             </p>
                         </article>

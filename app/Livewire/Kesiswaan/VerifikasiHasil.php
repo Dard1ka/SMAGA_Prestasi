@@ -117,7 +117,7 @@ class VerifikasiHasil extends Component
             return;
         }
 
-        $this->afterDecision('orange', 'Revisi diminta', 'Siswa menerima catatan kamu dan bisa mengirim ulang.');
+        $this->afterDecision('orange', 'Revisi diminta', 'Siswa menerima catatan revisi dan bisa mengirim ulang.');
     }
 
     public function reject(RejectReport $action): void

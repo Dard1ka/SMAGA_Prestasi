@@ -445,3 +445,12 @@ it('drops the errors of fields that are now filled when the schedule is still re
         ->assertHasErrors(['date'])
         ->assertHasNoErrors(['caption', 'channels', 'time']);
 });
+
+// QA7: explore round after UI3 (2026-10-08) ---------------------------------------------------------
+
+it('wraps a long lomba name on a published card instead of widening the lane (QA7)', function (): void {
+    HumasFixtures::publication(publicationState: ['status' => PublicationStatus::Dipublikasikan, 'published_at' => now()->subDay(), 'channels' => ['instagram'], 'caption' => 'Selamat, Nadia!']);
+
+    Livewire::actingAs($this->humas)->test(Publikasi::class)
+        ->assertSeeHtml('card relative flex flex-col gap-1 [overflow-wrap:anywhere] border-l-4');
+});
