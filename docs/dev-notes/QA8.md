@@ -26,6 +26,8 @@ new decision (each fix follows a rule that already exists: D-25, D-109, SECURITY
 - `app/Livewire/Kesiswaan/VerifikasiHasil.php` — a report decided meanwhile; the queue card counts the team; the
   address follows the shown report (`showAddress()`)
 - `resources/js/app.js` — hook `sth-address {url}` (replaces the address, same origin, no new history entry)
+- `app/Http/Middleware/SecurityHeaders.php` — `style-src` allows the Livewire style by its hash (backlog #52);
+  `docs/SECURITY.md` §3f dated note
 - `app/Actions/Reports/SubmitReport.php` — "terlambat" belongs to the first report (`marksLate()`)
 - `app/Livewire/Siswa/LombaSaya/{LaporHasil,Index}.php`, `resources/views/livewire/siswa/lomba-saya/partials/status-card.blade.php`
   — the screens say "ditandai terlambat" only when `marksLate()` says so
@@ -37,7 +39,7 @@ new decision (each fix follows a rule that already exists: D-25, D-109, SECURITY
   `Security/UploadLimitsTest` (+1), `Humas/PublikasiScreenTest` (+1), `Humas/HumasScreensTest` (+1),
   `Kesiswaan/KesiswaanScreensTest` (+5 incl. dataset), `Siswa/Hasil/LaporHasilTest` (+3 incl. dataset),
   `Siswa/Hasil/SubmitReportTest` (+2), `Accounts/ImportStudentsTest` (+1), `Admin/Arsip/ArsipOtomatisTest` (+1);
-  `UploadRulesTest` holds 14 of them now (two long-name cases from the review);
+  `UploadRulesTest` holds 14 of them now (two long-name cases from the review); `Auth/SecurityHeadersTest` (+1);
   all named "… (QA8)", so `--filter=QA8` runs them
 
 ## What changed (finding → root cause → fix)
@@ -89,6 +91,15 @@ new decision (each fix follows a rule that already exists: D-25, D-109, SECURITY
    `kesiswaan.verifikasi.show` of the shown report (or `verifikasi.index` when the panel is empty) after a card click, a
    decision and a report decided elsewhere; `app.js` replaces the address (`history.replaceState`, the history state
    kept for wire:navigate). Checked in the browser: card click → address of that report → reload opens it.
+10. **One CSP console error on every `wire:navigate` page change, on every screen** (backlog #52, Q2-25; the lead asked
+   to fix it instead of pointing at the backlog). Traced in the browser: a fresh load, clicks and Livewire updates log
+   nothing; each menu change logs one blocked `style-src-elem` from `livewire.js`. Livewire merges the next page's
+   `<head>` and inserts that page's `<style data-livewire-style>`, which carries the next page's nonce; the open page's
+   CSP only knows its own. The content of that style is the same on every page, so `SecurityHeaders` adds its
+   `'sha256-…'` to `style-src` on every answer (worked out from the installed Livewire with
+   `FrontendAssets::styles()`, its "already printed" flag put back; once per process). No `'unsafe-inline'`; the Vite
+   dev-server branch is unchanged. Checked in the browser: the CSP carries exactly the hash Chrome suggested, and two
+   page changes log no violation.
 
 ## Checked and found sound
 - Dates: the registration deadline typed as a date is stored as the end of that day (23:59:59), so registration does
@@ -138,6 +149,8 @@ new decision (each fix follows a rule that already exists: D-25, D-109, SECURITY
   exit 0 (1185 s; +4 = the review tests); `pint --test` → PASS (665 files).
 - After the address fix (finding 9): `php artisan test --parallel --processes=4` → **2371 passed, 1 skipped (14121
   assertions)**, exit 0 (1224 s; +1); `pint --test` → PASS (665 files); `npm run build` in the container → OK.
+- After the CSP hash (finding 10): `php artisan test --parallel --processes=4` → **2372 passed, 1 skipped (14125
+  assertions)**, exit 0 (1127 s; +1); `pint --test` → PASS (665 files).
 - Not run: the email scenario and the Playwright smoke (backlog #46); a click-through in a signed-in browser (the
   browser pane had no session and a demo login is not possible from this session); a printed letter.
 

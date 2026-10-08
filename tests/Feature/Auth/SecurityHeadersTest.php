@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Route;
 
 beforeEach(function (): void {
@@ -83,4 +84,19 @@ it('hardens the session cookie in production config', function (): void {
     expect($config['same_site'])->toBe('lax')
         ->and($config['http_only'])->toBeTrue()
         ->and($config['path'])->toBe('/');
+});
+
+it('allows the Livewire style by its hash, so a wire:navigate page change brings it without a CSP error (QA8, #52)', function (): void {
+    // wire:navigate puts the next page's <style data-livewire-style> into the open page with the next page's nonce,
+    // which the open page's CSP does not know: one blocked style and one console error per page change. The content is
+    // the same on every page, so every page's CSP allows it by its hash (the first page opened may be any page).
+    Route::middleware('web')->get('/_test/livewire-styles', fn () => Blade::render('<!doctype html><html><head>@livewireStyles</head><body>ok</body></html>'));
+
+    $page = $this->get('/_test/livewire-styles')->assertOk();
+    preg_match('#<style[^>]*data-livewire-style[^>]*>(.*?)</style>#s', (string) $page->getContent(), $style);
+    $hash = "'sha256-".base64_encode(hash('sha256', $style[1] ?? '', true))."'";
+
+    expect($style)->toHaveCount(2)
+        ->and((string) $page->headers->get('Content-Security-Policy'))->toMatch("/style-src 'self' 'nonce-[A-Za-z0-9]+' ".preg_quote($hash, '/').'(;|$)/')
+        ->and((string) $this->get('/_test/headers')->headers->get('Content-Security-Policy'))->toContain($hash);
 });

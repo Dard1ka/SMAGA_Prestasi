@@ -7,6 +7,7 @@ namespace App\Http\Middleware;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Vite;
+use Livewire\Mechanisms\FrontendAssets\FrontendAssets;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -15,6 +16,10 @@ use Symfony\Component\HttpFoundation\Response;
  * - script-src / style-src use a per-request nonce (Vite::useCspNonce(); Livewire picks the same nonce up for
  *
  *   @livewireScripts/@livewireStyles). No inline <script>/onclick, no style="" attributes (they are blocked).
+ * - style-src also allows the `<style data-livewire-style>` of @livewireStyles by its hash (QA8, backlog #52): a
+ *   `wire:navigate` page change puts the next page's copy of it into the open page with the next page's nonce, which
+ *   the open page's CSP does not know, so every page change logged a blocked style. Its content is the same on every
+ *   page; the hash is taken from the installed Livewire, so an upgrade that changes the style changes the hash too.
  * - Never 'unsafe-eval' (backlog #17): config/livewire.php sets `csp_safe`, so Livewire ships its CSP build whose Alpine
  *   parses directive expressions without eval(). Keep it on; tests/Feature/Security/CspSafeTest.php guards both.
  * - Local + Vite dev server (public/hot): the dev origin is allowed and styles fall back to 'unsafe-inline'
@@ -29,6 +34,9 @@ use Symfony\Component\HttpFoundation\Response;
  */
 class SecurityHeaders
 {
+    /** CSP source of the Livewire style (`'sha256-…'`), worked out once per process; '' when there is none. */
+    private static ?string $livewireStyle = null;
+
     public function handle(Request $request, Closure $next): Response
     {
         Vite::useCspNonce();
@@ -64,7 +72,7 @@ class SecurityHeaders
     private function contentSecurityPolicy(Request $request, string $nonce): string
     {
         $script = ["'self'", "'nonce-{$nonce}'"];
-        $style = ["'self'", "'nonce-{$nonce}'"];
+        $style = array_values(array_filter(["'self'", "'nonce-{$nonce}'", self::livewireStyleSource()]));
         $connect = ["'self'"];
         $font = ["'self'", 'data:'];
 
@@ -96,6 +104,31 @@ class SecurityHeaders
         }
 
         return implode('; ', $directives);
+    }
+
+    /**
+     * `'sha256-…'` of the content of the `<style>` Livewire prints with @livewireStyles. FrontendAssets::styles() prints it
+     * only once per request (`hasRenderedStyles`), so the flag is set back afterwards and the page keeps its own copy.
+     */
+    public static function livewireStyleSource(): string
+    {
+        if (self::$livewireStyle !== null) {
+            return self::$livewireStyle;
+        }
+
+        $assets = app(FrontendAssets::class);
+        $rendered = $assets->hasRenderedStyles;
+        $assets->hasRenderedStyles = false;
+
+        try {
+            $html = FrontendAssets::styles(['nonce' => 'hash']);
+        } finally {
+            $assets->hasRenderedStyles = $rendered;
+        }
+
+        return self::$livewireStyle = preg_match('#<style[^>]*>(.*?)</style>#s', $html, $style) === 1
+            ? "'sha256-".base64_encode(hash('sha256', $style[1], true))."'"
+            : '';
     }
 
     private function viteDevServer(): ?string
