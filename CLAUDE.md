@@ -32,7 +32,7 @@ consent flags (D-16, SECURITY §3m-7).
 ## 2. Sources of truth (read before changing behaviour)
 | file | content |
 |---|---|
-| `docs/DECISIONS.md` | decision log D-01…D-120 (D-45…D-61 = backlog wave + W4 product choices, *sementara*; D-62…D-65 = security hardening, *final*; D-66…D-77 = Q1 security/performance pass and the lead's follow-up choices; D-78…D-91 = §D6, the lead's choices after the hand test of 2026-10-04; D-92…D-102 = §D7, the rules changed by the fixes after the QA pass of 2026-10-05; D-103…D-108 = §D8, the lead's six requests of 2026-10-06 (wave M3) and the schema change of QA4; D-109…D-112 = §D9, the lead's answers after the retest of M3 on 2026-10-07 (QA5); D-113…D-116 = §D10, the explore round after PR 14 (QA6); D-117…D-120 = §D11, the visual direction v3 "Tinta dan Sampul", lomba covers, the staff copy rule and the school crest as the brand mark (UI3)), U-01…U-06, open questions §F. **Wins over everything.** |
+| `docs/DECISIONS.md` | decision log D-01…D-121 (D-121 = §D12, real mail from a local stack: Brevo + allowlist, *sementara*; D-45…D-61 = backlog wave + W4 product choices, *sementara*; D-62…D-65 = security hardening, *final*; D-66…D-77 = Q1 security/performance pass and the lead's follow-up choices; D-78…D-91 = §D6, the lead's choices after the hand test of 2026-10-04; D-92…D-102 = §D7, the rules changed by the fixes after the QA pass of 2026-10-05; D-103…D-108 = §D8, the lead's six requests of 2026-10-06 (wave M3) and the schema change of QA4; D-109…D-112 = §D9, the lead's answers after the retest of M3 on 2026-10-07 (QA5); D-113…D-116 = §D10, the explore round after PR 14 (QA6); D-117…D-120 = §D11, the visual direction v3 "Tinta dan Sampul", lomba covers, the staff copy rule and the school crest as the brand mark (UI3)), U-01…U-06, open questions §F. **Wins over everything.** |
 | `docs/ARCHITECTURE.md` | binding contract: data model, enums, state machine, domain rules |
 | `docs/SECURITY.md` | threat model, top-10 risks §1, controls §3a–§3m (K1–K12), pre-release checklist §4 |
 | `docs/TALENT-FORM.md` | talent types/branches (seed source for `talent_types`, `talent_branches`) |
@@ -148,7 +148,8 @@ the config cache when `.env` or `config/` is newer, and reloads php-fpm. CSS and
 | validate compose | `docker compose config -q` · prod: `docker compose -f docker/compose.prod.yaml config -q` |
 | prod image | `docker build -f docker/Dockerfile.prod -t sth-app:local .` (`--target web` for nginx) |
 | E2E smoke (Playwright, isolated project `sth-e2e`) | `docker compose -f compose.yaml -f tests/E2E/compose.e2e.yaml up -d --wait mysql app web` → `… exec -T app sh tests/E2E/support/setup-app.sh` → `… run --rm e2e` → `… down -v` (DEPLOY §18) |
-| mail check | `docker compose exec app php artisan sth:mail-test you@example.test` (dev: Mailpit; prod: DEPLOY §9) |
+| mail check | `docker compose exec app php artisan sth:mail-test you@example.test` (dev: Mailpit; prod: DEPLOY §9; with `MAIL_MAILER=allowlist` it says whether that address really goes out) |
+| real mail from a local stack (optional, D-121) | in the local `.env`: `MAIL_MAILER=allowlist`, the provider's `MAIL_HOST` / `MAIL_PORT` / `MAIL_USERNAME` / `MAIL_PASSWORD`, `MAIL_FROM_ADDRESS` = the verified sender, `STH_MAIL_ALLOWLIST=you@gmail.com,you+*@gmail.com` → `reload.bat` → `docker compose restart queue scheduler` (steps: `docs/dev-notes/EM1.md`) |
 | email scenario (every role's mails end to end, isolated project `sth-e2e`, ~3 min, not in CI) | E2E `up … mysql app web mailpit` → `… exec -T app sh tests/E2E/support/setup-app.sh` → `… exec -T app php tests/E2E/support/email-scenario.php` → `… down -v` (DEPLOY §18) |
 
 Notes: tests stay SQLite-compatible (MySQL-only behaviour gets its own marked test). Git Bash rewrites
@@ -387,6 +388,15 @@ logs in through `POST /login` and expects a 403/404 on the next GET would see th
 - **Audit & jobs**: activitylog on every state change/Admin action, sealed after commit in a hash chain
   (`audit_seals` + `audit_chain_heads`, `sth:audit:verify` daily, D-63; app code only INSERTs into `activity_log`/`audit_seals`, D-51);
   notifications = queued mail + database; queues `otp`, `mail`, `default`.
+- **Mail in development** (D-121, *sementara*): by default every mail stays in Mailpit. A developer who needs real
+  mail sets `MAIL_MAILER=allowlist` (`App\Mail\Transport\AllowlistTransport`, mailers `allowlist` + `mailpit` in
+  `config/mail.php`): a mail whose recipients are **all** on `STH_MAIL_ALLOWLIST` goes out through the `smtp` mailer
+  (Brevo's SMTP relay for now), every other mail is handed to Mailpit. The scheduler and the demo data mail fictional
+  `@sth.test` addresses by themselves, so `AppServiceProvider::guardUnsafeConfiguration()` refuses to boot in
+  `APP_ENV=local` (the E2E project too) when the default mailer would deliver every mail: smtp with a login or
+  `MAIL_URL`, ses, postmark, resend, sendmail. Allowed there: `allowlist`, smtp without a login (Mailpit), `log`,
+  `array`. It also refuses `MAIL_MAILER=allowlist` outside `APP_ENV=local`. Provider keys live only in the
+  developer's `.env`.
 
 ## 6. Coding conventions
 - `declare(strict_types=1);` in every new PHP file; typed properties, parameters and returns; `final`
@@ -627,7 +637,14 @@ shown small in the middle of a wide band on a lomba card or a lomba page, the sh
 repeated as a button on the same screen, "Lombaku" / "Profil" as tab names, "kamu" on a staff screen, a cover `<img>`
 that points at `files.show`.
 
-Known stale text (do not "fix" code to match it): SECURITY.md §0/§3a still say `sm4g4_DD-MM-YYYY`;
+Real mail in development on 2026-10-08 (EM1), **D-121** (DECISIONS §D12, `docs/dev-notes/EM1.md`), *sementara*: Brevo
+with a temporary Gmail sender, and a local stack only sends out to the addresses on `STH_MAIL_ALLOWLIST`. The provider
+for production is **not** decided. Do not bring back: a local stack that can reach a real provider without the
+allowlist (the boot guard for `APP_ENV=local`), an allowlist entry that opens a whole domain, the allowlist mailer
+outside `APP_ENV=local`.
+
+Known stale text (do not "fix" code to match it): `docs/DEPLOY.md` §9 path A (Google Workspace relay) is not an option
+for the school (lead, 2026-10-08) and §9 has no Brevo path yet; SECURITY.md §0/§3a still say `sm4g4_DD-MM-YYYY`;
 DESIGN-SPEC-v2 §1 and the Admin-Pengaturan mockup still show 30 days (and the mockup's WICE deadline
 24 Okt is now **8 Nov 2026**); SECURITY/DECISIONS call the OTP flag `STH_OTP_DEV_BYPASS`; SECURITY says
 port 8081; SECURITY §3e's vhost sample has inline `#` comments Apache rejects (use `docker/apache/*.conf`);
@@ -700,7 +717,8 @@ IPs, which breaks the per-IP login/OTP limits). The noreply mailbox would then b
 SMTP host must not be `mail.<domain>` (proxied) and its hourly send limit needs asking.
 
 ## 10. Status
-Last updated: 2026-10-08 (waves 1–2 done, W3-A integration pass, backlog wave B1–B6, W4 integration, D1 docs sync, CI green on GitHub, Q1 end-to-end/security/performance pass, PERF1 by S, M1 = the lead's 18 hand-test changes, M2 = fixes after the QA pass, QA4 by S, M3 = the lead's six requests of 2026-10-06, QA5 = fixes after the retest of M3, QA6 = explore round after PR 14, UI3 = visual direction v3 and the lead's review of it, QA7 = explore round after UI3, QA8 = explore round after PR 17). Update this section whenever a milestone moves.
+Last updated: 2026-10-08 (waves 1–2 done, W3-A integration pass, backlog wave B1–B6, W4 integration, D1 docs sync, CI green on GitHub, Q1 end-to-end/security/performance pass, PERF1 by S, M1 = the lead's 18 hand-test changes, M2 = fixes after the QA pass, QA4 by S, M3 = the lead's six requests of 2026-10-06, QA5 = fixes after the retest of M3, QA6 = explore round after PR 14, UI3 = visual direction v3 and the lead's review of it, QA7 = explore round after UI3, QA8 = explore round after PR 17, EM1 = real mail from a local stack). Update this section whenever a milestone moves.
+EM1 2026-10-08 (`docs/dev-notes/EM1.md`, D-121, branch `feat/email-brevo-dev`, not committed): the lead chose Brevo for development with a temporary Gmail sender. Built: the mailer `allowlist` (listed addresses → the real provider, everything else → Mailpit, local only), two boot guards (no allowlist outside local; in local no default mailer that delivers every mail), `sth:mail-test` says which way an address goes, a commented block in `.env.example`. The lead's first real mail through Brevo arrived (sender shown as `…@<id>.brevosend.com`, Gmail shows "Berhenti berlangganan"). No migration, no notification changed yet. Suite numbers: TEST-RESULTS in `docs/dev-notes/EM1.md`. Open: backlog #78.
 M1 2026-10-05 (`docs/dev-notes/M1.md`, plain summary for the team in `catatan.md`; branch `feat/ui-uji-manual-m1`): full suite `--parallel --processes=4` → **1767 passed (8945 assertions)**, exit 0 (680 s); `pint --test` clean (610 files); `npm run build` OK; the four M1 migrations ran on the local MySQL. Dev page times after `reload.bat` + warm-up, all seven roles: 150–540 ms per menu, login 0.75–0.93 s (`catatan.md` §2). Not re-run after M1: the email scenario and the Playwright smoke (backlog).
 M2 2026-10-06 (`docs/dev-notes/M2.md` + `M2-A`…`M2-C`, D-92…D-101, plain summary in `catatan.md` §6; same branch): fixes for the 12 most important findings of the QA pass of 2026-10-05 (64 findings; the rest is backlog #57–#68) and the Trivy fix in `docker/Dockerfile.prod`; two migrations run on the local MySQL; suite numbers: TEST-RESULTS in `docs/dev-notes/M2.md`. PR 9 (M1 + M2) merged into `main` on 2026-10-06 (`b4b6f77`).
 Follow-up 2026-10-06 (D-102, `docs/dev-notes/M2.md` "Follow-up", branch `fix/auth-back-setelah-keluar`): the two leftovers of the browser check (account name back on the second Back; next login on the previous account's page) fixed, tested and checked in Chrome + Chromium. `dokumentasi.md` (repo root) lists the test data left in the lead's local database, which the lead chose not to wipe.
@@ -856,6 +874,7 @@ QA4 and M3 (2026-10-06) closed or changed parts of #39, #46, #55, #57, #63, #65,
 | 75 | Small leftovers of QA6: `w2cDraft()` in `tests/Feature/TataUsaha/SuratTugasTest.php` prints the fixed letter date 2026-10-01 and `IssueLetters` refuses a date older than one year, so those tests fail from 2027-10-02 (move to a date relative to today, with the month / year assertions); one line on "Batalkan undangan" and its mail in PANDUAN-PENGGUNA (Siswa); a browser click-through of the QA6 dialogs (Kepala Sekolah "Setujui terpilih", TU "Kirim", Arsip › Koreksi, "Batalkan undangan"), render-tested only | QA6 | S + I |
 | 76 | UI3 leftovers (`docs/dev-notes/UI3.md`): the backend owner's review of D-118 (`files.cover` is not audited and may stay in the browser for a day; posters only after login; old cover files stay when a cover is replaced: `UpdateCompetition` never calls `StoreUpload::discard()`); the cover in the preview popup on Kesiswaan › "Periksa lomba" and Guru › Lomba; posters on public pages; Publik › Prestasi per bidang opens with an empty right panel; menu name vs page title (Kepsek, TU, Humas; QA7 also found Dashboard / Dashboard prestasi, Arsip / Arsip publikasi, Import siswa / Import data siswa) and the formal words in staff mails (`UI3-B.md`); `docs/dev-notes/W1-D.md` and the mockups show the old look. From QA7: Portofolio shows the drawing, not the poster, for a lomba Kesiswaan closed (`CompetitionPolicy::view`; most achievements belong to closed lomba: allow the cover of a lomba the student took part in?); `Admin\Ringkasan` and `Siswa\Beranda` still build unused `links`; the medal icon on Siswa › Peringkat is white on gold (Beranda uses ink) | UI3, QA7 | user + S |
 | 77 | Lower-confidence points of the QA8 reviews, read in the code, not reproduced (`docs/dev-notes/QA8.md`, "Requests for the lead"): lowering the archive months archives every student whose new date passed that night (show the count before saving); a stale consent form can overwrite a newer consent, and a `terjadwal` publication from before a withdrawn consent comes back with a new consent; "Bukan saya?" (`email_notices`) survives an Admin reset; binding an email of a deleted account may answer a 500; "Tolak" in Verifikasi hasil has no confirmation; the first report's evidence files stay after a revision; a disabled ketua leaves nobody who may report; `perlu_revisi` counted as open on the Kesiswaan dashboard; no own tracker state for `ditolak` / `dibatalkan`; the same ketua in two tabs still gets a 403 on the second "Laporkan hasil" | QA8 | user + S |
+| 78 | Mail delivery after EM1 (`docs/dev-notes/EM1.md`): real flows through the allowlist (activation with a real code, one registration end to end, an HTML notification in Gmail and on a phone); then the notification work (wording, which notices stay mail and which are in-app only, a daily quota guard that keeps room for OTP, failed mails visible to Admin). For production, still to decide (D-121): the provider (Brevo adds an unsubscribe header to transactional mail and blocks who uses it, rewrites links, keeps mail previews; switching these off needs an Enterprise plan), the sender `noreply@…` (needs the school's DNS), the school's consent to a third-party processor. @I: pin the E2E project's mail settings to Mailpit (`tests/E2E/compose.e2e.yaml`) and give DEPLOY §9 the chosen path | EM1 | user + I |
 
 ## 11. Team, ownership and agent protocol
 - **user** (lead, backend core, 40%): `app/{Enums,Models,Domain,Actions,Policies,Http,Providers,

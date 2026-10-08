@@ -9,12 +9,14 @@ use App\Domain\Accounts\PasswordPolicy;
 use App\Domain\Archive\GraduationCalculator;
 use App\Domain\Deadlines\ReportDeadline;
 use App\Enums\SettingKey;
+use App\Mail\Transport\AllowlistTransport;
 use App\Models\Setting;
 use App\Support\Audit\AuditChain;
 use App\Support\Audit\SecurityEventSubscriber;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
+use Illuminate\Mail\MailManager;
 use Illuminate\Mail\Markdown;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\RateLimiter;
@@ -48,6 +50,14 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(GraduationCalculator::class, fn (): GraduationCalculator => new GraduationCalculator(
             self::settingInt(SettingKey::ArchiveMonthsAfterGrade12, GraduationCalculator::DEFAULT_ARCHIVE_MONTHS, GraduationCalculator::MAX_ARCHIVE_MONTHS),
         ));
+
+        // Local development (D-121): mail transport "allowlist" = real delivery for listed addresses, Mailpit for the rest.
+        $this->callAfterResolving('mail.manager', function (MailManager $manager): void {
+            $manager->extend(
+                AllowlistTransport::DRIVER,
+                fn (array $config): AllowlistTransport => AllowlistTransport::fromConfig($manager, $config),
+            );
+        });
     }
 
     /**
@@ -101,6 +111,17 @@ class AppServiceProvider extends ServiceProvider
             throw new RuntimeException('STH_OTP_TEST_MODE hanya boleh aktif di APP_ENV=local.');
         }
 
+        // Mailer "allowlist" (D-121) keeps mail for unlisted addresses in Mailpit: outside local that is a lost OTP.
+        if (config('mail.default') === AllowlistTransport::DRIVER && ! $this->app->environment('local', 'testing')) {
+            throw new RuntimeException('MAIL_MAILER allowlist hanya untuk APP_ENV=local.');
+        }
+
+        // The other way round (D-121): a local stack (and the E2E project, which reads the same .env) mails fictional
+        // addresses by itself, so there a real provider is only reachable through the allowlist mailer.
+        if ($this->app->environment('local') && $this->defaultMailerDeliversEverything()) {
+            throw new RuntimeException('Di APP_ENV=local email nyata hanya boleh lewat MAIL_MAILER=allowlist (lihat .env.example).');
+        }
+
         if (! $this->app->isProduction()) {
             return;
         }
@@ -119,6 +140,23 @@ class AppServiceProvider extends ServiceProvider
             && (! config('session.secure') || filled(config('session.domain')) || config('session.path') !== '/')) {
             throw new RuntimeException('Cookie __Host- wajib Secure, Path=/ dan tanpa Domain.');
         }
+    }
+
+    /**
+     * True when the default mailer would hand every mail to a real mail service. Safe ones: the allowlist, mailers
+     * that send nothing (log, array) and an SMTP server without a login, which is a mail catcher such as Mailpit.
+     * An unknown mailer name is left to Laravel, which names it when the first mail is sent.
+     */
+    private function defaultMailerDeliversEverything(): bool
+    {
+        $settings = (array) config('mail.mailers.'.config('mail.default'), []);
+        $transport = $settings['transport'] ?? null;
+
+        if ($settings === [] || in_array($transport, [AllowlistTransport::DRIVER, 'log', 'array'], true)) {
+            return false;
+        }
+
+        return $transport !== 'smtp' || filled($settings['username'] ?? null) || filled($settings['url'] ?? null);
     }
 
     /**

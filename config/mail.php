@@ -49,6 +49,31 @@ return [
             'local_domain' => env('MAIL_EHLO_DOMAIN', parse_url((string) env('APP_URL', 'http://localhost'), PHP_URL_HOST)),
         ],
 
+        /*
+         | Local development only (D-121): MAIL_MAILER=allowlist sends a mail through "deliver" (the smtp mailer
+         | above, i.e. the MAIL_* settings of the real provider) when every recipient is on STH_MAIL_ALLOWLIST,
+         | and hands every other mail to "catch" (Mailpit). The app refuses to boot with it outside APP_ENV=local.
+         | See App\Mail\Transport\AllowlistTransport.
+         */
+        'allowlist' => [
+            'transport' => 'allowlist',
+            'deliver' => 'smtp',
+            'catch' => 'mailpit',
+            'recipients' => env('STH_MAIL_ALLOWLIST', ''),
+        ],
+
+        // The dev stack's mail catcher (service "mailpit" of compose.yaml), whatever MAIL_HOST points to.
+        'mailpit' => [
+            'transport' => 'smtp',
+            'scheme' => 'smtp',
+            'host' => 'mailpit',
+            'port' => 1025,
+            'username' => null,
+            'password' => null,
+            'timeout' => null,
+            'local_domain' => env('MAIL_EHLO_DOMAIN', parse_url((string) env('APP_URL', 'http://localhost'), PHP_URL_HOST)),
+        ],
+
         'ses' => [
             'transport' => 'ses',
         ],
