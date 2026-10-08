@@ -48,7 +48,8 @@
             @endif
         </div>
 
-        <div class="flex min-w-0 flex-col gap-2.5">
+        {{-- overflow-wrap is inherited by the caller's title and penyelenggara: a long word wraps (QA7). --}}
+        <div class="flex min-w-0 flex-col gap-2.5 [overflow-wrap:anywhere]">
             {{ $slot }}
         </div>
 

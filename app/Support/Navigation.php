@@ -186,7 +186,7 @@ final class Navigation
             ['key' => 'lomba', 'label' => 'Lomba', 'icon' => 'search', 'route' => ['siswa.lomba.index', 'siswa.katalog'], 'match' => ['siswa.lomba.*', 'siswa.katalog*'], 'aliases' => ['cari-lomba']],
             ['key' => 'lombaku', 'label' => 'Lomba saya', 'icon' => 'clipboard', 'route' => ['siswa.lomba-saya.index', 'siswa.lomba-saya'], 'match' => ['siswa.lomba-saya*', 'siswa.lapor*'], 'aliases' => ['lomba-saya']],
             ['key' => 'peringkat', 'label' => 'Peringkat', 'icon' => 'bars', 'route' => ['siswa.peringkat', 'peringkat', 'public.peringkat'], 'aliases' => []],
-            ['key' => 'profil', 'label' => 'Portofolio', 'icon' => 'award', 'route' => ['siswa.portofolio'], 'match' => ['siswa.portofolio*', 'siswa.talenta*', 'akun.*'], 'aliases' => ['portofolio', 'profil-talenta']],
+            ['key' => 'profil', 'label' => 'Portofolio', 'icon' => 'award', 'route' => ['siswa.portofolio'], 'match' => ['siswa.portofolio*', 'siswa.talenta*'], 'aliases' => ['portofolio', 'profil-talenta']],
         ];
 
         $items = array_map(fn (array $def): array => self::item($def, [], $preview), $defs);

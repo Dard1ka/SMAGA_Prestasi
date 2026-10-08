@@ -58,7 +58,8 @@
                 <x-sth.link :href="route('siswa.lomba-saya.index', $detail['status']->isFinal() ? ['tab' => 'selesai'] : [])" icon="chevron-left">Lomba saya</x-sth.link>
             </div>
 
-            <x-sth.card as="article" class="flex flex-col gap-4">
+            {{-- Name, penyelenggara and place are typed by people: a long word wraps inside the card (QA7). --}}
+            <x-sth.card as="article" class="flex flex-col gap-4 [overflow-wrap:anywhere]">
                 <div class="flex items-start gap-3.5">
                     @if ($c->bidang)
                         <x-sth.bidang-tile :bidang="$c->bidang" size="lg" />
@@ -105,7 +106,8 @@
 
             @include('livewire.siswa.lomba-saya.partials.status-card', ['d' => $detail])
 
-            <div class="grid gap-4 xl:grid-cols-2">
+            {{-- grid-cols-1 = minmax(0, 1fr): an implicit track grew to the widest letter row on a phone (QA7). --}}
+            <div class="grid grid-cols-1 gap-4 xl:grid-cols-2">
                 @include('livewire.siswa.lomba-saya.partials.letters-card', ['d' => $detail])
                 @include('livewire.siswa.lomba-saya.partials.team-card', ['d' => $detail])
             </div>

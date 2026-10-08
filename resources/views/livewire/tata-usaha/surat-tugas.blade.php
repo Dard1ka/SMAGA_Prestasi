@@ -71,13 +71,15 @@
         @endphp
 
         <div class="flex flex-col gap-3">
-            <div class="seg self-start" role="tablist" aria-label="Pilih surat">
+            {{-- On a phone the two tabs share the width and show the state under the name: both names with "belum
+                 dibuat" needed 180px more than a 390px screen (QA7). --}}
+            <div class="seg self-start max-sm:grid max-sm:w-full max-sm:auto-cols-fr max-sm:grid-flow-col" role="tablist" aria-label="Pilih surat">
                 @foreach ($tabs as $item)
                     <button type="button" role="tab" id="tab-{{ $item['key'] }}" aria-controls="panel-surat" wire:key="tab-{{ $item['key'] }}"
                             aria-selected="{{ $model === $item['key'] ? 'true' : 'false' }}"
-                            @class(['seg-btn', 'seg-on' => $model === $item['key']]) wire:click="setTab('{{ $item['key'] }}')">
+                            @class(['seg-btn max-sm:h-auto max-sm:min-h-10 max-sm:flex-col max-sm:gap-0 max-sm:py-1.5 max-sm:whitespace-normal', 'seg-on' => $model === $item['key']]) wire:click="setTab('{{ $item['key'] }}')">
                         {{ $item['label'] }}
-                        <span class="font-medium">· {{ $item['letter'] ? ($item['letter']->sent_at ? 'terkirim' : 'PDF siap') : 'belum dibuat' }}</span>
+                        <span class="font-medium"><span class="max-sm:hidden">· </span>{{ $item['letter'] ? ($item['letter']->sent_at ? 'terkirim' : 'PDF siap') : 'belum dibuat' }}</span>
                     </button>
                 @endforeach
             </div>

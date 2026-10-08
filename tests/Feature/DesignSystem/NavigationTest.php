@@ -191,3 +191,18 @@ it('builds initials from the first and last name, skipping honorifics and degree
     ['Keisha', 'K'],
     ['', ''],
 ]);
+
+// QA7: explore round after UI3 (2026-10-08) ---------------------------------------------------------
+
+it('marks no phone tab as the current page on the account pages (QA7)', function (): void {
+    $current = fn (string $route): array => array_values(array_column(
+        array_filter(Navigation::tabbar($route), fn (array $tab): bool => (bool) ($tab['current'] ?? false)),
+        'label',
+    ));
+
+    // The tab was "Profil" and covered the account pages; since D-119 it is "Portofolio", which they are not.
+    expect($current('akun.keamanan'))->toBe([])
+        ->and($current('notifikasi.index'))->toBe([])
+        ->and($current('siswa.portofolio'))->toBe(['Portofolio'])
+        ->and($current('siswa.talenta'))->toBe(['Portofolio']);
+});

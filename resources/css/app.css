@@ -172,6 +172,10 @@
         font-size: var(--text-base);
         font-weight: 400;
         line-height: 1.5;
+        /* A word wider than its line (a long name typed by a person) breaks instead of running out of its box (QA7).
+           break-word leaves min-content alone, so tables and flex rows size as before; a flex or grid column that
+           grows to its longest word needs [overflow-wrap:anywhere] on that column. */
+        overflow-wrap: break-word;
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
     }
@@ -538,9 +542,12 @@
     .chip-wrap {
         height: auto;
         min-height: 24px;
+        max-width: 100%;
         padding-block: 3px;
         line-height: 1.3;
         white-space: normal;
+        /* A typed name (penyelenggara) may hold a word longer than the line (QA7). */
+        overflow-wrap: anywhere;
     }
 
     .c-blue {

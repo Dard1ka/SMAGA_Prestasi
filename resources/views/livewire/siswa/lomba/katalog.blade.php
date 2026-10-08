@@ -56,7 +56,8 @@
         @if ($page->hasPages())
             <nav aria-label="Halaman katalog" class="flex items-center justify-between gap-3">
                 <x-sth.button variant="quiet" size="sm" icon="chevron-left" wire:click="previousPage" :disabled="$page->onFirstPage()">Sebelumnya</x-sth.button>
-                <span class="num text-sm font-semibold text-ink-2">Halaman {{ $page->currentPage() }} dari {{ $page->lastPage() }}</span>
+                {{-- On a narrow card (a 360px phone) "Halaman" is only read out, so both buttons fit (QA7). --}}
+                <span class="num text-sm font-semibold text-ink-2"><span class="@max-[400px]:sr-only">Halaman </span>{{ $page->currentPage() }} dari {{ $page->lastPage() }}</span>
                 <x-sth.button variant="quiet" size="sm" icon-right="chevron-right" wire:click="nextPage" :disabled="! $page->hasMorePages()">Berikutnya</x-sth.button>
             </nav>
         @endif

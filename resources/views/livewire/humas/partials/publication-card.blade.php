@@ -13,7 +13,7 @@
             <x-sth.chip tone="gold" size="sm">{{ $card['headline'] }}</x-sth.chip>
         </div>
     @endif
-    <div class="flex flex-col gap-1 px-3 pt-3 pb-3.5">
+    <div class="flex flex-col gap-1 px-3 pt-3 pb-3.5 [overflow-wrap:anywhere]">
         <h3 class="m-0 text-base leading-tight font-bold">
             <button type="button" wire:click="select('{{ $card['id'] }}')" class="cursor-pointer text-left outline-none after:absolute after:inset-0 after:content-['']" @if ($card['selected']) aria-current="true" @endif>
                 {{ $card['title'] }}@if ($card['selected'])<span class="sr-only"> (dipilih)</span>@endif

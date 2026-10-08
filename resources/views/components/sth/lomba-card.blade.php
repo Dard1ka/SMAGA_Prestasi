@@ -52,7 +52,8 @@
             <x-sth.sampul :bidang="$key" :seed="$seed ?? $title" :src="$poster" bentuk="tegak"
                           class="w-[104px] shrink-0 rounded-tile @min-[440px]:w-[148px]" />
 
-            <div class="flex min-w-0 flex-1 flex-col items-start gap-2">
+            {{-- overflow-wrap is inherited: one long word typed by a person wraps here instead of widening the page (QA7). --}}
+            <div class="flex min-w-0 flex-1 flex-col items-start gap-2 [overflow-wrap:anywhere]">
                 @if ($status)
                     <x-sth.chip :tone="$statusTone">{{ $status }}</x-sth.chip>
                 @endif

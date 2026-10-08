@@ -41,7 +41,8 @@
                         <div class="flex flex-wrap items-center gap-2">
                             @if ($detail['bidang'])<x-sth.chip :bidang="$detail['bidang']" icon size="sm" />@endif
                             <x-sth.chip size="sm">{{ $detail['tingkat'] }}</x-sth.chip>
-                            <x-sth.chip size="sm">{{ $detail['organizer'] ? $detail['organizer'].' · ' : '' }}kategori {{ $detail['kategori'] }}</x-sth.chip>
+                            {{-- A penyelenggara name can be long: this tag may take two lines (QA7). --}}
+                            <x-sth.chip size="sm" class="chip-wrap">{{ $detail['organizer'] ? $detail['organizer'].' · ' : '' }}kategori {{ $detail['kategori'] }}</x-sth.chip>
                         </div>
                         <h2 class="title-section m-0">{{ $detail['name'] }}</h2>
                     </div>

@@ -167,7 +167,7 @@
                                 </span>
                                 <x-sth.chip tone="glass" :icon="$card['bidang_key']">{{ $card['bidang_label'] }}</x-sth.chip>
                             </x-sth.sampul>
-                            <div class="flex flex-1 flex-col gap-1 px-[18px] pt-3.5 pb-4">
+                            <div class="flex flex-1 flex-col gap-1 px-[18px] pt-3.5 pb-4 [overflow-wrap:anywhere]">
                                 <h3 class="m-0 text-lg leading-[22px] font-bold">
                                     <a href="{{ route('public.lomba.pemenang', $card['competition']) }}" class="text-ink hover:text-primary">{{ $card['lomba'] }}</a>
                                 </h3>

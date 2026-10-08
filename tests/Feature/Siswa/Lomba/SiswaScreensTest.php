@@ -311,3 +311,27 @@ it('shows the tour until it is skipped, and again from /siswa/tur', function ():
     $this->get(route('siswa.beranda'))->assertDontSee('Mulai tour');
     $this->get(route('siswa.beranda', ['tur' => 1]))->assertDontSee('Mulai tour');
 });
+
+// QA7: explore round after UI3 (2026-10-08) ---------------------------------------------------------
+
+it('keeps the dot with the lomba name on a Lomba saya card and wraps a long name inside the card (QA7)', function (): void {
+    $lomba = F::teamCompetition(3, ['name' => 'Lomba Peneliti Belia (LPB) 2026']);
+    app(CreateRegistration::class)->handle(F::user($this->nadia), $lomba, RegistrationType::Tim, [$this->dimas->getKey()], $this->guru->id);
+
+    $this->actingAs(F::user($this->nadia))->get(route('siswa.beranda'))
+        ->assertOk()
+        // A line never starts with "·": the dot is glued to the last word of the name.
+        ->assertSee('Lomba Peneliti Belia (LPB) 2026</a>&nbsp;<span', false)
+        ->assertSee('class="flex min-w-0 flex-col items-start gap-1 [overflow-wrap:anywhere]"', false);
+});
+
+it('fits the catalog page buttons on a 360px phone by hiding the word "Halaman" there (QA7)', function (): void {
+    foreach (range(1, 10) as $i) {
+        F::openCompetition(['name' => 'Lomba Contoh '.$i]);
+    }
+
+    $this->actingAs(F::user($this->nadia))->get(route('siswa.lomba.index'))
+        ->assertOk()
+        ->assertSee('<span class="@max-[400px]:sr-only">Halaman </span>', false)
+        ->assertSee('1 dari 2');
+});

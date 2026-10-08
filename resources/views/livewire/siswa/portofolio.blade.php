@@ -56,7 +56,7 @@
                                     <div class="flex items-start gap-3 @min-[440px]:gap-4">
                                         <x-sth.sampul :bidang="$item['bidang']" :seed="$item['seed']" :src="$item['poster']" bentuk="tegak"
                                                       class="w-[104px] shrink-0 rounded-tile @min-[440px]:w-[148px]" />
-                                        <div class="flex min-w-0 flex-1 flex-col items-start gap-2">
+                                        <div class="flex min-w-0 flex-1 flex-col items-start gap-2 [overflow-wrap:anywhere]">
                                             <x-sth.chip tone="gold" icon="award">{{ $item['result'] }}</x-sth.chip>
                                             <h3 id="pr-{{ $item['id'] }}" class="title-card text-base @min-[440px]:text-lg">{{ $item['title'] }}</h3>
                                             <div class="flex flex-wrap items-center gap-x-2.5 gap-y-1.5">

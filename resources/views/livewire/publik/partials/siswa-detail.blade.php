@@ -56,7 +56,7 @@
         @foreach ($detail['achievements'] as $item)
             <li wire:key="ach-{{ $loop->index }}-{{ $item['competition'] }}" class="grid gap-3 rounded-card border border-line bg-surface px-3.5 py-3 sm:grid-cols-[48px_minmax(0,1fr)_auto] sm:items-start">
                 <span class="hidden sm:block"><x-sth.bidang-tile :bidang="$item['bidang']" /></span>
-                <div class="flex min-w-0 flex-col gap-1">
+                <div class="flex min-w-0 flex-col gap-1 [overflow-wrap:anywhere]">
                     <{{ $hItem }} class="m-0 text-md leading-5 font-bold">
                         <a href="{{ route('public.lomba.pemenang', $item['competition']) }}" class="text-ink hover:text-primary">{{ $item['lomba'] }}</a>
                     </{{ $hItem }}>

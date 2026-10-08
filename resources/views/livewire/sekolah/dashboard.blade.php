@@ -55,7 +55,8 @@
                     </div>
                     <div class="absolute inset-0 flex items-end justify-around gap-3 px-2">
                         @foreach ($perYear['years'] as $year)
-                            <div class="flex h-full flex-1 items-end justify-center gap-1.5">
+                            {{-- min-w-0: on a 360px phone the bars get narrower instead of leaving the card (QA7). --}}
+                            <div class="flex h-full min-w-0 flex-1 items-end justify-center gap-1.5">
                                 @foreach ($year['bars'] as $bar)
                                     <div class="relative flex h-full w-4 items-end sm:w-6">
                                         <span class="relative w-full rounded-t-[6px] {{ $chartBg[$bar['bidang']->cssKey()] }} h-pct-{{ $bar['pct'] }}" title="{{ $bar['bidang']->label() }} · {{ $bar['value'] }}">
@@ -70,35 +71,42 @@
                 <div class="ml-8 flex justify-around gap-3 px-2" aria-hidden="true">
                     @foreach ($perYear['years'] as $year)
                         <div class="flex flex-1 flex-col items-center text-center">
-                            <span class="num text-xs font-bold">{{ $year['year'] }}</span>
+                            {{-- "2025/2026" may break after the slash: four labels did not fit a 360px phone (QA7). --}}
+                            @php
+                                [$yearStart, $yearEnd] = array_pad(explode('/', $year['year'], 2), 2, null);
+                            @endphp
+                            <span class="num text-xs font-bold">{{ $yearStart }}@if ($yearEnd !== null)/<wbr>{{ $yearEnd }}@endif</span>
                             <span class="muted text-xs">{{ $year['total'] }} prestasi{{ $year['running'] ? ' · berjalan' : '' }}</span>
                         </div>
                     @endforeach
                 </div>
 
-                <table class="sr-only">
-                    <caption>Prestasi terverifikasi per tahun ajaran dan bidang</caption>
-                    <thead>
-                        <tr>
-                            <th scope="col">Tahun ajaran</th>
-                            @foreach (\App\Livewire\Sekolah\Dashboard::CHART_ORDER as $bidang)
-                                <th scope="col">{{ $bidang->label() }}</th>
-                            @endforeach
-                            <th scope="col">Total</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach ($perYear['years'] as $year)
+                {{-- The box is sr-only, not the table: a table does not shrink to 1px and widened the page (QA7). --}}
+                <div class="sr-only">
+                    <table>
+                        <caption>Prestasi terverifikasi per tahun ajaran dan bidang</caption>
+                        <thead>
                             <tr>
-                                <th scope="row">{{ $year['year'] }}{{ $year['running'] ? ' (berjalan)' : '' }}</th>
-                                @foreach ($year['bars'] as $bar)
-                                    <td>{{ $bar['value'] }}</td>
+                                <th scope="col">Tahun ajaran</th>
+                                @foreach (\App\Livewire\Sekolah\Dashboard::CHART_ORDER as $bidang)
+                                    <th scope="col">{{ $bidang->label() }}</th>
                                 @endforeach
-                                <td>{{ $year['total'] }}</td>
+                                <th scope="col">Total</th>
                             </tr>
-                        @endforeach
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                            @foreach ($perYear['years'] as $year)
+                                <tr>
+                                    <th scope="row">{{ $year['year'] }}{{ $year['running'] ? ' (berjalan)' : '' }}</th>
+                                    @foreach ($year['bars'] as $bar)
+                                        <td>{{ $bar['value'] }}</td>
+                                    @endforeach
+                                    <td>{{ $year['total'] }}</td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
             @endif
         </x-sth.card>
 
@@ -185,7 +193,8 @@
             @endif
         </x-sth.card>
 
-        <x-sth.card as="section" class="flex flex-col gap-3" aria-labelledby="perhatian-title">
+        {{-- The items name a lomba: a long word wraps inside the card instead of widening the grid (QA7). --}}
+        <x-sth.card as="section" class="flex flex-col gap-3 [overflow-wrap:anywhere]" aria-labelledby="perhatian-title">
             <div class="flex items-center gap-2">
                 <h2 id="perhatian-title" class="title-card">Perlu perhatian</h2>
                 @if ($attention !== [])

@@ -21,7 +21,9 @@
     $titleClass = [1 => 'title-page', 2 => 'title-section', 3 => 'title-card'][$level];
 @endphp
 <div {{ $attributes->class('flex flex-wrap items-center justify-between gap-x-6 gap-y-2') }}>
-    <div class="flex min-w-0 flex-col gap-1">
+    {{-- A title can be a lomba or student name: one long word wraps instead of widening the page (QA7). The row wraps
+         first, so a normal title still breaks between words. --}}
+    <div class="flex min-w-0 flex-col gap-1 [overflow-wrap:anywhere]">
         @if ($breadcrumbs !== [])
             <nav aria-label="Breadcrumb">
                 <ol class="m-0 flex list-none flex-wrap items-center gap-1.5 p-0 text-md">

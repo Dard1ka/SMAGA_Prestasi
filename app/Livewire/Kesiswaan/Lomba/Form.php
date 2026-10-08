@@ -222,8 +222,8 @@ class Form extends Component
             ], [
                 'juknis.mimes' => 'Pilih PDF, JPG, atau PNG.',
                 'juknis.max' => 'Ukuran maksimal 5 MB.',
-                'cover.image' => 'Pilih gambar JPG atau PNG.',
-                'cover.mimes' => 'Pilih gambar JPG atau PNG.',
+                'cover.image' => 'Pilih gambar JPG, PNG, atau WEBP.',
+                'cover.mimes' => 'Pilih gambar JPG, PNG, atau WEBP.',
                 'cover.max' => 'Ukuran maksimal 3 MB.',
             ]);
         } catch (ValidationException $e) {

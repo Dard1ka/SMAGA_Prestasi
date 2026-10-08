@@ -50,7 +50,7 @@
 
                     @forelse ($published as $card)
                         <article wire:key="pub-{{ $card['id'] }}" @class([
-                            'card relative flex flex-col gap-1 border-l-4 py-3 pr-3 pl-3.5 has-[button:focus-visible]:outline-3 has-[button:focus-visible]:outline-offset-2 has-[button:focus-visible]:outline-focus',
+                            'card relative flex flex-col gap-1 [overflow-wrap:anywhere] border-l-4 py-3 pr-3 pl-3.5 has-[button:focus-visible]:outline-3 has-[button:focus-visible]:outline-offset-2 has-[button:focus-visible]:outline-focus',
                             $card['border'],
                             'border-2 border-primary ring-4 ring-primary-tint' => $card['selected'],
                         ])>

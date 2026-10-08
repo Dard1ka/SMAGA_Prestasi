@@ -3,7 +3,7 @@
     school's Excel sheet). Empty fields show a [placeholder] so TU sees what is still missing.
     Vars: $content (LetterContent) · $number (issued or typed number, or null) · $tpl / $letterTemplate (optional)
 --}}
-<div class="relative mx-auto flex w-full max-w-[560px] flex-col overflow-hidden border border-line bg-white px-5 py-8 font-[family-name:Arial,Helvetica,sans-serif] text-[10.5px] leading-[15px] text-ink shadow-card sm:min-h-[792px] sm:px-[37px] sm:py-[50px]" aria-label="Preview surat tugas siswa">
+<div class="relative mx-auto flex w-full max-w-[560px] flex-col overflow-hidden border border-line bg-white px-5 py-8 font-[family-name:Arial,Helvetica,sans-serif] text-[10.5px] leading-[15px] text-ink shadow-card sm:min-h-[792px] sm:px-[37px] sm:py-[50px] [overflow-wrap:anywhere]" aria-label="Preview surat tugas siswa">
     <div class="pointer-events-none absolute inset-0 flex items-center justify-center select-none" aria-hidden="true">
         <span class="-rotate-[30deg] font-sans text-[64px] font-bold tracking-[0.2em] text-line-soft">PREVIEW</span>
     </div>

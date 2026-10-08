@@ -483,3 +483,23 @@ it('rejects a non-spreadsheet upload on the import screen', function (): void {
         ->set('file', UploadedFile::fake()->createWithContent('foto.png', 'not really'))
         ->assertHasErrors('file');
 });
+
+// QA7: explore round after UI3 (2026-10-08) ---------------------------------------------------------
+
+it('names every picture type the cover field takes when the file is refused (QA7)', function (): void {
+    $component = Livewire::actingAs($this->kesiswaan)->test(Form::class)
+        ->call('open')
+        ->set('form', F::form())
+        ->set('cover', UploadedFile::fake()->image('poster.gif'))
+        ->call('save')
+        ->assertHasErrors('cover');
+
+    expect($component->errors()->first('cover'))->toBe('Pilih gambar JPG, PNG, atau WEBP.');
+});
+
+it('lets the penyelenggara tag of a report take two lines instead of running out of the panel (QA7)', function (): void {
+    F::pendingReport();
+
+    Livewire::actingAs($this->kesiswaan)->test(VerifikasiHasil::class)
+        ->assertSeeHtml('chip c-gray chip-sm chip-wrap');
+});

@@ -92,9 +92,9 @@
                             <x-sth.card as="article" wire:key="reg-{{ $item['id'] }}" class="flex flex-col gap-3">
                                 <div class="flex items-center gap-3">
                                     <x-sth.bidang-tile :bidang="$item['bidang']" />
-                                    <div class="flex min-w-0 flex-col items-start gap-1">
-                                        <h3 class="title-card m-0"><a class="ttl-link" href="{{ $item['href'] }}">{{ $item['title'] }}</a>
-                                            <span class="font-sans text-xs font-medium text-muted">· {{ $item['meta'] }}</span></h3>
+                                    {{-- A long lomba name wraps in the card; the dot stays with its last word, so no line starts with "·" (QA7). --}}
+                                    <div class="flex min-w-0 flex-col items-start gap-1 [overflow-wrap:anywhere]">
+                                        <h3 class="title-card m-0"><a class="ttl-link" href="{{ $item['href'] }}">{{ $item['title'] }}</a>&nbsp;<span class="font-sans text-xs font-medium text-muted">·&nbsp;{{ $item['meta'] }}</span></h3>
                                         <x-sth.chip :tone="$item['tone']" size="sm">{{ $item['label'] }}</x-sth.chip>
                                     </div>
                                 </div>

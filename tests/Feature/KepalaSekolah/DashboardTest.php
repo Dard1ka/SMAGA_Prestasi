@@ -99,3 +99,22 @@ it('links bidang rows to the public drill-down and the waiting tile to the queue
     expect($html)->toContain(route('kepsek.persetujuan.index'))
         ->and($html)->not->toContain('style="');
 });
+
+// QA7: explore round after UI3 (2026-10-08) ---------------------------------------------------------
+
+it('keeps a long lomba name in "Perlu perhatian" inside its card (QA7)', function (): void {
+    $this->actingAs($this->kepsek)->get('/kepsek')
+        ->assertOk()
+        ->assertSee('flex flex-col gap-3 [overflow-wrap:anywhere]" aria-labelledby="perhatian-title"', false);
+});
+
+it('fits the chart of the dashboard on a 360px phone: year labels break after the slash, bars get narrower (QA7)', function (): void {
+    w2cAchievement('Nadia Putri Anindya', 'sains', Level::Nasional, '2025-09-20');
+
+    // Four labels such as "2025/2026" side by side were 18px wider than the card on a 360px phone.
+    // (Livewire puts its morph markers around the @if, so only the part after the slash is compared.)
+    Livewire::actingAs($this->kepsek)->test(Dashboard::class)
+        ->assertSeeHtml('/<wbr>2026')
+        // The bars of three years needed 278px in a 239px plot: a year group may get narrower than its 16px bars.
+        ->assertSeeHtml('class="flex h-full min-w-0 flex-1 items-end justify-center gap-1.5"');
+});

@@ -877,3 +877,24 @@ it('opens a correction only for a current letter of this registration and drops 
         ->assertSet('revisingId', null)
         ->assertSet('koreksi', '');
 });
+
+// QA7: explore round after UI3 (2026-10-08) ---------------------------------------------------------
+
+it('wraps a long word on the paper preview of both letters instead of widening the screen (QA7)', function (): void {
+    $registration = w2cTeam($this->mentor);
+
+    Livewire::actingAs($this->tu)->test(SuratTugas::class, ['registration' => $registration])
+        ->assertSeeHtml('sm:py-[50px] [overflow-wrap:anywhere]" aria-label="Preview surat tugas siswa"')
+        ->call('setTab', 'guru')
+        ->assertSeeHtml('sm:pl-[52px] [overflow-wrap:anywhere]" aria-label="Preview surat perintah tugas guru"');
+});
+
+it('fits the two letter tabs on a phone while both letters still have to be made (QA7)', function (): void {
+    $registration = w2cTeam($this->mentor);
+
+    // "Surat siswa · belum dibuat" + "Surat guru pendamping · belum dibuat" needed 180px more than a 390px phone.
+    Livewire::actingAs($this->tu)->test(SuratTugas::class, ['registration' => $registration])
+        ->assertSeeHtml('class="seg self-start max-sm:grid max-sm:w-full max-sm:auto-cols-fr max-sm:grid-flow-col"')
+        ->assertSeeHtml('max-sm:h-auto max-sm:min-h-10 max-sm:flex-col max-sm:gap-0 max-sm:py-1.5 max-sm:whitespace-normal')
+        ->assertSee('belum dibuat');
+});

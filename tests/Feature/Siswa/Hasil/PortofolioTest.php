@@ -129,3 +129,12 @@ it('shows a talent that did not pass with its status', function (): void {
         ->assertSee('Debat · Debat Bahasa Inggris (NSDC)')
         ->assertSee('Tidak lolos');
 });
+
+// QA7: explore round after UI3 (2026-10-08) ---------------------------------------------------------
+
+it('lets a long word in a prestasi capsule wrap inside the card (QA7)', function (): void {
+    $this->actingAs($this->nadia->user)
+        ->get(route('siswa.portofolio'))
+        ->assertOk()
+        ->assertSee('class="flex min-w-0 flex-1 flex-col items-start gap-2 [overflow-wrap:anywhere]"', false);
+});
