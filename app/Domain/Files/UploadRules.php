@@ -197,15 +197,7 @@ final class UploadRules
     /** Display-only original name for the DB: no paths/control chars, ≤ 150 characters. */
     public function sanitizeOriginalName(string $name): string
     {
-        $name = mb_scrub($name, 'UTF-8');
-        $name = basename(str_replace('\\', '/', $name));
-        $name = trim(preg_replace('/[\p{C}]+/u', '', $name) ?? '');
-
-        if ($name === '' || $name === '.' || $name === '..') {
-            return 'file';
-        }
-
-        return mb_substr($name, 0, self::MAX_ORIGINAL_NAME);
+        return mb_substr($this->cleanName($name), 0, self::MAX_ORIGINAL_NAME);
     }
 
     /**
@@ -215,17 +207,29 @@ final class UploadRules
      */
     public function nameForContent(string $originalName, string $mime): string
     {
-        $name = $this->sanitizeOriginalName($originalName);
-        $actual = $this->extensionForMime($mime);
+        $name = $this->cleanName($originalName);
         $extension = pathinfo($name, PATHINFO_EXTENSION);
+        $fits = (self::MIME_BY_EXTENSION[strtolower($extension)] ?? null) === strtolower($mime);
+        $keep = $fits ? $extension : $this->extensionForMime($mime);
 
-        if ($actual === null || (self::MIME_BY_EXTENSION[strtolower($extension)] ?? null) === strtolower($mime)) {
-            return $name;
+        if ($keep === null || $keep === '') {
+            return mb_substr($name, 0, self::MAX_ORIGINAL_NAME);
         }
 
+        // Cut the name before its extension, so a long "Laporan v1.2 ….pdf" keeps its words and its ending.
         $base = $extension === '' ? $name : mb_substr($name, 0, -mb_strlen($extension) - 1);
 
-        return mb_substr($base, 0, self::MAX_ORIGINAL_NAME - strlen($actual) - 1).'.'.$actual;
+        return mb_substr($base, 0, self::MAX_ORIGINAL_NAME - mb_strlen($keep) - 1).'.'.$keep;
+    }
+
+    /** The name without path or control characters, not cut yet ("file" when nothing is left). */
+    private function cleanName(string $name): string
+    {
+        $name = mb_scrub($name, 'UTF-8');
+        $name = basename(str_replace('\\', '/', $name));
+        $name = trim(preg_replace('/[\p{C}]+/u', '', $name) ?? '');
+
+        return $name === '' || $name === '.' || $name === '..' ? 'file' : $name;
     }
 
     private function typeMessage(): string

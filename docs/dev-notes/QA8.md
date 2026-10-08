@@ -1,4 +1,4 @@
-# QA8 — explore round after PR 17 (2026-10-08)  ·  status: done, not committed (on `main`)
+# QA8 — explore round after PR 17 (2026-10-08)  ·  status: done (branch `fix/qa8-explore`, not pushed)
 
 Exploration of `main` at `3ad2d94` (PR 16 = UI3 + QA7 and PR 17 = the slimmer CI, both merged), at the lead's request
 "Skrng explore dan fix lagi". QA7 covered layout; this round looked at what had not been touched: dates and deadlines,
@@ -24,15 +24,18 @@ new decision (each fix follows a rule that already exists: D-25, D-109, SECURITY
   `notifiesStudent()` / `studentsToTell()`: the Action that sends the notice also answers who gets it
 - `app/Livewire/Humas/{Publikasi,Apresiasi}.php` — the toasts ask the Actions (D-109)
 - `app/Livewire/Kesiswaan/VerifikasiHasil.php` — a report decided meanwhile; the queue card counts the team
-- `app/Actions/Reports/SubmitReport.php` — "terlambat" belongs to the first report
+- `app/Actions/Reports/SubmitReport.php` — "terlambat" belongs to the first report (`marksLate()`)
+- `app/Livewire/Siswa/LombaSaya/{LaporHasil,Index}.php`, `resources/views/livewire/siswa/lomba-saya/partials/status-card.blade.php`
+  — the screens say "ditandai terlambat" only when `marksLate()` says so
 - `app/Livewire/Siswa/LombaSaya/Concerns/ReportHelpers.php`, `resources/views/livewire/siswa/lomba-saya/lapor-hasil.blade.php`
   — the deadline days from the setting
 - `app/Livewire/Akun/ImportSiswa.php`, `resources/views/livewire/akun/import-siswa.blade.php`,
   `app/Livewire/Admin/ArsipOtomatis.php` — the archive months from the setting
 - tests: `Letters/LetterLayoutTest` (+1), `Unit/Domain/Files/UploadRulesTest` (+12 incl. datasets),
   `Security/UploadLimitsTest` (+1), `Humas/PublikasiScreenTest` (+1), `Humas/HumasScreensTest` (+1),
-  `Kesiswaan/KesiswaanScreensTest` (+4 incl. dataset), `Siswa/Hasil/LaporHasilTest` (+1),
+  `Kesiswaan/KesiswaanScreensTest` (+4 incl. dataset), `Siswa/Hasil/LaporHasilTest` (+3 incl. dataset),
   `Siswa/Hasil/SubmitReportTest` (+2), `Accounts/ImportStudentsTest` (+1), `Admin/Arsip/ArsipOtomatisTest` (+1);
+  `UploadRulesTest` holds 14 of them now (two long-name cases from the review);
   all named "… (QA8)", so `--filter=QA8` runs them
 
 ## What changed (finding → root cause → fix)
@@ -51,7 +54,8 @@ new decision (each fix follows a rule that already exists: D-25, D-109, SECURITY
    content ("brosur.png"; ".jpeg" / ".JPG" stay as typed for a JPEG), and `StoreUpload` stores that. A first version
    refused such a file with "ganti akhiran namanya", but Windows hides extensions by default, so a school laptop user
    would hardly know how; accepting the allowed content and naming it right costs the user nothing. Spreadsheets
-   (`storeSpreadsheet()`) are unchanged: they are not in the extension map.
+   (`storeSpreadsheet()`) are unchanged: they are not in the extension map. A name longer than 150 characters is cut
+   before its extension (the review: "Laporan v1.2 ….pdf" used to lose everything after "v1" and keep no ending).
 3. **Humas: "Siswa sudah diberi tahu" for an alumnus or a disabled account** ("Tandai dipublikasikan", "Masukkan ke
    apresiasi", Apresiasi › Tambah prestasi, "Hapus acara"). `PublishPublication`, `RecordAppreciation` and
    `DeleteAppreciationEvent` tell only a student who can log in, the toasts claimed it always: the kind of toast D-109
@@ -70,6 +74,9 @@ new decision (each fix follows a rule that already exists: D-25, D-109, SECURITY
    `SubmitReport` computed `late` from today on every send, so Kesiswaan asking for a revision late made an on-time
    report late. "Terlambat" belongs to the first report (D-25): the answer to a revision request keeps the flag the
    report had (a late report stays late); a new report or one sent again after it was withdrawn is computed as before.
+   The rule lives in `SubmitReport::marksLate()`, and Laporkan hasil and the Lomba saya card ask it before they say
+   "ditandai terlambat" (the review found both still saying it for an on-time report; now: "… tetapi laporan pertama
+   dikirim tepat waktu, jadi revisi ini tidak ditandai terlambat.").
 8. **Import siswa and Admin › Arsip otomatis said "18 bulan"** whatever Admin › Pengaturan says
    (`archive_months_after_grade12`). Both take the months from `GraduationCalculator::archiveMonths()` now (the Arsip
    otomatis subtitle moved from the `#[Layout]` attribute to `layoutData()`, because an attribute cannot hold it).
@@ -86,9 +93,28 @@ new decision (each fix follows a rule that already exists: D-25, D-109, SECURITY
   report under another student's open tab; the same ketua in two tabs still gets the 403 on the second "Laporkan
   hasil" (left as is; `SubmitReport` itself answers with a normal form error).
 
+## Review and browser check (after the commit `55dd1ea`)
+- A read-only review agent read the whole commit against CLAUDE.md and the Livewire 4 / dompdf vendor code. One finding
+  (the "ditandai terlambat" sentence, see 7) and two smaller ones (long names, see 2; the letter test only checked the
+  order of tags) were fixed test-first in a follow-up commit. Found sound: nested `.utuh` boxes in dompdf (it checks
+  every ancestor and falls back to a split, no loop), the Humas predicates (same as `notify()`, eager-loaded), the
+  guard and the member count of Verifikasi hasil, the ternary of `SubmitReport`, `layoutData()` merging with
+  `#[Layout]` (the attribute is applied after `render()`, both values reach the layout).
+- Browser (the app's browser pane, the lead signed in as Kesiswaan; no password typed by the agent): Verifikasi hasil
+  with the same demo report open in two tabs. Tab 1 "Minta revisi" → "Revisi diminta."; tab 2 "Minta revisi" → the
+  orange toast "Laporan ini sudah diputuskan. Antrean sudah diperbarui.", the queue count went to 1 and the panel moved
+  to the next report; no error page. The address of tab 2 still names the decided report (the path is not rewritten
+  when the selection moves; the same happens after a normal decision).
+- Local data changed by that check: the demo report of Rizky Maulana (Olimpiade Kimia Nasional Universitas Diponegoro
+  2026) is `perlu_revisi` with the note "Uji QA8: sertifikat kurang jelas, mohon upload ulang." (and the usual revision
+  notice to the student was queued).
+
 ## Commands verified
-- RED: every new test failed for the missing behaviour before the fix (missing toast / text, "+2", `late` true, the
-  refusal message or the missing `nameForContent()`); "a late report stays late" passed before and after as a guard.
+- RED: every behaviour test failed for the missing behaviour before the fix (missing toast / text, "+2", `late` true,
+  the refusal message, the missing `nameForContent()`, the "tidak ditandai terlambat" sentence, the cut long name).
+  Guards that passed before and after: "a late report stays late", "accepts a file whose content is another allowed
+  type", ".jpg and .jpeg", "a revision of a late report is still marked late". The letter test was rewritten from a regex
+  to a DOM check and was seen failing on a mutation (the box closed above the signature), then restored.
 - GREEN: `--filter=QA8` on the touched files → 11 passed (42 assertions); every touched test area (Accounts import,
   Admin › Arsip, Humas, Kesiswaan, Siswa › Hasil, Letters, Unit Files) → **705 passed (3734 assertions)**, exit 0
   (1458 s, one process); after the change from "refuse" to "rename" (finding 2): `UploadRulesTest` + `UploadLimitsTest`
@@ -99,6 +125,8 @@ new decision (each fix follows a rule that already exists: D-25, D-109, SECURITY
 - Before any change: `main` at `3ad2d94` = the code of QA7, whose full run was 2341 passed, 1 skipped (14038 assertions).
 - After QA8: `php artisan test --parallel --processes=4` → **2366 passed, 1 skipped (14098 assertions)**, exit 0
   (1194 s; +25 = the QA8 tests); `pint --test` → PASS (665 files). No front-end change, so no `npm run build`.
+- After the review fixes: `php artisan test --parallel --processes=4` → **2370 passed, 1 skipped (14114 assertions)**,
+  exit 0 (1185 s; +4 = the review tests); `pint --test` → PASS (665 files).
 - Not run: the email scenario and the Playwright smoke (backlog #46); a click-through in a signed-in browser (the
   browser pane had no session and a demo login is not possible from this session); a printed letter.
 

@@ -264,7 +264,8 @@ logs in through `POST /login` and expects a 403/404 on the next GET would see th
   only, always via `App\Support\Leaderboard\PersonalRank` (D-37; demo Nadia = #14).
 - **Report deadline** (`App\Domain\Deadlines`): `final_on` + **45 days** (setting
   `report_deadline_days`, Admin-editable, D-25). `reports.late` belongs to the first report: the answer to a revision
-  request keeps it (`SubmitReport`, QA8). Screens print the days and months of the settings, never a fixed 45 / 18.
+  request keeps it (`SubmitReport::marksLate()`, QA8; a screen asks it before it says "ditandai terlambat"). Screens print
+  the days and months of the settings, never a fixed 45 / 18.
 - **Archive** (`App\Domain\Archive`): grade-12 start = 1 July of the year the student enters kelas XII;
   `archive_at` = +18 months (e.g. kelas X 2026/2027 → XII 2028-07-01 → archive 2030-01-01). Daily job
   01:00 Asia/Jakarta, idempotent; sessions revoked; **archived users cannot log in** (D-29); their
@@ -722,13 +723,14 @@ Lomba saya letter card on a phone, catalog paging at 360 px, the penyelenggara t
 on the account pages, the WEBP cover message. Checked: 37 signed-in screens of every role and 5 public pages with
 worst-case words at 360, 390, 1280 and 1366 px (rendered from the local demo data inside a rolled-back transaction).
 No migration. Suite numbers: TEST-RESULTS in `docs/dev-notes/QA7.md`.
-QA8 2026-10-08 (`docs/dev-notes/QA8.md`, on `main` after PR 17, not committed): dates, the report → points flow, Humas,
+QA8 2026-10-08 (`docs/dev-notes/QA8.md`, branch `fix/qa8-explore` from `main` after PR 17): dates, the report → points flow, Humas,
 the import and the letter PDFs, read by two agents and probed on the local demo data. Eight fixes: the signature of the
 guru letter no longer stands alone on a page (and the student letter's closing stays with its signature), a file is
 stored under a name that matches its content (Q1-20), Humas toasts claim a notice only when the student got one
 (D-109), a report decided in another tab gives a toast instead of a 403, the queue card counts only the members still in
-the team, "terlambat" belongs to the first report, and the report days and archive months on the screens follow the
-settings. No migration. Suite numbers: TEST-RESULTS in `docs/dev-notes/QA8.md`.
+the team, "terlambat" belongs to the first report (and the screens say so), and the report days and archive months on
+the screens follow the settings. A review agent read the commit; the two-tab case was checked in the browser as
+Kesiswaan. No migration. Suite numbers: TEST-RESULTS in `docs/dev-notes/QA8.md`.
 
 | area | owner | state (details in `docs/dev-notes/<ID>.md`) |
 |---|---|---|

@@ -16,6 +16,7 @@ use App\Enums\RegistrationStatus;
 use App\Enums\ReportFileKind;
 use App\Enums\ReportStatus;
 use App\Enums\RoleName;
+use App\Models\Competition;
 use App\Models\File;
 use App\Models\Registration;
 use App\Models\Report;
@@ -63,6 +64,22 @@ final class SubmitReport
             'laporan', 'artikel' => new UploadRules(10 * self::MB, ['pdf']),
             default => new UploadRules(5 * self::MB), // sertifikat, pengumuman, poster: pdf/jpg/png/webp
         };
+    }
+
+    /**
+     * Is a report sent today marked "terlambat"? "Late" belongs to the first report (D-25): the answer to a revision
+     * request keeps the flag that report had, so a report sent on time is not late because Kesiswaan asked for a
+     * revision after the deadline (QA8). Anything else is late after `final_on` + `report_deadline_days`. The screens ask
+     * this before they say "ditandai terlambat".
+     */
+    public static function marksLate(Competition $competition, ?Report $report): bool
+    {
+        if ($report !== null && ! $report->trashed() && $report->status === ReportStatus::PerluRevisi) {
+            return (bool) $report->late;
+        }
+
+        return $competition->final_on !== null
+            && app(ReportDeadline::class)->isOverdue($competition->final_on, CarbonImmutable::today());
     }
 
     public static function wordCount(?string $text): int
@@ -218,13 +235,7 @@ final class SubmitReport
             throw ValidationException::withMessages(['hasil' => $e->getMessage()]);
         }
 
-        $competition = $registration->competition;
-        // "Late" belongs to the first report (D-25). An answer to a revision request keeps it: a report sent on time
-        // is not late because Kesiswaan asked for a revision after the deadline (QA8).
-        $late = $report !== null && ! $report->trashed() && $report->status === ReportStatus::PerluRevisi
-            ? (bool) $report->late
-            : $competition->final_on !== null
-                && app(ReportDeadline::class)->isOverdue($competition->final_on, CarbonImmutable::today());
+        $late = self::marksLate($registration->competition, $report);
 
         $report ??= new Report(['registration_id' => $locked->getKey()]);
 

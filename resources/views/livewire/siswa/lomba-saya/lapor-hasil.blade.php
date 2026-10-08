@@ -6,9 +6,15 @@
 @php($h = $inline ? 'h4' : 'h2')
 <div class="flex flex-col gap-4">
     @if (! $inline && $deadline)
-        <p @class(['m-0 inline-flex items-center gap-2 text-sm font-semibold', 'text-orange' => ! $deadline['overdue'], 'text-red' => $deadline['overdue']])>
+        <p @class(['m-0 inline-flex items-center gap-2 text-sm font-semibold', 'text-orange' => ! ($deadline['overdue'] && $marksLate), 'text-red' => $deadline['overdue'] && $marksLate])>
             <x-sth.icon name="clock" :size="18" />
-            {{ $deadline['overdue'] ? 'Batas '.$deadline['dueText'].' sudah lewat. Laporan tetap diterima, tetapi ditandai terlambat.' : 'Batas '.$deadline['dueText'].' ('.$deadline['days'].' hari setelah final).' }}
+            @if (! $deadline['overdue'])
+                {{ 'Batas '.$deadline['dueText'].' ('.$deadline['days'].' hari setelah final).' }}
+            @elseif ($marksLate)
+                {{ 'Batas '.$deadline['dueText'].' sudah lewat. Laporan tetap diterima, tetapi ditandai terlambat.' }}
+            @else
+                {{ 'Batas '.$deadline['dueText'].' sudah lewat, tetapi laporan pertama dikirim tepat waktu, jadi revisi ini tidak ditandai terlambat.' }}
+            @endif
         </p>
     @endif
 

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Actions\Letters\LetterContent;
 use App\Actions\Letters\LetterDraft;
+use App\Actions\Templates\LetterTemplate;
 use App\Domain\Letters\PdfDocument;
 use App\Domain\Letters\PdfQrCode;
 use App\Domain\Letters\PdfRenderer;
@@ -294,7 +295,20 @@ it('keeps the end of each letter with its signature, so a long lomba never leave
     $siswa = m1aLayoutHtml('surat-tugas-siswa', $content, '400.3.8/313/MRD/X/2026');
 
     // A realistic long lomba name, penyelenggara and place pushed only the (unbreakable) signature block of the guru
-    // letter onto page 2. "Untuk" (guru) and the closing sentence (siswa) now travel with the signature.
-    expect($guru)->toMatch('/<div class="utuh">\s*<table class="g-blok">\s*<tr>\s*<td class="k-untuk">Untuk<\/td>(?:(?!<div class="halaman-baru">).)*class="g-ttd utuh"/s')
-        ->and($siswa)->toMatch('/<div class="utuh">\s*<div>[^<]+<\/div>\s*<div class="s-baris"><\/div>(?:(?!<\/div>\s*@).)*class="s-ttd utuh"/s');
+    // letter onto page 2. "Untuk" (guru) and the closing sentence (siswa) now travel with the signature: one `.utuh`
+    // box holds both (checked in the DOM, so a box that closes before the signature fails).
+    $boxes = static function (string $html, string $signature): array {
+        $dom = new DOMDocument;
+        @$dom->loadHTML('<?xml encoding="utf-8"?>'.$html);
+        $nodes = (new DOMXPath($dom))->query('//div[@class="utuh"][.//*[contains(concat(" ", normalize-space(@class), " "), " '.$signature.' ")]]');
+
+        return array_map(static fn (DOMElement $box): string => preg_replace('/\s+/', ' ', $box->textContent), iterator_to_array($nodes));
+    };
+    $guruBoxes = $boxes($guru, 'g-ttd');
+    $siswaBoxes = $boxes($siswa, 's-ttd');
+
+    expect($guruBoxes)->toHaveCount(1)
+        ->and($guruBoxes[0])->toContain('Untuk')
+        ->and($siswaBoxes)->toHaveCount(1)
+        ->and($siswaBoxes[0])->toContain(trim(preg_replace('/\s+/', ' ', LetterTemplate::current()->siswaClosing())));
 });

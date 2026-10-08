@@ -178,6 +178,9 @@ it('names a stored file after its content (QA8)', function (string $name, string
     'pdf named PDF' => ['Scan.PDF', 'application/pdf', 'Scan.PDF'],
     'path stripped' => ['..\\unduhan/brosur.pdf', 'image/png', 'brosur.png'],
     'no extension' => ['scan', 'image/png', 'scan.png'],
+    // A dot inside a name longer than 150 characters is not the extension: the name is cut before the extension.
+    'long name, content fits' => ['Laporan v1.2 '.str_repeat('b', 150).'.pdf', 'application/pdf', 'Laporan v1.2 '.str_repeat('b', 133).'.pdf'],
+    'long name, other content' => ['Laporan v1.2 '.str_repeat('b', 150).'.pdf', 'image/png', 'Laporan v1.2 '.str_repeat('b', 133).'.png'],
 ]);
 
 it('takes .jpg and .jpeg as the same type (QA8)', function () {

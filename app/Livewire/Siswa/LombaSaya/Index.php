@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Livewire\Siswa\LombaSaya;
 
 use App\Actions\Registrations\CancelRegistration;
+use App\Actions\Reports\SubmitReport;
 use App\Enums\LetterType;
 use App\Enums\RegistrationStatus;
 use App\Enums\RegistrationType;
@@ -267,6 +268,8 @@ final class Index extends Component
             'reportUrl' => route('siswa.lapor', $registration),
             'report' => $report,
             'deadline' => $deadline,
+            // The sentence "ditandai terlambat" follows SubmitReport's rule (QA8).
+            'marksLate' => SubmitReport::marksLate($competition, $report),
             'estimate' => $report !== null ? $this->previewBreakdown($competition, $report->claimed_result) : null,
             'achievement' => $achievement,
             'certificate' => $this->fileLink($report?->files->firstWhere('kind', ReportFileKind::Sertifikat)?->file_id),

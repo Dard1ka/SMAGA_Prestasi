@@ -120,8 +120,10 @@
             @if ($report?->status === RS::PerluRevisi && $report->note)
                 <x-sth.alert tone="warning" title="Catatan Kesiswaan">{{ $report->note }}</x-sth.alert>
             @endif
-            @if ($d['deadline'] && $d['deadline']['overdue'])
+            @if ($d['deadline'] && $d['deadline']['overdue'] && $d['marksLate'])
                 <x-sth.alert tone="warning">Batas laporan sudah lewat. Laporan tetap bisa dikirim, tetapi ditandai terlambat.</x-sth.alert>
+            @elseif ($d['deadline'] && $d['deadline']['overdue'])
+                <x-sth.alert>Batas laporan sudah lewat, tetapi laporan pertama dikirim tepat waktu, jadi revisinya tidak ditandai terlambat.</x-sth.alert>
             @endif
             @if ($d['isTeam'])
                 <p class="m-0 inline-flex items-center gap-2 text-sm text-ink-2"><x-sth.icon name="users" :size="18" />Setiap anggota tim mendapat poin penuh.</p>
