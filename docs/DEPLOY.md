@@ -30,7 +30,7 @@ Browser ──HTTPS──> Apache 2.4.29 (host, TLS, vhost prestasi.*) ──> 1
 | `docker/env.production.example` | template `.env` production |
 | `scripts/deploy/{deploy,backup,restore}.sh` | deploy, backup terenkripsi, restore |
 | `scripts/deploy/grants.sh` | hak akses `sth_app` per tabel (dijalankan otomatis setelah migrasi, §8.2) |
-| `.github/workflows/ci.yml`, `.github/dependabot.yml`, `.github/gitleaks.toml`, `.github/trivy/` | CI + update dependensi (§18) |
+| `.github/workflows/{ci,docker}.yml`, `.github/dependabot.yml`, `.github/gitleaks.toml`, `.github/trivy/` | CI + update dependensi (§18) |
 | `tests/E2E/` | uji E2E Playwright (smoke) untuk CI dan lokal (§18) |
 
 Keputusan teknis yang perlu diketahui:
@@ -566,7 +566,7 @@ queue/scheduler, `DROP` + impor database, menerapkan ulang hak akses per tabel (
       → pasang `/opt/docker/<ver>` + ganti symlink `current` + symlink `/usr/local/bin` → start → `sthc up -d` →
       smoke test → catat di `/opt/docker/CHANGELOG`. Simpan 2 versi terakhir untuk rollback.
 - [ ] Merge PR Dependabot (composer/npm/digest image/actions) yang CI-nya hijau, lalu `deploy.sh`.
-- [ ] Image alat CI yang tidak diurus Dependabot (§18): `TRIVY_IMAGE`, `GITLEAKS_IMAGE` di `ci.yml` dan Playwright di
+- [ ] Image alat CI yang tidak diurus Dependabot (§18): `GITLEAKS_IMAGE` di `ci.yml`, `TRIVY_IMAGE` di `docker.yml` dan Playwright di
       `tests/E2E/compose.e2e.yaml` + `tests/E2E/package.json` (versi harus sama). Cek entri `.github/trivy/trivyignore.yaml`.
 - [ ] `bash scripts/deploy/grants.sh --check` → `OK` (§8.2).
 - [ ] `certbot renew --dry-run`; sisa masa sertifikat > 14 hari.
@@ -617,21 +617,27 @@ Migrasi production hanya maju (CLAUDE.md aturan 8): jangan menjalankan `migrate:
 - [ ] Cookie `__Host-`, HSTS tanpa `includeSubDomains`, Host asing ditolak, `X-Forwarded-Host` palsu tidak mengubah link.
 - [ ] SMTP noreply (§9): `sth:mail-test` OK, SPF/DKIM/DMARC `PASS`, OTP nyata diterima; `STH_OTP_TEST_MODE` tidak ada di `.env`.
 - [ ] `grants.sh --check` = OK: `sth_app` tidak bisa `UPDATE/DELETE activity_log` (§8.2).
-- [ ] CI hijau di commit yang dirilis: Pest, Pint, audit, gitleaks, Trivy, E2E (§18).
+- [ ] CI hijau di commit yang dirilis: Pest, Pint, audit, gitleaks, E2E (`ci.yml`) dan Trivy (`docker.yml`, jalankan
+      manual lewat "Run workflow" di tab Actions bila PR terakhir tidak menyentuh `docker/` atau file lock) (§18).
 - [ ] Backup harian terenkripsi + salinan off-site + **uji restore berhasil** (tanggal & bukti dicatat).
 - [ ] Kontak insiden (SECURITY §3l) terisi.
 
 ## 18. CI dan uji E2E
-`.github/workflows/ci.yml` berjalan di setiap push ke `main` dan setiap PR; semua job wajib hijau sebelum merge:
+Dua workflow; semua job yang berjalan wajib hijau sebelum merge (`npm audit` hanya peringatan). `main` tidak punya
+proteksi branch di paket ini, jadi tidak ada "required check": aturan hijau-sebelum-merge adalah kesepakatan tim.
 
-| Job | Isi |
-|---|---|
-| `php` | `composer validate`, Pint, Pest (SQLite), boot guard OTP |
-| `frontend` | `npm ci` + `vite build`; `npm audit` hanya peringatan |
-| `audit` | `composer audit --locked` |
-| `secrets` | gitleaks atas seluruh riwayat git (`.github/gitleaks.toml`: allowlist sempit untuk data fiktif) |
-| `docker` | build image production, cek non-root/.env/OPcache, **Trivy**: gagal bila ada kerentanan HIGH/CRITICAL yang sudah ada perbaikannya (pengecualian hanya di `.github/trivy/trivyignore.yaml` dengan alasan + tanggal kedaluwarsa ≤ 30 hari), validasi compose production |
-| `e2e` | stack dev di Docker sebagai project terpisah `sth-e2e` + Playwright: beranda publik 200, login siswa demo (Nadia), "Halo, Nadia" di Beranda, keluar |
+| Workflow · job | Kapan | Isi |
+|---|---|---|
+| `ci.yml` · `php` | setiap PR, manual, mingguan | `composer validate`, `composer audit --locked`, Pint, `npm ci` + `vite build`, `npm audit` (peringatan), Pest (SQLite), boot guard OTP |
+| `ci.yml` · `secrets` | setiap PR, manual, mingguan | gitleaks atas seluruh riwayat git (`.github/gitleaks.toml`: allowlist sempit untuk data fiktif) |
+| `ci.yml` · `e2e` | setiap PR, manual | stack dev di Docker sebagai project terpisah `sth-e2e` + Playwright: beranda publik 200, login siswa demo (Nadia), "Halo, Nadia" di Beranda, keluar |
+| `docker.yml` · `docker` | PR yang menyentuh `docker/`, `.dockerignore`, `composer.*`, `package*.json`, `.github/trivy/` atau `docker.yml`; mingguan; manual | build image production, cek non-root/.env/OPcache, **Trivy**: gagal bila ada kerentanan HIGH/CRITICAL yang sudah ada perbaikannya (pengecualian hanya di `.github/trivy/trivyignore.yaml` dengan alasan + tanggal kedaluwarsa ≤ 30 hari), validasi compose production |
+
+Sejak 8 Okt 2026 tidak ada lagi run kedua saat push ke `main` setelah merge (run PR sudah menguji hasil gabungannya),
+job `frontend` dan `audit` digabung ke `php`, dan `docker` pindah ke `docker.yml`: sekitar 12 menit Actions per PR,
+bukan sekitar 32. Run mingguan (Senin 01.00 WIB) menangkap advisory dan CVE baru tanpa perubahan di repo; hasilnya
+ada di tab Actions (bila run terjadwal gagal, GitHub memberi tahu akun yang terakhir mengubah baris `cron` di file
+workflow).
 
 Semua action dipin ke commit SHA (komentar = versi); Dependabot memperbaruinya. Temuan gitleaks: **rotasi** rahasianya
 dulu, baru bersihkan riwayat; jangan masukkan rahasia asli ke allowlist.
@@ -644,7 +650,7 @@ dulu, baru bersihkan riwayat; jangan masukkan rahasia asli ke allowlist.
 3. Bila belum: tambahkan paket itu ke baris `apk upgrade --no-cache …` di stage `web` (`docker/Dockerfile.prod`),
    dengan komentar CVE dan tanggal. Untuk stage `app` (Debian) pakai `apt-get install --only-upgrade <paket>`.
    Hapus lagi dari daftar setelah digest baru sudah memuat perbaikannya.
-4. Uji di komputer sendiri sebelum push: build kedua image, lalu jalankan perintah Trivy yang sama dengan `ci.yml`
+4. Uji di komputer sendiri sebelum push: build kedua image, lalu jalankan perintah Trivy yang sama dengan `docker.yml`
    (image `TRIVY_IMAGE`, opsi `--scanners vuln --severity HIGH,CRITICAL --ignore-unfixed`). Harus 0 temuan.
 5. Pengecualian di `.github/trivy/trivyignore.yaml` hanya bila tidak ada perbaikan, dengan alasan dan tanggal kedaluwarsa.
 

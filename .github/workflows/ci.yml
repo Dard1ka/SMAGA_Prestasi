@@ -1,16 +1,24 @@
-# SMAGA Talent Hub CI (docs/SECURITY.md §3k). Every job must pass before merge, except the npm audit step,
-# which only warns. Supply chain:
+# SMAGA Talent Hub CI (docs/SECURITY.md §3k, docs/DEPLOY.md §18). Every job must pass before merge, except the
+# npm audit step, which only warns. The production images and Trivy run in docker.yml.
+#
+# When it runs (2026-10-08): on every pull request, by hand, and weekly. It no longer runs again on the push to main
+# after a merge: the pull request run already tested the merge result (main has no branch protection on this plan,
+# so the second run only repeated the first and doubled the Actions minutes). The weekly run re-checks the audits
+# against new advisories.
+#
+# Supply chain:
 # - every action is pinned to a full commit SHA (comment = release tag); Dependabot (.github/dependabot.yml) bumps them
-# - tool images (Trivy, gitleaks) are pinned by tag + digest below; Playwright in tests/E2E/compose.e2e.yaml. Those
-#   are bumped by hand in the monthly routine (docs/DEPLOY.md §13), Playwright together with tests/E2E/package.json.
+# - the gitleaks image is pinned by tag + digest below, Trivy in docker.yml, Playwright in tests/E2E/compose.e2e.yaml.
+#   Those are bumped by hand in the monthly routine (docs/DEPLOY.md §13), Playwright together with
+#   tests/E2E/package.json.
 # - no secrets are used; the token is read-only.
 name: CI
 
 on:
-  push:
-    branches: [main]
   pull_request:
   workflow_dispatch:
+  schedule:
+    - cron: "0 18 * * 0" # Monday 01:00 Asia/Jakarta
 
 permissions:
   contents: read
@@ -23,12 +31,11 @@ env:
   PHP_VERSION: "8.4"
   PHP_EXTENSIONS: mbstring, intl, zip, gd, bcmath, exif, pcntl, pdo_sqlite, sqlite3, pdo_mysql
   NODE_VERSION: "24"
-  TRIVY_IMAGE: aquasec/trivy:0.74.0@sha256:62b1e65e8869bc4b4c6aa4fa2b21595256c7c2f6018a9d9ad61caf87187c1969
   GITLEAKS_IMAGE: ghcr.io/gitleaks/gitleaks:v8.30.1@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f
 
 jobs:
   php:
-    name: PHP · validate, Pint, Pest
+    name: PHP · validate, Pint, audits, Pest
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
@@ -64,6 +71,11 @@ jobs:
       - name: composer install
         run: composer install --no-interaction --no-progress --prefer-dist
 
+      # Reads composer.lock only; fails on any security advisory. Abandoned packages are reported, not fatal.
+      # (Its own job until 2026-10-08; one runner less, same check.)
+      - name: composer audit
+        run: composer audit --locked --no-interaction --abandoned=report
+
       - name: Pint
         run: vendor/bin/pint --test
 
@@ -72,11 +84,20 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
 
-      # Blade layouts reference the Vite manifest, so feature tests need built assets.
+      # Blade layouts reference the Vite manifest, so feature tests need built assets. This build is also the check
+      # that the frontend compiles (the separate "Frontend" job only repeated it until 2026-10-08).
       - name: Build assets
         run: |
           npm ci --ignore-scripts --no-audit --no-fund
           npm run build
+          test -f public/build/manifest.json
+
+      # Non-blocking on purpose: all frontend packages are build-time only (assets are compiled into the image).
+      - name: npm audit (production dependencies, warning only)
+        run: |
+          if ! npm audit --omit=dev --audit-level=high; then
+            echo "::warning::npm audit found high/critical advisories in production dependencies"
+          fi
 
       - name: App key
         run: php artisan key:generate --ansi
@@ -98,54 +119,6 @@ jobs:
           fi
           echo "boot guard OK"
 
-  frontend:
-    name: Frontend · build, npm audit
-    runs-on: ubuntu-24.04
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: npm
-
-      - name: npm ci
-        run: npm ci --ignore-scripts --no-audit --no-fund
-
-      - name: vite build
-        run: |
-          npm run build
-          test -f public/build/manifest.json
-
-      # Non-blocking on purpose: all frontend packages are build-time only (assets are compiled into the image).
-      - name: npm audit (production dependencies, warning only)
-        run: |
-          if ! npm audit --omit=dev --audit-level=high; then
-            echo "::warning::npm audit found high/critical advisories in production dependencies"
-          fi
-
-  audit:
-    name: Composer audit
-    runs-on: ubuntu-24.04
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-
-      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
-        with:
-          php-version: ${{ env.PHP_VERSION }}
-          coverage: none
-          tools: composer:v2
-
-      # Reads composer.lock only; fails on any security advisory. Abandoned packages are reported, not fatal.
-      - name: composer audit
-        run: composer audit --locked --no-interaction --abandoned=report
-
   secrets:
     name: Secrets · gitleaks (full history)
     runs-on: ubuntu-24.04
@@ -163,99 +136,9 @@ jobs:
           docker run --rm -v "$GITHUB_WORKSPACE:/repo:ro" -w /repo --entrypoint sh "$GITLEAKS_IMAGE" -c \
             'git config --global --add safe.directory /repo && gitleaks git --config .github/gitleaks.toml --redact --no-banner --verbose .'
 
-  docker:
-    name: Docker · production images, Trivy, compose
-    runs-on: ubuntu-24.04
-    timeout-minutes: 40
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-
-      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
-
-      - name: Build app image (docker/Dockerfile.prod, target app)
-        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
-        with:
-          context: .
-          file: docker/Dockerfile.prod
-          target: app
-          tags: sth-app:ci
-          load: true
-          push: false
-          cache-from: type=gha,scope=sth-app
-          cache-to: type=gha,mode=max,scope=sth-app
-
-      - name: Build web image (target web)
-        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
-        with:
-          context: .
-          file: docker/Dockerfile.prod
-          target: web
-          tags: sth-web:ci
-          load: true
-          push: false
-          cache-from: |
-            type=gha,scope=sth-app
-            type=gha,scope=sth-web
-          cache-to: type=gha,mode=max,scope=sth-web
-
-      - name: Image checks (non-root, no .env, OPcache timestamps off)
-        run: |
-          test "$(docker run --rm --entrypoint id sth-app:ci -un)" = www-data
-          test "$(docker run --rm --entrypoint id sth-web:ci -un)" = nginx
-          if docker run --rm --entrypoint test sth-app:ci -e /var/www/html/.env; then
-            echo "::error::.env is baked into the image"; exit 1
-          fi
-          docker run --rm --entrypoint php sth-app:ci -r 'exit(ini_get("opcache.validate_timestamps") === "0" ? 0 : 1);'
-          docker run --rm --entrypoint php-fpm sth-app:ci -t
-
-      - name: Trivy DB cache
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: ${{ runner.temp }}/trivy-cache
-          key: trivy-db-${{ github.run_id }}
-          restore-keys: trivy-db-
-
-      # SECURITY §3k: fail on HIGH/CRITICAL vulnerabilities that have a fixed version (OS packages + composer vendor).
-      # Fix = rebuild/bump (Dependabot digests) or update the package; exceptions only in .github/trivy/trivyignore.yaml
-      # with a statement and an expiry date.
-      - name: Trivy scan (sth-app, sth-web)
-        run: |
-          mkdir -p "$RUNNER_TEMP/trivy-cache" "$RUNNER_TEMP/images"
-          docker save sth-app:ci -o "$RUNNER_TEMP/images/sth-app.tar"
-          docker save sth-web:ci -o "$RUNNER_TEMP/images/sth-web.tar"
-          rc=0
-          for image in sth-app sth-web; do
-            echo "::group::Trivy $image"
-            docker run --rm --user "$(id -u):$(id -g)" -e HOME=/tmp \
-              -v "$RUNNER_TEMP/images:/images:ro" -v "$RUNNER_TEMP/trivy-cache:/cache" \
-              -v "$GITHUB_WORKSPACE/.github/trivy:/cfg:ro" \
-              "$TRIVY_IMAGE" image --cache-dir /cache --input "/images/$image.tar" \
-              --scanners vuln --severity HIGH,CRITICAL --ignore-unfixed \
-              --ignorefile /cfg/trivyignore.yaml --exit-code 1 --no-progress --format table || rc=1
-            echo "::endgroup::"
-          done
-          [ "$rc" = 0 ] || { echo "::error::Trivy found fixable HIGH/CRITICAL vulnerabilities (see the groups above)"; exit 1; }
-
-      - name: Validate docker/compose.prod.yaml
-        run: |
-          mkdir -p "$RUNNER_TEMP/secrets"
-          for s in db_root_password db_migrate_password db_app_password; do echo ci > "$RUNNER_TEMP/secrets/$s.txt"; done
-          cp docker/env.production.example "$RUNNER_TEMP/env"
-          STH_ENV_FILE="$RUNNER_TEMP/env" STH_SECRETS_DIR="$RUNNER_TEMP/secrets" \
-            docker compose -f docker/compose.prod.yaml config --quiet
-
-      # CLAUDE.md rule 7: the OTP flag never appears in production env/compose files.
-      - name: No OTP test flag in production files
-        run: |
-          if grep -nE '^\s*STH_OTP_(TEST_MODE|DEV_BYPASS)\s*[:=]' docker/compose.prod.yaml docker/env.production.example; then
-            echo "::error::OTP test flag found in production files"
-            exit 1
-          fi
-
   e2e:
     name: E2E · Playwright smoke (dev stack)
+    if: github.event_name != 'schedule'
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     env:
