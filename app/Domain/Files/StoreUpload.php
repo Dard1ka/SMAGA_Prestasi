@@ -23,7 +23,8 @@ use Throwable;
  * 3. images: dimensions checked before decoding (≤ 8000 px), re-encoded with GD (EXIF/GPS dropped),
  *    EXIF orientation applied, scaled down to ≤ 2048 px;
  * 4. stored on the private `local` disk under a random path ("lampiran/Y/m/<ulid>.<ext>", extension from the
- *    sniffed MIME) and recorded as an App\Models\File (sha256 + size of the stored bytes).
+ *    sniffed MIME) and recorded as an App\Models\File (sha256 + size of the stored bytes); its display name ends in
+ *    the extension of that content too (UploadRules::nameForContent(), QA8).
  * 5. UploadLimits (B2): 30 stored uploads per user per hour, 200 MB stored per student; refused as InvalidUpload.
  * Files are served only by App\Http\Controllers\FileController after App\Policies\FilePolicy. Lomba cards show a
  * cover through a smaller JPEG made from the stored file (CoverThumbnail, kept under "sampul/" on the same disk).
@@ -100,7 +101,7 @@ final class StoreUpload
             $file = File::query()->create([
                 'disk' => self::DISK,
                 'path' => $storagePath,
-                'original_name' => $rules->sanitizeOriginalName($originalName),
+                'original_name' => $rules->nameForContent($originalName, $mime),
                 'mime' => $mime,
                 'size' => strlen($bytes),
                 'sha256' => hash('sha256', $bytes),

@@ -170,7 +170,8 @@ class Publikasi extends Component
         }
 
         $this->resetErrorBag();
-        $this->dispatch('sth-toast', message: 'Publikasi ditandai sudah terbit. Siswa sudah diberi tahu.', tone: 'success');
+        // Only when someone was told (an alumnus or a disabled account is not; D-109).
+        $this->dispatch('sth-toast', message: 'Publikasi ditandai sudah terbit.'.(PublishPublication::notifiesStudent($publication) ? ' Siswa sudah diberi tahu.' : ''), tone: 'success');
     }
 
     public function recordAppreciation(RecordAppreciation $action): void
@@ -198,7 +199,7 @@ class Publikasi extends Component
 
         $this->eventId = '';
         $this->resetErrorBag('eventId');
-        $this->dispatch('sth-toast', message: 'Masuk daftar apresiasi. Siswa sudah diberi tahu.', tone: 'success');
+        $this->dispatch('sth-toast', message: 'Masuk daftar apresiasi.'.(RecordAppreciation::notifiesStudent($publication->achievement) ? ' Siswa sudah diberi tahu.' : ''), tone: 'success');
     }
 
     public function render(): View

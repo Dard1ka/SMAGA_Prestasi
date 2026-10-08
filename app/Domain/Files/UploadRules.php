@@ -208,6 +208,26 @@ final class UploadRules
         return mb_substr($name, 0, self::MAX_ORIGINAL_NAME);
     }
 
+    /**
+     * The display name stored for an accepted file: sanitized, ending in the extension of its content (QA8, Q1-20). The
+     * content decides the type, so a PNG saved as "brosur.pdf" is stored as "brosur.png" instead of being downloaded as a
+     * PDF nobody can open. A name that already fits stays as typed (".jpeg", ".JPG").
+     */
+    public function nameForContent(string $originalName, string $mime): string
+    {
+        $name = $this->sanitizeOriginalName($originalName);
+        $actual = $this->extensionForMime($mime);
+        $extension = pathinfo($name, PATHINFO_EXTENSION);
+
+        if ($actual === null || (self::MIME_BY_EXTENSION[strtolower($extension)] ?? null) === strtolower($mime)) {
+            return $name;
+        }
+
+        $base = $extension === '' ? $name : mb_substr($name, 0, -mb_strlen($extension) - 1);
+
+        return mb_substr($base, 0, self::MAX_ORIGINAL_NAME - strlen($actual) - 1).'.'.$actual;
+    }
+
     private function typeMessage(): string
     {
         $labels = array_map(strtoupper(...), array_values(array_diff(

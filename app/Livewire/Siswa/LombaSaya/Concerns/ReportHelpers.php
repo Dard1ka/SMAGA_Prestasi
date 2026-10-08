@@ -64,6 +64,7 @@ trait ReportHelpers
 
         return [
             'due' => $due,
+            'days' => $deadline->days(),
             'dueText' => self::longDate($due),
             'daysLeft' => $daysLeft,
             'overdue' => $daysLeft < 0,

@@ -86,6 +86,11 @@ class VerifikasiHasil extends Component
     {
         $this->resetErrorBag();
         $report = $this->selected();
+
+        if ($this->decidedElsewhere($report)) {
+            return;
+        }
+
         $result = ResultType::tryFrom($this->finalResult);
 
         if ($result === null) {
@@ -109,8 +114,14 @@ class VerifikasiHasil extends Component
     public function requestRevision(RequestReportRevision $action): void
     {
         $this->resetErrorBag();
+        $report = $this->selected();
+
+        if ($this->decidedElsewhere($report)) {
+            return;
+        }
+
         try {
-            $action->handle($this->actor(), $this->selected(), $this->note);
+            $action->handle($this->actor(), $report, $this->note);
         } catch (ValidationException $e) {
             $this->showErrors($e);
 
@@ -123,8 +134,14 @@ class VerifikasiHasil extends Component
     public function reject(RejectReport $action): void
     {
         $this->resetErrorBag();
+        $report = $this->selected();
+
+        if ($this->decidedElsewhere($report)) {
+            return;
+        }
+
         try {
-            $action->handle($this->actor(), $this->selected(), $this->note);
+            $action->handle($this->actor(), $report, $this->note);
         } catch (ValidationException $e) {
             $this->showErrors($e);
 
@@ -156,7 +173,9 @@ class VerifikasiHasil extends Component
     {
         return Report::query()
             ->awaitingVerification()
-            ->with(['registration' => fn ($q) => $q->withTrashed()->with(['competition' => fn ($c) => $c->withTrashed(), 'leader.user', 'leader.classroom'])->withCount('members')])
+            // Only the members still in the team, as the detail and RecordAchievements count them (QA8).
+            ->with(['registration' => fn ($q) => $q->withTrashed()->with(['competition' => fn ($c) => $c->withTrashed(), 'leader.user', 'leader.classroom'])
+                ->withCount(['members' => fn ($m) => $m->whereNull('declined_at')])])
             ->orderBy('submitted_at');
     }
 
@@ -275,6 +294,30 @@ class VerifikasiHasil extends Component
             $this->note = '';
             $this->checks = array_fill_keys(array_keys(VerifyReport::CHECKS), false);
         }
+    }
+
+    /**
+     * Another tab or another Kesiswaan account decided this report meanwhile (QA8): the Actions would refuse it with a
+     * 403 (ReportPolicy::verify), which Livewire showed as a full-screen error. Say so and move on in the queue.
+     */
+    private function decidedElsewhere(Report $report): bool
+    {
+        if ($report->status === ReportStatus::Dikirim) {
+            return false;
+        }
+
+        $this->dispatch('sth-toast', message: 'Laporan ini sudah diputuskan. Antrean sudah diperbarui.', tone: 'warning');
+        $next = $this->queueQuery()->first();
+
+        if ($next !== null) {
+            $this->selectReport($next);
+        } else {
+            $this->selectedId = null;
+            $this->note = '';
+            $this->checks = array_fill_keys(array_keys(VerifyReport::CHECKS), false);
+        }
+
+        return true;
     }
 
     private function showErrors(ValidationException $e): void

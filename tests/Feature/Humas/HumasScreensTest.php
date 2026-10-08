@@ -7,6 +7,7 @@ use App\Actions\Publications\RecordAppreciation;
 use App\Enums\AppreciationStatus;
 use App\Enums\PublicationStatus;
 use App\Enums\RoleName;
+use App\Enums\UserStatus;
 use App\Livewire\Humas\Apresiasi;
 use App\Livewire\Humas\Arsip;
 use App\Livewire\Humas\Jadwal;
@@ -551,4 +552,27 @@ it('drops the name error once the name is filled while the date is still missing
         ->call('createEvent')
         ->assertHasErrors(['heldOn'])
         ->assertHasNoErrors(['name']);
+});
+
+// QA8: explore round after PR 17 (2026-10-08) -------------------------------------------------------
+
+it('says the students were told only when one of them can still log in (QA8)', function (): void {
+    $achievement = HumasFixtures::achievement();
+    $student = $achievement->student->user;
+    $student->forceFill(['status' => UserStatus::Archived])->save();
+    $event = HumasFixtures::event();
+
+    $component = Livewire::actingAs($this->humas)->test(Apresiasi::class)
+        ->call('startAdding', $event->getKey())
+        ->set('achievementId', $achievement->getKey())
+        ->call('addAchievement')
+        ->assertHasNoErrors()
+        ->assertDispatched('sth-toast', message: 'Prestasi masuk daftar apresiasi.', tone: 'success');
+
+    $component->call('confirmDelete', $event->getKey())
+        ->call('runConfirmed')
+        ->assertDispatched('sth-toast', message: 'Acara dihapus. 1 prestasi dilepas dari acara ini.', tone: 'success');
+
+    Notification::assertNotSentTo($student, AppreciationScheduled::class);
+    Notification::assertNotSentTo($student, AppreciationCancelled::class);
 });

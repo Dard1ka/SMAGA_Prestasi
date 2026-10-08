@@ -74,13 +74,20 @@ final class PublishPublication
         return $publication;
     }
 
+    /** Is the student told when this publication is published? Not an alumnus or a disabled account (QA8: the toast asks). */
+    public static function notifiesStudent(Publication $publication): bool
+    {
+        $publication->loadMissing('achievement.student.user');
+
+        return $publication->achievement?->student?->user?->canLogIn() === true;
+    }
+
     private function notify(Publication $publication): void
     {
         $publication->loadMissing('achievement.student.user', 'achievement.competition');
-        $user = $publication->achievement?->student?->user;
 
-        if ($user !== null && $user->canLogIn()) {
-            $user->notify(AchievementPublished::for($publication));
+        if (self::notifiesStudent($publication)) {
+            $publication->achievement->student->user->notify(AchievementPublished::for($publication));
         }
     }
 }

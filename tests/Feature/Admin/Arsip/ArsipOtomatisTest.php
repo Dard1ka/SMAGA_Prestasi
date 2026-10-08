@@ -6,9 +6,11 @@ use App\Actions\Archive\ChangeArchiveDate;
 use App\Actions\Archive\UnarchiveStudent;
 use App\Actions\Users\ArchiveDueStudentAccounts;
 use App\Enums\RoleName;
+use App\Enums\SettingKey;
 use App\Enums\UserStatus;
 use App\Livewire\Admin\ArsipOtomatis;
 use App\Models\Classroom;
+use App\Models\Setting;
 use App\Models\Student;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -208,4 +210,15 @@ it('changes the archive date from the screen and keeps the target id locked', fu
     expect($student->fresh()->archive_at->toDateString())->toBe('2030-12-20');
 
     expect(fn () => Livewire::test(ArsipOtomatis::class)->set('studentId', $student->id))->toThrow(Exception::class);
+});
+
+// QA8: explore round after PR 17 (2026-10-08) -------------------------------------------------------
+
+it('names the archive months the Admin set in the page subtitle (QA8)', function (): void {
+    Setting::put(SettingKey::ArchiveMonthsAfterGrade12, 24);
+
+    $this->actingAs($this->admin)->get(route('admin.arsip.index'))
+        ->assertOk()
+        ->assertSee('Akun siswa diarsipkan 24 bulan setelah mulai kelas XII.')
+        ->assertDontSee('18 bulan');
 });

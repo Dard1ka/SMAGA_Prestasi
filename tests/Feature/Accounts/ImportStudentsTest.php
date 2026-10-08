@@ -7,12 +7,14 @@ use App\Actions\Accounts\StudentImportReport;
 use App\Domain\Accounts\InitialPassword;
 use App\Domain\Files\StoreUpload;
 use App\Enums\RoleName;
+use App\Enums\SettingKey;
 use App\Enums\StudentImportStatus;
 use App\Enums\UserStatus;
 use App\Jobs\ImportStudentsJob;
 use App\Livewire\Akun\ImportSiswa;
 use App\Livewire\Publik\Data\PublicAchievements;
 use App\Models\Classroom;
+use App\Models\Setting;
 use App\Models\Student;
 use App\Models\StudentImport;
 use App\Models\User;
@@ -777,4 +779,19 @@ it('shows the students who moved class in the progress of a queued import', func
         ->assertSee('2 baris ditolak dan tidak diimpor.')
         ->assertDontSeeHtml('wire:poll.2s')
         ->assertDontSee('sm4g4');
+});
+
+// QA8: explore round after PR 17 (2026-10-08) -------------------------------------------------------
+
+it('names the archive months the Admin set, not a fixed 18 (QA8)', function (): void {
+    $this->withoutVite();
+    Setting::put(SettingKey::ArchiveMonthsAfterGrade12, 12);
+    $csv = implode("\n", [implode(',', W1C_IMPORT_HEADER), 'Raka Pratama,225226202,0098765433,20-11-2011,X-1,'])."\n";
+
+    Livewire::actingAs($this->kesiswaan)->test(ImportSiswa::class)
+        ->set('schoolYear', '2026/2027')
+        ->set('file', UploadedFile::fake()->createWithContent('data-siswa.csv', $csv))
+        ->assertHasNoErrors()
+        ->assertSee('Arsip otomatis = 12 bulan setelah awal kelas XII.')
+        ->assertDontSee('18 bulan');
 });

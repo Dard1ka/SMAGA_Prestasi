@@ -219,8 +219,12 @@ final class SubmitReport
         }
 
         $competition = $registration->competition;
-        $late = $competition->final_on !== null
-            && app(ReportDeadline::class)->isOverdue($competition->final_on, CarbonImmutable::today());
+        // "Late" belongs to the first report (D-25). An answer to a revision request keeps it: a report sent on time
+        // is not late because Kesiswaan asked for a revision after the deadline (QA8).
+        $late = $report !== null && ! $report->trashed() && $report->status === ReportStatus::PerluRevisi
+            ? (bool) $report->late
+            : $competition->final_on !== null
+                && app(ReportDeadline::class)->isOverdue($competition->final_on, CarbonImmutable::today());
 
         $report ??= new Report(['registration_id' => $locked->getKey()]);
 

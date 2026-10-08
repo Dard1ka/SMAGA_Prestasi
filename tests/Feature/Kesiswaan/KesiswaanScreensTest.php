@@ -15,6 +15,7 @@ use App\Livewire\Kesiswaan\VerifikasiHasil;
 use App\Models\Achievement;
 use App\Models\Classroom;
 use App\Models\Competition;
+use App\Models\RegistrationMember;
 use App\Models\Student;
 use App\Models\TalentApplication;
 use App\Notifications\Talent\TalentApplicationRejected;
@@ -502,4 +503,34 @@ it('lets the penyelenggara tag of a report take two lines instead of running out
 
     Livewire::actingAs($this->kesiswaan)->test(VerifikasiHasil::class)
         ->assertSeeHtml('chip c-gray chip-sm chip-wrap');
+});
+
+it('tells a second tab that a report was already decided instead of showing an error page (QA8)', function (string $decision): void {
+    $report = F::pendingReport();
+    $first = Livewire::actingAs($this->kesiswaan)->test(VerifikasiHasil::class);
+    $second = Livewire::actingAs($this->kesiswaan)->test(VerifikasiHasil::class)->assertSet('selectedId', $report->getKey());
+
+    $first->set('checks', F::allChecks())->call('verify')->assertHasNoErrors();
+
+    // The Action refuses (ReportPolicy::verify), which used to surface as a full-screen 403.
+    $second->set('checks', F::allChecks())->set('note', 'Sertifikat buram, kirim ulang.')->call($decision)
+        ->assertDispatched('sth-toast', message: 'Laporan ini sudah diputuskan. Antrean sudah diperbarui.', tone: 'warning')
+        ->assertSet('selectedId', null);
+
+    expect($report->fresh()->status)->toBe(ReportStatus::Diverifikasi)
+        ->and(Achievement::query()->count())->toBe(1);
+})->with(['verify', 'requestRevision', 'reject']);
+
+it('counts only the members still in the team on a queue card (QA8)', function (): void {
+    $leader = F::student('Nadia Putri Anindya', 'XI-4');
+    $stays = F::student('Raka Pradipta', 'XI-4');
+    $left = F::student('Bima Satria Wicaksono', 'XI-4');
+    $report = F::pendingReport($leader, [$stays, $left]);
+    RegistrationMember::query()->where('registration_id', $report->registration_id)->where('student_id', $left->getKey())
+        ->firstOrFail()->forceFill(['confirmed_at' => null, 'declined_at' => now()])->save();
+
+    // The detail and the points count two people; the card said "+2" with the declined member.
+    $card = Livewire::actingAs($this->kesiswaan)->test(VerifikasiHasil::class)->viewData('queue')->first();
+
+    expect($card['student'])->toBe('Nadia Putri Anindya · XI-4 +1');
 });

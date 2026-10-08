@@ -153,3 +153,36 @@ it('sanitizes original names for display', function (string $input, string $expe
     ['..', 'file'],
     [str_repeat('a', 200).'.pdf', str_repeat('a', 150)],
 ]);
+
+// QA8 (backlog #62, Q1-20) -------------------------------------------------------------------------
+
+it('accepts a file whose content is another allowed type than its name says (QA8)', function (string $name, string $kind) {
+    // The content decides the type (it is sniffed, stored and served by it); StoreUpload corrects the name. Refusing it
+    // would ask a school laptop user to rename an extension Windows hides by default.
+    expect((new UploadRules)->validate(uploadFixture($this->dir, $name, $kind), $name))->toBe([]);
+})->with([
+    'png named pdf' => ['brosur.pdf', 'png'],
+    'pdf named jpg' => ['sertifikat.jpg', 'pdf'],
+    'jpeg named png' => ['foto.png', 'jpeg'],
+]);
+
+it('names a stored file after its content (QA8)', function (string $name, string $mime, string $stored) {
+    // A PNG saved as "brosur.pdf" was downloaded as a PDF that no viewer opens.
+    expect((new UploadRules)->nameForContent($name, $mime))->toBe($stored);
+})->with([
+    'png named pdf' => ['brosur.pdf', 'image/png', 'brosur.png'],
+    'pdf named jpg' => ['Sertifikat OSN.JPG', 'application/pdf', 'Sertifikat OSN.pdf'],
+    'jpeg named png' => ['foto.png', 'image/jpeg', 'foto.jpg'],
+    'jpeg named jpeg' => ['foto.jpeg', 'image/jpeg', 'foto.jpeg'],
+    'jpeg named JPG' => ['FOTO.JPG', 'image/jpeg', 'FOTO.JPG'],
+    'pdf named PDF' => ['Scan.PDF', 'application/pdf', 'Scan.PDF'],
+    'path stripped' => ['..\\unduhan/brosur.pdf', 'image/png', 'brosur.png'],
+    'no extension' => ['scan', 'image/png', 'scan.png'],
+]);
+
+it('takes .jpg and .jpeg as the same type (QA8)', function () {
+    $rules = new UploadRules;
+
+    expect($rules->validate(uploadFixture($this->dir, 'foto.jpeg', 'jpeg'), 'foto.jpeg'))->toBe([])
+        ->and($rules->validate(uploadFixture($this->dir, 'foto2.JPG', 'jpeg'), 'foto2.JPG'))->toBe([]);
+});

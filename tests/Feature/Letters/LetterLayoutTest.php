@@ -285,3 +285,16 @@ it('ships the letterhead emblems and the brace inside the dompdf chroot', functi
     expect(ord($png[25]))->toBe(2)
         ->and(file_get_contents(resource_path('pdf/assets/kurung-kurawal.svg')))->toContain('<path')->not->toContain('<script');
 });
+
+// QA8: explore round after PR 17 (2026-10-08) -------------------------------------------------------
+
+it('keeps the end of each letter with its signature, so a long lomba never leaves the signature alone on a page (QA8)', function (): void {
+    $content = m1aLayoutContent($this);
+    $guru = m1aLayoutHtml('surat-perintah-tugas-guru', $content, '400.3.8.6/1681/2026');
+    $siswa = m1aLayoutHtml('surat-tugas-siswa', $content, '400.3.8/313/MRD/X/2026');
+
+    // A realistic long lomba name, penyelenggara and place pushed only the (unbreakable) signature block of the guru
+    // letter onto page 2. "Untuk" (guru) and the closing sentence (siswa) now travel with the signature.
+    expect($guru)->toMatch('/<div class="utuh">\s*<table class="g-blok">\s*<tr>\s*<td class="k-untuk">Untuk<\/td>(?:(?!<div class="halaman-baru">).)*class="g-ttd utuh"/s')
+        ->and($siswa)->toMatch('/<div class="utuh">\s*<div>[^<]+<\/div>\s*<div class="s-baris"><\/div>(?:(?!<\/div>\s*@).)*class="s-ttd utuh"/s');
+});

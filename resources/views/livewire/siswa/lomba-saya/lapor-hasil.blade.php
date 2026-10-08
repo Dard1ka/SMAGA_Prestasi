@@ -8,7 +8,7 @@
     @if (! $inline && $deadline)
         <p @class(['m-0 inline-flex items-center gap-2 text-sm font-semibold', 'text-orange' => ! $deadline['overdue'], 'text-red' => $deadline['overdue']])>
             <x-sth.icon name="clock" :size="18" />
-            {{ $deadline['overdue'] ? 'Batas '.$deadline['dueText'].' sudah lewat. Laporan tetap diterima, tetapi ditandai terlambat.' : 'Batas '.$deadline['dueText'].' (45 hari setelah final).' }}
+            {{ $deadline['overdue'] ? 'Batas '.$deadline['dueText'].' sudah lewat. Laporan tetap diterima, tetapi ditandai terlambat.' : 'Batas '.$deadline['dueText'].' ('.$deadline['days'].' hari setelah final).' }}
         </p>
     @endif
 

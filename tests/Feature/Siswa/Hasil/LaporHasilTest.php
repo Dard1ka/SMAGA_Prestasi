@@ -7,8 +7,10 @@ use App\Enums\RegistrationStatus;
 use App\Enums\ReportStatus;
 use App\Enums\ResultType;
 use App\Enums\RoleName;
+use App\Enums\SettingKey;
 use App\Livewire\Siswa\LombaSaya\LaporHasil;
 use App\Models\Report;
+use App\Models\Setting;
 use App\Models\WeightValue;
 use App\Models\WeightVersion;
 use App\Notifications\Reports\ReportSubmitted;
@@ -144,4 +146,16 @@ it('pre-fills a revision with the Kesiswaan note and the earlier answers', funct
         ->assertSet('judul', 'Biofilter sabut kelapa')
         ->assertSee('Perlu revisi')
         ->assertSee('Sertifikat buram, upload ulang.');
+});
+
+// QA8: explore round after PR 17 (2026-10-08) -------------------------------------------------------
+
+it('names the report deadline the Admin set, not a fixed 45 days (QA8)', function (): void {
+    Setting::put(SettingKey::ReportDeadlineDays, 60);
+
+    $this->actingAs($this->nadia->user)
+        ->get(route('siswa.lapor', $this->wice))
+        ->assertOk()
+        ->assertSee('Batas 23 Nov 2026 (60 hari setelah final).')
+        ->assertDontSee('45 hari');
 });
