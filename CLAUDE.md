@@ -494,7 +494,9 @@ logs in through `POST /login` and expects a 403/404 on the next GET would see th
   (no PDF viewer, 404, 429, expired session). Copy-paste example: top of `components/sth/preview.blade.php`.
   **Copy hook** (M3): `<button type="button" data-sth-copy="#target-id">` copies the `innerText` of that element
   (toast "Data disalin."; without the Clipboard API the text is selected and the toast says "Tekan Ctrl+C untuk
-  menyalin."), so the target holds only the text to copy. **Toasts** (QA4): `sth-toast` takes an optional `key`;
+  menyalin."), so the target holds only the text to copy. **Address hook** (QA8): `sth-address {url}` replaces the address
+  (same origin, no new history entry) when a screen moves between items without a page load; Kesiswaan › Verifikasi
+  hasil sends it on every change of the selected report. **Toasts** (QA4): `sth-toast` takes an optional `key`;
   the event `sth-toast-clear {key}` removes the toasts raised with it, for an error toast whose cause is over
   (`TataUsaha\SuratTugas::clearFailure()`).
   **Error pages** (D-101): `resources/views/errors/{401,403,404,405,419,429,500,503,4xx,5xx}.blade.php`, each
@@ -730,7 +732,8 @@ stored under a name that matches its content (Q1-20), Humas toasts claim a notic
 (D-109), a report decided in another tab gives a toast instead of a 403, the queue card counts only the members still in
 the team, "terlambat" belongs to the first report (and the screens say so), and the report days and archive months on
 the screens follow the settings. A review agent read the commit; the two-tab case was checked in the browser as
-Kesiswaan. No migration. Suite numbers: TEST-RESULTS in `docs/dev-notes/QA8.md`.
+Kesiswaan, which also found that Verifikasi hasil kept the address of the first report (now it follows the shown
+report, hook `sth-address`). No migration. Suite numbers: TEST-RESULTS in `docs/dev-notes/QA8.md`.
 
 | area | owner | state (details in `docs/dev-notes/<ID>.md`) |
 |---|---|---|

@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Actions\Reports\RequestReportRevision;
 use App\Enums\CompetitionStatus;
 use App\Enums\ReportStatus;
 use App\Enums\ResultType;
@@ -533,4 +534,29 @@ it('counts only the members still in the team on a queue card (QA8)', function (
     $card = Livewire::actingAs($this->kesiswaan)->test(VerifikasiHasil::class)->viewData('queue')->first();
 
     expect($card['student'])->toBe('Nadia Putri Anindya · XI-4 +1');
+});
+
+it('keeps the address on the report it shows (QA8)', function (): void {
+    // The cards and the move after a decision changed the panel but not the address, so a reload or a copied link
+    // opened the report of the first link again. The screen names the shown report for the hook in app.js.
+    $first = F::pendingReport();
+    $second = F::pendingReport(F::student('Raka Pradipta', 'XI-4'));
+    $second->forceFill(['submitted_at' => now()->subHours(2)])->save(); // the queue runs oldest first: $first is older
+
+    $screen = Livewire::actingAs($this->kesiswaan)->test(VerifikasiHasil::class)
+        ->assertSet('selectedId', $first->getKey())
+        ->call('select', $second->getKey())
+        ->assertDispatched('sth-address', url: route('kesiswaan.verifikasi.show', $second))
+        ->call('select', $first->getKey())
+        ->set('checks', F::allChecks())
+        ->call('verify')
+        ->assertHasNoErrors()
+        ->assertSet('selectedId', $second->getKey())
+        ->assertDispatched('sth-address', url: route('kesiswaan.verifikasi.show', $second));
+
+    // Decided in another tab with nothing left in the queue: the panel empties and the address goes back to the list.
+    app(RequestReportRevision::class)->handle($this->kesiswaan, $second->fresh(), 'Sertifikat buram, kirim ulang.');
+    $screen->set('note', 'Sertifikat buram, kirim ulang.')->call('requestRevision')
+        ->assertSet('selectedId', null)
+        ->assertDispatched('sth-address', url: route('kesiswaan.verifikasi.index'));
 });

@@ -80,6 +80,7 @@ class VerifikasiHasil extends Component
         $this->authorize('view', $report);
         $this->decision = null;
         $this->selectReport($report);
+        $this->showAddress();
     }
 
     public function verify(VerifyReport $action): void
@@ -290,6 +291,7 @@ class VerifikasiHasil extends Component
 
         if ($next !== null) {
             $this->selectReport($next);
+            $this->showAddress();
         } else {
             $this->note = '';
             $this->checks = array_fill_keys(array_keys(VerifyReport::CHECKS), false);
@@ -317,7 +319,21 @@ class VerifikasiHasil extends Component
             $this->checks = array_fill_keys(array_keys(VerifyReport::CHECKS), false);
         }
 
+        $this->showAddress();
+
         return true;
+    }
+
+    /**
+     * The address names the report on screen (QA8): the cards and the move after a decision change the panel without a
+     * page load, so a reload or a copied link used to open the report of the first link again. Hook `sth-address` in
+     * app.js replaces the address without a new history entry.
+     */
+    private function showAddress(): void
+    {
+        $this->dispatch('sth-address', url: $this->selectedId !== null
+            ? route('kesiswaan.verifikasi.show', $this->selectedId)
+            : route('kesiswaan.verifikasi.index'));
     }
 
     private function showErrors(ValidationException $e): void
