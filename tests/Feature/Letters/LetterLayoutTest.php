@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Actions\Letters\LetterContent;
 use App\Actions\Letters\LetterDraft;
+use App\Actions\Templates\LetterTemplate;
 use App\Domain\Letters\PdfDocument;
 use App\Domain\Letters\PdfQrCode;
 use App\Domain\Letters\PdfRenderer;
@@ -284,4 +285,30 @@ it('ships the letterhead emblems and the brace inside the dompdf chroot', functi
     $png = (string) file_get_contents(resource_path('pdf/assets/logo-pemprov.png'));
     expect(ord($png[25]))->toBe(2)
         ->and(file_get_contents(resource_path('pdf/assets/kurung-kurawal.svg')))->toContain('<path')->not->toContain('<script');
+});
+
+// QA8: explore round after PR 17 (2026-10-08) -------------------------------------------------------
+
+it('keeps the end of each letter with its signature, so a long lomba never leaves the signature alone on a page (QA8)', function (): void {
+    $content = m1aLayoutContent($this);
+    $guru = m1aLayoutHtml('surat-perintah-tugas-guru', $content, '400.3.8.6/1681/2026');
+    $siswa = m1aLayoutHtml('surat-tugas-siswa', $content, '400.3.8/313/MRD/X/2026');
+
+    // A realistic long lomba name, penyelenggara and place pushed only the (unbreakable) signature block of the guru
+    // letter onto page 2. "Untuk" (guru) and the closing sentence (siswa) now travel with the signature: one `.utuh`
+    // box holds both (checked in the DOM, so a box that closes before the signature fails).
+    $boxes = static function (string $html, string $signature): array {
+        $dom = new DOMDocument;
+        @$dom->loadHTML('<?xml encoding="utf-8"?>'.$html);
+        $nodes = (new DOMXPath($dom))->query('//div[@class="utuh"][.//*[contains(concat(" ", normalize-space(@class), " "), " '.$signature.' ")]]');
+
+        return array_map(static fn (DOMElement $box): string => preg_replace('/\s+/', ' ', $box->textContent), iterator_to_array($nodes));
+    };
+    $guruBoxes = $boxes($guru, 'g-ttd');
+    $siswaBoxes = $boxes($siswa, 's-ttd');
+
+    expect($guruBoxes)->toHaveCount(1)
+        ->and($guruBoxes[0])->toContain('Untuk')
+        ->and($siswaBoxes)->toHaveCount(1)
+        ->and($siswaBoxes[0])->toContain(trim(preg_replace('/\s+/', ' ', LetterTemplate::current()->siswaClosing())));
 });

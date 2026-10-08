@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Actions\Reports\RequestReportRevision;
 use App\Actions\Reports\SubmitReport;
 use App\Actions\Reports\SubmitReportData;
 use App\Enums\Bidang;
@@ -218,4 +219,28 @@ it('re-sends after "perlu revisi" on the same report row, replacing only the re-
         ->and($this->registration->fresh()->status)->toBe(RegistrationStatus::LaporanDikirim);
 
     Notification::assertSentTo($this->kesiswaan, ReportSubmitted::class, fn (ReportSubmitted $n): bool => $n->resubmitted);
+});
+
+// QA8: explore round after PR 17 (2026-10-08) -------------------------------------------------------
+
+it('keeps a report that came on time on time when it is sent again after a revision request (QA8)', function (): void {
+    F::today('2026-11-08'); // the last day: final 24 Sep + 45 days
+    $report = app(SubmitReport::class)->handle($this->nadia->user, $this->registration, w2a2ReportData());
+    expect($report->late)->toBeFalse();
+
+    // Kesiswaan asked for a revision after the deadline: the student answers it, and is not "late" for that.
+    F::today('2026-11-20');
+    app(RequestReportRevision::class)->handle($this->kesiswaan, $report->fresh(), 'Sertifikat buram, kirim ulang.');
+    $again = app(SubmitReport::class)->handle($this->nadia->user, $this->registration->fresh(), w2a2ReportData());
+
+    expect($again->late)->toBeFalse();
+});
+
+it('keeps a late report late when it is sent again after a revision request (QA8)', function (): void {
+    F::today('2026-11-09');
+    $report = app(SubmitReport::class)->handle($this->nadia->user, $this->registration, w2a2ReportData());
+    app(RequestReportRevision::class)->handle($this->kesiswaan, $report->fresh(), 'Sertifikat buram, kirim ulang.');
+    $again = app(SubmitReport::class)->handle($this->nadia->user, $this->registration->fresh(), w2a2ReportData());
+
+    expect($again->late)->toBeTrue();
 });

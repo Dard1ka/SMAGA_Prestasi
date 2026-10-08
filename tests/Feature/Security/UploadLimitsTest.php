@@ -154,3 +154,16 @@ it('treats only students as quota holders', function (): void {
         ->and(fn () => app(UploadLimits::class)->ensureFitsQuota(User::query()->find($this->student->getKey()), UploadLimits::STUDENT_QUOTA_BYTES + 1))
         ->toThrow(InvalidUpload::class);
 });
+
+// QA8: explore round after PR 17 (2026-10-08) -------------------------------------------------------
+
+it('stores a file under a name that matches its content (QA8)', function (): void {
+    // Q1-20: a PNG saved as "brosur.pdf" was accepted as juknis and then downloaded as a PDF nobody can open.
+    $png = UploadedFile::fake()->createWithContent('brosur.pdf', UploadedFile::fake()->image('gambar.png', 40, 30)->getContent());
+
+    $file = app(StoreUpload::class)->store($png, FilePurpose::Juknis, $this->staff);
+
+    expect($file->mime)->toBe('image/png')
+        ->and($file->original_name)->toBe('brosur.png')
+        ->and(app(StoreUpload::class)->store(b2Pdf('juknis.pdf'), FilePurpose::Juknis, $this->staff)->original_name)->toBe('juknis.pdf');
+});

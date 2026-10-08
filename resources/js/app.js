@@ -290,6 +290,22 @@ window.addEventListener('sth-toast', (event) => {
     showToast(detail.message, detail.tone, detail.key);
 });
 
+// A screen that moves between items without a page load (Kesiswaan › Verifikasi hasil) names the item it shows, so a
+// reload or a copied link opens that item (QA8). Same origin only; the history entry is replaced, not added, and keeps
+// its state (wire:navigate keeps its page cache there).
+window.addEventListener('sth-address', (event) => {
+    const url = (event.detail || {}).url;
+    if (typeof url !== 'string' || url === '') return;
+    let target;
+    try {
+        target = new URL(url, window.location.href);
+    } catch {
+        return;
+    }
+    if (target.origin !== window.location.origin || target.href === window.location.href) return;
+    window.history.replaceState(window.history.state, '', target.href);
+});
+
 // Error and warning toasts stay until closed. A screen that raised one with a key takes it away again once the
 // failure is over (e.g. the PDF was made after all), so it does not keep reporting a problem that is gone.
 window.addEventListener('sth-toast-clear', (event) => {

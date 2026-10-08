@@ -92,6 +92,26 @@ final class DeleteAppreciationEvent
         return $result[0];
     }
 
+    /** How many students a delete would tell now, for the toast (QA8). */
+    public static function studentsToTell(AppreciationEvent $event): int
+    {
+        return self::toldRows($event->appreciations()->with('achievement.student.user')->get())
+            ->map(fn (Appreciation $a): string => (string) $a->achievement->student->user->getKey())
+            ->unique()
+            ->count();
+    }
+
+    /**
+     * Rows whose student can log in: only they are told.
+     *
+     * @param  Collection<int, Appreciation>  $rows
+     * @return Collection<int, Appreciation>
+     */
+    private static function toldRows(Collection $rows): Collection
+    {
+        return $rows->filter(fn (Appreciation $a): bool => $a->achievement?->student?->user?->canLogIn() === true);
+    }
+
     /**
      * One notice per student who can log in (the rule RecordAppreciation used when it told them).
      *
@@ -102,8 +122,7 @@ final class DeleteAppreciationEvent
     {
         $notices = [];
 
-        $perUser = $rows
-            ->filter(fn (Appreciation $a): bool => $a->achievement?->student?->user?->canLogIn() === true)
+        $perUser = self::toldRows($rows)
             ->groupBy(fn (Appreciation $a): string => (string) $a->achievement->student->user->getKey());
 
         foreach ($perUser as $group) {

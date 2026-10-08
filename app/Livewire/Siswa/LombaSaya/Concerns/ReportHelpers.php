@@ -49,7 +49,7 @@ trait ReportHelpers
     /**
      * Deadline facts for a lomba: due date, days left and the chip text/tone used on cards.
      *
-     * @return array{due: CarbonImmutable, dueText: string, daysLeft: int, overdue: bool, chip: string, tone: string}|null
+     * @return array{due: CarbonImmutable, days: int, dueText: string, daysLeft: int, overdue: bool, chip: string, tone: string}|null
      */
     protected function deadlineInfo(Competition $competition): ?array
     {
@@ -64,6 +64,7 @@ trait ReportHelpers
 
         return [
             'due' => $due,
+            'days' => $deadline->days(),
             'dueText' => self::longDate($due),
             'daysLeft' => $daysLeft,
             'overdue' => $daysLeft < 0,

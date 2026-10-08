@@ -250,6 +250,7 @@ final class LaporHasil extends Component
             'isRiset' => $this->isRiset(),
             'isTeam' => $registration->type === RegistrationType::Tim,
             'deadline' => $this->deadlineInfo($competition),
+            'marksLate' => SubmitReport::marksLate($competition, $report),
             'revision' => $report?->status === ReportStatus::PerluRevisi ? $report : null,
             'existing' => $this->existingFiles(),
             'resultOptions' => collect(ResultType::cases())->mapWithKeys(fn (ResultType $r): array => [$r->value => $r->label()])->all(),

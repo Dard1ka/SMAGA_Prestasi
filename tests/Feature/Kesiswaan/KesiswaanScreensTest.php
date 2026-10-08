@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Actions\Reports\RequestReportRevision;
 use App\Enums\CompetitionStatus;
 use App\Enums\ReportStatus;
 use App\Enums\ResultType;
@@ -15,6 +16,7 @@ use App\Livewire\Kesiswaan\VerifikasiHasil;
 use App\Models\Achievement;
 use App\Models\Classroom;
 use App\Models\Competition;
+use App\Models\RegistrationMember;
 use App\Models\Student;
 use App\Models\TalentApplication;
 use App\Notifications\Talent\TalentApplicationRejected;
@@ -502,4 +504,59 @@ it('lets the penyelenggara tag of a report take two lines instead of running out
 
     Livewire::actingAs($this->kesiswaan)->test(VerifikasiHasil::class)
         ->assertSeeHtml('chip c-gray chip-sm chip-wrap');
+});
+
+it('tells a second tab that a report was already decided instead of showing an error page (QA8)', function (string $decision): void {
+    $report = F::pendingReport();
+    $first = Livewire::actingAs($this->kesiswaan)->test(VerifikasiHasil::class);
+    $second = Livewire::actingAs($this->kesiswaan)->test(VerifikasiHasil::class)->assertSet('selectedId', $report->getKey());
+
+    $first->set('checks', F::allChecks())->call('verify')->assertHasNoErrors();
+
+    // The Action refuses (ReportPolicy::verify), which used to surface as a full-screen 403.
+    $second->set('checks', F::allChecks())->set('note', 'Sertifikat buram, kirim ulang.')->call($decision)
+        ->assertDispatched('sth-toast', message: 'Laporan ini sudah diputuskan. Antrean sudah diperbarui.', tone: 'warning')
+        ->assertSet('selectedId', null);
+
+    expect($report->fresh()->status)->toBe(ReportStatus::Diverifikasi)
+        ->and(Achievement::query()->count())->toBe(1);
+})->with(['verify', 'requestRevision', 'reject']);
+
+it('counts only the members still in the team on a queue card (QA8)', function (): void {
+    $leader = F::student('Nadia Putri Anindya', 'XI-4');
+    $stays = F::student('Raka Pradipta', 'XI-4');
+    $left = F::student('Bima Satria Wicaksono', 'XI-4');
+    $report = F::pendingReport($leader, [$stays, $left]);
+    RegistrationMember::query()->where('registration_id', $report->registration_id)->where('student_id', $left->getKey())
+        ->firstOrFail()->forceFill(['confirmed_at' => null, 'declined_at' => now()])->save();
+
+    // The detail and the points count two people; the card said "+2" with the declined member.
+    $card = Livewire::actingAs($this->kesiswaan)->test(VerifikasiHasil::class)->viewData('queue')->first();
+
+    expect($card['student'])->toBe('Nadia Putri Anindya · XI-4 +1');
+});
+
+it('keeps the address on the report it shows (QA8)', function (): void {
+    // The cards and the move after a decision changed the panel but not the address, so a reload or a copied link
+    // opened the report of the first link again. The screen names the shown report for the hook in app.js.
+    $first = F::pendingReport();
+    $second = F::pendingReport(F::student('Raka Pradipta', 'XI-4'));
+    $second->forceFill(['submitted_at' => now()->subHours(2)])->save(); // the queue runs oldest first: $first is older
+
+    $screen = Livewire::actingAs($this->kesiswaan)->test(VerifikasiHasil::class)
+        ->assertSet('selectedId', $first->getKey())
+        ->call('select', $second->getKey())
+        ->assertDispatched('sth-address', url: route('kesiswaan.verifikasi.show', $second))
+        ->call('select', $first->getKey())
+        ->set('checks', F::allChecks())
+        ->call('verify')
+        ->assertHasNoErrors()
+        ->assertSet('selectedId', $second->getKey())
+        ->assertDispatched('sth-address', url: route('kesiswaan.verifikasi.show', $second));
+
+    // Decided in another tab with nothing left in the queue: the panel empties and the address goes back to the list.
+    app(RequestReportRevision::class)->handle($this->kesiswaan, $second->fresh(), 'Sertifikat buram, kirim ulang.');
+    $screen->set('note', 'Sertifikat buram, kirim ulang.')->call('requestRevision')
+        ->assertSet('selectedId', null)
+        ->assertDispatched('sth-address', url: route('kesiswaan.verifikasi.index'));
 });

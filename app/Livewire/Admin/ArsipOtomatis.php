@@ -35,7 +35,7 @@ use Spatie\Activitylog\Models\Activity;
  */
 #[Title('Arsip otomatis')]
 // One search box per screen (D-90, backlog #60): this page has its own, so the top bar shows none.
-#[Layout('layouts::app', ['subtitle' => 'Akun siswa diarsipkan 18 bulan setelah mulai kelas XII.', 'search' => false])]
+#[Layout('layouts::app', ['search' => false])]
 final class ArsipOtomatis extends Component
 {
     use RequiresRecentPassword;
@@ -152,6 +152,8 @@ final class ArsipOtomatis extends Component
         $today = CarbonImmutable::now(config('app.timezone'))->startOfDay();
         $notArchived = fn (Builder $q) => $q->where('status', '!=', UserStatus::Archived);
 
+        // The months come from Admin › Pengaturan, also in the subtitle (QA8: it said a fixed 18).
+        $months = app(GraduationCalculator::class)->archiveMonths();
         $selected = $this->studentId !== null
             ? Student::query()->with(['user:id,name,status,deleted_at', 'classroom:id,name'])->find($this->studentId)
             : null;
@@ -162,7 +164,7 @@ final class ArsipOtomatis extends Component
                 'tonight' => Student::query()->whereNotNull('archive_at')->whereDate('archive_at', '<=', $today)->whereHas('user', $notArchived)->count(),
                 'soon' => Student::query()->whereDate('archive_at', '>', $today)->whereDate('archive_at', '<=', $today->addDays(30))->whereHas('user', $notArchived)->count(),
                 'archived' => Student::query()->alumni()->count(),
-                'months' => app(GraduationCalculator::class)->archiveMonths(),
+                'months' => $months,
             ],
             'tabs' => $this->tabItems(),
             'due' => $this->tab === 'segera' ? $this->dueQuery($today)->paginate(20, pageName: 'segera') : null,
@@ -172,7 +174,7 @@ final class ArsipOtomatis extends Component
             'selected' => $selected,
             'windowOptions' => collect(self::WINDOWS)->mapWithKeys(fn (int $d) => [(string) $d => $d.' hari'])->all(),
             'minDate' => $today->addDay()->toDateString(),
-        ]);
+        ])->layoutData(['subtitle' => 'Akun siswa diarsipkan '.$months.' bulan setelah mulai kelas XII.']);
     }
 
     /** @return Builder<Student> */

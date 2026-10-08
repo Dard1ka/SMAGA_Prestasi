@@ -70,6 +70,9 @@
     </table>
     <div class="g-kepada-akhir"></div>
 
+    {{-- "Untuk" and the signature never part: with a long lomba name, penyelenggara and place the signature alone
+         went to page 2 (QA8). If they do not fit, both start the next page. --}}
+    <div class="utuh">
     <table class="g-blok">
         <tr>
             <td class="k-untuk">Untuk</td>
@@ -89,6 +92,7 @@
         'ttd' => 'g-ttd',
         'ttdLines' => [$tpl->city().', '.$content->issuedOnText, $tpl->signerTitle()],
     ])
+    </div>
 
     <div class="halaman-baru">
         <div class="g-lampiran-atas"></div>

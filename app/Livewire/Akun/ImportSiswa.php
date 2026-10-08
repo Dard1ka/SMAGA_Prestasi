@@ -6,6 +6,7 @@ namespace App\Livewire\Akun;
 
 use App\Actions\Accounts\ImportStudents;
 use App\Actions\Accounts\StudentImportReport;
+use App\Domain\Archive\GraduationCalculator;
 use App\Domain\Archive\SchoolYear;
 use App\Domain\Files\InvalidUpload;
 use App\Domain\Files\StoreUpload;
@@ -312,6 +313,7 @@ class ImportSiswa extends Component
             'notedCount' => count($noted),
             // Registered students whose archive date changes: normal for a few (tinggal kelas, salah kelas), a sign of a
             // wrong school year when there are many.
+            'archiveMonths' => app(GraduationCalculator::class)->archiveMonths(),
             'archiveCorrections' => count(array_filter($noted, fn (array $r): bool => collect($r['notes'])
                 ->contains(fn (string $note): bool => str_starts_with($note, ImportStudents::NOTE_ARCHIVE_CORRECTED)))),
             'sanitizedCount' => count(array_filter($rows, fn (array $r): bool => $r['sanitized'] ?? false)),

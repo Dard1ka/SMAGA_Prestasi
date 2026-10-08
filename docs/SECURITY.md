@@ -594,6 +594,13 @@ public function handle(Request $request, Closure $next)
 - **HSTS:** dipasang di vhost Apache subdomain (§3e) dengan `max-age=31536000`. **Jangan** `includeSubDomains`/`preload` tanpa persetujuan IT sekolah (bisa memutus subdomain lain yang masih HTTP). Header ini tidak diduplikasi di middleware Laravel.
 - Header yang sudah ditambahkan proxy luar jangan diduplikasi. Hilangkan `X-Powered-By` (`expose_php=Off`) dan `server_tokens off`.
 
+**Pembaruan 8 Okt 2026 (QA8, backlog #52, temuan QA Q2-25):** `style-src` juga memuat hash `'sha256-…'` dari isi
+`<style data-livewire-style>` yang dicetak `@livewireStyles` (`SecurityHeaders::livewireStyleSource()`, dihitung dari
+Livewire yang terpasang, jadi ikut berubah saat Livewire di-upgrade). Saat pindah halaman dengan `wire:navigate`, Livewire
+menyisipkan salinan style itu dari halaman baru dengan nonce halaman baru, yang tidak dikenal CSP halaman yang sedang
+terbuka: setiap perpindahan halaman mencatat satu style yang diblokir di console. Hash hanya mengizinkan isi yang persis
+itu; tetap tanpa `'unsafe-inline'` (kecuali cabang Vite dev server lokal, yang tidak berubah).
+
 **Pembaruan 6 Okt 2026 (D-93, D-101; temuan QA Q2-01, Q1-07, Q2-30, Q2-03):**
 - **Halaman kredensial tidak pernah disimpan browser.** Middleware global `PreventCredentialPageCaching` (di-append di `bootstrap/app.php` setelah `SecurityHeaders`) memasang `Cache-Control: no-store, no-cache, must-revalidate, max-age=0, private` dan `Pragma: no-cache` pada **semua** jawaban (GET, POST, redirect, halaman error) untuk `/login`, `/aktivasi`, `/lupa-kata-sandi`, `/user/confirm-password`, `/two-factor-challenge`, dan `/akun/2fa` (`PreventCredentialPageCaching::PATHS`). Sebelumnya `/login` hanya membawa `no-cache, private` bawaan Symfony, yang masih membolehkan cache Back/Forward: setelah Keluar, Back dua kali memunculkan halaman masuk dengan NIS dan password masih terisi (komputer lab bersama). Livewire menambah `no-store` sendiri, tetapi hanya pada jawaban yang merender komponen Livewire; halaman Fortify (`/login`, konfirmasi password, tantangan 2FA) adalah Blade biasa. Halaman baru yang menampilkan atau menerima password, kode, atau rahasia 2FA **WAJIB** ditambahkan ke `PATHS`.
 - **Kolom password dikosongkan** oleh `resources/js/app.js` (lapisan kedua): saat halaman dipulihkan dari cache Back/Forward (`pageshow` dengan `persisted`), dan tepat setelah form POST biasa dikirim. Berlaku juga untuk kolom yang sedang ditampilkan sebagai teks ("Tampilkan kata sandi"). Form `wire:submit` tidak disentuh saat dikirim.

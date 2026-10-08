@@ -154,7 +154,7 @@
                 @endif
 
                 <div class="flex flex-col gap-1 text-xs text-muted">
-                    <span>Arsip otomatis = 18 bulan setelah awal kelas XII. Akun yang diarsipkan tidak bisa masuk.</span>
+                    <span>Arsip otomatis = {{ $archiveMonths }} bulan setelah awal kelas XII. Akun yang diarsipkan tidak bisa masuk.</span>
                     <span>Kata sandi awal hanya dibuat untuk siswa baru, otomatis sesuai pola sekolah. Kata sandi siswa lama tidak berubah.</span>
                 </div>
 

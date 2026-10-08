@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Enums\AppreciationStatus;
 use App\Enums\PublicationStatus;
 use App\Enums\RoleName;
+use App\Enums\UserStatus;
 use App\Livewire\Humas\Publikasi;
 use App\Models\Appreciation;
 use App\Models\File;
@@ -453,4 +454,28 @@ it('wraps a long lomba name on a published card instead of widening the lane (QA
 
     Livewire::actingAs($this->humas)->test(Publikasi::class)
         ->assertSeeHtml('card relative flex flex-col gap-1 [overflow-wrap:anywhere] border-l-4');
+});
+
+// QA8: explore round after PR 17 (2026-10-08) -------------------------------------------------------
+
+it('says the student was told only when the student can still log in (QA8)', function (): void {
+    // An alumnus (archived) or a disabled account gets no notice (PublishPublication, RecordAppreciation), yet the
+    // toast said "Siswa sudah diberi tahu" (D-109: never claim a notice nobody got).
+    $publication = HumasFixtures::publication();
+    $student = $publication->achievement->student->user;
+    $student->forceFill(['status' => UserStatus::Archived])->save();
+    $event = HumasFixtures::event();
+
+    Livewire::actingAs($this->humas)->test(Publikasi::class)
+        ->set('eventId', $event->getKey())
+        ->call('recordAppreciation')
+        ->assertHasNoErrors()
+        ->assertDispatched('sth-toast', message: 'Masuk daftar apresiasi.', tone: 'success')
+        ->set('channels', ['instagram'])
+        ->call('publish')
+        ->assertHasNoErrors()
+        ->assertDispatched('sth-toast', message: 'Publikasi ditandai sudah terbit.', tone: 'success');
+
+    Notification::assertNotSentTo($student, AchievementPublished::class);
+    Notification::assertNotSentTo($student, AppreciationScheduled::class);
 });

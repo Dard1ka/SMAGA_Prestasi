@@ -155,7 +155,7 @@ class Apresiasi extends Component
         }
 
         $this->cancelAdding();
-        $this->dispatch('sth-toast', message: 'Prestasi masuk daftar apresiasi. Siswa sudah diberi tahu.', tone: 'success');
+        $this->dispatch('sth-toast', message: 'Prestasi masuk daftar apresiasi.'.(RecordAppreciation::notifiesStudent($achievement) ? ' Siswa sudah diberi tahu.' : ''), tone: 'success');
     }
 
     /**
@@ -234,10 +234,13 @@ class Apresiasi extends Component
                 $count = $complete->handle($this->actor(), $event);
                 $message = 'Acara ditandai sudah dilaksanakan. '.$count.' prestasi sudah diapresiasi.';
             } elseif ($this->confirmAction === self::CONFIRM_DELETE) {
+                $told = DeleteAppreciationEvent::studentsToTell($event);
                 $count = $delete->handle($this->actor(), $event);
-                $message = $count > 0
-                    ? 'Acara dihapus. '.$count.' prestasi dilepas dari acara ini dan siswanya diberi tahu.'
-                    : 'Acara dihapus.';
+                $message = match (true) {
+                    $count > 0 && $told > 0 => 'Acara dihapus. '.$count.' prestasi dilepas dari acara ini dan siswanya diberi tahu.',
+                    $count > 0 => 'Acara dihapus. '.$count.' prestasi dilepas dari acara ini.',
+                    default => 'Acara dihapus.',
+                };
             } elseif ($this->confirmAction === self::CONFIRM_RELEASE) {
                 $row = $this->confirmRowId !== null ? Appreciation::query()->find($this->confirmRowId) : null;
 

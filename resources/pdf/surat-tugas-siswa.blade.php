@@ -103,6 +103,8 @@
     </table>
     <div class="s-baris"></div>
 
+    {{-- The closing sentence and the signature never part (QA8): a signature alone on a page proves nothing. --}}
+    <div class="utuh">
     <div>{{ $tpl->siswaClosing() }}</div>
     <div class="s-baris"></div>
     <div class="s-baris-15"></div>
@@ -111,4 +113,5 @@
         'ttd' => 's-ttd',
         'ttdLines' => [$tpl->city().', '.$content->issuedOnText, $tpl->signerTitle()],
     ])
+    </div>
 @endsection

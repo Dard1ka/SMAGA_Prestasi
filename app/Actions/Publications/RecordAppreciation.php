@@ -186,15 +186,22 @@ final class RecordAppreciation
         return $result;
     }
 
+    /** Is the student told when this achievement is scheduled? Not an alumnus or a disabled account (QA8: the toast asks). */
+    public static function notifiesStudent(Achievement $achievement): bool
+    {
+        $achievement->loadMissing('student.user');
+
+        return $achievement->student?->user?->canLogIn() === true;
+    }
+
     private function notify(Appreciation $appreciation, Achievement $achievement): void
     {
         $achievement->loadMissing(['student.user', 'competition', 'report']);
         $appreciation->setRelation('achievement', $achievement);
         $appreciation->loadMissing('event');
-        $user = $achievement->student?->user;
 
-        if ($user !== null && $user->canLogIn()) {
-            $user->notify(AppreciationScheduled::for($appreciation));
+        if (self::notifiesStudent($achievement)) {
+            $achievement->student->user->notify(AppreciationScheduled::for($appreciation));
         }
 
         self::mentorUser($achievement)?->notify(BinaanAppreciationNotice::scheduled($appreciation));
