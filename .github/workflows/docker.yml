@@ -1,0 +1,126 @@
+# SMAGA Talent Hub · production images + Trivy (docs/SECURITY.md §3k, docs/DEPLOY.md §18). Split from ci.yml on
+# 2026-10-08 so that it runs only when it can find something new:
+# - on a pull request that touches what goes into the images or the scan (Dockerfiles, compose files, lock files, the
+#   Trivy settings, this file);
+# - weekly, because a base image or a package can get a new CVE without any change in this repo (a Trivy failure on a
+#   pull request that changed only app code was never caused by that pull request);
+# - by hand (workflow_dispatch), e.g. before a release (DEPLOY §17: "CI hijau di commit yang dirilis").
+# Same supply chain rules as ci.yml: actions pinned to a commit SHA, Trivy image pinned by tag + digest, read-only token.
+name: Docker
+
+on:
+  pull_request:
+    paths:
+      - "docker/**"
+      - ".dockerignore"
+      - "composer.json"
+      - "composer.lock"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/trivy/**"
+      - ".github/workflows/docker.yml"
+  workflow_dispatch:
+  schedule:
+    - cron: "0 18 * * 0" # Monday 01:00 Asia/Jakarta
+
+permissions:
+  contents: read
+
+concurrency:
+  group: docker-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  TRIVY_IMAGE: aquasec/trivy:0.74.0@sha256:62b1e65e8869bc4b4c6aa4fa2b21595256c7c2f6018a9d9ad61caf87187c1969
+
+jobs:
+  docker:
+    name: Docker · production images, Trivy, compose
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - name: Build app image (docker/Dockerfile.prod, target app)
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: docker/Dockerfile.prod
+          target: app
+          tags: sth-app:ci
+          load: true
+          push: false
+          cache-from: type=gha,scope=sth-app
+          cache-to: type=gha,mode=max,scope=sth-app
+
+      - name: Build web image (target web)
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: docker/Dockerfile.prod
+          target: web
+          tags: sth-web:ci
+          load: true
+          push: false
+          cache-from: |
+            type=gha,scope=sth-app
+            type=gha,scope=sth-web
+          cache-to: type=gha,mode=max,scope=sth-web
+
+      - name: Image checks (non-root, no .env, OPcache timestamps off)
+        run: |
+          test "$(docker run --rm --entrypoint id sth-app:ci -un)" = www-data
+          test "$(docker run --rm --entrypoint id sth-web:ci -un)" = nginx
+          if docker run --rm --entrypoint test sth-app:ci -e /var/www/html/.env; then
+            echo "::error::.env is baked into the image"; exit 1
+          fi
+          docker run --rm --entrypoint php sth-app:ci -r 'exit(ini_get("opcache.validate_timestamps") === "0" ? 0 : 1);'
+          docker run --rm --entrypoint php-fpm sth-app:ci -t
+
+      - name: Trivy DB cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/trivy-cache
+          key: trivy-db-${{ github.run_id }}
+          restore-keys: trivy-db-
+
+      # SECURITY §3k: fail on HIGH/CRITICAL vulnerabilities that have a fixed version (OS packages + composer vendor).
+      # Fix = rebuild/bump (Dependabot digests) or update the package; exceptions only in .github/trivy/trivyignore.yaml
+      # with a statement and an expiry date.
+      - name: Trivy scan (sth-app, sth-web)
+        run: |
+          mkdir -p "$RUNNER_TEMP/trivy-cache" "$RUNNER_TEMP/images"
+          docker save sth-app:ci -o "$RUNNER_TEMP/images/sth-app.tar"
+          docker save sth-web:ci -o "$RUNNER_TEMP/images/sth-web.tar"
+          rc=0
+          for image in sth-app sth-web; do
+            echo "::group::Trivy $image"
+            docker run --rm --user "$(id -u):$(id -g)" -e HOME=/tmp \
+              -v "$RUNNER_TEMP/images:/images:ro" -v "$RUNNER_TEMP/trivy-cache:/cache" \
+              -v "$GITHUB_WORKSPACE/.github/trivy:/cfg:ro" \
+              "$TRIVY_IMAGE" image --cache-dir /cache --input "/images/$image.tar" \
+              --scanners vuln --severity HIGH,CRITICAL --ignore-unfixed \
+              --ignorefile /cfg/trivyignore.yaml --exit-code 1 --no-progress --format table || rc=1
+            echo "::endgroup::"
+          done
+          [ "$rc" = 0 ] || { echo "::error::Trivy found fixable HIGH/CRITICAL vulnerabilities (see the groups above)"; exit 1; }
+
+      - name: Validate docker/compose.prod.yaml
+        run: |
+          mkdir -p "$RUNNER_TEMP/secrets"
+          for s in db_root_password db_migrate_password db_app_password; do echo ci > "$RUNNER_TEMP/secrets/$s.txt"; done
+          cp docker/env.production.example "$RUNNER_TEMP/env"
+          STH_ENV_FILE="$RUNNER_TEMP/env" STH_SECRETS_DIR="$RUNNER_TEMP/secrets" \
+            docker compose -f docker/compose.prod.yaml config --quiet
+
+      # CLAUDE.md rule 7: the OTP flag never appears in production env/compose files.
+      - name: No OTP test flag in production files
+        run: |
+          if grep -nE '^\s*STH_OTP_(TEST_MODE|DEV_BYPASS)\s*[:=]' docker/compose.prod.yaml docker/env.production.example; then
+            echo "::error::OTP test flag found in production files"
+            exit 1
+          fi

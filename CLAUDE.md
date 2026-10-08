@@ -154,8 +154,11 @@ the config cache when `.env` or `config/` is newer, and reloads php-fpm. CSS and
 Notes: tests stay SQLite-compatible (MySQL-only behaviour gets its own marked test). Git Bash rewrites
 paths like `/var/www/html`: prefix `MSYS_NO_PATHCONV=1` or use PowerShell. On Linux, container-created
 files are root-owned: `sudo chown -R "$USER": .`. Keep LF line endings.
-CI (`.github/workflows/ci.yml`: PHP, Frontend, Composer audit, gitleaks, Docker + Trivy, E2E) must be green before a
-merge; read a failed run with `gh run view <id> --log-failed`. Dependabot (`.github/dependabot.yml`) only brings
+CI must be green before a merge: `.github/workflows/ci.yml` (every PR, by hand, weekly: PHP = validate, Pint, Composer +
+npm audit, Pest, boot guard; gitleaks; E2E) and `.github/workflows/docker.yml` (production images + Trivy: on a PR that
+touches `docker/`, the lock files or the Trivy settings, weekly and by hand; run it by hand before a release). Since
+2026-10-08 neither runs again on the push to `main` after a merge (the PR run already tested the merge result; `main` has
+no branch protection on this plan, so nothing is a "required check"). Read a failed run with `gh run view <id> --log-failed`. Dependabot (`.github/dependabot.yml`) only brings
 digest/patch updates for the `php`, `node` and `mysql` images, and nginx stays on the stable (even) line. **Never merge a
 Dependabot PR with red checks.** A PHP minor, Node major or MySQL upgrade is a planned task that changes the dev + prod
 image, CI `PHP_VERSION`/`NODE_VERSION` and the composer platform together, with a full test run (PHP 8.5 has OPcache

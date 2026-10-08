@@ -56,7 +56,8 @@ dicek terhadap `docs/SECURITY.md` §4 oleh I sebelum rilis.
 - Email noreply (SMTP, SPF/DKIM/DMARC) dan pengaktifan OTP nyata.
 - Checklist keamanan pra-rilis (SECURITY §4), uji E2E smoke, UAT bersama sekolah, panduan pengguna.
 - Titik awal sudah ada dari wave 1: `docs/DEPLOY.md`, `docker/Dockerfile.prod`, `docker/compose.prod.yaml`,
-  contoh vhost `docker/apache/`, `scripts/deploy/{deploy,backup,restore}.sh`, `.github/workflows/ci.yml`
+  contoh vhost `docker/apache/`, `scripts/deploy/{deploy,backup,restore}.sh`, `.github/workflows/ci.yml` (sejak 8 Okt 2026
+  juga `docker.yml`)
   (lihat `docs/dev-notes/W1-E.md`; uji di host Ubuntu 18.04 asli belum dilakukan).
 
 ## 3. Milestone
