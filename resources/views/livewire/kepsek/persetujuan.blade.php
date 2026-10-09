@@ -80,7 +80,7 @@
                             @elseif ($state === 'ok')
                                 <x-sth.chip tone="green" icon="check" class="chip-wrap shrink-0">Disetujui · masuk antrean TU</x-sth.chip>
                             @elseif ($state === 'tolak')
-                                <x-sth.chip tone="red" icon="x" class="chip-wrap shrink-0">Ditolak · siswa diberi tahu</x-sth.chip>
+                                <x-sth.chip tone="red" icon="x" class="chip-wrap shrink-0">{{ in_array($row->id, $untold, true) ? 'Ditolak · tanpa notifikasi' : 'Ditolak · siswa diberi tahu' }}</x-sth.chip>
                             @endif
                         </div>
 

@@ -23,12 +23,14 @@ use App\Models\User;
 use App\Notifications\Competitions\CompetitionSubmitted;
 use App\Rules\ExternalUrl;
 use App\Rules\NoWebAddress;
+use Closure;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
+use Throwable;
 
 /**
  * Kesiswaan/Admin "Tambah lomba" (UI-MAP #16): the full catalog form incl. the weight fields (D-02).
@@ -50,19 +52,18 @@ final class CreateCompetition
         Gate::forUser($actor)->authorize('create', Competition::class);
         Gate::forUser($actor)->authorize('manage', Competition::class);
 
-        $validator = Validator::make($input, self::rules(), self::messages());
+        $validator = Validator::make(self::prepare($input), self::rules(), self::messages());
         // "Tanggal mulai" before "Batas daftar" is refused together with the other field errors (Q1-04).
         $validator->after(CompetitionDates::checkOrder(...));
         $data = self::normalize($validator->validate());
 
-        $juknisFile = $juknis !== null ? self::storeFile($actor, $juknis, FilePurpose::Juknis) : null;
-        $coverFile = $cover !== null ? self::storeFile($actor, $cover, FilePurpose::Cover) : null;
+        $files = self::storeFiles($actor, $juknis, $cover);
 
-        $competition = DB::transaction(function () use ($actor, $data, $juknisFile, $coverFile): Competition {
+        $competition = self::discardOnFailure($files, fn (): Competition => DB::transaction(function () use ($actor, $data, $files): Competition {
             $competition = new Competition([
                 ...$data,
-                'juknis_file_id' => $juknisFile?->getKey(),
-                'cover_file_id' => $coverFile?->getKey(),
+                'juknis_file_id' => $files['juknis']?->getKey(),
+                'cover_file_id' => $files['cover']?->getKey(),
             ]);
 
             $competition->forceFill([
@@ -82,7 +83,7 @@ final class CreateCompetition
                 ->log('competition.created');
 
             return $competition;
-        });
+        }));
 
         // Same as a siswa/guru usulan (SubmitCompetition): the entry waits in the queue, so the other verifiers
         // hear about it (e.g. Kesiswaan when the Admin adds a lomba). The actor is not mailed.
@@ -111,13 +112,83 @@ final class CreateCompetition
     }
 
     /**
+     * Both uploads of the form, stored before the transaction (StoreUpload writes to the disk). A refused cover
+     * takes the juknis stored a moment before with it (QA10).
+     *
+     * @return array{juknis: ?File, cover: ?File}
+     */
+    public static function storeFiles(User $actor, ?UploadedFile $juknis, ?UploadedFile $cover): array
+    {
+        $juknisFile = $juknis !== null ? self::storeFile($actor, $juknis, FilePurpose::Juknis) : null;
+
+        try {
+            $coverFile = $cover !== null ? self::storeFile($actor, $cover, FilePurpose::Cover) : null;
+        } catch (Throwable $e) {
+            self::discardFiles(['juknis' => $juknisFile, 'cover' => null]);
+
+            throw $e;
+        }
+
+        return ['juknis' => $juknisFile, 'cover' => $coverFile];
+    }
+
+    /**
+     * Runs the save; when it fails (a refused field, a lomba changed meanwhile, a database error) the files stored
+     * for it are discarded, as SubmitCompetition does. Before QA10 they stayed on the disk without a lomba, and the
+     * drawer stored one more copy on every retry.
+     *
+     * @template T
+     *
+     * @param  array{juknis: ?File, cover: ?File}  $files
+     * @param  Closure(): T  $save
+     * @return T
+     */
+    public static function discardOnFailure(array $files, Closure $save): mixed
+    {
+        try {
+            return $save();
+        } catch (Throwable $e) {
+            self::discardFiles($files);
+
+            throw $e;
+        }
+    }
+
+    /** @param array{juknis: ?File, cover: ?File} $files */
+    private static function discardFiles(array $files): void
+    {
+        foreach ($files as $file) {
+            if ($file instanceof File) {
+                app(StoreUpload::class)->discard($file);
+            }
+        }
+    }
+
+    /**
+     * The form as the browser sends it, before validation: a cleared field arrives as '' and the date rules
+     * (`after_or_equal`) read '' as "now", so "Batas daftar" of an old lomba was refused once "Daftar dibuka" was
+     * emptied (QA10). Empty and blank strings become null; everything else is left to the rules.
+     *
+     * @param  array<string, mixed>  $input
+     * @return array<string, mixed>
+     */
+    public static function prepare(array $input): array
+    {
+        return array_map(fn (mixed $value): mixed => is_string($value) && trim($value) === '' ? null : $value, $input);
+    }
+
+    /**
      * Field rules shared by Create/UpdateCompetition and the Livewire drawer (prefix them with "form.").
      * Everything except name + bidang may stay empty while queued; VerifyCompetition::REQUIRED_TO_PUBLISH
      * decides what publishing needs.
      *
+     * The default guru pembimbing must be an active guru, except the one the lomba already has: a guru who was
+     * disabled or left after he was chosen no longer blocks every save and publish of the lomba (QA10, like the
+     * guru pembina in Talenta, QA9). `$keepMentorId` = the lomba's current default guru (UpdateCompetition).
+     *
      * @return array<string, list<mixed>>
      */
-    public static function rules(): array
+    public static function rules(?int $keepMentorId = null): array
     {
         return [
             'name' => ['required', 'string', 'max:200', new NoWebAddress],
@@ -136,7 +207,11 @@ final class CreateCompetition
             'location' => ['nullable', 'string', 'max:200'],
             'participation' => ['nullable', Rule::enum(Participation::class)],
             'max_team_size' => ['nullable', 'integer', 'min:2', 'max:20'],
-            'default_mentor_id' => ['nullable', 'integer', function (string $attribute, mixed $value, \Closure $fail): void {
+            'default_mentor_id' => ['nullable', 'integer', function (string $attribute, mixed $value, Closure $fail) use ($keepMentorId): void {
+                if ($keepMentorId !== null && (int) $value === $keepMentorId) {
+                    return;
+                }
+
                 if (! User::query()->whereKey($value)->role(RoleName::Guru->value)->canLogIn()->exists()) {
                     $fail('Pilih guru pembimbing dari daftar.');
                 }

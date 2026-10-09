@@ -1153,6 +1153,9 @@ $scenario->step('5b', 'Tata Usaha sends the letters (SendLetters): siswa letter 
     $guruLetter = $currentLetter('r1', LetterType::Guru);
     $siswaUrl = route('files.show', ['file' => $siswaLetter->file_id]);
     $guruUrl = route('files.show', ['file' => $guruLetter->file_id]);
+    // QA10: the letter mails link to the screen that lists the current letters (a corrected letter replaces the file).
+    $siswaScreen = route('siswa.lomba-saya.show', ['registration' => $siswaLetter->registration_id]);
+    $guruScreen = (string) parse_url(route('guru.binaan.show', ['registration' => $guruLetter->registration_id]), PHP_URL_PATH);
 
     // Workflow sketch: the letters are PDFs in the account of every member and of the guru pendamping.
     $checks = [
@@ -1179,8 +1182,8 @@ $scenario->step('5b', 'Tata Usaha sends the letters (SendLetters): siswa letter 
 
     $text = $scenario->textOf($mail('galuh'), 'Surat tugas kamu sudah terbit');
     $scenario->note('mail to Galuh names number '.$siswaLetter->full_number.': '.(str_contains($text, (string) $siswaLetter->full_number) ? 'yes' : 'NO')
-        .' · links to the PDF (login required): '.(str_contains($text, $siswaUrl) ? 'yes' : 'NO'));
-    $scenario->assertRendered('5b', (string) $staff('hendra.k')->email, 'Surat perintah tugas terbit', 'Yth. Hendra Kusuma, S.Pd., M.Si.,', '(Nomor '.$guruLetter->full_number.') sudah terbit.', 'Download surat', '/berkas/'.$guruLetter->file_id);
+        .' · links to Lomba saya (login required): '.(str_contains($text, $siswaScreen) ? 'yes' : 'NO'));
+    $scenario->assertRendered('5b', (string) $staff('hendra.k')->email, 'Surat perintah tugas terbit', 'Yth. Hendra Kusuma, S.Pd., M.Si.,', '(Nomor '.$guruLetter->full_number.') sudah terbit.', 'Lihat surat', $guruScreen);
 }, [
     [$mail('galuh'), 'Surat tugas kamu sudah terbit'],
     [$mail('bayu'), 'Surat tugas kamu sudah terbit'],
@@ -1299,9 +1302,10 @@ $scenario->step('7a', 'Galuh (ketua) submits the laporan hasil with certificate 
 $scenario->step('7b', 'Kesiswaan asks for a revision (RequestReportRevision)', function () use ($staff, $report): void {
     app(RequestReportRevision::class)->handle($staff('kesiswaan'), $report('r1'), 'Sertifikat kurang jelas, upload ulang hasil pindai yang terbaca.');
 }, [
+    // QA10: only the ketua (Galuh) fixes the report; the other members are told it needs a revision.
     [$mail('galuh'), 'Perbaiki laporan hasil: '.$lomba['l1']],
-    [$mail('bayu'), 'Perbaiki laporan hasil: '.$lomba['l1']],
-    [$mail('laras'), 'Perbaiki laporan hasil: '.$lomba['l1']],
+    [$mail('bayu'), 'Laporan hasil perlu revisi: '.$lomba['l1']],
+    [$mail('laras'), 'Laporan hasil perlu revisi: '.$lomba['l1']],
 ]);
 
 $scenario->step('7c', 'Galuh sends the corrected report (SubmitReport again)', function () use ($siswa, $registration, $pdf): void {

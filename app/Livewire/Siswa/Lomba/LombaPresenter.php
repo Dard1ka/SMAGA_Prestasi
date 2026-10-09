@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Livewire\Siswa\Lomba;
 
+use App\Enums\CompetitionStatus;
 use App\Enums\Participation;
 use App\Enums\RegistrationStatus;
 use App\Models\Competition;
@@ -20,9 +21,24 @@ use Illuminate\Support\Collection;
  */
 final class LombaPresenter
 {
-    /** Status of the registration window: [label, tone, key] with key dibuka|segera|ditutup. */
+    /**
+     * Status of the registration window: [label, tone, key] with key dibuka|segera|ditutup|ditolak|menunggu.
+     * QA10: the lomba's status comes first. Only a published lomba has a window from its dates; the proposer of a lomba
+     * Kesiswaan closed, rejected or has not checked yet saw a green "Dibuka · N hari lagi" beside "Pendaftaran ditutup".
+     */
     public static function window(Competition $competition, ?DateTimeInterface $now = null): array
     {
+        $byStatus = match ($competition->status) {
+            CompetitionStatus::Ditutup => ['label' => 'Ditutup', 'tone' => 'gray', 'key' => 'ditutup', 'note' => 'Pendaftaran ditutup Kesiswaan'],
+            CompetitionStatus::Ditolak => ['label' => 'Ditolak', 'tone' => 'red', 'key' => 'ditolak', 'note' => null],
+            CompetitionStatus::MenungguVerifikasi => ['label' => 'Menunggu verifikasi', 'tone' => 'gray', 'key' => 'menunggu', 'note' => null],
+            default => null,
+        };
+
+        if ($byStatus !== null) {
+            return $byStatus;
+        }
+
         $now = CarbonImmutable::instance($now ?? now());
         $opens = $competition->registration_opens_at;
         $closes = $competition->registration_closes_at;
@@ -51,6 +67,31 @@ final class LombaPresenter
         }
 
         return ['label' => "Dibuka · {$days} hari lagi", 'tone' => 'green', 'key' => 'dibuka', 'note' => null];
+    }
+
+    /**
+     * The notice on Detail lomba for a lomba that is not in the catalog (only its proposer sees it there), one text per
+     * status (QA10: "Lomba ini masih ditutup" / "masih ditolak" read wrong). Null for a published lomba.
+     *
+     * @return array{title: string, text: string}|null
+     */
+    public static function unpublishedNotice(Competition $competition): ?array
+    {
+        return match ($competition->status) {
+            CompetitionStatus::Ditutup => [
+                'title' => 'Ditutup Kesiswaan',
+                'text' => 'Kesiswaan sudah menutup lomba ini. Lomba ini tidak tampil di katalog lagi dan tidak menerima pendaftaran baru.',
+            ],
+            CompetitionStatus::Ditolak => [
+                'title' => 'Usulan ditolak',
+                'text' => 'Kesiswaan menolak usulan lomba ini, jadi lomba ini tidak tampil di katalog dan tidak menerima pendaftaran.',
+            ],
+            CompetitionStatus::MenungguVerifikasi => [
+                'title' => 'Belum tampil di katalog',
+                'text' => 'Lomba ini masih menunggu verifikasi Kesiswaan. Siswa lain belum bisa melihatnya.',
+            ],
+            default => null,
+        };
     }
 
     /** Whole calendar days from today to the date (0 = today). */
@@ -127,7 +168,8 @@ final class LombaPresenter
     }
 
     /**
-     * Names of SMAGA students in active (not cancelled/rejected) registrations, per competition id.
+     * Names of SMAGA students in active (not cancelled/rejected) registrations, per competition id: members who
+     * confirmed (the ketua always has); QA10: an invitation nobody answered yet is not a registrant.
      * Only names reach the view; cards show initials avatars + a count.
      *
      * @param  Collection<int, Competition>|list<string>  $competitions
@@ -142,7 +184,8 @@ final class LombaPresenter
         }
 
         $rows = RegistrationMember::query()
-            ->whereNull('declined_at')
+            ->whereNotNull('registration_members.confirmed_at')
+            ->whereNull('registration_members.declined_at')
             ->join('registrations', 'registrations.id', '=', 'registration_members.registration_id')
             ->join('students', 'students.id', '=', 'registration_members.student_id')
             ->join('users', 'users.id', '=', 'students.user_id')

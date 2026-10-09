@@ -118,7 +118,8 @@
                                             <span class="ellip text-sm font-bold">{{ $row['title'] }}</span>
                                             <span class="muted text-xs">{{ $row['date'] }}</span>
                                         </span>
-                                        <x-sth.chip :tone="$row['status']->tone()" size="sm">{{ $row['status']->label() }}</x-sth.chip>
+                                        {{-- QA10: "Laporan ditolak" instead of a green "Selesai" for a report rejected without points. --}}
+                                        <x-sth.chip :tone="$row['tone']" size="sm">{{ $row['chip'] }}</x-sth.chip>
                                     </a>
                                 </li>
                             @endforeach

@@ -24,7 +24,7 @@
             @if ($audit->isEmpty())
                 <x-sth.empty-state icon="file" title="Belum ada aktivitas">Perubahan akun dan pengaturan tercatat di sini.</x-sth.empty-state>
             @else
-                <x-sth.table caption="Aktivitas Admin terbaru, 8 entri">
+                <x-sth.table caption="Aktivitas Admin terbaru, {{ $audit->count() }} entri">
                     <x-slot:head>
                         <th scope="col">Aktivitas</th>
                         <th scope="col">Oleh</th>

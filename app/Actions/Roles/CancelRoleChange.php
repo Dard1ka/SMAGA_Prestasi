@@ -16,7 +16,7 @@ use Illuminate\Validation\ValidationException;
 /**
  * Cancels a pending privileged role change (backlog #13): any Admin with `user.manage`, the requester included
  * (RoleChangeRequestPolicy::cancel). Reason required; audited (`role.change_cancelled`); every Admin and the
- * account are notified.
+ * account are notified (+ the Kepala Sekolah for a delay-mode request, QA10).
  */
 final class CancelRoleChange
 {
@@ -64,6 +64,11 @@ final class CancelRoleChange
 
         if ($locked->user !== null && ! $locked->user->trashed()) {
             $recipients->push($locked->user);
+        }
+
+        // QA10 (ARCHITECTURE §8b): the Kepala Sekolah heard about the delayed request, so also about its cancellation.
+        if ($locked->usesDelay()) {
+            $recipients = $recipients->merge($this->recipients->principals());
         }
 
         Notification::send(

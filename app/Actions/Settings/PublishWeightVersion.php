@@ -115,7 +115,15 @@ final class PublishWeightVersion
 
             foreach (array_keys($group->defaults()) as $key) {
                 $field = "weights.{$group->value}.{$key}";
-                $raw = trim(str_replace(',', '.', (string) ($weights[$group->value][$key] ?? '')));
+                $typed = trim((string) ($weights[$group->value][$key] ?? ''));
+
+                // A tingkat weight may be written with a thousands dot, the way the app shows numbers ("1.000",
+                // "1.000,5"; QA10). Only tingkat goes above 999, and its weights never need three decimals.
+                if ($group === WeightGroup::Level && preg_match('/^[1-9]\d{0,2}(\.\d{3})+(,\d{1,2})?$/', $typed) === 1) {
+                    $typed = str_replace('.', '', $typed);
+                }
+
+                $raw = str_replace(',', '.', $typed);
 
                 if (! preg_match('/^\d{1,4}(\.\d{1,2})?$/', $raw)) {
                     $errors[$field] = 'Isi angka, maks. 2 desimal.';

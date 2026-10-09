@@ -10,8 +10,10 @@ use Illuminate\Support\Facades\Route;
  * Lead decision (2026-10-01, owner B5): letters go out in the Kepala Sekolah's name, so every revocation
  * (App\Actions\Letters\RevokeLetter, B3) is reported to the Kepala Sekolah — queued mail + database — with the
  * old and new number, the lomba and the TU's reason. No second approval for revocations.
+ * QA10: a StaffNotice, not an AdminNotice: it carries a lomba name and TU's free text, so it is no account notice and
+ * never goes to an address nobody verified (D-68); the bell entry is stored either way.
  */
-final class LetterRevokedNotice extends AdminNotice
+final class LetterRevokedNotice extends StaffNotice
 {
     public function __construct(
         private readonly string $actorName,

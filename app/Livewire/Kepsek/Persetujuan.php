@@ -52,6 +52,17 @@ class Persetujuan extends Component
     #[Locked]
     public array $recent = [];
 
+    /** @var list<string> rejected during this visit without telling any student (accounts not active; QA10, D-109) */
+    #[Locked]
+    public array $untold = [];
+
+    /**
+     * @var list<string> ULIDs of the waiting rows this screen has shown during this visit (QA9): a row among them that
+     *                   was cancelled or decided elsewhere meanwhile is answered with a toast, any other id with a 404.
+     */
+    #[Locked]
+    public array $shown = [];
+
     public const STEP = 20;
 
     public const MAX = 200;
@@ -99,6 +110,10 @@ class Persetujuan extends Component
     {
         $registration = $this->findVisible($id);
 
+        if ($this->decidedElsewhere($registration)) {
+            return;
+        }
+
         try {
             $approve->handle($this->user(), $registration);
         } catch (ValidationException $e) {
@@ -117,17 +132,27 @@ class Persetujuan extends Component
     {
         Gate::authorize('viewApprovalQueue', Registration::class);
 
-        $ids = array_values(array_intersect(array_map('strval', $this->selected), $this->pendingIds()));
+        $ticked = array_map('strval', $this->selected);
+        $ids = array_values(array_intersect($ticked, $this->pendingIds()));
+        // Ticked rows the ketua cancelled or another device decided since the screen showed them (QA9): they used
+        // to drop out without a word, and with nothing left the toast asked to pick rows.
+        $gone = Registration::query()
+            ->whereKey(array_values(array_intersect($ticked, $this->shown)))
+            ->where('status', '!=', RegistrationStatus::MenungguKepsek)
+            ->count();
         $this->dispatch('sth-modal-close', id: self::BULK_DIALOG);
 
         if ($ids === []) {
-            $this->dispatch('sth-toast', message: 'Pilih pendaftaran dulu.', tone: 'warning');
+            $this->selected = [];
+            $this->dispatch('sth-toast', message: $gone > 0
+                ? $gone.' pendaftaran sudah diputuskan atau dibatalkan. Daftar sudah diperbarui.'
+                : 'Pilih pendaftaran dulu.', tone: 'warning');
 
             return;
         }
 
         $done = 0;
-        $failed = 0;
+        $failed = $gone;
 
         foreach ($ids as $id) {
             try {
@@ -142,13 +167,18 @@ class Persetujuan extends Component
         $this->selected = [];
         $this->closeReject();
 
-        $message = $done.' pendaftaran disetujui.'.($failed > 0 ? ' '.$failed.' sudah diputuskan sebelumnya.' : '');
+        $message = $done.' pendaftaran disetujui.'.($failed > 0 ? ' '.$failed.' sudah diputuskan atau dibatalkan sebelumnya.' : '');
         $this->dispatch('sth-toast', message: $message, tone: $failed > 0 ? 'warning' : 'success');
     }
 
     public function openReject(string $id): void
     {
         $registration = $this->findVisible($id);
+
+        if ($this->decidedElsewhere($registration)) {
+            return;
+        }
+
         Gate::authorize('decide', $registration);
 
         $this->rejecting = $registration->getKey();
@@ -171,6 +201,10 @@ class Persetujuan extends Component
 
         $registration = $this->findVisible($this->rejecting);
 
+        if ($this->decidedElsewhere($registration)) {
+            return;
+        }
+
         try {
             $reject->handle($this->user(), $registration, $this->rejectNote);
         } catch (ValidationException $e) {
@@ -191,13 +225,26 @@ class Persetujuan extends Component
         $this->recent[$registration->getKey()] = 'tolak';
         $this->selected = array_values(array_diff($this->selected, [$registration->getKey()]));
         $this->closeReject();
-        $this->dispatch('sth-toast', message: 'Penolakan terkirim ke siswa.', tone: 'success');
+
+        // QA10 (D-109): claim a notice only for the members RejectRegistration told (they can log in).
+        ['told' => $told, 'of' => $of] = RejectRegistration::studentsTold($registration);
+
+        if ($told === 0) {
+            $this->untold[] = (string) $registration->getKey();
+        }
+
+        $this->dispatch('sth-toast', message: match (true) {
+            $told === 0 => 'Pendaftaran ditolak. Akun siswa tidak aktif, jadi tidak ada notifikasi.',
+            $told < $of => 'Penolakan terkirim ke siswa yang akunnya aktif.',
+            default => 'Penolakan terkirim ke siswa.',
+        }, tone: 'success');
     }
 
     public function render(): View
     {
         $rows = $this->rows();
         $pendingIds = $rows->where('status', RegistrationStatus::MenungguKepsek)->modelKeys();
+        $this->shown = array_values(array_unique([...$this->shown, ...array_map('strval', $pendingIds)]));
         $waiting = Registration::query()->awaitingPrincipal()->count();
         $matching = $this->filtered(Registration::query()->awaitingPrincipal())->count();
 
@@ -285,15 +332,44 @@ class Persetujuan extends Component
         return $ids;
     }
 
-    /** A row of this screen (waiting, or decided during this visit); anything else is a 404. */
+    /**
+     * A row of this screen (waiting, decided during this visit, or shown waiting during this visit and changed since:
+     * decidedElsewhere() answers that one); anything else is a 404.
+     */
     private function findVisible(string $id): Registration
     {
-        $ids = array_keys($this->recent);
+        Gate::authorize('viewApprovalQueue', Registration::class);
+
+        $ids = [...array_map('strval', array_keys($this->recent)), ...$this->shown];
 
         return Registration::query()
             ->whereKey($id)
             ->where(fn (Builder $q) => $q->where('status', RegistrationStatus::MenungguKepsek)->orWhereIn('id', $ids))
             ->firstOrFail();
+    }
+
+    /**
+     * The ketua cancelled the row or the Kepala Sekolah decided it on another device since this screen showed it
+     * (QA9): findVisible() answered a full-screen 404 and the reason never showed. Say so; the next render drops the
+     * row from the list.
+     */
+    private function decidedElsewhere(Registration $registration): bool
+    {
+        if ($registration->status === RegistrationStatus::MenungguKepsek) {
+            return false;
+        }
+
+        $this->selected = array_values(array_diff($this->selected, [$registration->getKey()]));
+
+        if ($this->rejecting === $registration->getKey()) {
+            $this->closeReject();
+        }
+
+        $this->dispatch('sth-toast', message: ($registration->status === RegistrationStatus::Dibatalkan
+            ? 'Pendaftaran ini sudah dibatalkan siswa.'
+            : 'Pendaftaran ini sudah diputuskan.').' Daftar sudah diperbarui.', tone: 'warning');
+
+        return true;
     }
 
     /** @return array{menunggu: int, disetujui: int, ditolak: int} */

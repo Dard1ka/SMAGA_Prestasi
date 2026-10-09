@@ -24,7 +24,7 @@ use Illuminate\Validation\ValidationException;
  * student or Kepala Sekolah, its roles changed since the request, or the 3-Admin limit is reached) the request
  * is cancelled automatically instead. On apply: roles replaced (`syncRoles`), sessions revoked (new menu and
  * permissions at the next login), audit `account.role_changed` (same event as ChangeStaffRole, with the
- * request id), every Admin and the account notified.
+ * request id), every Admin and the account notified (+ the Kepala Sekolah for a delay-mode request, QA10).
  */
 final class ApplyRoleChange
 {
@@ -102,6 +102,11 @@ final class ApplyRoleChange
 
         if ($target !== null && ! $target->trashed()) {
             $recipients->push($target);
+        }
+
+        // QA10 (ARCHITECTURE §8b): the Kepala Sekolah heard about the delayed request, so also about how it ended.
+        if ($done->usesDelay()) {
+            $recipients = $recipients->merge($this->recipients->principals());
         }
 
         Notification::send(

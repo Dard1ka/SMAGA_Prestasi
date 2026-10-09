@@ -12,6 +12,7 @@ use App\Livewire\Admin\Concerns\RequiresRecentPassword;
 use App\Models\Student;
 use App\Models\User;
 use Carbon\CarbonImmutable;
+use Carbon\CarbonInterface;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
@@ -83,7 +84,13 @@ final class ArsipOtomatis extends Component
     public function openDate(string $studentId): void
     {
         $student = $this->student($studentId);
-        Gate::authorize('changeArchiveDate', $this->owner($student));
+        $owner = $this->owner($student);
+
+        if ($this->changedElsewhere($owner, expectArchived: false, dialog: 'arsip-tanggal')) {
+            return;
+        }
+
+        Gate::authorize('changeArchiveDate', $owner);
 
         $this->resetErrorBag();
         $this->studentId = (string) $student->getKey();
@@ -95,7 +102,13 @@ final class ArsipOtomatis extends Component
     public function saveDate(ChangeArchiveDate $change): void
     {
         $student = $this->student((string) $this->studentId);
-        Gate::authorize('changeArchiveDate', $this->owner($student));
+        $owner = $this->owner($student);
+
+        if ($this->changedElsewhere($owner, expectArchived: false, dialog: 'arsip-tanggal')) {
+            return;
+        }
+
+        Gate::authorize('changeArchiveDate', $owner);
 
         $this->validate(
             ['archiveDate' => ['required', 'date_format:Y-m-d'], 'archiveReason' => ['required', 'string', 'max:500']],
@@ -114,7 +127,13 @@ final class ArsipOtomatis extends Component
     public function openRestore(string $studentId): void
     {
         $student = $this->student($studentId);
-        Gate::authorize('unarchive', $this->owner($student));
+        $owner = $this->owner($student);
+
+        if ($this->changedElsewhere($owner, expectArchived: true, dialog: 'arsip-pulihkan')) {
+            return;
+        }
+
+        Gate::authorize('unarchive', $owner);
 
         $this->resetErrorBag();
         $this->studentId = (string) $student->getKey();
@@ -127,6 +146,11 @@ final class ArsipOtomatis extends Component
     {
         $student = $this->student((string) $this->studentId);
         $owner = $this->owner($student);
+
+        if ($this->changedElsewhere($owner, expectArchived: true, dialog: 'arsip-pulihkan')) {
+            return;
+        }
+
         Gate::authorize('unarchive', $owner);
 
         $this->validate(
@@ -150,25 +174,27 @@ final class ArsipOtomatis extends Component
         Gate::authorize('viewArchive', User::class);
 
         $today = CarbonImmutable::now(config('app.timezone'))->startOfDay();
-        $notArchived = fn (Builder $q) => $q->where('status', '!=', UserStatus::Archived);
 
         // The months come from Admin › Pengaturan, also in the subtitle (QA8: it said a fixed 18).
         $months = app(GraduationCalculator::class)->archiveMonths();
         $selected = $this->studentId !== null
             ? Student::query()->with(['user:id,name,status,deleted_at', 'classroom:id,name'])->find($this->studentId)
             : null;
+        $archived = $this->tab === 'arsip' ? $this->archivedQuery()->paginate(20, pageName: 'arsip') : null;
 
+        // "Malam ini" and "dalam 30 hari" count what the nightly job archives: active and pending accounts only (QA9).
         return view('livewire.admin.arsip-otomatis', [
             'today' => $today,
             'stats' => [
-                'tonight' => Student::query()->whereNotNull('archive_at')->whereDate('archive_at', '<=', $today)->whereHas('user', $notArchived)->count(),
-                'soon' => Student::query()->whereDate('archive_at', '>', $today)->whereDate('archive_at', '<=', $today->addDays(30))->whereHas('user', $notArchived)->count(),
+                'tonight' => Student::query()->active()->whereNotNull('archive_at')->whereDate('archive_at', '<=', $today)->count(),
+                'soon' => Student::query()->active()->whereDate('archive_at', '>', $today)->whereDate('archive_at', '<=', $today->addDays(30))->count(),
                 'archived' => Student::query()->alumni()->count(),
                 'months' => $months,
             ],
             'tabs' => $this->tabItems(),
             'due' => $this->tab === 'segera' ? $this->dueQuery($today)->paginate(20, pageName: 'segera') : null,
-            'archived' => $this->tab === 'arsip' ? $this->archivedQuery()->paginate(20, pageName: 'arsip') : null,
+            'archived' => $archived,
+            'archivedOn' => $archived !== null ? self::archivedOn($archived->getCollection()) : [],
             'runs' => $this->tab === 'riwayat' ? $this->automaticRuns() : collect(),
             'history' => $this->tab === 'riwayat' ? $this->manualHistory() : collect(),
             'selected' => $selected,
@@ -180,10 +206,10 @@ final class ArsipOtomatis extends Component
     /** @return Builder<Student> */
     private function dueQuery(CarbonImmutable $today): Builder
     {
-        return $this->search(Student::query())
+        // Only accounts the nightly job archives (QA9): a disabled student stays disabled.
+        return $this->search(Student::query()->active())
             ->whereNotNull('archive_at')
             ->whereDate('archive_at', '<=', $today->addDays((int) $this->hari))
-            ->whereHas('user', fn (Builder $q) => $q->where('status', '!=', UserStatus::Archived))
             ->with(['user:id,name,status,deleted_at', 'classroom:id,name'])
             ->orderBy('archive_at')
             ->orderBy('id');
@@ -197,6 +223,58 @@ final class ArsipOtomatis extends Component
             ->withCount('achievements')
             ->orderByDesc('archive_at')
             ->orderBy('id');
+    }
+
+    /**
+     * The day each archived student's account was archived, for the column "Diarsipkan" here and in Admin ›
+     * Pengaturan › Batas & arsip (QA9): the date of its latest `account.archived` audit row. A manual archive (D-30)
+     * keeps the planned `archive_at`, which may still lie in the future; that date itself stays as it is (the nightly
+     * job and UnarchiveStudent read it). Without an audit row (older data) the archive date stands in.
+     *
+     * @param  iterable<Student>  $students
+     * @return array<string, CarbonInterface|null> student id => day
+     */
+    public static function archivedOn(iterable $students): array
+    {
+        $students = collect($students);
+
+        if ($students->isEmpty()) {
+            return [];
+        }
+
+        // Oldest first, so the latest row of a student archived, restored and archived again wins.
+        $days = Activity::query()
+            ->where('event', 'account.archived')
+            ->where('subject_type', (new User)->getMorphClass())
+            ->whereIn('subject_id', $students->map(fn (Student $s): string => (string) $s->user_id)->all())
+            ->orderBy('id')
+            ->get(['id', 'subject_id', 'created_at'])
+            ->mapWithKeys(fn (Activity $a): array => [(string) $a->subject_id => $a->created_at?->timezone(config('app.timezone'))]);
+
+        return $students
+            ->mapWithKeys(fn (Student $s): array => [(string) $s->getKey() => $days[(string) $s->user_id] ?? $s->archive_at])
+            ->all();
+    }
+
+    /**
+     * The account changed since the list was drawn (QA9): the nightly job or another Admin archived it, or another
+     * Admin restored it. The policy would refuse with a full-screen 403 (and the Actions' own messages were never
+     * reached), so say so, close the dialog and let the lists redraw.
+     */
+    private function changedElsewhere(User $owner, bool $expectArchived, string $dialog): bool
+    {
+        if ($owner->isArchived() === $expectArchived) {
+            return false;
+        }
+
+        $this->reset('studentId', 'archiveDate', 'archiveReason');
+        $this->resetErrorBag();
+        $this->dispatch('sth-modal-close', id: $dialog);
+        $this->dispatch('sth-toast', message: $expectArchived
+            ? 'Akun ini sudah dipulihkan. Daftar sudah diperbarui.'
+            : 'Akun ini sudah diarsipkan. Daftar sudah diperbarui.', tone: 'warning');
+
+        return true;
     }
 
     /**

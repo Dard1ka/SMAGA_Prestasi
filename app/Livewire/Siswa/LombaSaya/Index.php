@@ -85,6 +85,11 @@ final class Index extends Component
     public function openLapor(): void
     {
         $registration = $this->selectedOrFail();
+
+        if ($this->reportSentElsewhere($registration)) {
+            return;
+        }
+
         Gate::authorize('create', [Report::class, $registration]);
 
         $this->lapor = true;
@@ -189,6 +194,8 @@ final class Index extends Component
             'meta' => ($competition->bidang?->label() ?? 'Lomba').' · '.$this->typeLabel($registration, (int) $registration->getAttribute('active_members_count')),
             'bidang' => $competition->bidang,
             'status' => $registration->status,
+            // QA10: the tracker ends at Laporan hasil without points for a rejected report (D-34).
+            'reportStatus' => $registration->report?->status,
             'chip' => $chip,
             'tone' => $tone,
             'current' => (string) $registration->getKey() === $this->selectedId,
@@ -247,6 +254,7 @@ final class Index extends Component
             'registration' => $registration,
             'competition' => $competition,
             'status' => $status,
+            'reportStatus' => $report?->status,
             'chip' => $chip,
             'tone' => $tone,
             'sub' => collect([$competition->organizer_name, $competition->weight_category?->label()])->filter()->implode(' · '),
@@ -410,6 +418,27 @@ final class Index extends Component
     private function isVisibleTo(Registration $registration, Student $student): bool
     {
         return $registration->members()->where('student_id', $student->getKey())->whereNull('declined_at')->exists();
+    }
+
+    /**
+     * The ketua sent the report in another tab since this card was drawn (QA9; QA8 left it): ReportPolicy::create
+     * refused "Laporkan hasil" with a full-screen 403. Say so and draw the card again. A teammate never had the
+     * button and still gets the 403.
+     */
+    private function reportSentElsewhere(Registration $registration): bool
+    {
+        $report = $registration->report()->first();
+        $leader = (string) $registration->leader_student_id === (string) $this->student()?->getKey();
+
+        if (! $leader || $report === null || $report->status === ReportStatus::PerluRevisi) {
+            return false;
+        }
+
+        $this->lapor = false;
+        unset($this->selected, $this->counts);
+        $this->dispatch('sth-toast', message: 'Laporan hasil sudah dikirim. Halaman sudah diperbarui.', tone: 'warning');
+
+        return true;
     }
 
     private function selectedOrFail(): Registration

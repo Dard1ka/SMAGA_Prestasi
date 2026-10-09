@@ -671,6 +671,7 @@ it('formats the NIS, NISN and No HP columns of the template as text, so Excel ke
 
 it('previews baru, pindah kelas, tidak berubah and ditolak, then imports without touching a password', function (): void {
     $this->withoutVite();
+    session(['auth.password_confirmed_at' => time()]); // QA9: the import needs a recent password confirmation
     $nadia = m1cRegistered();
     $gita = m1cRegistered(['nis' => '225226210', 'nisn' => '0098765440', 'birth_date' => '2010-10-10'], ['name' => 'Gita Permata', 'email' => 'gita.permata@example.test']);
     $before = m1cAccount($nadia);
@@ -732,6 +733,7 @@ it('previews baru, pindah kelas, tidak berubah and ditolak, then imports without
 it('queues the yearly file by the number of rows to write, not by the rows that stay the same', function (): void {
     $this->withoutVite();
     Queue::fake();
+    session(['auth.password_confirmed_at' => time()]); // QA9: the import needs a recent password confirmation
 
     // More registered students than the synchronous limit, all already in X-1: nothing to write, nothing queued.
     $lines = [implode(',', W1C_IMPORT_HEADER)];

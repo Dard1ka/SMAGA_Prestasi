@@ -127,11 +127,16 @@ class Student extends Model
         $query->whereHas('user', fn (Builder $q) => $q->where('status', UserStatus::Archived));
     }
 
-    /** Students whose archive date has arrived (daily archive job). @param Builder<Student> $query */
+    /**
+     * Students whose archive date has arrived (daily archive job): only accounts that can log in. A disabled account
+     * stays disabled (QA9): archiving it would bring its name back on the public pages as an alumnus.
+     *
+     * @param  Builder<Student>  $query
+     */
     public function scopeDueForArchive(Builder $query, \DateTimeInterface $today): void
     {
         $query->whereDate('archive_at', '<=', $today)
-            ->whereHas('user', fn (Builder $q) => $q->where('status', '!=', UserStatus::Archived));
+            ->whereHas('user', fn (Builder $q) => $q->whereIn('status', [UserStatus::PendingActivation, UserStatus::Active]));
     }
 
     /** Consent flag for public pages (D-16). @param Builder<Student> $query */

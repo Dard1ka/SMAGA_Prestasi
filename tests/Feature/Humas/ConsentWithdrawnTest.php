@@ -140,11 +140,14 @@ it('hides name and class on Arsip once consent is withdrawn, and offers no "Liha
         ->assertDontSee('pilih='.$this->publication->getKey(), false)
         ->assertDontSee(route('files.show', $this->flyer), false);
 
-    // The address typed by hand answers 404: the queue no longer holds this publication.
+    // The old address no longer opens the card: the queue no longer holds this publication (QA10: a warning toast
+    // instead of a full-screen 404).
     Livewire::withQueryParams(['pilih' => $this->publication->getKey()])
         ->actingAs($this->humas)
         ->test(Publikasi::class)
-        ->assertNotFound();
+        ->assertDispatched('sth-toast', tone: 'warning')
+        ->assertNotSet('selectedId', $this->publication->getKey())
+        ->assertDontSee('Hana Lestari');
 });
 
 it('does not find a withdrawn student by name on Arsip, only by lomba', function (): void {

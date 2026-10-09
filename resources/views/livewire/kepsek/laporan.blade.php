@@ -19,7 +19,7 @@
             </div>
             @if ($canExport)
                 <span class="flex flex-wrap gap-2">
-                    <x-sth.button variant="soft" size="sm" icon="download" wire:click="export('pdf')" wire:loading.attr="disabled" wire:target="export">Download PDF</x-sth.button>
+                    <x-sth.button variant="soft" size="sm" icon="download" wire:click="export('pdf')" wire:loading.attr="disabled" wire:target="export" :disabled="$pdfTooLarge">Download PDF</x-sth.button>
                     <x-sth.button variant="soft" size="sm" icon="download" wire:click="export('xlsx')" wire:loading.attr="disabled" wire:target="export">Download Excel</x-sth.button>
                 </span>
             @endif
@@ -32,8 +32,14 @@
             @endif
             <x-sth.select wire:model.live="bidang" label="Bidang" placeholder="Semua bidang" :options="$bidangOptions" />
         </div>
+        @error('export')
+            <x-sth.alert tone="error">{{ $message }}</x-sth.alert>
+        @enderror
         @if ($canExport)
             <p class="m-0 text-sm muted">Download memuat nama siswa (tanpa NIS/NISN), diberi tanda nama akun ini dan waktu download, dan tercatat di log audit.</p>
+            @if ($pdfTooLarge)
+                <p class="m-0 text-sm muted">{{ $pdfLimitNote }}</p>
+            @endif
         @endif
     </x-sth.card>
 

@@ -7,12 +7,14 @@ namespace App\Actions\Registrations;
 use App\Domain\Registrations\RegistrationStateMachine;
 use App\Enums\MemberRole;
 use App\Enums\RegistrationStatus;
+use App\Models\Competition;
 use App\Models\Registration;
 use App\Models\RegistrationMember;
 use App\Models\Student;
 use App\Models\User;
 use App\Notifications\Registrations\MemberResponded;
 use App\Notifications\Registrations\RegistrationAwaitingPrincipal;
+use App\Policies\RegistrationPolicy;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -21,9 +23,10 @@ use Illuminate\Validation\ValidationException;
 
 /**
  * An invited anggota joins the team (UI-MAP "RespondToInvitation", yes). Only the invitee, only while the
- * registration is `menunggu_konfirmasi` and the registration window is open (SECURITY §3m-3). When every
- * remaining member has confirmed (and the team still has ≥ 2 people) the registration moves to
- * `menunggu_kepsek` and the Kepala Sekolah is notified.
+ * registration is `menunggu_konfirmasi` and until the registration deadline (SECURITY §3m-3). QA10: the deadline,
+ * not the lomba's published status (RegistrationPolicy::teamWindowOpen): a lomba Kesiswaan closed early keeps its
+ * existing registrations running, as CloseCompetition says. When every remaining member has confirmed (and the team
+ * still has ≥ 2 people) the registration moves to `menunggu_kepsek` and the Kepala Sekolah is notified.
  */
 final class ConfirmMembership
 {
@@ -39,10 +42,6 @@ final class ConfirmMembership
 
         [$locked, $ready] = DB::transaction(function () use ($actor, $registration, $student): array {
             [$locked, $member] = $this->lockPendingInvite($registration, $student);
-
-            if (! $locked->competition->isOpenForRegistration()) {
-                throw ValidationException::withMessages(['registration' => 'Batas pendaftaran sudah lewat.']);
-            }
 
             $elsewhere = RegistrationMember::query()
                 ->where('student_id', $student->getKey())
@@ -76,7 +75,8 @@ final class ConfirmMembership
     }
 
     /**
-     * Lock the registration + the actor's pending anggota row; re-check the policy conditions.
+     * Lock the registration + the actor's pending anggota row; re-check the policy conditions (also the deadline, for
+     * a confirm and a decline alike).
      *
      * @return array{0: Registration, 1: RegistrationMember}
      *
@@ -85,7 +85,8 @@ final class ConfirmMembership
     public function lockPendingInvite(Registration $registration, Student $student): array
     {
         /** @var Registration $locked */
-        $locked = Registration::query()->with('competition')->whereKey($registration->getKey())->lockForUpdate()->firstOrFail();
+        $locked = Registration::query()->whereKey($registration->getKey())->lockForUpdate()->firstOrFail();
+        $locked->setRelation('competition', Competition::withTrashed()->find($locked->competition_id));
 
         /** @var RegistrationMember|null $member */
         $member = $locked->members()->where('student_id', $student->getKey())->lockForUpdate()->first();
@@ -98,6 +99,10 @@ final class ConfirmMembership
             || $member->declined_at !== null
         ) {
             throw ValidationException::withMessages(['registration' => 'Undangan ini sudah tidak berlaku.']);
+        }
+
+        if (! RegistrationPolicy::teamWindowOpen($locked->competition)) {
+            throw ValidationException::withMessages(['registration' => 'Batas pendaftaran sudah lewat.']);
         }
 
         return [$locked, $member];
@@ -122,14 +127,27 @@ final class ConfirmMembership
         return true;
     }
 
+    /**
+     * Does the ketua hear about an answer (confirm or decline)? Not when the ketua's account cannot log in (QA10, D-109:
+     * Undangan tim says "Ketua tim sudah diberi tahu" only then, like PublishPublication::notifiesStudent()).
+     */
+    public static function notifiesLeader(Registration $registration): bool
+    {
+        return self::leaderToTell($registration) !== null;
+    }
+
+    /** The ketua's account when an answer notice may go to it. */
+    public static function leaderToTell(Registration $registration): ?User
+    {
+        $leader = $registration->loadMissing('leader.user')->leader?->user;
+
+        return $leader !== null && $leader->canLogIn() ? $leader : null;
+    }
+
     /** Leader hears about the answer; the Kepala Sekolah hears when the team is complete. */
     public function notifyAfterResponse(Registration $registration, string $memberName, bool $accepted, bool $ready): void
     {
-        $leaderUser = $registration->loadMissing('leader.user')->leader?->user;
-
-        if ($leaderUser !== null && $leaderUser->canLogIn()) {
-            $leaderUser->notify(new MemberResponded($registration, $memberName, $accepted));
-        }
+        self::leaderToTell($registration)?->notify(new MemberResponded($registration, $memberName, $accepted));
 
         if ($ready) {
             Notification::send(CreateRegistration::principals(), new RegistrationAwaitingPrincipal($registration));

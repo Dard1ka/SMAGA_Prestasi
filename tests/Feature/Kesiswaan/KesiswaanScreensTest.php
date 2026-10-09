@@ -452,6 +452,7 @@ it('marks the talent export like the other exports: title, who exported it and w
 });
 
 it('imports students in three steps and never shows the initial password pattern', function (): void {
+    session(['auth.password_confirmed_at' => time()]); // QA9: the import needs a recent password confirmation
     Classroom::factory()->level(10)->create(['name' => 'X-3']);
     Classroom::factory()->level(10)->create(['name' => 'X-8']);
 

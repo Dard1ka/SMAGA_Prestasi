@@ -162,10 +162,14 @@ it('closes the panel, data for the flyer included, once publish consent is withd
         ->assertDontSee('Nadia Putri Anindya')
         ->assertDontSeeHtml('data-sth-copy');
 
+    // QA10: the old link gives a warning toast instead of a full-screen 404, and still shows nothing of the student.
     Livewire::withQueryParams(['pilih' => $publication->getKey()])
         ->actingAs($this->humas)
         ->test(Publikasi::class)
-        ->assertNotFound();
+        ->assertDispatched('sth-toast', tone: 'warning')
+        ->assertSet('selectedId', null)
+        ->assertDontSee('Data untuk flyer')
+        ->assertDontSee('Nadia Putri Anindya');
 });
 
 it('keeps the data for the flyer on a published publication', function (): void {
@@ -231,7 +235,7 @@ it('keeps the selected id locked', function (): void {
     expect($publication->fresh()->status)->toBe(PublicationStatus::Siap);
 });
 
-it('preselects ?pilih= and 404s when it is not visible', function (): void {
+it('preselects ?pilih= and never selects one that is not visible', function (): void {
     HumasFixtures::publication();
     $second = HumasFixtures::publication(studentName: 'Raka Pradipta', competitionName: 'FIKSI 2026');
     $hidden = HumasFixtures::publication(['publish_consent' => false], studentName: 'Fajar Ramadhan');
@@ -241,10 +245,13 @@ it('preselects ?pilih= and 404s when it is not visible', function (): void {
         ->test(Publikasi::class)
         ->assertSet('selectedId', $second->getKey());
 
+    // QA10: a warning toast instead of a full-screen 404 (an old link); the hidden card is never selected.
     Livewire::withQueryParams(['pilih' => $hidden->getKey()])
         ->actingAs($this->humas)
         ->test(Publikasi::class)
-        ->assertNotFound();
+        ->assertDispatched('sth-toast', tone: 'warning')
+        ->assertNotSet('selectedId', $hidden->getKey())
+        ->assertDontSee('Fajar Ramadhan');
 });
 
 it('schedules from the panel', function (): void {

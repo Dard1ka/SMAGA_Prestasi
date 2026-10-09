@@ -12,6 +12,7 @@ use App\Models\RegistrationMember;
 use App\Models\Student;
 use App\Models\User;
 use App\Notifications\Registrations\TeamInvitation;
+use App\Policies\RegistrationPolicy;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Notification;
@@ -19,8 +20,9 @@ use Illuminate\Validation\ValidationException;
 
 /**
  * The ketua invites more anggota — typically a replacement for someone who declined (D-36, UI-MAP #11,
- * B3 / backlog #9). Only while the registration is `menunggu_konfirmasi` and the lomba still accepts
- * registrations (RegistrationPolicy::invite). Same member rules as CreateRegistration, re-checked inside
+ * B3 / backlog #9). Only while the registration is `menunggu_konfirmasi` and until the registration deadline, also
+ * after Kesiswaan closed the lomba early (RegistrationPolicy::invite / teamWindowOpen, QA10). Same member rules as
+ * CreateRegistration, re-checked inside
  * the transaction with the registration, the competition and the students locked:
  * - active students only, never the ketua, never someone already in this team;
  * - someone who declined this team cannot be invited again (no invitation loops);
@@ -59,7 +61,8 @@ final class InviteMembers
                 throw ValidationException::withMessages(['members' => 'Anggota hanya bisa diundang selama tim menunggu konfirmasi.']);
             }
 
-            if (! $competition->isOpenForRegistration()) {
+            // QA10: the registration deadline, not the published status (a lomba closed early keeps its teams going).
+            if (! RegistrationPolicy::teamWindowOpen($competition)) {
                 throw ValidationException::withMessages(['members' => 'Batas pendaftaran sudah lewat.']);
             }
 

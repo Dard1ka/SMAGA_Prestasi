@@ -52,7 +52,7 @@
                 @endif
             </div>
 
-            <x-sth.select wire:model="form.default_mentor_id" label="Guru pembimbing default" placeholder="Belum ditentukan" :options="$options['mentors']" optional />
+            <x-sth.select wire:model.live="form.default_mentor_id" label="Guru pembimbing default" placeholder="Belum ditentukan" :options="$options['mentors']" :hint="$mentorHint" optional />
 
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <x-sth.input type="url" wire:model="form.website_url" label="Website resmi" placeholder="https://" icon="link" optional />

@@ -104,6 +104,7 @@ final class AuditLog extends Component
         'two_factor.confirmed' => '2FA diaktifkan',
         'two_factor.disabled' => '2FA dimatikan',
         'two_factor.recovery_codes_regenerated' => 'Kode pemulihan 2FA dibuat ulang',
+        'two_factor.challenge_failed' => 'Kode 2FA salah saat masuk',
         'weight.published' => 'Bobot poin diubah',
         'weight.recomputed' => 'Poin dihitung ulang',
         // QA5 retest (backlog #64): the events that still showed their code.
@@ -235,12 +236,18 @@ final class AuditLog extends Component
         ];
     }
 
-    /** @return array<string, string> '' => all, 'sistem', then staff accounts that appear in the log */
+    /**
+     * '' => all, 'sistem', then every non-student account that appears in the log as a causer. Not User::staff(): it
+     * needs a role, and a replaced Kepala Sekolah or a new account still waiting for its role has none (QA9).
+     *
+     * @return array<string, string>
+     */
     private function actorOptions(): array
     {
         $ids = Activity::query()->where('causer_type', (new User)->getMorphClass())->distinct()->pluck('causer_id');
 
-        $staff = User::withTrashed()->staff()->whereKey($ids)->orderBy('name')->get(['id', 'name', 'username'])
+        // withTrashed: a student whose student record was deleted is still not staff (QA9 review).
+        $staff = User::withTrashed()->whereDoesntHave('student', fn ($q) => $q->withTrashed())->whereKey($ids)->orderBy('name')->get(['id', 'name', 'username'])
             ->mapWithKeys(fn (User $u) => [(string) $u->getKey() => $u->name.($u->username ? ' ('.$u->username.')' : '')])
             ->all();
 

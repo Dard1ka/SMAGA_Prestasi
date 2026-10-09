@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Actions\Competitions;
 
 use App\Enums\CompetitionStatus;
-use App\Enums\FilePurpose;
+use App\Enums\Participation;
+use App\Enums\RegistrationType;
+use App\Livewire\Publik\Data\PublicAchievements;
 use App\Models\Competition;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
@@ -23,9 +25,16 @@ use Illuminate\Validation\ValidationException;
  * Dates (M2-B, Q1-04): "Tanggal mulai" before "Batas daftar" is refused; for a published lomba only when
  * one of the two dates changes. Dates in the past need no confirmation here: that question belongs to
  * publishing (VerifyCompetition), and a published lomba gets old by itself.
+ *
+ * QA10: an unchanged default guru pembimbing who is no longer active is kept; "individu" or a lower "Maks anggota"
+ * is refused while team registrations still run (assertTeamsStillFit()); uploads of a refused save are discarded.
  */
 final class UpdateCompetition
 {
+    public const TEAMS_RUNNING_PARTICIPATION = 'Masih ada pendaftaran tim yang berjalan. Peserta baru bisa diubah ke individu setelah pendaftaran itu selesai, ditolak, atau dibatalkan.';
+
+    public const TEAMS_RUNNING_MAX = 'Masih ada pendaftaran tim yang berjalan. Maks anggota baru bisa dikurangi setelah pendaftaran itu selesai, ditolak, atau dibatalkan.';
+
     private const WEIGHT_FIELDS = ['level', 'weight_category', 'event_status'];
 
     /**
@@ -41,14 +50,18 @@ final class UpdateCompetition
     ): Competition {
         Gate::forUser($actor)->authorize('update', $competition);
 
+        // An unchanged default guru who is no longer active stays accepted (QA10); '' from a cleared field is null.
         $data = CreateCompetition::normalize(
-            Validator::make($input, CreateCompetition::rules(), CreateCompetition::messages())->validate(),
+            Validator::make(
+                CreateCompetition::prepare($input),
+                CreateCompetition::rules($competition->default_mentor_id),
+                CreateCompetition::messages(),
+            )->validate(),
         );
 
-        $juknisFile = $juknis !== null ? CreateCompetition::storeFile($actor, $juknis, FilePurpose::Juknis) : null;
-        $coverFile = $cover !== null ? CreateCompetition::storeFile($actor, $cover, FilePurpose::Cover) : null;
+        $files = CreateCompetition::storeFiles($actor, $juknis, $cover);
 
-        $result = DB::transaction(function () use ($actor, $competition, $data, $juknisFile, $coverFile, $removeCover): Competition {
+        $result = CreateCompetition::discardOnFailure($files, fn (): Competition => DB::transaction(function () use ($actor, $competition, $data, $files, $removeCover): Competition {
             /** @var Competition $locked */
             $locked = Competition::query()->whereKey($competition->getKey())->lockForUpdate()->firstOrFail();
 
@@ -63,6 +76,8 @@ final class UpdateCompetition
 
             $datesBefore = self::orderedDays($locked);
 
+            self::assertTeamsStillFit($locked, $data);
+
             $locked->fill($data);
 
             // "Tanggal mulai" before "Batas daftar" is refused (Q1-04). A lomba that is already in the catalog
@@ -73,12 +88,12 @@ final class UpdateCompetition
                 throw ValidationException::withMessages(['starts_on' => CompetitionDates::STARTS_BEFORE_DEADLINE]);
             }
 
-            if ($juknisFile !== null) {
-                $locked->juknis_file_id = $juknisFile->getKey();
+            if ($files['juknis'] !== null) {
+                $locked->juknis_file_id = $files['juknis']->getKey();
             }
 
-            if ($coverFile !== null) {
-                $locked->cover_file_id = $coverFile->getKey();
+            if ($files['cover'] !== null) {
+                $locked->cover_file_id = $files['cover']->getKey();
             } elseif ($removeCover) {
                 $locked->cover_file_id = null;
             }
@@ -112,11 +127,50 @@ final class UpdateCompetition
             }
 
             return $locked;
-        });
+        }));
 
         $competition->setRawAttributes($result->getAttributes(), true);
 
+        // The public pages show the name, bidang, penyelenggara and school year (final_on) of a lomba with verified
+        // achievements and count lomba per school year: drop their cached results, or a correction stayed hidden for as
+        // long as the cache lives (QA9). Cheap, so after every update.
+        PublicAchievements::flush();
+
         return $result;
+    }
+
+    /**
+     * Teams that are still running keep the rules they registered under (QA10): while a team registration of this
+     * lomba is not final (not ditolak, selesai or dibatalkan), the lomba cannot become "individu" and "Maks anggota"
+     * cannot go down (or get a limit where it had none). Before, such a change left teams in an individu lomba or
+     * teams larger than the new limit. Individu registrations are not affected by either change.
+     *
+     * @param  array<string, mixed>  $data  normalized form values
+     */
+    private static function assertTeamsStillFit(Competition $locked, array $data): void
+    {
+        $oldParticipation = $locked->participation;
+        $newParticipation = Participation::tryFrom((string) ($data['participation'] ?? ''));
+        $toIndividu = $newParticipation === Participation::Individu && $oldParticipation !== Participation::Individu;
+
+        $oldMax = $locked->max_team_size;
+        $newMax = $data['max_team_size'] ?? null;
+        $lowerMax = ! $toIndividu && $newMax !== null && ($oldMax === null || $newMax < $oldMax);
+
+        if (! $toIndividu && ! $lowerMax) {
+            return;
+        }
+
+        $runningTeams = $locked->registrations()
+            ->nonFinal()
+            ->where('type', RegistrationType::Tim)
+            ->exists();
+
+        if ($runningTeams) {
+            throw ValidationException::withMessages($toIndividu
+                ? ['participation' => self::TEAMS_RUNNING_PARTICIPATION]
+                : ['max_team_size' => self::TEAMS_RUNNING_MAX]);
+        }
     }
 
     /** @return array{0: ?string, 1: ?string} the days of "Tanggal mulai" and "Batas daftar" (the time of day is not edited) */

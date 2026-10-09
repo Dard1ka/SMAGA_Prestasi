@@ -25,13 +25,14 @@ use Illuminate\Validation\ValidationException;
  * student gets AchievementPublished, both queued after commit.
  *
  * Re-checked under lockForUpdate(): still terjadwal, due, at least one channel, and still eligible
- * (verified achievement + publish_consent, PublicationPolicy::eligible) — otherwise skipped (null) and it
+ * (verified achievement + a student who may be named, PublicationPolicy::eligible; QA10: a disabled or deleted
+ * student is skipped like one without consent, so nobody is mailed the name) — otherwise skipped (null) and it
  * stays on Humas › Jadwal as "lewat jadwal". Audited `publication.published` with by = scheduler.
  * No file is involved: STH makes no flyer (M3-E), and a flyer file from before that stays on the private disk.
  */
 final class AutoPublishPublication
 {
-    /** Due, eligible rows (terjadwal, scheduled_at ≤ $now, verified + consent), oldest first. @return Builder<Publication> */
+    /** Due, eligible rows (terjadwal, scheduled_at ≤ $now, verified + named student, QA10), oldest first. @return Builder<Publication> */
     public static function due(CarbonImmutable $now): Builder
     {
         return Publication::query()
@@ -40,7 +41,7 @@ final class AutoPublishPublication
             ->where('scheduled_at', '<=', $now)
             ->whereHas('achievement', fn (Builder $a) => $a
                 ->whereNotNull('verified_at')
-                ->whereHas('student', fn (Builder $s) => $s->where('publish_consent', true)))
+                ->whereHas('student', fn (Builder $s) => NamedStudent::constrain($s)))
             ->orderBy('scheduled_at')
             ->orderBy('id');
     }

@@ -11,6 +11,7 @@ use App\Enums\Level;
 use App\Enums\ResultType;
 use App\Enums\UserStatus;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -31,23 +32,11 @@ final class ExportPrestasiData
      */
     public function rows(?ExportPeriod $period = null, ?Bidang $bidang = null, ?Level $level = null): Collection
     {
-        $from = $period?->from?->toDateString();
-        $to = $period?->to?->toDateString();
-
-        return DB::table('achievements')
-            ->join('students', 'students.id', '=', 'achievements.student_id')
-            ->join('users', 'users.id', '=', 'students.user_id')
+        return $this->query($period, $bidang, $level)
             ->leftJoin('classrooms', 'classrooms.id', '=', 'students.classroom_id')
-            ->join('competitions', 'competitions.id', '=', 'achievements.competition_id')
             ->leftJoin('reports', 'reports.id', '=', 'achievements.report_id')
             ->leftJoin('registrations', 'registrations.id', '=', 'reports.registration_id')
             ->leftJoin('users as mentors', 'mentors.id', '=', 'registrations.mentor_id')
-            ->whereNotNull('achievements.verified_at')
-            ->when($bidang !== null, fn ($q) => $q->where('competitions.bidang', $bidang->value))
-            ->when($level !== null, fn ($q) => $q->where('achievements.level', $level->value))
-            ->when($from !== null, fn ($q) => $q->where(fn ($w) => $w
-                ->where(fn ($a) => $a->whereNotNull('competitions.final_on')->whereDate('competitions.final_on', '>=', $from)->whereDate('competitions.final_on', '<=', $to))
-                ->orWhere(fn ($b) => $b->whereNull('competitions.final_on')->whereDate('achievements.verified_at', '>=', $from)->whereDate('achievements.verified_at', '<=', $to))))
             ->orderByDesc('achievements.verified_at')
             ->orderBy('achievements.id')
             ->get([
@@ -94,8 +83,16 @@ final class ExportPrestasiData
         ];
     }
 
+    /** Number of rows() of the period, counted by the database (QA10: the PDF cap asks before it loads them). */
+    public function count(?ExportPeriod $period = null, ?Bidang $bidang = null, ?Level $level = null): int
+    {
+        return $this->query($period, $bidang, $level)->count();
+    }
+
     /**
-     * School years that have verified achievements, plus the current one (newest first).
+     * School years that have verified achievements, plus the current one (newest first). One small query over the
+     * distinct months of the period dates (QA10): before, this loaded every achievement row of all years on each
+     * redraw of Kepala Sekolah › Laporan, next to the rows of the shown period.
      *
      * @return list<string>
      */
@@ -103,7 +100,34 @@ final class ExportPrestasiData
     {
         $current = SchoolYear::containing(CarbonImmutable::now(config('app.timezone')))->toString();
 
-        return $this->rows()->pluck('year')->push($current)->filter()->unique()->sortDesc()->values()->all();
+        // Same date as mapRow(): the final date of the lomba, else the verification date. "YYYY-MM" decides the year.
+        $months = $this->query()
+            ->selectRaw('substr(coalesce(competitions.final_on, achievements.verified_at), 1, 7) as ym')
+            ->distinct()
+            ->pluck('ym');
+
+        return $months
+            ->filter(fn (mixed $ym): bool => is_string($ym) && preg_match('/^\d{4}-\d{2}$/', $ym) === 1)
+            ->map(fn (string $ym): string => SchoolYear::containing(CarbonImmutable::parse($ym.'-01'))->toString())
+            ->push($current)->unique()->sortDesc()->values()->all();
+    }
+
+    /** Verified achievements of the period (and bidang / tingkat) with their student, account and lomba joined. */
+    private function query(?ExportPeriod $period = null, ?Bidang $bidang = null, ?Level $level = null): Builder
+    {
+        $from = $period?->from?->toDateString();
+        $to = $period?->to?->toDateString();
+
+        return DB::table('achievements')
+            ->join('students', 'students.id', '=', 'achievements.student_id')
+            ->join('users', 'users.id', '=', 'students.user_id')
+            ->join('competitions', 'competitions.id', '=', 'achievements.competition_id')
+            ->whereNotNull('achievements.verified_at')
+            ->when($bidang !== null, fn ($q) => $q->where('competitions.bidang', $bidang->value))
+            ->when($level !== null, fn ($q) => $q->where('achievements.level', $level->value))
+            ->when($from !== null, fn ($q) => $q->where(fn ($w) => $w
+                ->where(fn ($a) => $a->whereNotNull('competitions.final_on')->whereDate('competitions.final_on', '>=', $from)->whereDate('competitions.final_on', '<=', $to))
+                ->orWhere(fn ($b) => $b->whereNull('competitions.final_on')->whereDate('achievements.verified_at', '>=', $from)->whereDate('achievements.verified_at', '<=', $to))));
     }
 
     /**

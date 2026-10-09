@@ -6,8 +6,8 @@ namespace App\Livewire\Admin\Pengaturan;
 
 use App\Actions\Settings\PublishWeightVersion;
 use App\Domain\Points\PointCalculator;
-use App\Domain\Points\PointFormatter;
 use App\Domain\Points\WeightTable;
+use App\Domain\Support\Decimal;
 use App\Enums\Level;
 use App\Enums\ResultType;
 use App\Enums\WeightCategory;
@@ -108,14 +108,29 @@ final class Bobot extends Component
         return [...$raw, 'total' => $total];
     }
 
+    /**
+     * Field values with a decimal comma and no thousands dot (QA10): PointFormatter groups thousands ("1.000"), which
+     * PublishWeightVersion read back as 1 with three decimals, so a tingkat weight of 1000 blocked every later save.
+     */
     private function fillFrom(WeightTable $table): void
     {
-        $formatter = app(PointFormatter::class);
         $this->weights = [
-            'level' => array_map(fn (string $v): string => $formatter->format($v, 2), $table->levels()),
-            'result' => array_map(fn (string $v): string => $formatter->formatWeight($v), $table->results()),
-            'organizer' => array_map(fn (string $v): string => $formatter->formatWeight($v), $table->organizers()),
+            'level' => array_map(fn (string $v): string => self::fieldValue($v, trimZeros: true), $table->levels()),
+            'result' => array_map(fn (string $v): string => self::fieldValue($v), $table->results()),
+            'organizer' => array_map(fn (string $v): string => self::fieldValue($v), $table->organizers()),
         ];
+    }
+
+    /** "1000.00" → "1000", "62.50" → "62,5" (tingkat); "0.85" → "0,85", "1.00" → "1,00" (factors). */
+    private static function fieldValue(string $value, bool $trimZeros = false): string
+    {
+        $value = Decimal::roundHalfUp($value, 2);
+
+        if ($trimZeros && str_contains($value, '.')) {
+            $value = rtrim(rtrim($value, '0'), '.');
+        }
+
+        return str_replace('.', ',', $value);
     }
 
     /**

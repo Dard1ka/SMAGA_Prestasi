@@ -15,9 +15,9 @@ use Illuminate\Validation\ValidationException;
 /**
  * Admin "Buka pembekuan" (B1, docs/SECURITY.md §3a K3/K8): lifts any freeze (failed logins or "Bukan saya?")
  * after the Admin checked the owner's identity. Counter reset; an account that still has to change an
- * initial/temporary password gets a fresh 72-hour window. Admin only (`user.reset_password`), never on the
- * Admin's own account, reason required, audited (`account.unfrozen`). When the email itself is suspect, use
- * "Reset kata sandi & email" (ResetStudentAccount) instead.
+ * initial/temporary password gets at least 72 more hours (a later deadline stays, QA9). Admin only
+ * (`user.reset_password`), never on the Admin's own account, reason required, audited (`account.unfrozen`). When
+ * the email itself is suspect, use "Reset kata sandi & email" (ResetStudentAccount) instead.
  */
 final class UnfreezeAccount
 {
@@ -53,8 +53,12 @@ final class UnfreezeAccount
             $frozenReason = AccountControls::frozenReason($locked);
             $changes = ['frozen_at' => null, 'frozen_reason' => null, 'failed_activation_attempts' => 0];
 
-            if ((bool) $locked->must_change_password && AccountControls::date($locked, 'initial_password_expires_at') !== null) {
-                $changes['initial_password_expires_at'] = CarbonImmutable::now()->addHours(AccountControls::REOPEN_HOURS);
+            $current = AccountControls::date($locked, 'initial_password_expires_at');
+
+            // Never shortens the window (QA9, the rule of D-95 for "Buka ulang"): the later one of the current
+            // deadline and now + 72 h.
+            if ((bool) $locked->must_change_password && $current !== null) {
+                $changes['initial_password_expires_at'] = ReopenActivationWindow::deadlineAfter($current, CarbonImmutable::now());
             }
 
             $locked->forceFill($changes)->saveQuietly();

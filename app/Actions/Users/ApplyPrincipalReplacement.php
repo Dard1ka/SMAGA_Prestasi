@@ -26,7 +26,8 @@ use Illuminate\Validation\ValidationException;
  *   profile, and the old signature image is detached (it belongs to the previous Kepala Sekolah: the
  *   Admin uploads the new one before TU can generate letters again);
  * - a target that is no longer eligible (disabled, now Admin, …) cancels the request instead.
- * Audited (`principal.applied` / `principal.cancelled`); both accounts and every Admin are notified.
+ * Audited (`principal.applied` / `principal.cancelled`); both accounts and every Admin are notified (QA10: on an
+ * automatic cancel the current Kepala Sekolah too).
  */
 final class ApplyPrincipalReplacement
 {
@@ -113,6 +114,12 @@ final class ApplyPrincipalReplacement
             if ($user !== null) {
                 $recipients->push($user);
             }
+        }
+
+        // QA10: a request that cancels itself leaves the current Kepala Sekolah in office; they were told about the
+        // request, so they are told it will not happen.
+        if ($result['cancelled']) {
+            $recipients = $recipients->merge($this->recipients->principals());
         }
 
         $from = $result['previous'][0] ?? null;

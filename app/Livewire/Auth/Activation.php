@@ -318,7 +318,12 @@ class Activation extends Component
         }
 
         if (! $otp->handle($user, CompleteActivation::PURPOSE, $email)) {
-            $this->addError($field, 'Tunggu '.$otp->secondsUntilResend($user, CompleteActivation::PURPOSE).' detik sebelum kirim ulang.');
+            $seconds = $otp->secondsUntilResend($user, CompleteActivation::PURPOSE);
+
+            // QA10: past the cooldown it is the hourly or daily limit of the account, which can last for hours.
+            $this->addError($field, $seconds > 60
+                ? AppServiceProvider::retryMessage($seconds)
+                : 'Tunggu '.$seconds.' detik sebelum kirim ulang.');
 
             return false;
         }

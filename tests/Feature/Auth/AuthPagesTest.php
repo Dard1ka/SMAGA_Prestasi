@@ -91,7 +91,7 @@ it('keeps the placeholder home for an account without an area role', function ()
     $user->forceFill(['two_factor_confirmed_at' => now()])->save();
 
     // W4: e.g. a new privileged staff account whose role still waits for a second Admin.
-    $this->actingAs($user->fresh())->get(route('home'))->assertOk()->assertSee('Akunmu belum punya peran.');
+    $this->actingAs($user->fresh())->get(route('home'))->assertOk()->assertSee('Akun ini belum punya peran.');
 });
 
 it('renders the password confirmation and 2FA setup pages for staff', function (): void {

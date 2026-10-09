@@ -11,6 +11,7 @@ use Laravel\Fortify\Events\RecoveryCodesGenerated;
 use Laravel\Fortify\Events\TwoFactorAuthenticationConfirmed;
 use Laravel\Fortify\Events\TwoFactorAuthenticationDisabled;
 use Laravel\Fortify\Events\TwoFactorAuthenticationEnabled;
+use Laravel\Fortify\Events\TwoFactorAuthenticationFailed;
 
 /**
  * Audit rows (activity log `auth`) for every TOTP change, whichever way it happens: the setup screen
@@ -19,7 +20,8 @@ use Laravel\Fortify\Events\TwoFactorAuthenticationEnabled;
  * `security` log as `security.audit.two_factor.*`. Registered in FortifyServiceProvider::boot().
  *
  * `two_factor.enabled` = a new secret was stored (also each time the setup screen replaces an unconfirmed one);
- * `two_factor.recovery_codes_regenerated` = the codes were replaced on request (not the first set from enabling).
+ * `two_factor.recovery_codes_regenerated` = the codes were replaced on request (not the first set from enabling);
+ * `two_factor.challenge_failed` = a wrong code at `/two-factor-challenge` after a correct password (QA10; no causer).
  * An Admin reset removes TOTP without these events: see `account.staff_reset` / `account.reset`.
  */
 final class TwoFactorAuditSubscriber
@@ -30,6 +32,7 @@ final class TwoFactorAuditSubscriber
         TwoFactorAuthenticationConfirmed::class => 'two_factor.confirmed',
         TwoFactorAuthenticationDisabled::class => 'two_factor.disabled',
         RecoveryCodesGenerated::class => 'two_factor.recovery_codes_regenerated',
+        TwoFactorAuthenticationFailed::class => 'two_factor.challenge_failed',
     ];
 
     /** Rows per user and event within a minute. */
@@ -53,11 +56,15 @@ final class TwoFactorAuditSubscriber
 
         // Fortify's JSON routes have no throttle and the audit log is append-only: without a cap a signed-in staff
         // account could grow it without limit by re-posting. The first rows of each kind are always written.
-        // Fortify's two-factor actions always act on the signed-in user, so subject and causer are the same.
+        // Fortify's two-factor actions always act on the signed-in user, so subject and causer are the same. A wrong
+        // code at the login challenge (QA10) comes from someone who knows the password but is not signed in: no causer.
+        $challenge = $event instanceof TwoFactorAuthenticationFailed;
+
         RateLimiter::attempt(
             'audit:'.$name.':'.$user->getKey(),
             self::MAX_ROWS_PER_MINUTE,
-            fn () => activity('auth')->performedOn($user)->causedBy($user)->event($name)->log($name),
+            fn () => ($challenge ? activity('auth') : activity('auth')->causedBy($user))
+                ->performedOn($user)->event($name)->log($name),
         );
     }
 }

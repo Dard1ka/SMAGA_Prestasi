@@ -84,7 +84,12 @@
                                 @elseif (! $isPrincipal && $roles->doesntContain(\App\Enums\RoleName::Siswa->value))
                                     <x-sth.button variant="quiet" size="sm" wire:click="openStaff({{ $member->id }}, 'staf-peran')">Ubah peran</x-sth.button>
                                 @endif
-                                <x-sth.button variant="quiet" size="sm" wire:click="openStaff({{ $member->id }}, 'staf-reset')">Reset akun</x-sth.button>
+                                {{-- QA9: an account that cannot log in is not reset; the row says why. --}}
+                                @isset($resetRefusals[$member->id])
+                                    <span class="self-center text-sm muted">{{ $resetRefusals[$member->id] }}</span>
+                                @else
+                                    <x-sth.button variant="quiet" size="sm" wire:click="openStaff({{ $member->id }}, 'staf-reset')">Reset akun</x-sth.button>
+                                @endisset
                                 @if (! $isPrincipal && $member->canLogIn())
                                     <x-sth.button variant="danger" size="sm" wire:click="openStaff({{ $member->id }}, 'staf-nonaktif')">Nonaktifkan</x-sth.button>
                                 @endif
@@ -130,7 +135,12 @@
                 </div>
                 <x-sth.chip :tone="$statusTone($studentAccount['status'])">{{ $studentAccount['status']?->label() }}</x-sth.chip>
                 <span class="flex w-full flex-wrap justify-end gap-2">
-                    <x-sth.button variant="soft" size="sm" wire:click="openStudent('siswa-reset')">Reset kata sandi & email</x-sth.button>
+                    {{-- QA9: a disabled or archived account cannot log in, so the reset is not offered; the card says why. --}}
+                    @if ($studentAccount['resetRefusal'])
+                        <span class="text-sm muted">{{ $studentAccount['resetRefusal'] }}</span>
+                    @else
+                        <x-sth.button variant="soft" size="sm" wire:click="openStudent('siswa-reset')">Reset kata sandi & email</x-sth.button>
+                    @endif
                     @if ($studentAccount['status']?->canLogIn())
                         <x-sth.button variant="danger" size="sm" wire:click="openStudent('siswa-nonaktif')">Nonaktifkan atau arsipkan</x-sth.button>
                     @endif
@@ -254,7 +264,8 @@
         </x-slot:footer>
     </x-sth.modal>
 
-    <x-sth.modal id="siswa-sandi" title="Kata sandi sementara" description="Tampil sekali ini saja. Berikan langsung ke siswa, jangan difoto atau dikirim lewat chat." size="sm">
+    {{-- QA9: however the dialog closes (X, Esc, click outside), the server forgets the password (on-close). --}}
+    <x-sth.modal id="siswa-sandi" title="Kata sandi sementara" description="Tampil sekali ini saja. Berikan langsung ke siswa, jangan difoto atau dikirim lewat chat." size="sm" on-close="forgetIssuedPassword">
         @if ($issuedPassword)
             <div class="flex flex-col gap-3">
                 <p class="m-0 rounded-tile border border-line bg-subtle px-4 py-3 text-center font-mono text-2xl font-bold tracking-[0.12em] select-all">{{ $issuedPassword }}</p>

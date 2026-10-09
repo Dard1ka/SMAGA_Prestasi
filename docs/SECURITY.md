@@ -42,7 +42,7 @@
 
 | # | Risiko | Dampak | Mitigasi konkret (ringkas) | Pemilik |
 |---|--------|--------|----------------------------|---------|
-| 1 | **Pengambilalihan akun siswa sebelum aktivasi**. Password awal = NIS/NISN + tanggal lahir, tanpa Kode Aktivasi; risiko ini diterima sekolah | Akun dikuasai, email penyerang terikat, pendaftaran/laporan palsu, data siswa bocor | Jendela aktivasi 14 hari + pembekuan setelah 10 gagal, rate limit per akun (NIS & NISN satu bucket), deteksi "password awal di akun aktif", laporan aktivasi per kelas, "Reset kata sandi & email" oleh Admin (password sementara acak, audit), notifikasi email + "Bukan saya?" (§3a) | backend + Kesiswaan/Admin |
+| 1 | **Pengambilalihan akun siswa sebelum aktivasi**. Password awal = NIS/NISN + tanggal lahir, tanpa Kode Aktivasi; risiko ini diterima sekolah | Akun dikuasai, email penyerang terikat, pendaftaran/laporan palsu, data siswa bocor | Jendela aktivasi 14 hari + pembekuan setelah 10 gagal, rate limit per akun + alamat (NIS & NISN satu bucket) dan kunci akun untuk perangkat baru setelah 30 gagal/24 jam + alert `account.login_attack` (QA10), deteksi "password awal di akun aktif", laporan aktivasi per kelas, "Reset kata sandi & email" oleh Admin (password sementara acak, audit), notifikasi email + "Bukan saya?" (§3a) | backend + Kesiswaan/Admin |
 | 2 | **Host EOL tanpa patch**: Apache 2.4.29 sebagai pintu depan, kernel 4.15, Docker 24.0.2/runc lama | RCE/bypass di proxy, LPE ke root, container escape → semua data STH dan situs utama | Ubuntu Pro (esm-infra/esm-apps), Docker static 29.8.1 + update bulanan, Apache sebagai thin proxy dengan modul minimal, kontainer non-root (§3j, §3e) | devops + sekolah (anggaran) |
 | 3 | **Broken access control / IDOR** di 7 peran: undangan tim, pendaftaran, surat, file, laporan, akun arsip | Kebocoran data anak, pendaftaran/persetujuan/poin palsu | Policy per model, scope `visibleTo()`, ULID, state machine, read-only arsip via policy, uji matriks peran × route (§3c, §3m-8) | backend |
 | 4 | **Data anak di halaman publik tanpa persetujuan**: nama, foto, sertifikat yang memuat NISN/TTL; scraping | Pelanggaran UU PDP Pasal 25, risiko keselamatan anak, reputasi sekolah | Flag persetujuan per jenis (default tidak), sertifikat tampil sebagai badge, resource dengan allowlist kolom, slug acak, `noindex`, rate limit (§3m-7, §3i) | backend + sekolah |
@@ -203,6 +203,42 @@ Password::defaults(fn () => app()->isProduction()
 - Tidak ada akun bersama ("tu@", "admin" dipakai beramai-ramai). Satu orang satu akun.
 - Admin tidak bisa *impersonate* siswa. Jika fitur ini diperlukan: read-only, banner, dan audit log.
 
+**Pembaruan 9 Okt 2026 (QA10, `docs/dev-notes/QA10.md`):** K3 dulu bisa dilanggar: batas per akun menghitung semua
+percobaan (juga kata sandi yang benar) dan kunci progresif per akun memperpanjang dirinya, jadi teman yang tahu NIS bisa
+mengunci akun terus; "Lupa kata sandi" tidak membukanya. Sekarang:
+- Kunci progresif (gagal ke-5 → 1 menit, ke-10 → 15 menit, ke-20 dan seterusnya → 1 jam) dan batas rute `throttle:login`
+  berlaku per **akun + alamat** (alamat IPv6 dihitung per /64; IPv4 yang ditulis sebagai IPv6 = alamat IPv4-nya) **dan per
+  jenis perangkat**: perangkat yang pernah masuk ke akun itu punya kunci dan batasnya sendiri (`LoginLockout::pair()`,
+  akhiran `|k`), jadi kegagalan orang lain di alamat yang sama (NAT sekolah) tidak menahan HP/laptop pemilik. `login-h`
+  20/jam hanya menghitung kata sandi yang ditolak. Batas rutenya ada di `LoginLockout::limits()`. Identitas yang bukan teks
+  (mis. `identifier[]`) dibaca sebagai kosong.
+- Batas per akun (D-79, password awal yang bisa ditebak): 30 kegagalan dalam 24 jam dari alamat mana pun menutup akun untuk
+  **perangkat yang belum pernah masuk** sampai 24 jam itu habis. Perangkat yang pernah masuk tetap bisa (`KnownDevices`:
+  cookie `sth_device`, terenkripsi, httpOnly, 180 hari, terikat ke akun dan hash kata sandi saat ini, paling banyak 8 akun
+  per browser; setelah pemilik mengganti kata sandi saat masuk, browser itu tetap dikenal). Saat angka 30 tercapai, Admin
+  (dan Kesiswaan untuk akun siswa) mendapat alert `account.login_attack` sekali per jendela (`LoginAttackAlert`; kunci ditulis
+  dulu, kegagalan kirim alert hanya dilaporkan). Paling banyak 5 alert serangan per jam (login dan kode reset bersama);
+  sisanya hanya dicatat `security.login_attack_alerts_capped`. Total per akun juga memicu `security.login_failures_account`
+  (5, 10, 20, lalu tiap 20).
+- Satu waktu tunggu: setiap penolakan menyebut `LoginLockout::secondsUntilAllowed()`, yaitu yang terlama dari kunci alamat,
+  kunci akun untuk perangkat baru, dan setiap batas rute yang penuh. Percobaan yang ditolak hanya dihitung ke batas per
+  alamat `login-ip` (60/menit, supaya banjir permintaan tetap terbatas), tidak ke batas per akun + alamat, jadi menekan
+  "Masuk" berulang tidak memperpanjang blok dan angkanya hanya turun (dulu bergantian "14 menit" / "45 detik" karena batas
+  per menit dan kunci menjawab sendiri-sendiri). Identitas tanpa akun mendapat waktu yang sama.
+- Login yang berhasil membersihkan alamatnya sendiri. Reset dengan kode, reset Admin, "Buka ulang" dan buka pembekuan
+  (`LoginLockout::clear()`) memulai "generasi" baru akun itu: semua kunci, batas rute, kegagalan TOTP dan batas OTP-nya kosong.
+- Tantangan TOTP staf: batas per akun (bukan per akun+alamat); tantangan ditolak bila lebih dari 10 menit, bila kata sandi
+  sudah berubah (sidik kunci hash kata sandi di sesi), untuk akun yang tidak bisa masuk, atau setelah 10 kode salah dalam satu
+  jam (`security.two_factor_challenge_ended`); setiap kode salah diaudit (`two_factor.challenge_failed`).
+- Akun Admin / TU / Kesiswaan yang belum punya peran (D-61) memakai aturan kata sandi staf.
+
+Batas yang diketahui (backlog #80): satu orang di satu alamat bisa mencapai 30 kegagalan dalam ±10 jam; pemilik di perangkat
+baru lalu menunggu sampai 24 jam itu habis atau memakai "Lupa kata sandi" / reset Admin, dan bila penyerang juga menghabiskan
+20 kode reset sehari (§3b) hanya reset Admin yang menolong. PC sekolah tempat korban pernah masuk dianggap perangkat dikenal
+bagi siapa pun yang memakainya (dengan kuota sendiri), sampai korban mengganti kata sandi. Satu klien yang membanjiri alamat
+NAT sekolah membuat semua akun di alamat itu menunggu sampai 60 detik. Lewat 5 alert per jam, Admin tidak melihat alert
+berikutnya pada jam itu (hanya log). Teks di atas tetap sebagai sejarah.
+
 ### 3b. OTP email & reset password
 
 **Status 30 Sep 2026 (D-15): OTP email ditunda.** Selama pengembangan, layar verifikasi menerima 6 digit apa pun. Email noreply nyata dikonfigurasi tim deploy nanti. Aturan bypass (**WAJIB**):
@@ -296,6 +332,28 @@ google._domainkey.notif          TXT "v=DKIM1; k=rsa; p=<2048-bit key>"
 _dmarc.notif.sman3-smg.sch.id.   TXT "v=DMARC1; p=none; rua=mailto:dmarc@sman3-smg.sch.id; adkim=s; aspf=s"
 ```
 Gmail mewajibkan SPF **atau** DKIM untuk semua pengirim, dan SPF + DKIM + DMARC untuk pengirim ≥5.000/hari. Mulai dengan `p=none` selama 2–4 minggu, pantau laporan `rua`, lalu naikkan ke `p=quarantine`.
+
+**Pembaruan 9 Okt 2026 (QA10):** batas "Lupa kata sandi" dulu dihitung per teks yang diketik, jadi NIS, NISN, email dan
+varian beraksen satu akun punya hitungan sendiri-sendiri. Perbaikan pertama (batas per akun saja) membuat orang asing yang
+tahu NIS bisa menghabiskan jatah kode dan jatah salah milik pemilik. Sekarang:
+- Layar (`ResetCodeLimits`): minta kode paling banyak 3 per 15 menit dan 10 per hari per **akun + alamat** (ditambah 30 per
+  jam per alamat, sesuai tabel di atas); cek kode 10 per 10 menit per akun + alamat (ditambah 30 per alamat). Akun dari
+  `LoginIdentifier::bucketFor()` (NIS, NISN dan email satu akun berbagi; identitas tidak dikenal punya ember HMAC stabil).
+- Kode reset terikat ke **browser yang memintanya** (`OtpRequester`: token acak di sesi, id kode di cache 25 jam): hanya
+  browser itu yang bisa memakai kodenya, dan kode baru hanya membatalkan kode lama dari browser yang sama. Per browser:
+  cooldown, 5 kode per jam, 10 per hari, 10 kode salah per hari (`security.otp_daily_limit`). Per akun: paling banyak 20 kode
+  reset per hari (paling banyak 100 tebakan sehari), dan saat kode reset yang salah dari semua browser mencapai 20 sehari,
+  Admin mendapat alert `account.reset_code_attack` sekali (tanpa blokir, supaya tidak jadi alat untuk menutup akun).
+- Kode email untuk pengguna yang sudah masuk (aktivasi, ganti email) tetap dibatasi per akun + tujuan (5/jam, 10/hari, 10
+  salah/hari), supaya orang asing yang menghabiskan kode reset tidak menghalangi kode aktivasi.
+- Setelah reset Admin, buka pembekuan, "Buka ulang" atau reset dengan kode, batas OTP hanya menghitung kode sesudah
+  `LoginLockout::clearedAt()`, dan batas layar `ResetCodeLimits` ikut lepas (dikunci di bawah generasi akun).
+
+Batas yang diketahui (backlog #80): orang dengan 2 alamat bisa menghabiskan 20 kode reset sehari milik satu akun; layar tetap
+menulis "kode telah dikirim" (tanpa enumerasi), jadi pemilik tidak tahu kodenya tidak dikirim. Perbaikan sebenarnya adalah
+kode yang lebih panjang atau tautan bertanda tangan.
+Ikatan kode ke browser ada di cache: mengosongkan cache hanya membuat kode gagal, tidak pernah meloloskannya; kolom di
+`otp_codes` lebih kokoh tetapi butuh migrasi.
 
 ### 3c. Otorisasi / IDOR
 

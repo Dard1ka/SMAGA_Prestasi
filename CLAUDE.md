@@ -32,7 +32,7 @@ consent flags (D-16, SECURITY §3m-7).
 ## 2. Sources of truth (read before changing behaviour)
 | file | content |
 |---|---|
-| `docs/DECISIONS.md` | decision log D-01…D-120 (D-45…D-61 = backlog wave + W4 product choices, *sementara*; D-62…D-65 = security hardening, *final*; D-66…D-77 = Q1 security/performance pass and the lead's follow-up choices; D-78…D-91 = §D6, the lead's choices after the hand test of 2026-10-04; D-92…D-102 = §D7, the rules changed by the fixes after the QA pass of 2026-10-05; D-103…D-108 = §D8, the lead's six requests of 2026-10-06 (wave M3) and the schema change of QA4; D-109…D-112 = §D9, the lead's answers after the retest of M3 on 2026-10-07 (QA5); D-113…D-116 = §D10, the explore round after PR 14 (QA6); D-117…D-120 = §D11, the visual direction v3 "Tinta dan Sampul", lomba covers, the staff copy rule and the school crest as the brand mark (UI3)), U-01…U-06, open questions §F. **Wins over everything.** |
+| `docs/DECISIONS.md` | decision log D-01…D-121 (D-121 = §D12, real mail from a local stack: Brevo + allowlist, *sementara*; D-45…D-61 = backlog wave + W4 product choices, *sementara*; D-62…D-65 = security hardening, *final*; D-66…D-77 = Q1 security/performance pass and the lead's follow-up choices; D-78…D-91 = §D6, the lead's choices after the hand test of 2026-10-04; D-92…D-102 = §D7, the rules changed by the fixes after the QA pass of 2026-10-05; D-103…D-108 = §D8, the lead's six requests of 2026-10-06 (wave M3) and the schema change of QA4; D-109…D-112 = §D9, the lead's answers after the retest of M3 on 2026-10-07 (QA5); D-113…D-116 = §D10, the explore round after PR 14 (QA6); D-117…D-120 = §D11, the visual direction v3 "Tinta dan Sampul", lomba covers, the staff copy rule and the school crest as the brand mark (UI3)), U-01…U-06, open questions §F. **Wins over everything.** |
 | `docs/ARCHITECTURE.md` | binding contract: data model, enums, state machine, domain rules |
 | `docs/SECURITY.md` | threat model, top-10 risks §1, controls §3a–§3m (K1–K12), pre-release checklist §4 |
 | `docs/TALENT-FORM.md` | talent types/branches (seed source for `talent_types`, `talent_branches`) |
@@ -148,7 +148,8 @@ the config cache when `.env` or `config/` is newer, and reloads php-fpm. CSS and
 | validate compose | `docker compose config -q` · prod: `docker compose -f docker/compose.prod.yaml config -q` |
 | prod image | `docker build -f docker/Dockerfile.prod -t sth-app:local .` (`--target web` for nginx) |
 | E2E smoke (Playwright, isolated project `sth-e2e`) | `docker compose -f compose.yaml -f tests/E2E/compose.e2e.yaml up -d --wait mysql app web` → `… exec -T app sh tests/E2E/support/setup-app.sh` → `… run --rm e2e` → `… down -v` (DEPLOY §18) |
-| mail check | `docker compose exec app php artisan sth:mail-test you@example.test` (dev: Mailpit; prod: DEPLOY §9) |
+| mail check | `docker compose exec app php artisan sth:mail-test you@example.test` (dev: Mailpit; prod: DEPLOY §9; with `MAIL_MAILER=allowlist` it says whether that address really goes out) |
+| real mail from a local stack (optional, D-121) | in the local `.env`: `MAIL_MAILER=allowlist`, the provider's `MAIL_HOST` / `MAIL_PORT` / `MAIL_USERNAME` / `MAIL_PASSWORD`, `MAIL_FROM_ADDRESS` = the verified sender, `STH_MAIL_ALLOWLIST=you@gmail.com,you+*@gmail.com` → `reload.bat` → `docker compose restart queue scheduler` (steps: `docs/dev-notes/EM1.md`) |
 | email scenario (every role's mails end to end, isolated project `sth-e2e`, ~3 min, not in CI) | E2E `up … mysql app web mailpit` → `… exec -T app sh tests/E2E/support/setup-app.sh` → `… exec -T app php tests/E2E/support/email-scenario.php` → `… down -v` (DEPLOY §18) |
 
 Notes: tests stay SQLite-compatible (MySQL-only behaviour gets its own marked test). Git Bash rewrites
@@ -269,7 +270,9 @@ logs in through `POST /login` and expects a 403/404 on the next GET would see th
 - **Archive** (`App\Domain\Archive`): grade-12 start = 1 July of the year the student enters kelas XII;
   `archive_at` = +18 months (e.g. kelas X 2026/2027 → XII 2028-07-01 → archive 2030-01-01). Daily job
   01:00 Asia/Jakarta, idempotent; sessions revoked; **archived users cannot log in** (D-29); their
-  achievements stay in ranking/public pages. Admin can also disable/archive manually with a reason (D-30).
+  achievements stay in ranking/public pages. Admin can also disable/archive manually with a reason (D-30). The job
+  archives active and pending accounts only (`Student::scopeDueForArchive`): a disabled account stays disabled and
+  anonymous on the public pages (QA9; before, it came back as a named alumnus).
 - **Letters** (`App\Domain\Letters\LetterNumber`): TU types the **complete number** of each letter, e.g.
   `400.3.8/313/MRD/X/2026` (3–64 characters; letters, digits, `.` `/` `-`, spaces; at least one digit);
   unique per letter type over all letters incl. revoked ones (index (type, full_number), compared without
@@ -305,7 +308,15 @@ logs in through `POST /login` and expects a 403/404 on the next GET would see th
   `password123` fails; D-94). The hint under a new-password field comes from `SetNewPassword::hint($user)`.
   Sessions (D-93): renew the id with `session()->regenerate(true)` (the old row is deleted) and only **after** the
   Action succeeded. "Buka ulang" (`ReopenActivationWindow`, K2) never shortens a deadline: the later one of the
-  current deadline and now + 72 h, reason at least 10 characters (D-95). Import (Excel/CSV, dry-run first) by Kesiswaan and Admin
+  current deadline and now + 72 h, reason at least 10 characters (D-95). Login locks (QA10, SECURITY §3a/§3b): per account
+  **and** client address (IPv6 by /64) **and** device kind (a known device has its own, `|k`), the hourly limit counts
+  failures only; 30 failures of an account in 24 h close it to
+  devices that never signed in to it (`KnownDevices`) and alert the Admins (`LoginAttackAlert`); every refusal names one
+  time, `LoginLockout::secondsUntilAllowed()`, and a refused try counts only towards the per-address limit; a code reset, an Admin reset,
+  "Buka ulang" and an unfreeze clear every lock and limit of the account (`LoginLockout::clear()`, a new generation); a
+  "Lupa kata sandi" code belongs to the browser that asked (`OtpRequester`), screen limits per account + address
+  (`ResetCodeLimits`), at most 20 reset codes a day per account (alert at 20 wrong ones); at most 5 attack alerts an hour; the staff TOTP challenge is per account, ends after 10
+  minutes, 10 wrong codes or a password change. Import (Excel/CSV, dry-run first) by Kesiswaan and Admin
   (D-12, D-26). The yearly file may be uploaded again (D-81): a registered student (NIS **and** NISN
   match) moves to the class in the file; only class, school year, archive dates and phone are written,
   never name, birth date, password, email, status or consent. Account Actions live in
@@ -343,7 +354,8 @@ logs in through `POST /login` and expects a 403/404 on the next GET would see th
   publikasi" shows "Data untuk flyer" from `App\Actions\Publications\FlyerData::of(Achievement)` (`rows` = one fact
   per line, `notes` = consent sentences outside the copied block; never points, NIS/NISN, or a student without
   publish consent) and "Salin data" (`data-sth-copy`, §7). Caption, kanal, schedule, "Tandai dipublikasikan" and the
-  auto-publish job are unchanged. `GenerateFlyer`, `FlyerRenderer` and `PublicationPolicy::generateFlyer` are
+  auto-publish job are unchanged. Who may be named in the Humas queues and by the auto-publish job:
+  `App\Actions\Publications\NamedStudent` (consent, not deleted, not disabled; alumni allowed; QA10). `GenerateFlyer`, `FlyerRenderer` and `PublicationPolicy::generateFlyer` are
   deleted; `publications.flyer_file_id`, `FilePurpose::Flyer` and the flyer rule of `FilePolicy` stay for files
   made before 2026-10-06 (nothing writes or links them now; D-47, D-71 and D-75 only concern those files).
 - **Files** (`App\Http\Controllers\FileController`, D-105): `files.show` answers `attachment` by default. With
@@ -353,7 +365,9 @@ logs in through `POST /login` and expects a 403/404 on the next GET would see th
   `sandbox`. HEAD = same policy check, no bytes, not audited; a preview is `file.downloaded` with `inline: true`.
   A screen builds the link with `FileController::previewUrl($file)` and `previewType($file)` (null = download only).
   The content decides a file's type: `StoreUpload` stores `original_name` with the extension of the sniffed content
-  (`UploadRules::nameForContent()`, QA8: a PNG uploaded as "brosur.pdf" is "brosur.png").
+  (`UploadRules::nameForContent()`, QA8: a PNG uploaded as "brosur.pdf" is "brosur.png"). `files.public` (a verified
+  certificate on the public pages) needs every member of the registration to appear by name there (consent, not
+  disabled, not deleted; `FilePolicy::viewPublic`, QA9) and answers `X-Robots-Tag: noindex, nofollow`.
   **Cover pictures** (D-118, *sementara*): `files.cover` (`GET /berkas/sampul/{file}`, signed-in users, `FilePolicy::view`,
   own throttle) sends only a small progressive JPEG of a `purpose = cover` file (`App\Domain\Files\CoverThumbnail`, long
   side ≤ 640 px, kept under `sampul/` on the private disk as derived data), `Cache-Control: private, max-age=86400` + ETag,
@@ -387,6 +401,17 @@ logs in through `POST /login` and expects a 403/404 on the next GET would see th
 - **Audit & jobs**: activitylog on every state change/Admin action, sealed after commit in a hash chain
   (`audit_seals` + `audit_chain_heads`, `sth:audit:verify` daily, D-63; app code only INSERTs into `activity_log`/`audit_seals`, D-51);
   notifications = queued mail + database; queues `otp`, `mail`, `default`.
+- **Mail in development** (D-121, *sementara*): by default every mail stays in Mailpit. A developer who needs real
+  mail sets `MAIL_MAILER=allowlist` (`App\Mail\Transport\AllowlistTransport`, mailers `allowlist` + `mailpit` in
+  `config/mail.php`): a mail whose recipients are **all** on `STH_MAIL_ALLOWLIST` goes out through the `smtp` mailer
+  (Brevo's SMTP relay for now), every other mail is handed to Mailpit. The scheduler and the demo data mail fictional
+  `@sth.test` addresses by themselves, so `AppServiceProvider::guardUnsafeConfiguration()` refuses to boot in
+  `APP_ENV=local` (the E2E project too) when the default mailer would deliver every mail: smtp with a login or
+  `MAIL_URL`, ses, postmark, resend, sendmail. Allowed there: `allowlist`, smtp without a login (Mailpit), `log`,
+  `array`. It also refuses `MAIL_MAILER=allowlist` outside `APP_ENV=local`. Provider keys live only in the
+  developer's `.env`. A mail sent BY NAME through such a mailer (a job queued before the switch, `Mail::mailer('smtp')`)
+  is cancelled in `APP_ENV=local` and logged as `mail.local_mailer_blocked` (`App\Mail\LocalMailGuard`, the same predicate
+  as the boot guard, QA9).
 
 ## 6. Coding conventions
 - `declare(strict_types=1);` in every new PHP file; typed properties, parameters and returns; `final`
@@ -397,6 +422,12 @@ logs in through `POST /login` and expects a 403/404 on the next GET would see th
 - Actions: `App\Actions\<Area>\<Verb><Noun>`, one public `handle(User $actor, …)` method, authorize,
   run in `DB::transaction`, dispatch notifications after commit. Livewire components and controllers
   call Actions; they hold no business rules. **No business logic in Blade**: views only format data.
+- Stale screens (QA8, QA9): a Livewire action on a record another tab, account or scheduled job may have changed
+  meanwhile checks the state the screen SHOWED before it calls the policy or Action (a `#[Locked]` property filled in
+  `render()`, the record's state, or the audit row of the change) and answers with a warning `sth-toast` + a refreshed
+  list, never a full-screen 403/404; a record the user may never see still answers 403/404. Examples:
+  `Kesiswaan\VerifikasiHasil::decidedElsewhere()`, `Kesiswaan\Talenta` (`$shownStages`), `Kepsek\Persetujuan` (`$shown`).
+  A toast claims a notice only when the Action says one went out (`notifiesStudent()`, D-109).
 - Models: explicit `$fillable` (never `$guarded = []`), enum casts, `phone` encrypted;
   `Model::shouldBeStrict()` outside production (missing/discarded attributes throw).
 - Numbers: points are decimal strings (`App\Domain\Support\Decimal`, bcmath), never floats; UI shows them
@@ -627,7 +658,14 @@ shown small in the middle of a wide band on a lomba card or a lomba page, the sh
 repeated as a button on the same screen, "Lombaku" / "Profil" as tab names, "kamu" on a staff screen, a cover `<img>`
 that points at `files.show`.
 
-Known stale text (do not "fix" code to match it): SECURITY.md §0/§3a still say `sm4g4_DD-MM-YYYY`;
+Real mail in development on 2026-10-08 (EM1), **D-121** (DECISIONS §D12, `docs/dev-notes/EM1.md`), *sementara*: Brevo
+with a temporary Gmail sender, and a local stack only sends out to the addresses on `STH_MAIL_ALLOWLIST`. The provider
+for production is **not** decided. Do not bring back: a local stack that can reach a real provider without the
+allowlist (the boot guard for `APP_ENV=local`), an allowlist entry that opens a whole domain, the allowlist mailer
+outside `APP_ENV=local`.
+
+Known stale text (do not "fix" code to match it): `docs/DEPLOY.md` §9 path A (Google Workspace relay) is not an option
+for the school (lead, 2026-10-08) and §9 has no Brevo path yet; SECURITY.md §0/§3a still say `sm4g4_DD-MM-YYYY`;
 DESIGN-SPEC-v2 §1 and the Admin-Pengaturan mockup still show 30 days (and the mockup's WICE deadline
 24 Okt is now **8 Nov 2026**); SECURITY/DECISIONS call the OTP flag `STH_OTP_DEV_BYPASS`; SECURITY says
 port 8081; SECURITY §3e's vhost sample has inline `#` comments Apache rejects (use `docker/apache/*.conf`);
@@ -700,7 +738,8 @@ IPs, which breaks the per-IP login/OTP limits). The noreply mailbox would then b
 SMTP host must not be `mail.<domain>` (proxied) and its hourly send limit needs asking.
 
 ## 10. Status
-Last updated: 2026-10-08 (waves 1–2 done, W3-A integration pass, backlog wave B1–B6, W4 integration, D1 docs sync, CI green on GitHub, Q1 end-to-end/security/performance pass, PERF1 by S, M1 = the lead's 18 hand-test changes, M2 = fixes after the QA pass, QA4 by S, M3 = the lead's six requests of 2026-10-06, QA5 = fixes after the retest of M3, QA6 = explore round after PR 14, UI3 = visual direction v3 and the lead's review of it, QA7 = explore round after UI3, QA8 = explore round after PR 17). Update this section whenever a milestone moves.
+Last updated: 2026-10-09 (waves 1–2 done, W3-A integration pass, backlog wave B1–B6, W4 integration, D1 docs sync, CI green on GitHub, Q1 end-to-end/security/performance pass, PERF1 by S, M1 = the lead's 18 hand-test changes, M2 = fixes after the QA pass, QA4 by S, M3 = the lead's six requests of 2026-10-06, QA5 = fixes after the retest of M3, QA6 = explore round after PR 14, UI3 = visual direction v3 and the lead's review of it, QA7 = explore round after UI3, QA8 = explore round after PR 17, EM1 = real mail from a local stack, QA9 = explore round after EM1, QA10 = explore round after QA9). Update this section whenever a milestone moves.
+EM1 2026-10-08 (`docs/dev-notes/EM1.md`, D-121, commit `4766b56` on `feat/email-brevo-dev`, pulled into the lead's local `main` on 2026-10-09; no PR yet): the lead chose Brevo for development with a temporary Gmail sender. Built: the mailer `allowlist` (listed addresses → the real provider, everything else → Mailpit, local only), two boot guards (no allowlist outside local; in local no default mailer that delivers every mail), `sth:mail-test` says which way an address goes, a commented block in `.env.example`. The lead's first real mail through Brevo arrived (sender shown as `…@<id>.brevosend.com`, Gmail shows "Berhenti berlangganan"). No migration, no notification changed yet. Suite numbers: TEST-RESULTS in `docs/dev-notes/EM1.md`. Open: backlog #78.
 M1 2026-10-05 (`docs/dev-notes/M1.md`, plain summary for the team in `catatan.md`; branch `feat/ui-uji-manual-m1`): full suite `--parallel --processes=4` → **1767 passed (8945 assertions)**, exit 0 (680 s); `pint --test` clean (610 files); `npm run build` OK; the four M1 migrations ran on the local MySQL. Dev page times after `reload.bat` + warm-up, all seven roles: 150–540 ms per menu, login 0.75–0.93 s (`catatan.md` §2). Not re-run after M1: the email scenario and the Playwright smoke (backlog).
 M2 2026-10-06 (`docs/dev-notes/M2.md` + `M2-A`…`M2-C`, D-92…D-101, plain summary in `catatan.md` §6; same branch): fixes for the 12 most important findings of the QA pass of 2026-10-05 (64 findings; the rest is backlog #57–#68) and the Trivy fix in `docker/Dockerfile.prod`; two migrations run on the local MySQL; suite numbers: TEST-RESULTS in `docs/dev-notes/M2.md`. PR 9 (M1 + M2) merged into `main` on 2026-10-06 (`b4b6f77`).
 Follow-up 2026-10-06 (D-102, `docs/dev-notes/M2.md` "Follow-up", branch `fix/auth-back-setelah-keluar`): the two leftovers of the browser check (account name back on the second Back; next login on the previous account's page) fixed, tested and checked in Chrome + Chromium. `dokumentasi.md` (repo root) lists the test data left in the lead's local database, which the lead chose not to wipe.
@@ -734,6 +773,23 @@ the team, "terlambat" belongs to the first report (and the screens say so), and 
 the screens follow the settings. A review agent read the commit; the two-tab case was checked in the browser as
 Kesiswaan, which also found that Verifikasi hasil kept the address of the first report (now it follows the shown
 report, hook `sth-address`). No migration. Suite numbers: TEST-RESULTS in `docs/dev-notes/QA8.md`.
+QA9 2026-10-09 (`docs/dev-notes/QA9.md`, committed on the lead's local `main` as `e80c9d2` after EM1, not pushed, no PR by
+the lead's request): five read-only agents explored (the allowlist mailer, the stale-screen pattern on every screen, Admin,
+Talenta and Guru, public pages and consent), four implementer agents fixed in parallel, test-first, each on its own
+files. 32 fixes, among them: the nightly archive no longer turns a disabled student into a named public alumnus, a stale
+Talenta tab no longer moves a row twice, the student's review text stays out of the audit log, a mail sent by name can
+no longer bypass the allowlist, a disabled teammate's certificate is no longer public, and about fifteen screens answer a
+record changed elsewhere with a toast instead of a 403/404 page. No migration. Suite numbers: TEST-RESULTS in
+`docs/dev-notes/QA9.md`. Open: backlog #79.
+QA10 2026-10-09 (`docs/dev-notes/QA10.md`, committed on the lead's local `main` as `8b9762d` after QA9, not pushed): five read-only agents explored
+registrations and letters, login / reset / 2FA, the student screens, lomba / points / exports, notifications and scheduled
+jobs; four implementers fixed in parallel, test-first, plus four leftovers by the coordinator. About 30 fixes, among them: a
+classmate can no longer keep a student's account locked (K3) while 30 failures a day still close it to unknown devices,
+the login page names one retry time, reset codes belong to the browser that asked, the staff TOTP step can no longer be
+guessed through other addresses, auto-publish no longer names a disabled student, two large personal-data exports
+alert the Admins, letter mails no longer 404 after a correction, a lomba closed early no longer strands team invitations,
+the Kepala Sekolah PDF report has a row limit. No migration. Suite numbers: TEST-RESULTS in `docs/dev-notes/QA10.md`. Open:
+backlog #80.
 
 | area | owner | state (details in `docs/dev-notes/<ID>.md`) |
 |---|---|---|
@@ -769,6 +825,8 @@ report, hook `sth-address`). No migration. Suite numbers: TEST-RESULTS in `docs/
 | QA6 explore round after PR 14 on 2026-10-07 (`docs/dev-notes/QA6.md`, D-113…D-116): confirmations (bulk approve, Kirim), letters (shared invitation fields, Koreksi from Arsip, QR before Kirim), talent (assessment date, long words), team invitations (withdraw, not activated), registrant count | – | built; no migration; browser check of Talenta (Kesiswaan); Kepala Sekolah, TU and student screens render-tested only |
 | QA7 explore round after UI3 on 2026-10-08 (`docs/dev-notes/QA7.md`): long words on every screen (`body` rule + `[overflow-wrap:anywhere]` columns), dashboard chart / TU tabs / Lomba saya letters / catalog paging on a phone, the phone tab on account pages, the WEBP cover message | – | built; no migration; 42 pages × 4 widths measured in headless Chromium with worst-case words; dialogs, Admin › Pengguna / Pengaturan and the PDFs not checked |
 | QA8 explore round after PR 17 on 2026-10-08 (`docs/dev-notes/QA8.md`): letter signature never alone on a page, stored file names follow the content, honest Humas toasts, a report decided elsewhere, queue team count, the late flag after a revision, report days / archive months from the settings | – | built; no migration; letter PDFs probed with long and extreme words, dialogs measured at 360 / 390 px; the agents' lower-confidence points are open questions in the note (#77) |
+| QA10 explore round after QA9 on 2026-10-09 (`docs/dev-notes/QA10.md`): login locks per account + address (K3), reset-code and TOTP limits per account, named rule for Humas / auto-publish, large-export alerts, letter links, honest notices, registration window after an early close, expired invitations, student screens, lomba form / Bobot / PDF cap / NoWebAddress, scheduler `--date` and overlap locks | – | committed on the lead's local `main` (`8b9762d`), not pushed; no migration |
+| QA9 explore round after EM1 on 2026-10-09 (`docs/dev-notes/QA9.md`): stale screens everywhere (toast instead of 403/404), archive vs disabled accounts, Talenta double move and honest toasts, audit-log privacy, named-mailer guard, public certificates, Admin resets / role changes / import password, public cache after a lomba edit | – | committed on the lead's local `main` (`e80c9d2`), not pushed; no migration; browser check of the Kesiswaan screens only (see the note) |
 | UI3 visual direction v3 "Tinta dan Sampul" on 2026-10-07 and the lead's review of it on 2026-10-07/08 (`docs/dev-notes/UI3.md` + `UI3-A`, `UI3-B`, D-117…D-120): tokens + Public Sans + type scale, `<x-sth.sampul>` and `files.cover`, banner motif, component and phone-layout fixes, staff copy; then capsules (`<x-sth.lomba-card>`, `<x-sth.lomba-head>`, Portofolio), the school crest as brand mark, one way to each place, same-height boxes | – (lead's request; touches S and user files) | built; no migration; full suite green; every page checked in the browser at 1440 and 390 px, after the review also a text scan at 1366, 1280 and 360 px; backend owner still has to review D-118 (*sementara*); the school should give a larger or vector crest (D-120) |
 
 Verified 2026-10-01 (W3-A, details in `docs/dev-notes/W3-A.md`): `php artisan test` → **925 passed (3726 assertions)** twice in a
@@ -805,7 +863,7 @@ M2 (2026-10-06): the "re-run" half of #46 is done (email scenario on 2026-10-05 
 (`hasil-uji/ringkasan-temuan.md` next to the repo; QA ids Q1-xx / Q2-xx; one line per finding in `docs/dev-notes/M2.md`).
 QA4 and M3 (2026-10-06) closed or changed parts of #39, #46, #55, #57, #63, #65, #66 and #67 (marked in the rows). Added by M3:
 #69–#74 = what the four M3 notes and QA4 leave open (`docs/dev-notes/M3.md`). QA5 (2026-10-07) closed or changed parts of
-#46, #56, #63, #67, #69 and #71; QA6 (same day, after PR 14) parts of #46, #61, #62, #65 and #66. QA8 (2026-10-08) closed the Q1-20 part of #62 and added #77.
+#46, #56, #63, #67, #69 and #71; QA6 (same day, after PR 14) parts of #46, #61, #62, #65 and #66. QA8 (2026-10-08) closed the Q1-20 part of #62 and added #77. QA9 (2026-10-09) closed one part of #77 and added #79. QA10 (same day) added #80.
 
 | # | item | source | owner |
 |---|---|---|---|
@@ -855,7 +913,10 @@ QA4 and M3 (2026-10-06) closed or changed parts of #39, #46, #55, #57, #63, #65,
 | 74 | Small leftovers of the M3 notes: one JPG evidence in the demo data so the image path of the popup can be tried by hand; `FileController::previewType()` could move to `App\Models\File`; Admin › Log audit has no "preview" label for `file.downloaded` with `inline: true`, prints the new property `rejected_from` (`talent.restored`) and a `filters.tahap` with several statuses (`talent.exported`) as stored, and keeps the label `publication.flyer_generated` for old rows only (with #64); the comment in `livewire/partials/resume-download.blade.php` still says the call is a literal "export"; Esc does not close the popup while keyboard focus is inside the PDF viewer; `letters.printed` is null for demo letters; whether Tailwind reads `database/seeders/demo/*.blade.php` as a source was not checked; the invented signer names of the sample certificates were not searched for real namesakes; a dompdf PDF with an SVG can differ by one unused font entry between an empty and a filled `storage/app/pdf-fonts` (harmless unless letter hashes are compared) | M3-A, M3-C, M3-D, M3-E | user + S |
 | 75 | Small leftovers of QA6: `w2cDraft()` in `tests/Feature/TataUsaha/SuratTugasTest.php` prints the fixed letter date 2026-10-01 and `IssueLetters` refuses a date older than one year, so those tests fail from 2027-10-02 (move to a date relative to today, with the month / year assertions); one line on "Batalkan undangan" and its mail in PANDUAN-PENGGUNA (Siswa); a browser click-through of the QA6 dialogs (Kepala Sekolah "Setujui terpilih", TU "Kirim", Arsip › Koreksi, "Batalkan undangan"), render-tested only | QA6 | S + I |
 | 76 | UI3 leftovers (`docs/dev-notes/UI3.md`): the backend owner's review of D-118 (`files.cover` is not audited and may stay in the browser for a day; posters only after login; old cover files stay when a cover is replaced: `UpdateCompetition` never calls `StoreUpload::discard()`); the cover in the preview popup on Kesiswaan › "Periksa lomba" and Guru › Lomba; posters on public pages; Publik › Prestasi per bidang opens with an empty right panel; menu name vs page title (Kepsek, TU, Humas; QA7 also found Dashboard / Dashboard prestasi, Arsip / Arsip publikasi, Import siswa / Import data siswa) and the formal words in staff mails (`UI3-B.md`); `docs/dev-notes/W1-D.md` and the mockups show the old look. From QA7: Portofolio shows the drawing, not the poster, for a lomba Kesiswaan closed (`CompetitionPolicy::view`; most achievements belong to closed lomba: allow the cover of a lomba the student took part in?); `Admin\Ringkasan` and `Siswa\Beranda` still build unused `links`; the medal icon on Siswa › Peringkat is white on gold (Beranda uses ink) | UI3, QA7 | user + S |
-| 77 | Lower-confidence points of the QA8 reviews, read in the code, not reproduced (`docs/dev-notes/QA8.md`, "Requests for the lead"): lowering the archive months archives every student whose new date passed that night (show the count before saving); a stale consent form can overwrite a newer consent, and a `terjadwal` publication from before a withdrawn consent comes back with a new consent; "Bukan saya?" (`email_notices`) survives an Admin reset; binding an email of a deleted account may answer a 500; "Tolak" in Verifikasi hasil has no confirmation; the first report's evidence files stay after a revision; a disabled ketua leaves nobody who may report; `perlu_revisi` counted as open on the Kesiswaan dashboard; no own tracker state for `ditolak` / `dibatalkan`; the same ketua in two tabs still gets a 403 on the second "Laporkan hasil" | QA8 | user + S |
+| 77 | Lower-confidence points of the QA8 reviews, read in the code, not reproduced (`docs/dev-notes/QA8.md`, "Requests for the lead"): lowering the archive months archives every student whose new date passed that night (show the count before saving); a stale consent form can overwrite a newer consent, and a `terjadwal` publication from before a withdrawn consent comes back with a new consent; "Bukan saya?" (`email_notices`) survives an Admin reset; binding an email of a deleted account may answer a 500; "Tolak" in Verifikasi hasil has no confirmation; the first report's evidence files stay after a revision; a disabled ketua leaves nobody who may report; `perlu_revisi` counted as open on the Kesiswaan dashboard; no own tracker state for `ditolak` / `dibatalkan`; ~~the same ketua in two tabs still gets a 403 on the second "Laporkan hasil"~~ (done QA9) | QA8 | user + S |
+| 78 | Mail delivery after EM1 (`docs/dev-notes/EM1.md`): real flows through the allowlist (activation with a real code, one registration end to end, an HTML notification in Gmail and on a phone); then the notification work (wording, which notices stay mail and which are in-app only, a daily quota guard that keeps room for OTP, failed mails visible to Admin). For production, still to decide (D-121): the provider (Brevo adds an unsubscribe header to transactional mail and blocks who uses it, rewrites links, keeps mail previews; switching these off needs an Enterprise plan), the sender `noreply@…` (needs the school's DNS), the school's consent to a third-party processor. @I: pin the E2E project's mail settings to Mailpit (`tests/E2E/compose.e2e.yaml`) and give DEPLOY §9 the chosen path | EM1 | user + I |
+| 79 | Questions from QA9 (`docs/dev-notes/QA9.md`, "Requests for the lead"): an audited "Aktifkan lagi" for a disabled account (a reset of a disabled account is refused now, so a mistaken disable cannot be undone); should "Pulihkan" bring back as disabled an account the old archive job archived from `disabled` (local demo data may hold such rows); Talenta: forward into Peserta pembinaan without a guru pembina (D-109 covers only the restore), alumni rows in the pipeline; points shown with one decimal (12,75 and 12,80 both read 12,8) and tingkat weights rounded on Portofolio; winners per lomba mix live lomba labels with snapshot points; one helper for the "named" rule (`PublicAchievements::mapRow()` + `FilePolicy::appearsByName()`); a queued mail cancelled by `LocalMailGuard` ends as a success; "Sudah diarsipkan" sorts by `archive_at`; DECISIONS D-61 still quotes "Akunmu belum punya peran" | QA9 | user + S |
+| 80 | Questions from QA10 (`docs/dev-notes/QA10.md`, "Requests for the lead"): re-invite a member whose invitation expired after the deadline was extended (D-50); a registration that reaches "menunggu laporan" late is late from day one; the Laporan PDF cap of 250 rows; refuse a lower "Maks anggota" only when a team is already bigger; login trade-offs (30-failure account lock reachable from one address in ~10 h for new devices, 20 reset codes a day can be used up from 2 addresses so only an Admin reset helps (longer codes / signed links), a shared PC stays a known device, a NAT flood makes everyone wait up to 60 s, alerts past 5 an hour only logged, code-to-browser link in the cache); a `number_key` column for letter numbers (migration); `final_on` moved later after "menunggu laporan"; `VerifyReport` reads the weight version outside its transaction; pending-activation gurus offered as pembimbing; Humas › Arsip and "Tambah prestasi" still use consent only; the named rule in three places | QA10 | user + S |
 
 ## 11. Team, ownership and agent protocol
 - **user** (lead, backend core, 40%): `app/{Enums,Models,Domain,Actions,Policies,Http,Providers,

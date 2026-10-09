@@ -10,6 +10,7 @@ use App\Actions\Letters\LetterDraft;
 use App\Actions\Letters\RevokeLetter;
 use App\Actions\Letters\SendLetters;
 use App\Actions\Letters\StreamLetter;
+use App\Actions\Registrations\ApproveRegistration;
 use App\Actions\Templates\LetterTemplate;
 use App\Domain\Letters\LetterNumber;
 use App\Domain\Support\Dates;
@@ -308,6 +309,11 @@ class SuratTugas extends Component
     public function startRevision(string $letterId): void
     {
         $letter = $this->currentLetter($letterId);
+
+        if ($letter === null) {
+            return;
+        }
+
         Gate::authorize('revoke', $letter);
 
         $registration = $this->selected();
@@ -343,6 +349,11 @@ class SuratTugas extends Component
     {
         $registration = $this->selected();
         $letter = $this->currentLetter((string) $this->revisingId);
+
+        if ($letter === null) {
+            return;
+        }
+
         $type = $letter->type;
         $this->tab = $type->value;
         $this->resetErrorBag();
@@ -389,14 +400,38 @@ class SuratTugas extends Component
             ->all();
     }
 
-    private function currentLetter(string $letterId): Letter
+    /**
+     * A current letter of the selected registration, or null when another tab corrected it meanwhile (QA9): a 404 used
+     * to hide "Surat ini sudah dicabut.", so revokedElsewhere() says it and shows the new version. A letter of another
+     * registration is still a 404.
+     */
+    private function currentLetter(string $letterId): ?Letter
     {
         $registration = $this->selected();
 
         /** @var Letter $letter */
-        $letter = Letter::query()->where('registration_id', $registration->getKey())->current()->whereKey($letterId)->firstOrFail();
+        $letter = Letter::query()->where('registration_id', $registration->getKey())->whereKey($letterId)->firstOrFail();
 
-        return $letter;
+        if ($letter->revoked_at === null) {
+            return $letter;
+        }
+
+        $this->revokedElsewhere($registration, $letter->type);
+
+        return null;
+    }
+
+    /** Closes the correction form and shows the letter of that type as it stands now (the new version). */
+    private function revokedElsewhere(Registration $registration, LetterType $type): void
+    {
+        $current = Letter::query()->where('registration_id', $registration->getKey())->where('type', $type)->current()->first();
+
+        $this->resetErrorBag();
+        $this->clearFailure();
+        $this->reset('revisingId', 'alasan', 'koreksi');
+        $this->tab = $type->value;
+        $this->{$type->value} = $current !== null ? LetterDraft::fromLetter($current, $registration) : LetterDraft::defaults($registration);
+        $this->dispatch('sth-toast', message: 'Surat ini sudah dicabut. Tampilan sudah diperbarui.', tone: 'warning');
     }
 
     // --- end B3 ---
@@ -426,7 +461,15 @@ class SuratTugas extends Component
         }
 
         $this->clearFailure();
-        $this->dispatch('sth-toast', message: 'Surat terkirim ke siswa dan guru pembimbing.', tone: 'success');
+
+        // QA10 (D-109): name only who SendLetters told (accounts that can log in; the guru only with a guru letter).
+        $told = array_values(array_filter([
+            SendLetters::notifiesStudents($registration) ? 'siswa' : null,
+            SendLetters::notifiesMentor($registration) ? 'guru pembimbing' : null,
+        ]));
+        $this->dispatch('sth-toast', message: $told === []
+            ? 'Surat ditandai terkirim. Tidak ada akun aktif yang diberi tahu.'
+            : 'Surat terkirim ke '.implode(' dan ', $told).'.', tone: 'success');
         $this->refreshBadge();
     }
 
@@ -442,6 +485,30 @@ class SuratTugas extends Component
     public static function streamLetter(User $user, Letter $letter): StreamedResponse
     {
         return app(StreamLetter::class)->handle($user, $letter);
+    }
+
+    /**
+     * First sentence of the "Kirim surat sekarang?" dialog (QA10, D-109): only who SendLetters will really tell, the
+     * members whose account can log in and a guru pembimbing who is still a guru.
+     */
+    private static function sendNotice(Registration $registration): string
+    {
+        $members = $registration->members()->whereNotNull('confirmed_at')->whereNull('declined_at')->count();
+        $told = ApproveRegistration::memberUsers($registration)->count();
+        $mentor = SendLetters::notifiesMentor($registration);
+
+        $parts = array_values(array_filter([$told > 0 ? $told.' siswa' : null, $mentor ? '1 guru pembimbing' : null]));
+        $sentence = $parts === [] ? 'Tidak ada akun aktif yang diberi tahu.' : implode(' dan ', $parts).' mendapat notifikasi dan bisa men-download suratnya.';
+
+        if ($members > $told) {
+            $sentence .= ' '.($members - $told).' siswa tidak diberi tahu karena akunnya tidak aktif.';
+        }
+
+        if ($registration->mentor_id !== null && ! $mentor && $registration->letters()->where('type', LetterType::Guru)->exists()) {
+            $sentence .= ' Guru pembimbing tidak diberi tahu.';
+        }
+
+        return $sentence;
     }
 
     public function render(IssueLetters $issue): View
@@ -482,6 +549,7 @@ class SuratTugas extends Component
 
             $data += [
                 'hasMentor' => $registration->mentor_id !== null,
+                'sendNotice' => self::sendNotice($registration),
                 'type' => $type,
                 'letter' => $letter,
                 'editing' => $editing,

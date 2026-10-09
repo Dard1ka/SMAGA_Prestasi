@@ -11,8 +11,10 @@ use App\Domain\Archive\SchoolYear;
 use App\Domain\Files\InvalidUpload;
 use App\Domain\Files\StoreUpload;
 use App\Enums\Permission;
+use App\Enums\RoleName;
 use App\Enums\StudentImportStatus;
 use App\Jobs\ImportStudentsJob;
+use App\Livewire\Admin\Concerns\RequiresRecentPassword;
 use App\Livewire\Kesiswaan\Concerns\WithKesiswaanBadges;
 use App\Models\StudentImport;
 use App\Models\User;
@@ -46,11 +48,14 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
  * M1-C (lead, 2026-10-04): the file lists every student with the current class ("Kelas"). The preview sums up
  * baru · pindah kelas · tidak berubah · ditolak; a registered student only moves class (ImportStudents), the
  * account and its password are never touched or shown.
+ * QA9 (SECURITY §3m-9): the import itself needs a password confirmation from the last 15 minutes (Kesiswaan and
+ * Admin); the password page brings the user back here, and the file is chosen again.
  */
 #[Title('Import data siswa')]
 #[Layout('layouts::app', ['subtitle' => 'Akun siswa dibuat otomatis dari file Excel.'])]
 class ImportSiswa extends Component
 {
+    use RequiresRecentPassword;
     use WithFileUploads;
     use WithKesiswaanBadges;
 
@@ -86,11 +91,27 @@ class ImportSiswa extends Component
     #[Locked]
     public ?string $importId = null;
 
+    /** QA9: page to come back to after the password confirmation (kesiswaan.import or admin.import). */
+    #[Locked]
+    public string $returnTo = '';
+
     public function mount(): void
     {
         $this->authorize(Permission::StudentImport->value);
         $this->schoolYear = SchoolYear::containing(CarbonImmutable::now())->toString();
         $this->importId = StudentImport::query()->activeFor($this->actor())->latest()->value('id');
+        $this->returnTo = request()->routeIs('admin.import') || (! request()->routeIs('kesiswaan.import') && $this->actor()->hasRole(RoleName::Admin->value))
+            ? route('admin.import')
+            : route('kesiswaan.import');
+    }
+
+    /**
+     * Step 2 asks for the password BEFORE the upload (QA9): the password page does not keep an uploaded file or its
+     * preview, so asking only when "Impor" is pressed made the user upload the file twice. import() still checks.
+     */
+    public function askPassword(): void
+    {
+        $this->passwordRecentlyConfirmed();
     }
 
     public function downloadTemplate(): BinaryFileResponse
@@ -179,6 +200,12 @@ class ImportSiswa extends Component
         if ($preview === null) {
             $this->addError('file', 'Preview sudah kedaluwarsa. Upload file lagi.');
 
+            return;
+        }
+
+        // QA9 (SECURITY §3m-9): an import writes accounts, so it needs a password confirmation from the last 15
+        // minutes, before both the synchronous and the queued way. The preview above writes nothing.
+        if (! $this->passwordRecentlyConfirmed()) {
             return;
         }
 
@@ -318,6 +345,8 @@ class ImportSiswa extends Component
                 ->contains(fn (string $note): bool => str_starts_with($note, ImportStudents::NOTE_ARCHIVE_CORRECTED)))),
             'sanitizedCount' => count(array_filter($rows, fn (array $r): bool => $r['sanitized'] ?? false)),
             'job' => $job,
+            // QA9: the import asks for the password when the last confirmation is older than 15 minutes.
+            'passwordAsked' => ! $this->passwordConfirmedRecently(),
             'jobResult' => $job !== null ? self::resultLabel($job->created_count, $job->updated_count) : null,
             'importedResult' => $this->imported !== null ? self::resultLabel($this->imported['created'], $this->imported['moved'] ?? 0) : null,
             'list' => array_map(fn (array $r): array => [
@@ -423,5 +452,10 @@ class ImportSiswa extends Component
         $user = Auth::user();
 
         return $user;
+    }
+
+    protected function returnUrl(): string
+    {
+        return $this->returnTo !== '' ? $this->returnTo : route('kesiswaan.import');
     }
 }

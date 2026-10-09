@@ -4,10 +4,13 @@ declare(strict_types=1);
 
 namespace App\Actions\Accounts;
 
+use App\Actions\Fortify\KnownDevices;
+use App\Actions\Fortify\LoginIdentifier;
 use App\Domain\Accounts\PasswordPolicy;
 use App\Models\User;
 use Closure;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules\Password;
@@ -35,7 +38,7 @@ final class SetNewPassword
     public function rules(User $user): array
     {
         // Staff get the stricter app-wide defaults (AppServiceProvider); students the K5 length rule.
-        if ($user->isStaff()) {
+        if (self::followsStaffRules($user)) {
             $length = Password::default();
         } else {
             $length = Password::min($this->policy->minLength())->max(PasswordPolicy::MAX_LENGTH);
@@ -87,7 +90,7 @@ final class SetNewPassword
         $min = $this->policy->minLength();
         $needs = ['huruf', 'angka'];
 
-        if ($user?->isStaff() && ($default = Password::default()) instanceof Password) {
+        if ($user !== null && self::followsStaffRules($user) && ($default = Password::default()) instanceof Password) {
             $applied = $default->appliedRules();
             $min = (int) $applied['min'];
             $needs = $applied['mixedCase'] ? ['huruf besar', 'huruf kecil', 'angka'] : $needs;
@@ -109,6 +112,16 @@ final class SetNewPassword
         );
     }
 
+    /**
+     * Every account that is not a student's follows the staff rules (QA10): a new Admin / TU / Kesiswaan account has
+     * no role until a second Admin approves it (D-61) but may finish the first login meanwhile, and must not get the
+     * student rules in that time. The same test as LoginIdentifier and RestrictTwoFactorToStaff use.
+     */
+    public static function followsStaffRules(User $user): bool
+    {
+        return ! LoginIdentifier::isStudentAccount($user);
+    }
+
     public function handle(User $user, string $password, ?string $keepSessionId = null, string $reason = 'password.changed'): void
     {
         DB::transaction(function () use ($user, $password, $reason): void {
@@ -127,5 +140,12 @@ final class SetNewPassword
         });
 
         $this->revokeSessions->handle($user, $keepSessionId);
+
+        // QA10, second review: the known-device token is bound to the password, so the owner's own browser (the one
+        // kept signed in: Akun › Keamanan, the activation password step) is marked again with the new one. A reset by
+        // code is done signed out and marks the browser at the next login.
+        if ($keepSessionId !== null && (string) Auth::id() === (string) $user->getKey()) {
+            KnownDevices::remember($user);
+        }
     }
 }

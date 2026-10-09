@@ -208,7 +208,9 @@ final class Lomba extends Component
         $website = is_string($competition->website_url) && ExternalUrl::passes($competition->website_url) ? $competition->website_url : null;
         $juknis = $competition->juknisFile;
 
+        // Only students in the team: an invitation nobody answered yet is not a binaan (QA10).
         $binaan = RegistrationMember::query()
+            ->whereNotNull('confirmed_at')
             ->whereNull('declined_at')
             ->whereHas('registration', fn (Builder $r) => $r
                 ->where('competition_id', $competition->getKey())

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Policies;
 
+use App\Actions\Publications\NamedStudent;
 use App\Enums\Permission;
 use App\Enums\PublicationStatus;
 use App\Models\Publication;
@@ -12,7 +13,8 @@ use App\Models\User;
 /**
  * Humas publication queue (UI-MAP #22). Deny by default. Everything needs `publication.manage` on an
  * account that can log in. Changing a publication additionally needs a verified achievement whose
- * student gave publish consent (D-16, SECURITY §3m-7); without consent the row stays out of the queue.
+ * student may be named (publish consent, D-16, SECURITY §3m-7; since QA10 also not deleted and not disabled,
+ * NamedStudent); otherwise the row stays out of the queue.
  */
 class PublicationPolicy
 {
@@ -47,15 +49,17 @@ class PublicationPolicy
             && in_array($publication->status, [PublicationStatus::Siap, PublicationStatus::Terjadwal], true);
     }
 
-    /** Verified achievement + student publish consent. */
+    /**
+     * Verified achievement + a student who may be named (QA10: the "named" rule of the public pages, NamedStudent:
+     * publish consent, student and account not deleted, account not disabled; an alumnus stays named).
+     */
     public static function eligible(Publication $publication): bool
     {
-        $publication->loadMissing('achievement.student');
+        $publication->loadMissing('achievement.student.user');
         $achievement = $publication->achievement;
 
         return $achievement !== null
             && $achievement->verified_at !== null
-            && $achievement->student !== null
-            && $achievement->student->publish_consent === true;
+            && NamedStudent::allows($achievement->student);
     }
 }

@@ -163,8 +163,9 @@ it('does not accept a confirmation twice or after the registration window', func
 
     expect(fn () => app(ConfirmMembership::class)->handle(F::user($this->dimas), $registration))->toThrow(AuthorizationException::class);
 
+    // QA10: RegistrationPolicy::respond checks the deadline too (so "Ikut tim" only shows while it works): refused there.
     $lomba->forceFill(['registration_closes_at' => now()->subMinute()])->save();
-    expect(fn () => app(ConfirmMembership::class)->handle(F::user($this->keisha), $registration))->toThrow(ValidationException::class);
+    expect(fn () => app(ConfirmMembership::class)->handle(F::user($this->keisha), $registration))->toThrow(AuthorizationException::class);
 });
 
 it('continues without a member who declines when the rest confirmed', function (): void {

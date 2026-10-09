@@ -193,7 +193,8 @@
                 @endif
 
                 <div class="flex flex-col gap-3">
-                    <x-sth.select wire:model="mentorId" label="Guru pembina" placeholder="Belum ditentukan" :options="$mentors" />
+                    {{-- QA9: a recorded pembina whose account left is not an option; the hint says so (saving keeps him). --}}
+                    <x-sth.select wire:model="mentorId" label="Guru pembina" placeholder="Belum ditentukan" :options="$mentors" :hint="$panel['mentorHint']" />
                     @unless ($panel['final'])
                         <x-sth.input type="date" wire:model="assessmentOn" label="Jadwal asesmen" />
                     @endunless
@@ -225,7 +226,8 @@
     </div>
 
     {{-- "Tidak lolos" (panel row or checked rows): the student is told at once, so it asks first (Q2-15). --}}
-    <x-sth.modal :id="\App\Livewire\Kesiswaan\Talenta::REJECT_DIALOG" title="Tandai tidak lolos?" description="Siswa langsung diberi tahu." size="sm">
+    {{-- QA9: the line under the title promises a notice only to students who get one. --}}
+    <x-sth.modal :id="\App\Livewire\Kesiswaan\Talenta::REJECT_DIALOG" title="Tandai tidak lolos?" :description="$rejecting['notice'] ?? 'Siswa langsung diberi tahu.'" size="sm">
         <form id="tidak-lolos-talenta-form" wire:submit="reject" class="flex flex-col gap-4" novalidate>
             @if ($rejecting && $rejecting['bulk'])
                 <p class="m-0 text-sm">
@@ -268,7 +270,7 @@
     </x-sth.modal>
 
     {{-- "Pulihkan": a tidak-lolos choice goes back into the stage Kesiswaan ticks; the earlier stage is preselected (M3-A). --}}
-    <x-sth.modal :id="\App\Livewire\Kesiswaan\Talenta::RESTORE_DIALOG" title="Pulihkan pilihan talenta?" description="Pilih tahap tujuannya. Siswa diberi tahu." size="sm">
+    <x-sth.modal :id="\App\Livewire\Kesiswaan\Talenta::RESTORE_DIALOG" title="Pulihkan pilihan talenta?" :description="$restoring['notice'] ?? 'Pilih tahap tujuannya. Siswa diberi tahu.'" size="sm">
         <form id="pulihkan-talenta-form" wire:submit="restore" class="flex flex-col gap-4" novalidate>
             @if ($restoring)
                 <p class="m-0 text-sm">

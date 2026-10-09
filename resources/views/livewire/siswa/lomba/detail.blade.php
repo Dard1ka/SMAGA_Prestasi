@@ -11,11 +11,10 @@
         </nav>
     </x-slot:lead>
 
-    @unless ($competition->isPublished())
-        <x-sth.alert tone="warning" title="Belum tampil di katalog">
-            Lomba ini masih {{ mb_strtolower($competition->status->label()) }}. Siswa lain belum bisa melihatnya.
-        </x-sth.alert>
-    @endunless
+    {{-- QA10: one text per status (closed early, rejected, waiting for Kesiswaan), from LombaPresenter::unpublishedNotice(). --}}
+    @if ($notice)
+        <x-sth.alert tone="warning" :title="$notice['title']">{{ $notice['text'] }}</x-sth.alert>
+    @endif
 
     <div class="grid grid-cols-1 items-start gap-[18px] lg:grid-cols-[minmax(0,1fr)_380px]">
         <div class="flex min-w-0 flex-col gap-[18px]">

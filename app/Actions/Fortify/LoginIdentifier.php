@@ -81,7 +81,7 @@ final class LoginIdentifier
     public function forRequest(Request $request): ?User
     {
         if (! $request->attributes->has(self::RESOLVED)) {
-            $request->attributes->set(self::RESOLVED, $this->resolve((string) $request->input(Fortify::username())));
+            $request->attributes->set(self::RESOLVED, $this->resolve(self::typed($request)));
         }
 
         return $request->attributes->get(self::RESOLVED);
@@ -89,15 +89,42 @@ final class LoginIdentifier
 
     public function bucketKey(Request $request): string
     {
-        $user = $this->forRequest($request);
+        return self::bucketOf($this->forRequest($request), self::typed($request));
+    }
 
+    /**
+     * The same bucket for a typed identifier outside the login request ("Lupa kata sandi", QA10): NIS, NISN and email
+     * of one account share it, an identifier that resolves to nobody gets its stable HMAC bucket.
+     */
+    public function bucketFor(string $identifier): string
+    {
+        return self::bucketOf($this->resolve($identifier), $identifier);
+    }
+
+    /**
+     * The login field as the limiter sees it, before Fortify validated it: anything but a string (a list sent as
+     * `identifier[]`) counts as empty instead of breaking the request (QA10, second review).
+     */
+    private static function typed(Request $request): string
+    {
+        $value = $request->input(Fortify::username());
+
+        return is_string($value) ? $value : '';
+    }
+
+    /** The bucket of a known account ("u:<id>"). */
+    public static function accountBucket(User $user): string
+    {
+        return 'u:'.$user->getKey();
+    }
+
+    private static function bucketOf(?User $user, string $identifier): string
+    {
         if ($user !== null) {
-            return 'u:'.$user->getKey();
+            return self::accountBucket($user);
         }
 
-        $normalized = self::normalize((string) $request->input(Fortify::username()));
-
-        return 'x:'.substr(hash_hmac('sha256', $normalized, (string) config('app.key')), 0, 32);
+        return 'x:'.substr(hash_hmac('sha256', self::normalize($identifier), (string) config('app.key')), 0, 32);
     }
 
     private function resolveStudent(string $digits): ?User

@@ -56,6 +56,7 @@ class Detail extends Component
         return view('livewire.siswa.lomba.detail', [
             'competition' => $competition,
             'window' => $window,
+            'notice' => LombaPresenter::unpublishedNotice($competition),
             'registrants' => $registrants,
             'facts' => $this->facts($competition),
             'syarat' => $this->syarat($competition),

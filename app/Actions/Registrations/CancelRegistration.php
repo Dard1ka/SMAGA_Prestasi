@@ -72,9 +72,10 @@ final class CancelRegistration
 
         Notification::send($others, RegistrationCancelled::for($locked, 'siswa'));
 
-        $mentor = $locked->mentor_id !== null ? User::query()->find($locked->mentor_id) : null;
+        // QA10: only while the mentor still holds the guru role (ApproveRegistration::mentorToTell(), D-110 rule).
+        $mentor = ApproveRegistration::mentorToTell($locked);
 
-        if ($mentor !== null && $mentor->canLogIn() && ! $mentor->is($actor)) {
+        if ($mentor !== null && ! $mentor->is($actor)) {
             $mentor->notify(RegistrationCancelled::for($locked, 'guru'));
         }
 

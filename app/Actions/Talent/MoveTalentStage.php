@@ -74,13 +74,28 @@ final class MoveTalentStage
 
         $application->setRawAttributes($locked->getAttributes(), true);
 
-        $user = $locked->student()->with('user')->first()?->user;
-
-        if ($user !== null && $user->canLogIn()) {
-            $user->notify(TalentStageChanged::for($locked, $from, self::talentLabel($locked), $studentNote));
-        }
+        self::studentToTell($locked)?->notify(TalentStageChanged::for($locked, $from, self::talentLabel($locked), $studentNote));
 
         return $locked;
+    }
+
+    /**
+     * Is the student told about a decision on this choice? Not an alumnus or a disabled account (QA9: the Talenta
+     * screen asks before it says "Siswa diberi tahu", like PublishPublication::notifiesStudent() in QA8).
+     */
+    public static function notifiesStudent(TalentApplication $application): bool
+    {
+        return self::studentToTell($application) !== null;
+    }
+
+    /** The student's account when a decision notice may go to it (it can log in); the rule of every talent decision. */
+    public static function studentToTell(TalentApplication $application): ?User
+    {
+        // The loaded relation when there is one (QA9 review: the bulk "Tidak lolos" dialog asks this per checked row).
+        $application->loadMissing('student.user');
+        $user = $application->student?->user;
+
+        return $user !== null && $user->canLogIn() ? $user : null;
     }
 
     /** "OSN Biologi", "OLPAIN" (type code label + branch), for notifications. */

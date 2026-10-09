@@ -6,12 +6,15 @@ namespace App\Livewire\Sekolah;
 
 use App\Domain\Archive\SchoolYear;
 use App\Domain\Deadlines\ReportDeadline;
+use App\Domain\Leaderboard\RankedStudent;
+use App\Domain\Leaderboard\Ranker;
 use App\Domain\Points\PointFormatter;
 use App\Enums\Bidang;
 use App\Enums\CompetitionStatus;
 use App\Enums\Level;
 use App\Enums\Permission;
 use App\Enums\RegistrationStatus;
+use App\Enums\ResultType;
 use App\Models\Competition;
 use App\Models\Registration;
 use App\Models\Student;
@@ -99,17 +102,24 @@ class Dashboard extends Component
     /**
      * One row per verified achievement (portable SQL; grouped in PHP so SQLite and MySQL agree).
      *
-     * @return Collection<int, array{student_id: string, points: string, level: ?Level, bidang: ?Bidang, year: string}>
+     * @return Collection<int, array{student_id: string, name: string, points: string, result: ?ResultType, level: ?Level, bidang: ?Bidang, year: string}>
      */
     private function achievementRows(): Collection
     {
         return DB::table('achievements')
             ->join('competitions', 'competitions.id', '=', 'achievements.competition_id')
+            ->leftJoin('students', 'students.id', '=', 'achievements.student_id')
+            ->leftJoin('users', 'users.id', '=', 'students.user_id')
             ->whereNotNull('achievements.verified_at')
-            ->get(['achievements.student_id', 'achievements.points', 'achievements.level', 'competitions.bidang', 'competitions.final_on'])
+            ->get([
+                'achievements.student_id', 'achievements.points', 'achievements.level', 'achievements.result',
+                'competitions.bidang', 'competitions.final_on', 'users.name',
+            ])
             ->map(fn (object $row): array => [
                 'student_id' => (string) $row->student_id,
+                'name' => (string) ($row->name ?? ''),
                 'points' => (string) ($row->points ?? '0'),
+                'result' => ResultType::tryFrom((string) $row->result),
                 'level' => Level::tryFrom((string) $row->level),
                 'bidang' => Bidang::tryFrom((string) $row->bidang),
                 'year' => $row->final_on !== null
@@ -216,46 +226,52 @@ class Dashboard extends Component
     }
 
     /**
-     * Five highest cumulative totals over all years (archived students included, D-09).
+     * Five highest cumulative totals over all years (archived students included, D-09), ranked by the public
+     * ranking's rule (App\Domain\Leaderboard\Ranker, QA10): points, then the better results, then the name; equal
+     * points and results share a rank (1, 1, 3). Before, the list sorted on points only and numbered 1–5.
      *
      * @param  Collection<int, array<string, mixed>>  $all
      * @return list<array{rank: int, name: string, meta: string, points: string, alumni: bool}>
      */
     private function topStudents(Collection $all, PointFormatter $formatter): array
     {
-        $totals = [];
         $byBidang = [];
 
         foreach ($all as $row) {
-            $totals[$row['student_id']] = bcadd($totals[$row['student_id']] ?? '0', $row['points'], 2);
-
             if ($row['bidang'] !== null) {
                 $key = $row['bidang']->value;
                 $byBidang[$row['student_id']][$key] = bcadd($byBidang[$row['student_id']][$key] ?? '0', $row['points'], 2);
             }
         }
 
-        uasort($totals, fn (string $a, string $b): int => bccomp($b, $a, 2));
-        $ids = array_slice(array_keys($totals), 0, 5);
+        $ranked = array_slice((new Ranker)->rank($all->map(fn (array $row): array => [
+            'student_id' => $row['student_id'],
+            'name' => $row['name'],
+            'points' => $row['points'],
+            'results' => $row['result'] !== null ? [$row['result']] : [],
+        ])), 0, 5);
 
-        if ($ids === []) {
+        if ($ranked === []) {
             return [];
         }
 
-        $students = Student::withTrashed()->with(['user', 'classroom'])->whereKey($ids)->get()->keyBy('id');
+        $students = Student::withTrashed()->with(['user', 'classroom'])
+            ->whereKey(array_map(fn (RankedStudent $r): string => (string) $r->studentId, $ranked))
+            ->get()->keyBy('id');
         $result = [];
 
-        foreach ($ids as $index => $id) {
+        foreach ($ranked as $line) {
+            $id = (string) $line->studentId;
             $student = $students->get($id);
             $bidangTotals = $byBidang[$id] ?? [];
             uasort($bidangTotals, fn (string $a, string $b): int => bccomp($b, $a, 2));
             $main = Bidang::tryFrom((string) array_key_first($bidangTotals));
 
             $result[] = [
-                'rank' => $index + 1,
+                'rank' => $line->rank,
                 'name' => (string) ($student?->user?->name ?? 'Siswa'),
                 'meta' => trim(($student?->classroom?->name ?? '').($main !== null ? ' · '.$main->label() : ''), ' ·'),
-                'points' => $formatter->format($totals[$id]),
+                'points' => $formatter->format($line->points),
                 'alumni' => (bool) $student?->user?->isArchived(),
             ];
         }
@@ -263,11 +279,17 @@ class Dashboard extends Component
         return $result;
     }
 
+    /**
+     * "Laporan lewat batas … Siswa belum melaporkan hasil": registrations past the report deadline that never sent a
+     * report. A report sent (on time or late) and sent back for a revision is back in menunggu_laporan too, but its
+     * students did report, so it is not counted here (QA10).
+     */
     private function overdueReports(CarbonImmutable $today, int $deadlineDays): int
     {
         return Registration::query()
             ->status(RegistrationStatus::MenungguLaporan)
             ->whereHas('competition', fn ($q) => $q->withTrashed()->whereDate('final_on', '<', $today->subDays($deadlineDays)))
+            ->whereDoesntHave('report')
             ->count();
     }
 

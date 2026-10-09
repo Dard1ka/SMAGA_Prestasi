@@ -36,6 +36,7 @@ beforeEach(function (): void {
     $this->withoutVite();
     Classroom::factory()->create(['name' => 'X-1', 'level' => 10]);
     $this->kesiswaan = F::staff(RoleName::Kesiswaan);
+    session(['auth.password_confirmed_at' => time()]); // QA9: the import needs a recent password confirmation
 });
 
 /** Letters-only suffix (names may not contain digits). */

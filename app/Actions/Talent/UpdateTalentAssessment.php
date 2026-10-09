@@ -27,6 +27,8 @@ use Throwable;
  *
  * "Jadwal asesmen" is a schedule (QA6, Q2-13): a new or changed date may not lie before today (Asia/Jakarta); the
  * date already saved on the row stays valid, so the panel can still be saved after the assessment took place.
+ * The guru pembina works the same way (QA9): a new choice must be an active guru, the one already on the row stays
+ * valid after the account was disabled or archived, so it no longer blocks Simpan, Lolos and Tidak lolos.
  */
 final class UpdateTalentAssessment
 {
@@ -75,8 +77,11 @@ final class UpdateTalentAssessment
 
         if (array_key_exists('mentor_id', $details)) {
             $mentorId = $details['mentor_id'] === null || $details['mentor_id'] === '' ? null : (int) $details['mentor_id'];
+            // QA9: the guru pembina already on the row passes unchanged, also when the account was disabled or archived
+            // since (the panel sends it with every button and says the guru is not active); a new choice must be active.
+            $unchanged = $mentorId !== null && $current?->mentor_id !== null && (int) $current->mentor_id === $mentorId;
 
-            if ($mentorId !== null && ! User::query()->whereKey($mentorId)->role(RoleName::Guru->value)->canLogIn()->exists()) {
+            if ($mentorId !== null && ! $unchanged && ! User::query()->whereKey($mentorId)->role(RoleName::Guru->value)->canLogIn()->exists()) {
                 throw ValidationException::withMessages(['mentor_id' => 'Pilih guru pembina dari daftar.']);
             }
 

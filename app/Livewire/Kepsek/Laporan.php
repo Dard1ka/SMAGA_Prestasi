@@ -18,6 +18,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
@@ -64,10 +65,18 @@ final class Laporan extends Component
         $this->normalize();
     }
 
-    public function export(string $format, ExportPrestasiReport $export): ?BinaryFileResponse
+    public function export(string $format, ExportPrestasiReport $export, ExportPrestasiData $data): ?BinaryFileResponse
     {
         Gate::authorize('exportSchoolReport', Achievement::class);
         abort_unless(in_array($format, ExportPrestasiReport::FORMATS, true), 404);
+        $this->resetErrorBag('export');
+
+        // QA10: a period too large for a PDF is refused before the password question (the Action asks again).
+        if ($format === 'pdf' && ($count = $data->count($this->period(), Bidang::tryFrom($this->bidang))) > ExportPrestasiReport::MAX_PDF_ROWS) {
+            $this->addError('export', ExportPrestasiReport::tooLargeForPdf($count));
+
+            return null;
+        }
 
         // $format is one of FORMATS here, so the call stays a literal.
         if (! $this->passwordRecentlyConfirmed("export('".$format."')")) {
@@ -76,7 +85,14 @@ final class Laporan extends Component
 
         /** @var User $user */
         $user = auth()->user();
-        $result = $export->handle($user, $format, $this->period(), Bidang::tryFrom($this->bidang));
+
+        try {
+            $result = $export->handle($user, $format, $this->period(), Bidang::tryFrom($this->bidang));
+        } catch (ValidationException $e) {
+            $this->addError('export', (string) ($e->errors()['export'][0] ?? 'Laporan tidak bisa dibuat.'));
+
+            return null;
+        }
 
         return response()->download($result['path'], $result['filename'], ['Content-Type' => $result['mime']])->deleteFileAfterSend();
     }
@@ -105,6 +121,9 @@ final class Laporan extends Component
                 'date' => CarbonImmutable::parse($r['date'])->translatedFormat('j M Y'),
             ])->all(),
             'rowCount' => $rows->count(),
+            // QA10: above the cap "Download PDF" is off and the note points to the Excel file.
+            'pdfTooLarge' => $rows->count() > ExportPrestasiReport::MAX_PDF_ROWS,
+            'pdfLimitNote' => ExportPrestasiReport::pdfLimitNote(),
             'fmt' => fn (string $points): string => $formatter->format($points),
             'yearOptions' => collect($data->schoolYears())->mapWithKeys(fn (string $y) => [$y => 'Tahun ajaran '.$y])->all()
                 + ['semua' => 'Semua tahun', 'rentang' => 'Rentang tanggal'],

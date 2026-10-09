@@ -27,6 +27,14 @@ final class AdvanceRegistrations extends Command
 
     public function handle(StartCompetition $start, AwaitReport $await): int
     {
+        // QA10: like sth:arsip-otomatis, a reference date is for checks on a local database only; in production a
+        // future date would move live registrations and mail every ketua.
+        if ($this->dateGiven() && app()->isProduction()) {
+            $this->error('--date tidak boleh dipakai di production.');
+
+            return self::INVALID;
+        }
+
         $today = $this->today();
 
         if ($today === null) {
@@ -52,6 +60,13 @@ final class AdvanceRegistrations extends Command
         }
 
         return $moved;
+    }
+
+    private function dateGiven(): bool
+    {
+        $option = $this->option('date');
+
+        return $option !== null && $option !== '';
     }
 
     private function today(): ?CarbonImmutable

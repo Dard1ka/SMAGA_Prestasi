@@ -4,17 +4,25 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Actions\Fortify\KnownDevices;
 use App\Actions\Fortify\LoginIdentifier;
+use App\Actions\Fortify\LoginLockout;
 use App\Domain\Accounts\PasswordPolicy;
 use App\Domain\Archive\GraduationCalculator;
 use App\Domain\Deadlines\ReportDeadline;
 use App\Enums\SettingKey;
+use App\Mail\LocalMailGuard;
+use App\Mail\Transport\AllowlistTransport;
 use App\Models\Setting;
 use App\Support\Audit\AuditChain;
 use App\Support\Audit\SecurityEventSubscriber;
+use Illuminate\Auth\Events\Lockout;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Mail\Events\MessageSending;
+use Illuminate\Mail\MailManager;
 use Illuminate\Mail\Markdown;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\RateLimiter;
@@ -48,6 +56,14 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(GraduationCalculator::class, fn (): GraduationCalculator => new GraduationCalculator(
             self::settingInt(SettingKey::ArchiveMonthsAfterGrade12, GraduationCalculator::DEFAULT_ARCHIVE_MONTHS, GraduationCalculator::MAX_ARCHIVE_MONTHS),
         ));
+
+        // Local development (D-121): mail transport "allowlist" = real delivery for listed addresses, Mailpit for the rest.
+        $this->callAfterResolving('mail.manager', function (MailManager $manager): void {
+            $manager->extend(
+                AllowlistTransport::DRIVER,
+                fn (array $config): AllowlistTransport => AllowlistTransport::fromConfig($manager, $config),
+            );
+        });
     }
 
     /**
@@ -81,6 +97,10 @@ class AppServiceProvider extends ServiceProvider
 
         $this->configureRateLimiting();
 
+        // D-121, QA9: in APP_ENV=local a mail sent BY NAME through a mailer that would deliver every mail (the `smtp`
+        // mailer with the provider login in allowlist mode) is cancelled; guardUnsafeConfiguration() only sees the default.
+        Event::listen(MessageSending::class, LocalMailGuard::class);
+
         // B2 (backlog #16, #18): security log feeds + audit hash chain; throttled Livewire update endpoint.
         Event::subscribe(SecurityEventSubscriber::class);
         AuditChain::register();
@@ -99,6 +119,19 @@ class AppServiceProvider extends ServiceProvider
         // flag there (VerifyOtpCode::testModeActive() also requires local).
         if (config('fortify.sth.otp_test_mode') && ! $this->app->environment('local', 'testing')) {
             throw new RuntimeException('STH_OTP_TEST_MODE hanya boleh aktif di APP_ENV=local.');
+        }
+
+        // Mailer "allowlist" (D-121) keeps mail for unlisted addresses in Mailpit: outside local that is a lost OTP.
+        if (config('mail.default') === AllowlistTransport::DRIVER && ! $this->app->environment('local', 'testing')) {
+            throw new RuntimeException('MAIL_MAILER allowlist hanya untuk APP_ENV=local.');
+        }
+
+        // The other way round (D-121): a local stack (and the E2E project, which reads the same .env) mails fictional
+        // addresses by itself, so there a real provider is only reachable through the allowlist mailer. A mailer used
+        // by name is caught when it sends (LocalMailGuard::handle(), QA9), with the same rule.
+        if ($this->app->environment('local')
+            && LocalMailGuard::deliversEverything(LocalMailGuard::settingsOf((string) config('mail.default')))) {
+            throw new RuntimeException('Di APP_ENV=local email nyata hanya boleh lewat MAIL_MAILER=allowlist (lihat .env.example).');
         }
 
         if (! $this->app->isProduction()) {
@@ -124,6 +157,11 @@ class AppServiceProvider extends ServiceProvider
     /**
      * Named rate limiters. Login buckets per ACCOUNT (NIS and NISN of one student share a bucket, SECURITY §3a),
      * strict per account+IP, looser per IP because the whole school sits behind one NAT address.
+     * QA10 (K3): no login limit blocks an account from every address any more. The per-account limits are per account
+     * AND address (LoginLockout::pair(), whose generation an Admin reset or a reset with the email code renews), and
+     * the hourly one counts refused passwords only, so the owner's own logins never fill it. The login limits live in
+     * LoginLockout::limits(); every refusal names one time, LoginLockout::secondsUntilAllowed() (the lead's report of
+     * times that jumped between the limiter and the lock).
      */
     protected function configureRateLimiting(): void
     {
@@ -135,19 +173,35 @@ class AppServiceProvider extends ServiceProvider
                 ->withErrors([$field => self::retryMessage($seconds)]);
         };
 
-        RateLimiter::for('login', function (Request $request) use ($tooMany) {
-            $bucket = app(LoginIdentifier::class)->bucketKey($request);
+        RateLimiter::for(LoginLockout::LIMITER, function (Request $request) {
+            $identifiers = app(LoginIdentifier::class);
+            $lockout = app(LoginLockout::class);
+            $bucket = $identifiers->bucketKey($request);
+            $knownDevice = KnownDevices::recognizes($request, $identifiers->forRequest($request));
 
-            return [
-                Limit::perMinute(5)->by('login:'.$bucket.'|'.$request->ip())->response($tooMany('identifier')),
-                Limit::perHour(20)->by('login-h:'.$bucket)->response($tooMany('identifier')),
-                Limit::perMinute(60)->by('login-ip:'.$request->ip())->response($tooMany('identifier')),
-            ];
+            $refuse = fn (): RedirectResponse => back()
+                ->withInput($request->only('identifier'))
+                ->withErrors(['identifier' => self::retryMessage(max(1, $lockout->secondsUntilAllowed($request, $bucket, $knownDevice)))]);
+
+            // While any block holds (a lock, a full limit), the try is answered here and counts towards the per-address
+            // limit only, so pressing "Masuk" again never stretches a block of the account beyond the time shown.
+            if ($lockout->secondsUntilAllowed($request, $bucket, $knownDevice) > 0) {
+                $lockout->countRefusal($request);
+                event(new Lockout($request));
+
+                return $refuse();
+            }
+
+            return array_map(fn (Limit $limit): Limit => $limit->response($refuse), $lockout->limits($request, $bucket, $knownDevice));
         });
 
+        // QA10: per account only; another address no longer brings five more TOTP guesses a minute
+        // (TwoFactorChallenge also ends the challenge after 10 wrong codes of the account).
         RateLimiter::for('two-factor', function (Request $request) use ($tooMany) {
+            $id = $request->session()->get('login.id');
+
             return Limit::perMinute(5)
-                ->by('2fa:'.$request->session()->get('login.id', 'guest').'|'.$request->ip())
+                ->by('2fa:'.($id !== null ? 'u:'.$id : 'guest|'.LoginLockout::addressKey($request->ip())))
                 ->response($tooMany('code'));
         });
     }

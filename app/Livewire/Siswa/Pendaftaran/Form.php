@@ -6,6 +6,7 @@ namespace App\Livewire\Siswa\Pendaftaran;
 
 use App\Actions\Registrations\CancelRegistration;
 use App\Actions\Registrations\CreateRegistration;
+use App\Actions\Registrations\ExpirePendingInvitations;
 use App\Actions\Registrations\InviteMembers;
 use App\Actions\Registrations\WithdrawInvitation;
 use App\Enums\MemberRole;
@@ -78,7 +79,10 @@ class Form extends Component
 
         $this->competitionId = $competition->getKey();
         $this->type = $competition->participation === Participation::Tim ? RegistrationType::Tim->value : RegistrationType::Individu->value;
-        $this->mentorId = $competition->default_mentor_id !== null ? (int) $competition->default_mentor_id : null;
+        // QA10: pre-fill the lomba's guru pembimbing only while the select offers it (an active guru); a disabled one
+        // used to stay selected out of sight and CreateRegistration refused the form without a visible message.
+        $default = $competition->default_mentor_id !== null ? (int) $competition->default_mentor_id : null;
+        $this->mentorId = $default !== null && array_key_exists($default, $this->mentorOptions()) ? $default : null;
     }
 
     public function updatedType(): void
@@ -240,7 +244,15 @@ class Form extends Component
     public function kirim(CreateRegistration $create): void
     {
         $competition = $this->competition();
-        abort_unless(Gate::inspect('view', $competition)->allowed(), 404);
+
+        // `competitionId` is #[Locked] and was visible in mount(): a lomba that is no longer visible was closed by
+        // Kesiswaan meanwhile (only a published lomba is visible to a student who did not submit it). That used to
+        // answer a full-screen 404 (QA9); say it like a registration deadline that passed.
+        if (Gate::denies('view', $competition)) {
+            $this->addError('competition', 'Pendaftaran lomba ini sudah ditutup.');
+
+            return;
+        }
 
         $this->validate(
             ['setuju' => ['accepted'], 'mentorId' => ['required', 'integer'], 'type' => ['required', 'in:individu,tim']],
@@ -255,13 +267,19 @@ class Form extends Component
             return;
         }
 
-        $create->handle(
-            auth()->user(),
-            $competition,
-            RegistrationType::from($this->type),
-            $this->type === RegistrationType::Tim->value ? $this->members : [],
-            $this->mentorId,
-        );
+        try {
+            $create->handle(
+                auth()->user(),
+                $competition,
+                RegistrationType::from($this->type),
+                $this->type === RegistrationType::Tim->value ? $this->members : [],
+                $this->mentorId,
+            );
+        } catch (ValidationException $e) {
+            $this->showRefusal($e);
+
+            return;
+        }
 
         $this->reset('members', 'q', 'hasil', 'searchNote', 'setuju');
         $this->dispatch('sth-toast', message: 'Pendaftaran terkirim.', tone: 'success');
@@ -306,6 +324,27 @@ class Form extends Component
             'memberRows' => $this->memberRows(),
             'mentors' => $this->mentorOptions(),
         ]);
+    }
+
+    /**
+     * QA10: put every refusal of CreateRegistration where the panel shows it. The Action names the guru `mentor` (the
+     * select is `mentorId`), `type` has no field, and `members` shows only in the team part of the form; anything the
+     * panel has no place for goes to the message above the form.
+     */
+    private function showRefusal(ValidationException $e): void
+    {
+        foreach ($e->errors() as $key => $messages) {
+            $field = match (true) {
+                $key === 'mentor' => 'mentorId',
+                $key === 'members' && $this->type === RegistrationType::Tim->value => 'members',
+                $key === 'registration' => 'registration',
+                default => 'competition',
+            };
+
+            foreach ($messages as $message) {
+                $this->addError($field, (string) $message);
+            }
+        }
     }
 
     private function competition(): Competition
@@ -388,6 +427,8 @@ class Form extends Component
         $canInvite = Gate::allows('invite', $registration);
         $max = $registration->competition?->max_team_size;
         $active = $members->whereNull('declined_at')->count();
+        // QA10: an invitation the scheduler expired at the deadline (D-50) reads "Tidak menjawab", not "Menolak".
+        $expired = $canInvite ? ExpirePendingInvitations::expiredMemberIds($registration) : [];
 
         $lombaSaya = Route::has('siswa.lomba-saya.show')
             ? route('siswa.lomba-saya.show', $registration)
@@ -416,7 +457,12 @@ class Form extends Component
                     'studentId' => (string) $m->student_id,
                     'name' => (string) $m->student?->user?->name,
                     'meta' => trim(($m->student?->classroom?->name ?? '').' · '.$m->role?->label(), ' ·'),
-                    'state' => $m->declined_at !== null ? 'declined' : ($m->confirmed_at !== null ? 'confirmed' : 'pending'),
+                    'state' => match (true) {
+                        in_array((string) $m->getKey(), $expired, true) => 'expired',
+                        $m->declined_at !== null => 'declined',
+                        $m->confirmed_at !== null => 'confirmed',
+                        default => 'pending',
+                    },
                 ])
                 ->values()
                 ->all(),

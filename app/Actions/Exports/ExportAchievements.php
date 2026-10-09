@@ -4,15 +4,18 @@ declare(strict_types=1);
 
 namespace App\Actions\Exports;
 
+use App\Actions\Users\AdminRecipients;
 use App\Domain\Archive\SchoolYear;
 use App\Domain\Points\PointFormatter;
 use App\Domain\Support\Decimal;
 use App\Enums\UserStatus;
 use App\Models\Achievement;
 use App\Models\User;
+use App\Notifications\Admin\LargeExportNotice;
 use Carbon\CarbonImmutable;
 use DateTimeInterface;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\ValidationException;
 use InvalidArgumentException;
 use OpenSpout\Common\Entity\Cell;
@@ -32,7 +35,8 @@ use Spatie\SimpleExcel\SimpleExcelWriter;
  *   leading "=" into a formula) AND values starting with = + - @ tab CR LF get a leading apostrophe
  *   (OWASP), so a re-saved CSV stays safe too.
  * - Watermark rows "Diekspor oleh {nama} {waktu}" + the active filters on top; audited as
- *   `achievement.exported` (filters, row count, `large` when > 500 rows, SECURITY §3m alert threshold).
+ *   `achievement.exported` (filters, row count, `large` when > 500 rows, SECURITY §3m alert threshold); above
+ *   LargeExportNotice::LIMIT rows every Admin gets LargeExportNotice (QA10).
  * Read-only: no state changes, so no transaction. Points are written as Excel numbers (display only;
  * every sum in the app stays bcmath).
  */
@@ -51,7 +55,10 @@ final class ExportAchievements
         'Tanggal final', 'Bobot tingkat', 'Bobot capaian', 'Bobot penyelenggara', 'Poin', 'Diverifikasi', 'Verifikator',
     ];
 
-    public function __construct(private readonly PointFormatter $formatter = new PointFormatter) {}
+    public function __construct(
+        private readonly PointFormatter $formatter = new PointFormatter,
+        private readonly AdminRecipients $recipients = new AdminRecipients,
+    ) {}
 
     /** @throws ValidationException (key `export`) when the filtered list is larger than MAX_ROWS */
     public function handle(User $actor, AchievementFilters $filters): ExportedFile
@@ -121,6 +128,12 @@ final class ExportAchievements
                 'format' => 'xlsx',
             ])
             ->log('achievement.exported');
+
+        // SECURITY §3m-9: a large export alerts every Admin, like Talenta, Laporan prestasi and Log audit (QA10;
+        // before, it was only marked `large` in the audit row).
+        if ($count > LargeExportNotice::LIMIT) {
+            Notification::send($this->recipients->admins(), new LargeExportNotice((string) $actor->name, 'database prestasi', $count, $exportedAt->translatedFormat('j F Y H:i')));
+        }
 
         return new ExportedFile($path, 'database-prestasi-'.$exportedAt->format('Ymd-Hi').'.xlsx', $count);
     }

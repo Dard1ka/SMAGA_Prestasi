@@ -89,13 +89,32 @@ final class SendLetters
             Notification::send($members, LettersIssued::for($locked, 'siswa'));
         }
 
-        $mentor = $locked->mentor_id !== null ? User::query()->find($locked->mentor_id) : null;
-
-        if ($mentor !== null && $mentor->canLogIn() && $locked->letters()->where('type', LetterType::Guru)->exists()) {
-            $mentor->notify(LettersIssued::for($locked, 'guru'));
-        }
+        self::mentorToTell($locked)?->notify(LettersIssued::for($locked, 'guru'));
 
         return $registration;
+    }
+
+    /** Is any team member told that the letters were sent (confirmed members who can log in)? QA10, D-109: the toast asks. */
+    public static function notifiesStudents(Registration $registration): bool
+    {
+        return ApproveRegistration::memberUsers($registration)->isNotEmpty();
+    }
+
+    /** Is the guru pembimbing told (QA10, D-109: the Surat tugas toast names only who was told)? */
+    public static function notifiesMentor(Registration $registration): bool
+    {
+        return self::mentorToTell($registration) !== null;
+    }
+
+    /**
+     * The guru pembimbing who gets the guru letter's notice: still a guru who can log in (the rule of the registration
+     * notices, ApproveRegistration::mentorToTell(), QA10), and only when a guru letter exists.
+     */
+    public static function mentorToTell(Registration $registration): ?User
+    {
+        $mentor = ApproveRegistration::mentorToTell($registration);
+
+        return $mentor !== null && $registration->letters()->where('type', LetterType::Guru)->exists() ? $mentor : null;
     }
 
     /**

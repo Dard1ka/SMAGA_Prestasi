@@ -39,7 +39,7 @@
                                 </span>
                                 <x-sth.icon name="chevron-right" :size="18" class="text-muted" />
                             </span>
-                            <x-sth.tracker :status="$card['status']" compact />
+                            <x-sth.tracker :status="$card['status']" :report="$card['reportStatus']" compact />
                             <span><x-sth.chip :tone="$card['tone']" size="sm">{{ $card['chip'] }}</x-sth.chip></span>
                         </a>
                     </li>
@@ -90,7 +90,7 @@
                     @endif
                 </div>
                 <div class="overflow-x-auto">
-                    <x-sth.tracker :status="$detail['status']" :dates="$detail['trackerDates']" />
+                    <x-sth.tracker :status="$detail['status']" :report="$detail['reportStatus']" :dates="$detail['trackerDates']" />
                 </div>
             </x-sth.card>
 

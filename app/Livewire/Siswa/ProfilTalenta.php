@@ -183,9 +183,29 @@ final class ProfilTalenta extends Component
 
     public function batalkan(string $applicationId, CancelTalentApplication $cancel): void
     {
-        $application = $this->ownApplication($applicationId);
+        $application = $this->ownApplication($applicationId, withTrashed: true);
 
-        $cancel->handle($this->user(), $application);
+        // QA9: a stale tab (cancelled in another tab, or Kesiswaan moved it meanwhile) gets a toast, not an error page.
+        if ($application->trashed()) {
+            $this->staleChoice($this->titleOf($application->talentType, $application->talentBranch).' sudah kamu batalkan.');
+
+            return;
+        }
+
+        if ($application->status !== TalentStatus::Terdaftar) {
+            $this->staleChoice(CancelTalentApplication::PROCESSED_MESSAGE);
+
+            return;
+        }
+
+        try {
+            $cancel->handle($this->user(), $application);
+        } catch (ValidationException) {
+            // Moved by Kesiswaan between the check above and the lock of the Action.
+            $this->staleChoice(CancelTalentApplication::PROCESSED_MESSAGE);
+
+            return;
+        }
 
         $this->undo = [
             'type' => (string) $application->talent_type_id,
@@ -217,10 +237,28 @@ final class ProfilTalenta extends Component
 
     // Minta ditinjau ulang --------------------------------------------------------------------
 
-    /** Opens the dialog for one of the student's own rejected choices (not yours → 404, not allowed → 403). */
+    /**
+     * Opens the dialog for one of the student's own rejected choices (not yours → 404, not allowed → 403). QA9: a choice
+     * that is no longer open to a request (restored, the request already sent from another tab, cancelled) gets a toast
+     * and the list as it is now, like kirimTinjau(), instead of an error page.
+     */
     public function mintaTinjau(string $applicationId): void
     {
-        $application = $this->ownApplication($applicationId);
+        $application = $this->ownApplication($applicationId, withTrashed: true);
+
+        $stale = match (true) {
+            $application->trashed() => $this->titleOf($application->talentType, $application->talentBranch).' sudah kamu batalkan.',
+            $application->status !== TalentStatus::TidakLolos => RequestTalentReview::REOPENED_MESSAGE,
+            $application->review_requested_at !== null => RequestTalentReview::ALREADY_SENT_MESSAGE,
+            default => null,
+        };
+
+        if ($stale !== null) {
+            $this->staleChoice($stale);
+
+            return;
+        }
+
         Gate::authorize('requestReview', $application);
 
         $this->tinjauId = (string) $application->getKey();
@@ -450,8 +488,9 @@ final class ProfilTalenta extends Component
             'reviewing' => $reviewing !== null ? $this->titleOf($reviewing->talentType, $reviewing->talentBranch) : null,
             'reviewMax' => TalentNote::MAX_REVIEW_MESSAGE,
             'year' => CarbonImmutable::now()->year,
+            // QA10: joined (confirmed) registrations only, like Portofolio "Lomba diikuti"; an open invitation is not one.
             'lombaCount' => Registration::query()
-                ->whereHas('members', fn (Builder $m) => $m->where('student_id', $student->getKey())->whereNull('declined_at'))
+                ->whereHas('members', fn (Builder $m) => $m->where('student_id', $student->getKey())->whereNotNull('confirmed_at')->whereNull('declined_at'))
                 ->whereNotIn('status', [RegistrationStatus::Dibatalkan, RegistrationStatus::Ditolak])
                 ->count(),
             'certificates' => ($profile?->certificates ?? collect())
@@ -496,10 +535,14 @@ final class ProfilTalenta extends Component
         };
     }
 
-    /** The student's own choice, re-read from the DB; anyone else's (or an unknown id) is a 404. */
-    private function ownApplication(string $applicationId): TalentApplication
+    /**
+     * The student's own choice, re-read from the DB; anyone else's (or an unknown id) is a 404. `$withTrashed`: a
+     * choice the student cancelled (in another tab) is found too, so the screen can say so (QA9).
+     */
+    private function ownApplication(string $applicationId, bool $withTrashed = false): TalentApplication
     {
         $application = TalentApplication::query()
+            ->when($withTrashed, fn (Builder $q) => $q->withTrashed())
             ->where('student_id', $this->student()->getKey())
             ->with(['talentType', 'talentBranch'])
             ->find($applicationId);
@@ -507,6 +550,13 @@ final class ProfilTalenta extends Component
         abort_if($application === null, 404);
 
         return $application;
+    }
+
+    /** A stale tab (QA9): the choice changed since the list was drawn. Say how it is now and draw the list again. */
+    private function staleChoice(string $message): void
+    {
+        unset($this->applications);
+        $this->dispatch('sth-toast', message: $message, tone: 'warning');
     }
 
     private function closeReviewDialog(): void

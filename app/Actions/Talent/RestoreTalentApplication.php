@@ -111,13 +111,15 @@ final class RestoreTalentApplication
 
         $application->setRawAttributes($locked->getAttributes(), true);
 
-        $user = $locked->student()->with('user')->first()?->user;
-
-        if ($user !== null && $user->canLogIn()) {
-            $user->notify(TalentApplicationRestored::for($locked, MoveTalentStage::talentLabel($locked), $studentNote, $hadRequest));
-        }
+        MoveTalentStage::studentToTell($locked)?->notify(TalentApplicationRestored::for($locked, MoveTalentStage::talentLabel($locked), $studentNote, $hadRequest));
 
         return $locked;
+    }
+
+    /** Is the student told about the restore? Not an alumnus or a disabled account (QA9: the screen asks). */
+    public static function notifiesStudent(TalentApplication $application): bool
+    {
+        return MoveTalentStage::notifiesStudent($application);
     }
 
     /**

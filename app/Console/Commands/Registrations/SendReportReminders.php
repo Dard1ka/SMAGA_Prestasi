@@ -33,6 +33,14 @@ final class SendReportReminders extends Command
 
     public function handle(): int
     {
+        // QA10: like sth:arsip-otomatis, a reference date is for checks on a local database only; in production a
+        // future date would mail every ketua a reminder (and use up the real one).
+        if ($this->dateGiven() && app()->isProduction()) {
+            $this->error('--date tidak boleh dipakai di production.');
+
+            return self::INVALID;
+        }
+
         $today = $this->today();
 
         if ($today === null) {
@@ -94,6 +102,13 @@ final class SendReportReminders extends Command
         ));
 
         return true;
+    }
+
+    private function dateGiven(): bool
+    {
+        $option = $this->option('date');
+
+        return $option !== null && $option !== '';
     }
 
     private function today(): ?CarbonImmutable

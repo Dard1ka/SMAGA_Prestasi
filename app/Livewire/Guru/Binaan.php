@@ -89,6 +89,8 @@ final class Binaan extends Component
             'isTalent' => $isTalent,
             'registrations' => $isTalent ? [] : $items->map(fn (Registration $r): array => $this->registrationCard($r))->all(),
             'talents' => $isTalent ? $items->map(fn (TalentApplication $a): array => $this->talentRow($a))->all() : [],
+            // QA9: the caption "Pembinaan talenta, N siswa" counts students, once each (one may have two choices).
+            'talentStudents' => $isTalent ? (clone $query)->reorder()->distinct()->count('student_id') : 0,
             'total' => $total,
             'hasMore' => $total > $this->limit,
             'lombaUrl' => route('guru.lomba.index'),
@@ -100,7 +102,9 @@ final class Binaan extends Component
     {
         $mine = fn (): Builder => Registration::query()->where('mentor_id', $this->user()->getKey());
 
+        // Only students in the team: an invitation nobody answered yet is not a binaan (QA10).
         $students = RegistrationMember::query()
+            ->whereNotNull('confirmed_at')
             ->whereNull('declined_at')
             ->whereHas('registration', fn (Builder $r) => $r->where('mentor_id', $this->user()->getKey()))
             ->pluck('student_id')
@@ -113,7 +117,16 @@ final class Binaan extends Component
             'selesai' => $mine()->whereNotIn('status', RegistrationStatus::nonFinal())->count(),
             'laporan' => $mine()->where('status', RegistrationStatus::MenungguLaporan)->count(),
             'verifikasi' => $mine()->where('status', RegistrationStatus::LaporanDikirim)->count(),
+            // The Talenta tab lists every choice the guru is pembina of, "Tidak lolos" included: it counts rows.
             'talenta' => TalentApplication::query()->where('mentor_id', $this->user()->getKey())->count(),
+            // QA9: the tile "Pembinaan talenta · siswa yang dibina" counts students, once each, whose choice with this
+            // guru is still open (Terdaftar … Peserta pembinaan). Kesiswaan names the pembina during the selection and a
+            // restore keeps him (D-104), so every open stage is coached; a "Tidak lolos" choice is not.
+            'dibina' => TalentApplication::query()
+                ->where('mentor_id', $this->user()->getKey())
+                ->where('status', '!=', TalentStatus::TidakLolos->value)
+                ->distinct()
+                ->count('student_id'),
         ];
     }
 

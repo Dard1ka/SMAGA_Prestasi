@@ -17,6 +17,9 @@ use Illuminate\Validation\ValidationException;
  */
 final class CancelTalentApplication
 {
+    /** Also the toast of Profil talenta when a stale tab asks to cancel a choice Kesiswaan already moved (QA9). */
+    public const PROCESSED_MESSAGE = 'Talenta ini sudah diproses Kesiswaan dan tidak bisa dibatalkan.';
+
     /** @throws ValidationException */
     public function handle(User $actor, TalentApplication $application): void
     {
@@ -27,9 +30,7 @@ final class CancelTalentApplication
             $locked = TalentApplication::query()->whereKey($application->getKey())->lockForUpdate()->first();
 
             if ($locked === null || $locked->status !== TalentStatus::Terdaftar) {
-                throw ValidationException::withMessages([
-                    'pilihan' => 'Talenta ini sudah diproses Kesiswaan dan tidak bisa dibatalkan.',
-                ]);
+                throw ValidationException::withMessages(['pilihan' => self::PROCESSED_MESSAGE]);
             }
 
             $locked->delete();

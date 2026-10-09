@@ -24,11 +24,24 @@ use Illuminate\Validation\ValidationException;
  * Also: bound email removed, open OTPs cancelled, a K3/K8 freeze lifted, TOTP 2FA removed (students never have
  * it; `two_factor_removed` in the audit row tells whether there was one), every session + remember token
  * revoked, login lockout cleared, audited with the Admin's reason (never the password). A disabled/archived
- * account keeps its status (resetting never re-opens it). More than 10 resets by one Admin within an hour
- * alerts every Admin.
+ * account cannot log in, so it is not reset at all (QA9, refusal(); resetting never re-opens it, and the
+ * temporary password would be useless). More than 10 resets by one Admin within an hour alerts every Admin.
  */
 final class ResetStudentAccount
 {
+    /**
+     * Why this account is not reset, or null when it may be (QA9): the reset hands over a temporary password to
+     * log in with, which a disabled or archived account never can. The screen asks before it offers the reset.
+     */
+    public static function refusal(User $student): ?string
+    {
+        return match ($student->status) {
+            UserStatus::Disabled => 'Akun nonaktif tidak bisa login, jadi tidak bisa direset.',
+            UserStatus::Archived => 'Akun alumni tidak bisa login, jadi tidak bisa direset. Pulihkan dulu di Arsip otomatis bila perlu.',
+            default => null,
+        };
+    }
+
     public function __construct(
         private readonly GenerateTemporaryPassword $temporaryPassword,
         private readonly RevokeUserSessions $revokeSessions,
@@ -55,6 +68,10 @@ final class ResetStudentAccount
             throw ValidationException::withMessages(['user' => 'Tidak bisa me-reset akun sendiri.']);
         }
 
+        if (($refusal = self::refusal($student)) !== null) {
+            throw ValidationException::withMessages(['user' => $refusal]);
+        }
+
         $password = $this->temporaryPassword->handle();
         $expiresAt = now()->addHours(AccountControls::TEMPORARY_PASSWORD_HOURS);
 
@@ -64,6 +81,11 @@ final class ResetStudentAccount
 
             if (! $locked->student()->exists()) {
                 throw ValidationException::withMessages(['user' => 'Akun ini bukan akun siswa.']);
+            }
+
+            // Disabled or archived in the meantime: same refusal under the lock.
+            if (($refusal = self::refusal($locked)) !== null) {
+                throw ValidationException::withMessages(['user' => $refusal]);
             }
 
             $wasFrozen = AccountControls::frozenReason($locked);
@@ -86,7 +108,7 @@ final class ResetStudentAccount
                 'two_factor_secret' => null,
                 'two_factor_recovery_codes' => null,
                 'two_factor_confirmed_at' => null,
-                'status' => $locked->status?->canLogIn() ? UserStatus::PendingActivation : $locked->status,
+                'status' => UserStatus::PendingActivation,
             ])->save();
 
             OtpCode::query()
