@@ -1,4 +1,4 @@
-# QA9 — explore round after EM1 (2026-10-09)  ·  status: done, not committed (local `main`)
+# QA9 — explore round after EM1 (2026-10-09)  ·  status: committed on local `main` (`e80c9d2`), not pushed
 
 The lead pulled the teammate's `feat/email-brevo-dev` (EM1, D-121, one commit on top of PR 18) into the local `main`
 and asked to "lanjutkan explore dan fix bug lagi" there, without a PR for now. Local `main` = `origin/main` (`53614e1`)
