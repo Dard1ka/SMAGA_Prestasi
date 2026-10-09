@@ -9,6 +9,7 @@ use App\Enums\Permission;
 use App\Enums\ReportFileKind;
 use App\Enums\ReportStatus;
 use App\Enums\SettingKey;
+use App\Enums\UserStatus;
 use App\Models\Competition;
 use App\Models\File;
 use App\Models\Letter;
@@ -72,8 +73,8 @@ class FilePolicy
     /**
      * Guest access (route `files.public`, W2-D request; D-16, U-04, SECURITY §3m-7). Only a certificate
      * (report_files.kind = sertifikat) of a VERIFIED report, only while the Admin switch
-     * `public_certificates` is on, and only when every member of that registration (not declined) has
-     * publish_consent — a team certificate shows all names. Everything else: denied (the route answers 404).
+     * `public_certificates` is on, and only when every member of that registration (not declined) may appear by
+     * name on the public pages — a team certificate shows all names. Everything else: denied (the route answers 404).
      */
     public function viewPublic(?User $user, File $file): bool
     {
@@ -93,11 +94,29 @@ class FilePolicy
             return false;
         }
 
-        $consents = Student::query()
+        // withTrashed (QA9): a deleted member must deny, not drop out of the list.
+        $members = Student::withTrashed()
+            ->with('user:id,status,deleted_at')
             ->whereHas('memberships', fn ($m) => $m->where('registration_id', $report->registration_id)->whereNull('declined_at'))
-            ->pluck('publish_consent');
+            ->get(['id', 'user_id', 'publish_consent', 'deleted_at']);
 
-        return $consents->isNotEmpty() && $consents->every(fn ($consent): bool => (bool) $consent);
+        return $members->isNotEmpty() && $members->every(fn (Student $member): bool => self::appearsByName($member));
+    }
+
+    /**
+     * QA9: the rule PublicAchievements::mapRow() uses for a "named" student. Publish consent, and neither the student
+     * record nor the account is deleted and the account is not disabled. An archived alumnus with consent stays named;
+     * a disabled or deleted student is anonymous on every public page, so their certificate is never public either.
+     */
+    private static function appearsByName(Student $student): bool
+    {
+        $user = $student->user;
+
+        return (bool) $student->publish_consent
+            && $student->deleted_at === null
+            && $user !== null
+            && $user->deleted_at === null
+            && $user->status !== UserStatus::Disabled;
     }
 
     private function viaCompetition(User $user, File $file): bool

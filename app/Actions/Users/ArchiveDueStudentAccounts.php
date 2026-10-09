@@ -17,9 +17,10 @@ use Illuminate\Support\Facades\Notification;
 
 /**
  * Daily automatic archive (D-13, D-29, SECURITY §3m-8), run by `php artisan sth:arsip-otomatis`.
- * Students whose `archive_at` ≤ today and whose account is not archived yet → status `archived` (cannot log
- * in), sessions + remember token revoked, audit `account.archived` (automatic, no causer). Idempotent:
- * already archived accounts are skipped, so running it twice changes nothing. Achievements stay in the ranking
+ * Students whose `archive_at` ≤ today and whose account is active or pending activation → status `archived`
+ * (cannot log in), sessions + remember token revoked, audit `account.archived` (automatic, no causer). Idempotent:
+ * already archived accounts are skipped, so running it twice changes nothing. A disabled account is skipped too
+ * (QA9): the public pages hide a disabled student, an alumnus is named there. Achievements stay in the ranking
  * and on the public pages. Admins get one summary notice when something was archived.
  *
  * Same steps as App\Actions\Accounts\ArchiveAccount (W1-C), which needs a human actor with `user.archive`;
@@ -49,7 +50,8 @@ final class ArchiveDueStudentAccounts
                         /** @var User|null $locked */
                         $locked = User::withTrashed()->whereKey($student->user_id)->lockForUpdate()->first();
 
-                        if ($locked === null || $locked->status === UserStatus::Archived) {
+                        // Only accounts that can log in (QA9): a disabled one stays disabled and hidden.
+                        if ($locked === null || ! $locked->canLogIn()) {
                             return null;
                         }
 

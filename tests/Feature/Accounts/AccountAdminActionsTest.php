@@ -136,10 +136,11 @@ it('never marks an imported account: the school password is not a temporary one'
         ->and(CompleteActivation::mayKeepPassword($this->admin))->toBeFalse();
 });
 
-it('keeps an archived account archived when it is reset', function (): void {
+it('keeps an archived account archived: it is not reset at all', function (): void {
     $user = H::activeStudent(['status' => UserStatus::Archived])->user;
 
-    app(ResetStudentAccount::class)->handle($this->admin, $user, 'Koreksi data.');
+    // QA9: an account that cannot log in is refused (AccountsQa9Test), it used to get a useless temporary password.
+    expect(fn () => app(ResetStudentAccount::class)->handle($this->admin, $user, 'Koreksi data.'))->toThrow(ValidationException::class);
 
     expect($user->fresh()->status)->toBe(UserStatus::Archived);
 });

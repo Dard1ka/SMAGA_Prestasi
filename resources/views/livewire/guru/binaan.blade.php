@@ -4,7 +4,8 @@
         <x-sth.stat-tile icon="users" tone="blue" label="Siswa binaan" :value="(string) $counts['siswa']" note="lomba dan talenta" />
         <x-sth.stat-tile icon="trophy" tone="blue" label="Lomba berjalan" :value="(string) $counts['aktif']" note="belum selesai" />
         <x-sth.stat-tile icon="clock" tone="orange" label="Menunggu laporan" :value="(string) $counts['laporan']" :note="$counts['verifikasi'].' menunggu verifikasi'" />
-        <x-sth.stat-tile icon="award" tone="green" label="Pembinaan talenta" :value="(string) $counts['talenta']" note="siswa yang dibina" />
+        {{-- QA9: students, once each, with an open choice (not "Tidak lolos"); the tab below counts its rows. --}}
+        <x-sth.stat-tile icon="award" tone="green" label="Pembinaan talenta" :value="(string) $counts['dibina']" note="siswa yang dibina" />
     </section>
 
     <div class="flex flex-wrap items-end justify-between gap-3">
@@ -34,7 +35,7 @@
                 </x-slot:actions>
             </x-sth.empty-state>
         @elseif ($isTalent)
-            <x-sth.table caption="Pembinaan talenta, {{ $total }} siswa" fixed table-class="min-w-[560px]">
+            <x-sth.table caption="Pembinaan talenta, {{ $talentStudents }} siswa" fixed table-class="min-w-[560px]">
                 <x-slot:head>
                     <th scope="col">Siswa</th>
                     <th scope="col" class="w-44">Talenta</th>

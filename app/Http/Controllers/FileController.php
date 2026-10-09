@@ -6,6 +6,7 @@ namespace App\Http\Controllers;
 
 use App\Domain\Files\CoverThumbnail;
 use App\Enums\FilePurpose;
+use App\Livewire\Publik\Data\PublicSettings;
 use App\Models\File;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -20,7 +21,8 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  *
  * - show():   GET /berkas/{file} (`files.show`), logged in + activated (+ staff 2FA), FilePolicy::view.
  * - publik(): GET /berkas/publik/{file} (`files.public`), guests too, FilePolicy::viewPublic only
- *             (verified certificates with publish consent while Admin enables public certificates).
+ *             (verified certificates with publish consent while Admin enables public certificates), never
+ *             indexed (`X-Robots-Tag: noindex, nofollow`, QA9).
  * - cover():  GET /berkas/sampul/{file} (`files.cover`), logged in + activated (+ staff 2FA), only a File with
  *             purpose `cover` and FilePolicy::view (the lomba it belongs to: published, or an usulan for its
  *             submitter and the verifiers). Sends the small JPEG of the cover (CoverThumbnail, at most 640 px),
@@ -117,7 +119,12 @@ final class FileController extends Controller
     {
         abort_unless(Gate::inspect('viewPublic', $file)->allowed(), 404);
 
-        return $this->stream($request, $file, 'file.public_downloaded', framablePdf: false);
+        $response = $this->stream($request, $file, 'file.public_downloaded', framablePdf: false);
+
+        // A certificate carries a student's name: never indexed, like every per-student public answer (D-38, QA9).
+        $response->headers->set('X-Robots-Tag', PublicSettings::robots(studentPage: true));
+
+        return $response;
     }
 
     public function cover(Request $request, File $file): Response

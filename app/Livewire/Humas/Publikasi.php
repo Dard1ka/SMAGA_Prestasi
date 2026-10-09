@@ -115,7 +115,11 @@ class Publikasi extends Component
 
     public function schedule(SchedulePublication $action): void
     {
-        $publication = $this->selected();
+        $publication = $this->selectedOrGone();
+
+        if ($publication === null || $this->publishedElsewhere($publication)) {
+            return;
+        }
 
         // Date, time, caption and channels are checked together, so nothing waits for a second try (QA5 #65).
         $errors = Validator::make(['date' => $this->date, 'time' => $this->time], [
@@ -159,7 +163,11 @@ class Publikasi extends Component
 
     public function publish(PublishPublication $action): void
     {
-        $publication = $this->selected();
+        $publication = $this->selectedOrGone();
+
+        if ($publication === null || $this->publishedElsewhere($publication)) {
+            return;
+        }
 
         try {
             $action->handle($this->actor(), $publication, $this->caption, $this->channels);
@@ -176,7 +184,12 @@ class Publikasi extends Component
 
     public function recordAppreciation(RecordAppreciation $action): void
     {
-        $publication = $this->selected();
+        $publication = $this->selectedOrGone();
+
+        if ($publication === null) {
+            return;
+        }
+
         $publication->loadMissing('achievement');
 
         $event = $this->eventId !== ''
@@ -394,11 +407,44 @@ class Publikasi extends Component
             ->findOrFail($id);
     }
 
-    private function selected(): Publication
+    /**
+     * The selected publication, or null when it left the queue since the panel was drawn (QA9): Admin withdrew the
+     * student's publish consent (the row is no longer visible), and find() answered a full-screen 404. `selectedId` is
+     * #[Locked] and set only from the visible queue, so this says nothing about a row Humas never saw; the panel closes.
+     */
+    private function selectedOrGone(): ?Publication
     {
+        $this->authorize('viewAny', Publication::class);
         abort_if($this->selectedId === null, 404);
 
-        return $this->find($this->selectedId);
+        $publication = HumasQueries::visiblePublications()
+            ->with(HumasQueries::cardRelations())
+            ->find($this->selectedId);
+
+        if ($publication === null) {
+            $this->selectedId = null;
+            $this->resetErrorBag();
+            $this->dispatch('sth-toast', message: 'Prestasi ini sudah tidak ada di antrean publikasi. Antrean sudah diperbarui.', tone: 'warning');
+        }
+
+        return $publication;
+    }
+
+    /**
+     * The auto-publish job (every 5 minutes) or a second tab published the selected card meanwhile (QA9):
+     * PublicationPolicy refused it with a full-screen 403 before the Action could say "sudah dipublikasikan". Say so;
+     * the panel shows the published state.
+     */
+    private function publishedElsewhere(Publication $publication): bool
+    {
+        if ($publication->status !== PublicationStatus::Dipublikasikan) {
+            return false;
+        }
+
+        $this->choose($publication);
+        $this->dispatch('sth-toast', message: 'Publikasi ini sudah dipublikasikan. Antrean sudah diperbarui.', tone: 'warning');
+
+        return true;
     }
 
     /** Field errors next to the field, anything else as an error toast. */

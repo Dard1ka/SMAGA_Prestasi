@@ -75,6 +75,23 @@ it('keeps a mail in the catcher as soon as one of its recipients is not listed',
         ->and(allowlistGot('uji-tangkap'))->toHaveCount(2);
 });
 
+it('keeps a mail in the catcher when only its Bcc recipient is not listed (QA9)', function (): void {
+    // Guard test: the transport already judges every envelope recipient (To, Cc, Bcc); the helper above has no Bcc.
+    allowlistMailers('tim.uji@example.test');
+
+    Mail::mailer('allowlist')->raw('Isi uji.', fn (Message $message) => $message
+        ->to('tim.uji@example.test')
+        ->bcc('kesiswaan@sth.test')
+        ->subject('Uji'));
+
+    $caught = Mail::mailer('uji-tangkap')->getSymfonyTransport()->messages();
+
+    expect(allowlistGot('uji-kirim'))->toHaveCount(0)
+        ->and($caught)->toHaveCount(1)
+        ->and(array_map(fn ($address): string => $address->getAddress(), $caught->first()->getEnvelope()->getRecipients()))
+        ->toBe(['tim.uji@example.test', 'kesiswaan@sth.test']);
+});
+
 it('keeps everything in the catcher while the list is empty', function (): void {
     allowlistMailers('');
 

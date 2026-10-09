@@ -84,7 +84,9 @@ class TalentApplication extends Model
         return LogOptions::defaults()
             ->useLogName('talent')
             ->logAll()
-            ->logExcept(['created_at', 'updated_at'])
+            // `review_message` is the student's own text: the sealed log keeps only that there was one
+            // (RequestTalentReview, D-63), never the text, neither when it is sent nor when a restore clears it (QA9).
+            ->logExcept(['created_at', 'updated_at', 'review_message'])
             ->logOnlyDirty()
             ->dontLogEmptyChanges();
     }

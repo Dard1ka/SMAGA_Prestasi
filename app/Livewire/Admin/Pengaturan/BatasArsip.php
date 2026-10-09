@@ -8,7 +8,7 @@ use App\Actions\Settings\UpdateLimits;
 use App\Domain\Archive\GraduationCalculator;
 use App\Domain\Deadlines\ReportDeadline;
 use App\Enums\SettingKey;
-use App\Enums\UserStatus;
+use App\Livewire\Admin\ArsipOtomatis;
 use App\Livewire\Admin\Concerns\RequiresRecentPassword;
 use App\Models\Setting;
 use App\Models\Student;
@@ -66,21 +66,25 @@ final class BatasArsip extends Component
     public function render(): View
     {
         $today = CarbonImmutable::today();
+        $recentlyArchived = Student::query()
+            ->alumni()
+            ->with(['user:id,name,status', 'classroom:id,name'])
+            ->withCount('achievements')
+            ->orderByDesc('archive_at')
+            ->limit(8)
+            ->get(['id', 'user_id', 'classroom_id', 'grade12_start_date', 'archive_at']);
 
         return view('livewire.admin.pengaturan.batas-arsip', [
             'deadlineExample' => $this->deadlineExample(),
             'archiveExample' => $this->archiveExample(),
+            // What the nightly job archives: active and pending accounts only (QA9).
             'dueSoon' => Student::query()
+                ->active()
                 ->whereBetween('archive_at', [$today->toDateString(), $today->addDays(30)->toDateString()])
-                ->whereHas('user', fn ($q) => $q->where('status', '!=', UserStatus::Archived))
                 ->count(),
-            'recentlyArchived' => Student::query()
-                ->alumni()
-                ->with(['user:id,name,status', 'classroom:id,name'])
-                ->withCount('achievements')
-                ->orderByDesc('archive_at')
-                ->limit(8)
-                ->get(['id', 'user_id', 'classroom_id', 'grade12_start_date', 'archive_at']),
+            'recentlyArchived' => $recentlyArchived,
+            // QA9: the day of the archive (a manual one keeps a future archive_at).
+            'archivedOn' => ArsipOtomatis::archivedOn($recentlyArchived),
         ]);
     }
 

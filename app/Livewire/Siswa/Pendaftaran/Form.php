@@ -240,7 +240,15 @@ class Form extends Component
     public function kirim(CreateRegistration $create): void
     {
         $competition = $this->competition();
-        abort_unless(Gate::inspect('view', $competition)->allowed(), 404);
+
+        // `competitionId` is #[Locked] and was visible in mount(): a lomba that is no longer visible was closed by
+        // Kesiswaan meanwhile (only a published lomba is visible to a student who did not submit it). That used to
+        // answer a full-screen 404 (QA9); say it like a registration deadline that passed.
+        if (Gate::denies('view', $competition)) {
+            $this->addError('competition', 'Pendaftaran lomba ini sudah ditutup.');
+
+            return;
+        }
 
         $this->validate(
             ['setuju' => ['accepted'], 'mentorId' => ['required', 'integer'], 'type' => ['required', 'in:individu,tim']],

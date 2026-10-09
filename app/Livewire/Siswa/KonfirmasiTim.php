@@ -17,22 +17,35 @@ use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\Title;
 use Livewire\Component;
+use Spatie\Activitylog\Models\Activity;
 
 /**
  * Siswa · Konfirmasi ikut tim (link from the TeamInvitation notification and Beranda "Perlu tindakan").
  * Only members of the registration may open it (RegistrationPolicy::view, else 404); only the invitee
  * may answer (RegistrationPolicy::respond → ConfirmMembership / DeclineMembership, SECURITY §3m-3).
+ * QA9: once the ketua withdrew the invitation (WithdrawInvitation deletes the member row) the page says so, without
+ * any team data, instead of a 404 on "Ikut tim", "Tolak", the next render or the old link.
  */
 #[Layout('layouts::app')]
 #[Title('Undangan tim')]
 class KonfirmasiTim extends Component
 {
+    public const WITHDRAWN = 'Undangan ini sudah dibatalkan ketua tim.';
+
     #[Locked]
     public string $registrationId = '';
 
+    /** The ketua withdrew this student's invitation (QA9): nothing of the team is shown any more. */
+    #[Locked]
+    public bool $withdrawn = false;
+
     public function mount(Registration $registration): void
     {
-        abort_unless($this->isMember($registration), 404);
+        if (! $this->isMember($registration)) {
+            // The link of the invitation still reaches the invitee whose invitation was withdrawn; anyone else gets 404.
+            abort_unless($this->wasWithdrawn($registration), 404);
+            $this->withdrawn = true;
+        }
 
         $this->registrationId = $registration->getKey();
     }
@@ -40,6 +53,13 @@ class KonfirmasiTim extends Component
     public function ikut(ConfirmMembership $confirm): void
     {
         $registration = $this->registration();
+
+        if ($registration === null) {
+            $this->dispatch('sth-toast', message: self::WITHDRAWN, tone: 'warning');
+
+            return;
+        }
+
         if (Gate::denies('respond', $registration)) {
             $this->addError('registration', 'Undangan ini sudah tidak berlaku.');
 
@@ -55,6 +75,13 @@ class KonfirmasiTim extends Component
     public function tolak(DeclineMembership $decline): void
     {
         $registration = $this->registration();
+
+        if ($registration === null) {
+            $this->dispatch('sth-toast', message: self::WITHDRAWN, tone: 'warning');
+
+            return;
+        }
+
         if (Gate::denies('respond', $registration)) {
             $this->addError('registration', 'Undangan ini sudah tidak berlaku.');
 
@@ -70,12 +97,18 @@ class KonfirmasiTim extends Component
     public function render(): View
     {
         $registration = $this->registration();
+
+        if ($registration === null) {
+            return view('livewire.siswa.konfirmasi-tim', ['withdrawn' => true]);
+        }
+
         $me = auth()->user()->loadMissing('student')->getRelation('student');
         $mine = $registration->members->firstWhere('student_id', $me?->getKey());
         $competition = $registration->competition;
         $mentor = $registration->mentor;
 
         return view('livewire.siswa.konfirmasi-tim', [
+            'withdrawn' => false,
             'registration' => $registration,
             'competition' => $competition,
             'canRespond' => Gate::allows('respond', $registration),
@@ -106,15 +139,39 @@ class KonfirmasiTim extends Component
         ]);
     }
 
-    private function registration(): Registration
+    /** The registration, or null once the invitation of this student was withdrawn (QA9). */
+    private function registration(): ?Registration
     {
+        if ($this->withdrawn) {
+            return null;
+        }
+
         $registration = Registration::query()
             ->with(['competition', 'mentor.staffProfile', 'members.student.user:id,name', 'members.student.classroom:id,name'])
             ->findOrFail($this->registrationId);
 
-        abort_unless($this->isMember($registration), 404);
+        if ($this->isMember($registration)) {
+            return $registration;
+        }
 
-        return $registration;
+        // `registrationId` is #[Locked] and set only for a member (or a withdrawn invitee) in mount(); only
+        // WithdrawInvitation deletes a member row, so the membership that is gone now was a withdrawn invitation.
+        $this->withdrawn = true;
+
+        return null;
+    }
+
+    /** WithdrawInvitation audited the withdrawal of this student's invitation to this registration. */
+    private function wasWithdrawn(Registration $registration): bool
+    {
+        $student = auth()->user()?->loadMissing('student')->getRelation('student');
+
+        return $student !== null && Activity::query()
+            ->where('event', 'registration.invitation_withdrawn')
+            ->where('subject_type', $registration->getMorphClass())
+            ->where('subject_id', $registration->getKey())
+            ->where('properties->student_id', $student->getKey())
+            ->exists();
     }
 
     /** Students only reach this page for registrations they are part of (staff use their own screens). */

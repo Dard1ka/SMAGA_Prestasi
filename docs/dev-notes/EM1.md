@@ -23,6 +23,11 @@ cannot be used yet, and prepare the ground for work on the notification mails. D
   `guardUnsafeConfiguration()` has two new refusals: `MAIL_MAILER=allowlist` outside `local` / `testing`, and, in
   `APP_ENV=local`, a default mailer that would deliver every mail (smtp with a login or `MAIL_URL`, ses, postmark,
   resend, sendmail, failover). Allowed in local: `allowlist`, smtp without a login (Mailpit), `log`, `array`.
+- `app/Mail/LocalMailGuard.php` (QA9, 2026-10-09) — `deliversEverything(array $settings)`, the one predicate of the
+  boot guard, and a `MessageSending` listener (registered in `AppServiceProvider`) that, in `APP_ENV=local` only,
+  cancels a mail sent BY NAME through a mailer that would deliver every mail (`Mail::mailer('smtp')`, or a mailable
+  queued while `MAIL_MAILER=smtp` that remembers "smtp" and is retried after the switch to the allowlist) and logs
+  `mail.local_mailer_blocked` with the mailer name only. Mail through `allowlist`, Mailpit, `log` and `array` passes.
 - `app/Console/Commands/MailTest.php` — with the allowlist mailer it prints whether the address really goes out or
   only reaches Mailpit, the entries that were ignored, and the server of the mailer it took.
 - `.env.example` — commented block with the Brevo lines (no values).
@@ -63,7 +68,10 @@ only covers `.env`, `.env.backup`, `.env.production`).
 
 ## Assumptions / deviations
 - A mail with one unlisted recipient stays in Mailpit as a whole. `mailpit` host and port are fixed in config.
-- The local guard looks at the default mailer only; no code names another mailer today.
+- ~~The local guard looks at the default mailer only; no code names another mailer today.~~ QA9: a queued mailable
+  remembers the mailer it was queued with, so a job queued before the switch could still reach the provider by name;
+  `LocalMailGuard` now cancels such a mail in local (the developer asks for a new code). A cancelled queued mail ends
+  its job as a success: only the log shows it.
 
 ## Requests for other owners
 - @I `tests/E2E/compose.e2e.yaml`: the E2E project reads the repo's `.env` (bind mount). The local guard already

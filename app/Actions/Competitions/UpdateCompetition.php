@@ -6,6 +6,7 @@ namespace App\Actions\Competitions;
 
 use App\Enums\CompetitionStatus;
 use App\Enums\FilePurpose;
+use App\Livewire\Publik\Data\PublicAchievements;
 use App\Models\Competition;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
@@ -115,6 +116,11 @@ final class UpdateCompetition
         });
 
         $competition->setRawAttributes($result->getAttributes(), true);
+
+        // The public pages show the name, bidang, penyelenggara and school year (final_on) of a lomba with verified
+        // achievements and count lomba per school year: drop their cached results, or a correction stayed hidden for as
+        // long as the cache lives (QA9). Cheap, so after every update.
+        PublicAchievements::flush();
 
         return $result;
     }

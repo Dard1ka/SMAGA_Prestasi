@@ -97,7 +97,8 @@ Route::middleware(['auth', 'active'])->group(function (): void {
         return view('auth.placeholder', [
             'title' => 'Beranda',
             'message' => $user->roles()->doesntExist()
-                ? 'Akunmu belum punya peran. Peran dari Admin berlaku setelah disetujui. Coba masuk lagi nanti.'
+                // Staff copy without "kamu" / "-mu" (D-119, QA9).
+                ? 'Akun ini belum punya peran. Peran dari Admin berlaku setelah disetujui. Coba masuk lagi nanti.'
                 : 'Halaman beranda sedang disiapkan.',
         ]);
     })->middleware(['activated', 'staff.2fa'])->name('home');

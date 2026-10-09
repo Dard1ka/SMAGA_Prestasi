@@ -24,6 +24,12 @@ use Illuminate\Validation\ValidationException;
  */
 final class RequestTalentReview
 {
+    /** The choice is not "tidak lolos" any more. Also the toast of a stale Profil talenta tab (QA9). */
+    public const REOPENED_MESSAGE = 'Pilihan ini sudah dibuka kembali.';
+
+    /** One open request per rejection. Also the toast of a stale Profil talenta tab (QA9). */
+    public const ALREADY_SENT_MESSAGE = 'Permintaanmu sudah terkirim. Tunggu kabar dari Kesiswaan.';
+
     /** @throws ValidationException */
     public function handle(User $actor, TalentApplication $application, ?string $message = null): TalentApplication
     {
@@ -36,11 +42,11 @@ final class RequestTalentReview
             $locked = TalentApplication::query()->whereKey($application->getKey())->lockForUpdate()->firstOrFail();
 
             if ($locked->status !== TalentStatus::TidakLolos) {
-                throw ValidationException::withMessages(['pilihan' => 'Pilihan ini sudah dibuka kembali.']);
+                throw ValidationException::withMessages(['pilihan' => self::REOPENED_MESSAGE]);
             }
 
             if ($locked->review_requested_at !== null) {
-                throw ValidationException::withMessages(['pilihan' => 'Permintaanmu sudah terkirim. Tunggu kabar dari Kesiswaan.']);
+                throw ValidationException::withMessages(['pilihan' => self::ALREADY_SENT_MESSAGE]);
             }
 
             $locked->forceFill(['review_requested_at' => now(), 'review_message' => $message])->save();

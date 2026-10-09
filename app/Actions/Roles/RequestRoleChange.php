@@ -84,7 +84,7 @@ final class RequestRoleChange
         $from = $locked->getRoleNames()->values()->all();
 
         if (in_array($role->value, $from, true)) {
-            throw ValidationException::withMessages(['role' => 'Akun ini sudah memegang peran itu.']);
+            throw ValidationException::withMessages(['role' => ChangeStaffRole::SAME_ROLE]);
         }
 
         if (RoleChangeRequest::query()->pending()->where('user_id', $locked->getKey())->lockForUpdate()->exists()) {

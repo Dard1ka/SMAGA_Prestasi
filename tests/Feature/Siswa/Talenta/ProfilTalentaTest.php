@@ -135,7 +135,8 @@ it('does not offer or allow cancelling a choice Kesiswaan already moved, nor som
         ->test(ProfilTalenta::class)
         ->assertDontSee('Batalkan OSN · Kimia')
         ->call('batalkan', $mapped->getKey())
-        ->assertForbidden();
+        // QA9: the own choice of a stale tab (or a forged call) gets a toast, not a 403 page; nothing is cancelled.
+        ->assertDispatched('sth-toast', message: 'Talenta ini sudah diproses Kesiswaan dan tidak bisa dibatalkan.', tone: 'warning');
 
     Livewire::actingAs($this->nadia->user)
         ->test(ProfilTalenta::class)
@@ -226,11 +227,13 @@ it('asks for a second look at a rejected choice, once per rejection', function (
         ->and($fresh->review_message)->toBe('Saya sakit saat asesmen, mohon dijadwalkan ulang.');
     Notification::assertSentTo($kesiswaan, TalentReviewRequested::class);
 
-    // A second request for the same rejection is refused (no button; a forged call is forbidden).
+    // A second request for the same rejection is refused (no button; a stale or forged call gets a toast, QA9).
     Livewire::actingAs($this->nadia->user)
         ->test(ProfilTalenta::class)
         ->call('mintaTinjau', $application->getKey())
-        ->assertForbidden();
+        ->assertDispatched('sth-toast', message: 'Permintaanmu sudah terkirim. Tunggu kabar dari Kesiswaan.', tone: 'warning')
+        ->assertNotDispatched('sth-modal-open')
+        ->assertSet('tinjauId', null);
 
     Notification::assertSentToTimes($kesiswaan, TalentReviewRequested::class, 1);
 });
@@ -251,7 +254,7 @@ it('sends a review request without a message', function (): void {
         ->and($application->fresh()->review_message)->toBeNull();
 });
 
-it('refuses a review request for someone else\'s choice (404) and for a choice that is not rejected (403)', function (): void {
+it('refuses a review request for someone else\'s choice (404) and for a choice that is not rejected (toast, QA9)', function (): void {
     Notification::fake();
     $mine = TalentApplication::factory()->status(TalentStatus::Seleksi)->create([
         'student_id' => $this->nadia->getKey(), 'talent_type_id' => $this->osn->getKey(), 'talent_branch_id' => $this->kimia->getKey(),
@@ -265,7 +268,9 @@ it('refuses a review request for someone else\'s choice (404) and for a choice t
     Livewire::actingAs($this->nadia->user)->test(ProfilTalenta::class)
         ->assertDontSee('Minta ditinjau ulang')
         ->call('mintaTinjau', $mine->getKey())
-        ->assertForbidden();
+        ->assertDispatched('sth-toast', message: 'Pilihan ini sudah dibuka kembali.', tone: 'warning')
+        ->assertNotDispatched('sth-modal-open')
+        ->assertSet('tinjauId', null);
 
     Livewire::actingAs($this->nadia->user)->test(ProfilTalenta::class)
         ->call('mintaTinjau', $theirs->getKey())

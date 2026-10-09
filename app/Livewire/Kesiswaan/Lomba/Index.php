@@ -121,6 +121,11 @@ class Index extends Component
     public function edit(string $id): void
     {
         $competition = $this->find($id);
+
+        if ($this->changedElsewhere($competition, CompetitionStatus::MenungguVerifikasi, CompetitionStatus::Dipublikasikan)) {
+            return;
+        }
+
         $this->authorize('update', $competition);
         $this->dispatch('lomba-form-open', id: $competition->getKey(), mode: $competition->status === CompetitionStatus::MenungguVerifikasi ? 'verify' : 'edit');
     }
@@ -132,6 +137,11 @@ class Index extends Component
     public function publish(string $id, VerifyCompetition $verify): void
     {
         $competition = $this->find($id);
+
+        if ($this->changedElsewhere($competition, CompetitionStatus::MenungguVerifikasi)) {
+            return;
+        }
+
         $this->authorize('verify', $competition);
 
         if (CompetitionDates::past($competition->registration_closes_at, $competition->final_on) !== []) {
@@ -149,10 +159,14 @@ class Index extends Component
         abort_if($this->pastId === null, 404);
 
         $competition = $this->find($this->pastId);
-        $this->authorize('verify', $competition);
-
         $this->pastId = null;
         $this->dispatch('sth-modal-close', id: self::PAST_DIALOG);
+
+        if ($this->changedElsewhere($competition, CompetitionStatus::MenungguVerifikasi)) {
+            return;
+        }
+
+        $this->authorize('verify', $competition);
         $this->runPublish($competition, true, $verify);
     }
 
@@ -187,6 +201,11 @@ class Index extends Component
     public function startReject(string $id): void
     {
         $competition = $this->find($id);
+
+        if ($this->changedElsewhere($competition, CompetitionStatus::MenungguVerifikasi)) {
+            return;
+        }
+
         $this->authorize('verify', $competition);
 
         $this->rejectingId = $competition->getKey();
@@ -210,6 +229,12 @@ class Index extends Component
         }
 
         $competition = $this->find($this->rejectingId);
+
+        if ($this->changedElsewhere($competition, CompetitionStatus::MenungguVerifikasi)) {
+            $this->cancelReject();
+
+            return;
+        }
 
         try {
             $verify->handle($this->actor(), $competition, CompetitionStatus::Ditolak, $this->rejectNote);
@@ -235,6 +260,10 @@ class Index extends Component
     public function close(string $id, CloseCompetition $close): void
     {
         $competition = $this->find($id);
+
+        if ($this->changedElsewhere($competition, CompetitionStatus::Dipublikasikan)) {
+            return;
+        }
 
         try {
             $close->handle($this->actor(), $competition);
@@ -494,6 +523,32 @@ class Index extends Component
             $submitter->hasRole(RoleName::Guru->value) => ['blue', 'Upload guru'],
             default => ['blue', 'Upload staf'],
         };
+    }
+
+    /**
+     * Another Kesiswaan or Admin account published, rejected or closed this lomba since the card was drawn (QA9): the
+     * policy (verify / update / close) refuses every state but the expected one, which Livewire showed as a full-screen
+     * 403. Say what happened instead; the render after this call draws the card as it is now. The screen permission is
+     * checked first, and a lomba in an expected state still goes through its policy.
+     */
+    private function changedElsewhere(Competition $competition, CompetitionStatus ...$expected): bool
+    {
+        $this->authorize('manage', Competition::class);
+
+        if (in_array($competition->status, $expected, true)) {
+            return false;
+        }
+
+        $message = match (true) {
+            $expected === [CompetitionStatus::MenungguVerifikasi] => 'Lomba ini sudah diputuskan.',
+            $competition->status === CompetitionStatus::Ditolak => 'Lomba ini sudah ditolak.',
+            $competition->status === CompetitionStatus::Ditutup => 'Lomba ini sudah ditutup.',
+            default => 'Status lomba ini sudah berubah.',
+        };
+
+        $this->dispatch('sth-toast', message: $message.' Daftar sudah diperbarui.', tone: 'warning');
+
+        return true;
     }
 
     private function clampLimit(): void

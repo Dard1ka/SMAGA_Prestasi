@@ -9,6 +9,7 @@ use App\Domain\Accounts\PasswordPolicy;
 use App\Domain\Archive\GraduationCalculator;
 use App\Domain\Deadlines\ReportDeadline;
 use App\Enums\SettingKey;
+use App\Mail\LocalMailGuard;
 use App\Mail\Transport\AllowlistTransport;
 use App\Models\Setting;
 use App\Support\Audit\AuditChain;
@@ -16,6 +17,7 @@ use App\Support\Audit\SecurityEventSubscriber;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
+use Illuminate\Mail\Events\MessageSending;
 use Illuminate\Mail\MailManager;
 use Illuminate\Mail\Markdown;
 use Illuminate\Support\Facades\Event;
@@ -91,6 +93,10 @@ class AppServiceProvider extends ServiceProvider
 
         $this->configureRateLimiting();
 
+        // D-121, QA9: in APP_ENV=local a mail sent BY NAME through a mailer that would deliver every mail (the `smtp`
+        // mailer with the provider login in allowlist mode) is cancelled; guardUnsafeConfiguration() only sees the default.
+        Event::listen(MessageSending::class, LocalMailGuard::class);
+
         // B2 (backlog #16, #18): security log feeds + audit hash chain; throttled Livewire update endpoint.
         Event::subscribe(SecurityEventSubscriber::class);
         AuditChain::register();
@@ -117,8 +123,10 @@ class AppServiceProvider extends ServiceProvider
         }
 
         // The other way round (D-121): a local stack (and the E2E project, which reads the same .env) mails fictional
-        // addresses by itself, so there a real provider is only reachable through the allowlist mailer.
-        if ($this->app->environment('local') && $this->defaultMailerDeliversEverything()) {
+        // addresses by itself, so there a real provider is only reachable through the allowlist mailer. A mailer used
+        // by name is caught when it sends (LocalMailGuard::handle(), QA9), with the same rule.
+        if ($this->app->environment('local')
+            && LocalMailGuard::deliversEverything(LocalMailGuard::settingsOf((string) config('mail.default')))) {
             throw new RuntimeException('Di APP_ENV=local email nyata hanya boleh lewat MAIL_MAILER=allowlist (lihat .env.example).');
         }
 
@@ -140,23 +148,6 @@ class AppServiceProvider extends ServiceProvider
             && (! config('session.secure') || filled(config('session.domain')) || config('session.path') !== '/')) {
             throw new RuntimeException('Cookie __Host- wajib Secure, Path=/ dan tanpa Domain.');
         }
-    }
-
-    /**
-     * True when the default mailer would hand every mail to a real mail service. Safe ones: the allowlist, mailers
-     * that send nothing (log, array) and an SMTP server without a login, which is a mail catcher such as Mailpit.
-     * An unknown mailer name is left to Laravel, which names it when the first mail is sent.
-     */
-    private function defaultMailerDeliversEverything(): bool
-    {
-        $settings = (array) config('mail.mailers.'.config('mail.default'), []);
-        $transport = $settings['transport'] ?? null;
-
-        if ($settings === [] || in_array($transport, [AllowlistTransport::DRIVER, 'log', 'array'], true)) {
-            return false;
-        }
-
-        return $transport !== 'smtp' || filled($settings['username'] ?? null) || filled($settings['url'] ?? null);
     }
 
     /**

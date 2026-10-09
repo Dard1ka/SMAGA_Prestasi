@@ -96,9 +96,10 @@ final class Ringkasan extends Component
                 // "Staf aktif" means activated, as for the student tiles; accounts still to activate are named (QA5, #62).
                 'staff' => User::query()->staff()->where('status', UserStatus::Active)->count(),
                 'staffPending' => User::query()->staff()->where('status', UserStatus::PendingActivation)->count(),
+                // What the nightly job archives: active and pending accounts only (QA9).
                 'dueSoon' => Student::query()
+                    ->active()
                     ->whereBetween('archive_at', [$today->toDateString(), $today->addDays(30)->toDateString()])
-                    ->whereHas('user', fn ($q) => $q->where('status', '!=', UserStatus::Archived))
                     ->count(),
             ],
             'attention' => $attention,
@@ -108,8 +109,11 @@ final class Ringkasan extends Component
                 ['icon' => 'sliders', 'label' => 'Pengaturan', 'href' => route('admin.pengaturan')],
                 Route::has('kesiswaan.lomba.index') ? ['icon' => 'trophy', 'label' => 'Kelola lomba', 'href' => route('kesiswaan.lomba.index')] : null,
             ])),
+            // What a person did (QA9): the nightly archive writes account.archived without a causer and filled the list.
+            // Other rows without a causer stay (sth:create-admin on the server writes account.admin_created).
             'audit' => Activity::query()
                 ->whereIn('event', array_keys(self::EVENTS))
+                ->where(fn ($q) => $q->whereNotNull('causer_id')->orWhere('event', '!=', 'account.archived'))
                 ->with('causer')
                 ->latest('id')
                 ->limit(8)

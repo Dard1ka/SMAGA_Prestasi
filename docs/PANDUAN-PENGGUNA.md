@@ -463,4 +463,4 @@ atau tanggal → **Download CSV** (meminta kata sandi, tercatat).
 | Halaman "Ada gangguan" (kode 500) atau "Sedang dirawat" (kode 503) | Coba lagi beberapa menit kemudian. Kalau tetap muncul, hubungi Admin dan sebutkan kodenya. |
 | "Terlalu banyak percobaan" saat konfirmasi kata sandi | Tunggu 1 menit, lalu coba lagi dengan kata sandi yang benar. |
 | Salah data (nama, kelas, NIS) | Hubungi Kesiswaan atau Admin; siswa tidak bisa mengubahnya sendiri. Kelas diperbarui lewat import siswa tahunan. |
-| Staf baru: "Akunmu belum punya peran" | Peran Admin, Kesiswaan, atau Tata Usaha menunggu persetujuan Admin lain (atau 24 jam). Coba masuk lagi nanti. |
+| Staf baru: "Akun ini belum punya peran" | Peran Admin, Kesiswaan, atau Tata Usaha menunggu persetujuan Admin lain (atau 24 jam). Coba masuk lagi nanti. |

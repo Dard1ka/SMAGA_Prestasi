@@ -50,7 +50,7 @@
                     <td class="font-semibold">{{ $student->user?->name }}</td>
                     <td>{{ $student->classroom?->name ?? '–' }}</td>
                     <td class="num">{{ $student->grade12_start_date?->translatedFormat('M Y') ?? '–' }}</td>
-                    <td class="num">{{ $student->archive_at?->translatedFormat('j M Y') ?? '–' }}</td>
+                    <td class="num">{{ ($archivedOn[$student->id] ?? null)?->translatedFormat('j M Y') ?? '–' }}</td>
                     <td class="num text-right">{{ $student->achievements_count }}</td>
                     <td><x-sth.chip tone="gray" size="sm">Alumni · tidak bisa login</x-sth.chip></td>
                 </tr>

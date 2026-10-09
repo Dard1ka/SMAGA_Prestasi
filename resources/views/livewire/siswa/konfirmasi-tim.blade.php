@@ -1,4 +1,10 @@
 {{-- Siswa · Undangan tim (confirm/decline). Data + rules: App\Livewire\Siswa\KonfirmasiTim. --}}
+@if ($withdrawn)
+{{-- QA9: the ketua withdrew this invitation; nothing of the team is shown any more. --}}
+<div class="mx-auto flex w-full max-w-[760px] flex-col gap-[18px]">
+    <x-sth.alert tone="warning" title="Undangan dibatalkan">{{ \App\Livewire\Siswa\KonfirmasiTim::WITHDRAWN }} Kamu tidak perlu menjawabnya lagi.</x-sth.alert>
+</div>
+@else
 @php($bidangKey = $competition->bidang?->cssKey() ?? 'sains')
 <div class="mx-auto flex w-full max-w-[760px] flex-col gap-[18px]">
     {{-- Same head as Detail lomba: poster on the left, the invitation, the name and the key facts beside it. --}}
@@ -71,3 +77,4 @@
         <x-sth.alert tone="warning">Undangan ini sudah tidak berlaku.</x-sth.alert>
     @endif
 </div>
+@endif

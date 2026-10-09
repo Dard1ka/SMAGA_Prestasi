@@ -35,9 +35,15 @@
             <x-sth.card as="section" aria-labelledby="h-unggah" class="flex flex-col gap-3">
                 <h2 id="h-unggah" class="title-card m-0">2 · Upload file</h2>
                 <x-sth.select wire:model.live="schoolYear" label="Tahun ajaran data" :options="$yearOptions" hint="Dipakai untuk menghitung kelas XII dan tanggal arsip." />
-                <x-sth.file-drop wire:model="file" label="File data siswa" accept=".xlsx,.csv" icon="upload"
-                    :title="$preview ? $preview['fileName'] : 'Pilih file atau seret ke sini'" hint=".xlsx atau .csv · maks. 2 MB · pakai template dari langkah 1" />
-                <p wire:loading wire:target="file" class="m-0 text-xs text-muted">Membaca file…</p>
+                @if ($passwordAsked && ! $preview && ! $job)
+                    {{-- QA9: the password first, then the upload, so the file is chosen only once. --}}
+                    <p class="m-0 text-sm text-ink-2">Impor mengubah data akun siswa, jadi kata sandi diminta dulu. Sesudahnya file bisa di-upload.</p>
+                    <x-sth.button variant="soft" icon="shield" wire:click="askPassword">Konfirmasi kata sandi</x-sth.button>
+                @else
+                    <x-sth.file-drop wire:model="file" label="File data siswa" accept=".xlsx,.csv" icon="upload"
+                        :title="$preview ? $preview['fileName'] : 'Pilih file atau seret ke sini'" hint=".xlsx atau .csv · maks. 2 MB · pakai template dari langkah 1" />
+                    <p wire:loading wire:target="file" class="m-0 text-xs text-muted">Membaca file…</p>
+                @endif
                 @error('school_year')<x-sth.alert tone="error">{{ $message }}</x-sth.alert>@enderror
             </x-sth.card>
         </div>
@@ -159,6 +165,12 @@
                 </div>
 
                 @error('file')<x-sth.alert tone="error">{{ $message }}</x-sth.alert>@enderror
+
+                {{-- QA9: more than 15 minutes since the confirmation of step 2: the import asks again, and the password
+                     page does not keep the file. --}}
+                @if ($passwordAsked && $preview && ! $imported && ! $job)
+                    <p class="m-0 text-xs text-muted">Konfirmasi kata sandi sudah lebih dari 15 menit. Sebelum impor kata sandi diminta lagi, sesudahnya upload file ini lagi.</p>
+                @endif
 
                 <div class="flex flex-wrap gap-2">
                     @if ($imported || $job)

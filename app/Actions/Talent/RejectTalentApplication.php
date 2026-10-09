@@ -70,12 +70,14 @@ final class RejectTalentApplication
 
         $application->setRawAttributes($locked->getAttributes(), true);
 
-        $user = $locked->student()->with('user')->first()?->user;
-
-        if ($user !== null && $user->canLogIn()) {
-            $user->notify(TalentApplicationRejected::for($locked, $from, MoveTalentStage::talentLabel($locked), $studentNote));
-        }
+        MoveTalentStage::studentToTell($locked)?->notify(TalentApplicationRejected::for($locked, $from, MoveTalentStage::talentLabel($locked), $studentNote));
 
         return $locked;
+    }
+
+    /** Is the student told about the rejection? Not an alumnus or a disabled account (QA9: the screen asks). */
+    public static function notifiesStudent(TalentApplication $application): bool
+    {
+        return MoveTalentStage::notifiesStudent($application);
     }
 }

@@ -25,6 +25,7 @@ use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\Title;
 use Livewire\Component;
+use Spatie\Activitylog\Models\Activity;
 
 /**
  * Apresiasi (UI-MAP §4d; shared: humas.apresiasi.index and kesiswaan.apresiasi.index). Authorized by
@@ -113,6 +114,11 @@ class Apresiasi extends Component
     public function startAdding(string $eventId): void
     {
         $event = $this->findEvent($eventId);
+
+        if ($event === null) {
+            return;
+        }
+
         $this->authorize('update', $event);
 
         $this->addingEventId = (string) $event->getKey();
@@ -134,6 +140,11 @@ class Apresiasi extends Component
         }
 
         $event = $this->findEvent($this->addingEventId);
+
+        if ($event === null) {
+            return;
+        }
+
         $this->authorize('update', $event);
 
         $achievement = $this->achievementId !== ''
@@ -166,6 +177,11 @@ class Apresiasi extends Component
     public function confirmComplete(string $eventId): void
     {
         $event = $this->findEvent($eventId);
+
+        if ($event === null) {
+            return;
+        }
+
         $this->authorize('update', $event);
 
         $scheduled = $event->appreciations()->where('status', AppreciationStatus::Dijadwalkan)->count();
@@ -184,6 +200,11 @@ class Apresiasi extends Component
     public function confirmDelete(string $eventId): void
     {
         $event = $this->findEvent($eventId);
+
+        if ($event === null) {
+            return;
+        }
+
         $this->authorize('update', $event);
 
         if (! $this->actor()->can('delete', $event)) {
@@ -227,6 +248,11 @@ class Apresiasi extends Component
         abort_if($this->confirmEventId === null, 404);
 
         $event = $this->findEvent($this->confirmEventId);
+
+        if ($event === null) {
+            return;
+        }
+
         $this->authorize('update', $event);
 
         try {
@@ -500,9 +526,44 @@ class Apresiasi extends Component
             ->all();
     }
 
-    private function findEvent(string $id): AppreciationEvent
+    /**
+     * The event, or null when a colleague deleted it since the list was drawn (QA9): "Hapus acara" is a hard delete, and
+     * findOrFail() answered a full-screen 404. Known as deleted = one of this screen's locked ids (the add form or the
+     * open dialog) or an audited `appreciation.event_deleted` of that id; the form or dialog closes and the toast says
+     * so. Any other id is still a 404. Events are not per user: every account with `appreciation.manage` sees them all.
+     */
+    private function findEvent(string $id): ?AppreciationEvent
     {
-        return AppreciationEvent::query()->findOrFail($id);
+        $this->authorize('viewAny', AppreciationEvent::class);
+
+        $event = AppreciationEvent::query()->find($id);
+
+        if ($event !== null) {
+            return $event;
+        }
+
+        abort_unless(in_array($id, [$this->addingEventId, $this->confirmEventId], true) || self::wasDeleted($id), 404);
+
+        if ($this->addingEventId === $id) {
+            $this->cancelAdding();
+        }
+
+        if ($this->confirmEventId === $id) {
+            $this->closeConfirm();
+        }
+
+        $this->dispatch('sth-toast', message: 'Acara ini sudah dihapus. Daftar sudah diperbarui.', tone: 'warning');
+
+        return null;
+    }
+
+    private static function wasDeleted(string $id): bool
+    {
+        return Activity::query()
+            ->where('event', 'appreciation.event_deleted')
+            ->where('subject_type', (new AppreciationEvent)->getMorphClass())
+            ->where('subject_id', $id)
+            ->exists();
     }
 
     /** @param array<string, string> $fields action error key => component property */

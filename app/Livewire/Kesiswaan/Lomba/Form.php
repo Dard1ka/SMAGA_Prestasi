@@ -96,6 +96,11 @@ class Form extends Component
             $this->form = self::blank();
         } else {
             $competition = $this->competition($id);
+
+            if ($this->changedElsewhere($competition, false)) {
+                return;
+            }
+
             $this->authorize('update', $competition);
 
             $this->competitionId = $competition->getKey();
@@ -119,7 +124,13 @@ class Form extends Component
                 $create->handle($this->actor(), $this->form, $this->juknis, $this->cover);
                 $message = 'Lomba tersimpan dan masuk antrean verifikasi.';
             } else {
-                $update->handle($this->actor(), $this->competition($this->competitionId), $this->form, $this->juknis, $this->cover, $this->removeCover);
+                $competition = $this->competition($this->competitionId);
+
+                if ($this->changedElsewhere($competition, false)) {
+                    return;
+                }
+
+                $update->handle($this->actor(), $competition, $this->form, $this->juknis, $this->cover, $this->removeCover);
                 $message = 'Perubahan lomba tersimpan.';
             }
         } catch (ValidationException $e) {
@@ -141,6 +152,11 @@ class Form extends Component
 
         try {
             $competition = $this->competition($this->competitionId);
+
+            if ($this->changedElsewhere($competition, true)) {
+                return;
+            }
+
             $this->authorize('verify', $competition);
             $update->handle($this->actor(), $competition, $this->form, $this->juknis, $this->cover, $this->removeCover);
             // Without the tick VerifyCompetition refuses past dates under CompetitionDates::PAST_KEY; the
@@ -262,6 +278,41 @@ class Form extends Component
         $this->dispatch('sth-modal-close', id: self::DIALOG);
         $this->dispatch('lomba-saved');
         $this->dispatch('sth-toast', message: $message, tone: 'success');
+    }
+
+    /**
+     * Another Kesiswaan or Admin account published, rejected or closed this lomba while the drawer was open (QA9):
+     * UpdateCompetition (policy `update`) and publishing (policy `verify`) refused it with a full-screen 403. A lomba
+     * that can no longer be edited closes the drawer with the reason; one that was published while this drawer was
+     * about to publish it keeps what was typed and turns into "Ubah lomba", so "Simpan" still saves the change. The
+     * screen permission is checked first; the policies still decide every other case.
+     */
+    private function changedElsewhere(Competition $competition, bool $publishing): bool
+    {
+        $this->authorize('manage', Competition::class);
+
+        $editable = in_array($competition->status, [CompetitionStatus::MenungguVerifikasi, CompetitionStatus::Dipublikasikan], true);
+
+        if ($editable && (! $publishing || $competition->status === CompetitionStatus::MenungguVerifikasi)) {
+            return false;
+        }
+
+        if ($editable) {
+            $this->formMode = 'edit';
+            $this->reset('confirmPast');
+            $this->dispatch('sth-toast', message: 'Lomba ini sudah dipublikasikan. Perubahan belum tersimpan, periksa lalu simpan.', tone: 'warning');
+        } else {
+            $this->reset(['juknis', 'cover', 'removeCover', 'confirmPast']);
+            $this->dispatch('sth-modal-close', id: self::DIALOG);
+            $this->dispatch('sth-toast', message: ($competition->status === CompetitionStatus::Ditolak
+                ? 'Lomba ini sudah ditolak.'
+                : 'Lomba ini sudah ditutup.').' Daftar sudah diperbarui.', tone: 'warning');
+        }
+
+        // The list behind the drawer draws the card as it is now.
+        $this->dispatch('lomba-saved');
+
+        return true;
     }
 
     private function competition(string $id): Competition

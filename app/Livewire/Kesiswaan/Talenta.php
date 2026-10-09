@@ -66,6 +66,10 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
  * (`exportStatuses`, preselected from the open tab), `download()` turns them into the literal argument of
  * `export()`, so the automatic download after the password page (RequiresRecentPassword) carries the same
  * choice. The tab "Semua" lists every status, "Tidak lolos" included, each row with its chip.
+ *
+ * QA9 (2026-10-09): a move starts only from the stage the screen showed (`$shownStages`, so a stale second tab never
+ * moves a row twice); a choice the student cancelled while it is open gives a toast, not a 404 page; the recorded guru
+ * pembina whose account left does not block the panel; "Siswa diberi tahu" only when the Action told the student.
  */
 #[Title('Talenta siswa')]
 #[Layout('layouts::app', ['subtitle' => 'Penjaringan, pemetaan, dan seleksi peserta pembinaan.'])]
@@ -108,6 +112,12 @@ class Talenta extends Component
     public const EXPORT_NOTHING = 'Tidak ada pilihan talenta dengan status dan filter ini. Tidak ada yang di-download.';
 
     public const SAVED_WITH_DRAFT = 'Tersimpan. Catatan untuk siswa terkirim saat Lolos atau Tidak lolos ditekan.';
+
+    /** QA9: the student cancelled the choice (Profil talenta, "Batalkan") while it was open here. */
+    public const CANCELLED_MESSAGE = 'Siswa sudah membatalkan pilihan ini.';
+
+    /** QA9: a decision on a student who cannot log in (alumnus, disabled account) is not sent to anyone. */
+    public const NO_NOTICE = 'Akun siswa tidak aktif, jadi tidak ada notifikasi.';
 
     #[Url(as: 'tahap', except: 'semua')]
     public string $tahap = 'semua';
@@ -175,6 +185,17 @@ class Talenta extends Component
      */
     public array $exportStatuses = [];
 
+    /**
+     * The stage of every row as this screen last drew it (the listed rows and the panel row), id => TalentStatus
+     * value; render() writes it. QA9: a move goes ahead only from the stage the screen showed, so a second tab that
+     * still shows "Terdaftar" cannot push a row another tab already moved to Pemetaan on to Seleksi (and tell the
+     * student twice). Locked: the browser cannot claim another stage.
+     *
+     * @var array<string, string>
+     */
+    #[Locked]
+    public array $shownStages = [];
+
     public function mount(): void
     {
         $this->authorize('manage', TalentApplication::class);
@@ -231,7 +252,11 @@ class Talenta extends Component
     public function showPanel(string $id): void
     {
         $this->panelDone = null;
-        $this->openPanel($this->find($id));
+        $application = $this->find($id);
+
+        if ($application !== null) {
+            $this->openPanel($application);
+        }
     }
 
     /** "Lolos ke …" from the panel (saves pembina/date/note in the same step, sends the note for the student). */
@@ -239,6 +264,11 @@ class Talenta extends Component
     {
         $this->resetErrorBag();
         $application = $this->find((string) $this->panelId);
+
+        if ($application === null || $this->movedElsewhere($application)) {
+            return;
+        }
+
         $from = $application->status;
         $next = $from->next();
 
@@ -254,7 +284,7 @@ class Talenta extends Component
             return;
         }
 
-        $this->panelDone = 'Dipindahkan dari '.$from->label().' ke '.$next->label().'. '.$this->sentText();
+        $this->panelDone = 'Dipindahkan dari '.$from->label().' ke '.$next->label().'.'.$this->sentText(MoveTalentStage::notifiesStudent($application));
         $this->openPanel($application->refresh(), keepDone: true);
     }
 
@@ -262,6 +292,11 @@ class Talenta extends Component
     public function advanceRow(string $id, MoveTalentStage $move): void
     {
         $application = $this->find($id);
+
+        if ($application === null || $this->movedElsewhere($application)) {
+            return;
+        }
+
         $next = $application->status->next();
 
         if ($next === null) {
@@ -295,7 +330,17 @@ class Talenta extends Component
     {
         $this->resetErrorBag();
         $application = $this->find((string) $this->panelId);
+
+        if ($application === null) {
+            return;
+        }
+
         $this->authorize('move', $application);
+
+        // QA9: moved or marked tidak lolos by a colleague since the panel was drawn: no dialog, the typed note stays.
+        if ($this->movedElsewhere($application)) {
+            return;
+        }
 
         if ($application->status->isFinal()) {
             $this->dispatch('sth-toast', message: 'Tahap ini sudah final.', tone: 'error');
@@ -357,6 +402,18 @@ class Talenta extends Component
     {
         $this->resetErrorBag();
         $application = $this->find((string) $this->panelId);
+
+        if ($application === null) {
+            return;
+        }
+
+        // QA9: the row left the stage the dialog was opened for: nothing is rejected, the typed note stays.
+        if ($this->movedElsewhere($application)) {
+            $this->closeRejectDialog();
+
+            return;
+        }
+
         $from = $application->status;
 
         try {
@@ -370,7 +427,7 @@ class Talenta extends Component
         }
 
         $this->closeRejectDialog();
-        $this->panelDone = 'Tidak lolos dari tahap '.$from->label().'. '.$this->sentText();
+        $this->panelDone = 'Tidak lolos dari tahap '.$from->label().'.'.$this->sentText(RejectTalentApplication::notifiesStudent($application));
         $this->openPanel($application->refresh(), keepDone: true);
     }
 
@@ -378,6 +435,11 @@ class Talenta extends Component
     public function askRestore(string $id): void
     {
         $application = $this->find($id);
+
+        if ($application === null) {
+            return;
+        }
+
         $this->authorize('restore', $application);
 
         if (! $application->status->isRestorable()) {
@@ -401,6 +463,11 @@ class Talenta extends Component
     {
         $this->resetErrorBag(['restoreNote', 'restoreTo', 'restoreMentor']);
         $application = $this->find((string) $this->restoreId);
+
+        if ($application === null) {
+            return;
+        }
+
         $this->authorize('restore', $application);
         $to = TalentStatus::tryFrom($this->restoreTo);
 
@@ -440,7 +507,9 @@ class Talenta extends Component
         }
 
         $this->closeRestoreDialog();
-        $this->dispatch('sth-toast', message: 'Dipulihkan ke tahap '.$restored->status->label().'. Siswa diberi tahu.', tone: 'success');
+        // QA9: the notice is claimed only when the student was told (not an alumnus or a disabled account).
+        $this->dispatch('sth-toast', message: 'Dipulihkan ke tahap '.$restored->status->label().'.'
+            .(RestoreTalentApplication::notifiesStudent($restored) ? ' Siswa diberi tahu.' : ''), tone: 'success');
 
         if ($this->panelId === $restored->getKey()) {
             $this->openPanel($restored);
@@ -455,6 +524,11 @@ class Talenta extends Component
     {
         $this->resetErrorBag();
         $application = $this->find((string) $this->panelId);
+
+        if ($application === null) {
+            return;
+        }
+
         $details = $this->panelDetails();
 
         // The field is only drawn for a row that still gets a decision (not pembinaan, not tidak lolos).
@@ -477,9 +551,18 @@ class Talenta extends Component
     {
         $moved = 0;
         $skipped = 0;
+        $movedBefore = 0;
+        $rejectedBefore = 0;
         $notes = 0;
 
         foreach ($this->checkedApplications() as $application) {
+            // QA9: a row another tab moved or rejected since this one was drawn stays where it is.
+            if (! $this->showsStage($application)) {
+                $application->status === TalentStatus::TidakLolos ? $rejectedBefore++ : $movedBefore++;
+
+                continue;
+            }
+
             $next = $application->status->next();
 
             if ($next === null) {
@@ -497,7 +580,7 @@ class Talenta extends Component
             }
         }
 
-        $this->afterBulk($moved.' pilihan talenta dipindahkan ke tahap berikutnya.'.self::draftsSentText($notes), $skipped);
+        $this->afterBulk($moved.' pilihan talenta dipindahkan ke tahap berikutnya.'.self::draftsSentText($notes), $skipped, $movedBefore, $rejectedBefore);
     }
 
     /** Header checkbox: select every visible row, or clear when all are selected. */
@@ -536,11 +619,22 @@ class Talenta extends Component
         $done = 0;
         $skipped = 0;
         $drafts = 0;
+        $told = 0;
+        $movedBefore = 0;
+        $rejectedBefore = 0;
 
         foreach ($this->checkedApplications() as $application) {
+            // QA9: a row a colleague moved or rejected since the dialog was opened is not rejected (again).
+            if (! $this->showsStage($application)) {
+                $application->status === TalentStatus::TidakLolos ? $rejectedBefore++ : $movedBefore++;
+
+                continue;
+            }
+
             try {
                 $rejected = $reject->handle($this->actor(), $application, $note);
                 $drafts += $note === null && $rejected->student_note !== null ? 1 : 0;
+                $told += RejectTalentApplication::notifiesStudent($rejected) ? 1 : 0;
                 $done++;
             } catch (ValidationException) {
                 $skipped++;
@@ -548,7 +642,7 @@ class Talenta extends Component
         }
 
         $this->closeRejectDialog();
-        $this->afterBulk($done.' pilihan talenta ditandai tidak lolos. Siswa diberi tahu.'.self::draftsSentText($drafts), $skipped);
+        $this->afterBulk($done.' pilihan talenta ditandai tidak lolos.'.self::toldText($told, $done).self::draftsSentText($drafts), $skipped, $movedBefore, $rejectedBefore);
     }
 
     // "Download data (Excel)": Kesiswaan chooses the statuses first (M3-A) -------------------------------
@@ -661,6 +755,9 @@ class Talenta extends Component
         $this->baseQuery()->whereIn('status', $values)
             ->with(['student.user', 'student.classroom', 'talentType', 'talentBranch', 'mentor'])
             ->orderBy('created_at')
+            // QA9: a unique order for the pages of 500. Rows created in the same second shared their place, so a
+            // page could repeat one row and skip another.
+            ->orderBy('id')
             ->chunk(500, function (Collection $chunk) use ($writer): void {
                 foreach ($chunk as $a) {
                     $writer->addRow(self::exportRow([
@@ -842,6 +939,14 @@ class Talenta extends Component
         $rows = $rows->take($this->limit);
         $prestasi = $this->prestasi($rows->pluck('student_id')->unique()->values()->all());
         $counts = $this->counts();
+        $panel = $this->panelId !== null ? $this->panel($formatter) : null;
+
+        // What this render shows is what a move may start from (QA9, movedElsewhere()).
+        $this->shownStages = $rows->mapWithKeys(fn (TalentApplication $a): array => [(string) $a->getKey() => $a->status->value])->all();
+
+        if ($panel !== null) {
+            $this->shownStages[(string) $panel['id']] = $panel['status']->value;
+        }
 
         return view('livewire.kesiswaan.talenta', [
             'counts' => $counts,
@@ -853,7 +958,7 @@ class Talenta extends Component
             'branches' => $this->branchOptions(),
             'classes' => $this->classOptions(),
             'mentors' => User::query()->role(RoleName::Guru->value)->canLogIn()->orderBy('name')->pluck('name', 'id')->all(),
-            'panel' => $this->panelId !== null ? $this->panel($formatter) : null,
+            'panel' => $panel,
             'bulkNext' => $this->bulkNextLabel(),
             'restoring' => $this->restoring(),
             'rejecting' => $this->rejecting(),
@@ -1012,13 +1117,17 @@ class Talenta extends Component
             'next' => $a->status->next(),
             'final' => $a->status->isFinal(),
             'mentorName' => $a->mentor?->name,
+            // QA9: the recorded guru pembina whose account left is not in the select; say so under it.
+            'mentorHint' => $a->mentor_id !== null && ! RestoreTalentApplication::isActiveGuru($a->mentor_id)
+                ? 'Guru pembina yang tercatat'.($a->mentor?->name !== null ? ', '.$a->mentor->name.',' : '').' tidak aktif lagi. Pilih guru pembina lain.'
+                : null,
             'note' => $a->note,
             // The note the student reads now (sent with the latest decision).
             'studentNote' => $a->student_note,
             // A draft is saved and not sent yet (the field shows it; only staff ever see it).
             'hasDraft' => ! $a->status->isFinal() && $a->student_note_draft !== null,
             'restorable' => $a->status->isRestorable(),
-            'restoreHint' => $a->status->isRestorable() ? self::restoreHint(self::rejectedFrom($a)) : null,
+            'restoreHint' => $a->status->isRestorable() ? self::restoreHint(self::rejectedFrom($a), RejectTalentApplication::notifiesStudent($a)) : null,
             'review' => $a->hasOpenReviewRequest() ? [
                 'at' => self::whenLabel($a->review_requested_at),
                 'message' => $a->review_message,
@@ -1052,6 +1161,8 @@ class Talenta extends Component
             'from' => $from?->label(),
             'options' => self::restoreOptions($from),
             'requested' => $a->hasOpenReviewRequest(),
+            // QA9: the dialog promises the notice only when the student gets it.
+            'notice' => 'Pilih tahap tujuannya. '.(RestoreTalentApplication::notifiesStudent($a) ? 'Siswa diberi tahu.' : self::NO_NOTICE),
         ];
     }
 
@@ -1082,10 +1193,10 @@ class Talenta extends Component
         return $options;
     }
 
-    /** The sentence in the panel of a tidak-lolos row. */
-    private static function restoreHint(?TalentStatus $previous): string
+    /** The sentence in the panel of a tidak-lolos row; "diberi tahu" only for a student who gets notices (QA9). */
+    private static function restoreHint(?TalentStatus $previous, bool $told): string
     {
-        return 'Siswa sudah diberi tahu. '
+        return ($told ? 'Siswa sudah diberi tahu. ' : '')
             .($previous !== null ? 'Tahap sebelumnya: '.$previous->label().'. ' : '')
             .'Pulihkan untuk mengembalikannya ke tahap yang dipilih.';
     }
@@ -1162,10 +1273,34 @@ class Talenta extends Component
         }
     }
 
-    /** End of the "done" line under the panel buttons. */
-    private function sentText(): string
+    /** End of the "done" line under the panel buttons; nothing when the student is not told (QA9, D-109). */
+    private function sentText(bool $told): string
     {
-        return trim($this->panelStudentNote) === '' ? 'Siswa diberi tahu.' : 'Siswa diberi tahu, catatan terkirim.';
+        if (! $told) {
+            return '';
+        }
+
+        return trim($this->panelStudentNote) === '' ? ' Siswa diberi tahu.' : ' Siswa diberi tahu, catatan terkirim.';
+    }
+
+    /** " Siswa diberi tahu." after a bulk decision, or how many of the rows were told (QA9); nothing when none was. */
+    private static function toldText(int $told, int $done): string
+    {
+        return match (true) {
+            $told === 0 => '',
+            $told === $done => ' Siswa diberi tahu.',
+            default => ' Siswa diberi tahu untuk '.$told.' dari '.$done.' pilihan.',
+        };
+    }
+
+    /** The line under the title of the "Tidak lolos" dialog: who is told when it is confirmed (QA9). */
+    private static function rejectNotice(int $told, int $total): string
+    {
+        return match (true) {
+            $told === $total => 'Siswa langsung diberi tahu.',
+            $told === 0 => self::NO_NOTICE,
+            default => 'Siswa yang akunnya aktif langsung diberi tahu.',
+        };
     }
 
     private function closeRestoreDialog(): void
@@ -1212,6 +1347,7 @@ class Talenta extends Component
                 'from' => $a->status->label(),
                 // What the student will read: the text in the panel right now.
                 'note' => $note !== '' ? $note : null,
+                'notice' => self::rejectNotice(RejectTalentApplication::notifiesStudent($a) ? 1 : 0, 1),
             ];
         }
 
@@ -1225,6 +1361,7 @@ class Talenta extends Component
                 'count' => $open->count(),
                 'skipped' => $rows->count() - $open->count(),
                 'drafts' => $open->whereNotNull('student_note_draft')->count(),
+                'notice' => self::rejectNotice($open->filter(fn (TalentApplication $a): bool => RejectTalentApplication::notifiesStudent($a))->count(), $open->count()),
             ];
         }
 
@@ -1236,15 +1373,25 @@ class Talenta extends Component
     {
         $ids = array_values(array_filter($this->checked, 'is_string'));
 
-        return $ids === [] ? collect() : TalentApplication::query()->whereKey($ids)->get();
+        // student.user loaded at once: the dialog asks per row whether the student is told (QA9 review).
+        return $ids === [] ? collect() : TalentApplication::query()->whereKey($ids)->with('student.user')->get();
     }
 
-    private function afterBulk(string $message, int $skipped): void
+    /**
+     * `$movedBefore` / `$rejectedBefore`: checked rows a colleague moved on or marked tidak lolos since this screen was
+     * drawn; they were left alone and the toast counts them (QA9).
+     */
+    private function afterBulk(string $message, int $skipped, int $movedBefore = 0, int $rejectedBefore = 0): void
     {
         $this->checked = [];
         $this->rejectTarget = '';
         $this->bulkNote = '';
-        $this->dispatch('sth-toast', message: $message.($skipped > 0 ? ' '.$skipped.' dilewati (tahap final).' : ''), tone: 'success');
+        $stale = $movedBefore + $rejectedBefore > 0;
+        $this->dispatch('sth-toast', message: $message
+            .($movedBefore > 0 ? ' '.$movedBefore.' sudah dipindahkan lebih dulu dan tidak diubah lagi.' : '')
+            .($rejectedBefore > 0 ? ' '.$rejectedBefore.' sudah ditandai tidak lolos lebih dulu.' : '')
+            .($stale ? ' Daftar sudah diperbarui.' : '')
+            .($skipped > 0 ? ' '.$skipped.' dilewati (tahap final).' : ''), tone: $stale ? 'warning' : 'success');
 
         if ($this->panelId !== null) {
             $application = TalentApplication::query()->find($this->panelId);
@@ -1276,10 +1423,14 @@ class Talenta extends Component
     private function shownText(int $shown): string
     {
         $filtered = $this->jenis !== '' || $this->cabang !== '' || $this->kelas !== '' || $this->q !== '';
+        // QA9: every row that matches, not only the ones on screen (the list comes in steps of PAGE).
+        $total = $this->filteredQuery()->count();
 
-        return $filtered
-            ? $shown.' hasil sesuai filter'
-            : 'Menampilkan '.$shown.' dari '.$this->filteredQuery()->count().' pilihan talenta';
+        if (! $filtered) {
+            return 'Menampilkan '.$shown.' dari '.$total.' pilihan talenta';
+        }
+
+        return $shown < $total ? 'Menampilkan '.$shown.' dari '.$total.' hasil sesuai filter' : $total.' hasil sesuai filter';
     }
 
     /** @return array<string, string> */
@@ -1334,13 +1485,85 @@ class Talenta extends Component
         return mb_strlen($nis) <= 4 ? '••••' : mb_substr($nis, 0, 4).'•••'.mb_substr($nis, -2);
     }
 
-    private function find(string $id): TalentApplication
+    /**
+     * The row an action is about. QA9: a choice the student cancelled meanwhile (Profil talenta "Batalkan", a soft
+     * delete) gets a warning toast and a fresh panel instead of a 404 page; null tells the action to stop. An id that
+     * never existed is still a 404.
+     */
+    private function find(string $id): ?TalentApplication
     {
-        $application = TalentApplication::query()->find($id);
+        $application = TalentApplication::withTrashed()->find($id);
 
         abort_if($application === null, 404);
 
-        return $application;
+        if (! $application->trashed()) {
+            return $application;
+        }
+
+        $this->cancelledByStudent((string) $application->getKey());
+
+        return null;
+    }
+
+    /** QA9: the open dialogs and the panel let go of a row the student cancelled; the panel shows the first row left. */
+    private function cancelledByStudent(string $id): void
+    {
+        $this->dispatch('sth-toast', message: self::CANCELLED_MESSAGE, tone: 'warning');
+        $this->checked = array_values(array_diff($this->checked, [$id]));
+
+        if ($this->restoreId === $id) {
+            $this->closeRestoreDialog();
+        }
+
+        if ($this->panelId !== $id) {
+            return;
+        }
+
+        if ($this->rejectTarget === self::REJECT_PANEL) {
+            $this->closeRejectDialog();
+        }
+
+        $this->panelDone = null;
+        $first = $this->orderedQuery()->first();
+
+        if ($first !== null) {
+            $this->openPanel($first);
+        } else {
+            $this->panelId = null;
+        }
+    }
+
+    /** Is the row still in the stage this screen drew for it (QA9, `$shownStages`)? */
+    private function showsStage(TalentApplication $application): bool
+    {
+        return ($this->shownStages[(string) $application->getKey()] ?? null) === $application->status->value;
+    }
+
+    /**
+     * QA9: the row is no longer in the stage this screen showed (another tab or another Kesiswaan account moved it):
+     * nothing moves, a warning says where it is now and the next render shows it. What was typed in the panel stays.
+     * Before, the move went on from the new stage: a second "Lolos ke Pemetaan" put the row into Seleksi and told the
+     * student a second time.
+     */
+    private function movedElsewhere(TalentApplication $application): bool
+    {
+        if ($this->showsStage($application)) {
+            return false;
+        }
+
+        if ($this->panelId === $application->getKey()) {
+            $this->panelDone = null;
+        }
+
+        $now = $application->status;
+        $this->dispatch('sth-toast', message: match (true) {
+            // Not drawn by this screen at all (a page from before this check, or a forged call): no claim about it.
+            ! array_key_exists((string) $application->getKey(), $this->shownStages) => 'Daftar sudah diperbarui. Periksa tahapnya, lalu coba lagi.',
+            $now === TalentStatus::TidakLolos => 'Pilihan ini sudah ditandai tidak lolos. Daftar sudah diperbarui.',
+            default => 'Pilihan ini sudah dipindahkan ke '.$now->label().'. Daftar sudah diperbarui.',
+        }, tone: 'warning');
+
+        return true;
     }
 
     private function actor(): User

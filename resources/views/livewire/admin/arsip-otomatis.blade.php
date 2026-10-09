@@ -87,7 +87,7 @@
                         <tr wire:key="arsip-{{ $student->id }}">
                             <td class="font-semibold">{{ $student->user?->name ?? '-' }} <x-sth.chip tone="gray" size="sm" class="ml-1">Alumni</x-sth.chip></td>
                             <td>{{ $student->classroom?->name ?? '–' }}</td>
-                            <td class="num whitespace-nowrap">{{ $student->archive_at?->translatedFormat('j M Y') ?? '–' }}</td>
+                            <td class="num whitespace-nowrap">{{ ($archivedOn[$student->id] ?? null)?->translatedFormat('j M Y') ?? '–' }}</td>
                             <td class="num text-right">{{ $student->achievements_count }}</td>
                             <td class="text-right">
                                 <x-sth.button variant="soft" size="sm" wire:click="openRestore('{{ $student->id }}')">

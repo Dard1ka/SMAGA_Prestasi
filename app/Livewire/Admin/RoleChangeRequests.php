@@ -11,6 +11,7 @@ use App\Models\RoleChangeRequest;
 use App\Models\User;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
 use Livewire\Component;
@@ -20,7 +21,8 @@ use Livewire\Component;
  * role changes with "Setujui" (a second Admin, not the requester, not the account itself) and "Batalkan"
  * (any Admin, reason required), plus the latest finished ones. Both actions re-authorize through
  * RoleChangeRequestPolicy inside the Actions and need a password confirmation from the last 15 minutes
- * (SECURITY §3m-9). Refreshes when the parent dispatches `role-change-requested`.
+ * (SECURITY §3m-9). Refreshes when the parent dispatches `role-change-requested`; dispatches `role-change-decided`
+ * after a decision so the parent's staff table follows (QA9). A request decided elsewhere gets a toast, not a 403.
  */
 final class RoleChangeRequests extends Component
 {
@@ -52,14 +54,30 @@ final class RoleChangeRequests extends Component
     public function approve(string $requestId, ApproveRoleChange $approve): void
     {
         $request = $this->find($requestId);
+
+        if ($this->decidedElsewhere($request, approving: true)) {
+            return;
+        }
+
         Gate::authorize('approve', $request);
 
         if (! $this->passwordRecentlyConfirmed()) {
             return;
         }
 
-        $applied = $approve->handle($this->actor(), $request);
+        try {
+            $applied = $approve->handle($this->actor(), $request);
+        } catch (ValidationException $e) {
+            // Decided between the check above and the Action's lock.
+            if ($this->decidedElsewhere($request->refresh(), approving: true)) {
+                return;
+            }
 
+            throw $e;
+        }
+
+        // QA9: the staff table of the parent screen shows the role and "Menunggu: …" of this account.
+        $this->dispatch('role-change-decided');
         $this->dispatch('sth-toast',
             message: $applied ? 'Disetujui. Peran sudah diubah, pengguna perlu login ulang.' : 'Disetujui, tetapi akun tidak lagi memenuhi syarat. Permintaan dibatalkan otomatis.',
             tone: $applied ? 'success' : 'error',
@@ -69,6 +87,11 @@ final class RoleChangeRequests extends Component
     public function openCancel(string $requestId): void
     {
         $request = $this->find($requestId);
+
+        if ($this->decidedElsewhere($request)) {
+            return;
+        }
+
         Gate::authorize('cancel', $request);
 
         $this->resetErrorBag();
@@ -80,6 +103,11 @@ final class RoleChangeRequests extends Component
     public function cancel(CancelRoleChange $cancel): void
     {
         $request = $this->find((string) $this->cancelId);
+
+        if ($this->decidedElsewhere($request)) {
+            return;
+        }
+
         Gate::authorize('cancel', $request);
 
         $this->validate(['cancelReason' => ['required', 'string', 'max:500']], [], ['cancelReason' => 'alasan']);
@@ -90,8 +118,29 @@ final class RoleChangeRequests extends Component
 
         $cancel->handle($this->actor(), $request, $this->cancelReason);
         $this->reset('cancelId', 'cancelReason');
+        $this->dispatch('role-change-decided');
         $this->dispatch('sth-modal-close', id: 'batal-peran');
         $this->dispatch('sth-toast', message: 'Perubahan peran dibatalkan.', tone: 'success');
+    }
+
+    /**
+     * Another Admin approved or cancelled the request meanwhile, or the 24 h change took effect (QA9): the policy
+     * would refuse with a full-screen 403. Say so, close the dialog and redraw both lists (this panel re-renders, the
+     * staff table hears `role-change-decided`).
+     */
+    private function decidedElsewhere(RoleChangeRequest $request, bool $approving = false): bool
+    {
+        if ($request->isPending() && (! $approving || $request->approved_at === null)) {
+            return false;
+        }
+
+        $this->reset('cancelId', 'cancelReason');
+        $this->resetErrorBag();
+        $this->dispatch('role-change-decided');
+        $this->dispatch('sth-modal-close', id: 'batal-peran');
+        $this->dispatch('sth-toast', message: 'Perubahan peran ini sudah diputuskan. Daftar sudah diperbarui.', tone: 'warning');
+
+        return true;
     }
 
     public function render(): View

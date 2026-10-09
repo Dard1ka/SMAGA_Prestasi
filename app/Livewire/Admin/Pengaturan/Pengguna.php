@@ -10,6 +10,7 @@ use App\Actions\Accounts\ResetStudentAccount;
 use App\Actions\Roles\RequestRoleChange;
 use App\Actions\Students\UpdateConsent;
 use App\Actions\Users\CancelPrincipalReplacement;
+use App\Actions\Users\ChangeStaffRole;
 use App\Actions\Users\CreateStaffAccount;
 use App\Actions\Users\RequestPrincipalReplacement;
 use App\Actions\Users\ResetStaffAccount;
@@ -27,6 +28,7 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Locked;
+use Livewire\Attributes\On;
 use Livewire\Attributes\Url;
 use Livewire\Component;
 
@@ -176,6 +178,10 @@ final class Pengguna extends Component
         };
         Gate::authorize($ability, $target);
 
+        if ($modal === 'staf-reset' && $this->resetRefused(ResetStaffAccount::refusal($target), 'staf-reset')) {
+            return;
+        }
+
         $this->resetErrorBag();
         $this->targetId = (int) $target->getKey();
         $this->role = (string) ($target->getRoleNames()->first() ?? RoleName::Guru->value);
@@ -196,6 +202,13 @@ final class Pengguna extends Component
             ['role' => 'peran', 'reason' => 'alasan'],
         );
 
+        // QA9: the preselected role is the current one; "Simpan peran" without a change used to say "Peran diubah".
+        if ($target->getRoleNames()->values()->all() === [$this->role]) {
+            $this->addError('role', ChangeStaffRole::SAME_ROLE);
+
+            return;
+        }
+
         if (! $this->passwordRecentlyConfirmed()) {
             return;
         }
@@ -214,6 +227,11 @@ final class Pengguna extends Component
         $target = $this->staffUser((int) $this->targetId);
         Gate::authorize('resetPassword', $target);
 
+        // Disabled or archived since the dialog opened (QA9).
+        if ($this->resetRefused(ResetStaffAccount::refusal($target), 'staf-reset')) {
+            return;
+        }
+
         $this->validate(
             ['tempPassword' => ['required', 'string', 'confirmed'], 'reason' => ['required', 'string', 'max:500']],
             [],
@@ -227,6 +245,11 @@ final class Pengguna extends Component
         try {
             $reset->handle($this->actor(), $target, $this->tempPassword, $this->reason);
         } catch (ValidationException $e) {
+            // The account changed between this check and the Action's lock: same toast as above.
+            if ($this->resetRefused($e->errors()['user'][0] ?? null, 'staf-reset')) {
+                return;
+            }
+
             throw ValidationException::withMessages(
                 collect($e->errors())->mapWithKeys(fn (array $m, string $k) => [$k === 'password' ? 'tempPassword' : $k => $m])->all(),
             );
@@ -298,6 +321,11 @@ final class Pengguna extends Component
     public function openCancel(string $replacementId): void
     {
         $replacement = PrincipalReplacement::query()->findOrFail($replacementId);
+
+        if ($this->replacementDecidedElsewhere($replacement)) {
+            return;
+        }
+
         Gate::authorize('cancel', $replacement);
 
         $this->resetErrorBag();
@@ -309,6 +337,11 @@ final class Pengguna extends Component
     public function cancelReplacement(CancelPrincipalReplacement $cancel): void
     {
         $replacement = PrincipalReplacement::query()->findOrFail((string) $this->replacementId);
+
+        if ($this->replacementDecidedElsewhere($replacement)) {
+            return;
+        }
+
         Gate::authorize('cancel', $replacement);
 
         $this->validate(['cancelReason' => ['required', 'string', 'max:500']], [], ['cancelReason' => 'alasan']);
@@ -383,6 +416,10 @@ final class Pengguna extends Component
         $target = $this->studentUser();
         Gate::authorize($modal === 'siswa-reset' ? 'resetPassword' : 'archive', $target);
 
+        if ($modal === 'siswa-reset' && $this->resetRefused(ResetStudentAccount::refusal($target), 'siswa-reset')) {
+            return;
+        }
+
         $this->resetErrorBag();
         $this->reset('studentReason');
         $this->studentStatus = UserStatus::Disabled->value;
@@ -394,6 +431,11 @@ final class Pengguna extends Component
         $target = $this->studentUser();
         Gate::authorize('resetPassword', $target);
 
+        // Disabled or archived since the dialog opened (QA9).
+        if ($this->resetRefused(ResetStudentAccount::refusal($target), 'siswa-reset')) {
+            return;
+        }
+
         $this->validate(['studentReason' => ['required', 'string', 'max:500']], [], ['studentReason' => 'alasan']);
 
         if (! $this->passwordRecentlyConfirmed()) {
@@ -401,18 +443,45 @@ final class Pengguna extends Component
         }
 
         // B1 — K10: random temporary password (72 h), shown once in the "siswa-sandi" dialog, never stored in plaintext.
-        $this->issuedPassword = $reset->handle($this->actor(), $target, $this->studentReason);
+        try {
+            $this->issuedPassword = $reset->handle($this->actor(), $target, $this->studentReason);
+        } catch (ValidationException $e) {
+            // The account changed between this check and the Action's lock (QA9); other messages go under the field.
+            if ($this->resetRefused($e->errors()['user'][0] ?? null, 'siswa-reset')) {
+                return;
+            }
+
+            throw ValidationException::withMessages(['studentReason' => collect($e->errors())->flatten()->all()]);
+        }
+
         $this->reset('studentReason');
         $this->dispatch('sth-modal-close', id: 'siswa-reset');
         $this->dispatch('sth-modal-open', id: 'siswa-sandi');
     }
 
-    /** B1 — K10: the Admin confirms the temporary password was handed over; it disappears from the page. */
+    /**
+     * B1 — K10: the Admin confirms the temporary password was handed over; it disappears from the page. QA9: also the
+     * dialog's on-close, so closing it with X, Esc or a click outside forgets it too. "Sudah saya berikan" closes the
+     * dialog, which calls this again: only the first call says "Akun direset".
+     */
     public function forgetIssuedPassword(): void
     {
+        $issued = $this->issuedPassword !== null;
         $this->issuedPassword = null;
+
+        if (! $issued) {
+            return;
+        }
+
         $this->dispatch('sth-modal-close', id: 'siswa-sandi');
         $this->dispatch('sth-toast', message: 'Akun direset. Siswa masuk dengan kata sandi sementara lalu aktivasi lagi.', tone: 'success');
+    }
+
+    /** QA9: a decision in the "Perubahan peran" panel changes rows of the staff table (role, "Menunggu: …"). */
+    #[On('role-change-decided')]
+    public function refreshStaff(): void
+    {
+        // Re-render only.
     }
 
     public function disableStudent(DisableAccount $disable, ArchiveAccount $archive): void
@@ -453,6 +522,8 @@ final class Pengguna extends Component
 
         return view('livewire.admin.pengaturan.pengguna', [
             'staff' => $staff,
+            // QA9: user id => why "Reset akun" is not offered (the account cannot log in).
+            'resetRefusals' => $staff->mapWithKeys(fn (User $u): array => [(int) $u->getKey() => ResetStaffAccount::refusal($u)])->filter()->all(),
             'target' => $target,
             'principal' => $all->first(fn (User $u) => $u->hasRole(RoleName::KepalaSekolah->value) && $u->canLogIn()),
             'pending' => PrincipalReplacement::query()->pending()->with(['fromUser:id,name', 'toUser:id,name'])->latest('created_at')->first(),
@@ -483,7 +554,7 @@ final class Pengguna extends Component
             ->values();
     }
 
-    /** @return array{name: string, classroom: ?string, status: UserStatus, email: ?string, activated: bool, lastLogin: ?string, canConsent: bool} */
+    /** @return array{name: string, classroom: ?string, status: UserStatus, email: ?string, activated: bool, lastLogin: ?string, canConsent: bool, resetRefusal: ?string} */
     private function studentSummary(): ?array
     {
         $user = User::query()->with('student.classroom:id,name')->find($this->studentUserId, ['id', 'name', 'email', 'status', 'must_change_password', 'last_login_at']);
@@ -500,6 +571,8 @@ final class Pengguna extends Component
             'activated' => ! $user->must_change_password && $user->status === UserStatus::Active,
             'lastLogin' => $user->last_login_at?->translatedFormat('j M Y H:i'),
             'canConsent' => Gate::allows('updateConsent', $user->student),
+            // QA9: why the reset is not offered (the account cannot log in), else null.
+            'resetRefusal' => ResetStudentAccount::refusal($user),
         ];
     }
 
@@ -527,6 +600,46 @@ final class Pengguna extends Component
         $user = auth()->user();
 
         return $user;
+    }
+
+    /**
+     * QA9: a reset promises a login with the temporary password, which a disabled or archived account never gets. The
+     * table and the student card offer no reset for such an account; a stale screen gets this toast instead of a
+     * dialog (or a reset that only looked done).
+     */
+    private function resetRefused(?string $refusal, string $dialog): bool
+    {
+        if ($refusal === null) {
+            return false;
+        }
+
+        $this->reset('reason', 'tempPassword', 'tempPassword_confirmation', 'studentReason');
+        $this->resetErrorBag();
+        $this->dispatch('sth-modal-close', id: $dialog);
+        $this->dispatch('sth-toast', message: $refusal, tone: 'warning');
+
+        return true;
+    }
+
+    /**
+     * The replacement took effect at its time (ApplyPrincipalReplacement) or another Admin cancelled it meanwhile
+     * (QA9): the policy would refuse with a full-screen 403. Say so, close the dialog and let the page redraw.
+     */
+    private function replacementDecidedElsewhere(PrincipalReplacement $replacement): bool
+    {
+        if ($replacement->isPending()) {
+            return false;
+        }
+
+        $this->replacementId = null;
+        $this->reset('cancelReason');
+        $this->resetErrorBag();
+        $this->dispatch('sth-modal-close', id: 'batal-kepsek');
+        $this->dispatch('sth-toast', message: $replacement->applied_at !== null
+            ? 'Penggantian Kepala Sekolah ini sudah berlaku. Halaman sudah diperbarui.'
+            : 'Penggantian Kepala Sekolah ini sudah dibatalkan. Halaman sudah diperbarui.', tone: 'warning');
+
+        return true;
     }
 
     private function closeModal(string $id, string $message): void

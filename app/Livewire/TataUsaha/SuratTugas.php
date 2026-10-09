@@ -308,6 +308,11 @@ class SuratTugas extends Component
     public function startRevision(string $letterId): void
     {
         $letter = $this->currentLetter($letterId);
+
+        if ($letter === null) {
+            return;
+        }
+
         Gate::authorize('revoke', $letter);
 
         $registration = $this->selected();
@@ -343,6 +348,11 @@ class SuratTugas extends Component
     {
         $registration = $this->selected();
         $letter = $this->currentLetter((string) $this->revisingId);
+
+        if ($letter === null) {
+            return;
+        }
+
         $type = $letter->type;
         $this->tab = $type->value;
         $this->resetErrorBag();
@@ -389,14 +399,38 @@ class SuratTugas extends Component
             ->all();
     }
 
-    private function currentLetter(string $letterId): Letter
+    /**
+     * A current letter of the selected registration, or null when another tab corrected it meanwhile (QA9): a 404 used
+     * to hide "Surat ini sudah dicabut.", so revokedElsewhere() says it and shows the new version. A letter of another
+     * registration is still a 404.
+     */
+    private function currentLetter(string $letterId): ?Letter
     {
         $registration = $this->selected();
 
         /** @var Letter $letter */
-        $letter = Letter::query()->where('registration_id', $registration->getKey())->current()->whereKey($letterId)->firstOrFail();
+        $letter = Letter::query()->where('registration_id', $registration->getKey())->whereKey($letterId)->firstOrFail();
 
-        return $letter;
+        if ($letter->revoked_at === null) {
+            return $letter;
+        }
+
+        $this->revokedElsewhere($registration, $letter->type);
+
+        return null;
+    }
+
+    /** Closes the correction form and shows the letter of that type as it stands now (the new version). */
+    private function revokedElsewhere(Registration $registration, LetterType $type): void
+    {
+        $current = Letter::query()->where('registration_id', $registration->getKey())->where('type', $type)->current()->first();
+
+        $this->resetErrorBag();
+        $this->clearFailure();
+        $this->reset('revisingId', 'alasan', 'koreksi');
+        $this->tab = $type->value;
+        $this->{$type->value} = $current !== null ? LetterDraft::fromLetter($current, $registration) : LetterDraft::defaults($registration);
+        $this->dispatch('sth-toast', message: 'Surat ini sudah dicabut. Tampilan sudah diperbarui.', tone: 'warning');
     }
 
     // --- end B3 ---
