@@ -25,12 +25,16 @@ final class RequestPasswordResetCode
         private readonly IssueOtpCode $otp,
     ) {}
 
-    public function handle(string $identifier): void
+    /**
+     * @param  string|null  $requester  OtpRequester token of the asking browser (default: the current session). The
+     *                                  code belongs to that browser (QA10 review).
+     */
+    public function handle(string $identifier, ?string $requester = null): void
     {
         $user = $this->eligibleUser($identifier);
 
         if ($user !== null) {
-            $this->otp->handle($user, self::PURPOSE, (string) $user->email);
+            $this->otp->handle($user, self::PURPOSE, (string) $user->email, $requester ?? OtpRequester::current());
         }
     }
 

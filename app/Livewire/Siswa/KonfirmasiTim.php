@@ -6,10 +6,13 @@ namespace App\Livewire\Siswa;
 
 use App\Actions\Registrations\ConfirmMembership;
 use App\Actions\Registrations\DeclineMembership;
+use App\Actions\Registrations\ExpirePendingInvitations;
 use App\Enums\MemberRole;
+use App\Enums\RegistrationStatus;
 use App\Livewire\Siswa\Lomba\LombaPresenter;
 use App\Models\Registration;
 use App\Models\RegistrationMember;
+use App\Policies\RegistrationPolicy;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Route;
@@ -25,6 +28,9 @@ use Spatie\Activitylog\Models\Activity;
  * may answer (RegistrationPolicy::respond → ConfirmMembership / DeclineMembership, SECURITY §3m-3).
  * QA9: once the ketua withdrew the invitation (WithdrawInvitation deletes the member row) the page says so, without
  * any team data, instead of a 404 on "Ikut tim", "Tolak", the next render or the old link.
+ * QA10: the answer works until the registration deadline, also on a lomba Kesiswaan closed early; an invitation the
+ * scheduler expired reads "tidak berlaku karena batas pendaftaran lewat" / "Tidak menjawab", never as a decline; the
+ * ketua is said to be told only when DeclineMembership told the ketua.
  */
 #[Layout('layouts::app')]
 #[Title('Undangan tim')]
@@ -90,7 +96,9 @@ class KonfirmasiTim extends Component
 
         $decline->handle(auth()->user(), $registration);
 
-        session()->flash('toast', ['tone' => 'info', 'message' => 'Undangan ditolak. Ketua tim sudah diberi tahu.']);
+        // QA10 (D-109): "diberi tahu" only when DeclineMembership told the ketua (an account that can log in).
+        session()->flash('toast', ['tone' => 'info', 'message' => 'Undangan ditolak.'
+            .(ConfirmMembership::notifiesLeader($registration) ? ' Ketua tim sudah diberi tahu.' : '')]);
         $this->redirectRoute('siswa.beranda');
     }
 
@@ -106,13 +114,22 @@ class KonfirmasiTim extends Component
         $mine = $registration->members->firstWhere('student_id', $me?->getKey());
         $competition = $registration->competition;
         $mentor = $registration->mentor;
+        $canRespond = Gate::allows('respond', $registration);
+        // QA10: the scheduler declines unanswered invitations at the deadline (D-50); that is not the student's answer.
+        $expiredIds = ExpirePendingInvitations::expiredMemberIds($registration);
+        $unanswered = $mine !== null && $mine->confirmed_at === null && $mine->declined_at === null;
 
         return view('livewire.siswa.konfirmasi-tim', [
             'withdrawn' => false,
             'registration' => $registration,
             'competition' => $competition,
-            'canRespond' => Gate::allows('respond', $registration),
+            'canRespond' => $canRespond,
             'mine' => $mine,
+            // Expired by the job, or still unanswered after the deadline (before the job ran).
+            'expired' => $mine !== null && ! $canRespond && (in_array((string) $mine->getKey(), $expiredIds, true)
+                || ($unanswered && $registration->status === RegistrationStatus::MenungguKonfirmasi
+                    && ! RegistrationPolicy::teamWindowOpen($competition))),
+            'notifiesLeader' => ConfirmMembership::notifiesLeader($registration),
             'members' => $registration->members
                 ->sortBy(fn (RegistrationMember $m): string => ($m->role === MemberRole::Ketua ? '0' : '1').$m->student?->user?->name)
                 ->map(fn (RegistrationMember $m): array => [
@@ -122,6 +139,7 @@ class KonfirmasiTim extends Component
                     'role' => $m->role?->label(),
                     'me' => $m->getKey() === $mine?->getKey(),
                     'state' => match (true) {
+                        in_array((string) $m->getKey(), $expiredIds, true) => ['Tidak menjawab', 'gray'],
                         $m->declined_at !== null => ['Menolak', 'red'],
                         $m->confirmed_at !== null => ['Sudah konfirmasi', 'green'],
                         default => ['Menunggu konfirmasi', 'gray'],

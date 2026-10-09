@@ -7,6 +7,7 @@ namespace App\Livewire\Siswa;
 use App\Domain\Points\PointFormatter;
 use App\Enums\RegistrationStatus;
 use App\Enums\ReportFileKind;
+use App\Enums\ReportStatus;
 use App\Enums\TalentStatus;
 use App\Http\Controllers\FileController;
 use App\Models\Achievement;
@@ -91,10 +92,11 @@ final class Portofolio extends Component
 
         $total = $achievements->reduce(fn (string $sum, Achievement $a): string => bcadd($sum, (string) $a->points, 2), '0.00');
 
+        // QA10: only registrations the student joined (confirmed): an invitation nobody answered is not a lomba diikuti.
         $registrations = Registration::query()
-            ->whereHas('members', fn (Builder $m) => $m->where('student_id', $student->getKey())->whereNull('declined_at'))
+            ->whereHas('members', fn (Builder $m) => $m->where('student_id', $student->getKey())->whereNotNull('confirmed_at')->whereNull('declined_at'))
             ->whereNotIn('status', [RegistrationStatus::Ditolak, RegistrationStatus::Dibatalkan])
-            ->with('competition')
+            ->with(['competition', 'report'])
             ->orderByDesc('created_at')
             ->get();
 
@@ -127,6 +129,7 @@ final class Portofolio extends Component
                 'bidang' => $r->competition->bidang,
                 'date' => $this->dateRange($r->competition->starts_on, $r->competition->final_on),
                 'status' => $r->status,
+                ...$this->historyChip($r),
                 'href' => route('siswa.lomba-saya.show', $r),
             ])->all(),
             'talents' => $talents->map(fn (TalentApplication $t): array => [
@@ -166,6 +169,21 @@ final class Portofolio extends Component
             'certificatePreviewType' => $certificate?->file !== null ? FileController::previewType($certificate->file) : null,
             'certificateName' => (string) $certificate?->file?->original_name,
         ];
+    }
+
+    /**
+     * Chip of a Riwayat row. QA10: a rejected report ends the registration as `selesai` without points (D-34); a green
+     * "Selesai" there read like a finished prestasi, so it says "Laporan ditolak" like Lomba saya.
+     *
+     * @return array{chip: string, tone: string}
+     */
+    private function historyChip(Registration $registration): array
+    {
+        if ($registration->status === RegistrationStatus::Selesai && $registration->report?->status === ReportStatus::Ditolak) {
+            return ['chip' => 'Laporan ditolak', 'tone' => 'red'];
+        }
+
+        return ['chip' => $registration->status->label(), 'tone' => $registration->status->tone()];
     }
 
     /** Rank among active students (D-37, DESIGN-SPEC §5: "#14 dari siswa aktif"); null without points. */

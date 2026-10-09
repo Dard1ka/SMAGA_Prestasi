@@ -72,21 +72,14 @@ class Katalog extends Component
 
     public function render(): View
     {
-        $now = now();
+        $page = $this->query()->paginate(self::PER_PAGE);
 
-        $page = Competition::query()
-            ->published()
-            ->when($this->bidang !== '', fn (Builder $q) => $q->where('bidang', $this->bidang))
-            ->when($this->tingkat !== '', fn (Builder $q) => $q->where('level', $this->tingkat))
-            ->when($this->status === 'dibuka', fn (Builder $q) => $q->openForRegistration($now))
-            ->when($this->status === 'segera', fn (Builder $q) => $q->where('registration_opens_at', '>', $now))
-            ->when($this->status === 'ditutup', fn (Builder $q) => $q->where('registration_closes_at', '<', $now))
-            ->when($this->q !== '', fn (Builder $q) => $q->where('name', 'like', '%'.addcslashes($this->q, '%_\\').'%'))
-            // Open first (closing soonest), then upcoming, then closed (most recent first).
-            ->orderByRaw('CASE WHEN registration_closes_at IS NOT NULL AND registration_closes_at < ? THEN 1 ELSE 0 END', [$now])
-            ->orderBy('registration_closes_at')
-            ->orderBy('name')
-            ->paginate(self::PER_PAGE);
+        // QA10: a stale ?page= (an old link, or fewer lomba since) showed "N lomba" above "Belum ada lomba di katalog"
+        // without a pager. Show the last page instead.
+        if ($page->isEmpty() && $page->currentPage() > 1) {
+            $this->setPage($page->lastPage());
+            $page = $this->query()->paginate(self::PER_PAGE);
+        }
 
         $registrants = LombaPresenter::registrants($page->getCollection());
         $cards = $page->getCollection()
@@ -101,6 +94,31 @@ class Katalog extends Component
             'statusOptions' => self::STATUSES,
             'filtered' => $this->bidang !== '' || $this->tingkat !== '' || $this->status !== '' || $this->q !== '',
         ]);
+    }
+
+    /** @return Builder<Competition> */
+    private function query(): Builder
+    {
+        $now = now();
+        $closed = 'registration_closes_at IS NOT NULL AND registration_closes_at < ?';
+        $upcoming = 'registration_opens_at IS NOT NULL AND registration_opens_at > ?';
+
+        return Competition::query()
+            ->published()
+            ->when($this->bidang !== '', fn (Builder $q) => $q->where('bidang', $this->bidang))
+            ->when($this->tingkat !== '', fn (Builder $q) => $q->where('level', $this->tingkat))
+            ->when($this->status === 'dibuka', fn (Builder $q) => $q->openForRegistration($now))
+            ->when($this->status === 'segera', fn (Builder $q) => $q->where('registration_opens_at', '>', $now))
+            ->when($this->status === 'ditutup', fn (Builder $q) => $q->where('registration_closes_at', '<', $now))
+            ->when($this->q !== '', fn (Builder $q) => $q->where('name', 'like', '%'.addcslashes($this->q, '%_\\').'%'))
+            // Open first (closing soonest, no deadline last), then upcoming (opening soonest), then closed (most recent
+            // first). QA10: upcoming lomba were mixed into the open ones and closed ones came oldest first.
+            ->orderByRaw("CASE WHEN {$closed} THEN 2 WHEN {$upcoming} THEN 1 ELSE 0 END", [$now, $now])
+            ->orderByRaw("CASE WHEN {$upcoming} THEN registration_opens_at END", [$now])
+            ->orderByRaw('CASE WHEN registration_closes_at IS NULL THEN 1 ELSE 0 END')
+            ->orderByRaw("CASE WHEN {$closed} THEN registration_closes_at END DESC", [$now])
+            ->orderBy('registration_closes_at')
+            ->orderBy('name');
     }
 
     private function normalise(): void

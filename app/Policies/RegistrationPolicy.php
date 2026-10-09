@@ -13,6 +13,7 @@ use App\Models\Registration;
 use App\Models\RegistrationMember;
 use App\Models\Student;
 use App\Models\User;
+use DateTimeInterface;
 
 /**
  * Pendaftaran (ARCHITECTURE §6). Deny by default; not-yours → callers answer 404.
@@ -60,7 +61,10 @@ class RegistrationPolicy
         return ! Student::query()->whereKey($student->getKey())->busyIn($competition)->exists();
     }
 
-    /** Confirm or decline a team invite: only the invitee, only while the team waits (SECURITY §3m-3). */
+    /**
+     * Confirm or decline a team invite: only the invitee, only while the team waits (SECURITY §3m-3) and until the
+     * registration deadline (QA10: the same window ConfirmMembership checks, so "Ikut tim" only shows while it works).
+     */
     public function respond(User $user, Registration $registration): bool
     {
         if (! $user->canLogIn() || $registration->status !== RegistrationStatus::MenungguKonfirmasi) {
@@ -72,7 +76,26 @@ class RegistrationPolicy
         return $member !== null
             && $member->role === MemberRole::Anggota
             && $member->confirmed_at === null
-            && $member->declined_at === null;
+            && $member->declined_at === null
+            && self::teamWindowOpen($this->competition($registration));
+    }
+
+    /**
+     * The window of an EXISTING team registration (QA10): its invitations may be answered, and the ketua may invite or
+     * withdraw, until the lomba's registration deadline (end of that day), whatever the lomba's status. CloseCompetition
+     * only takes the lomba out of the catalog: registrations that exist keep running, while a NEW registration still needs
+     * an open, published lomba (create()). ExpirePendingInvitations expires the open invitations at the same deadline;
+     * a lomba without a deadline never expires them.
+     */
+    public static function teamWindowOpen(?Competition $competition, ?DateTimeInterface $now = null): bool
+    {
+        if ($competition === null) {
+            return false;
+        }
+
+        $closes = $competition->registration_closes_at;
+
+        return $closes === null || $closes >= ($now ?? now());
     }
 
     /** Leader cancels before the Kepala Sekolah decides (ARCHITECTURE §6, lead 2026-10-01). */
@@ -110,8 +133,9 @@ class RegistrationPolicy
     // --- B3: invite (replacement) members, backlog #9 ---
 
     /**
-     * The ketua invites more anggota (e.g. a replacement for one who declined, D-36) while the team still
-     * waits for confirmations and the lomba accepts registrations. InviteMembers re-checks under a lock.
+     * The ketua invites more anggota (e.g. a replacement for one who declined, D-36) or withdraws an unanswered
+     * invitation (D-115) while the team still waits for confirmations, until the registration deadline (QA10:
+     * teamWindowOpen(), also after Kesiswaan closed the lomba early). InviteMembers / WithdrawInvitation re-check under a lock.
      */
     public function invite(User $user, Registration $registration): bool
     {
@@ -129,11 +153,7 @@ class RegistrationPolicy
             return false;
         }
 
-        $competition = $registration->relationLoaded('competition')
-            ? $registration->competition
-            : Competition::withTrashed()->find($registration->competition_id);
-
-        return $competition !== null && $competition->isOpenForRegistration();
+        return self::teamWindowOpen($this->competition($registration));
     }
 
     // --- end B3 ---
@@ -162,6 +182,13 @@ class RegistrationPolicy
     protected function student(User $user): ?Student
     {
         return $user->loadMissing('student')->getRelation('student');
+    }
+
+    protected function competition(Registration $registration): ?Competition
+    {
+        return $registration->relationLoaded('competition') && $registration->competition !== null
+            ? $registration->competition
+            : Competition::withTrashed()->find($registration->competition_id);
     }
 
     protected function membership(User $user, Registration $registration): ?RegistrationMember

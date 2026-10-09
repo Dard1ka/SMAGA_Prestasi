@@ -76,6 +76,9 @@
                                 </div>
                                 @if ($row['state'] === 'confirmed')
                                     <x-sth.chip tone="green" size="sm" icon="check">Konfirmasi</x-sth.chip>
+                                @elseif ($row['state'] === 'expired')
+                                    {{-- QA10: expired at the deadline, the student never answered. --}}
+                                    <x-sth.chip tone="gray" size="sm">Tidak menjawab</x-sth.chip>
                                 @elseif ($row['state'] === 'declined')
                                     <x-sth.chip tone="red" size="sm">Menolak</x-sth.chip>
                                 @else
@@ -149,6 +152,11 @@
         <div class="flex flex-col gap-2">
             @if ($window['key'] === 'segera')
                 <x-sth.alert title="Belum dibuka">{{ $window['note'] }}.</x-sth.alert>
+            @elseif ($window['key'] === 'menunggu')
+                {{-- QA10: a proposal Kesiswaan has not checked yet is not "ditutup". --}}
+                <x-sth.alert title="Belum dibuka">Pendaftaran dibuka setelah Kesiswaan memverifikasi lomba ini.</x-sth.alert>
+            @elseif ($window['key'] === 'ditolak')
+                <x-sth.alert tone="warning" title="Tidak dibuka">Usulan lomba ini ditolak Kesiswaan, jadi tidak menerima pendaftaran.</x-sth.alert>
             @elseif ($window['key'] === 'ditutup' || ! $competition->isPublished())
                 <x-sth.alert tone="warning" title="Pendaftaran ditutup">Lomba ini tidak menerima pendaftaran lagi.</x-sth.alert>
             @else

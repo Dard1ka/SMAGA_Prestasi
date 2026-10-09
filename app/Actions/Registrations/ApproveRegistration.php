@@ -103,6 +103,18 @@ final class ApproveRegistration
             ->values();
     }
 
+    /**
+     * The guru pembimbing who hears about a decision or a cancel of this registration: an active account that still
+     * holds the guru role, else null (QA10: the rule of RequestReportRevision::mentorUser(), D-110). A mentor moved to
+     * another role (e.g. Humas) would get binaan details and a guru link that answers 403.
+     */
+    public static function mentorToTell(Registration $registration): ?User
+    {
+        return $registration->mentor_id === null
+            ? null
+            : User::query()->gurus()->canLogIn()->whereKey($registration->mentor_id)->first();
+    }
+
     private function notify(Registration $registration): void
     {
         $members = self::memberUsers($registration);
@@ -111,11 +123,7 @@ final class ApproveRegistration
             Notification::send($members, RegistrationApproved::for($registration, 'siswa'));
         }
 
-        $mentor = $registration->mentor_id !== null ? User::query()->find($registration->mentor_id) : null;
-
-        if ($mentor !== null && $mentor->canLogIn()) {
-            $mentor->notify(RegistrationApproved::for($registration, 'guru'));
-        }
+        self::mentorToTell($registration)?->notify(RegistrationApproved::for($registration, 'guru'));
 
         $tu = User::query()->role(RoleName::TataUsaha->value)->canLogIn()->get();
 

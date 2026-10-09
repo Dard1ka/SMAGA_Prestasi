@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Actions\Fortify\KnownDevices;
 use App\Actions\Fortify\LoginIdentifier;
+use App\Actions\Fortify\LoginLockout;
 use App\Domain\Accounts\PasswordPolicy;
 use App\Domain\Archive\GraduationCalculator;
 use App\Domain\Deadlines\ReportDeadline;
@@ -14,8 +16,10 @@ use App\Mail\Transport\AllowlistTransport;
 use App\Models\Setting;
 use App\Support\Audit\AuditChain;
 use App\Support\Audit\SecurityEventSubscriber;
+use Illuminate\Auth\Events\Lockout;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Mail\Events\MessageSending;
 use Illuminate\Mail\MailManager;
@@ -153,6 +157,11 @@ class AppServiceProvider extends ServiceProvider
     /**
      * Named rate limiters. Login buckets per ACCOUNT (NIS and NISN of one student share a bucket, SECURITY §3a),
      * strict per account+IP, looser per IP because the whole school sits behind one NAT address.
+     * QA10 (K3): no login limit blocks an account from every address any more. The per-account limits are per account
+     * AND address (LoginLockout::pair(), whose generation an Admin reset or a reset with the email code renews), and
+     * the hourly one counts refused passwords only, so the owner's own logins never fill it. The login limits live in
+     * LoginLockout::limits(); every refusal names one time, LoginLockout::secondsUntilAllowed() (the lead's report of
+     * times that jumped between the limiter and the lock).
      */
     protected function configureRateLimiting(): void
     {
@@ -164,19 +173,35 @@ class AppServiceProvider extends ServiceProvider
                 ->withErrors([$field => self::retryMessage($seconds)]);
         };
 
-        RateLimiter::for('login', function (Request $request) use ($tooMany) {
-            $bucket = app(LoginIdentifier::class)->bucketKey($request);
+        RateLimiter::for(LoginLockout::LIMITER, function (Request $request) {
+            $identifiers = app(LoginIdentifier::class);
+            $lockout = app(LoginLockout::class);
+            $bucket = $identifiers->bucketKey($request);
+            $knownDevice = KnownDevices::recognizes($request, $identifiers->forRequest($request));
 
-            return [
-                Limit::perMinute(5)->by('login:'.$bucket.'|'.$request->ip())->response($tooMany('identifier')),
-                Limit::perHour(20)->by('login-h:'.$bucket)->response($tooMany('identifier')),
-                Limit::perMinute(60)->by('login-ip:'.$request->ip())->response($tooMany('identifier')),
-            ];
+            $refuse = fn (): RedirectResponse => back()
+                ->withInput($request->only('identifier'))
+                ->withErrors(['identifier' => self::retryMessage(max(1, $lockout->secondsUntilAllowed($request, $bucket, $knownDevice)))]);
+
+            // While any block holds (a lock, a full limit), the try is answered here and counts towards the per-address
+            // limit only, so pressing "Masuk" again never stretches a block of the account beyond the time shown.
+            if ($lockout->secondsUntilAllowed($request, $bucket, $knownDevice) > 0) {
+                $lockout->countRefusal($request);
+                event(new Lockout($request));
+
+                return $refuse();
+            }
+
+            return array_map(fn (Limit $limit): Limit => $limit->response($refuse), $lockout->limits($request, $bucket, $knownDevice));
         });
 
+        // QA10: per account only; another address no longer brings five more TOTP guesses a minute
+        // (TwoFactorChallenge also ends the challenge after 10 wrong codes of the account).
         RateLimiter::for('two-factor', function (Request $request) use ($tooMany) {
+            $id = $request->session()->get('login.id');
+
             return Limit::perMinute(5)
-                ->by('2fa:'.$request->session()->get('login.id', 'guest').'|'.$request->ip())
+                ->by('2fa:'.($id !== null ? 'u:'.$id : 'guest|'.LoginLockout::addressKey($request->ip())))
                 ->response($tooMany('code'));
         });
     }

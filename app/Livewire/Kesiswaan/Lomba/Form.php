@@ -175,6 +175,7 @@ class Form extends Component
     public function render(PointCalculator $calculator, PointFormatter $formatter): View
     {
         $competition = $this->competitionId !== null ? Competition::query()->with(['juknisFile', 'coverFile', 'submitter'])->find($this->competitionId) : null;
+        [$mentors, $mentorHint] = $this->mentorOptions($competition);
 
         return view('livewire.kesiswaan.lomba.form', [
             'title' => match ($this->formMode) {
@@ -200,9 +201,35 @@ class Form extends Component
                 'mode' => EventMode::options(),
                 'level' => collect(array_reverse(Level::cases()))->mapWithKeys(fn (Level $l): array => [$l->value => $l->shortLabel()])->all(),
                 'participation' => Participation::options(),
-                'mentors' => User::query()->role(RoleName::Guru->value)->canLogIn()->orderBy('name')->pluck('name', 'id')->all(),
+                'mentors' => $mentors,
             ],
+            'mentorHint' => $mentorHint,
         ]);
+    }
+
+    /**
+     * The active gurus, plus the lomba's current default guru when that account is no longer active (QA10): the
+     * select then shows who is recorded instead of "Belum ditentukan" while the old id stays in the form, and it can
+     * be cleared. UpdateCompetition keeps such an unchanged guru; a new choice must be active.
+     *
+     * @return array{0: array<int|string, string>, 1: ?string} options, hint under the select
+     */
+    private function mentorOptions(?Competition $competition): array
+    {
+        $mentors = User::query()->role(RoleName::Guru->value)->canLogIn()->orderBy('name')->pluck('name', 'id')->all();
+        $kept = $competition?->default_mentor_id;
+
+        if ($kept === null || array_key_exists($kept, $mentors)) {
+            return [$mentors, null];
+        }
+
+        $name = (string) (User::withTrashed()->find($kept)?->name ?? 'Guru');
+        $mentors[$kept] = $name.' (tidak aktif)';
+        $hint = (int) ($this->form['default_mentor_id'] ?? 0) === $kept
+            ? 'Guru pembimbing yang tercatat, '.$name.', tidak aktif lagi. Pilih guru lain atau kosongkan.'
+            : null;
+
+        return [$mentors, $hint];
     }
 
     /** @return array{tingkat: ?string, capaian: string, penyelenggara: ?string, total: ?string} */

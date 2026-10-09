@@ -14,10 +14,11 @@ use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
+use Spatie\Activitylog\Models\Activity;
 
 /**
  * Invitation expiry (B3, backlog #9): once the lomba's registration_closes_at has passed, open team
- * invitations can no longer be confirmed (ConfirmMembership refuses), so the scheduler declines them
+ * invitations can no longer be answered (RegistrationPolicy::teamWindowOpen, QA10), so the scheduler declines them
  * (`declined_at` = now; audited `registration.invitations_expired`, by = scheduler). Then the D-36 rule
  * applies as for a manual decline: all remaining members confirmed and ≥ 2 people → `menunggu_kepsek`
  * (Kepala Sekolah notified); otherwise the team is invalid and stays `menunggu_konfirmasi`.
@@ -39,6 +40,26 @@ final class ExpirePendingInvitations
                 ->where('registration_closes_at', '<', $now))
             ->whereHas('members', fn (Builder $m) => $m->whereNull('confirmed_at')->whereNull('declined_at'))
             ->orderBy('id');
+    }
+
+    /**
+     * Ids of the member rows this job declined for the registration (audit `registration.invitations_expired`), so a
+     * screen tells an invitation nobody answered from a real decline (QA10: both carry `declined_at`, D-50).
+     *
+     * @return list<string>
+     */
+    public static function expiredMemberIds(Registration $registration): array
+    {
+        return Activity::query()
+            ->where('event', 'registration.invitations_expired')
+            ->where('subject_type', $registration->getMorphClass())
+            ->where('subject_id', $registration->getKey())
+            ->get(['properties'])
+            ->flatMap(fn (Activity $row): array => (array) collect($row->properties)->get('member_ids', []))
+            ->map(fn (mixed $id): string => (string) $id)
+            ->unique()
+            ->values()
+            ->all();
     }
 
     /** @return array{expired: int, ready: bool, team: int}|null null when nothing was due */

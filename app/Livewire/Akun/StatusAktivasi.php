@@ -9,14 +9,17 @@ use App\Actions\Accounts\ActivationReport;
 use App\Actions\Accounts\ReopenActivationWindow;
 use App\Actions\Accounts\UnfreezeAccount;
 use App\Actions\Accounts\UpdateActivationWindow;
+use App\Actions\Users\AdminRecipients;
 use App\Enums\Permission;
 use App\Livewire\Admin\Concerns\RequiresRecentPassword;
 use App\Models\User;
+use App\Notifications\Admin\LargeExportNotice;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
@@ -267,7 +270,7 @@ final class StatusAktivasi extends Component
         $this->dispatch('sth-toast', message: 'Jendela aktivasi disimpan: '.(int) $this->windowDays.' hari untuk impor berikutnya.', tone: 'success');
     }
 
-    public function export(ActivationReport $report): ?StreamedResponse
+    public function export(ActivationReport $report, AdminRecipients $recipients): ?StreamedResponse
     {
         Gate::authorize(Permission::StudentView->value);
         // The CSV belongs to the list at the bottom: coming back from the password page must not reopen a dialog.
@@ -284,6 +287,12 @@ final class StatusAktivasi extends Component
             ->event('account.activation_report_exported')
             ->withProperties(['filters' => array_filter(['kelas' => $this->daftarKelas, 'status' => $this->status, 'q' => $this->q !== '' ? 'ya' : '']), 'rows' => $rows->count()])
             ->log('account.activation_report_exported');
+
+        // SECURITY §3m-9: the CSV of the whole school (names, classes, account states) alerts every Admin above
+        // LargeExportNotice::LIMIT rows, like the other exports (QA10).
+        if ($rows->count() > LargeExportNotice::LIMIT) {
+            Notification::send($recipients->admins(), new LargeExportNotice((string) $this->actor()->name, 'laporan status aktivasi', $rows->count(), now()->translatedFormat('j F Y H:i')));
+        }
 
         return response()->streamDownload(function () use ($report, $rows): void {
             $out = fopen('php://output', 'wb');

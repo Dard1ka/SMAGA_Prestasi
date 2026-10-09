@@ -5,13 +5,13 @@ declare(strict_types=1);
 namespace App\Livewire\Auth;
 
 use App\Actions\Accounts\RequestPasswordResetCode;
+use App\Actions\Accounts\ResetCodeLimits;
 use App\Actions\Accounts\ResetPasswordWithCode;
 use App\Actions\Accounts\SetNewPassword;
 use App\Actions\Accounts\VerifyOtpCode;
 use App\Actions\Fortify\LoginIdentifier;
 use App\Domain\Accounts\PasswordPolicy;
 use App\Providers\AppServiceProvider;
-use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
@@ -21,7 +21,9 @@ use Livewire\Component;
 /**
  * Guest "Lupa kata sandi" (docs/SECURITY.md §3b): 1 NIS/NISN, the student's own email once activation is
  * finished, or a staff username/email → same message whether or not the account exists → 2 six-digit code from
- * the bound email + new password. Rate limited per typed identifier and per IP.
+ * the bound email + new password. Rate limited per account and client address, and per address (ResetCodeLimits,
+ * QA10); the code belongs to this browser's session (OtpRequester), and IssueOtpCode / VerifyOtpCode add the daily
+ * limits per browser and per account.
  */
 #[Layout('layouts::auth', ['variant' => 'simple'])]
 #[Title('Lupa kata sandi')]
@@ -48,7 +50,7 @@ class ForgotPassword extends Component
 
         $this->validate(['identifier' => ['required', 'string', 'max:254']], ['required' => 'Wajib diisi.', 'max' => 'Terlalu panjang.']);
 
-        $this->throttle('forgot-send', $this->identifier, 3, 900, 'identifier');
+        $this->throttle(ResetCodeLimits::SEND, $this->identifier, 'identifier');
 
         $request->handle($this->identifier);
 
@@ -69,7 +71,7 @@ class ForgotPassword extends Component
             return;
         }
 
-        $this->throttle('forgot-send', $this->requestedFor, 3, 900, 'code');
+        $this->throttle(ResetCodeLimits::SEND, $this->requestedFor, 'code');
 
         $request->handle($this->requestedFor);
 
@@ -91,7 +93,7 @@ class ForgotPassword extends Component
             'password' => ['required', 'string', 'confirmed', 'max:'.PasswordPolicy::MAX_LENGTH],
         ], Activation::messages(), ['password' => 'kata sandi']);
 
-        $this->throttle('forgot-verify', $this->requestedFor, 10, 600, 'code');
+        $this->throttle(ResetCodeLimits::VERIFY, $this->requestedFor, 'code');
 
         $reset->handle($this->requestedFor, $this->code, $this->password, $this->password_confirmation, Activation::messages());
 
@@ -119,21 +121,12 @@ class ForgotPassword extends Component
     /**
      * @throws ValidationException
      */
-    private function throttle(string $name, string $identifier, int $perIdentifier, int $decaySeconds, string $field): void
+    private function throttle(string $step, string $identifier, string $field): void
     {
-        $keys = [
-            $name.':'.substr(hash_hmac('sha256', LoginIdentifier::normalize($identifier), (string) config('app.key')), 0, 32) => $perIdentifier,
-            $name.'-ip:'.request()->ip() => 30,
-        ];
+        $wait = app(ResetCodeLimits::class)->hit($step, $identifier, (string) request()->ip());
 
-        foreach ($keys as $key => $max) {
-            if (RateLimiter::tooManyAttempts($key, $max)) {
-                throw ValidationException::withMessages([$field => AppServiceProvider::retryMessage(RateLimiter::availableIn($key))]);
-            }
-        }
-
-        foreach (array_keys($keys) as $key) {
-            RateLimiter::hit($key, $decaySeconds);
+        if ($wait !== null) {
+            throw ValidationException::withMessages([$field => AppServiceProvider::retryMessage($wait)]);
         }
     }
 }

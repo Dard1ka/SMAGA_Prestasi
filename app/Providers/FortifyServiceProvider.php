@@ -7,8 +7,11 @@ namespace App\Providers;
 use App\Actions\Accounts\EnforceLoginControls;
 use App\Actions\Accounts\RecordFailedLogin;
 use App\Actions\Fortify\AuthenticateUser;
+use App\Actions\Fortify\GuardedTwoFactorLoginRequest;
+use App\Actions\Fortify\KnownDevices;
 use App\Actions\Fortify\LoginIdentifier;
 use App\Actions\Fortify\LoginResponse;
+use App\Actions\Fortify\TwoFactorChallenge;
 use App\Http\Middleware\RememberLoggedOutAccount;
 use App\Http\Middleware\RestrictTwoFactorToStaff;
 use App\Models\User;
@@ -28,7 +31,11 @@ use Laravel\Fortify\Actions\AttemptToAuthenticate;
 use Laravel\Fortify\Actions\PrepareAuthenticatedSession;
 use Laravel\Fortify\Actions\RedirectIfTwoFactorAuthenticatable;
 use Laravel\Fortify\Contracts\LoginResponse as LoginResponseContract;
+use Laravel\Fortify\Events\TwoFactorAuthenticationChallenged;
+use Laravel\Fortify\Events\TwoFactorAuthenticationFailed;
+use Laravel\Fortify\Events\ValidTwoFactorAuthenticationCodeProvided;
 use Laravel\Fortify\Fortify;
+use Laravel\Fortify\Http\Requests\TwoFactorLoginRequest;
 use Throwable;
 
 /**
@@ -48,6 +55,9 @@ class FortifyServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->singleton(LoginResponseContract::class, LoginResponse::class);
+
+        // QA10: every request to the TOTP challenge first asks TwoFactorChallenge whether it may go on.
+        $this->app->bind(TwoFactorLoginRequest::class, GuardedTwoFactorLoginRequest::class);
     }
 
     public function boot(): void
@@ -133,6 +143,12 @@ class FortifyServiceProvider extends ServiceProvider
 
         Event::listen(Login::class, function (Login $event): void {
             $event->user->forceFill(['last_login_at' => now()])->saveQuietly();
+
+            // QA10 review: this browser is now a known device of the account (LoginLockout lets it in while the
+            // account is closed to unknown devices after many failures).
+            if ($event->user instanceof User) {
+                KnownDevices::remember($event->user);
+            }
         });
 
         // After "Keluar" + Back the old page becomes the intended address of the guest session: a different account
@@ -152,8 +168,14 @@ class FortifyServiceProvider extends ServiceProvider
             }
         });
 
-        // Audit rows for TOTP enabled / confirmed / disabled / recovery codes regenerated (Fortify's events).
+        // Audit rows for TOTP enabled / confirmed / disabled / recovery codes regenerated and, since QA10, for every
+        // wrong code at the challenge (Fortify's events).
         Event::subscribe(TwoFactorAuditSubscriber::class);
+
+        // QA10: start time + password fingerprint of the challenge, wrong codes per account, forgotten after a sign-in.
+        Event::listen(TwoFactorAuthenticationChallenged::class, [TwoFactorChallenge::class, 'started']);
+        Event::listen(TwoFactorAuthenticationFailed::class, [TwoFactorChallenge::class, 'failed']);
+        Event::listen(ValidTwoFactorAuthenticationCodeProvided::class, [TwoFactorChallenge::class, 'succeeded']);
     }
 
     /**

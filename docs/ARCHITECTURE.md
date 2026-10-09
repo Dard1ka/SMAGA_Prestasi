@@ -162,6 +162,15 @@ Pest only: the scenario has no step for them yet (CLAUDE.md backlog #46).
 | Weight version published, signature replaced, letter template changed | Kepala Sekolah and Admins (not the actor for the template) |
 | Archive job report, large export | Admins |
 
+QA10 (2026-10-09) changes to the rows above: the letter notices (sent, revised) link to Lomba saya / the binaan detail,
+which list the current letters, never one file version; a report revision asks only the ketua to "Perbaiki laporan" (the
+other members read "Laporan hasil perlu revisi" and "Lihat lomba"); Humas "ready for publication" goes out only when at
+least one member may be named and counts only those; the guru pembimbing is told only while he still holds the guru role
+(approve, reject, cancel, letters); a delayed role change applied or cancelled also tells the Kepala Sekolah, and a
+Kepala Sekolah replacement that cancels itself tells the current one; `LetterRevokedNotice` is a `StaffNotice` (verified
+address only), `AdminNotice` extends `StaffNotice`; Database prestasi and the Status aktivasi CSV send
+`LargeExportNotice` above 500 rows like the other exports.
+
 ### 8c. Rules added by M1 (D-78…D-91, lead's hand test of 2026-10-04)
 - **Login and activation**: see §8 (email login for activated students; email → code → password; a student may keep
   the password: since D-92 the school password only, never an Admin's temporary one). Accepted risk and

@@ -69,10 +69,16 @@ final class Notifikasi extends Component
     public function render(): View
     {
         $user = $this->user();
+        $query = fn () => $user->notifications()->when($this->filter === 'belum', fn ($q) => $q->whereNull('read_at'));
 
-        $notifications = $user->notifications()
-            ->when($this->filter === 'belum', fn ($q) => $q->whereNull('read_at'))
-            ->paginate(self::PER_PAGE);
+        $notifications = $query()->paginate(self::PER_PAGE);
+
+        // QA10: marking the last unread row of the last "Belum dibaca" page read left an empty page ("Tidak ada
+        // notifikasi baru", no pager) while other pages still had rows. Show the last page that has rows.
+        if ($notifications->isEmpty() && $notifications->currentPage() > 1) {
+            $this->setPage($notifications->lastPage());
+            $notifications = $query()->paginate(self::PER_PAGE);
+        }
 
         return view('livewire.akun.notifikasi', [
             'notifications' => $notifications,

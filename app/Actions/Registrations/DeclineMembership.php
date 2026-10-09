@@ -16,6 +16,8 @@ use Illuminate\Validation\ValidationException;
  * (audit trail); the leader is notified. If every remaining member has confirmed and the team still
  * has ≥ 2 people, the registration moves on to `menunggu_kepsek`; if only the leader is left it stays
  * in `menunggu_konfirmasi` and the leader can cancel and register again.
+ * QA10: like a confirm, possible until the registration deadline whatever the lomba's status
+ * (RegistrationPolicy::respond, re-checked in ConfirmMembership::lockPendingInvite()).
  */
 final class DeclineMembership
 {

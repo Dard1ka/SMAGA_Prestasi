@@ -488,8 +488,9 @@ final class ProfilTalenta extends Component
             'reviewing' => $reviewing !== null ? $this->titleOf($reviewing->talentType, $reviewing->talentBranch) : null,
             'reviewMax' => TalentNote::MAX_REVIEW_MESSAGE,
             'year' => CarbonImmutable::now()->year,
+            // QA10: joined (confirmed) registrations only, like Portofolio "Lomba diikuti"; an open invitation is not one.
             'lombaCount' => Registration::query()
-                ->whereHas('members', fn (Builder $m) => $m->where('student_id', $student->getKey())->whereNull('declined_at'))
+                ->whereHas('members', fn (Builder $m) => $m->where('student_id', $student->getKey())->whereNotNull('confirmed_at')->whereNull('declined_at'))
                 ->whereNotIn('status', [RegistrationStatus::Dibatalkan, RegistrationStatus::Ditolak])
                 ->count(),
             'certificates' => ($profile?->certificates ?? collect())

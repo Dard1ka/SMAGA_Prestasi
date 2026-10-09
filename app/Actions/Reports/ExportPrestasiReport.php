@@ -17,6 +17,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use InvalidArgumentException;
 use OpenSpout\Common\Entity\Row;
 use OpenSpout\Common\Entity\Style\Style;
@@ -37,12 +38,22 @@ use RuntimeException;
  *   App\Domain\Letters\PdfRenderer (static template `resources/pdf/laporan-prestasi.blade.php`, {{ }} only).
  * - Audited (`school_report.exported`: format, period, bidang, rows, sha256, watermark); more than
  *   LargeExportNotice::LIMIT rows alert every Admin (SECURITY §3m-9).
+ * - A PDF holds at most MAX_PDF_ROWS rows (QA10); above that it is refused (ValidationException, key `export`) and
+ *   the message points to the Excel file.
  *
  * Returns a temporary file the caller streams and deletes (nothing is kept on disk).
  */
 final class ExportPrestasiReport
 {
     public const FORMATS = ['pdf', 'xlsx'];
+
+    /**
+     * Most detail rows a PDF may hold (QA10). dompdf builds the whole table in memory inside the web request
+     * (production: 30 s, 256 MB): measured in the dev container, 200 rows took 15 s and about 90 MB, 300 rows 20 s and
+     * about 150 MB, 400 rows ran out of 256 MB. Above the cap the PDF is refused and the screen points to the Excel
+     * file, which streams its rows. Same idea as ExportAchievements::MAX_ROWS.
+     */
+    public const MAX_PDF_ROWS = 250;
 
     public function __construct(
         private readonly ExportPrestasiData $data,
@@ -60,6 +71,11 @@ final class ExportPrestasiReport
 
         if (! in_array($format, self::FORMATS, true)) {
             throw new InvalidArgumentException('Format laporan tidak dikenal.');
+        }
+
+        // Counted by the database before anything is loaded or rendered (QA10).
+        if ($format === 'pdf' && ($count = $this->data->count($period, $bidang)) > self::MAX_PDF_ROWS) {
+            throw ValidationException::withMessages(['export' => self::tooLargeForPdf($count)]);
         }
 
         $rows = $this->data->rows($period, $bidang);
@@ -104,6 +120,24 @@ final class ExportPrestasiReport
             'rows' => $rows->count(),
             'mime' => $format === 'pdf' ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         ];
+    }
+
+    /** The refusal of a PDF above MAX_PDF_ROWS (key `export`). */
+    public static function tooLargeForPdf(int $rows): string
+    {
+        return 'PDF memuat paling banyak '.self::number(self::MAX_PDF_ROWS).' prestasi, periode ini punya '.self::number($rows)
+            .'. Download Excel untuk daftar lengkap, atau persempit periode atau bidang.';
+    }
+
+    /** The note on the screen before the download (Kepala Sekolah › Laporan). */
+    public static function pdfLimitNote(): string
+    {
+        return 'PDF memuat paling banyak '.self::number(self::MAX_PDF_ROWS).' prestasi. Download Excel untuk daftar lengkap.';
+    }
+
+    private static function number(int $value): string
+    {
+        return number_format($value, 0, ',', '.');
     }
 
     /** "Di-download oleh Dra. Sri Wahyuni (kepsek) · 1 Okt 2026 10.15 WIB · dokumen internal" */

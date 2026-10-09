@@ -44,6 +44,8 @@ it('verifies a team report: full points for every member, snapshot, selesai, Hum
     $leader = F::student('Nadia Putri Anindya', 'XI-4');
     $dimas = F::student('Dimas Arya Nugroho', 'XI-4');
     $keisha = F::student('Keisha Larasati', 'XI-6');
+    // QA10: Humas is told only when the queue shows someone (a member with publish consent).
+    $leader->forceFill(['publish_consent' => true])->save();
     $report = F::pendingReport($leader, [$dimas, $keisha], ResultType::Juara3);
     $version = WeightVersion::active();
 

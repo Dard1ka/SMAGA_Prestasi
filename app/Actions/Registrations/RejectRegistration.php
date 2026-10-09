@@ -83,13 +83,27 @@ final class RejectRegistration
             Notification::send($members, RegistrationRejected::for($locked, 'siswa'));
         }
 
-        // The guru pembimbing hears about it too (lead, 2026-10-02); the Kepala Sekolah is the actor.
-        $mentor = $locked->mentor_id !== null ? User::query()->find($locked->mentor_id) : null;
+        // The guru pembimbing hears about it too (lead, 2026-10-02) while still a guru (QA10); the Kepala Sekolah is the actor.
+        $mentor = ApproveRegistration::mentorToTell($locked);
 
-        if ($mentor !== null && $mentor->canLogIn() && ! $mentor->is($actor)) {
+        if ($mentor !== null && ! $mentor->is($actor)) {
             $mentor->notify(RegistrationRejected::for($locked, 'guru'));
         }
 
         return $registration;
+    }
+
+    /**
+     * How many of the team's members hear about the rejection (those who confirmed and can log in), of how many
+     * (QA10, D-109: the Persetujuan toast claims a notice only for them, like PublishPublication::notifiesStudent()).
+     *
+     * @return array{told: int, of: int}
+     */
+    public static function studentsTold(Registration $registration): array
+    {
+        return [
+            'told' => ApproveRegistration::memberUsers($registration)->count(),
+            'of' => $registration->members()->whereNotNull('confirmed_at')->whereNull('declined_at')->count(),
+        ];
     }
 }

@@ -102,7 +102,9 @@ final class Binaan extends Component
     {
         $mine = fn (): Builder => Registration::query()->where('mentor_id', $this->user()->getKey());
 
+        // Only students in the team: an invitation nobody answered yet is not a binaan (QA10).
         $students = RegistrationMember::query()
+            ->whereNotNull('confirmed_at')
             ->whereNull('declined_at')
             ->whereHas('registration', fn (Builder $r) => $r->where('mentor_id', $this->user()->getKey()))
             ->pluck('student_id')

@@ -52,14 +52,14 @@ abstract class Notice extends Notification implements ShouldQueue
         $firstName = strtok(trim((string) ($notifiable->name ?? '')), ' ') ?: null;
 
         $message = (new PlainMailMessage)
-            ->subject($this->title)
+            ->subject($this->titleFor($notifiable))
             ->greeting($firstName !== null ? 'Halo '.$firstName.',' : 'Halo,')
-            ->line($this->body)
+            ->line($this->bodyFor($notifiable))
             ->salutation('SMAGA Talent Hub');
 
         $url = $this->url();
 
-        return $url !== null ? $message->action($this->actionLabel, $url) : $message;
+        return $url !== null ? $message->action($this->actionLabelFor($notifiable), $url) : $message;
     }
 
     /** @return array<string, mixed> */
@@ -67,11 +67,27 @@ abstract class Notice extends Notification implements ShouldQueue
     {
         return [
             'kind' => $this->kind,
-            'title' => $this->title,
-            'body' => $this->body,
+            'title' => $this->titleFor($notifiable),
+            'body' => $this->bodyFor($notifiable),
             'url' => $this->url(),
             ...$this->extra,
         ];
+    }
+
+    /** Hooks for a notice whose text depends on the recipient (QA10: ReportRevisionRequested). */
+    protected function titleFor(object $notifiable): string
+    {
+        return $this->title;
+    }
+
+    protected function bodyFor(object $notifiable): string
+    {
+        return $this->body;
+    }
+
+    protected function actionLabelFor(object $notifiable): string
+    {
+        return $this->actionLabel;
     }
 
     public function url(): ?string

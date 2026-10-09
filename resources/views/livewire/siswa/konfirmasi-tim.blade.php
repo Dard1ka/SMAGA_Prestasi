@@ -60,13 +60,17 @@
             </div>
         </x-sth.card>
 
-        <x-sth.modal id="tolak-undangan" title="Tolak undangan?" description="Ketua tim akan diberi tahu. Keputusan ini tidak bisa diubah." size="sm">
+        {{-- QA10 (D-109): the ketua is told only while the ketua's account can log in. --}}
+        <x-sth.modal id="tolak-undangan" title="Tolak undangan?" :description="$notifiesLeader ? 'Ketua tim akan diberi tahu. Keputusan ini tidak bisa diubah.' : 'Keputusan ini tidak bisa diubah.'" size="sm">
             <p class="m-0">Kamu tidak ikut tim {{ $competition->name }}.</p>
             <x-slot:footer>
                 <x-sth.button variant="quiet" data-sth-close>Kembali</x-sth.button>
                 <x-sth.button variant="danger" wire:click="tolak" wire:loading.attr="disabled">Tolak undangan</x-sth.button>
             </x-slot:footer>
         </x-sth.modal>
+    @elseif ($expired)
+        {{-- QA10: expired at the deadline (or about to be), not declined by the student. --}}
+        <x-sth.alert tone="warning">Undangan ini sudah tidak berlaku karena batas pendaftaran lewat.</x-sth.alert>
     @elseif ($mine?->declined_at)
         <x-sth.alert>Kamu sudah menolak undangan ini.</x-sth.alert>
     @elseif ($mine?->confirmed_at)

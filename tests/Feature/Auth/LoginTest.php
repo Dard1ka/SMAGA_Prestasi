@@ -140,26 +140,34 @@ it('counts NIS, NISN and email of one student in the same rate-limit bucket', fu
     $this->assertGuest();
 });
 
-it('locks the account progressively for failures by email, also from other addresses', function (): void {
+it('locks the account progressively for failures by email at their address, also for the NIS (QA10: per address)', function (): void {
     H::activeStudent();
 
-    // Different IPs so only the per-account lockout (not the per identifier+IP limiter) applies.
+    // One address, 13 s apart: when the sixth try comes the per-minute limiter has started a new window, so only the
+    // lockout answers it. QA10 (K3): the lockout is per account AND address, no longer per account alone.
     foreach (range(1, 5) as $i) {
-        $this->withServerVariables(['REMOTE_ADDR' => '10.0.0.'.$i])
+        $this->withServerVariables(['REMOTE_ADDR' => '10.0.0.1'])
             ->from('/login')->post('/login', ['identifier' => 'nadia.anindya@example.test', 'password' => 'salah-sekali-123']);
+        $this->travel(13)->seconds();
     }
 
     // The lock holds for the NIS as well: one account, one bucket.
-    $this->withServerVariables(['REMOTE_ADDR' => '10.0.1.1'])
+    $this->withServerVariables(['REMOTE_ADDR' => '10.0.0.1'])
         ->from('/login')->post('/login', ['identifier' => H::NIS, 'password' => H::PASSWORD])
         ->assertSessionHasErrors('identifier');
 
     expect(session('errors')->first('identifier'))->toStartWith('Terlalu banyak percobaan');
     $this->assertGuest();
 
+    // Another address is not held up by these failures.
+    $this->withServerVariables(['REMOTE_ADDR' => '10.0.1.1'])
+        ->from('/login')->post('/login', ['identifier' => H::NIS, 'password' => H::PASSWORD])
+        ->assertRedirect(route('home'));
+    auth()->logout();
+
     $this->travel(61)->seconds();
 
-    $this->withServerVariables(['REMOTE_ADDR' => '10.0.1.2'])
+    $this->withServerVariables(['REMOTE_ADDR' => '10.0.0.1'])
         ->from('/login')->post('/login', ['identifier' => 'nadia.anindya@example.test', 'password' => H::PASSWORD])
         ->assertRedirect(route('home'));
 });
@@ -254,25 +262,32 @@ it('rate limits one account bucket, shared by NIS and NISN', function (): void {
     $this->assertGuest();
 });
 
-it('locks the account bucket progressively after repeated failures', function (): void {
+it('locks the account bucket progressively after repeated failures at their address (QA10: per address)', function (): void {
     H::pendingStudent();
 
-    // Different IPs so only the per-account lockout (not the per identifier+IP limiter) applies.
+    // One address, 13 s apart, so only the lockout (per account AND address since QA10) answers the sixth try.
     foreach (range(1, 5) as $i) {
-        $this->withServerVariables(['REMOTE_ADDR' => '10.0.0.'.$i])
+        $this->withServerVariables(['REMOTE_ADDR' => '10.0.0.1'])
             ->from('/login')->post('/login', ['identifier' => H::NIS, 'password' => 'salah-sekali-123']);
+        $this->travel(13)->seconds();
     }
 
-    $this->withServerVariables(['REMOTE_ADDR' => '10.0.1.1'])
+    $this->withServerVariables(['REMOTE_ADDR' => '10.0.0.1'])
         ->from('/login')->post('/login', ['identifier' => H::NIS, 'password' => H::PASSWORD])
         ->assertSessionHasErrors('identifier');
 
     expect(session('errors')->first('identifier'))->toStartWith('Terlalu banyak percobaan');
     $this->assertGuest();
 
+    // Another address is not held up by these failures.
+    $this->withServerVariables(['REMOTE_ADDR' => '10.0.1.1'])
+        ->from('/login')->post('/login', ['identifier' => H::NIS, 'password' => H::PASSWORD])
+        ->assertRedirect(route('aktivasi'));
+    auth()->logout();
+
     $this->travel(61)->seconds();
 
-    $this->withServerVariables(['REMOTE_ADDR' => '10.0.1.2'])
+    $this->withServerVariables(['REMOTE_ADDR' => '10.0.0.1'])
         ->from('/login')->post('/login', ['identifier' => H::NIS, 'password' => H::PASSWORD])
         ->assertRedirect(route('aktivasi'));
 });

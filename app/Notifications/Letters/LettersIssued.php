@@ -10,12 +10,12 @@ use App\Models\Registration;
 use App\Notifications\Registrations\RegistrationNotification;
 use App\Notifications\Support\PlainMailMessage;
 use Illuminate\Notifications\Messages\MailMessage;
-use Illuminate\Support\Facades\Route;
 
 /**
  * Surat tugas sent (disetujui → surat_terbit). Audience `siswa`: the shared team letter; `guru`: the
- * Surat Perintah Tugas (the mentor may also open the team letter). Links go through the policy-checked
- * file controller (`files.show`, login required); the mail itself carries no attachment and no NIS.
+ * Surat Perintah Tugas (the mentor may also open the team letter). The mail itself carries no attachment and no NIS.
+ * QA10: the link opens the screen that lists the CURRENT letters (Siswa › Lomba saya, Guru › detail binaan), not one
+ * file version: after TU's "Koreksi" the old file answers 404 and the mail would have pointed at it.
  */
 class LettersIssued extends RegistrationNotification
 {
@@ -40,7 +40,7 @@ class LettersIssued extends RegistrationNotification
             $mail->line('Bawa surat ini saat lomba. Keasliannya bisa dicek lewat kode QR di surat.');
         }
 
-        return $mail->action('Download surat', $this->url())->salutation('SMAGA Talent Hub');
+        return $mail->action('Lihat surat', $this->url())->salutation('SMAGA Talent Hub');
     }
 
     /** @return array<string, mixed> */
@@ -80,14 +80,19 @@ class LettersIssued extends RegistrationNotification
 
     private function url(): string
     {
-        $letter = $this->letter();
+        return self::lettersScreen($this->registration, $this->audience);
+    }
 
-        if ($letter?->file_id !== null && Route::has('files.show')) {
-            return route('files.show', ['file' => $letter->file_id]);
-        }
+    /**
+     * The screen that lists the current letters of a registration (QA10), shared with LetterRevised: Lomba saya for
+     * the members (download of the siswa letter), the binaan detail for the guru pembimbing (preview popup, D-112).
+     */
+    public static function lettersScreen(Registration $registration, string $audience): string
+    {
+        $registrationId = $registration->getKey();
 
-        return $this->audience === 'guru'
-            ? self::link(['guru.beranda'])
-            : self::link([['siswa.lomba-saya.show', ['registration' => $this->registration->getKey()]], 'siswa.lomba-saya.index']);
+        return $audience === 'guru'
+            ? self::link([['guru.binaan.show', ['registration' => $registrationId]], 'guru.beranda'])
+            : self::link([['siswa.lomba-saya.show', ['registration' => $registrationId]], 'siswa.lomba-saya.index']);
     }
 }

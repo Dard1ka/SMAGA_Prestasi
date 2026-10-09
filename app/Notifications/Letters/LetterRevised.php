@@ -8,13 +8,13 @@ use App\Models\Registration;
 use App\Notifications\Registrations\RegistrationNotification;
 use App\Notifications\Support\PlainMailMessage;
 use Illuminate\Notifications\Messages\MailMessage;
-use Illuminate\Support\Facades\Route;
 
 /**
  * A sent surat tugas was revoked and replaced by a new version (B3, backlog #11). Audience `siswa`
  * (team members, shared letter) or `guru` (the mentor's Surat Perintah Tugas). Only numbers and the
- * lomba name; the link goes through the policy-checked file controller. The TU's reason stays in the
- * audit log.
+ * lomba name. The TU's reason stays in the audit log. QA10: the link opens the screen with the current letters
+ * (LettersIssued::lettersScreen()), not the file of this version: a later "Koreksi" would make that file a 404.
+ * `$fileId` is kept for the callers and the queued payload; the link no longer uses it.
  */
 class LetterRevised extends RegistrationNotification
 {
@@ -35,7 +35,7 @@ class LetterRevised extends RegistrationNotification
             ->greeting($this->audience === 'siswa' ? 'Halo '.self::firstName($notifiable).',' : 'Yth. '.trim((string) ($notifiable->name ?? '')).',')
             ->line($this->message())
             ->line('Pakai surat yang baru. Keasliannya bisa dicek lewat kode QR di surat.')
-            ->action('Download surat baru', $this->url())
+            ->action('Lihat surat baru', $this->url())
             ->salutation('SMAGA Talent Hub');
     }
 
@@ -66,12 +66,6 @@ class LetterRevised extends RegistrationNotification
 
     private function url(): string
     {
-        if ($this->fileId !== null && Route::has('files.show')) {
-            return route('files.show', ['file' => $this->fileId]);
-        }
-
-        return $this->audience === 'guru'
-            ? self::link(['guru.beranda'])
-            : self::link([['siswa.lomba-saya.show', ['registration' => $this->registration->getKey()]], 'siswa.lomba-saya.index']);
+        return LettersIssued::lettersScreen($this->registration, $this->audience);
     }
 }

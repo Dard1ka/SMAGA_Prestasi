@@ -36,7 +36,7 @@ use Livewire\Component;
  * dipublikasikan) + panel "Siapkan publikasi" ("Data untuk flyer" with "Salin data", caption, channels,
  * schedule, publish, apresiasi). Humas designs the flyer in its own tools: STH draws none, it only hands
  * over the facts (FlyerData, M3-E). Only verified achievements whose student gave publish consent are listed.
- * `?pilih=<publication>` preselects a card (404 when it is not in the visible queue).
+ * `?pilih=<publication>` preselects a card (a warning toast when it left the visible queue, QA10; 404 for an unknown id).
  */
 #[Title('Publikasi prestasi')]
 #[Layout('layouts::app', ['subtitle' => 'Prestasi terverifikasi yang siap dibagikan.'])]
@@ -82,9 +82,13 @@ class Publikasi extends Component
         $pilih = request()->query('pilih');
 
         if (is_string($pilih) && $pilih !== '') {
-            $this->choose($this->find($pilih));
+            $chosen = $this->findLinked($pilih);
 
-            return;
+            if ($chosen !== null) {
+                $this->choose($chosen);
+
+                return;
+            }
         }
 
         $query = HumasQueries::visiblePublications()
@@ -405,6 +409,25 @@ class Publikasi extends Component
         return HumasQueries::visiblePublications()
             ->with(HumasQueries::cardRelations())
             ->findOrFail($id);
+    }
+
+    /**
+     * `?pilih=` from a link (PublicationDue mail, Jadwal, Arsip "Lihat"). QA10: a publication that left the queue since
+     * the link was made (consent withdrawn, the student disabled or deleted) gets the QA9 warning toast and the normal
+     * first card instead of a full-screen 404; the toast names nobody. An id that is no publication at all stays a 404.
+     */
+    private function findLinked(string $id): ?Publication
+    {
+        $publication = HumasQueries::visiblePublications()
+            ->with(HumasQueries::cardRelations())
+            ->find($id);
+
+        if ($publication === null) {
+            abort_unless(Publication::query()->whereKey($id)->exists(), 404);
+            $this->dispatch('sth-toast', message: 'Prestasi ini sudah tidak ada di antrean publikasi. Antrean sudah diperbarui.', tone: 'warning');
+        }
+
+        return $publication;
     }
 
     /**

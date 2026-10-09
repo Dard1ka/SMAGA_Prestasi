@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Livewire\Humas;
 
 use App\Actions\Publications\AchievementFacts;
+use App\Actions\Publications\NamedStudent;
 use App\Enums\Permission;
 use App\Enums\PublicationStatus;
 use App\Models\Achievement;
@@ -18,8 +19,8 @@ use Illuminate\Database\Eloquent\Builder;
 
 /**
  * Shared queries + small formatters of the Humas screens (W2-C helper). The queue only shows
- * publications of verified achievements whose student gave publish consent (mirrors
- * PublicationPolicy::eligible(); SECURITY §3m-7).
+ * publications of verified achievements whose student may be named (mirrors PublicationPolicy::eligible();
+ * SECURITY §3m-7; QA10: NamedStudent, so a disabled or deleted student leaves the queue like one without consent).
  */
 final class HumasQueries
 {
@@ -28,7 +29,7 @@ final class HumasQueries
     {
         return Publication::query()->whereHas('achievement', fn (Builder $a) => $a
             ->whereNotNull('verified_at')
-            ->whereHas('student', fn (Builder $s) => $s->where('publish_consent', true)));
+            ->whereHas('student', fn (Builder $s) => NamedStudent::constrain($s)));
     }
 
     /** Eager loads for cards (Model::shouldBeStrict(): no lazy loading in lists). */

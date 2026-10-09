@@ -104,6 +104,7 @@ final class AuditLog extends Component
         'two_factor.confirmed' => '2FA diaktifkan',
         'two_factor.disabled' => '2FA dimatikan',
         'two_factor.recovery_codes_regenerated' => 'Kode pemulihan 2FA dibuat ulang',
+        'two_factor.challenge_failed' => 'Kode 2FA salah saat masuk',
         'weight.published' => 'Bobot poin diubah',
         'weight.recomputed' => 'Poin dihitung ulang',
         // QA5 retest (backlog #64): the events that still showed their code.

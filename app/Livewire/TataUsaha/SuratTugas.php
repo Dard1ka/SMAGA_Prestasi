@@ -10,6 +10,7 @@ use App\Actions\Letters\LetterDraft;
 use App\Actions\Letters\RevokeLetter;
 use App\Actions\Letters\SendLetters;
 use App\Actions\Letters\StreamLetter;
+use App\Actions\Registrations\ApproveRegistration;
 use App\Actions\Templates\LetterTemplate;
 use App\Domain\Letters\LetterNumber;
 use App\Domain\Support\Dates;
@@ -460,7 +461,15 @@ class SuratTugas extends Component
         }
 
         $this->clearFailure();
-        $this->dispatch('sth-toast', message: 'Surat terkirim ke siswa dan guru pembimbing.', tone: 'success');
+
+        // QA10 (D-109): name only who SendLetters told (accounts that can log in; the guru only with a guru letter).
+        $told = array_values(array_filter([
+            SendLetters::notifiesStudents($registration) ? 'siswa' : null,
+            SendLetters::notifiesMentor($registration) ? 'guru pembimbing' : null,
+        ]));
+        $this->dispatch('sth-toast', message: $told === []
+            ? 'Surat ditandai terkirim. Tidak ada akun aktif yang diberi tahu.'
+            : 'Surat terkirim ke '.implode(' dan ', $told).'.', tone: 'success');
         $this->refreshBadge();
     }
 
@@ -476,6 +485,30 @@ class SuratTugas extends Component
     public static function streamLetter(User $user, Letter $letter): StreamedResponse
     {
         return app(StreamLetter::class)->handle($user, $letter);
+    }
+
+    /**
+     * First sentence of the "Kirim surat sekarang?" dialog (QA10, D-109): only who SendLetters will really tell, the
+     * members whose account can log in and a guru pembimbing who is still a guru.
+     */
+    private static function sendNotice(Registration $registration): string
+    {
+        $members = $registration->members()->whereNotNull('confirmed_at')->whereNull('declined_at')->count();
+        $told = ApproveRegistration::memberUsers($registration)->count();
+        $mentor = SendLetters::notifiesMentor($registration);
+
+        $parts = array_values(array_filter([$told > 0 ? $told.' siswa' : null, $mentor ? '1 guru pembimbing' : null]));
+        $sentence = $parts === [] ? 'Tidak ada akun aktif yang diberi tahu.' : implode(' dan ', $parts).' mendapat notifikasi dan bisa men-download suratnya.';
+
+        if ($members > $told) {
+            $sentence .= ' '.($members - $told).' siswa tidak diberi tahu karena akunnya tidak aktif.';
+        }
+
+        if ($registration->mentor_id !== null && ! $mentor && $registration->letters()->where('type', LetterType::Guru)->exists()) {
+            $sentence .= ' Guru pembimbing tidak diberi tahu.';
+        }
+
+        return $sentence;
     }
 
     public function render(IssueLetters $issue): View
@@ -516,6 +549,7 @@ class SuratTugas extends Component
 
             $data += [
                 'hasMentor' => $registration->mentor_id !== null,
+                'sendNotice' => self::sendNotice($registration),
                 'type' => $type,
                 'letter' => $letter,
                 'editing' => $editing,

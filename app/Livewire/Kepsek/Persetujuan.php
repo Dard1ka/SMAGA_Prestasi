@@ -52,6 +52,10 @@ class Persetujuan extends Component
     #[Locked]
     public array $recent = [];
 
+    /** @var list<string> rejected during this visit without telling any student (accounts not active; QA10, D-109) */
+    #[Locked]
+    public array $untold = [];
+
     /**
      * @var list<string> ULIDs of the waiting rows this screen has shown during this visit (QA9): a row among them that
      *                   was cancelled or decided elsewhere meanwhile is answered with a toast, any other id with a 404.
@@ -221,7 +225,19 @@ class Persetujuan extends Component
         $this->recent[$registration->getKey()] = 'tolak';
         $this->selected = array_values(array_diff($this->selected, [$registration->getKey()]));
         $this->closeReject();
-        $this->dispatch('sth-toast', message: 'Penolakan terkirim ke siswa.', tone: 'success');
+
+        // QA10 (D-109): claim a notice only for the members RejectRegistration told (they can log in).
+        ['told' => $told, 'of' => $of] = RejectRegistration::studentsTold($registration);
+
+        if ($told === 0) {
+            $this->untold[] = (string) $registration->getKey();
+        }
+
+        $this->dispatch('sth-toast', message: match (true) {
+            $told === 0 => 'Pendaftaran ditolak. Akun siswa tidak aktif, jadi tidak ada notifikasi.',
+            $told < $of => 'Penolakan terkirim ke siswa yang akunnya aktif.',
+            default => 'Penolakan terkirim ke siswa.',
+        }, tone: 'success');
     }
 
     public function render(): View

@@ -194,6 +194,8 @@ final class Index extends Component
             'meta' => ($competition->bidang?->label() ?? 'Lomba').' · '.$this->typeLabel($registration, (int) $registration->getAttribute('active_members_count')),
             'bidang' => $competition->bidang,
             'status' => $registration->status,
+            // QA10: the tracker ends at Laporan hasil without points for a rejected report (D-34).
+            'reportStatus' => $registration->report?->status,
             'chip' => $chip,
             'tone' => $tone,
             'current' => (string) $registration->getKey() === $this->selectedId,
@@ -252,6 +254,7 @@ final class Index extends Component
             'registration' => $registration,
             'competition' => $competition,
             'status' => $status,
+            'reportStatus' => $report?->status,
             'chip' => $chip,
             'tone' => $tone,
             'sub' => collect([$competition->organizer_name, $competition->weight_category?->label()])->filter()->implode(' · '),

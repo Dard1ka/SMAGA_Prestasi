@@ -291,7 +291,7 @@
                 </div>
 
                 <x-sth.modal :id="\App\Livewire\TataUsaha\SuratTugas::SEND_DIALOG" title="Kirim surat sekarang?" size="sm"
-                             :description="$n.' siswa'.($hasMentor ? ' dan 1 guru pembimbing' : '').' mendapat notifikasi dan bisa men-download suratnya. Setelah terkirim, perubahan hanya lewat Koreksi: surat lama dicabut dan diganti versi baru.'">
+                             :description="$sendNotice.' Setelah terkirim, perubahan hanya lewat Koreksi: surat lama dicabut dan diganti versi baru.'">
                     <ul class="m-0 flex list-none flex-col gap-2 p-0">
                         @foreach ($tabs as $item)
                             <li wire:key="kirim-cek-{{ $item['key'] }}" class="flex flex-col gap-0.5 rounded-tile border border-line p-3">
