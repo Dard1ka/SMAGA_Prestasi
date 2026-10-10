@@ -1,4 +1,4 @@
-# EM2 — fixes after the lead's mail and notification test (2026-10-09)  ·  status: built and reviewed; branch `fix/em2-uji-email` (pushed, no PR yet)
+# EM2 — fixes after the lead's mail and notification test (2026-10-09)  ·  status: built and reviewed; branch `fix/em2-uji-email`, PR 20 (not merged yet)
 
 On the lead's local `main` (`a2d21e1` = `origin/main` with EM1, QA9 and QA10). On 2026-10-09 the lead ran every mail and
 bell notice of every role through Brevo with a test guide: 67 steps in 11 stories, all done, **4 marked "bermasalah",
@@ -261,7 +261,7 @@ For the lead's own retest: the test guide (outside git) got a new "Cerita 12" wi
 - Mails: each kind (with a button, without one, the OTP mail) in Mailpit's HTML and Text tab (two samples were seen,
   not every kind); one through the allowlist in Gmail on a phone (dark mode); Outlook. Rendered samples of five mails
   were written to the scratchpad by the mail track.
-- The Playwright smoke. (The email scenario was run by the coordinator, see TEST-RESULTS.)
+- The Playwright smoke locally (it passed in CI on PR 20). (The email scenario was run by the coordinator, see TEST-RESULTS.)
 
 ## Answered by the lead on 2026-10-10 (chat)
 - D-126: "Oke jangan ke semua siswa". The notice goes only to the people attached to the lomba (final). The fact list, the
@@ -319,6 +319,10 @@ For the lead's own retest: the test guide (outside git) got a new "Cerita 12" wi
   the unsubscribe header too (expected, not seen).
 
 ## Requests for other owners
+- @I `docker/Dockerfile.prod` (changed in this round because the Docker job of PR 20 was red on Trivy; DEPLOY §18 step 3):
+  `tiff` joined `pcre2` on the `apk upgrade` line of the `web` stage (CVE-2026-4775). The tag
+  `nginxinc/nginx-unprivileged:1.30-alpine` already has a newer digest than the pinned one: after a digest bump
+  (Dependabot), check whether both names can leave that line.
 - @I: the email scenario was run by the coordinator on 2026-10-10 (TEST-RESULTS; steps 8b, 8c, 8d, 10j, 11a changed, its
   template check and leak scan passed on the new template). Its result depends on the developer's `.env`: with real OTP
   codes (`STH_OTP_TEST_MODE=false`) the two work mails of the unverified second Humas account are reported missing. Pin
@@ -461,4 +465,4 @@ First full run after the implementation and before the review fixes: 3359 passed
 Final run after the review fixes (2026-10-10): `php artisan test --parallel --processes=4` → **3378 passed, 1 skipped (20966 assertions)**, exit 0, 801 s; `pint --test` → PASS (750 files); `npm run build` OK.
 Email scenario (`tests/E2E/support/email-scenario.php`, isolated project `sth-e2e`, `STH_DEMO_FILES=placeholder`): with `STH_OTP_TEST_MODE=true` passed to the two commands → **123 mails, 0 missing, 0 unexpected, 0 leaks, 0 failed jobs, RESULT: PASSED** (the leak scan found its control phrase in 123 of 123 mails, so the new template is what was scanned). A first run with the lead's own `.env` (real OTP codes, `STH_OTP_TEST_MODE=false`) gave 121 mails and 2 missing, both for the scenario's unverified second Humas account (steps 7d and 8c): the scenario expects the local test mode, in which an unverified address counts as verified (`User::routeNotificationForMail()`, D-68); it is the production rule that step 11a shows, not a fault of this round. The throwaway stack was removed afterwards (`down -v`).
 Before the commit (same day, on the tree that was committed): the full suite again → 3378 passed, 1 skipped (20966 assertions), exit 0, 798 s; `pint --test` PASS (750 files); `composer validate --strict` and `composer audit --locked` clean; `npm run build` OK, `npm audit --omit=dev` 0 vulnerabilities; CI's boot-guard step repeated with `.env.example` as the env file (boots with the OTP test mode off, refuses with it on).
-Not run: the Playwright smoke (its image is not on the lead's laptop; CI runs it on the PR).
+CI on PR 20 (commit `2b1b9cb`): PHP (validate, Pint, audits, Pest), gitleaks and the Playwright smoke green. The Docker job was red on Trivy: `tiff` 4.7.1-r0 in the nginx base of the web image (CVE-2026-4775, HIGH, fixed in 4.7.2-r0). Not caused by this round: the job ran because the PR touches `docker/env.production.example`, and the app image had 0 findings. Fixed as DEPLOY §18 step 3 describes: `tiff` joined `pcre2` on the `apk upgrade` line of the `web` stage. Checked on the lead's laptop with the Trivy image and options of `docker.yml`, on an image built from the web stage's base and upgrade line only (the COPY steps add no OS package): 1 HIGH before the change, 0 after it (`tiff` 4.7.2-r0, nginx 1.30.5). The full production images were not built locally.
