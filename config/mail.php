@@ -140,4 +140,24 @@ return [
         'name' => env('MAIL_FROM_NAME', env('APP_NAME', 'Laravel')),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Markdown Mail Settings
+    |--------------------------------------------------------------------------
+    |
+    | Every notification mail is rendered from resources/views/vendor/notifications/email.blade.php with the
+    | components in resources/views/vendor/mail/{html,text} and the theme html/themes/sth.css ("Tinta dan Sampul").
+    | Both keys are given: this array replaces the framework's whole 'markdown' array. The theme is fixed on
+    | purpose (no MAIL_MARKDOWN_THEME): the default theme is the look this app replaced.
+    |
+    */
+
+    'markdown' => [
+        'theme' => 'sth',
+
+        'paths' => [
+            resource_path('views/vendor/mail'),
+        ],
+    ],
+
 ];

@@ -8,6 +8,7 @@ use App\Enums\LetterType;
 use App\Models\Letter;
 use App\Models\Registration;
 use App\Notifications\Registrations\RegistrationNotification;
+use App\Notifications\Support\MailGreeting;
 use App\Notifications\Support\PlainMailMessage;
 use Illuminate\Notifications\Messages\MailMessage;
 
@@ -33,14 +34,14 @@ class LettersIssued extends RegistrationNotification
     {
         $mail = (new PlainMailMessage)
             ->subject($this->subject())
-            ->greeting($this->audience === 'siswa' ? 'Halo '.self::firstName($notifiable).',' : 'Yth. '.trim((string) ($notifiable->name ?? '')).',')
+            ->greeting($this->audience === 'siswa' ? MailGreeting::student($notifiable) : MailGreeting::staff($notifiable))
             ->line($this->message());
 
         if ($this->audience === 'siswa') {
             $mail->line('Bawa surat ini saat lomba. Keasliannya bisa dicek lewat kode QR di surat.');
         }
 
-        return $mail->action('Lihat surat', $this->url())->salutation('SMAGA Talent Hub');
+        return $mail->action('Lihat surat', $this->url());
     }
 
     /** @return array<string, mixed> */

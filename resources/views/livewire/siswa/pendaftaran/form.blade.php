@@ -83,9 +83,10 @@
                                     <x-sth.chip tone="red" size="sm">Menolak</x-sth.chip>
                                 @else
                                     <x-sth.chip size="sm" icon="clock">Menunggu</x-sth.chip>
-                                    {{-- QA6 (#66): an unanswered invitation no longer holds the place until the deadline. --}}
-                                    <x-sth.icon-button icon="x" size="sm" :label="'Batalkan undangan '.$row['name']"
-                                        wire:click="batalkanUndangan('{{ $row['studentId'] }}')" wire:loading.attr="disabled" wire:target="batalkanUndangan" />
+                                    {{-- QA6 (#66): an unanswered invitation no longer holds the place until the deadline.
+                                         D-128: the × opens the dialog below; nothing is withdrawn before the answer there. --}}
+                                    <x-sth.icon-button icon="x" size="sm" :label="'Batalkan undangan '.$row['name']" aria-haspopup="dialog"
+                                        wire:click="askBatalkanUndangan('{{ $row['studentId'] }}')" wire:loading.attr="disabled" wire:target="askBatalkanUndangan" />
                                 @endif
                             </li>
                         @endforeach
@@ -125,6 +126,22 @@
                         @endif
                     @endif
                 </div>
+
+                {{-- D-128: "Batalkan undangan" asks first. The invitee is told, and a team whose other members all
+                     confirmed goes to the Kepala Sekolah with this step (no more members after that). --}}
+                <x-sth.modal :id="\App\Livewire\Siswa\Pendaftaran\Form::WITHDRAW_DIALOG" title="Batalkan undangan?" :description="$withdrawing['notice'] ?? 'Siswa yang diundang diberi tahu.'" size="sm">
+                    @if ($withdrawing)
+                        <p class="m-0 [overflow-wrap:anywhere]">Undangan untuk {{ $withdrawing['name'] }} dibatalkan. {{ $withdrawing['ready'] ? 'Anggota lain sudah konfirmasi, jadi pendaftaran langsung diteruskan ke Kepala Sekolah dan anggota tidak bisa ditambah lagi.' : 'Kamu bisa mengundangnya lagi selama tim masih menunggu konfirmasi.' }}</p>
+                    @else
+                        <p class="m-0 text-muted">Tidak ada undangan yang dipilih. Tutup lalu coba lagi.</p>
+                    @endif
+                    <x-slot:footer>
+                        <x-sth.button variant="quiet" data-sth-close>Kembali</x-sth.button>
+                        @if ($withdrawing)
+                            <x-sth.button variant="danger" wire:click="batalkanUndangan" wire:loading.attr="disabled" wire:target="batalkanUndangan">Batalkan undangan</x-sth.button>
+                        @endif
+                    </x-slot:footer>
+                </x-sth.modal>
             @endif
 
             <p class="m-0 text-sm text-muted">Pembimbing: <span class="font-semibold text-ink">{{ $status['mentor'] }}</span></p>

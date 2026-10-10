@@ -139,7 +139,8 @@
                         <div class="flex flex-wrap items-center gap-2">
                             <x-sth.button icon="check" wire:click="verify" wire:loading.attr="disabled" :disabled="$checkCount < 4">Verifikasi dan beri poin</x-sth.button>
                             <x-sth.button variant="quiet" wire:click="requestRevision" wire:loading.attr="disabled">Minta revisi</x-sth.button>
-                            <x-sth.button variant="danger" icon="x" wire:click="reject" wire:loading.attr="disabled">Tolak</x-sth.button>
+                            {{-- Opens the dialog at the end of this file: a rejected report cannot be taken back (D-128). --}}
+                            <x-sth.button variant="danger" icon="x" wire:click="askReject" wire:loading.attr="disabled" aria-haspopup="dialog">Tolak</x-sth.button>
                         </div>
                         <p class="m-0 text-xs text-muted">{{ $checkCount < 4 ? 'Lengkapi 4 pemeriksaan untuk memberi poin. ' : '' }}Prestasi terverifikasi otomatis masuk antrean Humas dan peringkat.</p>
                     @elseif ($detail['ownMentee'])
@@ -155,4 +156,32 @@
             </x-sth.card>
         @endif
     </section>
+
+    {{-- "Tolak" asks first (D-128): the registration ends without points and nothing takes it back. The line under
+         the title promises a notice only to the people who get one (D-109). A closed <dialog> takes no grid cell. --}}
+    <x-sth.modal :id="\App\Livewire\Kesiswaan\VerifikasiHasil::REJECT_DIALOG" title="Tolak laporan ini?" :description="$rejecting['notice'] ?? 'Siswa dan guru pembimbing langsung diberi tahu.'" size="sm">
+        <form id="tolak-laporan-form" wire:submit="reject" class="flex flex-col gap-3" novalidate>
+            @if ($rejecting)
+                <div class="rounded-tile bg-subtle px-3 py-2.5">
+                    <p class="m-0 font-semibold [overflow-wrap:anywhere]">{{ $rejecting['name'] }}</p>
+                    <p class="m-0 text-xs text-muted [overflow-wrap:anywhere]">{{ $rejecting['who'] }}</p>
+                </div>
+                <p class="m-0 text-md">
+                    {{ $rejecting['team'] ? 'Pendaftaran tim ini selesai tanpa poin untuk semua anggota.' : 'Pendaftaran ini selesai tanpa poin.' }} Keputusan ini tidak bisa diubah.
+                </p>
+                <div class="flex flex-col gap-1 rounded-tile border border-line p-3 text-sm">
+                    <span class="label">Alasan untuk siswa</span>
+                    <span class="whitespace-pre-line break-words">{{ $rejecting['note'] }}</span>
+                </div>
+            @else
+                <p class="m-0 text-md text-muted">Tidak ada laporan yang dipilih. Tutup lalu coba lagi.</p>
+            @endif
+        </form>
+        <x-slot:footer>
+            <x-sth.button variant="quiet" data-sth-close>Batal</x-sth.button>
+            @if ($rejecting)
+                <x-sth.button type="submit" form="tolak-laporan-form" variant="danger" icon="x" wire:loading.attr="disabled" wire:target="reject">Tolak laporan</x-sth.button>
+            @endif
+        </x-slot:footer>
+    </x-sth.modal>
 </div>

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Notifications\Competitions;
 
 use App\Models\Competition;
+use App\Notifications\Support\MailGreeting;
 use App\Notifications\Support\PlainMailMessage;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -47,11 +48,10 @@ class CompetitionSubmitted extends Notification implements ShouldQueue
     {
         return (new PlainMailMessage)
             ->subject('Usulan lomba baru: '.$this->competition->name)
-            ->greeting('Halo,')
+            ->greeting(MailGreeting::for($notifiable))
             ->line($this->message())
             ->line('Periksa penyelenggara dan link-nya sebelum dipublikasikan.')
-            ->action('Buka antrean', $this->url())
-            ->salutation('SMAGA Talent Hub');
+            ->action('Buka antrean', $this->url());
     }
 
     /** @return array<string, mixed> */

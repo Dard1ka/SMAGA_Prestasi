@@ -8,6 +8,8 @@
                 <h3 id="jadwal-lewat" class="m-0 flex items-center gap-2 text-md font-bold text-orange">
                     <x-sth.icon name="clock" :size="18" />Lewat jadwal, belum ditandai terbit
                 </h3>
+                {{-- D-122: the schedule only reminded Humas; the student hears after "Tandai dipublikasikan". --}}
+                <p class="m-0 text-sm text-ink-2">Siswa belum diberi tahu. Setelah publikasi di-upload ke kanal, buka kartunya lalu tekan Tandai dipublikasikan.</p>
                 <ul class="m-0 flex list-none flex-col gap-2 p-0">
                     @foreach ($overdue as $item)
                         @include('livewire.humas.partials.schedule-item', ['item' => $item])

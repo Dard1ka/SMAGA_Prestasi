@@ -9,6 +9,7 @@ use App\Enums\RegistrationStatus;
 use App\Enums\ReportStatus;
 use App\Models\Competition;
 use App\Models\Registration;
+use App\Models\RegistrationMember;
 use App\Models\Report;
 use App\Models\User;
 use App\Notifications\Verification\BinaanReportDecided;
@@ -132,5 +133,36 @@ final class RequestReportRevision
         $mentorId = Registration::withTrashed()->whereKey($report->registration_id)->value('mentor_id');
 
         return $mentorId === null ? null : User::query()->gurus()->canLogIn()->whereKey($mentorId)->first();
+    }
+
+    /**
+     * The report can be sent again after "Minta revisi": only the ketua may send it (ReportPolicy::create), so only
+     * while the ketua's account can log in. A team member who was told (audience()) cannot do it in the ketua's place.
+     */
+    public static function leaderCanResend(Report $report): bool
+    {
+        $leader = Registration::query()->with('leader.user')->find($report->registration_id)?->leader?->user;
+
+        return $leader !== null && $leader->canLogIn();
+    }
+
+    /**
+     * Who hears about a decision on this report (D-109, D-110), so a screen promises a notice only to the people who
+     * get one: `told` = members whose account can log in (memberUsers()), `of` = the confirmed members still in the
+     * team, `mentor` = the guru pembimbing is told (mentorUser()).
+     *
+     * @return array{told: int, of: int, mentor: bool}
+     */
+    public static function audience(Report $report): array
+    {
+        return [
+            'told' => count(self::memberUsers($report)),
+            'of' => RegistrationMember::query()
+                ->where('registration_id', $report->registration_id)
+                ->whereNotNull('confirmed_at')
+                ->whereNull('declined_at')
+                ->count(),
+            'mentor' => self::mentorUser($report) !== null,
+        ];
     }
 }

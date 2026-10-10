@@ -35,19 +35,57 @@
         <p class="m-0 text-xs text-muted">Belum ada prestasi di acara ini.</p>
     @endif
 
-    @if ($event['adding'])
-        <form wire:submit="addAchievement" class="flex flex-col gap-2 border-t border-line pt-3" novalidate>
-            @if ($achievementOptions !== [])
-                <x-sth.select wire:model="achievementId" label="Prestasi" placeholder="Pilih prestasi terverifikasi" :options="$achievementOptions" hint="Hanya prestasi siswa yang punya izin publikasi dan belum masuk acara mana pun." />
-                <div class="flex flex-wrap gap-2">
-                    <x-sth.button type="submit" size="sm" wire:loading.attr="disabled" wire:target="addAchievement">Masukkan</x-sth.button>
-                    <x-sth.button variant="quiet" size="sm" wire:click="cancelAdding">Batal</x-sth.button>
-                </div>
-            @else
+    @if ($event['adding'] && $picker)
+        {{--
+            "Tambah prestasi" (D-124): search, tick, one "Masukkan" for everything ticked. $picker comes from
+            Apresiasi::picker(). No <form>: Enter in the search box must not submit. The ticks are a deferred
+            wire:model (no request per tick); they travel with the next search, "Tampilkan lebih banyak" or "Masukkan".
+        --}}
+        <div wire:key="tambah-{{ $event['id'] }}" class="flex flex-col gap-3 border-t border-line pt-3">
+            @if ($picker['empty'])
                 <p class="m-0 text-xs text-muted">Tidak ada prestasi lain yang bisa dimasukkan. Prestasi yang sudah dijadwalkan di acara lain perlu dilepas dulu dari acara itu.</p>
                 <div><x-sth.button variant="quiet" size="sm" wire:click="cancelAdding">Tutup</x-sth.button></div>
+            @else
+                <x-sth.input type="search" wire:model.live.debounce.400ms="search" id="cari-prestasi" label="Cari prestasi" icon="search"
+                    placeholder="Nama siswa atau nama lomba" maxlength="100" autocomplete="off"
+                    hint="Hanya prestasi siswa yang punya izin publikasi dan belum masuk acara mana pun." />
+                <p class="m-0 text-xs text-muted" role="status">{{ $picker['status'] }}</p>
+
+                @if ($picker['kept'] !== [] || $picker['rows'] !== [])
+                    {{-- Ticked rows the search no longer shows come first, so a tick never disappears. --}}
+                    <ul aria-label="Prestasi yang bisa dimasukkan" class="m-0 flex list-none flex-col gap-0.5 p-0">
+                        @foreach ([$picker['kept'], $picker['rows']] as $group)
+                            @foreach ($group as $row)
+                                <li wire:key="pilih-{{ $row['id'] }}">
+                                    <label class="flex min-h-11 cursor-pointer items-start gap-2.5 rounded-tile px-2 py-2 hover:bg-hover">
+                                        <input type="checkbox" class="cek mt-0.5" value="{{ $row['id'] }}" wire:model="picked">
+                                        <span class="flex min-w-0 flex-col [overflow-wrap:anywhere]">
+                                            <span class="text-sm font-semibold">{{ $row['student'] }}@if ($row['class'])<span class="font-medium text-muted"> · {{ $row['class'] }}</span>@endif</span>
+                                            <span class="text-xs text-muted">{{ $row['headline'] }} · {{ $row['competition'] }}</span>
+                                        </span>
+                                    </label>
+                                </li>
+                            @endforeach
+                        @endforeach
+                    </ul>
+                @endif
+
+                @if ($picker['more'])
+                    <div><x-sth.button variant="quiet" size="sm" wire:click="showMoreOptions" wire:loading.attr="disabled" wire:target="showMoreOptions">Tampilkan lebih banyak</x-sth.button></div>
+                @elseif ($picker['capped'])
+                    <p class="m-0 text-xs text-muted">Masih ada prestasi lain. Persempit dengan pencarian.</p>
+                @endif
+
+                @error('picked')
+                    <p class="field-error" role="alert"><x-sth.icon name="alert" :size="16" />{{ $message }}</p>
+                @enderror
+
+                <div class="flex flex-wrap gap-2">
+                    <x-sth.button size="sm" wire:click="addAchievements" wire:loading.attr="disabled" wire:target="addAchievements">Masukkan</x-sth.button>
+                    <x-sth.button variant="quiet" size="sm" wire:click="cancelAdding">Batal</x-sth.button>
+                </div>
             @endif
-        </form>
+        </div>
     @elseif ($event['canAdd'] || $event['canComplete'] || $event['canDelete'] || $event['completeNote'])
         <div class="flex flex-col gap-2 border-t border-line pt-3">
             @if ($event['canAdd'] || $event['canComplete'] || $event['canDelete'])

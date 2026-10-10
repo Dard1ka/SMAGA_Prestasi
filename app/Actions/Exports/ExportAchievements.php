@@ -172,7 +172,7 @@ final class ExportAchievements
             self::text($status),
             self::text($competition?->name),
             self::text($competition?->organizer_name),
-            self::text($competition?->organizer_type?->label()),
+            self::text($competition?->organizerTypeLabel()),
             self::text($a->weight_category->label()),
             self::text($competition?->event_status?->label()),
             self::text($competition?->bidang?->label()),

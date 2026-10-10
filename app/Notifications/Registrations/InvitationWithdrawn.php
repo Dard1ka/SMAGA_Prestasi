@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Notifications\Registrations;
 
+use App\Notifications\Support\MailGreeting;
 use App\Notifications\Support\PlainMailMessage;
 use Illuminate\Notifications\Messages\MailMessage;
 
@@ -14,11 +15,10 @@ class InvitationWithdrawn extends RegistrationNotification
     {
         return (new PlainMailMessage)
             ->subject('Undangan tim dibatalkan: '.$this->competitionName())
-            ->greeting('Halo '.self::firstName($notifiable).',')
+            ->greeting(MailGreeting::student($notifiable))
             ->line($this->message())
             ->line('Kamu tidak perlu menjawab undangan itu lagi. Kamu tetap bisa mendaftar lomba ini sendiri atau dengan tim lain selama pendaftaran masih dibuka.')
-            ->action('Lihat lomba', $this->url())
-            ->salutation('SMAGA Talent Hub');
+            ->action('Lihat lomba', $this->url());
     }
 
     /** @return array<string, mixed> */

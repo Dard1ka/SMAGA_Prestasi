@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Livewire\Humas;
 
 use App\Actions\Publications\AchievementFacts;
+use App\Actions\Publications\EventWhen;
 use App\Actions\Publications\PublicationInput;
 use App\Enums\AppreciationStatus;
 use App\Enums\PublicationStatus;
@@ -23,6 +24,8 @@ use Livewire\Component;
  * Humas · Jadwal (UI-MAP §4d): read-only agenda of `terjadwal` publications grouped by date (overdue ones
  * first) and upcoming appreciation events with their achievements. Cards link back to the queue
  * (humas.beranda?pilih=<publication>).
+ * The box "Lewat jadwal, belum ditandai terbit" is where a publication waits after its reminder went out (D-122):
+ * nothing is published by the scheduler, so it stays here until Humas presses "Tandai dipublikasikan".
  */
 #[Title('Jadwal')]
 #[Layout('layouts::app', ['subtitle' => 'Publikasi terjadwal dan acara apresiasi mendatang.'])]
@@ -46,7 +49,9 @@ class Jadwal extends Component
             ->oldest()
             ->get();
 
-        $overdue = $scheduled->filter(fn (Publication $p): bool => $p->scheduled_at === null || $p->scheduled_at->lessThan($now));
+        // D-122: the schedule is only a reminder. A row whose time arrived stays terjadwal ("lewat jadwal") until
+        // Humas marks it as published; same rule as the sidebar count and the chip on the cards.
+        $overdue = $scheduled->filter(fn (Publication $p): bool => $p->isOverdue($now));
         $upcoming = $scheduled->diff($overdue);
 
         $days = $upcoming
@@ -94,13 +99,16 @@ class Jadwal extends Component
             ->open() // M1-E: an event Humas confirmed as held (even today) leaves the agenda
             ->whereDate('held_on', '>=', CarbonImmutable::today()->toDateString())
             ->with(array_map(fn (string $r): string => 'appreciations.achievement.'.$r, AchievementFacts::RELATIONS))
+            // By day, then by start time (D-123); an event without a time sorts first within its day.
             ->orderBy('held_on')
+            ->orderBy('held_time')
+            ->oldest()
             ->limit(20)
             ->get()
             ->map(fn (AppreciationEvent $event): array => [
                 'id' => (string) $event->getKey(),
                 'name' => $event->name,
-                'date' => HumasQueries::longDate($event->held_on),
+                'date' => EventWhen::long($event),
                 'count' => $event->appreciations->count(),
                 'items' => $event->appreciations
                     ->filter(fn (Appreciation $a): bool => $a->achievement !== null)

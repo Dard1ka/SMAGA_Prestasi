@@ -7,6 +7,7 @@ namespace App\Notifications\Verification;
 use App\Domain\Points\PointFormatter;
 use App\Models\Achievement;
 use App\Models\Report;
+use App\Notifications\Support\MailGreeting;
 use App\Notifications\Support\PlainMailMessage;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Support\Collection;
@@ -53,9 +54,8 @@ final class BinaanReportDecided extends Notice
     {
         $message = (new PlainMailMessage)
             ->subject($this->title)
-            ->greeting('Yth. '.trim((string) ($notifiable->name ?? '')).',')
-            ->line($this->body)
-            ->salutation('SMAGA Talent Hub');
+            ->greeting(MailGreeting::staff($notifiable))
+            ->line($this->body);
 
         $url = $this->url();
 

@@ -42,10 +42,17 @@ use Livewire\Component;
  *
  * After every change of the registration (send, cancel, invite, withdraw) it dispatches CHANGED, so the page around
  * it (Detail lomba) counts the registrants again (QA6).
+ *
+ * "Batalkan undangan" (the × beside an unanswered invitation) asks first (D-128, lead 2026-10-10): the invitee is told
+ * at once and a team whose other members all confirmed goes to the Kepala Sekolah with that click. askBatalkanUndangan()
+ * opens WITHDRAW_DIALOG; batalkanUndangan() is the confirm step and does nothing without that question.
  */
 class Form extends Component
 {
     public const CHANGED = 'pendaftaran-berubah';
+
+    /** id of the "Batalkan undangan?" confirm dialog (<x-sth.modal>). */
+    public const WITHDRAW_DIALOG = 'batal-undangan';
 
     public const SEARCH_PER_MINUTE = 30;
 
@@ -71,6 +78,10 @@ class Form extends Component
     public ?int $mentorId = null;
 
     public bool $setuju = false;
+
+    /** The invited student (ULID) the open "Batalkan undangan?" dialog asks about; set only by askBatalkanUndangan(). */
+    #[Locked]
+    public ?string $withdrawingId = null;
 
     public function mount(string $competitionId): void
     {
@@ -210,19 +221,72 @@ class Form extends Component
             return;
         }
 
+        $this->withdrawingId = null;
         $this->reset('q', 'hasil', 'searchNote');
         $this->dispatch('sth-toast', message: 'Undangan terkirim ke '.$candidate['name'].'.', tone: 'success');
         $this->dispatch(self::CHANGED);
     }
 
-    /** QA6 (#66): the ketua withdraws an invitation nobody answered yet (WithdrawInvitation re-checks everything). */
-    public function batalkanUndangan(string $studentId, WithdrawInvitation $withdraw): void
+    /**
+     * The × beside an unanswered invitation (D-128): opens the dialog, nothing is withdrawn and nobody is told before
+     * batalkanUndangan(). A row that is no open invitation any more gets the sentence WithdrawInvitation would give,
+     * so the dialog never opens over a refusal (the Action still checks everything again under its lock).
+     */
+    public function askBatalkanUndangan(string $studentId): void
     {
+        $this->resetErrorBag('members');
+        $this->withdrawingId = null;
+        $registration = $this->current();
+
+        if ($registration === null || Gate::denies('invite', $registration)) {
+            $this->refuseWithdrawal($registration);
+
+            return;
+        }
+
+        /** @var RegistrationMember|null $member */
+        $member = $registration->members->firstWhere('student_id', $studentId);
+        $name = (string) $member?->student?->user?->name;
+
+        $refusal = match (true) {
+            $member === null || $member->role !== MemberRole::Anggota => 'Undangan tidak ditemukan.',
+            $member->confirmed_at !== null => $name.' sudah konfirmasi, undangannya tidak bisa dibatalkan.',
+            $member->declined_at !== null => $name.' sudah menolak undangan ini.',
+            default => null,
+        };
+
+        if ($refusal !== null) {
+            $this->addError('members', $refusal);
+
+            return;
+        }
+
+        $this->withdrawingId = (string) $member->student_id;
+        $this->dispatch('sth-modal-open', id: self::WITHDRAW_DIALOG);
+    }
+
+    /**
+     * QA6 (#66): the ketua withdraws an invitation nobody answered yet (WithdrawInvitation re-checks everything).
+     * D-128: the confirm step of the dialog. Without a question from askBatalkanUndangan() it returns without a word
+     * (never an error page), so a second click after the withdrawal went through changes nothing.
+     * The toast names the hand-over to the Kepala Sekolah when the withdrawal caused it: another invitee may confirm
+     * while the dialog is open, and then the dialog's "Kamu bisa mengundangnya lagi" no longer holds.
+     */
+    public function batalkanUndangan(WithdrawInvitation $withdraw): void
+    {
+        $studentId = $this->withdrawingId;
+        $this->withdrawingId = null;
+        $this->dispatch('sth-modal-close', id: self::WITHDRAW_DIALOG);
+
+        if ($studentId === null) {
+            return;
+        }
+
         $this->resetErrorBag('members');
         $registration = $this->current();
 
         if ($registration === null || Gate::denies('invite', $registration)) {
-            $this->addError('members', 'Undangan tidak bisa dibatalkan lagi untuk pendaftaran ini.');
+            $this->refuseWithdrawal($registration);
 
             return;
         }
@@ -237,7 +301,10 @@ class Form extends Component
             return;
         }
 
-        $this->dispatch('sth-toast', message: 'Undangan untuk '.$name.' dibatalkan.', tone: 'success');
+        // The status WithdrawInvitation wrote under its lock (it copies the locked row back into $registration).
+        $forwarded = $registration->status === RegistrationStatus::MenungguKepsek;
+
+        $this->dispatch('sth-toast', message: 'Undangan untuk '.$name.' dibatalkan.'.($forwarded ? ' Pendaftaran diteruskan ke Kepala Sekolah.' : ''), tone: 'success');
         $this->dispatch(self::CHANGED);
     }
 
@@ -298,6 +365,7 @@ class Form extends Component
 
         $cancel->handle(auth()->user(), $registration);
 
+        $this->withdrawingId = null;
         $this->dispatch('sth-modal-close', id: 'batal-daftar');
         $this->dispatch('sth-toast', message: 'Pendaftaran dibatalkan.', tone: 'info');
         $this->dispatch(self::CHANGED);
@@ -316,6 +384,7 @@ class Form extends Component
             'me' => $me,
             'current' => $current,
             'status' => $current !== null ? $this->statusView($current, $me) : null,
+            'withdrawing' => $this->withdrawing($current),
             'canCreate' => $current === null && Gate::allows('create', [Registration::class, $competition]),
             'teamAllowed' => $competition->allowsRegistrationType(RegistrationType::Tim),
             'individuAllowed' => $competition->allowsRegistrationType(RegistrationType::Individu),
@@ -324,6 +393,58 @@ class Form extends Component
             'memberRows' => $this->memberRows(),
             'mentors' => $this->mentorOptions(),
         ]);
+    }
+
+    /**
+     * The team can no longer be changed, so an invitation cannot be withdrawn (the ask and the confirm step of the
+     * dialog). The block that prints `members` errors is drawn only while the ketua may still invite: once the team
+     * went to the Kepala Sekolah the sentence would never be read there, so it is also said in a toast.
+     */
+    private function refuseWithdrawal(?Registration $registration): void
+    {
+        $message = $registration?->status === RegistrationStatus::MenungguKepsek
+            ? 'Undangan tidak bisa dibatalkan lagi: tim sudah lengkap dan diteruskan ke Kepala Sekolah.'
+            : 'Undangan tidak bisa dibatalkan lagi untuk pendaftaran ini.';
+
+        $this->addError('members', $message);
+        $this->dispatch('sth-toast', message: $message, tone: 'warning');
+    }
+
+    /**
+     * Texts of the "Batalkan undangan?" dialog (D-128), or null while nothing is asked: the invitee, whether the team
+     * goes to the Kepala Sekolah with this withdrawal, and the notice line, which promises a notice only when the
+     * invitee is told (D-109).
+     *
+     * @return array{name: string, ready: bool, notice: string}|null
+     */
+    private function withdrawing(?Registration $registration): ?array
+    {
+        if ($registration === null || $this->withdrawingId === null) {
+            return null;
+        }
+
+        /** @var RegistrationMember|null $member */
+        $member = $registration->members->firstWhere('student_id', $this->withdrawingId);
+
+        if ($member === null || $member->confirmed_at !== null || $member->declined_at !== null) {
+            return null;
+        }
+
+        $name = (string) $member->student?->user?->name;
+        // What WithdrawInvitation does next (ConfirmMembership::advanceIfTeamReady(), D-36): everyone who is left has
+        // confirmed and at least two people remain → the team goes to the Kepala Sekolah and its roster is closed.
+        $remaining = $registration->members->whereNull('declined_at')->reject(fn (RegistrationMember $m): bool => $m->is($member));
+        // The same question WithdrawInvitation asks before it notifies the invitee.
+        $told = User::query()->canLogIn()->whereHas('student', fn (Builder $q) => $q->whereKey($this->withdrawingId))->exists();
+
+        return [
+            'name' => $name,
+            'ready' => $remaining->count() >= 2 && $remaining->every(fn (RegistrationMember $m): bool => $m->confirmed_at !== null),
+            // A student is never told another student's account status (SECURITY §3m-3; as on Undangan tim, QA10):
+            // when nobody is told the promise is left out, without a reason. It must stay a non-empty sentence: the
+            // view falls back to its default promise on null, and the dialog's aria-describedby needs the paragraph.
+            'notice' => $told ? $name.' langsung diberi tahu.' : 'Undangan ini belum dijawab.',
+        ];
     }
 
     /**

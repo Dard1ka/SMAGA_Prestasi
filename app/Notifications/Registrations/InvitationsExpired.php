@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Notifications\Registrations;
 
 use App\Models\Registration;
+use App\Notifications\Support\MailGreeting;
 use App\Notifications\Support\PlainMailMessage;
 use Illuminate\Notifications\Messages\MailMessage;
 
@@ -24,10 +25,9 @@ class InvitationsExpired extends RegistrationNotification
     {
         return (new PlainMailMessage)
             ->subject(($this->ready ? 'Tim diteruskan ke Kepala Sekolah: ' : 'Tim kurang anggota: ').$this->competitionName())
-            ->greeting('Halo '.self::firstName($notifiable).',')
+            ->greeting(MailGreeting::student($notifiable))
             ->line($this->message())
-            ->action('Lihat pendaftaran', $this->url())
-            ->salutation('SMAGA Talent Hub');
+            ->action('Lihat pendaftaran', $this->url());
     }
 
     /** @return array<string, mixed> */

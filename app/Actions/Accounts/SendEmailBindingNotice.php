@@ -6,6 +6,8 @@ namespace App\Actions\Accounts;
 
 use App\Models\User;
 use App\Notifications\Accounts\EmailBindingNotice;
+use App\Notifications\Support\MailGreeting;
+use App\Support\FirstName;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Route;
@@ -46,15 +48,12 @@ final class SendEmailBindingNotice
 
         Notification::route('mail', $toEmail)->notify(new EmailBindingNotice(
             $kind,
-            self::firstName($user->name),
+            (string) FirstName::of($user->name),
             (string) AccountControls::maskEmail($newEmail),
             $url,
             self::VALID_DAYS,
+            // The mail goes to a bare address, so the notice cannot ask the account itself.
+            MailGreeting::for($user),
         ));
-    }
-
-    private static function firstName(?string $name): string
-    {
-        return Str::of((string) $name)->trim()->explode(' ')->first() ?: 'Siswa';
     }
 }

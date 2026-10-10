@@ -23,7 +23,7 @@ use Illuminate\Contracts\Validation\ValidationRule;
  */
 final class NoWebAddress implements ValidationRule
 {
-    public const MESSAGE = 'Nama lomba tidak boleh berisi alamat web. Tulis alamatnya di kolom situs web.';
+    public const MESSAGE = 'Nama lomba tidak boleh berisi alamat web. Tulis alamatnya di kolom link.';
 
     /** Top-level domains people actually type (generic, Indonesian, link shorteners): refused after any host. */
     private const TLDS = 'com|net|org|id|info|biz|xyz|site|online|app|dev|io|me|co|link|ly|gl|gle|ee|to|my|web|edu|gov|sch|ac'

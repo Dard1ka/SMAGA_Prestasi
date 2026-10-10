@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Notifications\Registrations;
 
+use App\Notifications\Support\MailGreeting;
 use App\Notifications\Support\PlainMailMessage;
 use Illuminate\Notifications\Messages\MailMessage;
 
@@ -14,11 +15,10 @@ class TeamInvitation extends RegistrationNotification
     {
         return (new PlainMailMessage)
             ->subject('Undangan tim: '.$this->competitionName())
-            ->greeting('Halo '.self::firstName($notifiable).',')
+            ->greeting(MailGreeting::student($notifiable))
             ->line($this->leaderName().' mengajak kamu ikut tim '.$this->competitionName().'.')
             ->line('Konfirmasi sebelum batas pendaftaran agar pendaftaran bisa diteruskan ke Kepala Sekolah.')
-            ->action('Lihat undangan', $this->url())
-            ->salutation('SMAGA Talent Hub');
+            ->action('Lihat undangan', $this->url());
     }
 
     /** @return array<string, mixed> */

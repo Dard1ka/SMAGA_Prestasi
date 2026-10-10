@@ -289,7 +289,7 @@ final class DatabasePrestasi extends Component
             'bidang' => $competition?->bidang,
             'competition' => array_values(array_filter([
                 ['label' => 'Penyelenggara', 'value' => $competition?->organizer_name],
-                ['label' => 'Jenis penyelenggara', 'value' => $competition?->organizer_type?->label()],
+                ['label' => 'Jenis penyelenggara', 'value' => $competition?->organizerTypeLabel()],
                 ['label' => 'Kategori', 'value' => $a->weight_category->label()],
                 ['label' => 'Status ajang', 'value' => $competition?->event_status?->label()],
                 ['label' => 'Tingkat', 'value' => $a->level->label()],

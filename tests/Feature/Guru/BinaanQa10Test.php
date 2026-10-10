@@ -2,9 +2,13 @@
 
 declare(strict_types=1);
 
+use App\Actions\Registrations\ExpirePendingInvitations;
+use App\Enums\MemberRole;
 use App\Enums\RegistrationStatus;
 use App\Livewire\Guru\Binaan;
+use App\Livewire\Guru\BinaanDetail;
 use App\Livewire\Guru\Lomba;
+use App\Models\Competition;
 use App\Models\RegistrationMember;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
@@ -43,4 +47,33 @@ it('lists only the students in the team as binaan of a lomba (QA10)', function (
         ->assertViewHas('detail', fn (?array $detail): bool => $detail !== null && count($detail['binaan']) === 1)
         ->assertSee('Nadia Putri Anindya')
         ->assertDontSee('Raka Pradipta');
+});
+
+it('says "Tidak menjawab" for an invitation that ran out at the deadline, "Menolak" only for a real answer (lead, 2026-10-10)', function (): void {
+    // The scheduler ends an unanswered invitation at the registration deadline with `declined_at` (D-50). The two student
+    // screens tell it from a real decline since QA10; the guru's detail still said "Menolak" for a student who never answered.
+    $dimas = GuruFixtures::student('Dimas Arya Nugroho', 'XI-4');
+    $declined = new RegistrationMember(['registration_id' => $this->registration->getKey(), 'student_id' => $dimas->getKey(), 'invited_at' => now()]);
+    $declined->forceFill(['role' => MemberRole::Anggota, 'declined_at' => now()])->save();
+
+    Livewire::actingAs($this->retno)->test(BinaanDetail::class, ['registration' => $this->registration])
+        ->assertViewHas('members', fn (array $members): bool => collect($members)->pluck('state', 'name')->all() == [
+            'Nadia Putri Anindya' => ['Terkonfirmasi', 'green'],
+            'Raka Pradipta' => ['Menunggu konfirmasi', 'gray'],
+            'Dimas Arya Nugroho' => ['Menolak', 'red'],
+        ]);
+
+    Competition::query()->whereKey($this->registration->competition_id)->firstOrFail()
+        ->forceFill(['registration_closes_at' => now()->subHour()])->save();
+
+    expect(app(ExpirePendingInvitations::class)->handle($this->registration->fresh()))->toBe(['expired' => 1, 'ready' => false, 'team' => 1]);
+
+    Livewire::actingAs($this->retno)->test(BinaanDetail::class, ['registration' => $this->registration->fresh()])
+        ->assertViewHas('members', fn (array $members): bool => collect($members)->pluck('state', 'name')->all() == [
+            'Nadia Putri Anindya' => ['Terkonfirmasi', 'green'],
+            'Raka Pradipta' => ['Tidak menjawab', 'gray'],
+            'Dimas Arya Nugroho' => ['Menolak', 'red'],
+        ])
+        ->assertSee('Tidak menjawab')
+        ->assertSee('Menolak');
 });

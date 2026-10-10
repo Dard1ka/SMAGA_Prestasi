@@ -6,6 +6,7 @@ namespace App\Notifications\Approval;
 
 use App\Models\Registration;
 use App\Notifications\Registrations\RegistrationNotification;
+use App\Notifications\Support\MailGreeting;
 use App\Notifications\Support\PlainMailMessage;
 use Illuminate\Notifications\Messages\MailMessage;
 
@@ -32,14 +33,14 @@ class RegistrationApproved extends RegistrationNotification
     {
         $mail = (new PlainMailMessage)
             ->subject($this->subject())
-            ->greeting($this->audience === 'siswa' ? 'Halo '.self::firstName($notifiable).',' : 'Yth. '.trim((string) ($notifiable->name ?? '')).',')
+            ->greeting($this->audience === 'siswa' ? MailGreeting::student($notifiable) : MailGreeting::staff($notifiable))
             ->line($this->message());
 
         if ($this->audience === 'siswa') {
             $mail->line('Tata Usaha sedang menyiapkan surat tugas. Kamu akan diberi tahu saat surat siap.');
         }
 
-        return $mail->action($this->actionLabel(), $this->url())->salutation('SMAGA Talent Hub');
+        return $mail->action($this->actionLabel(), $this->url());
     }
 
     /** @return array<string, mixed> */

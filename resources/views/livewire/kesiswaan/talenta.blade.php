@@ -45,7 +45,8 @@
                     <span class="text-sm text-muted">{{ $shownText }} · Centang baris untuk pindah tahap sekaligus.</span>
                 @else
                     <span class="text-sm font-bold">{{ count($checked) }} dipilih</span>
-                    <x-sth.button size="sm" icon="check" wire:click="bulkAdvance" wire:loading.attr="disabled">Pindahkan ke {{ $bulkNext }}</x-sth.button>
+                    {{-- D-128: opens the dialog "Pindahkan … ke tahap berikutnya?" further down; nothing moves before the answer there. --}}
+                    <x-sth.button size="sm" icon="check" wire:click="askBulkAdvance" wire:loading.attr="disabled" aria-haspopup="dialog">Pindahkan ke {{ $bulkNext }}</x-sth.button>
                     <x-sth.button variant="danger" size="sm" wire:click="askBulkReject" aria-haspopup="dialog">Tidak lolos</x-sth.button>
                     <x-sth.button variant="quiet" size="sm" wire:click="cancelBulk">Batal pilih</x-sth.button>
                 @endif
@@ -265,6 +266,42 @@
             <x-sth.button variant="quiet" data-sth-close>Batal</x-sth.button>
             @if ($rejecting)
                 <x-sth.button type="submit" form="tidak-lolos-talenta-form" variant="danger" wire:loading.attr="disabled" wire:target="reject">Tidak lolos</x-sth.button>
+            @endif
+        </x-slot:footer>
+    </x-sth.modal>
+
+    {{-- Bulk "Pindahkan ke …" asks first (D-128): every checked row goes up one stage, its student is told at once and a
+         stage cannot be moved back. The line under the title promises a notice only to students who get one (D-109). --}}
+    <x-sth.modal :id="\App\Livewire\Kesiswaan\Talenta::ADVANCE_DIALOG" :title="$advancing ? 'Pindahkan '.$advancing['count'].' pilihan ke tahap berikutnya?' : 'Pindahkan ke tahap berikutnya?'"
+        :description="$advancing['notice'] ?? 'Pilihan yang dicentang naik satu tahap.'" size="sm">
+        <form id="pindahkan-talenta-form" wire:submit="bulkAdvance" class="flex flex-col gap-3" novalidate>
+            @if ($advancing)
+                <p class="m-0 text-sm">
+                    <span class="font-bold"><span class="num">{{ $advancing['count'] }}</span> pilihan talenta</span> naik satu tahap. Tahap tidak bisa dimundurkan.
+                </p>
+                @if ($advancing['drafts'] > 0)
+                    <p class="m-0 text-xs text-muted">
+                        <span class="num">{{ $advancing['drafts'] }}</span> catatan untuk siswa yang tersimpan ikut terkirim.
+                    </p>
+                @endif
+                @if ($advancing['skipped'] > 0)
+                    <p class="m-0 text-xs text-muted">
+                        <span class="num">{{ $advancing['skipped'] }}</span> pilihan yang dicentang sudah final (Peserta pembinaan atau Tidak lolos) dan dilewati.
+                    </p>
+                @endif
+                @if ($advancing['stale'] > 0)
+                    <p class="m-0 text-xs text-muted">
+                        <span class="num">{{ $advancing['stale'] }}</span> pilihan yang dicentang sudah dipindahkan atau ditandai tidak lolos lebih dulu dan dilewati.
+                    </p>
+                @endif
+            @else
+                <p class="m-0 text-md text-muted">Tidak ada yang dipilih. Tutup lalu coba lagi.</p>
+            @endif
+        </form>
+        <x-slot:footer>
+            <x-sth.button variant="quiet" data-sth-close>Batal</x-sth.button>
+            @if ($advancing)
+                <x-sth.button type="submit" form="pindahkan-talenta-form" icon="check" wire:loading.attr="disabled" wire:target="bulkAdvance">Pindahkan</x-sth.button>
             @endif
         </x-slot:footer>
     </x-sth.modal>

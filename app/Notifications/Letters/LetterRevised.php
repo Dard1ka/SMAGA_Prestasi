@@ -6,6 +6,7 @@ namespace App\Notifications\Letters;
 
 use App\Models\Registration;
 use App\Notifications\Registrations\RegistrationNotification;
+use App\Notifications\Support\MailGreeting;
 use App\Notifications\Support\PlainMailMessage;
 use Illuminate\Notifications\Messages\MailMessage;
 
@@ -32,11 +33,10 @@ class LetterRevised extends RegistrationNotification
     {
         return (new PlainMailMessage)
             ->subject($this->subject())
-            ->greeting($this->audience === 'siswa' ? 'Halo '.self::firstName($notifiable).',' : 'Yth. '.trim((string) ($notifiable->name ?? '')).',')
+            ->greeting($this->audience === 'siswa' ? MailGreeting::student($notifiable) : MailGreeting::staff($notifiable))
             ->line($this->message())
             ->line('Pakai surat yang baru. Keasliannya bisa dicek lewat kode QR di surat.')
-            ->action('Lihat surat baru', $this->url())
-            ->salutation('SMAGA Talent Hub');
+            ->action('Lihat surat baru', $this->url());
     }
 
     /** @return array<string, mixed> */

@@ -11,19 +11,17 @@ use App\Models\AppreciationEvent;
 use App\Models\Registration;
 use App\Models\Report;
 use App\Models\User;
-use App\Notifications\Publications\AppreciationScheduled;
-use App\Notifications\Publications\BinaanAppreciationNotice;
-use Carbon\CarbonImmutable;
-use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Puts a verified achievement (student with publish consent) on an upcoming appreciation event that is not
+ * Puts ONE verified achievement (student with publish consent) on an upcoming appreciation event that is not
  * yet confirmed as held: one `appreciations` row, status `dijadwalkan`, unique per achievement + event.
  * Audited; the student and the guru pembimbing (D-110) are notified after commit.
+ *
+ * Since D-124 (lead, 2026-10-10) the work is done by RecordAppreciations (several achievements in one click,
+ * one notice per guru): this is its one-row entry, used by the Publikasi panel "Masukkan ke acara apresiasi".
+ * The rules, messages and notices of a single row are unchanged; the helpers below serve both Actions.
  *
  * One achievement, one open event (M2-B, QA 2026-10-05 Q2-10): an achievement that is still scheduled on
  * another event that is not confirmed, or that was already appreciated on a confirmed event, is refused with
@@ -31,80 +29,15 @@ use Illuminate\Validation\ValidationException;
  */
 final class RecordAppreciation
 {
+    public function __construct(private readonly RecordAppreciations $many) {}
+
     /**
      * @throws ValidationException
      */
     public function handle(User $actor, AppreciationEvent $event, Achievement $achievement): Appreciation
     {
-        $gate = Gate::forUser($actor);
-        $gate->authorize('create', Appreciation::class);
-        $gate->authorize('update', $event);
-
-        $achievement->loadMissing('student');
-
-        if ($achievement->verified_at === null) {
-            throw ValidationException::withMessages(['achievement' => 'Prestasi ini belum terverifikasi.']);
-        }
-
-        if ($achievement->student?->publish_consent !== true) {
-            throw ValidationException::withMessages(['achievement' => 'Siswa belum memberi izin publikasi.']);
-        }
-
-        try {
-            $appreciation = DB::transaction(function () use ($actor, $event, $achievement): Appreciation {
-                /** @var AppreciationEvent $lockedEvent */
-                $lockedEvent = AppreciationEvent::query()->whereKey($event->getKey())->lockForUpdate()->firstOrFail();
-
-                // A confirmed event is the record of who was appreciated (M1-E): nothing is added afterwards.
-                if ($lockedEvent->isCompleted()) {
-                    throw ValidationException::withMessages(['event' => 'Acara ini sudah dilaksanakan. Pilih acara lain.']);
-                }
-
-                if ($lockedEvent->held_on->lessThan(CarbonImmutable::today())) {
-                    throw ValidationException::withMessages(['event' => 'Acara apresiasi ini sudah lewat.']);
-                }
-
-                // One achievement, one open event (M2-B, Q2-10). The achievement row is locked so two events
-                // cannot take it at the same moment; every row it already has decides the answer.
-                Achievement::query()->whereKey($achievement->getKey())->lockForUpdate()->first();
-
-                $existing = Appreciation::query()
-                    ->where('achievement_id', $achievement->getKey())
-                    ->with('event')
-                    ->get();
-
-                if ($existing->contains(fn (Appreciation $a): bool => $a->appreciation_event_id === $lockedEvent->getKey())) {
-                    throw ValidationException::withMessages(['achievement' => 'Prestasi ini sudah ada di daftar acara tersebut.']);
-                }
-
-                if (($blocking = self::blocking($existing)) !== null) {
-                    throw ValidationException::withMessages(['achievement' => self::blockedMessage($blocking)]);
-                }
-
-                $appreciation = new Appreciation([
-                    'achievement_id' => $achievement->getKey(),
-                    'appreciation_event_id' => $lockedEvent->getKey(),
-                ]);
-                $appreciation->forceFill(['status' => AppreciationStatus::Dijadwalkan])->save();
-
-                activity('appreciation')
-                    ->performedOn($appreciation)
-                    ->causedBy($actor)
-                    ->event('appreciation.recorded')
-                    ->withProperties([
-                        'achievement_id' => $achievement->getKey(),
-                        'appreciation_event_id' => $lockedEvent->getKey(),
-                        'held_on' => $lockedEvent->held_on->toDateString(),
-                    ])
-                    ->log('appreciation.recorded');
-
-                return $appreciation->setRelation('event', $lockedEvent);
-            });
-        } catch (UniqueConstraintViolationException) {
-            throw ValidationException::withMessages(['achievement' => 'Prestasi ini sudah ada di daftar acara tersebut.']);
-        }
-
-        $this->notify($appreciation, $achievement);
+        /** @var Appreciation $appreciation */
+        $appreciation = $this->many->handle($actor, $event, [$achievement])->first();
 
         return $appreciation;
     }
@@ -192,18 +125,5 @@ final class RecordAppreciation
         $achievement->loadMissing('student.user');
 
         return $achievement->student?->user?->canLogIn() === true;
-    }
-
-    private function notify(Appreciation $appreciation, Achievement $achievement): void
-    {
-        $achievement->loadMissing(['student.user', 'competition', 'report']);
-        $appreciation->setRelation('achievement', $achievement);
-        $appreciation->loadMissing('event');
-
-        if (self::notifiesStudent($achievement)) {
-            $achievement->student->user->notify(AppreciationScheduled::for($appreciation));
-        }
-
-        self::mentorUser($achievement)?->notify(BinaanAppreciationNotice::scheduled($appreciation));
     }
 }

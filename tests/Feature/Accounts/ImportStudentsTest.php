@@ -701,7 +701,6 @@ it('previews baru, pindah kelas, tidak berubah and ditolak, then imports without
         ->assertSee('Tanggal arsip 1 siswa lama akan berubah')
         ->assertSee('Tanggal lahir tidak valid')
         ->assertSee('Impor 2 siswa')
-        ->assertSee('Buat 1 akun siswa dan pindahkan 1 siswa ke kelas di file sekarang?')
         ->assertDontSee('sm4g4');
 
     expect($nadia->refresh()->classroom->name)->toBe('X-1')
@@ -716,6 +715,14 @@ it('previews baru, pindah kelas, tidak berubah and ditolak, then imports without
         ->assertViewHas('listTotal', 1)
         ->assertSee('Galang Putra Mahendra')
         ->set('filter', 'all');
+
+    // D-128: "Impor N siswa" asks in its own dialog, whose sentence says what the import writes (no browser confirm).
+    $screen->call('askImport')
+        ->assertDispatched('sth-modal-open', id: 'impor-siswa')
+        ->assertSee('Buat 1 akun siswa dan pindahkan 1 siswa ke kelas di file.')
+        ->assertDontSee('sekarang?');
+
+    expect($nadia->refresh()->classroom->name)->toBe('X-1');
 
     $screen->call('import')
         ->assertHasNoErrors()
@@ -749,8 +756,11 @@ it('queues the yearly file by the number of rows to write, not by the rows that 
         ->set('file', UploadedFile::fake()->createWithContent('data-siswa.csv', implode("\n", $lines)."\n"))
         ->assertViewHas('changeCount', 0)
         ->assertSee('Impor 0 siswa')
+        // D-128: the question first; the import then ran here, in this request, and wrote nothing.
+        ->call('askImport')
         ->call('import')
-        ->assertHasNoErrors();
+        ->assertHasNoErrors()
+        ->assertSet('imported', ['created' => 0, 'moved' => 0, 'invalid' => 0]);
 
     Queue::assertNothingPushed();
     expect(StudentImport::query()->count())->toBe(0)

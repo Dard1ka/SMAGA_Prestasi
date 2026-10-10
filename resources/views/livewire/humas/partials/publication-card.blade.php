@@ -29,6 +29,10 @@
             </p>
         @endif
         <div class="mt-1.5 flex flex-wrap items-center gap-2">
+            {{-- D-122: the scheduled time passed, Humas has not pressed "Tandai dipublikasikan" yet. --}}
+            @if ($card['overdue'])
+                <x-sth.chip tone="orange" size="sm">Lewat jadwal</x-sth.chip>
+            @endif
             @if ($card['photo'])
                 <x-sth.chip tone="green" size="sm">Izin foto ada</x-sth.chip>
             @else

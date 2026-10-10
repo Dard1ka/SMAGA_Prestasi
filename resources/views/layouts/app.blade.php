@@ -20,7 +20,9 @@
                            else the user's highest role
     - user                 defaults to auth()->user(); an array ['name' => …, 'meta' => …] for previews
     - badges               ['siswa.lomba-saya' => 2, …] (keys: App\Support\Navigation::BADGES)
-    - notifications        unread count for the bell dot (default: user's unread database notifications)
+    - notifications        unread count for the bell (default: user's unread database notifications). While the
+                           page stays open, app.js keeps the bell and the sidebar counts fresh ("live counts":
+                           event `sth-badges`, GET notifikasi.jumlah); the layout hands it the address.
     - search               false = hide · 'Cari …' = placeholder · ['action' => url, 'placeholder' => …]
     - active               force the current menu item by key ('cari-lomba', 'usulan', …); default: route match
     - preview              dev showcase only: menu items without a route look normal (href="#")
@@ -55,6 +57,11 @@
             : 0;
     }
 
+    // D-127: where app.js asks for fresh counts while the page stays open (bell + sidebar). Null for a preview
+    // user (dev showcase) and when the background check is switched off: then nothing is ever asked.
+    $countsUrl = \App\Http\Controllers\NotificationCountController::pollUrl($user);
+    $countsEvery = \App\Http\Controllers\NotificationCountController::pollSeconds();
+
     $hasTabbar = $nav['tabbar'] !== [];
 @endphp
 <!DOCTYPE html>
@@ -73,7 +80,7 @@
             'pb-[calc(112px+env(safe-area-inset-bottom))]' => $hasTabbar,
             'pb-10' => ! $hasTabbar,
         ])>
-            <x-sth.topbar :nav="$nav" :title="$title" :subtitle="$subtitle" :notifications="$notifications">
+            <x-sth.topbar :nav="$nav" :title="$title" :subtitle="$subtitle" :notifications="$notifications" :counts-url="$countsUrl" :counts-every="$countsEvery">
                 @isset($lead)
                     <x-slot:lead>{{ $lead }}</x-slot:lead>
                 @endisset

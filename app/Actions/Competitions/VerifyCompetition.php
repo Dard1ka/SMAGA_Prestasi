@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Actions\Competitions;
 
 use App\Enums\CompetitionStatus;
+use App\Enums\OrganizerType;
 use App\Enums\Participation;
 use App\Enums\RoleName;
 use App\Models\Competition;
@@ -30,6 +31,9 @@ use Illuminate\Validation\ValidationException;
  * deadline or final date has already passed is published only with `$confirmPastDates` (Q1-04: old lomba are
  * entered for the record, so the answer is a question, not a ban). The refusal carries the key
  * CompetitionDates::PAST_KEY; the confirmation is audited (`past_dates`).
+ *
+ * D-125 (the lead, 2026-10-09): a lomba whose "Jenis penyelenggara" is "Lainnya" is published only once the kind
+ * was typed (`organizer_type_other`); the queue may hold it without.
  */
 final class VerifyCompetition
 {
@@ -49,6 +53,12 @@ final class VerifyCompetition
         'location' => 'Tempat',
         'participation' => 'Peserta',
     ];
+
+    /**
+     * Label of `organizer_type_other`: required only while "Jenis penyelenggara" is "Lainnya" (D-125), so it is not
+     * in REQUIRED_TO_PUBLISH; missingFields() adds it right after the type.
+     */
+    public const OTHER_TYPE_LABEL = 'Jenis penyelenggara lainnya';
 
     public function handle(
         User $actor,
@@ -160,6 +170,12 @@ final class VerifyCompetition
 
             if ($value === null || (is_string($value) && trim($value) === '')) {
                 $missing[$field] = $label;
+            }
+
+            // "Lainnya" alone says nothing about the organizer: the kind has to be typed (D-125).
+            if ($field === 'organizer_type' && $value === OrganizerType::Lainnya
+                && trim((string) $competition->getAttribute('organizer_type_other')) === '') {
+                $missing['organizer_type_other'] = self::OTHER_TYPE_LABEL;
             }
         }
 

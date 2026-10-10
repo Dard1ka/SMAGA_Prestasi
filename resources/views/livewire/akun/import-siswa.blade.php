@@ -176,8 +176,9 @@
                     @if ($imported || $job)
                         <x-sth.button variant="soft" icon="upload" wire:click="startOver" :disabled="$job?->isActive() ?? false">Impor file lain</x-sth.button>
                     @else
-                        <x-sth.button icon="check" wire:click="import" wire:loading.attr="disabled" :disabled="$changeCount === 0"
-                            wire:confirm="{{ $confirm }}">Impor {{ $changeCount }} siswa</x-sth.button>
+                        {{-- D-128: opens the dialog "Impor data siswa?" at the end of this file (the app's own dialog, no browser box). --}}
+                        <x-sth.button icon="check" wire:click="askImport" wire:loading.attr="disabled" :disabled="$changeCount === 0"
+                            aria-haspopup="dialog">Impor {{ $changeCount }} siswa</x-sth.button>
                         <x-sth.button variant="quiet" wire:click="startOver">Ganti file</x-sth.button>
                     @endif
                     @if ($invalidCount + $notedCount > 0)
@@ -187,4 +188,19 @@
             @endif
         </x-sth.card>
     </div>
+
+    {{-- D-128: "Impor N siswa" asks here (opened by askImport()): the sentence says what the import writes. --}}
+    <x-sth.modal :id="\App\Livewire\Akun\ImportSiswa::IMPORT_DIALOG" size="sm" title="Impor data siswa?" description="Data ditulis ke STH dan tidak bisa dibatalkan dari layar ini.">
+        @if ($importAsking)
+            <p class="m-0 text-md">{{ $confirm }}</p>
+        @else
+            <p class="m-0 text-md text-muted">Belum ada file yang diperiksa. Tutup lalu upload file dulu.</p>
+        @endif
+        <x-slot:footer>
+            <x-sth.button variant="quiet" data-sth-close>Batal</x-sth.button>
+            @if ($importAsking)
+                <x-sth.button icon="check" wire:click="import" wire:loading.attr="disabled" wire:target="import">Impor {{ $changeCount }} siswa</x-sth.button>
+            @endif
+        </x-slot:footer>
+    </x-sth.modal>
 </div>

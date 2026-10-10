@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Livewire\Humas;
 
 use App\Actions\Publications\AchievementFacts;
+use App\Actions\Publications\EventWhen;
 use App\Actions\Publications\FlyerData;
 use App\Actions\Publications\PublicationInput;
 use App\Actions\Publications\PublishPublication;
@@ -37,6 +38,12 @@ use Livewire\Component;
  * schedule, publish, apresiasi). Humas designs the flyer in its own tools: STH draws none, it only hands
  * over the facts (FlyerData, M3-E). Only verified achievements whose student gave publish consent are listed.
  * `?pilih=<publication>` preselects a card (a warning toast when it left the visible queue, QA10; 404 for an unknown id).
+ *
+ * D-122 (lead, 2026-10-10): the schedule is only a reminder for Humas. A `terjadwal` card whose time has passed
+ * stays in the lane "Terjadwal" with the chip "Lewat jadwal" until Humas presses "Tandai dipublikasikan"; nothing
+ * becomes Dipublikasikan by itself and the student is told only then. That button asks first in the dialog
+ * PUBLISH_DIALOG (askPublish() checks caption + channels and opens it, publish() is the confirm step), because it
+ * cannot be undone and notifies the student.
  */
 #[Title('Publikasi prestasi')]
 #[Layout('layouts::app', ['subtitle' => 'Prestasi terverifikasi yang siap dibagikan.'])]
@@ -49,8 +56,20 @@ class Publikasi extends Component
 
     public const LANE_MAX = 200;
 
+    /** Dialog "Tandai sudah terbit?" (replaces the native confirm of the browser). */
+    public const PUBLISH_DIALOG = 'tandai-terbit';
+
+    /** Line under the dialog title: who hears about it (never claim a notice nobody gets, D-109). */
+    public const NOTICE_TOLD = 'Siswa langsung diberi tahu.';
+
+    public const NOTICE_NOBODY = 'Akun siswa tidak aktif, jadi tidak ada notifikasi.';
+
     #[Locked]
     public ?string $selectedId = null;
+
+    /** The card the open dialog "Tandai sudah terbit?" asks about; set only by askPublish(). */
+    #[Locked]
+    public ?string $publishingId = null;
 
     #[Url(as: 'q', except: '')]
     public string $q = '';
@@ -165,8 +184,57 @@ class Publikasi extends Component
         $this->dispatch('sth-toast', message: 'Publikasi dijadwalkan.', tone: 'success');
     }
 
+    /**
+     * "Tandai dipublikasikan" in the panel: checks caption and channels the way PublishPublication will, so the
+     * dialog never opens over a field error, then opens the dialog. Nothing changes and nobody is told before publish().
+     */
+    public function askPublish(): void
+    {
+        // A question from before is void: only what this call opens may be confirmed.
+        $this->publishingId = null;
+        $publication = $this->selectedOrGone();
+
+        if ($publication === null || $this->publishedElsewhere($publication)) {
+            return;
+        }
+
+        $this->authorize('publish', $publication);
+
+        $errors = [];
+
+        foreach ([fn () => PublicationInput::caption($this->caption, required: false), fn () => PublicationInput::channels($this->channels)] as $check) {
+            try {
+                $check();
+            } catch (ValidationException $e) {
+                $errors += $e->errors();
+            }
+        }
+
+        if ($errors !== []) {
+            throw ValidationException::withMessages($errors);
+        }
+
+        $this->resetErrorBag();
+        $this->publishingId = (string) $publication->getKey();
+        $this->dispatch('sth-modal-open', id: self::PUBLISH_DIALOG);
+    }
+
+    /**
+     * Confirm in the dialog. Only the card askPublish() asked about is published. Without that question (a forged
+     * call, or the second click of a double click after the first one went through) nothing happens: a silent
+     * no-op, not a 404, so no error page appears on top of a publication that just succeeded.
+     */
     public function publish(PublishPublication $action): void
     {
+        $this->authorize('viewAny', Publication::class);
+
+        $asked = $this->publishingId !== null && $this->publishingId === $this->selectedId;
+        $this->closePublishDialog();
+
+        if (! $asked) {
+            return;
+        }
+
         $publication = $this->selectedOrGone();
 
         if ($publication === null || $this->publishedElsewhere($publication)) {
@@ -259,6 +327,7 @@ class Publikasi extends Component
             'publishedMore' => max(0, $publishedCount - self::PUBLISHED_PREVIEW),
             'boardEmpty' => $siap->isEmpty() && $terjadwal->isEmpty() && $publishedCount === 0,
             'panel' => $selected !== null ? $this->panel($selected, $user) : null,
+            'publishing' => $this->publishing($selected),
             'channelOptions' => PublicationChannel::options(),
         ])->layoutData([
             'badges' => $this->freshBadges($user),
@@ -310,6 +379,8 @@ class Publikasi extends Component
                 ? trim(HumasQueries::shortDate($publication->scheduled_at).' · '.PublicationInput::channelLabels($publication->channels), ' ·')
                 : null,
             'publishedOn' => $publication->published_at !== null ? 'Terbit '.HumasQueries::shortDate($publication->published_at) : null,
+            // D-122: the scheduled time passed and Humas has not marked it as published yet (chip "Lewat jadwal").
+            'overdue' => $publication->isOverdue(),
             'photo' => $facts->photoConsent,
             // Cover band: the template drawing of the bidang, picked from the lomba id (<x-sth.sampul>).
             'bidang' => $cssKey,
@@ -336,13 +407,21 @@ class Publikasi extends Component
             : AppreciationEvent::query()
                 ->open() // M1-E: a confirmed event takes no more prestasi
                 ->whereDate('held_on', '>=', CarbonImmutable::today()->toDateString())
+                // By day, then by start time (D-123); an event without a time sorts first within its day.
                 ->orderBy('held_on')
+                ->orderBy('held_time')
+                ->oldest()
                 ->limit(20)
                 ->get();
 
+        // D-122: a scheduled time that passed is not a publication. The row stays terjadwal and says "Lewat jadwal".
+        $overdue = $publication->isOverdue();
+
         $statusChip = match ($status) {
             PublicationStatus::Siap => ['orange', 'Siap publikasi'],
-            PublicationStatus::Terjadwal => ['blue', 'Terjadwal '.self::dateTime($publication->scheduled_at)],
+            PublicationStatus::Terjadwal => $overdue
+                ? ['orange', trim('Lewat jadwal '.($publication->scheduled_at !== null ? self::dateTime($publication->scheduled_at) : ''))]
+                : ['blue', 'Terjadwal '.self::dateTime($publication->scheduled_at)],
             PublicationStatus::Dipublikasikan => ['green', 'Terbit '.HumasQueries::shortDate($publication->published_at, true)],
         };
 
@@ -351,6 +430,10 @@ class Publikasi extends Component
             'heading' => $facts->competitionName.' · '.$facts->studentName,
             'status' => $status->value,
             'statusChip' => $statusChip,
+            'overdue' => $overdue,
+            // Will "Tandai dipublikasikan" tell the student? The overdue alert and the hint under the date promise
+            // the notice only then (an alumnus is not told; D-109), like the dialog (publishing()).
+            'notifies' => PublishPublication::notifiesStudent($publication),
             'published' => $status === PublicationStatus::Dipublikasikan,
             'publishedChannels' => PublicationInput::channelLabels($publication->channels),
             'publishedCaption' => $publication->caption,
@@ -360,13 +443,14 @@ class Publikasi extends Component
             'canSchedule' => $user->can('schedule', $publication),
             'canPublish' => $user->can('publish', $publication),
             'canAppreciate' => $user->can('create', Appreciation::class),
+            // "12 Okt 2026, 07.00" (D-123): the panel says when the event is, in the line and in the choice.
             'appreciations' => $recorded->map(fn (Appreciation $a): array => [
                 'event' => $a->event->name,
-                'date' => HumasQueries::shortDate($a->event->held_on, true),
+                'date' => EventWhen::short($a->event),
                 'done' => $a->status === AppreciationStatus::Selesai,
             ])->all(),
             'eventOptions' => $events->mapWithKeys(fn (AppreciationEvent $e): array => [
-                (string) $e->getKey() => $e->name.' · '.HumasQueries::shortDate($e->held_on, true),
+                (string) $e->getKey() => $e->name.' · '.EventWhen::short($e),
             ])->all(),
         ];
     }
@@ -374,9 +458,13 @@ class Publikasi extends Component
     private function choose(Publication $publication): void
     {
         $facts = AchievementFacts::of($publication->achievement);
-        $at = $publication->scheduled_at ?? self::defaultSchedule();
+        // An overdue row (D-122) gets the next free slot: its own time is past and "Jadwalkan ulang" would refuse it.
+        $at = $publication->scheduled_at !== null && $publication->scheduled_at->isFuture()
+            ? $publication->scheduled_at
+            : self::defaultSchedule();
 
         $this->selectedId = (string) $publication->getKey();
+        $this->publishingId = null; // a question about another card (or an older state of this one) is void
         $this->caption = (string) ($publication->caption ?? $facts->suggestedCaption());
         $this->channels = array_values(array_filter(
             (array) $publication->channels,
@@ -447,6 +535,11 @@ class Publikasi extends Component
         if ($publication === null) {
             $this->selectedId = null;
             $this->resetErrorBag();
+
+            if ($this->publishingId !== null) {
+                $this->closePublishDialog();
+            }
+
             $this->dispatch('sth-toast', message: 'Prestasi ini sudah tidak ada di antrean publikasi. Antrean sudah diperbarui.', tone: 'warning');
         }
 
@@ -454,9 +547,9 @@ class Publikasi extends Component
     }
 
     /**
-     * The auto-publish job (every 5 minutes) or a second tab published the selected card meanwhile (QA9):
-     * PublicationPolicy refused it with a full-screen 403 before the Action could say "sudah dipublikasikan". Say so;
-     * the panel shows the published state.
+     * A second tab or a colleague published the selected card meanwhile (QA9): PublicationPolicy refused it with a
+     * full-screen 403 before the Action could say "sudah dipublikasikan". Say so; the panel shows the published
+     * state. (Since D-122 the scheduler never publishes: only "Tandai dipublikasikan" gets a row here.)
      */
     private function publishedElsewhere(Publication $publication): bool
     {
@@ -464,10 +557,43 @@ class Publikasi extends Component
             return false;
         }
 
+        if ($this->publishingId !== null) {
+            $this->closePublishDialog();
+        }
+
         $this->choose($publication);
         $this->dispatch('sth-toast', message: 'Publikasi ini sudah dipublikasikan. Antrean sudah diperbarui.', tone: 'warning');
 
         return true;
+    }
+
+    /**
+     * Texts of the dialog "Tandai sudah terbit?" for the card askPublish() asked about, or null while nothing is
+     * asked. The channels are the ones on the form: what the dialog shows is what "Tandai dipublikasikan" saves.
+     *
+     * @return array{name: string, who: string, channels: string, notice: string}|null
+     */
+    private function publishing(?Publication $selected): ?array
+    {
+        if ($selected === null || $this->publishingId === null || (string) $selected->getKey() !== $this->publishingId) {
+            return null;
+        }
+
+        $facts = AchievementFacts::of($selected->achievement);
+
+        return [
+            'name' => $facts->competitionName,
+            'who' => $facts->studentName.($facts->className !== null ? ' · '.$facts->className : '').' · '.$facts->headline(),
+            'channels' => PublicationInput::channelLabels($this->channels),
+            // Only when someone is told (an alumnus or a disabled account is not; D-109).
+            'notice' => PublishPublication::notifiesStudent($selected) ? self::NOTICE_TOLD : self::NOTICE_NOBODY,
+        ];
+    }
+
+    private function closePublishDialog(): void
+    {
+        $this->publishingId = null;
+        $this->dispatch('sth-modal-close', id: self::PUBLISH_DIALOG);
     }
 
     /** Field errors next to the field, anything else as an error toast. */

@@ -9,6 +9,7 @@ use App\Domain\Files\StoreUpload;
 use App\Enums\FilePurpose;
 use App\Models\Competition;
 use App\Rules\ExternalUrl;
+use App\Rules\NoWebAddress;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
@@ -22,7 +23,8 @@ use Livewire\WithFileUploads;
  * "Usulkan lomba" sheet (board Katalog-Lomba; for guru `guru.lomba.index` named "Upload info lomba"). Renders its own
  * <dialog id="usul">; open it with any `data-sth-open="usul"` button on the page.
  * Calls SubmitCompetition (menunggu_verifikasi, D-27; 5/day; brochure via StoreUpload, private).
- * The official link is validated (https, no IP) and never fetched (SECURITY §3m-1).
+ * The official link is cleaned at both ends, validated (https, no IP; ExternalUrl says what is wrong) and never
+ * fetched (SECURITY §3m-1).
  */
 class UsulanForm extends Component
 {
@@ -61,10 +63,12 @@ class UsulanForm extends Component
         $upload = StoreUpload::rulesFor(FilePurpose::Juknis);
 
         return [
-            'name' => ['required', 'string', 'min:3', 'max:200'],
+            // A web address in the name shows with the other field errors (before, only the Action caught it).
+            'name' => ['required', 'string', 'min:3', 'max:200', new NoWebAddress],
             // Kesiswaan verifies a proposal against the organizer, the official link and the invitation,
             // so a proposal without them cannot be decided. Only the note stays optional.
             'organizer_name' => ['required', 'string', 'max:200'],
+            // ExternalUrl names what is wrong, the length included (no "max" rule with a second wording).
             'website_url' => ['required', 'string', new ExternalUrl],
             'description' => ['nullable', 'string', 'max:1000'],
             'brosur' => [
@@ -98,30 +102,38 @@ class UsulanForm extends Component
     {
         Gate::authorize('create', Competition::class);
 
+        // Livewire hands text over as typed or pasted (no TrimStrings). Clean it first, so the sheet checks
+        // exactly what SubmitCompetition stores and the field shows it (lead's mail test, 2026-10-09).
+        $this->name = trim($this->name);
+        $this->organizer_name = trim($this->organizer_name);
+        $this->description = trim($this->description);
+        $this->website_url = ExternalUrl::normalize($this->website_url);
+
         try {
             $this->validate();
+
+            $key = 'usulan:'.auth()->id();
+
+            if (RateLimiter::tooManyAttempts($key, 10)) {
+                throw ValidationException::withMessages(['name' => 'Terlalu sering. Coba lagi beberapa menit lagi.']);
+            }
+
+            RateLimiter::hit($key, 3600);
+
+            $competition = $submit->handle(auth()->user(), [
+                'name' => $this->name,
+                'organizer_name' => $this->organizer_name,
+                'website_url' => $this->website_url,
+                'description' => $this->description,
+            ], $this->brosur);
         } catch (ValidationException $e) {
             // The sheet scrolls inside .dlg-body and the send button sits in its sticky footer, so a
-            // field error can land out of sight. Let app.js jump to the first one.
+            // field error can land out of sight. Let app.js jump to the first one. The same for what the
+            // Action refuses after the sheet's own check (the daily limit, a brochure it cannot accept).
             $this->dispatch('sth-form-invalid', form: 'usul');
 
             throw $e;
         }
-
-        $key = 'usulan:'.auth()->id();
-
-        if (RateLimiter::tooManyAttempts($key, 10)) {
-            throw ValidationException::withMessages(['name' => 'Terlalu sering. Coba lagi beberapa menit lagi.']);
-        }
-
-        RateLimiter::hit($key, 3600);
-
-        $competition = $submit->handle(auth()->user(), [
-            'name' => $this->name,
-            'organizer_name' => $this->organizer_name,
-            'website_url' => $this->website_url,
-            'description' => $this->description,
-        ], $this->brosur);
 
         $this->sentName = $competition->name;
         $this->sent = true;

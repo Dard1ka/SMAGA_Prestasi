@@ -203,6 +203,9 @@ it('masks NIS in the talent table and moves checked rows in bulk', function (): 
         ->assertSee('2262•••88')
         ->assertDontSee('226227088')
         ->set('checked', [$a->getKey(), $b->getKey()])
+        // D-128: the bulk move asks first (details: TalentaPindahkanDialogTest).
+        ->call('askBulkAdvance')
+        ->assertDispatched('sth-modal-open', id: 'pindahkan-talenta')
         ->call('bulkAdvance');
 
     expect($a->fresh()->status)->toBe(TalentStatus::Pemetaan)
@@ -475,7 +478,11 @@ it('imports students in three steps and never shows the initial password pattern
 
     expect(Student::query()->count())->toBe(0);
 
-    $component->call('import')->assertSee('2 akun siswa dibuat')->assertDontSee('sm4g4');
+    // D-128: "Impor N siswa" asks in its own dialog first (details: ImportSiswaDialogTest).
+    $component->call('askImport')
+        ->assertDispatched('sth-modal-open', id: 'impor-siswa')
+        ->assertSee('Buat 2 akun siswa.')
+        ->call('import')->assertSee('2 akun siswa dibuat')->assertDontSee('sm4g4');
 
     expect(Student::query()->whereIn('nis', ['226227031', '226227088'])->count())->toBe(2)
         ->and(Student::query()->where('nis', '226227004')->exists())->toBeFalse();
@@ -521,7 +528,8 @@ it('tells a second tab that a report was already decided instead of showing an e
 
     expect($report->fresh()->status)->toBe(ReportStatus::Diverifikasi)
         ->and(Achievement::query()->count())->toBe(1);
-})->with(['verify', 'requestRevision', 'reject']);
+    // D-128: "Tolak" is askReject() now (it opens the confirm dialog); reject() alone does nothing (VerifikasiHasilTolakTest).
+})->with(['verify', 'requestRevision', 'askReject']);
 
 it('counts only the members still in the team on a queue card (QA8)', function (): void {
     $leader = F::student('Nadia Putri Anindya', 'XI-4');

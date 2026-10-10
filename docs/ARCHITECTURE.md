@@ -37,14 +37,14 @@ docker/                    # Dockerfiles, nginx.conf (inside container), php.ini
 > Exception: `users.id` stays the framework's auto-increment BIGINT because Fortify (2FA/passkeys), sessions, spatie/permission and activitylog are built on it. Every FK to users is `foreignId(...)->constrained('users')`. All domain tables use ULIDs (`$table->ulid('id')->primary()`, `HasUlids`), and only domain ULIDs appear in URLs.
 >
 > Ratified 2026-10-01 (backlog #20): this section now matches `database/migrations` after waves 1–2 (W1-A additions,
-> W2 tables/columns) and backlog B1–B5; settings keys and staff-account rules updated after W4 (D1); columns of the four M1 migrations (2026-10-04) and of the two M2 migrations (2026-10-06) added; `letters.printed` came with QA4 (PR 12, 2026-10-06); M3 (2026-10-06) has no migration. Origin tags: **[W1-A]**, **[W2-…]**, **[B1]…[B5]**, **[W4]**, **[M1-A]…[M1-E]**, **[M2-A]**, **[M2-B]** (details in `docs/dev-notes/`).
+> W2 tables/columns) and backlog B1–B5; settings keys and staff-account rules updated after W4 (D1); columns of the four M1 migrations (2026-10-04) and of the two M2 migrations (2026-10-06) added; `letters.printed` came with QA4 (PR 12, 2026-10-06); M3 (2026-10-06) has no migration; the three columns of EM2 (2026-10-10: `competitions.organizer_type_other`, `publications.reminded_at`, `appreciation_events.held_time`; nullable, no backfill) added. Origin tags: **[W1-A]**, **[W2-…]**, **[B1]…[B5]**, **[W4]**, **[M1-A]…[M1-E]**, **[M2-A]**, **[M2-B]**, **[EM2]** (details in `docs/dev-notes/`).
 > Runtime DB user `sth_app` has per-table privileges (`scripts/deploy/grants.sh`, DEPLOY §8.2): `activity_log` and
 > `audit_seals` are INSERT/SELECT only, `migrations` SELECT only, every other table DML; no DDL, no TRUNCATE.
 - **users***: id (bigint), name, username (nullable, unique; staff login, D-42) [W1-A], email (nullable, unique) [W1-A], email_verified_at, password, status (`UserStatus`), must_change_password (bool), initial_password_expires_at (K1 window / K10 temporary password, 72 h) [B1], temporary_password_issued_at (timestamp, nullable: set by `ResetStudentAccount`, cleared by `SetNewPassword` whenever the owner chooses a password; while it is set the stored password is an Admin's temporary one and cannot be kept at activation, D-92; the migration backfills it from `activity_log` `account.reset` for reset accounts that still have `must_change_password`) [M2-A], failed_activation_attempts (K3) [B1], frozen_at, frozen_reason (`failed_attempts` | `not_me`; login refused while set) [B1], activated_at (K9) [B1], password_changed_at (null on an active student = the school password was kept at activation, D-79) [M1-B: meaning only, no new column], last_login_at, tour_seen_at (menu tour done) [W2-A1], Fortify two_factor_* columns, remember_token.
 - **classrooms**: id, name (e.g. `X-1`, `X-TAHFIDZ`, `X-OLIMP`, `XI-12`, `XII-3`), level (10/11/12), active.
 - **students***: id, user_id (unique), nis (unique), nisn (unique), birth_date (date), classroom_id, import_school_year (e.g. `2026/2027`), grade12_start_date (date, computed), archive_at (date, computed, indexed), phone (nullable, `encrypted` cast), photo_consent (bool, default false), publish_consent (bool, default false), public_slug (string 32, nullable, unique; random URL key of the public student page, rotated when publish consent is revoked, `UpdateConsent`) [W2-D, W3-A]. The yearly import (`ImportStudents`, D-81) updates a registered student: classroom_id, import_school_year, grade12_start_date, archive_at, and phone when the file has one; it never writes name, birth_date, the password, email, status, activation or consent columns [M1-C].
 - **staff_profiles**: id, user_id, honorific (Bu/Pak/…, nullable) [W1-A], nip (nullable), rank (pangkat/gol, nullable), position (jabatan).
-- **competitions*** (lomba): id, name, description (nullable) [W1-A], bidang (`Bidang`), organizer_name, organizer_type (`OrganizerType`), weight_category (`WeightCategory`), event_status (`EventStatus`), level (`Level`), mode (`EventMode`), registration_opens_at, registration_closes_at, starts_on, final_on (date of the final — report deadline base), location, participation (`Participation`), max_team_size (nullable), default_mentor_id (users.id, guru), website_url, registration_url (D-28), juknis_file_id, cover_file_id, status (`CompetitionStatus`: menunggu_verifikasi, dipublikasikan, ditolak, ditutup), submitted_by, verified_by, verified_at, verification_note (nullable; `VerifyCompetition` accepts at most 1,000 characters, and since D-103 a rejection may leave it empty). Weight and date fields are nullable while `menunggu_verifikasi` (usulan) [W1-A]; `VerifyCompetition` requires them before `dipublikasikan`. **Every create starts at `menunggu_verifikasi` (D-27)**; only Kesiswaan/Admin can move it to `dipublikasikan`.
+- **competitions*** (lomba): id, name, description (nullable) [W1-A], bidang (`Bidang`), organizer_name, organizer_type (`OrganizerType`), organizer_type_other (string 60, nullable: the kind typed for "Jenis penyelenggara: Lainnya"; `CreateCompetition::normalize()` keeps it only while organizer_type = lainnya and writes null for every other type or no type; it may stay empty in the queue, `VerifyCompetition::missingFields()` requires it to publish; shown through `Competition::organizerTypeLabel()` ("Lainnya (Sanggar seni)"); never a weight field; D-125) [EM2], weight_category (`WeightCategory`), event_status (`EventStatus`), level (`Level`), mode (`EventMode`), registration_opens_at, registration_closes_at, starts_on, final_on (date of the final — report deadline base), location, participation (`Participation`), max_team_size (nullable), default_mentor_id (users.id, guru), website_url, registration_url (D-28), juknis_file_id, cover_file_id, status (`CompetitionStatus`: menunggu_verifikasi, dipublikasikan, ditolak, ditutup), submitted_by, verified_by, verified_at, verification_note (nullable; `VerifyCompetition` accepts at most 1,000 characters, and since D-103 a rejection may leave it empty). Weight and date fields are nullable while `menunggu_verifikasi` (usulan) [W1-A]; `VerifyCompetition` requires them before `dipublikasikan`. **Every create starts at `menunggu_verifikasi` (D-27)**; only Kesiswaan/Admin can move it to `dipublikasikan`.
 - **registrations*** (pendaftaran): id, competition_id, leader_student_id, type (individu/tim), branch (cabang, nullable) [W1-A], mentor_id (guru, required D-35), status (`RegistrationStatus`, §6), principal_decision_by, principal_decided_at, principal_note, cancelled_at.
 - **registration_members**: id, registration_id, student_id, role (ketua/anggota), invited_at, confirmed_at, declined_at. Unique (registration_id, student_id). A student cannot be in two non-final registrations of the same competition. While `menunggu_konfirmasi` and registration is open, the leader may invite more members or replacements (`InviteMembers`; never someone who declined this team; ≤ max_team_size) [B3]. Open invitations expire at `registration_closes_at` by setting `declined_at`; a team left with < 2 confirmed members stays `menunggu_konfirmasi` until the leader cancels (D-36, D-50) [B3].
 - **registration_reminders** [W2-A2]: id (bigint), registration_id, kind (reminder type, e.g. report due), sent_at. Unique (registration_id, kind): each reminder is sent once.
@@ -57,8 +57,8 @@ docker/                    # Dockerfiles, nginx.conf (inside container), php.ini
 - **talent_types**: id, code (osn, riset, fls3n, o2sn, olpain, debat), name, bidang (OSN/OLPAIN→sains, Riset→riset, FLS3N/Debat→seni_budaya, O2SN→olahraga; D-22), sort_order [W1-A]. **talent_branches**: id, talent_type_id, name, team_size (nullable), active, sort_order [W1-A]; unique (talent_type_id, name). Seeded from `docs/TALENT-FORM.md`.
 - **talent_applications***: id, student_id, talent_type_id, talent_branch_id (nullable for OLPAIN), evidence_file_id (nullable), status (`TalentStatus`: terdaftar, pemetaan, seleksi, pembinaan, tidak_lolos), mentor_id, assessment_on, note (the note for the guru pembina: internal, read by the guru pembina and Kesiswaan only), student_note (text, nullable: the note for the student of the latest decision, sent in that notification and shown on Profil talenta; a new decision replaces or clears it, D-85) [M1-D], student_note_draft (text, nullable: what Kesiswaan typed for the student and kept with "Simpan"; staff only, never shown to the student, the guru, the export or a notification; a decision sends its note and clears the draft, D-96) [M2-B], rejected_from (`TalentStatus` value, nullable: the stage before `tidak_lolos`; since D-104 it is the stage "Pulihkan" preselects (Terdaftar when unknown) while Kesiswaan chooses the target, and a restore clears it) [M1-D, M3-A], review_requested_at, review_message (≤ 500; one open review request per rejection, closed by a restore, D-86) [M1-D]. Unique (student_id, talent_type_id, talent_branch_id); OLPAIN (branch NULL) duplicates are blocked in the Action; a rejected choice cannot be applied for again (`ApplyTalent::REJECTED_MESSAGE`).
 - **talent_profiles**: id, student_id (unique), interests (json, ≤ 4), skills, organizations, junior_high_achievements. **talent_profile_files** [W2-A2]: id, talent_profile_id, file_id; unique (talent_profile_id, file_id) (supporting documents of the profile).
-- **publications**: id, achievement_id (unique) [W1-A], status (siap, terjadwal, dipublikasikan), channels (json), scheduled_at, caption, flyer_file_id (private disk; since D-107 nothing writes it and it is not in `$fillable`: it only points at flyer files STH made before 2026-10-06, kept with `FilePurpose::Flyer` and their `FilePolicy` rule, no migration) [M3-E], published_at, created_by. At `scheduled_at` a job flips `terjadwal` → `dipublikasikan` (`published_at` = the scheduled time), notifies the student and reminds Humas to post (D-47) [B3]. STH draws no flyer: Humas reads "Data untuk flyer" (`FlyerData`, §8e) and designs it in its own tools (D-107).
-- **appreciation_events**: id, name, held_on, completed_at (timestamp, nullable, indexed), completed_by (users.id, null on delete) [M1-E]. An event is confirmed as a whole (`CompleteAppreciationEvent`: not before held_on, not without a scheduled row, not twice); a confirmed event takes no more rows and cannot be deleted; an unconfirmed one can be deleted (`DeleteAppreciationEvent`: its scheduled rows go, the achievements are free for another event; D-87). Scopes `open()` / `completed()`. **appreciations**: id, achievement_id, appreciation_event_id, status (dijadwalkan, selesai); unique (achievement_id, appreciation_event_id). An achievement is on at most **one** event: `RecordAppreciation` locks the achievement row and refuses it while it has any other row (still scheduled on an unconfirmed event, or already appreciated: a `selesai` row or a confirmed event); this is a rule of the Action, not a DB index. `ReleaseAppreciation` ("Lepas dari acara") deletes one `dijadwalkan` row of an unconfirmed event, which frees the achievement for another event (D-97) [M2-B].
+- **publications**: id, achievement_id (unique) [W1-A], status (siap, terjadwal, dipublikasikan), channels (json), scheduled_at, reminded_at (timestamp, nullable: when the scheduler sent Humas the reminder for the current `scheduled_at`; null = not yet; not in `$fillable`; set only by `RemindDuePublication`, emptied by every schedule and re-schedule in `SchedulePublication`) [EM2], caption, flyer_file_id (private disk; since D-107 nothing writes it and it is not in `$fillable`: it only points at flyer files STH made before 2026-10-06, kept with `FilePurpose::Flyer` and their `FilePolicy` rule, no migration) [M3-E], published_at, created_by. **The schedule is only a reminder for Humas** (D-122, which replaces the auto-publish half of D-47) [EM2]: at `scheduled_at` the job `RemindDuePublications` (every 5 minutes) calls `RemindDuePublication` per due row, which mails and bells every active Humas account once per schedule (`PublicationDue`), stamps `reminded_at` and audits `publication.reminded` (`by` = scheduler). The row stays `terjadwal` and `published_at` stays empty; "lewat jadwal" is derived, not a status (`Publication::isOverdue()` / `scopeOverdue()`: `terjadwal` and `scheduled_at` ≤ now, or no time at all). Only `PublishPublication` ("Tandai dipublikasikan") sets `dipublikasikan` (`published_at` = the moment of the click) and notifies the student. Rows the old job (`AutoPublishPublications`, B3) published before 2026-10-10 stay as they are. STH draws no flyer: Humas reads "Data untuk flyer" (`FlyerData`, §8e) and designs it in its own tools (D-107).
+- **appreciation_events**: id, name, held_on, held_time (TIME, nullable: the start time, wall-clock time of the school; set by `CreateAppreciationEvent`, which requires it for a new event ("Isi jam acara."); null = an event made before 2026-10-10, which prints its date only; the rules read `held_on` only, every text comes from `App\Actions\Publications\EventWhen`; D-123) [EM2], completed_at (timestamp, nullable, indexed), completed_by (users.id, null on delete) [M1-E]. An event is confirmed as a whole (`CompleteAppreciationEvent`: not before held_on, not without a scheduled row, not twice); a confirmed event takes no more rows and cannot be deleted; an unconfirmed one can be deleted (`DeleteAppreciationEvent`: its scheduled rows go, the achievements are free for another event; D-87). Scopes `open()` / `completed()`. **appreciations**: id, achievement_id, appreciation_event_id, status (dijadwalkan, selesai); unique (achievement_id, appreciation_event_id). An achievement is on at most **one** event: `RecordAppreciations` (one "Masukkan" = up to 30 achievements, all or nothing; `RecordAppreciation` is its one-row entry with the same rules and messages, D-124) [EM2] locks the event, then the achievement rows in id order, and refuses an achievement while it has any other row (still scheduled on an unconfirmed event, or already appreciated: a `selesai` row or a confirmed event); this is a rule of the Action, not a DB index. `ReleaseAppreciation` ("Lepas dari acara") deletes one `dijadwalkan` row of an unconfirmed event, which frees the achievement for another event (D-97) [M2-B].
 - **files**: id, disk, path, original_name, mime, size, sha256, purpose (`FilePurpose`), owner_user_id. All uploads go through `App\Domain\Files\StoreUpload`: extension + sniffed-MIME allowlist (pdf, jpg, jpeg, png, webp), max 10 MB, images re-encoded with EXIF stripped, random path under `storage/app/private`; `original_name` ends in the extension of the sniffed content (`UploadRules::nameForContent()`: a PNG uploaded as "brosur.pdf" is stored as "brosur.png") [QA8]; per user max 30 uploads/hour and 200 MB per student (`UploadLimits`) [B2].
 - **otp_codes**: id, user_id, purpose (verify_email, reset_password), email, code_hash, expires_at, attempts, used_at. Rows older than 24 h are deleted by a scheduled job [B2].
 - **principal_replacements** [W2-D]: id, from_user_id (nullable when there is no Kepala Sekolah yet), to_user_id, requested_by, reason, effective_at (+24 h, D-40), applied_at, cancelled_at, cancelled_by, cancel_reason.
@@ -125,13 +125,28 @@ Transitions happen only in `app/Actions/Registrations/*`, which assert the sourc
 
 ### 8b. Notifications and mail
 Notifications are queued (`mail` + `database` channels unless noted) and sent after the transaction commits. Mails are
-built with `App\Notifications\Support\PlainMailMessage` (user text is never Markdown). `User::routeNotificationForMail()`
+built with `App\Notifications\Support\PlainMailMessage` (user text is never Markdown). Since D-129 (EM2, 2026-10-10;
+*sementara* until the lead has seen a real mail) they are rendered from the app's own template (`resources/views/vendor/notifications/email.blade.php`, components in
+`resources/views/vendor/mail/{html,text}`, theme `sth`; §8h): the greeting, the lines, at most one link (the action
+button) and one footer sentence (`PlainMailMessage::FOOTER`); the text part is plain text without Markdown. **Greeting
+rule**, one for every mail incl. the OTP mail and the binding notice (`App\Notifications\Support\MailGreeting`): a
+student account "Halo <first name>," (`App\Support\FirstName`: the first word that is not an abbreviation), staff and
+an account without a role yet "Yth. <full name>,", an unknown recipient "Halo,". `MailGreeting::for($notifiable)`
+decides by the account (`LoginIdentifier::isStudentAccount()`); a notification with one fixed audience calls
+`::student()` / `::staff()`. No notification calls `->salutation()`. `User::routeNotificationForMail()`
 skips the mail (the bell entry is still stored) for a frozen account, and for an address nobody verified unless the
 notification is an `AdminNotice`. A frozen account gets no reset code. Proven end to end by
 `tests/E2E/support/email-scenario.php` (re-run with the M1 code on 2026-10-05: 122 mails, 0 missing, 0 unexpected,
 0 leaks, 0 failed jobs). The M1 and M2 rows below (talent restore / review request, the deleted appreciation event,
-the released appreciation), the guru notices of QA5 (D-110) and the withdrawn invitation of QA6 (D-115) are covered by
-Pest only: the scenario has no step for them yet (CLAUDE.md backlog #46).
+the released appreciation), the guru notices of QA5 for a released appreciation and a deleted event (D-110), the
+withdrawn invitation of QA6 (D-115) and the lomba change notice of EM2 (D-126) are covered by Pest only: the scenario
+has no step for them yet (CLAUDE.md backlog #46).
+EM2 (2026-10-10) changed the scenario's steps 8b (event with a start time), 8c / 8d (the reminder goes to Humas only;
+the student's mail follows `PublishPublication`), 10j (greeting) and 11a, and its review added the guru pembimbing
+mails the steps 7b, 7d, 7f (report decisions) and 8b ("Binaan masuk daftar apresiasi") had been missing since D-110.
+Those four rows were written by reading the notification classes. The edited file was run on 2026-10-10 on the
+isolated project: 123 mails, 0 missing, 0 unexpected, 0 leaks, 0 failed jobs, with the OTP test mode the scenario
+expects (details and the run with real OTP codes: TEST-RESULTS in `docs/dev-notes/EM2.md`).
 
 | event (Action) | recipients |
 |---|---|
@@ -140,6 +155,7 @@ Pest only: the scenario has no step for them yet (CLAUDE.md backlog #46).
 | Password changed / reset (`ChangePassword`, `ResetPasswordWithCode`) | the account owner |
 | Lomba submitted or added (`SubmitCompetition`, `CreateCompetition`) | every holder of `competition.verify` except the actor |
 | Lomba published / rejected (`VerifyCompetition`) | the submitter (not when the verifier is the submitter); a rejection carries "Alasan Kesiswaan: …" when a reason was written, else `CompetitionRejected::NO_REASON` (D-103) |
+| Published lomba changed (`UpdateCompetition`; who and what: `CompetitionChange`; kinds `competition.changed` / `competition.binaan_changed`; D-126, *sementara*) | only when a **fact** changed (`CompetitionChange::FACTS`), one notice per save per person, one sentence per changed fact. **Batas daftar, peserta + maks anggota**: the students of registrations in `menunggu_konfirmasi`, no guru. **Tanggal mulai / final, pelaksanaan, tempat, link registrasi, website resmi, juknis**: the students of registrations from `menunggu_konfirmasi` up to `berlangsung` and their guru pembimbing; a changed **final date** also `menunggu_laporan` (sentence with the new report deadline). Students = member rows nobody declined (ketua, confirmed, still invited) whose account can log in; guru = an active account that still holds the guru role, **one** notice for all the guru's registrations of that lomba ("Yth. …", link to the binaan page, or to `guru.beranda` with several). Never the actor, never `laporan_dikirim` / `selesai` / `ditolak` / `dibatalkan`, never a student who is not registered, never all students; nothing for a lomba in `menunggu_verifikasi` (also through "Simpan & publikasikan") or for a change of any other field. More than 50 recipients in one save (`CompetitionChange::MAIL_LIMIT`): `database` only for everyone. No sentence prints a web address ("Link registrasi diganti." / "dihapus."); "Tempat" is printed as typed, except when it holds a web address (`NoWebAddress::found()`): then the sentence is only "Tempat diganti." (the field itself has no address rule and the save is never refused) |
 | Team invitation (`CreateRegistration`, `InviteMembers`) | the invited students |
 | Invitation withdrawn by the ketua (`WithdrawInvitation`, kind `registration.invitation_withdrawn`, D-115) | the student whose unanswered invitation was withdrawn (when the account can log in); the Kepala Sekolah when the team is complete after it, as after a decline |
 | Member accepted / declined (`ConfirmMembership`, `DeclineMembership`), invitations expired | the ketua |
@@ -151,7 +167,9 @@ Pest only: the scenario has no step for them yet (CLAUDE.md backlog #46).
 | Report window opened, reminders 14 and 3 days before the deadline | the ketua |
 | Report submitted / resubmitted (`SubmitReport`) | every Kesiswaan |
 | Report verified / revision requested / rejected | all confirmed members; the guru pembimbing of the registration (`BinaanReportDecided`, "Yth. …", link to the binaan page; only an active guru account, D-110); on verification also every Humas ("ready for publication") |
-| Publication published, appreciation scheduled | the student (an appreciation also the guru pembimbing, `BinaanAppreciationNotice` kind `appreciation.binaan_scheduled`, D-110); a scheduled publication that became due also every Humas (`PublicationDue`, "Waktunya upload publikasi": since D-107 it points to the caption and the data for the flyer on the publication page, it no longer promises a flyer) |
+| Publication marked as published (`PublishPublication`, "Tandai dipublikasikan"; the only moment since D-122) | the student of the achievement, when the account can log in (`PublishPublication::notifiesStudent()`); nobody else |
+| Scheduled publication whose time arrived (`RemindDuePublication`, job `RemindDuePublications` every 5 minutes; D-122) | every active Humas account, **once per schedule** (`PublicationDue`, "Waktunya upload publikasi": upload it to the channels now, then press "Tandai dipublikasikan"; it points to the caption and the data for the flyer on the publication page). **The student is not told at that time.** A re-schedule gives the new time its own reminder. No reminder for a student who may not be named (`NamedStudent`: no publish consent, disabled or deleted; an alumnus with consent is still reminded about); a row without a channel is reminded too. The reminder says "siswa baru diberi tahu saat itu" only when the button will really tell the student (`PublicationDue::$notifiesStudent`, set from `PublishPublication::notifiesStudent()` when the reminder is sent); for an alumnus it says "… supaya statusnya menjadi Dipublikasikan." (D-109) |
+| Appreciation scheduled (`RecordAppreciations`, one "Masukkan"; `RecordAppreciation` = the same with one achievement) | each student who can log in, one notice per achievement (`AppreciationScheduled`); each guru pembimbing **one** notice per call that names every binaan of that call (`BinaanAppreciationNotice::scheduledMany()`, kind `appreciation.binaan_scheduled`, D-110 / D-124), so a team added with one click is one guru notice and two separate clicks are two. Every appreciation notice prints the event's day and start time (`EventWhen::sentence()`, "… pada Senin, 12 Oktober 2026 pukul 07.00 WIB"; the date alone for an event without a time, D-123) |
 | Appreciation event deleted (`DeleteAppreciationEvent`, kind `appreciation.cancelled`) | every student with a scheduled row on it who can log in; each guru pembimbing of those rows once, listing all their binaan on the event (`appreciation.binaan_cancelled`, D-110); confirming an event notifies nobody (D-87) |
 | Appreciation released (`ReleaseAppreciation`, kind `appreciation.released`, "Jadwal apresiasi berubah") | the student of that achievement when the account can log in, and the guru pembimbing (`appreciation.binaan_released`, D-110); the event itself goes on (D-97) |
 | Talent stage changed / application rejected / restored (`MoveTalentStage`, `RejectTalentApplication`, `RestoreTalentApplication`) | the student, with the optional note for the student (D-85, D-86): the text typed for that decision, or the saved draft when the action has no note field (D-96); the notification of a restore names the stage the choice is in again (D-104); the guru pembina is not notified; a new application notifies nobody (backlog #40) |
@@ -401,6 +419,163 @@ No migration. Details: `docs/dev-notes/QA6.md`.
 - **Screens**: `Siswa\Pendaftaran\Form::CHANGED` (`pendaftaran-berubah`) after send, cancel, invite and withdraw;
   `Siswa\Lomba\Detail` listens and counts the registrants again. Kesiswaan › Talenta: the student's own texts in the
   detail panel wrap inside the card (`grid-cols-[110px_minmax(0,1fr)]`, `[overflow-wrap:anywhere]`).
+
+### 8h. Rules added by EM2 (D-122…D-129, the lead's mail and notification test of 2026-10-09)
+Three migrations, each one nullable column without backfill (§4); `scripts/deploy/grants.sh` needs no change (grants
+are per table). No new permission. Details: `docs/dev-notes/EM2.md`.
+- **Publication schedule = reminder** (D-122): §4 `publications`. `RemindDuePublication::due(CarbonImmutable $now)`
+  (`terjadwal`, `scheduled_at` ≤ now, `reminded_at` null, verified achievement, a student `NamedStudent` allows) and
+  `handle(Publication|string, ?CarbonImmutable $now = null): ?Publication` (checks again under `lockForUpdate()`,
+  stamps `reminded_at`, audits, then sends `PublicationDue` to `humasRecipients()`; the row is stamped also when no
+  Humas account can log in at that moment: exactly once per schedule). A `terjadwal` row without `scheduled_at` shows
+  as overdue but is never reminded. `HumasQueries::overduePublications()` = the visible overdue rows: the chip "Lewat
+  jadwal" on a card, the box on Humas › Jadwal and the sidebar count `humas.jadwal` (menu item Jadwal; a key in
+  `Navigation::BADGES` + one arm of `NavigationServiceProvider::count()`). Screen: `Humas\Publikasi::askPublish()`
+  validates caption (optional, at most 2.000 characters) and channels like `PublishPublication`, sets `#[Locked]
+  $publishingId` and opens `PUBLISH_DIALOG` (`tandai-terbit`); `publish()` is the confirm step (D-128 below). The
+  texts that speak of a student notice (the reminder, the alert "Jadwal sudah lewat", the hint under the date, the
+  dialog line and the toast) promise one only when `PublishPublication::notifiesStudent()` is true: `Publikasi::panel()`
+  passes it as `notifies`, `PublicationDue` keeps it as `$notifiesStudent` (read with `?? true`, so a payload queued
+  before the property existed still renders). An alumnus with publish consent stays in the queue and gets no notice,
+  so those texts leave the promise out (D-109).
+- **Scheduled jobs** (`routes/console.php`, all `withoutOverlapping(60)`): `sth:registrations:advance` 00:15 ·
+  `sth:reports:remind` 07:00 · `ExpireInvitations` and **`RemindDuePublications`** every 5 minutes (the latter replaces
+  `AutoPublishPublications`, which is deleted with `AutoPublishPublication`; `ShouldBeUnique`, at most 500 rows per
+  run) · `sth:arsip-otomatis` 01:00 · `sth:ganti-kepala-sekolah` and `sth:peran-tertunda` every 5 minutes ·
+  `CleanupOtpCodes` hourly · `sth:audit:seal` every 10 minutes · `sth:audit:verify` 02:30 · `PruneExpiredCache` 03:10
+  (times Asia/Jakarta). After a deploy of EM2 restart `queue` and `scheduler`: a queued payload of the deleted job
+  class fails once.
+- **Appreciation events** (D-123): `CreateAppreciationEvent::handle(User, string $name, DateTimeInterface|string
+  $heldOn, string $heldTime)` (error keys `name`, `held_on`, `held_time`, all collected before answering; a time of
+  today that already passed is accepted, a past date is not; name + date still make a duplicate). `EventWhen`:
+  `parseTime()` (`HH:MM` or `HH:MM:SS`, 00–23 / 00–59, seconds dropped, else `TIME_MESSAGE`), `long()` ("Senin, 12
+  Oktober 2026, 07.00 WIB": cards, dialogs), `sentence()` ("… pukul 07.00 WIB": notifications), `short()` ("12 Okt
+  2026, 07.00": select options, the publication panel). `AppreciationEvent::heldTime()` ("07:00" or null) /
+  `startsAt()`. Events of one day are ordered by `held_time` (Apresiasi, Humas › Jadwal, the event choice of the
+  publication panel). The day-level rules of D-87 are unchanged (confirm from the event day on, add during the whole
+  event day).
+- **"Tambah prestasi"** (D-124; search and several ticks are final, "one guru notice per Masukkan" is *sementara*):
+  `RecordAppreciations::handle(User, AppreciationEvent, iterable $achievements):
+  Collection` (`MAX` = 30 per call, the same achievement twice counts once, error keys `achievement` / `event`; one
+  transaction, one `appreciation.recorded` row per achievement; notices after commit, §8b); `toldStudents()` counts
+  the distinct students who get a notice, for the toast. `RecordAppreciation::handle()` delegates to it. Screen
+  `Humas\Apresiasi` (also `kesiswaan.apresiasi.index`): `$search` (student or lomba name, `%` and `_` literal,
+  `HumasQueries::searchAchievements()` on top of `appreciableAchievements()`, so a student without publish consent is
+  never found by name; the box keeps the text as typed: `updatedSearch()` never writes a trimmed value back, because
+  Livewire would put it into the focused input and eat the space before the next word, so only `picker()` and
+  `searchAchievements()` trim the term, and the hook only cuts a text above `SEARCH_MAX` = 100), `$picked` (browser input: every id is loaded again through the eligibility query; a stale,
+  forged or malformed tick writes nothing and answers `PICK_STALE_MESSAGE`), `#[Locked] $pickLimit` (`PICK_STEP` 10,
+  `PICK_MAX` 100), `addAchievements()`. The page passes `'search' => false` (one search box per screen, D-90).
+- **Lomba links** (lead's test, no decision number): `App\Rules\ExternalUrl::normalize(mixed): string` cleans a pasted
+  link (byte order mark, zero-width characters, soft hyphens and text-direction marks anywhere; whitespace of any
+  kind at both ends; never adds a scheme) and `problem(string): ?string` returns one sentence per refusal reason
+  (`MESSAGE`, `NO_HTTPS`, `HTTP`, `SPACE`, `HOST`, `IP`, `PORT`, `CREDENTIALS`, `CHARACTERS`, `TOO_LONG` = 500);
+  `passes()` = no problem. The gates that decide are the old ones in the old order, so the accepted set is unchanged;
+  the top-level domain is not judged. All four link fields use it (usulan "Link resmi" of siswa and guru:
+  `SubmitCompetition`; Kelola lomba "Website resmi" and "Link registrasi": `CreateCompetition::prepare()` /
+  `UpdateCompetition`). `Lomba\UsulanForm::kirim()` trims its text fields first, checks the name with `NoWebAddress`
+  together with the other fields, and errors raised by the Action also dispatch `sth-form-invalid`.
+- **"Jenis penyelenggara: Lainnya"** (D-125; final, but "required to publish" and the format "Lainnya (…)" are
+  *sementara*): §4 `competitions.organizer_type_other`. `CreateCompetition::rules()`
+  (`ORGANIZER_TYPE_OTHER_MAX` = 60, "Maksimal 60 karakter."), `normalize()` (dropped for another type or no type),
+  `VerifyCompetition::missingFields()` (adds `OTHER_TYPE_LABEL` right after the type, so the queue card,
+  "Publikasikan", "Simpan & publikasikan" and a save of a published lomba all name it). Shown where the type was
+  shown before: Guru › Lomba detail, Kesiswaan › Database prestasi detail and the Excel column "Jenis penyelenggara";
+  the filter stays per enum value; students, public pages, letters and "Data untuk flyer" show no organizer type.
+- **Lomba change notice** (D-126, *sementara*): `App\Actions\Competitions\CompetitionChange` (final, static):
+  `FACTS` = deadline, dates, mode, location, participants, registration_url, website_url, juknis; `snapshot()` taken
+  on the locked row before and after the save, compared on what a reader sees (dates by day, place without case and
+  spacing, "maks anggota" ignored while individu); `changed()`, `finalChanged()`, `statusesFor(string $fact, bool
+  $finalChanged = false)`, `tellsMentor()`, `line(string $fact, Competition, ?RegistrationStatus $status = null)`,
+  `audience(Competition, array $facts, User $actor, bool $finalChanged = false)`, `summary()` (the drawer's toast:
+  null when nobody was told), `attachedStudents()` (the number in the info alert at the top of "Ubah lomba": the
+  members nobody declined of the registrations up to `berlangsung`; which of them hear a changed fact is
+  `statusesFor()`, and the alert says so in two sentences), `MAIL_LIMIT` = 50. `line('location')` prints the place as
+  typed, or only "Tempat diganti." when `NoWebAddress::found()` sees a web address in it.
+  `UpdateCompetition::handle()` keeps its signature: inside the transaction it writes `competition.facts_changed`
+  (also with zero counts when nobody is attached), after the commit it sends `CompetitionChanged::for(Competition,
+  string $registrationId, list<string> $lines, bool $mail = true)` and `BinaanCompetitionChanged::for(Competition,
+  list<string> $lines, ?string $registrationId = null, bool $mail = true)` (both `Verification\Notice`; `$mail` false
+  = `database` only). Recipients: §8b. A new lomba field is a fact only when it is added to `FACTS`, `snapshot()`,
+  `statusesFor()` and `line()`. Screen: `Kesiswaan\Lomba\Form::changedElsewhere($competition, bool $expectsQueued)`
+  (`save()` passes `formMode === 'verify'`, `saveAndPublish()` true, `open()` false): a "Periksa lomba" drawer whose
+  lomba another account published meanwhile does not save on the first "Simpan" (warning toast "Lomba ini sudah
+  dipublikasikan. Perubahan belum tersimpan, periksa lalu simpan.", the drawer becomes "Ubah lomba" with the info
+  alert); the next "Simpan perubahan" saves and notifies.
+- **Live counts** (D-127; final, the 60-second interval and the switch `STH_COUNTS_POLL_SECONDS` are *sementara*):
+  `GET /notifikasi/jumlah` (`notifikasi.jumlah`, `NotificationCountController`; middleware
+  of the Notifikasi page: auth, active, activated, staff.2fa, plus its own `throttle:30,1,lonceng`) answers
+  `{"badges": {"akun.notifikasi": n, "<sidebar key>": n, …}}` = `NavigationServiceProvider::liveCounts(User)`: the
+  bell (`Navigation::BELL`, the user's own unread database notifications; not a menu key, not in `BADGES`) plus
+  `badges()` of every role the user holds, with the same policy checks and queries as the sidebar. Numbers only;
+  `Cache-Control: no-store, private`; not audited; `session()->reflash()` (not a page view: a flashed toast stays
+  for the next page); a request that does not ask for JSON is redirected to `notifikasi.index`, so the address is
+  never a page to land on, and a guest gets a plain 401. Interval: `config('sth.counts.poll_seconds')` /
+  `STH_COUNTS_POLL_SECONDS` (new `config/sth.php`; default 60; 1–29 are read as 30 (`MIN_SECONDS`), above 3600 as
+  3600 (`MAX_SECONDS`; the script clamps again with `COUNTS_MIN_EVERY` / `COUNTS_MAX_EVERY`, because a browser timer
+  delay is 32 bits of milliseconds and a larger one can fire at once); 0 = the layout prints no address and no page
+  asks, the only off switch), read through `NotificationCountController::pollSeconds()` / `pollUrl($user)`.
+  Only `layouts::app` prints the address (`data-sth-counts-url` / `data-sth-counts-every` on the bell);
+  `layouts::mobile`, `auth` and `public` never ask. `resources/js/app.js` ("live counts") asks 2.5 s and 8 s after a
+  Livewire action (not after `wire:poll`, `$refresh`, `$set`), about every 60 s ± 10 s while the tab is visible and
+  was used in the last 5 minutes, and 0.3 s after Back / Forward; never next to a Livewire request. It stops after two
+  refused answers in a row (401 / 403: the session ended or the account is not allowed) until the next page; what can
+  pass only holds it for at least 60 s while the timer chain goes on: a 429 or a 5xx (as long as `Retry-After` asks,
+  so the 503 of a deploy's `artisan down --retry=60` is waited out), a network error, no answer within 15 s, an
+  answer that is not ours. The answer goes through the event `sth-badges`.
+  `Akun\Notifikasi` dispatches `sth-badges` with the bell key on every render ("Tandai dibaca" lowers the bell at
+  once; "Tandai semua dibaca" no longer reloads the page) and carries `data-sth-refresh-on="akun.notifikasi"`, so
+  the list refreshes when the bell number changed. Every check is one full request to php-fpm and extends the
+  session (SECURITY §3a).
+- **Confirmations** (D-128; final for "Tolak" of a report, *sementara* for the other dialogs of the sweep): a
+  question before an action is always the app's own dialog (`<x-sth.modal>`), never the browser's `confirm()`
+  (`wire:confirm`; `tests/Feature/Support/NoNativeConfirmTest.php` fails on any view that uses it). The one-click and
+  bulk actions swept in EM2 got such a dialog (table below). Not every action that notifies people asks: the senders
+  left without a question on purpose are listed in D-128, among them Apresiasi "Masukkan" (up to 30 ticks) and
+  "Simpan perubahan" on a published lomba (up to `CompetitionChange::MAIL_LIMIT` mails); whether those two should ask
+  is an open question for the lead. Two steps: an `ask…()` method authorizes, checks the input, stores what was asked
+  in a `#[Locked]` property and dispatches `sth-modal-open`; the confirm method acts only on that stored value and is
+  a **silent no-op** without it (no 404, no toast, so a double click never shows an error page). Built in EM2:
+
+  | screen · button | dialog id (constant) | ask → confirm · locked state |
+  |---|---|---|
+  | Kesiswaan › Verifikasi hasil · "Tolak" | `tolak-laporan` (`VerifikasiHasil::REJECT_DIALOG`) | `askReject()` → `reject()` · `$rejectingId` |
+  | Siswa › Daftar lomba · × "Batalkan undangan" | `batal-undangan` (`Siswa\Pendaftaran\Form::WITHDRAW_DIALOG`) | `askBatalkanUndangan($studentId)` → `batalkanUndangan()` · `$withdrawingId` |
+  | Kesiswaan › Talenta · bulk "Pindahkan ke …" | `pindahkan-talenta` (`Talenta::ADVANCE_DIALOG`) | `askBulkAdvance()` → `bulkAdvance()` · `$advanceAsk` (which rows move, and from which stage) |
+  | Kesiswaan › Kelola lomba · "Tutup" | `tutup-lomba` (`Lomba\Index::CLOSE_DIALOG`) | `askClose($id)` → `close()` · `$closingId` |
+  | Import siswa · "Impor N siswa" | `impor-siswa` (`Akun\ImportSiswa::IMPORT_DIALOG`) | `askImport()` → `import()` · `$importAsked` (the preview token; the password page comes before the dialog) |
+  | Humas › Publikasi · "Tandai dipublikasikan" | `tandai-terbit` (`Publikasi::PUBLISH_DIALOG`) | `askPublish()` → `publish()` · `$publishingId` |
+
+  `RejectReport::reason(string $note): string` is the one check of the rejection reason (required, at most 1.000
+  characters, `NOTE_REQUIRED`); `RequestReportRevision::audience(Report): array{told: int, of: int, mentor: bool}`
+  says who hears about a decision, and the dialogs and result banners of "Tolak" and "Minta revisi" name only those
+  people (D-109). `RequestReportRevision::leaderCanResend(Report): bool` = the ketua's account can log in; the
+  revision banner adds "Ketua / Siswa bisa mengirim ulang laporan." only then (`ReportPolicy::create` lets only the
+  ketua send a report again). "Batalkan undangan": the line under the dialog title is "<Nama> langsung diberi tahu."
+  when the invitee is told, else the neutral "Undangan ini belum dijawab." (a student screen never states another
+  student's account status, SECURITY §3m-3); a refused withdrawal (ask or confirm step) is also a warning toast
+  (`Form::refuseWithdrawal()`: the block that prints `members` errors is drawn only while the ketua may still invite);
+  the result toast is read from the status `WithdrawInvitation` wrote under its lock and adds "Pendaftaran diteruskan
+  ke Kepala Sekolah." when the withdrawal completed the team. Older confirm steps keep their behaviour
+  (`Talenta::reject()` and `Lomba\Index::publishPast()` still answer 404 without their ask step). Guru › detail binaan: an invitation the scheduler ended at the deadline
+  reads "Tidak menjawab" (`ExpirePendingInvitations::expiredMemberIds()`), "Menolak" only for a real decline.
+- **Mail templates** (D-129, *sementara*: the look, and with it the greeting rule, the text part, the single link
+  and the footer sentence, wait for the lead to see a real mail): `config/mail.php` `markdown.theme` = `sth`, `markdown.paths` =
+  `resources/views/vendor/mail`. The notification view prints the greeting and every line through
+  `PlainMailMessage::plain()` (public now), so text stays text in every compile order: production compiles views
+  beforehand (`view:cache`) with the ordinary Blade echo, where `Markdown::withSecuredEncoding()` does nothing. The
+  header is text ("SMAGA Talent Hub / SMA Negeri 3 Semarang"), the address under the button is text, so the button
+  is the only `href`; no image, no remote font. `OtpCodeMail` (plain Blade, `resources/views/auth/mail/otp-code*`)
+  and `EmailBindingNotice` take the greeting as an optional property with a default (`IssueOtpCode` /
+  `SendEmailBindingNotice` pass `MailGreeting::for($user)`), so a job queued before the deploy still unserializes;
+  the OTP mail has no link at all. `sth:mail-test` ends with the same footer sentence. `FirstName::of()` also feeds
+  "Halo, …" on Siswa › Beranda and the menu tour. After editing a mail view or `config/mail.php`: `reload.bat` and
+  restart `queue`.
+- **Audit**: new events `publication.reminded` (`achievement_id`, `scheduled_at`, `channels`, `by` = scheduler; no
+  causer) and `competition.facts_changed` (`changed` = fact keys, `students`, `mentors`, `mail`: counts only, no
+  names, ids or addresses); new property `held_time` on `appreciation.event_created`, `.recorded`, `.released`,
+  `.event_completed` and `.event_deleted` (null for an event without a time). The count endpoint, the dialogs and
+  the mail templates write nothing.
 
 ## 9. Environments
 - Dev: `docker compose up` → app (php-fpm 8.4 + nginx on 127.0.0.1:8080), mysql 8.4 (127.0.0.1:3307), mailpit (127.0.0.1:8025), vite, scheduler, queue worker. Because the repo is bind-mounted from a Windows drive, the dev php-fpm workers read a cached config and keep compiled views in the container's own filesystem (`docker/php/fpm.dev.conf`, `docker/php/dev-cache.sh`; pool env only, never the command line), so after editing PHP, Blade, `config/` or `.env` run `reload.bat`; the test suite refuses to run on a cached config (D-91).

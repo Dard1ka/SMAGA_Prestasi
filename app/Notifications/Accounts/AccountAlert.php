@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Notifications\Accounts;
 
 use App\Enums\RoleName;
+use App\Notifications\Support\MailGreeting;
 use App\Notifications\Support\PlainMailMessage;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -45,7 +46,7 @@ final class AccountAlert extends Notification implements ShouldQueue
 
     public function toMail(object $notifiable): MailMessage
     {
-        $message = (new PlainMailMessage)->subject($this->title);
+        $message = (new PlainMailMessage)->subject($this->title)->greeting(MailGreeting::for($notifiable));
 
         foreach ($this->lines as $line) {
             $message->line($line);
@@ -57,7 +58,7 @@ final class AccountAlert extends Notification implements ShouldQueue
             $message->action('Buka SMAGA Talent Hub', $url);
         }
 
-        return $message->salutation('SMAGA Talent Hub');
+        return $message;
     }
 
     /** @return array<string, mixed> */

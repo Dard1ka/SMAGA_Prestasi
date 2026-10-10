@@ -197,11 +197,16 @@ final class HumasFixtures
         return $file->fresh();
     }
 
-    public static function event(string $name = 'Upacara Senin, 5 Oktober 2026', ?string $heldOn = null): AppreciationEvent
+    /**
+     * @param  string|null  $heldTime  "07:00"; null = an event made before events had a start time (D-123): the
+     *                                 default, so the date-only texts of those rows stay covered
+     */
+    public static function event(string $name = 'Upacara Senin, 5 Oktober 2026', ?string $heldOn = null, ?string $heldTime = null): AppreciationEvent
     {
         return AppreciationEvent::query()->create([
             'name' => $name,
             'held_on' => $heldOn ?? now()->addDays(4)->toDateString(),
+            'held_time' => $heldTime !== null ? $heldTime.':00' : null,
         ])->fresh();
     }
 }

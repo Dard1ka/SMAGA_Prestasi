@@ -20,6 +20,8 @@ class AppreciationEventFactory extends Factory
         return [
             'name' => 'Upacara Senin',
             'held_on' => now()->next('Monday')->format('Y-m-d'),
+            // Start time (D-123), stored as 'HH:MM:00'. null = an event made before events had a time.
+            'held_time' => '07:00:00',
         ];
     }
 }

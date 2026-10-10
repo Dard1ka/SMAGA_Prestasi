@@ -44,8 +44,10 @@ it('asks for the password again before an import writes anything (QA9)', functio
         ->set('file', qa9ImportFile())
         ->assertHasNoErrors()
         ->assertSee('Impor 2 siswa')
-        ->call('import')
-        ->assertRedirect(route('password.confirm'));
+        // D-128: the button asks first (askImport()); the password comes before that question (ImportSiswaDialogTest).
+        ->call('askImport')
+        ->assertRedirect(route('password.confirm'))
+        ->assertNotDispatched('sth-modal-open');
 
     expect(Student::query()->count())->toBe(0);
 })->with([RoleName::Kesiswaan, RoleName::Admin]);
@@ -56,6 +58,8 @@ it('imports once the password was confirmed in the last 15 minutes (QA9)', funct
     Livewire::actingAs(F::staff(RoleName::Kesiswaan))->test(ImportSiswa::class)
         ->set('schoolYear', '2026/2027')
         ->set('file', qa9ImportFile())
+        ->call('askImport')
+        ->assertNoRedirect()
         ->call('import')
         ->assertNoRedirect()
         ->assertSee('2 akun siswa dibuat');
@@ -87,7 +91,7 @@ it('sends Kesiswaan and Admin back to their own import page after the password (
     Livewire::actingAs($actor)->test(ImportSiswa::class)
         ->set('schoolYear', '2026/2027')
         ->set('file', qa9ImportFile())
-        ->call('import');
+        ->call('askImport');
 
     expect(session('url.intended'))->toBe(route($route));
 })->with([

@@ -206,6 +206,9 @@ it('queues a big import from the screen and shows its progress, then the result'
         ->set('schoolYear', '2026/2027')
         ->set('file', UploadedFile::fake()->createWithContent('data-siswa.csv', b2ImportCsv($rows)))
         ->assertSee("Impor {$rows} siswa")
+        // D-128: "Impor N siswa" asks in its own dialog first (ImportSiswaDialogTest).
+        ->call('askImport')
+        ->assertDispatched('sth-modal-open', id: 'impor-siswa')
         ->call('import')
         ->assertHasNoErrors()
         ->assertDispatched('sth-toast')
@@ -222,7 +225,7 @@ it('queues a big import from the screen and shows its progress, then the result'
     Queue::assertPushed(ImportStudentsJob::class, fn (ImportStudentsJob $job): bool => $job->importId === $import->getKey() && $job->offset === 0);
 
     // A second big import while the first one waits is refused.
-    $component->call('import')->assertHasErrors(['file']);
+    $component->call('askImport')->call('import')->assertHasErrors(['file']);
     expect(StudentImport::query()->count())->toBe(1);
 
     // Coming back to the page shows the running import.
@@ -242,6 +245,7 @@ it('keeps small imports synchronous', function (): void {
     Livewire::actingAs($this->kesiswaan)->test(ImportSiswa::class)
         ->set('schoolYear', '2026/2027')
         ->set('file', UploadedFile::fake()->createWithContent('data-siswa.csv', b2ImportCsv(3)))
+        ->call('askImport')
         ->call('import')
         ->assertSee('3 akun siswa dibuat');
 

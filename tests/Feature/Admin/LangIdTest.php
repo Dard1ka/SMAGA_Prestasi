@@ -95,8 +95,10 @@ it('shows no decision codes in visible text or seeded data', function () {
 // QA5 retest (2026-10-07, backlog #67): "browser", not the formal "peramban" (D-89: everyday words) ------------
 
 it('says browser, not peramban, in the mail footer and the session list', function () {
-    $footer = __("If you're having trouble clicking the \":actionText\" button, copy and paste the URL below\ninto your web browser:");
+    // D-129: the sentence under a mail's button lives in the published mail component, no longer in lang/id.json
+    // (the framework's "If you're having trouble clicking …" line is not printed any more).
+    $fallback = view()->file(resource_path('views/vendor/mail/html/fallback.blade.php'), ['url' => 'https://contoh.test/x', 'label' => 'Buka'])->render();
 
-    expect($footer)->toContain('ke browser:')->not->toContain('peramban')
+    expect($fallback)->toContain('Tombol "Buka" tidak bisa dibuka? Salin alamat ini ke browser:')->not->toContain('peramban')
         ->and(ListUserSessions::device('Mozilla/5.0 (X11; Linux) Lynx/2.9'))->toStartWith('Browser lain');
 });

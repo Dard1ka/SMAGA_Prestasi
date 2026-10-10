@@ -2,10 +2,10 @@
 
 use App\Actions\Roles\ApplyRoleChange;
 use App\Actions\Users\ApplyPrincipalReplacement;
-use App\Jobs\AutoPublishPublications;
 use App\Jobs\CleanupOtpCodes;
 use App\Jobs\ExpireInvitations;
 use App\Jobs\PruneExpiredCache;
+use App\Jobs\RemindDuePublications;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
@@ -30,15 +30,16 @@ Schedule::command('sth:reports:remind')
     ->withoutOverlapping(60);
 // --- end W2-A2 ---
 
-// --- B3: invitation expiry + Humas auto-publish (docs/dev-notes/B3.md, backlog #9 / #12) ---
+// --- B3: invitation expiry + Humas publication reminder (docs/dev-notes/B3.md, backlog #9 / #12; D-122) ---
 // Decline team invitations still open after registration_closes_at (D-36 rule applies afterwards).
 Schedule::job(new ExpireInvitations)
     ->everyFiveMinutes()
     ->withoutOverlapping(60)
     ->onOneServer();
 
-// terjadwal publications whose scheduled_at arrived → dipublikasikan + reminder to Humas.
-Schedule::job(new AutoPublishPublications)
+// terjadwal publications whose scheduled_at arrived → one reminder to Humas. Nothing is published by the scheduler
+// (D-122): the row stays terjadwal until Humas presses "Tandai dipublikasikan", and only then the student is told.
+Schedule::job(new RemindDuePublications)
     ->everyFiveMinutes()
     ->withoutOverlapping(60)
     ->onOneServer();

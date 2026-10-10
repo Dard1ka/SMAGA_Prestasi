@@ -10,9 +10,13 @@ use App\Enums\RegistrationType;
 use App\Livewire\Publik\Data\PublicAchievements;
 use App\Models\Competition;
 use App\Models\User;
+use App\Notifications\Competitions\BinaanCompetitionChanged;
+use App\Notifications\Competitions\CompetitionChanged;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 
@@ -28,6 +32,15 @@ use Illuminate\Validation\ValidationException;
  *
  * QA10: an unchanged default guru pembimbing who is no longer active is kept; "individu" or a lower "Maks anggota"
  * is refused while team registrations still run (assertTeamsStillFit()); uploads of a refused save are discarded.
+ *
+ * Shared with CreateCompetition (prepare(), rules(), normalize()): the two link fields are cleaned at both ends
+ * before the check, and the kind typed for "Jenis penyelenggara: Lainnya" (`organizer_type_other`, D-125) is kept
+ * only for that type. It is not a weight field; a published "Lainnya" lomba cannot lose it (missingFields()).
+ *
+ * A published lomba whose facts change (batas daftar, tanggal, pelaksanaan, tempat, peserta, the two links, juknis)
+ * tells the students of its running registrations and their guru pembimbing, one notice per save per person, and
+ * writes `competition.facts_changed` (lead, 2026-10-10, D-126; the rules are in CompetitionChange). Never all
+ * students, never for a lomba that still waits in the queue, never for a change of any other field.
  */
 final class UpdateCompetition
 {
@@ -61,13 +74,15 @@ final class UpdateCompetition
 
         $files = CreateCompetition::storeFiles($actor, $juknis, $cover);
 
-        $result = CreateCompetition::discardOnFailure($files, fn (): Competition => DB::transaction(function () use ($actor, $competition, $data, $files, $removeCover): Competition {
+        [$result, $audience] = CreateCompetition::discardOnFailure($files, fn (): array => DB::transaction(function () use ($actor, $competition, $data, $files, $removeCover): array {
             /** @var Competition $locked */
             $locked = Competition::query()->whereKey($competition->getKey())->lockForUpdate()->firstOrFail();
 
             if (! in_array($locked->status, [CompetitionStatus::MenungguVerifikasi, CompetitionStatus::Dipublikasikan], true)) {
                 throw ValidationException::withMessages(['status' => 'Lomba ini tidak bisa diubah lagi.']);
             }
+
+            $factsBefore = CompetitionChange::snapshot($locked);
 
             $before = array_map(
                 fn (string $field): ?string => $locked->getAttribute($field)?->value,
@@ -126,7 +141,7 @@ final class UpdateCompetition
                     ->log('competition.weights_changed');
             }
 
-            return $locked;
+            return [$locked, self::factsChanged($actor, $locked, $factsBefore)];
         }));
 
         $competition->setRawAttributes($result->getAttributes(), true);
@@ -136,7 +151,69 @@ final class UpdateCompetition
         // long as the cache lives (QA9). Cheap, so after every update.
         PublicAchievements::flush();
 
+        self::tell($result, $audience);
+
         return $result;
+    }
+
+    /**
+     * A published lomba whose facts changed (batas daftar, tanggal, pelaksanaan, tempat, peserta, links, juknis): who
+     * has to hear about it, and the audit row of the change with counts only, no names or account ids. The row is
+     * written with zero counts when nobody is attached, so the log shows that nobody needed telling. Null = nothing
+     * to tell: the lomba still waits in the queue, or no fact changed (a correction of another field).
+     *
+     * @param  array<string, string|null>  $factsBefore  CompetitionChange::snapshot() of the locked row before the save
+     * @return array{groups: list<array{registration: string, users: Collection<int, User>, lines: list<string>}>, mentors: list<array{user: User, lines: list<string>, registration: ?string}>, students: int, mentorCount: int, mail: bool}|null
+     */
+    private static function factsChanged(User $actor, Competition $locked, array $factsBefore): ?array
+    {
+        if ($locked->status !== CompetitionStatus::Dipublikasikan) {
+            return null;
+        }
+
+        $factsAfter = CompetitionChange::snapshot($locked);
+        $facts = CompetitionChange::changed($factsBefore, $factsAfter);
+
+        if ($facts === []) {
+            return null;
+        }
+
+        $audience = CompetitionChange::audience($locked, $facts, $actor, CompetitionChange::finalChanged($factsBefore, $factsAfter));
+
+        activity('competition')
+            ->performedOn($locked)
+            ->causedBy($actor)
+            ->event('competition.facts_changed')
+            ->withProperties([
+                'changed' => $facts,
+                'students' => $audience['students'],
+                'mentors' => $audience['mentorCount'],
+                'mail' => $audience['mail'],
+            ])
+            ->log('competition.facts_changed');
+
+        return $audience;
+    }
+
+    /**
+     * After the commit: one notice per student of each running registration and one per guru pembimbing, by mail
+     * and bell, or by the bell alone above CompetitionChange::MAIL_LIMIT recipients. A refused save never gets here.
+     *
+     * @param  array{groups: list<array{registration: string, users: Collection<int, User>, lines: list<string>}>, mentors: list<array{user: User, lines: list<string>, registration: ?string}>, students: int, mentorCount: int, mail: bool}|null  $audience
+     */
+    private static function tell(Competition $competition, ?array $audience): void
+    {
+        if ($audience === null) {
+            return;
+        }
+
+        foreach ($audience['groups'] as $group) {
+            Notification::send($group['users'], CompetitionChanged::for($competition, $group['registration'], $group['lines'], $audience['mail']));
+        }
+
+        foreach ($audience['mentors'] as $mentor) {
+            $mentor['user']->notify(BinaanCompetitionChanged::for($competition, $mentor['lines'], $mentor['registration'], $audience['mail']));
+        }
     }
 
     /**

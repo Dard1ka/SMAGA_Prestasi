@@ -32,6 +32,18 @@ final class HumasQueries
             ->whereHas('student', fn (Builder $s) => NamedStudent::constrain($s)));
     }
 
+    /**
+     * Visible publications that are "lewat jadwal" (D-122): still `terjadwal` although their time arrived, so
+     * Humas has not marked them as published and the student has not been told. The box on Humas › Jadwal, the
+     * chip on the Publikasi cards and the sidebar count `humas.jadwal` all use this rule (Publication::overdue()).
+     *
+     * @return Builder<Publication>
+     */
+    public static function overduePublications(?CarbonImmutable $now = null): Builder
+    {
+        return self::visiblePublications()->overdue($now);
+    }
+
     /** Eager loads for cards (Model::shouldBeStrict(): no lazy loading in lists). */
     public static function cardRelations(): array
     {
@@ -75,6 +87,28 @@ final class HumasQueries
     }
 
     /**
+     * Case-insensitive filter on student name or competition name for the picker "Tambah prestasi" (D-124), the
+     * way search() filters publications: `%` and `_` are literal. Give it appreciableAchievements(): that query
+     * already demands publish consent, so a student without consent is never confirmed by name.
+     *
+     * @param  Builder<Achievement>  $achievements
+     */
+    public static function searchAchievements(Builder $achievements, string $term): void
+    {
+        $term = trim($term);
+
+        if ($term === '') {
+            return;
+        }
+
+        $like = '%'.addcslashes($term, '%_\\').'%';
+
+        $achievements->where(fn (Builder $w) => $w
+            ->whereHas('student.user', fn (Builder $u) => $u->where('name', 'like', $like))
+            ->orWhereHas('competition', fn (Builder $c) => $c->where('name', 'like', $like)));
+    }
+
+    /**
      * Sidebar badge counts the user may see (Humas queue; Kesiswaan queues when the same screen is
      * mounted under kesiswaan.*).
      *
@@ -90,6 +124,8 @@ final class HumasQueries
 
         if ($user->can(Permission::PublicationManage->value)) {
             $badges['humas.publikasi'] = self::visiblePublications()->where('status', PublicationStatus::Siap)->count();
+            // Menu item Jadwal: scheduled publications past their time that nobody marked as published yet (D-122).
+            $badges['humas.jadwal'] = self::overduePublications()->count();
         }
 
         if ($user->can(Permission::CompetitionVerify->value)) {

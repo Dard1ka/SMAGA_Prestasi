@@ -6,7 +6,9 @@ namespace App\Notifications\Publications;
 
 use App\Actions\Publications\AchievementFacts;
 use App\Actions\Publications\PublicationInput;
+use App\Actions\Publications\PublishPublication;
 use App\Models\Publication;
+use App\Notifications\Support\MailGreeting;
 use App\Notifications\Support\PlainMailMessage;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -15,10 +17,14 @@ use Illuminate\Notifications\Notification;
 use Illuminate\Support\Facades\Route;
 
 /**
- * To every active Humas account when a scheduled publication reached its time and was marked
- * dipublikasikan automatically (B3, backlog #12): "post it now on <channels>". Scalars only; the
- * caption and the data for the flyer stay in the app (link to the publication panel); the flyer itself is
- * made by Humas outside STH (M3-E). Queued after commit.
+ * To every active Humas account when a scheduled publication reached its time (RemindDuePublication, once per
+ * schedule): "post it now on <channels>, then press Tandai dipublikasikan". The schedule is only this reminder
+ * (D-122): the status stays terjadwal and the student is told nothing until Humas presses that button. The text
+ * says "siswa baru diberi tahu saat itu" only when that button will really tell the student
+ * (PublishPublication::notifiesStudent(); not an alumnus: never claim a notice nobody gets, D-109).
+ * Scalars only; the caption and the data for the flyer stay in the app (link to the publication
+ * panel); the flyer itself is made by Humas outside STH (M3-E). Queued after commit.
+ * Class name and kind `publication.due` are kept: stored bell rows from before D-122 point at them.
  */
 final class PublicationDue extends Notification implements ShouldQueue
 {
@@ -31,6 +37,7 @@ final class PublicationDue extends Notification implements ShouldQueue
         public readonly string $competitionName,
         public readonly string $channels,
         public readonly string $scheduledText,
+        public readonly bool $notifiesStudent = true,
     ) {
         $this->afterCommit();
     }
@@ -46,6 +53,7 @@ final class PublicationDue extends Notification implements ShouldQueue
             competitionName: $facts->competitionName,
             channels: PublicationInput::channelLabels($publication->channels),
             scheduledText: (string) $publication->scheduled_at?->locale('id')->translatedFormat('j M Y, H.i'),
+            notifiesStudent: PublishPublication::notifiesStudent($publication),
         );
     }
 
@@ -69,9 +77,14 @@ final class PublicationDue extends Notification implements ShouldQueue
     public function body(): string
     {
         $where = $this->channels !== '' ? ' ke '.$this->channels : '';
+        // `??`: a payload queued before this property existed is unserialized without it (no constructor runs).
+        $after = ($this->notifiesStudent ?? true)
+            ? 'Setelah itu tekan Tandai dipublikasikan di halaman publikasi: siswa baru diberi tahu saat itu. '
+            : 'Setelah itu tekan Tandai dipublikasikan di halaman publikasi supaya statusnya menjadi Dipublikasikan. ';
 
         return 'Jadwal '.$this->scheduledText.' sudah tiba: '.$this->headline.' '.$this->competitionName.' ('.$this->studentName.'). '
-            .'Statusnya kini Dipublikasikan. Upload publikasinya'.$where.' sekarang. '
+            .'Upload publikasinya'.$where.' sekarang. '
+            .$after
             .'Caption dan data untuk flyer ada di halaman publikasi.';
     }
 
@@ -79,9 +92,9 @@ final class PublicationDue extends Notification implements ShouldQueue
     {
         return (new PlainMailMessage)
             ->subject($this->title())
+            ->greeting(MailGreeting::for($notifiable))
             ->line($this->body())
-            ->action('Buka publikasi', $this->url())
-            ->salutation('SMAGA Talent Hub');
+            ->action('Buka publikasi', $this->url());
     }
 
     /** @return array<string, string> */

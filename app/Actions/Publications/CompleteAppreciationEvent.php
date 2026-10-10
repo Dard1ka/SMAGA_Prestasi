@@ -90,6 +90,7 @@ final class CompleteAppreciationEvent
                 ->withProperties([
                     'name' => $locked->name,
                     'held_on' => $locked->held_on->toDateString(),
+                    'held_time' => $locked->heldTime(),
                     'rows' => $pending->count(),
                     'appreciation_ids' => $pending->modelKeys(),
                 ])

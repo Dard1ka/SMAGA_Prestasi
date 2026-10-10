@@ -6,6 +6,7 @@ namespace App\Notifications\Publications;
 
 use App\Actions\Publications\PublicationInput;
 use App\Models\Publication;
+use App\Notifications\Support\MailGreeting;
 use App\Notifications\Support\PlainMailMessage;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -66,14 +67,11 @@ final class AchievementPublished extends Notification implements ShouldQueue
 
     public function toMail(object $notifiable): MailMessage
     {
-        $firstName = strtok(trim((string) ($notifiable->name ?? '')), ' ') ?: null;
-
         return (new PlainMailMessage)
             ->subject($this->title())
-            ->greeting($firstName !== null ? 'Halo '.$firstName.',' : 'Halo,')
+            ->greeting(MailGreeting::student($notifiable))
             ->line($this->body())
-            ->action('Lihat portofolio', $this->url())
-            ->salutation('SMAGA Talent Hub');
+            ->action('Lihat portofolio', $this->url());
     }
 
     /** @return array<string, string> */

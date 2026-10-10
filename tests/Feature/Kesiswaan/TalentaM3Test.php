@@ -167,6 +167,9 @@ it('skips rows that are already final when a mixed selection of "Semua" is moved
         ->assertViewHas('rejecting', fn (array $rejecting): bool => $rejecting['bulk'] === true && $rejecting['count'] === 2 && $rejecting['skipped'] === 2)
         ->assertSee('pilihan yang dicentang sudah final (Peserta pembinaan atau Tidak lolos) dan dilewati.')
         ->set('checked', [$open->getKey(), $final->getKey(), $rejected->getKey()])
+        // D-128: the bulk move asks first and counts what it will skip.
+        ->call('askBulkAdvance')
+        ->assertViewHas('advancing', fn (array $advancing): bool => $advancing['count'] === 1 && $advancing['skipped'] === 2)
         ->call('bulkAdvance')
         ->assertDispatched('sth-toast', message: '1 pilihan talenta dipindahkan ke tahap berikutnya. 2 dilewati (tahap final).', tone: 'success')
         ->assertSet('checked', [])

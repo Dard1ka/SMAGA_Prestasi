@@ -39,9 +39,12 @@
     @if ($canCreate)
         <x-sth.card as="section" aria-labelledby="apr-baru" class="flex flex-col gap-3">
             <h2 id="apr-baru" class="title-card m-0">Buat acara apresiasi</h2>
+            {{-- D-123: the start time is required; the notice to the student and the guru pembimbing prints it. Date and
+                 time stay stacked: this card is 360px wide, two columns would squeeze the date input. --}}
             <form wire:submit="createEvent" class="flex flex-col gap-3" novalidate>
-                <x-sth.input wire:model="name" label="Nama acara" placeholder="Upacara Senin, 5 Oktober 2026" maxlength="200" />
+                <x-sth.input wire:model="name" label="Nama acara" placeholder="Upacara Senin" maxlength="200" />
                 <x-sth.input type="date" wire:model="heldOn" label="Tanggal" :min="$minDate" class="num" />
+                <x-sth.input type="time" wire:model="heldTime" label="Jam mulai" hint="Waktu Indonesia Barat (WIB)." class="num" />
                 <x-sth.button type="submit" icon="plus" wire:loading.attr="disabled" wire:target="createEvent">Buat acara</x-sth.button>
             </form>
         </x-sth.card>

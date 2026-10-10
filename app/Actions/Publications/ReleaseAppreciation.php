@@ -82,6 +82,7 @@ final class ReleaseAppreciation
                     'achievement_id' => $locked->achievement_id,
                     'name' => $event->name,
                     'held_on' => $event->held_on->toDateString(),
+                    'held_time' => $event->heldTime(),
                     'notified' => $user !== null,
                 ])
                 ->log('appreciation.released');

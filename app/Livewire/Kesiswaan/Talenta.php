@@ -70,6 +70,10 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
  * QA9 (2026-10-09): a move starts only from the stage the screen showed (`$shownStages`, so a stale second tab never
  * moves a row twice); a choice the student cancelled while it is open gives a toast, not a 404 page; the recorded guru
  * pembina whose account left does not block the panel; "Siswa diberi tahu" only when the Action told the student.
+ *
+ * D-128 (lead, 2026-10-10): the bulk "Pindahkan ke …" asks first (ADVANCE_DIALOG): it tells every checked student at
+ * once, sends the saved draft notes, and a stage cannot be moved back. askBulkAdvance() fixes which rows move and from
+ * which stage (`$advanceAsk`); bulkAdvance() is the confirm step and does nothing without that question.
  */
 #[Title('Talenta siswa')]
 #[Layout('layouts::app', ['subtitle' => 'Penjaringan, pemetaan, dan seleksi peserta pembinaan.'])]
@@ -100,6 +104,9 @@ class Talenta extends Component
     public const REJECT_PANEL = 'panel';
 
     public const REJECT_BULK = 'bulk';
+
+    /** id of the bulk "Pindahkan ke …" confirm dialog (D-128). */
+    public const ADVANCE_DIALOG = 'pindahkan-talenta';
 
     /** id of the "Download data (Excel)" dialog: which statuses go into the file. */
     public const EXPORT_DIALOG = 'download-talenta';
@@ -145,6 +152,17 @@ class Talenta extends Component
 
     /** Note for the students of a bulk rejection (typed in the dialog). */
     public string $bulkNote = '';
+
+    /**
+     * What the open "Pindahkan" dialog asks about, null while nothing is asked (D-128). `stages` = the rows that move,
+     * id => the stage the screen showed for each; `final`, `moved`, `rejected` = checked rows left out when it was
+     * asked (already final; moved on or marked tidak lolos by a colleague since the screen was drawn). Set only by
+     * askBulkAdvance(); bulkAdvance() moves nothing else.
+     *
+     * @var array{stages: array<string, string>, final: int, moved: int, rejected: int}|null
+     */
+    #[Locked]
+    public ?array $advanceAsk = null;
 
     #[Locked]
     public ?string $panelId = null;
@@ -228,6 +246,12 @@ class Talenta extends Component
         if ($this->rejectTarget === self::REJECT_BULK
             && (in_array($property, ['tahap', 'jenis', 'cabang', 'kelas', 'q'], true) || str_starts_with($property, 'checked'))) {
             $this->rejectTarget = '';
+        }
+
+        // The same for a bulk "Pindahkan" question (D-128).
+        if ($this->advanceAsk !== null
+            && (in_array($property, ['tahap', 'jenis', 'cabang', 'kelas', 'q'], true) || str_starts_with($property, 'checked'))) {
+            $this->advanceAsk = null;
         }
     }
 
@@ -547,17 +571,82 @@ class Talenta extends Component
         $this->dispatch('sth-toast', message: $saved->student_note_draft !== null ? self::SAVED_WITH_DRAFT : 'Data asesmen tersimpan.', tone: 'success');
     }
 
+    /**
+     * "Pindahkan ke …" in the bulk bar (D-128): fixes which checked rows move and from which stage, then opens the
+     * dialog. Nothing moves and nobody is told before bulkAdvance().
+     */
+    public function askBulkAdvance(): void
+    {
+        $this->authorize('manage', TalentApplication::class);
+        $this->advanceAsk = null;
+        $rows = $this->checkedApplications();
+
+        if ($rows->isEmpty()) {
+            $this->checked = [];
+
+            return;
+        }
+
+        $ask = ['stages' => [], 'final' => 0, 'moved' => 0, 'rejected' => 0];
+
+        foreach ($rows as $application) {
+            // QA9: a row another tab moved or rejected since this one was drawn stays where it is. Judged here, before
+            // the render that follows this call writes the new stages into $shownStages.
+            if (! $this->showsStage($application)) {
+                $ask[$application->status === TalentStatus::TidakLolos ? 'rejected' : 'moved']++;
+            } elseif ($application->status->next() === null) {
+                $ask['final']++;
+            } else {
+                $ask['stages'][(string) $application->getKey()] = $application->status->value;
+            }
+        }
+
+        if ($ask['stages'] !== []) {
+            $this->advanceAsk = $ask;
+            $this->dispatch('sth-modal-open', id: self::ADVANCE_DIALOG);
+
+            return;
+        }
+
+        // Nothing is left to move, so there is nothing to ask.
+        if ($ask['moved'] + $ask['rejected'] > 0) {
+            $this->afterBulk('0 pilihan talenta dipindahkan ke tahap berikutnya.', $ask['final'], $ask['moved'], $ask['rejected']);
+
+            return;
+        }
+
+        $this->dispatch('sth-toast', message: 'Pilihan yang dicentang sudah final, tidak bisa dipindahkan.', tone: 'error');
+    }
+
+    /**
+     * "Pindahkan" in the dialog. Without a dialog opened by askBulkAdvance() there is nothing to confirm: it returns
+     * without a word (never an error page), so a second click after the move went through changes nothing.
+     */
     public function bulkAdvance(MoveTalentStage $move): void
     {
+        $ask = $this->advanceAsk;
+        $this->closeAdvanceDialog();
+
+        if ($ask === null) {
+            return;
+        }
+
         $moved = 0;
-        $skipped = 0;
-        $movedBefore = 0;
-        $rejectedBefore = 0;
+        $skipped = $ask['final'];
+        $movedBefore = $ask['moved'];
+        $rejectedBefore = $ask['rejected'];
         $notes = 0;
 
         foreach ($this->checkedApplications() as $application) {
-            // QA9: a row another tab moved or rejected since this one was drawn stays where it is.
-            if (! $this->showsStage($application)) {
+            $asked = $ask['stages'][(string) $application->getKey()] ?? null;
+
+            // Left out when the dialog was opened (final, or moved before it): counted above.
+            if ($asked === null) {
+                continue;
+            }
+
+            // QA9: a row a colleague moved or rejected since the dialog was opened stays where it is.
+            if ($application->status->value !== $asked) {
                 $application->status === TalentStatus::TidakLolos ? $rejectedBefore++ : $movedBefore++;
 
                 continue;
@@ -590,11 +679,13 @@ class Talenta extends Component
 
         $this->checked = array_diff($visible, $this->checked) === [] ? [] : $visible;
         $this->rejectTarget = '';
+        $this->advanceAsk = null;
     }
 
     public function cancelBulk(): void
     {
         $this->rejectTarget = '';
+        $this->advanceAsk = null;
         $this->bulkNote = '';
         $this->checked = [];
         $this->resetErrorBag('bulkNote');
@@ -962,6 +1053,7 @@ class Talenta extends Component
             'bulkNext' => $this->bulkNextLabel(),
             'restoring' => $this->restoring(),
             'rejecting' => $this->rejecting(),
+            'advancing' => $this->advancing(),
             'exportOptions' => self::exportOptions($counts),
             'exportScope' => $this->exportScope(),
             // One search box per screen (D-90, backlog #60): this page has its own, so the top bar shows none.
@@ -1293,7 +1385,7 @@ class Talenta extends Component
         };
     }
 
-    /** The line under the title of the "Tidak lolos" dialog: who is told when it is confirmed (QA9). */
+    /** The line under the title of the "Tidak lolos" and the bulk "Pindahkan" dialog: who is told when it is confirmed (QA9). */
     private static function rejectNotice(int $told, int $total): string
     {
         return match (true) {
@@ -1316,6 +1408,38 @@ class Talenta extends Component
     {
         $this->rejectTarget = '';
         $this->dispatch('sth-modal-close', id: self::REJECT_DIALOG);
+    }
+
+    private function closeAdvanceDialog(): void
+    {
+        $this->advanceAsk = null;
+        $this->dispatch('sth-modal-close', id: self::ADVANCE_DIALOG);
+    }
+
+    /**
+     * Texts of the bulk "Pindahkan" dialog (D-128), or null while nothing is asked: how many rows go up one stage, the
+     * checked rows that are skipped (`skipped` = already final, `stale` = moved or rejected by a colleague before the
+     * question), the saved draft notes that go out with the move, and who is told (D-109).
+     *
+     * @return array{count: int, skipped: int, stale: int, drafts: int, notice: string}|null
+     */
+    private function advancing(): ?array
+    {
+        if ($this->advanceAsk === null) {
+            return null;
+        }
+
+        $stages = $this->advanceAsk['stages'];
+        $rows = $this->checkedApplications()->filter(fn (TalentApplication $a): bool => isset($stages[(string) $a->getKey()]));
+
+        return [
+            'count' => count($stages),
+            'skipped' => $this->advanceAsk['final'],
+            'stale' => $this->advanceAsk['moved'] + $this->advanceAsk['rejected'],
+            // No note is typed in the bulk bar: a draft saved with "Simpan" goes out with the row's move.
+            'drafts' => $rows->whereNotNull('student_note_draft')->count(),
+            'notice' => self::rejectNotice($rows->filter(fn (TalentApplication $a): bool => MoveTalentStage::notifiesStudent($a))->count(), $rows->count()),
+        ];
     }
 
     /** " 2 catatan untuk siswa yang tersimpan ikut terkirim." after a bulk action that sent drafts. */
@@ -1385,6 +1509,7 @@ class Talenta extends Component
     {
         $this->checked = [];
         $this->rejectTarget = '';
+        $this->advanceAsk = null;
         $this->bulkNote = '';
         $stale = $movedBefore + $rejectedBefore > 0;
         $this->dispatch('sth-toast', message: $message

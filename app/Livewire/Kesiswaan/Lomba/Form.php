@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Livewire\Kesiswaan\Lomba;
 
+use App\Actions\Competitions\CompetitionChange;
 use App\Actions\Competitions\CompetitionDates;
 use App\Actions\Competitions\CreateCompetition;
 use App\Actions\Competitions\UpdateCompetition;
@@ -39,6 +40,10 @@ use Livewire\WithFileUploads;
  * "Ubah lomba" (UpdateCompetition) and "Periksa usulan" (UpdateCompetition + VerifyCompetition). All rules
  * live in the Actions; this component only maps their errors onto the `form.*` fields. The rumus preview
  * ("Jika Juara I: …") comes from App\Domain\Points with the active weight version.
+ *
+ * "Ubah lomba" of a published lomba (lead, 2026-10-10, D-126): UpdateCompetition tells the registered students and
+ * their guru pembimbing when a fact they rely on changes. The drawer says so beforehand (the hint at the top, when
+ * students are registered) and the toast names who was told only when somebody was (CompetitionChange).
  */
 class Form extends Component
 {
@@ -48,7 +53,7 @@ class Form extends Component
 
     /** Keys of $form = CreateCompetition::rules() keys. */
     private const FIELDS = [
-        'name', 'description', 'bidang', 'organizer_name', 'organizer_type', 'weight_category', 'event_status', 'level', 'mode',
+        'name', 'description', 'bidang', 'organizer_name', 'organizer_type', 'organizer_type_other', 'weight_category', 'event_status', 'level', 'mode',
         'registration_opens_at', 'registration_closes_at', 'starts_on', 'final_on', 'location', 'participation', 'max_team_size',
         'default_mentor_id', 'website_url', 'registration_url',
     ];
@@ -126,12 +131,17 @@ class Form extends Component
             } else {
                 $competition = $this->competition($this->competitionId);
 
-                if ($this->changedElsewhere($competition, false)) {
+                // A drawer still in "Periksa lomba" expects the lomba in the queue: once a colleague published it,
+                // this save could tell registered students (D-126), so it stops once like "Simpan & publikasikan".
+                if ($this->changedElsewhere($competition, $this->formMode === 'verify')) {
                     return;
                 }
 
+                // A changed fact of a published lomba is told to the students registered for it and their guru
+                // pembimbing (UpdateCompetition). The toast names them only when somebody was told.
+                $factsBefore = CompetitionChange::snapshot($competition);
                 $update->handle($this->actor(), $competition, $this->form, $this->juknis, $this->cover, $this->removeCover);
-                $message = 'Perubahan lomba tersimpan.';
+                $message = self::savedMessage(CompetitionChange::summary($factsBefore, $competition, $this->actor()));
             }
         } catch (ValidationException $e) {
             $this->mapErrors($e);
@@ -184,6 +194,8 @@ class Form extends Component
                 default => 'Tambah lomba',
             },
             'competition' => $competition,
+            // "Ubah lomba" of a published lomba says beforehand who a changed fact is told to (0 = no hint).
+            'attachedStudents' => $this->formMode === 'edit' && $competition !== null ? CompetitionChange::attachedStudents($competition) : 0,
             'submitterName' => $competition?->submitter?->name,
             'juknisUrl' => $competition?->juknisFile !== null && Route::has('files.show') ? route('files.show', $competition->juknisFile) : null,
             // Only publishing asks about past dates, so only the "Periksa lomba" drawer shows the tick.
@@ -191,6 +203,9 @@ class Form extends Component
                 ? array_values(CompetitionDates::past($this->form['registration_closes_at'] ?? null, $this->form['final_on'] ?? null))
                 : [],
             'rumus' => $this->rumus($calculator, $formatter),
+            // "Jenis penyelenggara: Lainnya" opens the field for the typed kind (D-125). The text stays in the form
+            // while another type is tried out; CreateCompetition::normalize() drops it on save.
+            'otherType' => ($this->form['organizer_type'] ?? null) === OrganizerType::Lainnya->value,
             'options' => [
                 'bidang' => collect(Bidang::cases())->mapWithKeys(fn (Bidang $b): array => [$b->value => ['label' => $b->label(), 'icon' => $b->cssKey()]])->all(),
                 'organizer_type' => OrganizerType::options(),
@@ -299,6 +314,28 @@ class Form extends Component
         $this->dispatch('sth-form-invalid', form: self::DIALOG);
     }
 
+    /**
+     * Toast of "Simpan perubahan". The plain sentence when nobody was told; else who was told, and that it was the
+     * bell only when the change reached more people than CompetitionChange::MAIL_LIMIT.
+     *
+     * @param  array{students: int, mentors: int, mail: bool}|null  $told  CompetitionChange::summary()
+     */
+    private static function savedMessage(?array $told): string
+    {
+        $saved = 'Perubahan lomba tersimpan.';
+
+        if ($told === null) {
+            return $saved;
+        }
+
+        $who = array_filter([
+            $told['students'] > 0 ? number_format($told['students'], 0, ',', '.').' siswa' : null,
+            $told['mentors'] > 0 ? number_format($told['mentors'], 0, ',', '.').' guru pembimbing' : null,
+        ]);
+
+        return $saved.' '.implode(' dan ', $who).' diberi tahu'.($told['mail'] ? '.' : ' lewat notifikasi di aplikasi, tanpa email.');
+    }
+
     private function finish(string $message): void
     {
         $this->reset(['juknis', 'cover', 'removeCover', 'confirmPast']);
@@ -313,14 +350,19 @@ class Form extends Component
      * that can no longer be edited closes the drawer with the reason; one that was published while this drawer was
      * about to publish it keeps what was typed and turns into "Ubah lomba", so "Simpan" still saves the change. The
      * screen permission is checked first; the policies still decide every other case.
+     *
+     * `$expectsQueued` = the caller acts on a lomba it believes is still in the queue: "Simpan & publikasikan", and
+     * since D-126 also the plain "Simpan" of a "Periksa lomba" drawer, because a save on a published lomba can tell
+     * its registered students and their guru. The first click then saves and sends nothing; the drawer shows the
+     * hint of "Ubah lomba" and a second click saves. open() passes false: there `formMode` is the last drawer's.
      */
-    private function changedElsewhere(Competition $competition, bool $publishing): bool
+    private function changedElsewhere(Competition $competition, bool $expectsQueued): bool
     {
         $this->authorize('manage', Competition::class);
 
         $editable = in_array($competition->status, [CompetitionStatus::MenungguVerifikasi, CompetitionStatus::Dipublikasikan], true);
 
-        if ($editable && (! $publishing || $competition->status === CompetitionStatus::MenungguVerifikasi)) {
+        if ($editable && (! $expectsQueued || $competition->status === CompetitionStatus::MenungguVerifikasi)) {
             return false;
         }
 

@@ -6,6 +6,7 @@ namespace App\Notifications\Admin;
 
 use App\Enums\RoleName;
 use App\Models\User;
+use App\Notifications\Support\MailGreeting;
 use App\Notifications\Support\PlainMailMessage;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -64,7 +65,7 @@ abstract class StaffNotice extends Notification implements ShouldQueue
 
     public function toMail(object $notifiable): MailMessage
     {
-        $message = (new PlainMailMessage)->subject($this->subject());
+        $message = (new PlainMailMessage)->subject($this->subject())->greeting(MailGreeting::for($notifiable));
 
         foreach ($this->linesFor($notifiable) as $line) {
             $message->line($line);
@@ -74,7 +75,7 @@ abstract class StaffNotice extends Notification implements ShouldQueue
             $message->action('Buka SMAGA Talent Hub', $this->url());
         }
 
-        return $message->salutation('SMAGA Talent Hub');
+        return $message;
     }
 
     /** @return array<string, mixed> */

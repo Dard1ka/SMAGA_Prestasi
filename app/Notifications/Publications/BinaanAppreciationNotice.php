@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Notifications\Publications;
 
+use App\Actions\Publications\EventWhen;
 use App\Models\Appreciation;
 use App\Models\AppreciationEvent;
+use App\Notifications\Support\MailGreeting;
 use App\Notifications\Support\PlainMailMessage;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -15,7 +17,8 @@ use Illuminate\Support\Facades\Route;
 
 /**
  * To the guru pembimbing about a binaan's appreciation (QA5, D-110; client document, "Penjadwalan Apresiasi":
- * "Siswa dan guru pembimbing menerima notifikasi"): put on an event (SCHEDULED), taken off it (RELEASED), or the
+ * "Siswa dan guru pembimbing menerima notifikasi"): put on an event (SCHEDULED, one notice per guru and "Masukkan"
+ * listing every binaan of that click, D-124), taken off it (RELEASED), or the
  * event deleted (CANCELLED, one notice per guru listing every binaan on it). The student gets AppreciationScheduled,
  * AppreciationReleased or AppreciationCancelled. Scalars only (the rows may be gone when this is sent): student
  * name + capaian, never NIS/NISN/birth date. Queued on the mail queue, sent after commit.
@@ -49,6 +52,16 @@ final class BinaanAppreciationNotice extends Notification implements ShouldQueue
     public static function scheduled(Appreciation $appreciation): self
     {
         return self::make(self::SCHEDULED, $appreciation->event, [$appreciation]);
+    }
+
+    /**
+     * One notice for every binaan of this guru that one "Masukkan" put on the event (D-124).
+     *
+     * @param  iterable<Appreciation>  $appreciations  this guru's new rows, achievement.{student.user, competition, report} loaded
+     */
+    public static function scheduledMany(AppreciationEvent $event, iterable $appreciations): self
+    {
+        return self::make(self::SCHEDULED, $event, $appreciations);
     }
 
     /** @param Appreciation $appreciation the released row, achievement.{student.user, competition, report} loaded */
@@ -90,7 +103,10 @@ final class BinaanAppreciationNotice extends Notification implements ShouldQueue
                 ? $first.' belum jadi diapresiasi di acara itu dan bisa dijadwalkan lagi di acara lain.'
                 : count($this->binaan).' prestasi binaan belum jadi diapresiasi di acara itu: '.implode(', ', $this->binaan)
                     .'. Semuanya bisa dijadwalkan lagi di acara lain.'),
-            default => $first.' akan diapresiasi di '.$this->eventName.$when.'.',
+            // SCHEDULED. Several binaan in one click (a team, D-124) are one sentence with all their names.
+            default => count($this->binaan) > 1
+                ? count($this->binaan).' prestasi binaan akan diapresiasi di '.$this->eventName.$when.': '.implode(', ', $this->binaan).'.'
+                : $first.' akan diapresiasi di '.$this->eventName.$when.'.',
         };
     }
 
@@ -98,10 +114,9 @@ final class BinaanAppreciationNotice extends Notification implements ShouldQueue
     {
         return (new PlainMailMessage)
             ->subject($this->title())
-            ->greeting('Yth. '.trim((string) ($notifiable->name ?? '')).',')
+            ->greeting(MailGreeting::staff($notifiable))
             ->line($this->body())
-            ->action('Lihat binaan', $this->url())
-            ->salutation('SMAGA Talent Hub');
+            ->action('Lihat binaan', $this->url());
     }
 
     /** @return array<string, string|null> */
@@ -144,7 +159,8 @@ final class BinaanAppreciationNotice extends Notification implements ShouldQueue
         return new self(
             kind: $kind,
             eventName: (string) ($event?->name ?? 'acara apresiasi'),
-            eventDate: (string) $event?->held_on?->locale('id')->translatedFormat('l, j F Y'),
+            // Day and start time in one phrase (D-123); the property keeps its name for jobs already queued.
+            eventDate: EventWhen::sentence($event),
             binaan: $binaan,
             registrationId: count($registrationIds) === 1 ? (string) $registrationIds[0] : null,
         );

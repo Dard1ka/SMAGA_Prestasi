@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Builder;
 
 /**
  * QA10: the "named" rule of the public pages (QA9, D-30) for the Humas side, in one place. A student may be named
- * (publication queue, auto-publish, the Humas notices) only with publish consent while neither the student record nor
+ * (publication queue, the reminder to Humas, the Humas notices) only with publish consent while neither the student record nor
  * the account is deleted and the account is not disabled. An archived alumnus with consent stays named (D-29).
  *
  * The same rule also lives in `PublicAchievements::mapRow()` and `FilePolicy::appearsByName()` (QA9, not this area's

@@ -44,6 +44,12 @@ use Throwable;
  */
 final class CreateCompetition
 {
+    /** Longest "Jenis penyelenggara lainnya" (`competitions.organizer_type_other`, D-125). */
+    public const ORGANIZER_TYPE_OTHER_MAX = 60;
+
+    /** "Website resmi" and "Link registrasi": cleaned in prepare(), checked by ExternalUrl. */
+    private const LINK_FIELDS = ['website_url', 'registration_url'];
+
     /**
      * @param  array<string, mixed>  $input  form fields (see rules())
      */
@@ -169,11 +175,20 @@ final class CreateCompetition
      * (`after_or_equal`) read '' as "now", so "Batas daftar" of an old lomba was refused once "Daftar dibuka" was
      * emptied (QA10). Empty and blank strings become null; everything else is left to the rules.
      *
+     * The two link fields are cleaned first (ExternalUrl::normalize(): spaces, line breaks and invisible characters
+     * a paste brings along), so the rule checks the text that is stored (lead's mail test, 2026-10-09).
+     *
      * @param  array<string, mixed>  $input
      * @return array<string, mixed>
      */
     public static function prepare(array $input): array
     {
+        foreach (self::LINK_FIELDS as $field) {
+            if (is_string($input[$field] ?? null)) {
+                $input[$field] = ExternalUrl::normalize($input[$field]);
+            }
+        }
+
         return array_map(fn (mixed $value): mixed => is_string($value) && trim($value) === '' ? null : $value, $input);
     }
 
@@ -196,6 +211,9 @@ final class CreateCompetition
             'bidang' => ['required', Rule::enum(Bidang::class)],
             'organizer_name' => ['nullable', 'string', 'max:200'],
             'organizer_type' => ['nullable', Rule::enum(OrganizerType::class)],
+            // The kind typed for "Lainnya" (D-125). Kept only for that type (normalize()); VerifyCompetition asks
+            // for it before publishing. Never a weight field.
+            'organizer_type_other' => ['nullable', 'string', 'max:'.self::ORGANIZER_TYPE_OTHER_MAX],
             'weight_category' => ['nullable', Rule::enum(WeightCategory::class)],
             'event_status' => ['nullable', Rule::enum(EventStatus::class)],
             'level' => ['nullable', Rule::enum(Level::class)],
@@ -216,8 +234,9 @@ final class CreateCompetition
                     $fail('Pilih guru pembimbing dari daftar.');
                 }
             }],
-            'website_url' => ['nullable', 'string', 'max:'.ExternalUrl::MAX_LENGTH, new ExternalUrl],
-            'registration_url' => ['nullable', 'string', 'max:'.ExternalUrl::MAX_LENGTH, new ExternalUrl],
+            // No "max" here: ExternalUrl names every reason itself, the length included (ExternalUrl::TOO_LONG).
+            'website_url' => ['nullable', 'string', new ExternalUrl],
+            'registration_url' => ['nullable', 'string', new ExternalUrl],
         ];
     }
 
@@ -234,12 +253,13 @@ final class CreateCompetition
             'integer' => 'Isi dengan angka.',
             'max_team_size.min' => 'Minimal 2 anggota.',
             'max_team_size.max' => 'Maksimal 20 anggota.',
-            'url' => 'Isi alamat lengkap yang diawali https://.',
+            'organizer_type_other.max' => 'Maksimal '.self::ORGANIZER_TYPE_OTHER_MAX.' karakter.',
         ];
     }
 
     /**
-     * Validated form values → model attributes (empty strings → null, dates → timestamps, individu → no team size).
+     * Validated form values → model attributes (empty strings → null, dates → timestamps, individu → no team size,
+     * a type other than "Lainnya" → no typed kind).
      *
      * @param  array<string, mixed>  $data
      * @return array<string, mixed>
@@ -250,6 +270,18 @@ final class CreateCompetition
             if (is_string($value)) {
                 $value = trim($value);
                 $data[$key] = $value === '' ? null : $value;
+            }
+        }
+
+        // The typed kind belongs to "Lainnya" only (D-125): any other choice drops it, whatever the form still holds
+        // (the drawer hides the field but keeps its text until the save).
+        if (array_key_exists('organizer_type', $data)) {
+            $type = $data['organizer_type'] instanceof OrganizerType
+                ? $data['organizer_type']
+                : OrganizerType::tryFrom((string) $data['organizer_type']);
+
+            if ($type !== OrganizerType::Lainnya) {
+                $data['organizer_type_other'] = null;
             }
         }
 

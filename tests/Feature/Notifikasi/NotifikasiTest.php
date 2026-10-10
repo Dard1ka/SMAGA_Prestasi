@@ -89,8 +89,120 @@ it('filters unread, marks one and all as read', function (): void {
 
     expect($user->unreadNotifications()->count())->toBe(1);
 
-    Livewire::test(Notifikasi::class)->call('markAllRead')->assertRedirect(route('notifikasi.index'));
+    // D-127: no page reload any more; the bell gets its number through `sth-badges` (see the tests below).
+    Livewire::test(Notifikasi::class)->call('markAllRead')
+        ->assertNoRedirect()
+        ->assertDispatched('sth-toast', message: 'Semua notifikasi ditandai sudah dibaca.', tone: 'success');
     expect($user->unreadNotifications()->count())->toBe(0);
+});
+
+// D-127 (lead, 2026-10-10): the bell follows the state without a page load -----------------------------
+
+/** The bell of a rendered page: [aria-label of the button, the bubble's attributes, the bubble's text]. */
+function d127Bell(string $html): array
+{
+    expect(preg_match('/aria-label="(Notifikasi[^"]*)"/', $html, $label))->toBe(1)
+        ->and(preg_match('/<span([^>]*data-sth-badge="akun\.notifikasi"[^>]*)>\s*([^<]*?)\s*<\/span>/', $html, $bubble))->toBe(1);
+
+    return [$label[1], $bubble[1], $bubble[2]];
+}
+
+it('always prints the bell bubble, hidden at zero, with the hooks the script updates', function (): void {
+    $user = b1ActiveStudent();
+
+    $html = $this->actingAs($user)->get(route('notifikasi.index'))->assertOk()->getContent();
+    [$label, $attributes, $text] = d127Bell($html);
+
+    expect($label)->toBe('Notifikasi')
+        ->and($attributes)->toContain(' hidden')->toContain('data-sth-badge-max="99"')->toContain('data-sth-count="0"')->toContain('aria-hidden="true"')
+        ->and($text)->toBe('0')
+        // One bell per page; its button carries the two label texts the script switches between.
+        ->and(substr_count($html, 'data-sth-badge="akun.notifikasi"'))->toBe(1)
+        ->and(substr_count($html, 'data-sth-badge-label="akun.notifikasi"'))->toBe(1)
+        ->and($html)->toContain('data-label-none="Notifikasi"')
+        ->toContain('data-label-some="Notifikasi, :n belum dibaca"');
+
+    b1Notify($user, 'Satu');
+    b1Notify($user, 'Dua');
+
+    [$label, $attributes, $text] = d127Bell($this->get(route('akun.keamanan'))->assertOk()->getContent());
+
+    expect($label)->toBe('Notifikasi, 2 belum dibaca')
+        ->and($attributes)->not->toContain(' hidden')->toContain('data-sth-count="2"')
+        ->and($text)->toBe('2');
+});
+
+it('shows 99+ on the bell above 99 unread and keeps the real number for the script', function (): void {
+    $user = b1ActiveStudent();
+
+    foreach (range(1, 120) as $n) {
+        b1Notify($user, 'Kabar '.$n);
+    }
+
+    [$label, $attributes, $text] = d127Bell($this->actingAs($user)->get(route('akun.keamanan'))->assertOk()->getContent());
+
+    expect($text)->toBe('99+')
+        ->and($attributes)->toContain('data-sth-count="120"')
+        ->and($label)->toBe('Notifikasi, 120 belum dibaca');
+});
+
+it('tells the bell the unread count on every render: first load, mark one, mark all, filter', function (): void {
+    $user = b1ActiveStudent();
+    $first = b1Notify($user, 'Pertama');
+    b1Notify($user, 'Kedua');
+    b1Notify($user, 'Lama', read: true);
+    b1Notify(A::staff(RoleName::Guru), 'Milik guru');
+    $this->actingAs($user);
+
+    Livewire::test(Notifikasi::class)
+        ->assertDispatched('sth-badges', badges: ['akun.notifikasi' => 2])
+        ->call('markRead', $first)
+        ->assertDispatched('sth-badges', badges: ['akun.notifikasi' => 1])
+        ->assertNoRedirect()
+        ->call('setFilter', 'belum')
+        ->assertDispatched('sth-badges', badges: ['akun.notifikasi' => 1])
+        ->call('markAllRead')
+        ->assertDispatched('sth-badges', badges: ['akun.notifikasi' => 0])
+        ->assertSee('Tidak ada notifikasi baru')
+        ->assertDontSee('Tandai semua dibaca');
+
+    // Another user's rows are untouched.
+    expect(DB::table('notifications')->whereNull('read_at')->count())->toBe(1);
+});
+
+it('marks all read from a later page of "Belum dibaca" and ends on an empty first page', function (): void {
+    $user = b1ActiveStudent();
+
+    foreach (range(1, Notifikasi::PER_PAGE + 3) as $n) {
+        b1Notify($user, 'Kabar '.$n);
+    }
+
+    Livewire::actingAs($user)->test(Notifikasi::class)
+        ->call('setFilter', 'belum')
+        ->call('gotoPage', 2)
+        ->call('markAllRead')
+        ->assertOk()
+        ->assertNoRedirect()
+        ->assertSee('Tidak ada notifikasi baru')
+        ->assertDispatched('sth-badges', badges: ['akun.notifikasi' => 0]);
+
+    expect($user->unreadNotifications()->count())->toBe(0);
+});
+
+it('shows a notification that arrived while the screen was open after a refresh', function (): void {
+    $user = b1ActiveStudent();
+    $this->actingAs($user);
+
+    $screen = Livewire::test(Notifikasi::class)
+        ->assertSee('Belum ada notifikasi')
+        // The script refreshes every component that carries this hook when a background check sees the bell change.
+        ->assertSeeHtml('data-sth-refresh-on="akun.notifikasi"');
+
+    b1Notify($user, 'Surat tugas terkirim');
+
+    $screen->call('$refresh')
+        ->assertSee('Surat tugas terkirim')
+        ->assertDispatched('sth-badges', badges: ['akun.notifikasi' => 1]);
 });
 
 it('opens an internal target and marks it read; external targets are never followed', function (): void {

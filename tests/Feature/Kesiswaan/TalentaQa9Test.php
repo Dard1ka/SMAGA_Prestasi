@@ -114,7 +114,10 @@ it('skips the checked rows another tab already moved in a bulk move (QA9)', func
 
     Livewire::actingAs($this->kesiswaan)->test(Talenta::class)->call('advanceRow', $moved->getKey());
 
-    $second->call('bulkAdvance')
+    // D-128: the bulk move asks first; the question already leaves the moved row out (TalentaPindahkanDialogTest).
+    $second->call('askBulkAdvance')
+        ->assertDispatched('sth-modal-open', id: 'pindahkan-talenta')
+        ->call('bulkAdvance')
         ->assertDispatched('sth-toast', message: '1 pilihan talenta dipindahkan ke tahap berikutnya. 1 sudah dipindahkan lebih dulu dan tidak diubah lagi. Daftar sudah diperbarui.', tone: 'warning')
         ->assertSet('checked', []);
 

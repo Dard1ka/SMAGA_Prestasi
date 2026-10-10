@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Livewire\Guru;
 
+use App\Actions\Registrations\ExpirePendingInvitations;
 use App\Domain\Points\PointFormatter;
 use App\Enums\LetterType;
 use App\Enums\RegistrationStatus;
@@ -70,6 +71,9 @@ final class BinaanDetail extends Component
             : null;
         $studentLetter = $registration->letters->firstWhere('type', LetterType::Siswa);
         $active = $registration->members->whereNull('declined_at');
+        // An invitation the scheduler ended at the deadline also carries `declined_at` (D-50): the student never answered,
+        // so it reads "Tidak menjawab" here as on the two student screens (QA10; lead, 2026-10-10).
+        $expired = ExpirePendingInvitations::expiredMemberIds($registration);
 
         return view('livewire.guru.binaan-detail', [
             'title' => $competition?->name ?? 'Lomba',
@@ -93,6 +97,7 @@ final class BinaanDetail extends Component
                 'name' => $m->student?->user?->name ?? 'Siswa',
                 'meta' => trim(($m->student?->classroom?->name ?? '').' · '.$m->role?->label(), ' ·'),
                 'state' => match (true) {
+                    in_array((string) $m->getKey(), $expired, true) => ['Tidak menjawab', 'gray'],
                     $m->declined_at !== null => ['Menolak', 'red'],
                     $m->confirmed_at !== null => ['Terkonfirmasi', 'green'],
                     default => ['Menunggu konfirmasi', 'gray'],

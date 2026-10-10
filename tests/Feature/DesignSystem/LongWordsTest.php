@@ -28,7 +28,7 @@ it('wraps a long lomba name on a card of the Humas queue instead of cutting it',
     $card = [
         'id' => '01pub', 'title' => QA7_WORD, 'headline' => 'Juara 1 · Nasional', 'student' => 'Nadia Putri Anindya',
         'class' => 'XI-4', 'mentor' => 'Pembimbing Pak Hendra', 'when' => null, 'photo' => true, 'bidang' => 'riset',
-        'seed' => '01abc', 'selected' => false,
+        'seed' => '01abc', 'selected' => false, 'overdue' => false,
     ];
 
     $this->view('livewire.humas.partials.publication-card', ['card' => $card])

@@ -16,6 +16,9 @@ use Illuminate\Validation\ValidationException;
  * Humas marks a publication as published ("Tandai dipublikasikan", from `siap` or `terjadwal`):
  * status → dipublikasikan, published_at = now. Caption/channels from the form may be saved in the same
  * step (at least one channel is required). Audited; the student is notified after commit.
+ *
+ * Since D-122 this is the ONLY place that sets `dipublikasikan` and the only sender of AchievementPublished: the
+ * scheduler only reminds Humas (RemindDuePublication), because only Humas knows when the post is really out.
  */
 final class PublishPublication
 {
