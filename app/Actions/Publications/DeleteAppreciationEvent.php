@@ -74,6 +74,7 @@ final class DeleteAppreciationEvent
                 ->withProperties([
                     'name' => $locked->name,
                     'held_on' => $locked->held_on->toDateString(),
+                    'held_time' => $locked->heldTime(),
                     'rows' => $rows->count(),
                     'achievement_ids' => $rows->pluck('achievement_id')->values()->all(),
                     'notified' => count($notices),

@@ -70,6 +70,13 @@ class Index extends Component
     #[Locked]
     public ?string $pastId = null;
 
+    /** id of the dialog "Tutup lomba ini?" (<x-sth.modal>; D-128: the app's own dialog, not the browser's confirm). */
+    public const CLOSE_DIALOG = 'tutup-lomba';
+
+    /** Lomba waiting in that dialog; set only by askClose(). */
+    #[Locked]
+    public ?string $closingId = null;
+
     public function mount(): void
     {
         $this->authorize('manage', Competition::class);
@@ -257,8 +264,39 @@ class Index extends Component
         }, tone: 'success');
     }
 
-    public function close(string $id, CloseCompetition $close): void
+    /**
+     * "Tutup" on a catalog row (D-128): opens the dialog. A closed lomba leaves the student catalog and nothing opens
+     * it again, so nothing is closed before close().
+     */
+    public function askClose(string $id): void
     {
+        $this->closingId = null;
+        $competition = $this->find($id);
+
+        if ($this->changedElsewhere($competition, CompetitionStatus::Dipublikasikan)) {
+            return;
+        }
+
+        $this->authorize('close', $competition);
+
+        $this->closingId = $competition->getKey();
+        $this->dispatch('sth-modal-open', id: self::CLOSE_DIALOG);
+    }
+
+    /**
+     * "Tutup lomba" in the dialog. Without a dialog opened by askClose() there is nothing to confirm: it returns
+     * without a word (never an error page), so a second click after the lomba was closed changes and says nothing.
+     */
+    public function close(CloseCompetition $close): void
+    {
+        $id = $this->closingId;
+        $this->closingId = null;
+        $this->dispatch('sth-modal-close', id: self::CLOSE_DIALOG);
+
+        if ($id === null) {
+            return;
+        }
+
         $competition = $this->find($id);
 
         if ($this->changedElsewhere($competition, CompetitionStatus::Dipublikasikan)) {
@@ -300,6 +338,7 @@ class Index extends Component
             'queue' => $this->tab === 'verifikasi' ? $this->queueCards() : collect(),
             'statusFilters' => ['' => 'Semua'] + CompetitionStatus::options(),
             'pastLomba' => $this->pastLomba(),
+            'closingLomba' => $this->closingLomba(),
             // One search box per screen (D-90, backlog #60): this page has its own, so the top bar shows none.
         ])->layoutData(['badges' => $this->kesiswaanBadges(), 'search' => false]);
     }
@@ -316,6 +355,21 @@ class Index extends Component
         return [
             'name' => (string) $competition->name,
             'dates' => implode(', ', CompetitionDates::past($competition->registration_closes_at, $competition->final_on)),
+        ];
+    }
+
+    /** @return array{name: string, count: int}|null the lomba in the "Tutup lomba ini?" dialog and its registered students */
+    private function closingLomba(): ?array
+    {
+        $competition = $this->closingId !== null ? Competition::query()->find($this->closingId) : null;
+
+        if ($competition === null) {
+            return null;
+        }
+
+        return [
+            'name' => (string) $competition->name,
+            'count' => (int) ($this->studentCounts([$competition->getKey()])[$competition->getKey()] ?? 0),
         ];
     }
 

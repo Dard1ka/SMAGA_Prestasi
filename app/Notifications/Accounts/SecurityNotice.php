@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Notifications\Accounts;
 
+use App\Notifications\Support\MailGreeting;
 use App\Notifications\Support\PlainMailMessage;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -59,13 +60,10 @@ final class SecurityNotice extends Notification implements ShouldQueue
 
     public function toMail(object $notifiable): MailMessage
     {
-        $firstName = strtok(trim((string) ($notifiable->name ?? '')), ' ') ?: null;
-
         return (new PlainMailMessage)
             ->subject($this->title)
-            ->greeting($firstName !== null ? 'Halo '.$firstName.',' : 'Halo,')
-            ->line($this->body)
-            ->salutation('SMAGA Talent Hub');
+            ->greeting(MailGreeting::for($notifiable))
+            ->line($this->body);
     }
 
     /** @return array<string, mixed> */

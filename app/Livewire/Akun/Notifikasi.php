@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Livewire\Akun;
 
 use App\Models\User;
+use App\Support\Navigation;
 use Illuminate\Contracts\View\View;
 use Illuminate\Notifications\DatabaseNotification;
 use Illuminate\Support\Facades\Auth;
@@ -19,6 +20,10 @@ use Livewire\WithPagination;
  * notifications (bell in the top bar), newest first, filter Semua / Belum dibaca, mark one or all as read,
  * open the target. Another user's notification id → 404. Targets are followed only when they point at this
  * application (path + query of the stored URL; anything else is ignored), so no open redirect.
+ *
+ * D-127: every render tells the bell of the top bar the unread count (browser event `sth-badges`, key
+ * Navigation::BELL), so neither "Tandai dibaca" nor "Tandai semua dibaca" needs a page reload. The view's root
+ * carries `data-sth-refresh-on`, so app.js refreshes this list when a background check sees the count change.
  */
 #[Title('Notifikasi')]
 #[Layout('layouts::app', ['subtitle' => 'Kabar terbaru untuk akun ini.'])]
@@ -56,14 +61,13 @@ final class Notifikasi extends Component
         $this->find($id)->markAsRead();
     }
 
-    public function markAllRead(): mixed
+    public function markAllRead(): void
     {
         $this->user()->unreadNotifications()->update(['read_at' => now()]);
 
-        session()->flash('toast', 'Semua notifikasi ditandai sudah dibaca.');
-
-        // Full reload so the bell count in the top bar is fresh as well.
-        return $this->redirectRoute('notifikasi.index');
+        // No page reload any more (D-127): render() tells the bell the new count, like after "Tandai dibaca".
+        $this->resetPage();
+        $this->dispatch('sth-toast', message: 'Semua notifikasi ditandai sudah dibaca.', tone: 'success');
     }
 
     public function render(): View
@@ -80,6 +84,12 @@ final class Notifikasi extends Component
             $notifications = $query()->paginate(self::PER_PAGE);
         }
 
+        $unreadCount = $user->unreadNotifications()->count();
+
+        // The bell belongs to the layout, which Livewire renders once per page load: tell it the count on every
+        // render, so it follows "Tandai dibaca", "Tandai semua dibaca" and a refresh without a reload (D-127, app.js).
+        $this->dispatch('sth-badges', badges: [Navigation::BELL => $unreadCount]);
+
         return view('livewire.akun.notifikasi', [
             'notifications' => $notifications,
             'items' => collect($notifications->items())->map(fn (DatabaseNotification $n): array => [
@@ -90,7 +100,7 @@ final class Notifikasi extends Component
                 'hasTarget' => self::internalTarget($n->data['url'] ?? null) !== null,
                 'at' => $n->created_at,
             ]),
-            'unreadCount' => $user->unreadNotifications()->count(),
+            'unreadCount' => $unreadCount,
             'totalCount' => $user->notifications()->count(),
         ]);
     }

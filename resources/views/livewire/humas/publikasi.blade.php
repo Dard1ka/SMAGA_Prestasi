@@ -86,4 +86,32 @@
             </section>
         </div>
     @endif
+
+    {{--
+        "Tandai dipublikasikan" asks first (askPublish() checks caption + channels, then opens this; publish() is the
+        confirm step). It cannot be undone and tells the student, so the line under the title says who is told
+        (D-109: never a notice nobody gets). Always pass a description: the <dialog> has wire:ignore.self.
+    --}}
+    <x-sth.modal :id="\App\Livewire\Humas\Publikasi::PUBLISH_DIALOG" title="Tandai sudah terbit?" :description="$publishing['notice'] ?? \App\Livewire\Humas\Publikasi::NOTICE_TOLD" size="sm">
+        @if ($publishing)
+            <div class="flex flex-col gap-3">
+                <div class="rounded-tile bg-subtle px-3 py-2.5 [overflow-wrap:anywhere]">
+                    <p class="m-0 font-semibold">{{ $publishing['name'] }}</p>
+                    <p class="m-0 text-xs text-muted">{{ $publishing['who'] }}</p>
+                    @if ($publishing['channels'] !== '')
+                        <p class="m-0 text-xs text-muted">Kanal: {{ $publishing['channels'] }}</p>
+                    @endif
+                </div>
+                <p class="m-0 text-md">Status menjadi Dipublikasikan dan tidak bisa dikembalikan ke antrean.</p>
+            </div>
+        @else
+            <p class="m-0 text-md text-muted">Tidak ada publikasi yang dipilih. Tutup lalu coba lagi.</p>
+        @endif
+        <x-slot:footer>
+            <x-sth.button variant="quiet" data-sth-close>Batal</x-sth.button>
+            @if ($publishing)
+                <x-sth.button icon="check" wire:click="publish" wire:loading.attr="disabled" wire:target="publish">Tandai dipublikasikan</x-sth.button>
+            @endif
+        </x-slot:footer>
+    </x-sth.modal>
 </div>

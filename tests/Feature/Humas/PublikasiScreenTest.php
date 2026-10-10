@@ -14,6 +14,7 @@ use App\Notifications\Publications\AchievementPublished;
 use App\Notifications\Publications\AppreciationScheduled;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\File as Filesystem;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
@@ -301,19 +302,43 @@ it('shows field errors from the schedule action', function (): void {
     expect($publication->fresh()->status)->toBe(PublicationStatus::Siap);
 });
 
-it('publishes from the panel and notifies the student', function (): void {
+it('publishes from the panel through the dialog and notifies the student', function (): void {
     $publication = HumasFixtures::publication();
+    $student = $publication->achievement->student->user;
 
-    Livewire::actingAs($this->humas)
+    // "Tandai dipublikasikan" only opens the dialog: nothing changes and nobody is told before the confirmation.
+    $component = Livewire::actingAs($this->humas)
         ->test(Publikasi::class)
         ->set('channels', ['instagram', 'mading'])
-        ->call('publish')
-        ->assertDispatched('sth-toast', tone: 'success')
-        ->assertSee('Sudah terbit');
+        ->call('askPublish')
+        ->assertHasNoErrors()
+        ->assertDispatched('sth-modal-open', id: Publikasi::PUBLISH_DIALOG)
+        ->assertNotDispatched('sth-toast')
+        ->assertSet('publishingId', $publication->getKey())
+        ->assertSeeHtmlInOrder([
+            'Tandai sudah terbit?',
+            'Siswa langsung diberi tahu.',
+            'OPSI 2026',
+            'Nadia Putri Anindya · XI-4 · Juara II Nasional',
+            'Kanal: Instagram, Mading sekolah',
+            'Status menjadi Dipublikasikan dan tidak bisa dikembalikan ke antrean.',
+        ])
+        ->assertSeeHtml('wire:click="publish"');
+
+    expect($publication->fresh()->status)->toBe(PublicationStatus::Siap)
+        ->and($publication->fresh()->channels)->toBe([]);
+    Notification::assertNothingSent();
+
+    $component->call('publish')
+        ->assertDispatched('sth-modal-close', id: Publikasi::PUBLISH_DIALOG)
+        ->assertDispatched('sth-toast', message: 'Publikasi ditandai sudah terbit. Siswa sudah diberi tahu.', tone: 'success')
+        ->assertSet('publishingId', null)
+        ->assertSee('Sudah terbit')
+        ->assertDontSeeHtml('wire:click="publish"');
 
     expect($publication->fresh()->status)->toBe(PublicationStatus::Dipublikasikan)
         ->and($publication->fresh()->channels)->toBe(['instagram', 'mading']);
-    Notification::assertSentTo($publication->achievement->student->user, AchievementPublished::class);
+    Notification::assertSentToTimes($student, AchievementPublished::class, 1);
 });
 
 it('schedules and publishes without creating any file', function (): void {
@@ -326,6 +351,7 @@ it('schedules and publishes without creating any file', function (): void {
         ->set('time', '09:00')
         ->call('schedule')
         ->assertHasNoErrors()
+        ->call('askPublish')
         ->call('publish')
         ->assertNoFileDownloaded();
 
@@ -474,15 +500,272 @@ it('says the student was told only when the student can still log in (QA8)', fun
     $event = HumasFixtures::event();
 
     Livewire::actingAs($this->humas)->test(Publikasi::class)
+        // The hint under the date promises no notice either.
+        ->assertSee('Status baru menjadi Dipublikasikan setelah tombol Tandai dipublikasikan ditekan.')
+        ->assertDontSee('siswa baru diberi tahu')
         ->set('eventId', $event->getKey())
         ->call('recordAppreciation')
         ->assertHasNoErrors()
         ->assertDispatched('sth-toast', message: 'Masuk daftar apresiasi.', tone: 'success')
         ->set('channels', ['instagram'])
+        ->call('askPublish')
+        // The dialog is honest too: nobody is told, so it does not say "Siswa langsung diberi tahu."
+        ->assertSee('Akun siswa tidak aktif, jadi tidak ada notifikasi.')
+        ->assertDontSee('Siswa langsung diberi tahu.')
         ->call('publish')
         ->assertHasNoErrors()
         ->assertDispatched('sth-toast', message: 'Publikasi ditandai sudah terbit.', tone: 'success');
 
     Notification::assertNotSentTo($student, AchievementPublished::class);
     Notification::assertNotSentTo($student, AppreciationScheduled::class);
+});
+
+// EM2 (lead, 2026-10-10; D-122): the schedule is only a reminder, "Tandai dipublikasikan" asks first -----------
+
+/** A scheduled card of a consenting student; $at in the past = "lewat jadwal". */
+function em2Card(DateTimeInterface $at, string $name = 'Nadia Putri Anindya', string $lomba = 'OPSI 2026'): Publication
+{
+    return HumasFixtures::publication(publicationState: [
+        'status' => PublicationStatus::Terjadwal,
+        'scheduled_at' => $at,
+        'channels' => ['instagram', 'website'],
+        'caption' => 'Selamat untuk '.$name.'!',
+    ], studentName: $name, competitionName: $lomba);
+}
+
+it('marks a scheduled card whose time has passed as "Lewat jadwal" and leads with "Tandai dipublikasikan"', function (): void {
+    $at = CarbonImmutable::now()->subDay()->setTime(21, 50);
+    $overdue = em2Card($at);
+
+    $component = Livewire::actingAs($this->humas)
+        ->test(Publikasi::class)
+        ->assertSet('selectedId', $overdue->getKey())
+        // Still in the lane "Terjadwal": nothing was published by the scheduler.
+        ->assertSeeInOrder(['Terjadwal', 'OPSI 2026', 'Lewat jadwal', 'Dipublikasikan', 'Belum ada yang terbit.'])
+        ->assertSee('Lewat jadwal '.$at->locale('id')->translatedFormat('j M, H.i'))
+        ->assertDontSee('Terjadwal '.$at->locale('id')->translatedFormat('j M, H.i'))
+        ->assertSee('Jadwal sudah lewat')
+        ->assertSee('Sudah di-upload ke kanal? Tekan Tandai dipublikasikan supaya siswa diberi tahu. Belum sempat? Pilih waktu baru, lalu Jadwalkan ulang.')
+        // Both ways out stay, the confirmation first.
+        ->assertSeeHtmlInOrder(['wire:click="askPublish"', 'Tandai dipublikasikan', 'Jadwalkan ulang'])
+        ->assertSeeHtml('wire:key="pub-tandai-utama"')
+        ->assertDontSeeHtml('wire:key="pub-tandai"')
+        ->assertDontSee('Sudah terbit');
+
+    // The form offers a time that "Jadwalkan ulang" accepts, not the past one.
+    $slot = CarbonImmutable::createFromFormat('Y-m-d H:i', $component->get('date').' '.$component->get('time'), (string) config('app.timezone'));
+    expect($slot->isFuture())->toBeTrue()
+        ->and($slot->format('H:i'))->toBe('09:00');
+
+    $component->call('schedule')
+        ->assertHasNoErrors()
+        ->assertDispatched('sth-toast', message: 'Publikasi dijadwalkan.', tone: 'success')
+        ->assertDontSee('Lewat jadwal')
+        ->assertDontSee('Jadwal sudah lewat')
+        ->assertSeeHtml('wire:key="pub-tandai"');
+
+    expect($overdue->fresh()->scheduled_at->equalTo($slot))->toBeTrue()
+        ->and($overdue->fresh()->status)->toBe(PublicationStatus::Terjadwal);
+});
+
+it('promises no student notice on an overdue card of an alumnus: alert, hint and dialog agree (D-109)', function (): void {
+    // An archived account is still in the queue (consent given) but is not told on "Tandai dipublikasikan".
+    $overdue = em2Card(CarbonImmutable::now()->subDay()->setTime(21, 50));
+    $overdue->achievement->student->user->forceFill(['status' => UserStatus::Archived])->save();
+
+    Livewire::actingAs($this->humas)
+        ->test(Publikasi::class)
+        ->assertSet('selectedId', $overdue->getKey())
+        ->assertSee('Jadwal sudah lewat')
+        ->assertSee('Sudah di-upload ke kanal? Tekan Tandai dipublikasikan. Belum sempat? Pilih waktu baru, lalu Jadwalkan ulang.')
+        ->assertSee('Jadwal ini hanya pengingat. Pada waktu ini Humas mendapat pengingat untuk meng-upload ke kanal yang dipilih. Status baru menjadi Dipublikasikan setelah tombol Tandai dipublikasikan ditekan.')
+        ->assertDontSee('supaya siswa diberi tahu')
+        ->assertDontSee('siswa baru diberi tahu')
+        ->call('askPublish')
+        ->assertDispatched('sth-modal-open', id: Publikasi::PUBLISH_DIALOG)
+        ->assertSee(Publikasi::NOTICE_NOBODY)
+        ->assertDontSee(Publikasi::NOTICE_TOLD);
+});
+
+it('shows an upcoming scheduled card without any overdue mark, the schedule button first', function (): void {
+    $at = CarbonImmutable::now()->addDays(2)->setTime(9, 30);
+    $upcoming = em2Card($at);
+
+    Livewire::actingAs($this->humas)
+        ->test(Publikasi::class)
+        ->assertSet('selectedId', $upcoming->getKey())
+        ->assertSet('date', $at->format('Y-m-d'))
+        ->assertSet('time', '09:30')
+        ->assertSee('Terjadwal '.$at->locale('id')->translatedFormat('j M, H.i'))
+        ->assertDontSee('Lewat jadwal')
+        ->assertDontSee('Jadwal sudah lewat')
+        ->assertSeeHtmlInOrder(['Jadwalkan ulang', 'wire:click="askPublish"', 'Tandai dipublikasikan'])
+        ->assertSeeHtml('wire:key="pub-tandai"')
+        ->assertDontSeeHtml('wire:key="pub-tandai-utama"');
+});
+
+it('says under the date that the schedule is only a reminder', function (): void {
+    HumasFixtures::publication();
+
+    Livewire::actingAs($this->humas)
+        ->test(Publikasi::class)
+        ->assertSee('Jadwal ini hanya pengingat. Pada waktu ini Humas mendapat pengingat untuk meng-upload ke kanal yang dipilih. Status baru menjadi Dipublikasikan, dan siswa baru diberi tahu, setelah tombol Tandai dipublikasikan ditekan.')
+        ->assertDontSee('berubah otomatis');
+
+    $promising = collect(Filesystem::allFiles(resource_path('views/livewire/humas')))
+        ->filter(fn ($view): bool => str_contains($view->getContents(), 'berubah otomatis menjadi Dipublikasikan'))
+        ->map(fn ($view): string => $view->getRelativePathname())
+        ->values()
+        ->all();
+
+    expect($promising)->toBe([]);
+});
+
+it('publishes an overdue card from the panel, tells the student then and lowers the Jadwal count', function (): void {
+    $overdue = em2Card(now()->subHours(3));
+    em2Card(now()->subDay(), 'Raka Pradipta', 'FIKSI 2026');
+    $student = $overdue->achievement->student->user;
+    $pressed = CarbonImmutable::now()->startOfSecond();
+    $this->travelTo($pressed);
+
+    Livewire::actingAs($this->humas)
+        ->test(Publikasi::class)
+        ->assertDispatched('sth-badges', badges: ['humas.publikasi' => 0, 'humas.jadwal' => 2])
+        ->call('select', $overdue->getKey())
+        ->call('askPublish')
+        ->assertDispatched('sth-modal-open', id: Publikasi::PUBLISH_DIALOG)
+        ->assertDispatched('sth-badges', badges: ['humas.publikasi' => 0, 'humas.jadwal' => 2])
+        ->call('publish')
+        ->assertDispatched('sth-toast', message: 'Publikasi ditandai sudah terbit. Siswa sudah diberi tahu.', tone: 'success')
+        ->assertDispatched('sth-badges', badges: ['humas.publikasi' => 0, 'humas.jadwal' => 1])
+        ->assertSee('Sudah terbit');
+
+    $fresh = $overdue->fresh();
+    expect($fresh->status)->toBe(PublicationStatus::Dipublikasikan)
+        // The moment Humas confirmed it, not the scheduled time.
+        ->and($fresh->published_at->equalTo($pressed))->toBeTrue()
+        ->and($fresh->published_at->equalTo($fresh->scheduled_at))->toBeFalse();
+    Notification::assertSentToTimes($student, AchievementPublished::class, 1);
+});
+
+it('does nothing when the confirm step is called without the question', function (): void {
+    $publication = HumasFixtures::publication();
+    $student = $publication->achievement->student->user;
+
+    // A forged call, or the second click of a double click: no error page, no change, no notice.
+    Livewire::actingAs($this->humas)
+        ->test(Publikasi::class)
+        ->set('channels', ['instagram'])
+        ->call('publish')
+        ->assertOk()
+        ->assertHasNoErrors()
+        ->assertNotDispatched('sth-toast')
+        ->assertNotDispatched('sth-modal-open')
+        ->assertSet('selectedId', $publication->getKey())
+        ->assertSee('Siapkan publikasi')
+        ->assertDontSee('Sudah terbit');
+
+    expect($publication->fresh()->status)->toBe(PublicationStatus::Siap)
+        ->and($publication->fresh()->published_at)->toBeNull();
+    Notification::assertNothingSent();
+
+    // After one real confirmation the question is used up: a second "publish" changes nothing more.
+    Livewire::actingAs($this->humas)
+        ->test(Publikasi::class)
+        ->set('channels', ['instagram'])
+        ->call('askPublish')
+        ->call('publish')
+        ->assertDispatched('sth-toast', tone: 'success')
+        ->call('publish')
+        ->assertOk()
+        ->assertNotDispatched('sth-toast');
+
+    Notification::assertSentToTimes($student, AchievementPublished::class, 1);
+});
+
+it('never publishes a card other than the one the dialog asked about', function (): void {
+    $first = HumasFixtures::publication(studentName: 'Nadia Putri Anindya', competitionName: 'OPSI 2026');
+    $second = HumasFixtures::publication(studentName: 'Raka Pradipta', competitionName: 'FIKSI 2026');
+
+    Livewire::actingAs($this->humas)
+        ->test(Publikasi::class)
+        ->call('select', $first->getKey())
+        ->call('askPublish')
+        ->assertSet('publishingId', $first->getKey())
+        // The page behind an open dialog is inert; a forged select makes the question void.
+        ->call('select', $second->getKey())
+        ->assertSet('publishingId', null)
+        ->call('publish')
+        ->assertOk()
+        ->assertNotDispatched('sth-toast');
+
+    expect($first->fresh()->status)->toBe(PublicationStatus::Siap)
+        ->and($second->fresh()->status)->toBe(PublicationStatus::Siap);
+    Notification::assertNothingSent();
+
+    // The id the dialog asks about cannot be set from the browser.
+    expect(fn () => Livewire::actingAs($this->humas)->test(Publikasi::class)->set('publishingId', $second->getKey()))
+        ->toThrow(Exception::class);
+});
+
+it('shows the field error instead of the dialog when caption or channels are not valid', function (array $fields, string $error, string $message): void {
+    $publication = HumasFixtures::publication();
+
+    $component = Livewire::actingAs($this->humas)->test(Publikasi::class);
+
+    foreach ($fields as $name => $value) {
+        $component->set($name, $value);
+    }
+
+    $component->call('askPublish')
+        ->assertHasErrors([$error])
+        ->assertSee($message)
+        ->assertNotDispatched('sth-modal-open')
+        ->assertSet('publishingId', null)
+        // A question that never opened cannot be confirmed.
+        ->call('publish')
+        ->assertNotDispatched('sth-toast');
+
+    expect($publication->fresh()->status)->toBe(PublicationStatus::Siap);
+    Notification::assertNothingSent();
+})->with([
+    'no channel' => [['channels' => []], 'channels', 'Pilih minimal satu kanal.'],
+    'unknown channel' => [['channels' => ['tiktok']], 'channels', 'Kanal tidak dikenal.'],
+    'caption too long' => [['caption' => str_repeat('a', 2001)], 'caption', 'Caption maksimal 2.000 karakter.'],
+]);
+
+it('accepts an empty caption for "Tandai dipublikasikan", as the Action does', function (): void {
+    $publication = HumasFixtures::publication();
+
+    Livewire::actingAs($this->humas)
+        ->test(Publikasi::class)
+        ->set('caption', '')
+        ->set('channels', ['website'])
+        ->call('askPublish')
+        ->assertHasNoErrors()
+        ->assertDispatched('sth-modal-open', id: Publikasi::PUBLISH_DIALOG)
+        ->call('publish')
+        ->assertDispatched('sth-toast', tone: 'success');
+
+    expect($publication->fresh()->status)->toBe(PublicationStatus::Dipublikasikan)
+        ->and($publication->fresh()->caption)->toBeNull();
+});
+
+it('uses the dialog of the app, never the confirm box of the browser, on every Humas view', function (): void {
+    $views = collect(Filesystem::allFiles(resource_path('views/livewire/humas')));
+    $native = $views
+        ->filter(fn ($view): bool => str_contains($view->getContents(), 'wire:confirm'))
+        ->map(fn ($view): string => $view->getRelativePathname())
+        ->values()
+        ->all();
+
+    expect($views)->not->toBeEmpty()
+        ->and($native)->toBe([]);
+
+    // The panel button opens the dialog; only the dialog confirms.
+    expect((string) file_get_contents(resource_path('views/livewire/humas/partials/publication-panel.blade.php')))
+        ->toContain('wire:click="askPublish"')
+        ->not->toContain('wire:click="publish"')
+        ->and((string) file_get_contents(resource_path('views/livewire/humas/publikasi.blade.php')))
+        ->toContain('wire:click="publish"');
 });

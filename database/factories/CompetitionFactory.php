@@ -37,6 +37,14 @@ class CompetitionFactory extends Factory
             'bidang' => $faker->randomElement(Bidang::cases()),
             'organizer_name' => $faker->company(),
             'organizer_type' => $faker->randomElement(OrganizerType::cases()),
+            // "Lainnya" needs the typed kind before it can be published (D-125), so a random or an explicit
+            // "Lainnya" is always complete; every other type and a proposal have none.
+            'organizer_type_other' => function (array $attributes): ?string {
+                $type = $attributes['organizer_type'] ?? null;
+                $type = $type instanceof OrganizerType ? $type : OrganizerType::tryFrom((string) $type);
+
+                return $type === OrganizerType::Lainnya ? 'Komunitas pelajar' : null;
+            },
             'weight_category' => $faker->randomElement(WeightCategory::cases()),
             'event_status' => $faker->randomElement(EventStatus::cases()),
             'level' => $faker->randomElement(Level::cases()),

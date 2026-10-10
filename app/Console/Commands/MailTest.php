@@ -6,6 +6,7 @@ namespace App\Console\Commands;
 
 use App\Mail\Transport\AllowlistTransport;
 use App\Mail\Transport\RecipientAllowlist;
+use App\Notifications\Support\PlainMailMessage;
 use Illuminate\Console\Command;
 use Illuminate\Mail\Message;
 use Illuminate\Support\Facades\Mail;
@@ -88,7 +89,7 @@ final class MailTest extends Command
             'Kalau email ini sampai, pengaturan email noreply sudah benar.',
             '',
             'Dikirim: '.now()->format('d-m-Y H:i').' WIB · '.config('app.url'),
-            'Email ini dikirim otomatis, tidak perlu dibalas.',
+            PlainMailMessage::FOOTER,
         ]);
 
         try {

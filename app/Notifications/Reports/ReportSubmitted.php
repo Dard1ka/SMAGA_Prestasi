@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Notifications\Reports;
 
 use App\Models\Report;
+use App\Notifications\Support\MailGreeting;
 use App\Notifications\Support\PlainMailMessage;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -56,8 +57,8 @@ class ReportSubmitted extends Notification implements ShouldQueue
     {
         $message = (new PlainMailMessage)
             ->subject($this->title())
-            ->line($this->body())
-            ->salutation('SMAGA Talent Hub');
+            ->greeting(MailGreeting::for($notifiable))
+            ->line($this->body());
 
         $url = $this->url();
 

@@ -15,8 +15,11 @@ use Illuminate\Validation\ValidationException;
 
 /**
  * Humas schedules a publication (UI-MAP #22 "Jadwalkan"): caption + channels + date/time → `terjadwal`.
- * A `terjadwal` one can be re-scheduled; a published one cannot change. Audited; no notification
- * (the student hears about it when it is published).
+ * A `terjadwal` one can be re-scheduled; a published one cannot change. Audited; no notification.
+ *
+ * The schedule is only a reminder for Humas (D-122): at that time RemindDuePublication mails Humas once and the row
+ * stays `terjadwal`. The student hears about it when Humas marks it published (PublishPublication), never at the
+ * scheduled time. Every schedule and re-schedule empties `reminded_at`, so the new time gets its own reminder.
  */
 final class SchedulePublication
 {
@@ -59,6 +62,7 @@ final class SchedulePublication
             ]);
             $locked->forceFill([
                 'status' => PublicationStatus::Terjadwal,
+                'reminded_at' => null, // a new time: the reminder for it has not gone out yet
                 'created_by' => $locked->created_by ?? $actor->getKey(),
             ])->save();
 

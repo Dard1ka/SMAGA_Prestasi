@@ -8,7 +8,8 @@ use App\Actions\Publications\AchievementFacts;
 use App\Actions\Publications\CompleteAppreciationEvent;
 use App\Actions\Publications\CreateAppreciationEvent;
 use App\Actions\Publications\DeleteAppreciationEvent;
-use App\Actions\Publications\RecordAppreciation;
+use App\Actions\Publications\EventWhen;
+use App\Actions\Publications\RecordAppreciations;
 use App\Actions\Publications\ReleaseAppreciation;
 use App\Enums\AppreciationStatus;
 use App\Enums\UserStatus;
@@ -19,6 +20,8 @@ use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Contracts\View\View;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
@@ -40,6 +43,14 @@ use Spatie\Activitylog\Models\Activity;
  * M2-B (QA 2026-10-05, Q2-10): one achievement sits on one open event only, so "Tambah prestasi" offers only
  * achievements that are on no event, and every scheduled row of an open event has "Lepas dari acara"
  * (confirmRelease → the same dialog → ReleaseAppreciation).
+ *
+ * EM2 (lead, 2026-10-10; hand test of 2026-10-09, finding 6-1):
+ * - D-123: "Buat acara" also takes a start time ("Jam mulai", required); cards and dialogs print it through
+ *   EventWhen, events of one day are ordered by it. An event made before has no time and shows its date only.
+ * - D-124: "Tambah prestasi" is a picker instead of one long select: a search box (student or lomba name), a
+ *   list with a tick per achievement that comes in steps, and one "Masukkan" for everything ticked
+ *   (RecordAppreciations: all or nothing, one notice per guru pembimbing for that click). The ticks (`$picked`)
+ *   come from the browser, so every id is loaded again through the eligibility query before the Action runs.
  */
 #[Title('Apresiasi')]
 #[Layout('layouts::app', ['subtitle' => 'Acara apresiasi untuk prestasi siswa.'])]
@@ -53,7 +64,22 @@ class Apresiasi extends Component
 
     public const DONE_MAX = 200;
 
-    public const OPTIONS_LIMIT = 100;
+    /** The picker lists achievements in steps (D-72); beyond PICK_MAX the search has to narrow the list. */
+    public const PICK_STEP = 10;
+
+    public const PICK_MAX = 100;
+
+    /** Achievements one "Masukkan" takes (the Action's own limit). */
+    public const PICKED_MAX = RecordAppreciations::MAX;
+
+    public const SEARCH_MAX = 100;
+
+    public const PICK_NONE_MESSAGE = RecordAppreciations::EMPTY_MESSAGE;
+
+    public const PICK_MAX_MESSAGE = RecordAppreciations::MAX_MESSAGE;
+
+    /** A ticked achievement left the list since it was drawn: consent withdrawn, or another event took it. */
+    public const PICK_STALE_MESSAGE = 'Sebagian prestasi yang dipilih sudah tidak bisa dimasukkan. Daftar sudah diperbarui, pilih lagi.';
 
     public const CONFIRM_DIALOG = 'apresiasi-konfirmasi';
 
@@ -68,10 +94,25 @@ class Apresiasi extends Component
 
     public string $heldOn = '';
 
+    /** "07:00", what the time input of "Buat acara" sends (D-123). */
+    public string $heldTime = '';
+
     #[Locked]
     public ?string $addingEventId = null;
 
-    public string $achievementId = '';
+    /** Search box of the picker: student name or lomba name. */
+    public string $search = '';
+
+    /**
+     * Achievement ids ticked in the picker. Written by the browser: never trusted, see pickedIds() and
+     * addAchievements().
+     *
+     * @var array<array-key, mixed>
+     */
+    public array $picked = [];
+
+    #[Locked]
+    public int $pickLimit = self::PICK_STEP;
 
     /** Event of the open confirmation dialog; set only by confirmComplete() / confirmDelete() / confirmRelease(). */
     #[Locked]
@@ -96,17 +137,17 @@ class Apresiasi extends Component
     {
         $this->authorize('create', AppreciationEvent::class);
         // Only this try's messages: a name filled in since the last try loses its old error.
-        $this->resetErrorBag(['name', 'heldOn']);
+        $this->resetErrorBag(['name', 'heldOn', 'heldTime']);
 
         try {
-            $action->handle($this->actor(), $this->name, $this->heldOn);
+            $action->handle($this->actor(), $this->name, $this->heldOn, $this->heldTime);
         } catch (ValidationException $e) {
-            $this->fail($e, ['name' => 'name', 'held_on' => 'heldOn']);
+            $this->fail($e, ['name' => 'name', 'held_on' => 'heldOn', 'held_time' => 'heldTime']);
 
             return;
         }
 
-        $this->reset('name', 'heldOn');
+        $this->reset('name', 'heldOn', 'heldTime');
         $this->resetErrorBag();
         $this->dispatch('sth-toast', message: 'Acara apresiasi dibuat.', tone: 'success');
     }
@@ -122,18 +163,45 @@ class Apresiasi extends Component
         $this->authorize('update', $event);
 
         $this->addingEventId = (string) $event->getKey();
-        $this->achievementId = '';
+        $this->resetPicker();
         $this->resetErrorBag();
     }
 
     public function cancelAdding(): void
     {
         $this->addingEventId = null;
-        $this->achievementId = '';
+        $this->resetPicker();
         $this->resetErrorBag();
     }
 
-    public function addAchievement(RecordAppreciation $action): void
+    /**
+     * A new search starts at the first step again. The typed text is not written back trimmed: Livewire would put
+     * the server's value into the box while Humas is still typing and eat the space before the next word.
+     * picker() trims and caps the term it searches with. Only a text longer than the box allows
+     * (maxlength = SEARCH_MAX, so a hand-made request) is cut.
+     */
+    public function updatedSearch(): void
+    {
+        if (mb_strlen($this->search) > self::SEARCH_MAX) {
+            $this->search = mb_substr($this->search, 0, self::SEARCH_MAX);
+        }
+
+        $this->pickLimit = self::PICK_STEP;
+    }
+
+    /** "Tampilkan lebih banyak" in the picker (clamped in picker()). */
+    public function showMoreOptions(): void
+    {
+        $this->authorize('viewAny', AppreciationEvent::class);
+        $this->pickLimit += self::PICK_STEP;
+    }
+
+    /**
+     * "Masukkan": every ticked achievement goes on the event in one RecordAppreciations call. The ticks come from
+     * the browser, so each id is loaded again through freeAchievements() (verified, publish consent, on no event);
+     * when one of them is no longer there nothing is written and the list says so.
+     */
+    public function addAchievements(RecordAppreciations $action): void
     {
         if ($this->addingEventId === null) {
             return;
@@ -146,27 +214,62 @@ class Apresiasi extends Component
         }
 
         $this->authorize('update', $event);
+        $this->resetErrorBag('picked');
 
-        $achievement = $this->achievementId !== ''
-            ? HumasQueries::appreciableAchievements()->find($this->achievementId)
-            : null;
+        $ids = $this->pickedIds();
 
-        if (! $achievement instanceof Achievement) {
-            $this->addError('achievementId', 'Pilih prestasi.');
+        if ($this->picked === []) {
+            $this->addError('picked', self::PICK_NONE_MESSAGE);
+
+            return;
+        }
+
+        if (count($ids) !== count($this->picked)) {
+            // Something that is no achievement id, or the same id twice: this screen never sends that.
+            $this->picked = $ids;
+            $this->addError('picked', self::PICK_STALE_MESSAGE);
+
+            return;
+        }
+
+        if (count($ids) > self::PICKED_MAX) {
+            $this->addError('picked', self::PICK_MAX_MESSAGE);
+
+            return;
+        }
+
+        $achievements = self::listed($this->freeAchievements()->whereKey($ids))->get();
+
+        if ($achievements->count() < count($ids)) {
+            // A forged id, a consent withdrawn or another event that took the achievement meanwhile.
+            $this->picked = $achievements->modelKeys();
+            $this->addError('picked', self::PICK_STALE_MESSAGE);
 
             return;
         }
 
         try {
-            $action->handle($this->actor(), $event, $achievement);
+            $rows = $action->handle($this->actor(), $event, $achievements);
         } catch (ValidationException $e) {
-            $this->fail($e, ['achievement' => 'achievementId', 'event' => 'achievementId']);
+            // The Action's sentence is about one achievement ("Prestasi ini …"): with several ticked it would
+            // not say which, so the list is refreshed and says that. What it says about the event stays.
+            if (count($ids) > 1 && ! isset($e->errors()['event'])) {
+                $this->addError('picked', self::PICK_STALE_MESSAGE);
+            } else {
+                $this->fail($e, ['achievement' => 'picked', 'event' => 'picked']);
+            }
 
             return;
         }
 
+        $count = $rows->count();
+        $told = RecordAppreciations::toldStudents($achievements);
         $this->cancelAdding();
-        $this->dispatch('sth-toast', message: 'Prestasi masuk daftar apresiasi.'.(RecordAppreciation::notifiesStudent($achievement) ? ' Siswa sudah diberi tahu.' : ''), tone: 'success');
+
+        // A notice is only claimed when somebody got one (an alumnus or a disabled account does not; QA8).
+        $this->dispatch('sth-toast', message: $count === 1
+            ? 'Prestasi masuk daftar apresiasi.'.($told > 0 ? ' Siswa sudah diberi tahu.' : '')
+            : $count.' prestasi masuk daftar apresiasi.'.($told > 0 ? ' '.$told.' siswa sudah diberi tahu.' : ''), tone: 'success');
     }
 
     /**
@@ -307,11 +410,14 @@ class Apresiasi extends Component
         $relations = array_map(fn (string $r): string => 'appreciations.achievement.'.$r, AchievementFacts::RELATIONS);
         $this->doneLimit = max(self::DONE_STEP, min(self::DONE_MAX, $this->doneLimit));
 
+        // By day, then by start time (D-123). An event without a time (made before) sorts first within its day:
+        // NULL comes first in ascending order on MySQL and SQLite alike.
         $upcoming = AppreciationEvent::query()
             ->open()
             ->whereDate('held_on', '>=', $today->toDateString())
             ->with($relations)
             ->orderBy('held_on')
+            ->orderBy('held_time')
             ->oldest()
             ->get();
 
@@ -320,6 +426,7 @@ class Apresiasi extends Component
             ->whereDate('held_on', '<', $today->toDateString())
             ->with($relations)
             ->orderBy('held_on')
+            ->orderBy('held_time')
             ->oldest()
             ->limit(self::OVERDUE_LIMIT)
             ->get();
@@ -329,6 +436,7 @@ class Apresiasi extends Component
             ->completed()
             ->with([...$relations, 'completedBy:id,name'])
             ->orderByDesc('held_on')
+            ->orderByDesc('held_time')
             ->orderByDesc('completed_at')
             ->limit($this->doneLimit)
             ->get();
@@ -343,9 +451,13 @@ class Apresiasi extends Component
             'doneMore' => $this->doneLimit < self::DONE_MAX && $doneCount > $done->count(),
             'canCreate' => $user->can('create', AppreciationEvent::class),
             'minDate' => $today->toDateString(),
-            'achievementOptions' => $this->addingEventId !== null ? $this->achievementOptions() : [],
+            'picker' => $this->addingEventId !== null ? $this->picker() : null,
             'confirm' => $this->confirmation(),
-        ])->layoutData(['badges' => HumasQueries::badges($user)]);
+        ])->layoutData([
+            'badges' => HumasQueries::badges($user),
+            // The picker has a search box of its own, so the top bar shows none (one search box per screen, D-90).
+            'search' => false,
+        ]);
     }
 
     /** @return array<string, mixed> */
@@ -368,7 +480,8 @@ class Apresiasi extends Component
         return [
             'id' => (string) $event->getKey(),
             'name' => $event->name,
-            'date' => HumasQueries::longDate($event->held_on),
+            // "Senin, 12 Oktober 2026, 07.00 WIB"; the date alone for an event made before D-123.
+            'date' => EventWhen::long($event),
             'count' => $rows->count(),
             'chip' => $chip,
             'adding' => $this->addingEventId === (string) $event->getKey(),
@@ -452,7 +565,7 @@ class Apresiasi extends Component
             },
             'delete' => $delete,
             'name' => $event->name,
-            'date' => HumasQueries::longDate($event->held_on),
+            'date' => EventWhen::long($event),
             'count' => $count,
             // The row a release is about, as the list shows it (no name without consent or `student.view`).
             'row' => $release ? $this->releasing() : null,
@@ -498,32 +611,131 @@ class Apresiasi extends Component
 
     /**
      * Achievements that are free for an event: verified, with publish consent, and on no event at all. One
-     * that is scheduled elsewhere or was already appreciated is not offered (RecordAppreciation would refuse
+     * that is scheduled elsewhere or was already appreciated is not offered (RecordAppreciations would refuse
      * it; M2-B, Q2-10); "Lepas dari acara" or "Hapus acara" brings it back.
      *
-     * @return array<string, string> achievement id => "Nama (Kelas) · Juara I Nasional · Lomba"
+     * @return Builder<Achievement>
      */
-    private function achievementOptions(): array
+    private function freeAchievements(): Builder
     {
-        return HumasQueries::appreciableAchievements()
-            ->whereDoesntHave('appreciations')
-            ->with(['student.user', 'student.classroom', 'competition'])
-            ->latest('verified_at')
-            ->limit(self::OPTIONS_LIMIT)
-            ->get()
-            ->mapWithKeys(function (Achievement $achievement): array {
-                $name = (string) ($achievement->student?->user?->name ?? 'Siswa');
-                // An alumnus shows "Alumni", never the last class (as on the ranking, D-80; QA5).
-                $class = $achievement->student?->user?->status === UserStatus::Archived
-                    ? 'Alumni'
-                    : $achievement->student?->classroom?->name;
-                $level = $achievement->level?->shortLabel();
+        return HumasQueries::appreciableAchievements()->whereDoesntHave('appreciations');
+    }
 
-                return [(string) $achievement->getKey() => $name.($class !== null ? ' ('.$class.')' : '')
-                    .' · '.trim($achievement->result->label().' '.$level)
-                    .' · '.(string) ($achievement->competition?->name ?? 'Lomba')];
-            })
-            ->all();
+    /**
+     * What a picker row prints, and the order of the list: newest verification first; team mates share the
+     * verification time and the report, so they stand next to each other and are ticked together.
+     *
+     * @param  Builder<Achievement>  $query
+     * @return Builder<Achievement>
+     */
+    private static function listed(Builder $query): Builder
+    {
+        return $query
+            ->with(['student.user', 'student.classroom', 'competition'])
+            ->orderByDesc('verified_at')
+            ->orderBy('report_id')
+            ->orderBy('id');
+    }
+
+    /**
+     * The picker of "Tambah prestasi" (D-124): the free achievements that match the search, in steps, plus the
+     * ticked ones that the search or the step no longer shows (listed first, so a tick never disappears while
+     * searching for the next name). Never more than PICK_MAX rows of each.
+     *
+     * @return array{
+     *     empty: bool,
+     *     kept: list<array{id: string, student: string, class: string|null, headline: string, competition: string}>,
+     *     rows: list<array{id: string, student: string, class: string|null, headline: string, competition: string}>,
+     *     status: string,
+     *     more: bool,
+     *     capped: bool,
+     * }
+     */
+    private function picker(): array
+    {
+        $this->pickLimit = max(self::PICK_STEP, min(self::PICK_MAX, $this->pickLimit));
+        $term = mb_substr(trim($this->search), 0, self::SEARCH_MAX);
+
+        $matches = $this->freeAchievements();
+        HumasQueries::searchAchievements($matches, $term);
+        $total = (clone $matches)->count();
+        $rows = self::listed($matches)->limit($this->pickLimit)->get();
+
+        // A tick whose achievement is no longer free (another event took it, consent withdrawn) has no row any
+        // more, but it stays in $picked on purpose: "Masukkan" then says that the list changed and writes
+        // nothing, instead of quietly adding fewer achievements than were ticked.
+        $outside = array_values(array_diff($this->pickedIds(), $rows->modelKeys()));
+        $kept = $outside === []
+            ? new EloquentCollection
+            : self::listed($this->freeAchievements()->whereKey($outside))->get();
+
+        $shown = $rows->count();
+
+        return [
+            // Nothing is free at all: the picker says why instead of an empty search.
+            'empty' => $term === '' && $total === 0,
+            'kept' => $kept->map(fn (Achievement $a): array => self::pickerRow($a))->all(),
+            'rows' => $rows->map(fn (Achievement $a): array => self::pickerRow($a))->all(),
+            'status' => match (true) {
+                $term !== '' && $total === 0 => 'Tidak ada prestasi yang cocok.',
+                $term !== '' && $shown < $total => 'Menampilkan '.$shown.' dari '.$total.' prestasi yang cocok.',
+                $term !== '' => $total.' prestasi cocok.',
+                $shown < $total => 'Menampilkan '.$shown.' dari '.$total.' prestasi.',
+                default => $total.' prestasi bisa dimasukkan.',
+            },
+            'more' => $shown < $total && $this->pickLimit < self::PICK_MAX,
+            'capped' => $shown < $total && $this->pickLimit >= self::PICK_MAX,
+        ];
+    }
+
+    /**
+     * One row of the picker: "Nadia Putri Anindya · XI-4" over "Juara II Nasional · OPSI 2026". Only students
+     * with publish consent reach this list, so the name is shown.
+     *
+     * @return array{id: string, student: string, class: string|null, headline: string, competition: string}
+     */
+    private static function pickerRow(Achievement $achievement): array
+    {
+        return [
+            'id' => (string) $achievement->getKey(),
+            'student' => (string) ($achievement->student?->user?->name ?? 'Siswa'),
+            // An alumnus shows "Alumni", never the last class (as on the ranking, D-80; QA5).
+            'class' => $achievement->student?->user?->status === UserStatus::Archived
+                ? 'Alumni'
+                : $achievement->student?->classroom?->name,
+            'headline' => trim($achievement->result->label().' '.$achievement->level?->shortLabel()),
+            'competition' => (string) ($achievement->competition?->name ?? 'Lomba'),
+        ];
+    }
+
+    /**
+     * The ticked achievement ids as the browser sent them, cleaned: strings shaped like a ULID, each once, at most
+     * PICK_MAX. Whether an id may go on an event is decided by freeAchievements(), never here.
+     *
+     * @return list<string>
+     */
+    private function pickedIds(): array
+    {
+        $ids = [];
+
+        foreach ($this->picked as $id) {
+            if (is_string($id) && preg_match('/^[0-9A-Za-z]{26}$/', $id) === 1) {
+                $ids[$id] = true;
+
+                if (count($ids) >= self::PICK_MAX) {
+                    break;
+                }
+            }
+        }
+
+        return array_map(strval(...), array_keys($ids));
+    }
+
+    private function resetPicker(): void
+    {
+        $this->search = '';
+        $this->picked = [];
+        $this->pickLimit = self::PICK_STEP;
     }
 
     /**

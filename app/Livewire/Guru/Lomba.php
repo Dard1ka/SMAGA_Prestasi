@@ -233,7 +233,7 @@ final class Lomba extends Component
             'description' => $competition->description,
             'facts' => array_values(array_filter([
                 ['label' => 'Penyelenggara', 'value' => LombaPresenter::penyelenggara($competition)],
-                ['label' => 'Jenis penyelenggara', 'value' => $competition->organizer_type?->label()],
+                ['label' => 'Jenis penyelenggara', 'value' => $competition->organizerTypeLabel()],
                 ['label' => 'Status ajang', 'value' => $competition->event_status?->label()],
                 ['label' => 'Tingkat', 'value' => $competition->level?->label()],
                 ['label' => 'Peserta', 'value' => $competition->participation !== null ? LombaPresenter::peserta($competition) : null],

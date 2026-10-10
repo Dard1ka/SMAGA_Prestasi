@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Actions\Publications\CompleteAppreciationEvent;
+use App\Actions\Publications\PublishPublication;
 use App\Actions\Publications\RecordAppreciation;
 use App\Enums\AppreciationStatus;
 use App\Enums\PublicationStatus;
@@ -10,12 +11,14 @@ use App\Enums\RoleName;
 use App\Enums\UserStatus;
 use App\Livewire\Humas\Apresiasi;
 use App\Livewire\Humas\Arsip;
+use App\Livewire\Humas\HumasQueries;
 use App\Livewire\Humas\Jadwal;
 use App\Models\Appreciation;
 use App\Models\AppreciationEvent;
 use App\Notifications\Publications\AppreciationCancelled;
 use App\Notifications\Publications\AppreciationReleased;
 use App\Notifications\Publications\AppreciationScheduled;
+use App\Providers\NavigationServiceProvider;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
 use Livewire\Livewire;
@@ -59,11 +62,88 @@ it('lists scheduled publications by date and upcoming appreciation events', func
         ->assertSee('OPSI 2026')
         ->assertSee('Instagram, Website')
         ->assertSee('Lewat jadwal, belum ditandai terbit')
+        // D-122: the schedule only reminded Humas; the box says what is still to do.
+        ->assertSeeInOrder([
+            'Lewat jadwal, belum ditandai terbit',
+            'Siswa belum diberi tahu. Setelah publikasi di-upload ke kanal, buka kartunya lalu tekan Tandai dipublikasikan.',
+            'FLS3N Provinsi 2026',
+            'OPSI 2026',
+        ])
         ->assertSee('FLS3N Provinsi 2026')
         ->assertDontSee('Fajar Ramadhan')
         ->assertSee(route('humas.beranda', ['pilih' => $scheduled->getKey()]), false)
         ->assertSee('Upacara Senin, 5 Oktober 2026')
         ->assertSee('1 prestasi');
+});
+
+it('counts a publication as overdue from its scheduled minute on, and no longer once Humas marked it (D-122)', function (): void {
+    $this->travelTo(now()->startOfMinute());
+    $due = HumasFixtures::publication(publicationState: [
+        'status' => PublicationStatus::Terjadwal,
+        'scheduled_at' => now(),
+        'channels' => ['instagram'],
+    ], studentName: 'Nadia Putri Anindya', competitionName: 'OPSI 2026');
+    HumasFixtures::publication(publicationState: [
+        'status' => PublicationStatus::Terjadwal,
+        'scheduled_at' => now()->addMinute(),
+        'channels' => ['website'],
+    ], studentName: 'Raka Pradipta', competitionName: 'FIKSI 2026');
+
+    // The row that is due this very minute is in the box (and in the count of the menu), the next one is not.
+    Livewire::actingAs($this->humas)
+        ->test(Jadwal::class)
+        ->assertSeeInOrder(['Lewat jadwal, belum ditandai terbit', 'OPSI 2026', 'FIKSI 2026'])
+        ->assertViewHas('overdue', fn (array $overdue): bool => array_column($overdue, 'id') === [$due->getKey()])
+        ->assertViewHas('days', fn (array $days): bool => count($days) === 1 && count($days[0]['items']) === 1);
+
+    expect(HumasQueries::badges($this->humas)['humas.jadwal'])->toBe(1);
+
+    app(PublishPublication::class)->handle($this->humas, $due->fresh());
+
+    Livewire::actingAs($this->humas)
+        ->test(Jadwal::class)
+        ->assertDontSee('Lewat jadwal, belum ditandai terbit')
+        ->assertDontSee('OPSI 2026')
+        ->assertSee('FIKSI 2026');
+
+    expect(HumasQueries::badges($this->humas)['humas.jadwal'])->toBe(0);
+});
+
+it('shows the number of overdue publications on the menu item Jadwal, on every Humas page (D-122)', function (): void {
+    config(['fortify.sth.require_staff_2fa' => false]);
+    $this->withoutVite();
+
+    foreach (['Nadia Putri Anindya' => now()->subDay(), 'Raka Pradipta' => now()->subMinutes(5), 'Salsabila Kirana' => now()->addDay()] as $name => $at) {
+        HumasFixtures::publication(publicationState: ['status' => PublicationStatus::Terjadwal, 'scheduled_at' => $at, 'channels' => ['instagram']], studentName: $name);
+    }
+    // Not counted: no publish consent (never named to Humas), still "siap", already published.
+    HumasFixtures::publication(['publish_consent' => false], ['status' => PublicationStatus::Terjadwal, 'scheduled_at' => now()->subDay()], studentName: 'Fajar Ramadhan');
+    HumasFixtures::publication(studentName: 'Dimas Arya Nugroho');
+    HumasFixtures::publication(publicationState: ['status' => PublicationStatus::Dipublikasikan, 'scheduled_at' => now()->subDays(3), 'published_at' => now()->subDays(2), 'channels' => ['website']], studentName: 'Keisha Larasati');
+
+    $badge = function (string $html, string $key): ?int {
+        if (preg_match('/<span class="badge num" data-sth-badge="'.preg_quote($key, '/').'"([^>]*)>\s*(\d+)\s*<\/span>/', $html, $m) !== 1) {
+            return null;
+        }
+
+        return str_contains($m[1], 'hidden') ? null : (int) $m[2];
+    };
+
+    expect(HumasQueries::overduePublications()->count())->toBe(2)
+        ->and(HumasQueries::badges($this->humas))->toBe(['humas.publikasi' => 1, 'humas.jadwal' => 2]);
+
+    // A page that passes no badges (Notifikasi) and the screens that pass their own show the same number.
+    foreach (['notifikasi.index', 'humas.jadwal', 'humas.beranda', 'humas.arsip'] as $route) {
+        $html = $this->actingAs($this->humas)->get(route($route))->assertOk()->getContent();
+
+        expect($badge($html, 'humas.jadwal'))->toBe(2, $route)
+            ->and($badge($html, 'humas.publikasi'))->toBe(1, $route);
+    }
+
+    // Only for an account that may manage publications.
+    expect(HumasQueries::badges(AuthTestHelpers::staff(RoleName::Guru)))->not->toHaveKey('humas.jadwal')
+        ->and(HumasQueries::badges(AuthTestHelpers::staff(RoleName::Kesiswaan)))->not->toHaveKey('humas.jadwal')
+        ->and(NavigationServiceProvider::badges(AuthTestHelpers::staff(RoleName::TataUsaha), 'humas'))->toBe([]);
 });
 
 it('shows empty states on Jadwal', function (): void {
@@ -84,6 +164,7 @@ it('creates an event from the form', function (): void {
         ->test(Apresiasi::class)
         ->set('name', 'Upacara Senin, 12 Oktober 2026')
         ->set('heldOn', now()->addWeek()->toDateString())
+        ->set('heldTime', '07:00')
         ->call('createEvent')
         ->assertHasNoErrors()
         ->assertDispatched('sth-toast', message: 'Acara apresiasi dibuat.', tone: 'success')
@@ -98,15 +179,19 @@ it('shows event form errors', function (): void {
         ->test(Apresiasi::class)
         ->set('name', '')
         ->set('heldOn', now()->subDay()->toDateString())
+        ->set('heldTime', '07:00')
         ->call('createEvent')
-        ->assertHasErrors(['name']);
+        ->assertHasErrors(['name'])
+        ->assertHasNoErrors(['heldTime']);
 
     Livewire::actingAs($this->humas)
         ->test(Apresiasi::class)
         ->set('name', 'Upacara')
         ->set('heldOn', now()->subDay()->toDateString())
+        ->set('heldTime', '07:00')
         ->call('createEvent')
-        ->assertHasErrors(['heldOn']);
+        ->assertHasErrors(['heldOn'])
+        ->assertHasNoErrors(['name', 'heldTime']);
 
     expect(AppreciationEvent::query()->count())->toBe(0);
 });
@@ -123,15 +208,20 @@ it('adds a verified achievement to an event and confirms a held event through th
         ->assertDontSeeHtml("confirmComplete('".$event->getKey()."')")
         ->call('startAdding', $event->getKey())
         ->assertSet('addingEventId', $event->getKey())
-        ->assertSee('Nadia Putri Anindya (XI-4)')
+        // The picker (D-124) lists the one free achievement of a consenting student.
+        ->assertViewHas('picker', fn (array $picker): bool => array_column($picker['rows'], 'id') === [$achievement->getKey()]
+            && $picker['rows'][0]['student'] === 'Nadia Putri Anindya' && $picker['rows'][0]['class'] === 'XI-4')
+        ->assertSee('Nadia Putri Anindya')
         ->assertDontSee('Fajar Ramadhan')
-        ->call('addAchievement')
-        ->assertHasErrors(['achievementId'])
-        ->set('achievementId', $achievement->getKey())
-        ->call('addAchievement')
+        ->call('addAchievements')
+        ->assertHasErrors(['picked'])
+        ->assertSee('Pilih minimal satu prestasi.')
+        ->set('picked', [$achievement->getKey()])
+        ->call('addAchievements')
         ->assertHasNoErrors()
         ->assertSet('addingEventId', null)
-        ->assertDispatched('sth-toast', tone: 'success')
+        ->assertSet('picked', [])
+        ->assertDispatched('sth-toast', message: 'Prestasi masuk daftar apresiasi. Siswa sudah diberi tahu.', tone: 'success')
         ->assertSee('Dijadwalkan')
         ->assertSeeHtml("confirmComplete('".$event->getKey()."')");
 
@@ -331,17 +421,17 @@ it('offers only achievements that are on no event in "Tambah prestasi" and refus
     Livewire::actingAs($this->humas)
         ->test(Apresiasi::class)
         ->call('startAdding', $second->getKey())
-        ->assertSee('Raka Pradipta (XI-4)')
-        ->assertDontSee('Nadia Putri Anindya (XI-4)')
+        ->assertViewHas('picker', fn (array $picker): bool => array_column($picker['rows'], 'student') === ['Raka Pradipta'])
         ->assertSee('belum masuk acara mana pun')
-        // The browser names it anyway: the Action answers with the event it is on.
-        ->set('achievementId', $nadia->getKey())
-        ->call('addAchievement')
-        ->assertHasErrors(['achievementId'])
-        ->assertSee('Prestasi ini sudah dijadwalkan di acara Upacara Senin, 5 Oktober 2026')
-        ->assertSee('Lepas dulu dari acara itu.')
-        ->set('achievementId', $raka->getKey())
-        ->call('addAchievement')
+        // The browser names it anyway: it is not among the free achievements, so nothing is written (D-124:
+        // the picker loads every ticked id again through the eligibility query).
+        ->set('picked', [$nadia->getKey()])
+        ->call('addAchievements')
+        ->assertHasErrors(['picked'])
+        ->assertSee('Sebagian prestasi yang dipilih sudah tidak bisa dimasukkan. Daftar sudah diperbarui, pilih lagi.')
+        ->assertSet('picked', [])
+        ->set('picked', [$raka->getKey()])
+        ->call('addAchievements')
         ->assertHasNoErrors()
         // Nothing is left to add: the hint says why.
         ->call('startAdding', $second->getKey())
@@ -388,7 +478,7 @@ it('releases one achievement from an event through the dialog and tells the stud
         ->assertSeeHtml("confirmRelease('".$kept->getKey()."')")
         // Free again: it is offered for an event.
         ->call('startAdding', $event->getKey())
-        ->assertSee('Nadia Putri Anindya (XI-4)');
+        ->assertViewHas('picker', fn (array $picker): bool => array_column($picker['rows'], 'id') === [$nadia->getKey()]);
 
     expect(Appreciation::query()->sole()->getKey())->toBe($kept->getKey())
         ->and(AppreciationEvent::query()->count())->toBe(1);
@@ -525,7 +615,14 @@ it('offers the achievement of an alumnus as "Alumni" instead of the last class',
 
     Livewire::actingAs($this->humas)->test(Apresiasi::class)
         ->call('startAdding', $event->getKey())
-        ->assertViewHas('achievementOptions', fn (array $options): bool => ($options[$achievement->getKey()] ?? null) === 'Putri Maharani Kusuma (Alumni) · Juara II Nasional · OPSI 2026');
+        ->assertViewHas('picker', fn (array $picker): bool => $picker['rows'] === [[
+            'id' => $achievement->getKey(),
+            'student' => 'Putri Maharani Kusuma',
+            'class' => 'Alumni',
+            'headline' => 'Juara II Nasional',
+            'competition' => 'OPSI 2026',
+        ]])
+        ->assertDontSee('XI-4');
 });
 
 // QA5 retest (2026-10-07, backlog #65): an empty "Buat acara" form names both missing fields ------------------
@@ -564,8 +661,8 @@ it('says the students were told only when one of them can still log in (QA8)', f
 
     $component = Livewire::actingAs($this->humas)->test(Apresiasi::class)
         ->call('startAdding', $event->getKey())
-        ->set('achievementId', $achievement->getKey())
-        ->call('addAchievement')
+        ->set('picked', [$achievement->getKey()])
+        ->call('addAchievements')
         ->assertHasNoErrors()
         ->assertDispatched('sth-toast', message: 'Prestasi masuk daftar apresiasi.', tone: 'success');
 

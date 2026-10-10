@@ -49,11 +49,6 @@ abstract class RegistrationNotification extends Notification implements ShouldQu
         return (string) $this->registration->loadMissing('leader.user')->leader?->user?->name;
     }
 
-    protected static function firstName(object $notifiable): string
-    {
-        return strtok(trim((string) ($notifiable->name ?? '')), ' ') ?: 'Kamu';
-    }
-
     /** First existing route (screens land in wave 2 in parallel), else the role landing. */
     protected static function link(array $candidates): string
     {

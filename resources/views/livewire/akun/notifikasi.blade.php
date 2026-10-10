@@ -1,5 +1,7 @@
-{{-- Notifikasi (bell; UI-MAP §2). Own database notifications only, prepared in App\Livewire\Akun\Notifikasi. --}}
-<div class="flex flex-col gap-[22px]">
+{{-- Notifikasi (bell; UI-MAP §2). Own database notifications only, prepared in App\Livewire\Akun\Notifikasi.
+     data-sth-refresh-on: app.js refreshes this component when a background check sees the bell count change, so a
+     notification that arrives while the list is open shows by itself (D-127). --}}
+<div class="flex flex-col gap-[22px]" data-sth-refresh-on="{{ \App\Support\Navigation::BELL }}">
     <div class="flex flex-wrap items-center justify-between gap-3">
         <div class="seg" role="group" aria-label="Tampilkan">
             <button type="button" class="seg-btn" wire:click="setFilter('semua')" aria-pressed="{{ $filter === 'semua' ? 'true' : 'false' }}">

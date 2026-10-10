@@ -36,7 +36,14 @@ final class Navigation
         'kepsek.persetujuan',
         'tu.surat',
         'humas.publikasi',
+        'humas.jadwal',
     ];
+
+    /**
+     * The bell of the top bar: unread database notifications of the signed-in user (D-127). A key of the browser
+     * event `sth-badges` like the menu keys, but not a menu item, so it is not in BADGES and no menu lists it.
+     */
+    public const BELL = 'akun.notifikasi';
 
     /** Used when a user has several roles and neither the page nor the route decides. */
     private const PRIORITY = ['admin', 'kepala_sekolah', 'kesiswaan', 'tata_usaha', 'humas', 'guru', 'siswa'];
@@ -361,7 +368,7 @@ final class Navigation
                 'sections' => [
                     ['label' => 'Menu', 'items' => [
                         ['key' => 'publikasi', 'label' => 'Antrean publikasi', 'icon' => 'megaphone', 'route' => ['humas.beranda', 'humas.publikasi.index', 'humas.publikasi'], 'match' => ['humas.publikasi*'], 'badge' => 'humas.publikasi'],
-                        ['key' => 'jadwal', 'label' => 'Jadwal', 'icon' => 'calendar', 'route' => ['humas.jadwal']],
+                        ['key' => 'jadwal', 'label' => 'Jadwal', 'icon' => 'calendar', 'route' => ['humas.jadwal'], 'badge' => 'humas.jadwal'],
                         ['key' => 'apresiasi', 'label' => 'Apresiasi', 'icon' => 'award', 'route' => ['humas.apresiasi.index', 'humas.apresiasi']],
                         ['key' => 'arsip', 'label' => 'Arsip', 'icon' => 'folder', 'route' => ['humas.arsip']],
                     ]],

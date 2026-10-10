@@ -17,7 +17,8 @@ declare(strict_types=1);
  * note written as Markdown: no link or image may reach the HTML part) · 3 registration (team, invitations,
  * individual, decline, cancel before and after the team reached the Kepala Sekolah) · 4 Kepala Sekolah (approve,
  * reject: the guru pembimbing is told too) · 5 Tata Usaha letters + corrections · 6 timeline commands ·
- * 7 laporan hasil + verification · 8 Humas · 9 talent · 10 account + Admin events (a frozen account gets no mail
+ * 7 laporan hasil + verification · 8 Humas (a scheduled publication only reminds Humas at its time; the student is
+ * mailed when Humas marks it published, D-122) · 9 talent · 10 account + Admin events (a frozen account gets no mail
  * and no reset code) · 11 the production mail rule, with OTP test mode switched off inside this process for those
  * steps only: an address nobody verified gets account notices but no work mail.
  *
@@ -54,10 +55,10 @@ use App\Actions\Letters\IssueLetters;
 use App\Actions\Letters\LetterDraft;
 use App\Actions\Letters\RevokeLetter;
 use App\Actions\Letters\SendLetters;
-use App\Actions\Publications\AutoPublishPublication;
 use App\Actions\Publications\CreateAppreciationEvent;
 use App\Actions\Publications\PublishPublication;
 use App\Actions\Publications\RecordAppreciation;
+use App\Actions\Publications\RemindDuePublication;
 use App\Actions\Publications\SchedulePublication;
 use App\Actions\Registrations\ApproveRegistration;
 use App\Actions\Registrations\CancelRegistration;
@@ -91,7 +92,7 @@ use App\Enums\ResultType;
 use App\Enums\RoleName;
 use App\Enums\TalentStatus;
 use App\Enums\TalentTypeCode;
-use App\Jobs\AutoPublishPublications;
+use App\Jobs\RemindDuePublications;
 use App\Models\Achievement;
 use App\Models\Competition;
 use App\Models\Letter;
@@ -150,7 +151,7 @@ final class EmailScenario
     /** @var list<string> passwords typed in this run: must never show up in a mail (never printed) */
     private array $secrets = [];
 
-    /** Mails scanned, mails in which the control phrase (the salutation) was found, strings searched in the last scan. */
+    /** Mails scanned, mails in which the control phrase (header and footer sentence) was found, strings searched in the last scan. */
     private int $scanned = 0;
 
     private int $controlHits = 0;
@@ -1306,6 +1307,8 @@ $scenario->step('7b', 'Kesiswaan asks for a revision (RequestReportRevision)', f
     [$mail('galuh'), 'Perbaiki laporan hasil: '.$lomba['l1']],
     [$mail('bayu'), 'Laporan hasil perlu revisi: '.$lomba['l1']],
     [$mail('laras'), 'Laporan hasil perlu revisi: '.$lomba['l1']],
+    // D-110: the guru pembimbing of r1 hears about every decision on the binaan's report (BinaanReportDecided).
+    [$at('hendra.k'), 'Laporan binaan perlu revisi: '.$lomba['l1']],
 ]);
 
 $scenario->step('7c', 'Galuh sends the corrected report (SubmitReport again)', function () use ($siswa, $registration, $pdf): void {
@@ -1331,6 +1334,7 @@ $scenario->step('7d', 'Kesiswaan verifies the result (VerifyReport): points for 
     [$mail('galuh'), 'Prestasi terverifikasi: '.$lomba['l1']],
     [$mail('bayu'), 'Prestasi terverifikasi: '.$lomba['l1']],
     [$mail('laras'), 'Prestasi terverifikasi: '.$lomba['l1']],
+    [$at('hendra.k'), 'Laporan binaan diverifikasi: '.$lomba['l1']],
     [$at('humas'), 'Prestasi baru siap dipublikasikan'],
     ['fitri.h@sth.test', 'Prestasi baru siap dipublikasikan'],
 ]);
@@ -1347,7 +1351,7 @@ $scenario->step('7e', 'Wulan submits her laporan hasil (SubmitReport)', function
 $scenario->step('7f', 'Kesiswaan rejects Wulan\'s report (RejectReport)', function () use ($staff, $report, $scenario, $state): void {
     app(RejectReport::class)->handle($staff('kesiswaan'), $report('r4'), 'Sertifikat tidak memuat nama peserta dan tidak cocok dengan pengumuman panitia.');
     $scenario->note('registration status: '.Registration::query()->whereKey($state['r4'])->value('status')->value.' (no points)');
-}, [[$mail('wulan'), 'Laporan hasil ditolak: '.$lomba['l1']]]);
+}, [[$mail('wulan'), 'Laporan hasil ditolak: '.$lomba['l1']], [$at('hendra.k'), 'Laporan binaan ditolak: '.$lomba['l1']]]);
 
 // =================================================================================================================
 // 8. Humas: publication + apresiasi
@@ -1367,34 +1371,44 @@ $scenario->step('8a', 'Humas publishes Galuh\'s achievement (PublishPublication)
 }, [[$mail('galuh'), 'Prestasimu sudah dipublikasikan']]);
 
 $scenario->step('8b', 'Humas schedules an apresiasi for Galuh (CreateAppreciationEvent + RecordAppreciation)', function () use ($staff, $achievementOf, $today): void {
-    $event = app(CreateAppreciationEvent::class)->handle($staff('humas'), 'Upacara apresiasi prestasi (E2E)', $today->addDays(10)->format('Y-m-d'));
+    // D-123: an event has a start time; the student's mail says "… pada <hari, tanggal> pukul 07.00 WIB".
+    $event = app(CreateAppreciationEvent::class)->handle($staff('humas'), 'Upacara apresiasi prestasi (E2E)', $today->addDays(10)->format('Y-m-d'), '07:00');
     app(RecordAppreciation::class)->handle($staff('humas'), $event, $achievementOf('galuh'));
-}, [[$mail('galuh'), 'Kamu masuk daftar apresiasi']]);
+    // D-124 / D-110: the guru pembimbing gets one notice for the binaan of this "Masukkan".
+}, [[$mail('galuh'), 'Kamu masuk daftar apresiasi'], [$at('hendra.k'), 'Binaan masuk daftar apresiasi']]);
 
-$scenario->step('8c', 'Humas schedules Bayu\'s publication for "now" (SchedulePublication); the scheduler job AutoPublishPublications runs', function () use ($state, $staff, $publicationOf, $scenario): void {
+// D-122 (lead, 2026-10-10): the schedule is only a reminder. The job mails Humas and nobody else; the row stays
+// terjadwal, and the student is mailed in step 8d, when Humas marks the publication as published.
+$scenario->step('8c', 'Humas schedules Bayu\'s publication for "now" (SchedulePublication); the scheduler job RemindDuePublications runs: Humas is reminded, the student is NOT mailed', function () use ($state, $staff, $publicationOf, $scenario): void {
     app(SchedulePublication::class)->handle($staff('humas'), $publicationOf('bayu'), 'Selamat kepada Bayu, Juara 2 Olimpiade Sains Pelajar Nusantara 2026!', ['instagram'], now());
 
-    // Everything that is due now: Bayu's row plus the demo rows whose seeded schedule has passed.
-    $due = AutoPublishPublication::due(CarbonImmutable::now())->get();
+    // Everything whose reminder is due now: Bayu's row (the seeded demo rows with a past time count as reminded).
+    $due = RemindDuePublication::due(CarbonImmutable::now())->get();
     $expected = [];
 
     foreach ($due as $publication) {
-        $user = Achievement::query()->findOrFail($publication->achievement_id)->student()->firstOrFail()->user()->first();
-
-        foreach (AutoPublishPublication::humasRecipients() as $humas) {
+        foreach (RemindDuePublication::humasRecipients() as $humas) {
             $expected[] = [(string) $humas->email, 'Waktunya upload publikasi'];
-        }
-
-        if ($user !== null && filled($user->email) && $user->canLogIn()) {
-            $expected[] = [(string) $user->email, 'Prestasimu sudah dipublikasikan'];
         }
     }
 
     $state['due'] = $expected;
     $scenario->note(sprintf('%d publication(s) due (Bayu + %d seeded demo row(s))', $due->count(), $due->count() - 1));
 
-    AutoPublishPublications::dispatch();
+    RemindDuePublications::dispatch();
 }, fn (): array => (array) $state['due']);
+
+$scenario->step('8d', 'Humas presses "Tandai dipublikasikan" for Bayu (PublishPublication): only now the status changes and the student is mailed', function () use ($staff, $publicationOf, $scenario): void {
+    $publication = $publicationOf('bayu');
+    $scenario->note(sprintf('after the reminder: status=%s, reminded_at=%s, published_at=%s', $publication->status->value, $publication->reminded_at === null ? 'null' : 'set', $publication->published_at === null ? 'null' : 'set'));
+
+    if ($publication->status !== PublicationStatus::Terjadwal || $publication->reminded_at === null || $publication->published_at !== null) {
+        $scenario->problem('8d', 'the reminder job must leave the publication terjadwal (reminded, not published)');
+    }
+
+    app(PublishPublication::class)->handle($staff('humas'), $publication);
+    $scenario->note('after the button: status='.$publicationOf('bayu')->status->value);
+}, [[$mail('bayu'), 'Prestasimu sudah dipublikasikan']]);
 
 // =================================================================================================================
 // 9. Talent
@@ -1552,7 +1566,7 @@ $scenario->step('10j', 'Admin publishes a new weight version (PublishWeightVersi
 
     app(PublishWeightVersion::class)->handle($staff('operator'), $weights, 'Uji skenario E2E: finalis 0,55.');
 
-    $scenario->assertRendered('10j', $at('kepsek'), 'Bobot poin diubah', 'Halo!', 'Operator STH menyimpan bobot poin baru, berlaku');
+    $scenario->assertRendered('10j', $at('kepsek'), 'Bobot poin diubah', 'Yth. Drs. Bambang Hartono, M.Pd.,', 'Operator STH menyimpan bobot poin baru, berlaku');
 }, [
     [$at('kepsek'), 'Bobot poin diubah'],
     [$at('operator'), 'Bobot poin diubah'],
@@ -1668,7 +1682,8 @@ $scenario->step('11a', 'Production rule: a scheduled publication becomes due →
         throw new RuntimeException('Precondition failed: humas must be verified and fitri.h unverified.');
     }
 
-    // A demo achievement that is still "siap" and whose student has no email yet: only Humas can be mailed.
+    // A demo achievement that is still "siap" and whose student has no email yet. The reminder job mails Humas only
+    // (D-122: never the student), so the one expected mail below is the whole result.
     $publication = Publication::query()
         ->where('status', PublicationStatus::Siap)
         ->whereHas('achievement', fn ($a) => $a->whereNotNull('verified_at')
@@ -1680,14 +1695,15 @@ $scenario->step('11a', 'Production rule: a scheduled publication becomes due →
         $scenario->note('OTP test mode inside this step: '.(VerifyOtpCode::testModeActive() ? 'ON' : 'off'));
         app(SchedulePublication::class)->handle($humas, $publication, 'Selamat atas prestasinya! (uji aturan produksi)', ['website'], now());
 
-        $due = AutoPublishPublication::due(CarbonImmutable::now())->count();
-        $scenario->note($due.' publication due; Humas accounts that can log in: '.AutoPublishPublication::humasRecipients()->count());
+        // Bayu's row was reminded in 8c and the seeded demo rows count as reminded, so only this one is due.
+        $due = RemindDuePublication::due(CarbonImmutable::now())->count();
+        $scenario->note($due.' publication due; Humas accounts that can log in: '.RemindDuePublication::humasRecipients()->count());
 
         if ($due !== 1) {
             throw new RuntimeException('Expected exactly one due publication.');
         }
 
-        AutoPublishPublications::dispatch();
+        RemindDuePublications::dispatch();
     });
 
     $scenario->note('bell notifications "publication.due" for fitri.h (stored even without mail): '

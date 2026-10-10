@@ -13,8 +13,10 @@
             <form id="usul-form" wire:submit="kirim" class="flex flex-col gap-4" novalidate>
                 <x-sth.input wire:model="name" id="usul-nama" label="Nama lomba" placeholder="Contoh: ISPO 2027" maxlength="200" required />
                 <x-sth.input wire:model="organizer_name" id="usul-penyelenggara" label="Penyelenggara" placeholder="Nama lembaga penyelenggara" maxlength="200" required />
+                {{-- Checked on "Kirim" only (ExternalUrl says what is wrong); the server strips spaces around a pasted link. --}}
                 <x-sth.input wire:model="website_url" id="usul-tautan" type="url" inputmode="url" label="Link resmi" placeholder="https://" icon="link"
-                             hint="Diawali https://. Kesiswaan memeriksa link ini dulu." maxlength="500" required />
+                             hint="Salin dari kolom alamat browser, diawali https://. Kesiswaan memeriksa link ini dulu." maxlength="500"
+                             autocomplete="off" autocapitalize="off" spellcheck="false" required />
                 <x-sth.file-drop wire:model="brosur" :file="$brosur" id="usul-file" label="Brosur atau juknis" title="Pilih file PDF atau gambar"
                                  hint="PDF, JPG, PNG, atau WEBP · maks. 5 MB" accept=".pdf,.jpg,.jpeg,.png,.webp" />
                 <x-sth.textarea wire:model="description" id="usul-catatan" label="Catatan" rows="3" maxlength="1000"

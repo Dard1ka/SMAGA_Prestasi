@@ -48,21 +48,46 @@
         @endif
     </div>
 @elseif ($panel['canSchedule'] || $panel['canPublish'])
-    <form wire:submit="schedule" class="flex flex-col gap-3" novalidate>
+    {{-- D-122: the scheduled time passed. Nothing was published by itself; Humas confirms or picks a new time. --}}
+    {{-- $panel['notifies']: the student notice is promised only when "Tandai dipublikasikan" will send one (not to an alumnus, D-109). --}}
+    @if ($panel['overdue'])
+        <x-sth.alert tone="warning" title="Jadwal sudah lewat" wire:key="pub-lewat">
+            @if ($panel['notifies'])
+                Sudah di-upload ke kanal? Tekan Tandai dipublikasikan supaya siswa diberi tahu. Belum sempat? Pilih waktu baru, lalu Jadwalkan ulang.
+            @else
+                Sudah di-upload ke kanal? Tekan Tandai dipublikasikan. Belum sempat? Pilih waktu baru, lalu Jadwalkan ulang.
+            @endif
+        </x-sth.alert>
+    @endif
+    <form wire:submit="schedule" wire:key="pub-form" class="flex flex-col gap-3" novalidate>
         <x-sth.textarea wire:model="caption" label="Caption" rows="5" hint="Maks. 2.000 karakter." />
         <x-sth.radio-pick wire:model="channels" multiple label="Kanal" :options="$channelOptions" :value="$channels" :columns="3" size="sm" />
         <div class="grid grid-cols-2 gap-3">
             <x-sth.input type="date" wire:model="date" :value="$date" label="Tanggal publikasi" class="num" />
             <x-sth.input type="time" wire:model="time" :value="$time" label="Jam" class="num" />
         </div>
-        {{-- B3 (#12): AutoPublishPublications flips terjadwal → dipublikasikan at this time and reminds Humas. --}}
-        <p class="m-0 text-xs text-muted">Pada waktu ini status berubah otomatis menjadi Dipublikasikan dan Humas mendapat pengingat untuk meng-upload ke kanal yang dipilih.</p>
+        {{-- D-122: RemindDuePublications only reminds Humas at this time. PublishPublication ("Tandai dipublikasikan") is what sets dipublikasikan and tells the student (when the account can still be told: $panel['notifies']). --}}
+        @if ($panel['notifies'])
+            <p class="m-0 text-xs text-muted">Jadwal ini hanya pengingat. Pada waktu ini Humas mendapat pengingat untuk meng-upload ke kanal yang dipilih. Status baru menjadi Dipublikasikan, dan siswa baru diberi tahu, setelah tombol Tandai dipublikasikan ditekan.</p>
+        @else
+            <p class="m-0 text-xs text-muted">Jadwal ini hanya pengingat. Pada waktu ini Humas mendapat pengingat untuk meng-upload ke kanal yang dipilih. Status baru menjadi Dipublikasikan setelah tombol Tandai dipublikasikan ditekan.</p>
+        @endif
+        {{-- "Tandai dipublikasikan" asks first (dialog in publikasi.blade.php, Publikasi::askPublish). An overdue row leads with it. --}}
         <div class="flex flex-wrap gap-2">
-            @if ($panel['canSchedule'])
-                <x-sth.button type="submit" icon="calendar" class="flex-1" wire:loading.attr="disabled" wire:target="schedule">{{ $panel['scheduleLabel'] }}</x-sth.button>
-            @endif
-            @if ($panel['canPublish'])
-                <x-sth.button variant="quiet" icon="check" class="flex-1" wire:click="publish" wire:confirm="Tandai publikasi ini sudah terbit? Siswa akan diberi tahu." wire:loading.attr="disabled" wire:target="publish">Tandai dipublikasikan</x-sth.button>
+            @if ($panel['overdue'])
+                @if ($panel['canPublish'])
+                    <x-sth.button wire:key="pub-tandai-utama" icon="check" class="flex-1" wire:click="askPublish" wire:loading.attr="disabled" wire:target="askPublish" aria-haspopup="dialog">Tandai dipublikasikan</x-sth.button>
+                @endif
+                @if ($panel['canSchedule'])
+                    <x-sth.button wire:key="pub-jadwal-ulang" type="submit" variant="quiet" icon="calendar" class="flex-1" wire:loading.attr="disabled" wire:target="schedule">{{ $panel['scheduleLabel'] }}</x-sth.button>
+                @endif
+            @else
+                @if ($panel['canSchedule'])
+                    <x-sth.button wire:key="pub-jadwal" type="submit" icon="calendar" class="flex-1" wire:loading.attr="disabled" wire:target="schedule">{{ $panel['scheduleLabel'] }}</x-sth.button>
+                @endif
+                @if ($panel['canPublish'])
+                    <x-sth.button wire:key="pub-tandai" variant="quiet" icon="check" class="flex-1" wire:click="askPublish" wire:loading.attr="disabled" wire:target="askPublish" aria-haspopup="dialog">Tandai dipublikasikan</x-sth.button>
+                @endif
             @endif
         </div>
     </form>
@@ -74,7 +99,8 @@
         @foreach ($panel['appreciations'] as $appreciation)
             <p class="m-0 flex items-start gap-1.5 text-sm leading-snug font-semibold text-green">
                 <x-sth.icon name="check" :size="16" class="mt-px" />
-                <span>Sudah masuk daftar apresiasi {{ $appreciation['event'] }}@if ($appreciation['done']) (selesai)@endif</span>
+                {{-- D-123: with the day and start time of the event, e.g. "Upacara Senin (12 Okt 2026, 07.00)". --}}
+                <span>Sudah masuk daftar apresiasi {{ $appreciation['event'] }} ({{ $appreciation['date'] }}{{ $appreciation['done'] ? ', selesai' : '' }})</span>
             </p>
         @endforeach
         @if ($panel['eventOptions'] !== [])

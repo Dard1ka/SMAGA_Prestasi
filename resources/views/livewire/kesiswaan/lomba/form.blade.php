@@ -7,13 +7,28 @@
                 <x-sth.alert tone="error" data-sth-error-summary tabindex="-1">{{ $errors->first('decision') ?: $errors->first('status') }}</x-sth.alert>
             @endif
 
+            {{-- "Ubah lomba" of a published lomba students are registered for: who a changed fact is told to
+                 (UpdateCompetition, CompetitionChange). Not in "Tambah" or "Periksa lomba", not with nobody registered.
+                 The two sentences follow CompetitionChange::statusesFor(): batas daftar and peserta are told only to
+                 teams still collecting answers, never to the guru. --}}
+            @if ($attachedStudents > 0)
+                <x-sth.alert>{{ number_format($attachedStudents, 0, ',', '.') }} siswa sedang terdaftar di lomba ini. Perubahan tanggal, tempat, pelaksanaan, link, atau juknis diberitahukan ke siswa itu dan guru pembimbingnya. Perubahan batas daftar atau peserta hanya diberitahukan ke tim yang masih menunggu konfirmasi anggota.</x-sth.alert>
+            @endif
+
             <x-sth.input wire:model="form.name" label="Nama lomba" placeholder="Contoh: OSN Tingkat Kota Semarang 2026" maxlength="200" required />
 
             <x-sth.radio-pick wire:model="form.bidang" label="Bidang" :columns="4" size="sm" :options="$options['bidang']" />
 
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <x-sth.input wire:model="form.organizer_name" label="Penyelenggara" maxlength="200" />
-                <x-sth.select wire:model="form.organizer_type" label="Jenis penyelenggara" placeholder="Pilih jenis" :options="$options['organizer_type']" />
+                <x-sth.select wire:model.live="form.organizer_type" label="Jenis penyelenggara" placeholder="Pilih jenis" :options="$options['organizer_type']" />
+                {{-- "Lainnya" alone says nothing: the kind is typed here, under the select. Required before publishing
+                     (VerifyCompetition), so not marked optional; another type drops the text on save (the Action). --}}
+                @if ($otherType)
+                    <x-sth.input wire:model="form.organizer_type_other" label="Jenis penyelenggara lainnya" maxlength="60" class="sm:col-start-2"
+                        placeholder="Contoh: komunitas, sanggar seni, media"
+                        hint="Tulis jenisnya dengan singkat. Poin tetap mengikuti kategori bobot." />
+                @endif
             </div>
 
             <x-sth.radio-pick wire:model.live="form.weight_category" label="Kategori bobot" :columns="5" :options="$options['weight_category']"
@@ -55,8 +70,10 @@
             <x-sth.select wire:model.live="form.default_mentor_id" label="Guru pembimbing default" placeholder="Belum ditentukan" :options="$options['mentors']" :hint="$mentorHint" optional />
 
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <x-sth.input type="url" wire:model="form.website_url" label="Website resmi" placeholder="https://" icon="link" optional />
-                <x-sth.input type="url" wire:model="form.registration_url" label="Link registrasi" placeholder="https://" icon="link" optional />
+                <x-sth.input type="url" wire:model="form.website_url" label="Website resmi" placeholder="https://" icon="link" hint="Diawali https://."
+                    maxlength="500" autocomplete="off" autocapitalize="off" spellcheck="false" optional />
+                <x-sth.input type="url" wire:model="form.registration_url" label="Link registrasi" placeholder="https://" icon="link" hint="Diawali https://."
+                    maxlength="500" autocomplete="off" autocapitalize="off" spellcheck="false" optional />
             </div>
 
             <x-sth.textarea wire:model="form.description" label="Deskripsi singkat" rows="3" optional />

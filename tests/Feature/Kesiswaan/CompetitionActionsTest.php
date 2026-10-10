@@ -75,25 +75,77 @@ it('validates https links, dates and the default mentor', function (): void {
     expect($create->handle($this->kesiswaan, F::form(['default_mentor_id' => $guru->getKey()]))->default_mentor_id)->toBe($guru->getKey());
 });
 
-it('validates website and registration links with ExternalUrl on create and update (SECURITY §3m-1)', function (string $field, string $url): void {
+it('validates website and registration links with ExternalUrl on create and update (SECURITY §3m-1)', function (string $field, string $url, string $sentence): void {
     $create = app(CreateCompetition::class);
 
     try {
         $create->handle($this->kesiswaan, F::form([$field => $url]));
         $this->fail('Expected a validation error.');
     } catch (ValidationException $e) {
-        expect($e->errors()[$field][0] ?? null)->toBe(ExternalUrl::MESSAGE);
+        // One sentence per reason since the lead's mail test of 2026-10-09 (before: one sentence for all of them).
+        expect($e->errors()[$field] ?? null)->toBe([$sentence])
+            ->and(ExternalUrl::problem($url))->toBe($sentence);
     }
 
     $competition = $create->handle($this->kesiswaan, F::form());
-    expect(fn () => app(UpdateCompetition::class)->handle($this->kesiswaan, $competition, F::form([$field => $url])))->toThrow(ValidationException::class)
-        ->and($competition->fresh()->{$field})->toBe(F::form()[$field]);
+
+    try {
+        app(UpdateCompetition::class)->handle($this->kesiswaan, $competition, F::form([$field => $url]));
+        $this->fail('Expected a validation error.');
+    } catch (ValidationException $e) {
+        expect($e->errors()[$field] ?? null)->toBe([$sentence]);
+    }
+
+    expect($competition->fresh()->{$field})->toBe(F::form()[$field]);
 })->with([
-    'ip literal' => ['website_url', 'https://127.0.0.1/lomba'],
-    'credentials' => ['registration_url', 'https://user:pass@example.org/daftar'],
-    'odd port' => ['website_url', 'https://example.org:8443/'],
-    'localhost' => ['registration_url', 'https://localhost/daftar'],
+    'ip literal' => ['website_url', 'https://127.0.0.1/lomba', ExternalUrl::IP],
+    'credentials' => ['registration_url', 'https://user:pass@example.org/daftar', ExternalUrl::CREDENTIALS],
+    'odd port' => ['website_url', 'https://example.org:8443/', ExternalUrl::PORT],
+    'localhost' => ['registration_url', 'https://localhost/daftar', ExternalUrl::IP],
+    'http' => ['website_url', 'http://example.org/nsif', ExternalUrl::HTTP],
+    'no scheme' => ['registration_url', 'example.org/nsif/daftar', ExternalUrl::NO_HTTPS],
+    'comma for the dot' => ['website_url', 'https://example,org/nsif', ExternalUrl::HOST],
+    'space inside' => ['registration_url', 'https://example.org/nsif daftar', ExternalUrl::SPACE],
+    'en dash' => ['website_url', 'https://example.org/nsif–2026', ExternalUrl::CHARACTERS],
+    'too long, website' => ['website_url', 'https://example.org/'.str_repeat('a', 481), ExternalUrl::TOO_LONG],
+    'too long, registration' => ['registration_url', 'https://example.org/'.str_repeat('a', 481), ExternalUrl::TOO_LONG],
 ]);
+
+it('cleans both link fields at both ends before the check, on create and on update', function (): void {
+    $competition = app(CreateCompetition::class)->handle($this->kesiswaan, F::form([
+        'website_url' => "  https://example.org/nsif \n",
+        'registration_url' => "\u{00A0}https://example.org/nsif/daftar\u{200B}",
+    ]));
+
+    expect($competition->fresh()->website_url)->toBe('https://example.org/nsif')
+        ->and($competition->fresh()->registration_url)->toBe('https://example.org/nsif/daftar');
+
+    app(UpdateCompetition::class)->handle($this->kesiswaan, $competition, F::form([
+        'website_url' => "\thttps://example.org/nsif-2026\r\n",
+        'registration_url' => '   ',
+    ]));
+
+    expect($competition->fresh()->website_url)->toBe('https://example.org/nsif-2026')
+        ->and($competition->fresh()->registration_url)->toBeNull();
+});
+
+it('accepts a link of exactly 500 characters and refuses a link field that is not text', function (): void {
+    $long = 'https://example.org/'.str_repeat('a', 480);
+    $create = app(CreateCompetition::class);
+
+    expect(strlen($long))->toBe(ExternalUrl::MAX_LENGTH)
+        ->and($create->handle($this->kesiswaan, F::form(['website_url' => $long]))->fresh()->website_url)->toBe($long);
+
+    try {
+        $create->handle($this->kesiswaan, F::form(['name' => 'Lomba Esai Fiktif 2026', 'registration_url' => ['https://example.org/nsif']]));
+        $this->fail('Expected a validation error.');
+    } catch (ValidationException $e) {
+        expect($e->errors())->toHaveKey('registration_url');
+    }
+
+    expect(Competition::query()->where('name', 'Lomba Esai Fiktif 2026')->exists())->toBeFalse()
+        ->and(CreateCompetition::messages())->not->toHaveKey('url');
+});
 
 it('refuses to publish a usulan until the weight and date fields are complete', function (): void {
     $siswa = F::student('Raka Pradipta', 'XII-2')->user;

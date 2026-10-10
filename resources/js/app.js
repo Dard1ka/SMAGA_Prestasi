@@ -14,7 +14,15 @@
  |   window events: sth-modal-open / sth-modal-close {id} · sth-toast {message, tone, key?}
  |                  sth-toast-clear {key} — remove the toasts raised with that key (a failure that is over)
  |                  sth-form-invalid {form} — bring the first validation error into view
- |                  sth-badges {badges: {key: count}} — update [data-sth-badge="key"] in the sidebar
+ |                  sth-badges {badges: {key: count}} — update [data-sth-badge="key"]: the sidebar counts and the
+ |                      bell of the top bar (key 'akun.notifikasi'). data-sth-badge-max="99" prints "99+" above it,
+ |                      data-sth-count keeps the real number, and [data-sth-badge-label="key"] gets its aria-label
+ |                      from data-label-none / data-label-some (":n" = the number)
+ |   data-sth-counts-url="<address>" data-sth-counts-every="<seconds>" on the bell: the open page asks that
+ |       address for fresh counts ({"badges": {…}} → sth-badges) after an action and about every <seconds>
+ |       while the tab is visible and in use; no attribute, no request        <x-sth.topbar>, "live counts"
+ |   data-sth-refresh-on="akun.notifikasi" inside a Livewire component: that component is refreshed when such a
+ |       check saw the bell count change                                      Akun › Notifikasi
  |   form[data-sth-live-search]                                               top bar search filters as you type
  |   data-sth-toast / data-sth-toast-close / data-announce                    <x-sth.toast>, <x-sth.flash>
  |   data-sth-tabs / data-sth-tab / data-sth-panel                            <x-sth.tabs panels>
@@ -357,12 +365,18 @@ window.addEventListener('sth-form-invalid', (event) => {
     window.setTimeout(() => revealFirstError(scope), 50);
 });
 
-/* ---------------------------------------------------------------- sidebar badges */
+/* ---------------------------------------------------------------- sidebar badges and the bell */
 
 /*
- | The sidebar belongs to the layout, which Livewire renders once per page load, so a queue count next to a
- | menu item went stale as soon as an action on the page changed the queue (send a letter, verify a report).
- | Screens dispatch `sth-badges` with fresh counts and the numbers are updated in place; zero hides the badge.
+ | The sidebar and the top bar belong to the layout, which Livewire renders once per page load, so a queue count
+ | next to a menu item went stale as soon as an action on the page changed the queue (send a letter, verify a
+ | report), and the bell kept its number after "Tandai dibaca". Screens dispatch `sth-badges` with fresh counts and
+ | the numbers are updated in place; zero hides the badge.
+ |
+ | The bell is one more key ('akun.notifikasi', App\Support\Navigation::BELL). Its bubble carries
+ | data-sth-badge-max="99" (prints "99+" above that) and keeps the real number in data-sth-count; its button
+ | [data-sth-badge-label] gets a new aria-label from data-label-none ("Notifikasi") or data-label-some
+ | ("Notifikasi, :n belum dibaca"), so a screen reader hears the same number the eye sees.
  */
 window.addEventListener('sth-badges', (event) => {
     const badges = event.detail?.badges;
@@ -370,9 +384,18 @@ window.addEventListener('sth-badges', (event) => {
 
     for (const [key, value] of Object.entries(badges)) {
         const count = Math.max(0, Math.trunc(Number(value)) || 0);
-        document.querySelectorAll(`[data-sth-badge="${CSS.escape(key)}"]`).forEach((badge) => {
-            badge.textContent = String(count);
+        const name = CSS.escape(key);
+
+        document.querySelectorAll(`[data-sth-badge="${name}"]`).forEach((badge) => {
+            const max = Number.parseInt(badge.getAttribute('data-sth-badge-max') || '', 10);
+            badge.textContent = max > 0 && count > max ? `${max}+` : String(count);
+            badge.setAttribute('data-sth-count', String(count));
             badge.hidden = count === 0;
+        });
+
+        document.querySelectorAll(`[data-sth-badge-label="${name}"]`).forEach((element) => {
+            const text = element.getAttribute(count > 0 ? 'data-label-some' : 'data-label-none');
+            if (text) element.setAttribute('aria-label', text.replace(':n', String(count)));
         });
     }
 });
@@ -907,10 +930,327 @@ function dropBrokenPosters() {
     });
 }
 
+/* ---------------------------------------------------------------- live counts (bell + sidebar) */
+
+/*
+ | The bell and the sidebar counts were right at page load only. A notification that arrived later (the queue
+ | worker writes its row two to three seconds after the action that caused it), a registration that reached the
+ | Kepala Sekolah or a report a student sent never showed on a page that was already open (lead's test of
+ | 2026-10-09). The bell of the app layout now names one address,
+ |   <span data-sth-counts-url="…/notifikasi/jumlah" data-sth-counts-every="60">
+ | which answers {"badges": {"akun.notifikasi": 1, "kesiswaan.usulan": 2}} for the signed-in user. The answer goes
+ | through the same `sth-badges` event the screens use. No element, no request: the login, activation, password,
+ | 2FA and public pages and the phone layout never ask, and no page does when the server switched the checks off
+ | (STH_COUNTS_POLL_SECONDS=0).
+ |
+ | A check runs
+ |   - 2.5 s and 8 s after a Livewire action of the person (not after wire:poll, a refresh or a typed filter); a
+ |     new action starts both again, so a burst of clicks costs two checks;
+ |   - about every <seconds> (never under 30, never over 3600; ± 10 s, so the tabs of a whole school do not ask
+ |     in step), only while the tab is visible and was used in the last five minutes. After that the chain rests
+ |     until the next key, click, touch or scroll, or until the tab is shown again;
+ |   - 0.3 s after Back / Forward (wire:navigate puts the page back as it was left) and when the browser brings
+ |     a page back from its own back/forward cache.
+ | A check does not run in a hidden tab, offline or within 2 s of the last one. What can pass only holds the
+ | checks, for at least a minute, and the chain goes on: a 429 or a 5xx (for as long as the server asks with
+ | Retry-After: a deploy answers 503 while `artisan down` is on), no network, no answer within 15 s, an answer
+ | that is not ours. What waiting cannot change ends them: after two refused answers in a row (401 / 403: session
+ | over, account not allowed) no check runs until the next page load. Nothing is ever shown when a check fails:
+ | the person finds out on the next click, as before.
+ |
+ | It is a plain GET that changes nothing, but every answer saves the session and sends its cookie again. So a
+ | check never starts while a Livewire request is on its way, and a running one is cancelled the moment a
+ | Livewire request, a page change or a plain form (Keluar) starts or the page is left: a late answer must never
+ | put an older session cookie over the one an action just renewed. Livewire does not report the end of a request
+ | it cancelled, so a request counts as "on its way" for 30 s at most.
+ |
+ | A higher bell number is told to screen readers ("Ada notifikasi baru."); there is no toast. A Livewire
+ | component that carries data-sth-refresh-on="akun.notifikasi" (Akun › Notifikasi) is refreshed when the bell
+ | number changed, so its list shows the new row by itself.
+ */
+const BELL_KEY = 'akun.notifikasi';
+const COUNTS_AFTER_ACTION = [2500, 8000];
+const COUNTS_MIN_EVERY = 30;
+const COUNTS_MAX_EVERY = 3600; // a timer delay is 32 bits of milliseconds: above 24.8 days it can fire at once
+const COUNTS_JITTER = 10000;
+const COUNTS_MIN_GAP = 2000;
+const COUNTS_IDLE = 5 * 60 * 1000;
+const COUNTS_STALE = 10000;
+const COUNTS_MAX_FAILURES = 2;
+const COUNTS_THROTTLED = 60;
+const COUNTS_TIMEOUT = 15000;
+const COUNTS_WATCHDOG = 30000;
+const COUNTS_HOLD = { navigate: 3000, submit: 5000, leave: 60000 };
+
+const counts = {
+    timer: 0, // the background chain (one timeout at a time)
+    actionTimers: [], // the two checks after an action
+    controller: null, // the check that is running
+    lastAsked: 0,
+    lastInput: Date.now(),
+    holdUntil: 0, // page change, form submit, leaving: reset by the next page
+    throttledUntil: 0, // 429, 5xx, no network, no answer: kept across pages
+    failures: 0, // refused answers (401 / 403) in a row
+    resting: false, // the chain stopped because the tab was hidden or not in use
+    fromHistory: false,
+    requests: new Map(), // Livewire requests on their way → when they were sent
+};
+
+function countsSource() {
+    const element = document.querySelector('[data-sth-counts-url]');
+    const url = element?.getAttribute('data-sth-counts-url') || '';
+    if (!url || !sameOrigin(url)) return null;
+
+    const every = Number.parseInt(element.getAttribute('data-sth-counts-every') || '', 10);
+    const seconds = Math.min(COUNTS_MAX_EVERY, Math.max(COUNTS_MIN_EVERY, Number.isFinite(every) ? every : 60));
+
+    return { url, every: seconds * 1000 };
+}
+
+function bellCount() {
+    const bell = document.querySelector(`[data-sth-badge="${CSS.escape(BELL_KEY)}"]`);
+    const count = Number.parseInt(bell?.getAttribute('data-sth-count') || '', 10);
+
+    return Number.isFinite(count) ? count : null;
+}
+
+function livewireBusy() {
+    const now = Date.now();
+    for (const [request, since] of counts.requests) {
+        if (now - since > COUNTS_WATCHDOG || request?.isCancelled?.()) counts.requests.delete(request);
+    }
+
+    return counts.requests.size > 0;
+}
+
+function refreshOn(key) {
+    const ids = new Set();
+    document.querySelectorAll(`[data-sth-refresh-on="${CSS.escape(key)}"]`).forEach((element) => {
+        const id = element.closest('[wire\\:id]')?.getAttribute('wire:id');
+        if (id) ids.add(id);
+    });
+    if (!ids.size) return;
+
+    // Livewire.all() gives the components (Livewire.find() gives only the $wire proxy).
+    (window.Livewire?.all?.() || [])
+        .filter((component) => ids.has(component.id))
+        .forEach((component) => component.$wire?.$refresh());
+}
+
+function abortCounts() {
+    counts.controller?.abort();
+}
+
+function holdCounts(milliseconds) {
+    counts.holdUntil = Math.max(counts.holdUntil, Date.now() + milliseconds);
+    abortCounts();
+}
+
+async function askCounts() {
+    const source = countsSource();
+    const now = Date.now();
+
+    if (
+        !source ||
+        counts.controller ||
+        counts.failures >= COUNTS_MAX_FAILURES ||
+        document.visibilityState !== 'visible' ||
+        navigator.onLine === false ||
+        now < counts.holdUntil ||
+        now < counts.throttledUntil ||
+        now - counts.lastAsked < COUNTS_MIN_GAP ||
+        livewireBusy()
+    ) {
+        return;
+    }
+
+    const controller = new AbortController();
+    counts.controller = controller;
+    counts.lastAsked = now;
+
+    // A server that never answers must not keep every later check waiting behind this one.
+    let gaveUp = false;
+    let refused = false;
+    const patience = window.setTimeout(() => {
+        gaveUp = true;
+        controller.abort();
+    }, COUNTS_TIMEOUT);
+
+    try {
+        // Both headers matter: with them a guest gets a plain 401 (no "intended" address is stored for the next
+        // login) and the session does not remember this address as the previous page.
+        const response = await fetch(source.url, {
+            method: 'GET',
+            credentials: 'same-origin',
+            cache: 'no-store',
+            redirect: 'error',
+            signal: controller.signal,
+            headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+        });
+
+        // The server asks to wait (429) or cannot answer now (503 during `artisan down --retry=60`, 502 / 504 while
+        // the containers restart): hold at least a minute, the chain goes on.
+        if (response.status === 429 || response.status >= 500) {
+            const wait = Number.parseInt(response.headers.get('Retry-After') || '', 10);
+            counts.throttledUntil = Date.now() + Math.max(COUNTS_THROTTLED, Number.isFinite(wait) ? wait : 0) * 1000;
+
+            return;
+        }
+        if (!response.ok) {
+            refused = true; // 401 / 403 / 404: waiting does not change it
+            throw new Error(`counts ${response.status}`);
+        }
+
+        const badges = (await response.json())?.badges;
+        if (!badges || typeof badges !== 'object' || Array.isArray(badges)) throw new Error('counts answer');
+        if (controller.signal.aborted) return;
+
+        counts.failures = 0;
+
+        const before = bellCount();
+        window.dispatchEvent(new CustomEvent('sth-badges', { detail: { badges } }));
+        const after = bellCount();
+
+        if (before !== null && after !== null && after !== before) {
+            if (after > before) announce('Ada notifikasi baru.');
+            refreshOn(BELL_KEY);
+        }
+    } catch {
+        // A check that was cancelled on purpose is no failure.
+        if (gaveUp || !controller.signal.aborted) {
+            if (refused) {
+                counts.failures += 1; // session over / not allowed: two in a row end the checks of this page
+            } else {
+                // No network, no answer within 15 s, an answer that is not ours: it can pass, look again later.
+                counts.throttledUntil = Math.max(counts.throttledUntil, Date.now() + COUNTS_THROTTLED * 1000);
+            }
+        }
+    } finally {
+        window.clearTimeout(patience);
+        if (counts.controller === controller) counts.controller = null;
+    }
+}
+
+function scheduleCounts() {
+    window.clearTimeout(counts.timer);
+    counts.timer = 0;
+
+    const source = countsSource();
+    if (!source || counts.failures >= COUNTS_MAX_FAILURES) return;
+
+    counts.timer = window.setTimeout(tickCounts, source.every + (Math.random() * 2 - 1) * COUNTS_JITTER);
+}
+
+function tickCounts() {
+    counts.timer = 0;
+
+    if (document.visibilityState !== 'visible' || Date.now() - counts.lastInput > COUNTS_IDLE) {
+        counts.resting = true; // wakeCounts() starts the chain again
+
+        return;
+    }
+
+    askCounts();
+    scheduleCounts();
+}
+
+function wakeCounts() {
+    counts.lastInput = Date.now();
+    if (!counts.resting || document.visibilityState !== 'visible') return;
+
+    counts.resting = false;
+    if (Date.now() - counts.lastAsked > COUNTS_STALE) askCounts();
+    scheduleCounts();
+}
+
+function countsAfterAction() {
+    counts.actionTimers.forEach((timer) => window.clearTimeout(timer));
+    counts.actionTimers = COUNTS_AFTER_ACTION.map((delay) => window.setTimeout(askCounts, delay));
+}
+
+for (const type of ['pointerdown', 'keydown', 'touchstart', 'wheel']) {
+    document.addEventListener(type, wakeCounts, { capture: true, passive: true });
+}
+
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') wakeCounts();
+});
+
+// A page change: no check next to the request for the next page. Back / Forward brings the old numbers back.
+document.addEventListener('livewire:navigate', (event) => {
+    counts.fromHistory = event.detail?.history === true;
+    holdCounts(COUNTS_HOLD.navigate);
+});
+
+// A plain form leaves the page (Keluar, the password page). Livewire forms and the live search (which cancels
+// the submit before this runs) send a Livewire request, and that is watched below.
+document.addEventListener('submit', (event) => {
+    const form = event.target;
+    if (event.defaultPrevented || !(form instanceof HTMLFormElement)) return;
+    if (form.getAttributeNames().some((name) => name.startsWith('wire:submit'))) return;
+
+    holdCounts(COUNTS_HOLD.submit);
+});
+
+window.addEventListener('pagehide', () => holdCounts(COUNTS_HOLD.leave));
+
+window.addEventListener('pageshow', (event) => {
+    if (!event.persisted) return;
+
+    // Back from the browser's own page cache: the numbers are as old as the visit.
+    counts.holdUntil = 0;
+    counts.failures = 0;
+    counts.resting = false;
+    counts.lastInput = Date.now();
+    askCounts();
+    scheduleCounts();
+});
+
+// Every new page (first load and wire:navigate): its HTML is fresh, so the chain starts again without asking.
+function bootCounts() {
+    counts.holdUntil = 0;
+    counts.failures = 0;
+    counts.resting = false;
+    counts.lastInput = Date.now();
+    scheduleCounts();
+
+    if (counts.fromHistory) {
+        counts.fromHistory = false;
+        window.setTimeout(askCounts, 300);
+    }
+}
+
+function watchCounts() {
+    if (!window.Livewire?.hook || window.sth?.countsWatched) return;
+    window.sth.countsWatched = true;
+
+    // An action of the person: look again once the queue worker has had time to write the notification.
+    // Livewire's own calls ($refresh, $set, $commit) and wire:poll are no actions and start nothing.
+    window.Livewire.hook('commit', ({ commit, respond }) => {
+        const calls = Array.isArray(commit?.calls) ? commit.calls : [];
+        const acted = calls.some(
+            (call) => typeof call?.method === 'string' && !call.method.startsWith('$') && call?.metadata?.type !== 'poll',
+        );
+        if (acted) respond(countsAfterAction);
+    });
+
+    window.Livewire.interceptRequest?.(({ request, onSend, onFinish, onFailure, onCancel }) => {
+        const done = () => counts.requests.delete(request);
+        onSend(() => {
+            counts.requests.set(request, Date.now());
+            abortCounts();
+        });
+        onFinish(done);
+        onFailure(done);
+        onCancel(done);
+    });
+}
+
 /* ---------------------------------------------------------------- page load */
 
 function boot() {
     dropBrokenPosters();
+    bootCounts();
     document.querySelectorAll('[data-sth-toast]').forEach((toast) => {
         if (toast.dataset.armed) return;
         toast.dataset.armed = '1';
@@ -959,3 +1299,6 @@ document.addEventListener('livewire:init', watchThrottledRequests);
 
 watchLiveSearch();
 document.addEventListener('livewire:init', watchLiveSearch);
+
+watchCounts();
+document.addEventListener('livewire:init', watchCounts);

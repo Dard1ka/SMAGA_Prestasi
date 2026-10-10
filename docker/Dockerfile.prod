@@ -64,8 +64,9 @@ FROM nginxinc/nginx-unprivileged:1.30-alpine@sha256:ed04ec1ff34502c339ee5c3ae3f8
 # Security fixes that are newer than the pinned base image (CI: Trivy fails on fixable HIGH/CRITICAL). List only the
 # packages Trivy names, and drop one again once a newer base digest (Dependabot) already contains the fix.
 #   pcre2 10.49-r0: CVE-2026-103111 (added 2026-10-02)
+#   tiff 4.7.2-r0: CVE-2026-4775 (added 2026-10-10)
 USER root
-RUN apk upgrade --no-cache pcre2
+RUN apk upgrade --no-cache pcre2 tiff
 USER 101
 
 COPY docker/nginx/prod.conf /etc/nginx/conf.d/default.conf

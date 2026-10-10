@@ -32,7 +32,7 @@ consent flags (D-16, SECURITY §3m-7).
 ## 2. Sources of truth (read before changing behaviour)
 | file | content |
 |---|---|
-| `docs/DECISIONS.md` | decision log D-01…D-121 (D-121 = §D12, real mail from a local stack: Brevo + allowlist, *sementara*; D-45…D-61 = backlog wave + W4 product choices, *sementara*; D-62…D-65 = security hardening, *final*; D-66…D-77 = Q1 security/performance pass and the lead's follow-up choices; D-78…D-91 = §D6, the lead's choices after the hand test of 2026-10-04; D-92…D-102 = §D7, the rules changed by the fixes after the QA pass of 2026-10-05; D-103…D-108 = §D8, the lead's six requests of 2026-10-06 (wave M3) and the schema change of QA4; D-109…D-112 = §D9, the lead's answers after the retest of M3 on 2026-10-07 (QA5); D-113…D-116 = §D10, the explore round after PR 14 (QA6); D-117…D-120 = §D11, the visual direction v3 "Tinta dan Sampul", lomba covers, the staff copy rule and the school crest as the brand mark (UI3)), U-01…U-06, open questions §F. **Wins over everything.** |
+| `docs/DECISIONS.md` | decision log D-01…D-129 (D-122…D-129 = §D13, the lead's mail and notification test of 2026-10-09 (EM2): publication schedule = reminder only, appreciation start time and picker, "Lainnya" field, lomba change notice, live bell and counts, confirm dialogs, mail templates; §D13 also carries a dated addendum of Brevo facts for D-121; D-121 = §D12, real mail from a local stack: Brevo + allowlist, *sementara*; D-45…D-61 = backlog wave + W4 product choices, *sementara*; D-62…D-65 = security hardening, *final*; D-66…D-77 = Q1 security/performance pass and the lead's follow-up choices; D-78…D-91 = §D6, the lead's choices after the hand test of 2026-10-04; D-92…D-102 = §D7, the rules changed by the fixes after the QA pass of 2026-10-05; D-103…D-108 = §D8, the lead's six requests of 2026-10-06 (wave M3) and the schema change of QA4; D-109…D-112 = §D9, the lead's answers after the retest of M3 on 2026-10-07 (QA5); D-113…D-116 = §D10, the explore round after PR 14 (QA6); D-117…D-120 = §D11, the visual direction v3 "Tinta dan Sampul", lomba covers, the staff copy rule and the school crest as the brand mark (UI3)), U-01…U-06, open questions §F. **Wins over everything.** |
 | `docs/ARCHITECTURE.md` | binding contract: data model, enums, state machine, domain rules |
 | `docs/SECURITY.md` | threat model, top-10 risks §1, controls §3a–§3m (K1–K12), pre-release checklist §4 |
 | `docs/TALENT-FORM.md` | talent types/branches (seed source for `talent_types`, `talent_branches`) |
@@ -188,8 +188,11 @@ app/Policies/        one per model, deny by default     app/Http/  thin controll
 app/Livewire/<Role>/ full-page screens per role, mirror the mockup (docs/UI-MAP.md); Publik/Data = public data
 app/Providers/       AppServiceProvider, FortifyServiceProvider, NavigationServiceProvider (the one resolver of the
                      sidebar counts, D-100), ErrorPageServiceProvider (links of the error pages, redirect after login, D-101)
-app/Support/Navigation.php        sidebar menus per role; badge keys, counts come from the resolver (§7)
+app/Support/Navigation.php        sidebar menus per role; badge keys, counts come from the resolver (§7); `BELL` = the
+                                  key of the top bar bell (not a menu key, D-127)
 app/Support/Sampul.php            cover of a lomba: poster address or template drawing class (§7, D-118)
+app/Support/FirstName.php         the name a person is called by (mail greeting, "Halo, …" on the student home; D-129)
+resources/views/vendor/{notifications,mail}   the mail templates + theme sth.css (§6, D-129)
 app/Support/Leaderboard/PersonalRank.php   a student's own rank among active students (D-37)
 resources/views/components/sth/   design-system components <x-sth.*>; layouts in resources/views/layouts
 routes/web.php       public pages + auth       routes/siswa.php  /siswa, names siswa.*
@@ -214,6 +217,14 @@ Global middleware (appended in `bootstrap/app.php`): `SecurityHeaders`, and `Pre
 password, a code or a 2FA secret there, D-93). Every throttled route has its own counter: write
 `throttle:N,M,<prefix>` (QA5); a bare `throttle:N,M` is keyed by user / IP only and shares its counter with every other
 such route (the public pages once used up the QR letter check this way).
+`GET /notifikasi/jumlah` (`notifikasi.jumlah`, `NotificationCountController`, D-127) is the one address an open page
+asks for fresh counts: JSON `{"badges": {key: count}}` = the bell (`Navigation::BELL`) + the sidebar counts of the
+user's own menus (`NavigationServiceProvider::liveCounts()`, same policy checks and queries as the sidebar), numbers
+only. Middleware of the Notifikasi page (auth, active, activated, staff.2fa) + `throttle:30,1,lonceng`; `no-store`; not
+audited; `reflash()` (not a page view); a request that does not ask for JSON is redirected to `notifikasi.index`, so it
+is never a page to land on. `config('sth.counts.poll_seconds')` / `STH_COUNTS_POLL_SECONDS` (`config/sth.php`: 60;
+1–29 read as 30, above 3600 read as 3600, `MIN_SECONDS` / `MAX_SECONDS`; 0 = no page asks by itself and is the only
+way to switch the checks off), read through `NotificationCountController::pollSeconds()` / `pollUrl()`.
 `RememberLoggedOutAccount` (first in the `web` group, so it also sees a logout done by a later middleware) keeps the id
 of the account that logged out in the new guest session (`sth.logged_out_user`); when a **different** account logs in
 next on that browser, the intended address is dropped and it goes to its beranda (listeners for `Logout` / `Login` in
@@ -234,13 +245,39 @@ logs in through `POST /login` and expects a 403/404 on the next GET would see th
   `CompetitionStatus` · `RegistrationStatus` (`phase()`, `tone()`) · `ReportStatus` · `TalentStatus` · …
 - **Competition**: every create, by any role (siswa *usulan*, guru, staff, even Kesiswaan), starts at
   `menunggu_verifikasi`; only Kesiswaan/Admin publish it, verifier + time audited (D-27). Has
-  `registration_url` (D-28). URLs validated `https`, never fetched. Date rules in one place,
+  `registration_url` (D-28). URLs (`website_url`, `registration_url`; the usulan sheets and the Kesiswaan drawer use
+  the same rule): cleaned first (`ExternalUrl::normalize()`: whitespace of any kind at both ends, zero-width
+  characters and text-direction marks anywhere; nothing is added, no scheme), then validated `https` with one
+  sentence per refusal reason (`ExternalUrl::problem()`, `passes()` = no problem; the accepted set must not change,
+  `ExternalUrlTest` compares it with a copy of the old rule), never fetched (lead's mail test of 2026-10-09, no
+  decision number).
+  `organizer_type_other` (D-125) = the kind typed for "Jenis penyelenggara: Lainnya": max 60, kept only for that
+  type (`CreateCompetition::normalize()`), may be empty in the queue, required to publish
+  (`VerifyCompetition::missingFields()`), shown through `Competition::organizerTypeLabel()` ("Lainnya (Sanggar
+  seni)"), never a weight field. Date rules in one place,
   `App\Actions\Competitions\CompetitionDates` (D-98): `starts_on` is never before `registration_closes_at` (create,
   update, publish); publishing a lomba whose registration deadline or final date has passed needs an explicit yes
   (`VerifyCompetition::handle(…, bool $confirmPastDates = false)`, error key `CompetitionDates::PAST_KEY`); saving
   without publishing asks nothing. The rejection reason is **optional** (D-103; no minimum, at most 1.000
   characters, an empty one is stored as null): the submitter is told either way, with the reason or with
   `CompetitionRejected::NO_REASON` (`CompetitionRejected::for(Competition, ?string)`). `MIN_REJECT_NOTE` is gone.
+  A **published** lomba whose facts change on "Ubah lomba" (batas daftar, tanggal, pelaksanaan, tempat, peserta, the
+  two links, juknis; `App\Actions\Competitions\CompetitionChange::FACTS`, compared as a reader sees them) tells the
+  people attached to it, one notice per save per person (D-126, *sementara*): batas daftar and peserta → the
+  students of teams in `menunggu_konfirmasi`; the other facts → students and guru pembimbing of registrations up to
+  `berlangsung`, a new final date also `menunggu_laporan` (`CompetitionChanged`, `BinaanCompetitionChanged`; never the
+  actor, never a declined member, never all students, nothing for `menunggu_verifikasi`). Audit
+  `competition.facts_changed` with the changed fact keys and counts only; above `MAIL_LIMIT` = 50 recipients the
+  notice is bell only; no sentence prints a web address ("Link registrasi diganti."; "Tempat" is printed as typed,
+  but with a web address in it, `NoWebAddress::found()`, only as "Tempat diganti."; the field itself has no address
+  rule and its save is never refused). A new lomba field is a fact only when it is added to `FACTS`,
+  `snapshot()`, `statusesFor()` and `line()`. The info alert at the top of "Ubah lomba" counts the registered students
+  (`attachedStudents()`: members nobody declined, registrations up to `berlangsung`) and says in two sentences which
+  facts go to them and their guru and which only to teams still waiting for answers; which of them hear a fact is
+  `statusesFor()`. A "Periksa lomba" drawer whose lomba a colleague published meanwhile does not save on the first
+  "Simpan" (it would notify without that alert): `Kesiswaan\Lomba\Form::changedElsewhere($competition, bool
+  $expectsQueued)` (`save()` passes `formMode === 'verify'`, `saveAndPublish()` true, `open()` false) turns it into
+  "Ubah lomba" with a warning toast, and the second click saves and notifies.
 - **Registration state machine** (`RegistrationStatus`, 6-phase tracker *Jejak Prestasi*):
   `menunggu_konfirmasi` (1 Daftar) → `menunggu_kepsek` (2 Persetujuan) → `disetujui` | `ditolak`
   (note required) → `surat_terbit` (3 Surat tugas) → `berlangsung` (4 Lomba, scheduler on `starts_on`)
@@ -249,8 +286,8 @@ logs in through `POST /login` and expects a 403/404 on the next GET would see th
   `menunggu_kepsek` (lead, 2026-10-01). Transitions are defined once in
   `App\Domain\Registrations\RegistrationStateMachine` (`assertTransition()`, `phaseFor()`). Team
   members pick from existing accounts, each confirms personally; roster locks after approval. The ketua may withdraw an
-  invitation nobody answered while the team waits (`WithdrawInvitation`, D-115); the member search marks a student who
-  has not activated the account.
+  invitation nobody answered while the team waits (`WithdrawInvitation`, D-115; on the screen behind the dialog
+  `batal-undangan`, D-128); the member search marks a student who has not activated the account.
 - **Points** (`App\Domain\Points`): Tingkat × Capaian × Penyelenggara. Tingkat: internasional 100,
   nasional 80, provinsi 60, kota 40, sekolah 20. Capaian: juara 1 / emas 1,00 · juara 2 / perak 0,85 ·
   juara 3 / perunggu 0,70 · finalis 0,50 · **semifinalis 0,30 · penghargaan khusus 0,30** · peserta 0,10.
@@ -346,15 +383,41 @@ logs in through `POST /login` and expects a 403/404 on the next GET would see th
 - **Appreciation events**: confirmed as a whole (`appreciation_events.completed_at` / `completed_by`,
   `CompleteAppreciationEvent`); deletable only while not confirmed (`DeleteAppreciationEvent`, the
   scheduled students are told); a confirmed event takes no more prestasi (D-87). Scopes
-  `AppreciationEvent::open()` / `completed()`. One achievement is on at most one event (`RecordAppreciation`
+  `AppreciationEvent::open()` / `completed()`. An event has a day (`held_on`) and a start time (`held_time`, D-123;
+  null = made before 2026-10-10): the rules stay day-level and read `held_on` only, every text of "when" comes from
+  `App\Actions\Publications\EventWhen` (`long` "Senin, 12 Oktober 2026, 07.00 WIB" · `sentence` "… pukul 07.00 WIB" ·
+  `short` "12 Okt 2026, 07.00"; `parseTime`; one leftover: `RecordAppreciation::blockedMessage()` still prints the date
+  alone, backlog #81), and `CreateAppreciationEvent::handle(User, string $name,
+  DateTimeInterface|string $heldOn, string $heldTime)` needs the time ("Isi jam acara."; a passed time of today is
+  accepted, a past date is not). One achievement is on at most one event (`RecordAppreciation`
   refuses it while it is scheduled elsewhere or once it was appreciated); "Lepas dari acara"
   (`ReleaseAppreciation`, `AppreciationPolicy::delete`) takes one scheduled row off an unconfirmed event and
-  tells the student (D-97).
+  tells the student (D-97). "Tambah prestasi" on Apresiasi is a picker (D-124): search by student or lomba name, ticks,
+  `$limit` steps (`PICK_STEP` 10, `PICK_MAX` 100), one "Masukkan" = `RecordAppreciations::handle(User,
+  AppreciationEvent, iterable $achievements)`: at most 30, all or nothing in one transaction, one audit row and one
+  student notice per achievement, **one** `BinaanAppreciationNotice::scheduledMany()` per guru pembimbing for all
+  binaan of that call (*sementara*). `RecordAppreciation` (Publikasi panel) is its one-row entry with the same rules
+  and messages. The ticks are browser input: every id is loaded again through the eligibility query, and a stale or
+  forged tick writes nothing (`Apresiasi::PICK_STALE_MESSAGE`). The search box keeps the text as typed:
+  `Apresiasi::updatedSearch()` never writes a trimmed value back into `$search` (Livewire would put the server's value
+  into the focused input and eat the space before the next word); only `picker()` / `HumasQueries::searchAchievements()`
+  trim the term. "Masukkan" asks no question (D-128 lists it).
 - **Humas publication** (D-107): **STH draws no flyer.** Humas designs it in its own tools; the panel "Siapkan
   publikasi" shows "Data untuk flyer" from `App\Actions\Publications\FlyerData::of(Achievement)` (`rows` = one fact
   per line, `notes` = consent sentences outside the copied block; never points, NIS/NISN, or a student without
-  publish consent) and "Salin data" (`data-sth-copy`, §7). Caption, kanal, schedule, "Tandai dipublikasikan" and the
-  auto-publish job are unchanged. Who may be named in the Humas queues and by the auto-publish job:
+  publish consent) and "Salin data" (`data-sth-copy`, §7). **The schedule is only a reminder for Humas** (D-122):
+  at `scheduled_at` `RemindDuePublication` (job `RemindDuePublications`, every 5 minutes) notifies every active Humas
+  account once (`PublicationDue`), stamps `publications.reminded_at` (not fillable; emptied by every schedule and
+  re-schedule) and audits `publication.reminded` (by = scheduler). The row stays `terjadwal`, `published_at` stays
+  empty and the student is told nothing; the screens show it as "Lewat jadwal" (`Publication::isOverdue()` /
+  `scopeOverdue()`, `HumasQueries::overduePublications()`, sidebar count `humas.jadwal`). Only `PublishPublication`
+  ("Tandai dipublikasikan") sets `dipublikasikan` (`published_at` = the click) and tells the student; on the screen it
+  sits behind the dialog `Publikasi::PUBLISH_DIALOG` (`askPublish()` validates caption + channels, `publish()`
+  confirms; D-128). Every text that speaks of a student notice (the reminder `PublicationDue`, the alert "Jadwal sudah
+  lewat", the hint under the date, the dialog line, the toast) promises it only when
+  `PublishPublication::notifiesStudent()` is true; an alumnus with consent stays in the queue and gets none, so those
+  texts leave it out (`Publikasi::panel()['notifies']`, `PublicationDue::$notifiesStudent`; D-109). Who may be named in
+  the Humas queues and by the reminder:
   `App\Actions\Publications\NamedStudent` (consent, not deleted, not disabled; alumni allowed; QA10). `GenerateFlyer`, `FlyerRenderer` and `PublicationPolicy::generateFlyer` are
   deleted; `publications.flyer_file_id`, `FilePurpose::Flyer` and the flyer rule of `FilePolicy` stay for files
   made before 2026-10-06 (nothing writes or links them now; D-47, D-71 and D-75 only concern those files).
@@ -440,7 +503,23 @@ logs in through `POST /login` and expects a 403/404 on the next GET would see th
   clamp the public `$limit` in `render()`, button "Tampilkan lebih banyak"; see `Publik\Peringkat`, D-72).
   HTML is not gzipped in production (BREACH), so page weight is real.
 - Notification mails: build them with `App\Notifications\Support\PlainMailMessage`, never `new MailMessage`
-  (user text must not become Markdown links/images, D-69; `MailInjectionTest` checks it). Recipients: a frozen
+  (user text must not become Markdown links/images, D-69; `MailInjectionTest` checks it). Templates (D-129, look
+  *sementara*): the app's own `resources/views/vendor/notifications/email.blade.php` + components in
+  `resources/views/vendor/mail/{html,text}` + theme `html/themes/sth.css` (`config('mail.markdown')`: theme `sth`,
+  fixed). Every `toMail()` sets `->greeting(MailGreeting::for($notifiable))`, or `::student()` / `::staff()` when the
+  audience is fixed (`App\Notifications\Support\MailGreeting`): student "Halo <nama depan>," (`App\Support\FirstName`
+  = the first word that is not an abbreviation: "Drs. Bambang Hartono, M.Pd." → Bambang), staff and an account without
+  a role "Yth. <nama lengkap>,", unknown "Halo,". Never a greeting built by hand, never `->salutation()` (the template
+  prints no sign-off), at most one `->action()`: the button is the only link of a mail (the address under it and the
+  header are text; a mail without an action has no link), no image, no remote font, one footer sentence
+  (`PlainMailMessage::FOOTER`). The text part is plain text: greeting, lines, "Label: address", "--", footer; the
+  template prints greeting and lines through `PlainMailMessage::plain()`, so they stay text in every compile order
+  (`view:cache` included; `MailTemplateTest`). A notification with its own `toMail()` goes into `mailGreetingCases()`
+  of `MailGreetingTest` (a reflection check fails otherwise). The views are read as Markdown: keep every line flush
+  left and no blank line inside an HTML block. The OTP mail (`resources/views/auth/mail/otp-code*.blade.php`, plain
+  Blade) and `EmailBindingNotice` follow the same greeting, card and footer; the OTP view repeats the theme values by
+  hand, so change both. After editing a mail view or `config/mail.php`: `reload.bat` and restart `queue` +
+  `scheduler`. Recipients: a frozen
   account gets no mail and an unverified address only gets `AdminNotice` mails (`User::routeNotificationForMail()`, D-68).
 - Tests: Pest, `tests/Unit/Domain/<Area>`, `tests/Feature/<Area>`; factories produce fictional data
   only. Format with Pint (Laravel preset) before every hand-off. `Tests\TestCase` gives every Feature
@@ -503,9 +582,13 @@ logs in through `POST /login` and expects a 403/404 on the next GET would see th
   `wire:model` + `$errors`, table, tabs, tracker, rumus-poin, lomba-card, lomba-head, sampul, modal, toast, preview, …), each documented at the top of its file; contracts in
   `docs/dev-notes/W1-D.md`. **No `style=""` and no inline JS** (CSP nonce): use tokens/`w-pct-*`,
   `data-sth-*` hooks and Livewire events `sth-modal-open|close`, `sth-toast`. Hooks added by M1 (all in
-  `resources/js/app.js`): event `sth-badges {badges: {key: count}}` updates `[data-sth-badge="<key>"]` in the
-  sidebar without a reload (keys from `Navigation`, e.g. `tu.surat`; dispatch it after an action that changes
-  a queue); event `sth-form-invalid {form}` brings the error summary (`data-sth-error-summary`) or the first
+  `resources/js/app.js`): event `sth-badges {badges: {key: count}}` updates `[data-sth-badge="<key>"]` without a
+  reload: the sidebar counts (keys from `Navigation::BADGES`, e.g. `tu.surat`, `humas.jadwal`) and the bell of the top
+  bar (key `Navigation::BELL` = `akun.notifikasi`, D-127; its bubble is always in the DOM, hidden at 0;
+  `data-sth-badge-max="99"` prints "99+", `data-sth-count` keeps the number, `[data-sth-badge-label]` gets its
+  aria-label from `data-label-none` / `data-label-some`, ":n" = the number); dispatch it after an action that changes
+  a queue (Akun › Notifikasi sends the bell count on every render, so no "Tandai dibaca" needs a page load); event
+  `sth-form-invalid {form}` brings the error summary (`data-sth-error-summary`) or the first
   invalid field into view; `data-sth-live-search` on the top bar search form filters the list while typing
   when the form's action is the current page (sets the Livewire property named like the input, `q`; D-90).
   Since M2 the counts themselves come from **one resolver** on every page of `layouts::app`
@@ -515,6 +598,35 @@ logs in through `POST /login` and expects a 403/404 on the next GET would see th
   `NavigationServiceProvider::count()`. `app.js` also empties password fields and the account name field
   (`autocomplete="username"`: keep that attribute on a login field) after a plain form submit and on a page that Back
   or Forward brings back (D-93, D-102).
+  **Live counts** (D-127): the bell of `layouts::app` carries `data-sth-counts-url` / `data-sth-counts-every` (from
+  `NotificationCountController::pollUrl()` / `pollSeconds()`; absent for a guest, a preview user and when the switch is
+  0; `layouts::mobile`, `auth` and `public` have no bell and never ask). `app.js` asks that address 2.5 s and 8 s after a
+  Livewire action of the person (not after `wire:poll`, `$refresh`, `$set`), about every 60 s ± 10 s while the tab is
+  visible and was used in the last 5 minutes, and 0.3 s after Back / Forward; the answer goes through `sth-badges`.
+  Never next to a Livewire request; a running check is cancelled on a Livewire send, `livewire:navigate`, a plain form
+  submit and `pagehide`; two refused answers in a row (401 / 403: session over, account not allowed) stop it until
+  the next page; what can pass only holds it for at least a minute and the chain goes on: a 429 or a 5xx (as long as
+  `Retry-After` asks, so a deploy's `artisan down --retry=60` is waited out), no network, no answer within 15 s;
+  nothing is shown when it fails. A higher bell number is announced to screen readers ("Ada notifikasi baru."), never a toast.
+  `data-sth-refresh-on="akun.notifikasi"` on an element inside a Livewire component refreshes that component when the
+  bell number changed (Akun › Notifikasi). A new sidebar count is still a key in `Navigation` + one line in
+  `NavigationServiceProvider::count()`; `liveCounts()` answers it by itself.
+  **Confirm dialogs** (D-128): a question before an action is always an `<x-sth.modal>`, never `wire:confirm` / a
+  native `confirm()` (`tests/Feature/Support/NoNativeConfirmTest.php` scans every view). The one-click and bulk
+  actions swept in EM2 got one; not every action that notifies people asks (exceptions: D-128, among them Apresiasi
+  "Masukkan" and "Simpan perubahan" on a published lomba, an open question for the lead, §9). Two steps: the ask method (`ask…()`) authorizes, validates the fields the Action will check, stores
+  what is asked in a `#[Locked]` property and dispatches `sth-modal-open`; the confirm method acts only on that stored
+  question and is a **silent no-op** without it (no 404, so a double click never puts an error page over an action
+  that went through). The dialog names what happens and who is told, and claims a notice only when one goes out
+  (D-109); on a student screen it never states another student's account status ("Batalkan undangan?": "<Nama>
+  langsung diberi tahu." or the neutral "Undangan ini belum dijawab."; the line must stay a non-empty sentence). A
+  refusal the screen could not show under a field is also a warning toast (`Form::refuseWithdrawal()`), and a result
+  message is read from what the Action wrote, not from what the dialog predicted (the toast after a withdrawal adds
+  "Pendaftaran diteruskan ke Kepala Sekolah."; `RequestReportRevision::leaderCanResend()` decides whether the revision
+  banner may say "… bisa mengirim ulang laporan."). Built this way: `tolak-laporan` (Verifikasi hasil), `batal-undangan` (Daftar lomba), `pindahkan-talenta`
+  (bulk move), `tutup-lomba` (Kelola lomba), `impor-siswa` (Import siswa; the password page comes before the dialog),
+  `tandai-terbit` (Humas). Older confirm steps (`Talenta::reject()`, `Lomba\Index::publishPast()`) still answer 404
+  without their ask.
   **File preview popup** (M3, D-105): one dialog per page, `<x-sth.preview />` (`#sth-preview`), rendered once by
   `layouts::app` and `layouts::mobile` (not by `public` / `auth`: there a link simply downloads). Any link opens it
   with three attributes and keeps the download as its `href`: `data-sth-preview` (the inline address from
@@ -664,6 +776,41 @@ for production is **not** decided. Do not bring back: a local stack that can rea
 allowlist (the boot guard for `APP_ENV=local`), an allowlist entry that opens a whole domain, the allowlist mailer
 outside `APP_ENV=local`.
 
+The lead's mail test of 2026-10-09 (EM2), **D-122…D-129** (DECISIONS §D13, `docs/dev-notes/EM2.md`; "lead" = asked for
+in the test report, the rest was chosen by the coordinator and waits for the lead's look): D-122 the schedule of a
+publication is only a reminder for Humas, and only "Tandai dipublikasikan" sets `dipublikasikan` and tells the student
+(**final**; replaces the auto-publish half of D-47); D-123 an appreciation event has a start time, printed through
+`EventWhen` (**final**; completes D-87, whose rules stay day-level); D-124 "Tambah prestasi" is a search box with
+ticks and one "Masukkan" (**final**), and that one click sends each guru pembimbing one notice for all binaan in it
+(*sementara*; adjusts D-110); D-125 "Jenis penyelenggara: Lainnya" has a typed field (**final**; required to publish: confirmed by the lead on 2026-10-10; the format "Lainnya (…)" is *sementara*); D-126 a changed fact of a published lomba is told to the students
+registered for it and their guru pembimbing, never to all students (that audience: **final**, lead 2026-10-10; the fact list, the status scope and the limit of 50 are *sementara*); D-127 the bell and the sidebar
+counts follow the state without a page load (**final**; the 60 s interval and the switch `STH_COUNTS_POLL_SECONDS`
+are *sementara*; completes D-90 and D-100); D-128 "Tolak" on a laporan hasil asks first (**final**), and a question
+before an action is always the app's own dialog, never a native confirm: the one-click and bulk actions swept in EM2
+got one (those five dialogs: confirmed by the lead on 2026-10-10), and the senders left without a question on purpose are listed in D-128,
+among them Apresiasi "Masukkan" (up to 30 ticks) and "Simpan perubahan" on a published lomba (up to
+`CompetitionChange::MAIL_LIMIT` mails), both an open question for the lead (§9); D-129 mails come from the app's own templates: a text part without Markdown,
+one greeting rule, the button as the only link, the "Tinta dan Sampul" look (accepted by the lead on 2026-10-10 from the description, also "Yth. <nama lengkap>," for staff in the OTP mail; a real mail has not been seen yet, so details of the look may still change; completes D-117 and D-119; D-69 and D-120 stay). Without a number: link fields are cleaned before they are
+checked and every refusal has its own sentence. Do not bring back: a job that sets `dipublikasikan` or mails the
+student at the scheduled time, or `published_at` = the scheduled time; `wire:confirm` or a native confirm in any view,
+or a confirm step of these dialogs that answers 404 without its question; a one-click "Tolak" on a report, or a result
+banner that claims a notice nobody got (also "Ketua bisa mengirim ulang laporan." when the ketua cannot log in); a
+dialog on a student screen that states another student's account status, or a refusal of "Batalkan undangan" that
+only lands in an error block the screen no longer draws; a reminder, alert or hint that promises a student notice
+for a publication whose student gets none (an alumnus); a date-only appreciation event for new events, or a new
+"when" text that does not come from `EventWhen`; the single long select for "Tambah prestasi" or its silent cap of
+100 rows, or ticks that are dropped silently, or an `updatedSearch()` that writes a trimmed value back into "Cari
+prestasi" while it is typed in (three older `updatedQ` hooks still do that on their boxes: backlog #81); one guru notice per achievement inside one "Masukkan"; a bare "Lainnya" on a published lomba; one sentence
+for every refused link, or a link checked before it is cleaned, or `https://` added for the user; "Halo!", a greeting
+taken from the first word of a staff name ("Halo Drs.,"), a sign-off line, an `<img>` or a second link in a mail, or
+Markdown leftovers in the text part of a mail; a bell that only changes on a page load, a page reload after "Tandai
+semua dibaca", `wire:poll` for the counts, a background check next to a Livewire request, an interval set under 30 s
+or above 3600 s (a browser timer delay is 32 bits of milliseconds), a 5xx, a network error or a timeout that counts
+towards the two refusals that end the checks of a page, or a toast for a new notification; a mail or a bell row to
+all students for a lomba change, a web address in a notice (a lomba link, or one typed into "Tempat"), a "Periksa
+lomba" drawer that saves a lomba published meanwhile on the first click (it would notify students without the
+alert), or a toast that claims people were told when nobody was.
+
 Known stale text (do not "fix" code to match it): `docs/DEPLOY.md` §9 path A (Google Workspace relay) is not an option
 for the school (lead, 2026-10-08) and §9 has no Brevo path yet; SECURITY.md §0/§3a still say `sm4g4_DD-MM-YYYY`;
 DESIGN-SPEC-v2 §1 and the Admin-Pengaturan mockup still show 30 days (and the mockup's WICE deadline
@@ -697,6 +844,24 @@ generator (`W2-C.md`, `W2-A1.md`, `Q1.md`; list in `M3-E.md`); in SECURITY the m
 PDF" (§3m-2), kept as history next to a dated M3 note;
 `resources/fonts/LICENSE-DejaVu.txt` (names `GenerateFlyer`; backlog #72); outside the repo
 `hasil-uji/qa-2-peran-lain.md` (Q2-19) and `hasil-uji/cek-backlog-dan-panduan.md`.
+Stale since EM2 (D-122…D-129): the mockup boards `Humas-Publikasi`, `Kesiswaan-Verifikasi-Hasil` and
+`Kesiswaan-Kelola-Lomba` know none of it (no "Lewat jadwal", no start time, no picker, no confirm dialog, no
+"Lainnya" field; mockups are design history and are not edited); D-47's sentence "mengubah status ke `dipublikasikan`
+… memberi tahu siswa" and its Dampak line with `AutoPublishPublication(s)`, D-110 for the "dijadwalkan" notice,
+D-69's "lapisan kedua" and the message D-76 quotes ("… di kolom situs web."; `NoWebAddress::MESSAGE` now ends "… di
+kolom link.") (each carries a dated pointer to D-122 / D-124 / D-129 / 10 Okt 2026); `docs/dev-notes/B3.md` (the
+auto-publish Action, job and test, "demo `terjadwal` publications … flip to published") and the later notes that
+mention the auto-publish job (`QA9.md`, `QA10.md`); `B1.md` ("Bell count updates on page load only"), `M2.md` (Q2-26
+open) and `QA5.md` ("the bell after 'Tandai semua dibaca' updates (#63)": QA5 had retested the button that reloaded
+the page, the single-row "Tandai dibaca" was only fixed by D-127, so backlog row 63 called Q2-26 done too early);
+`W2-C.md` (`CreateAppreciationEvent::handle($actor, $name, $heldOn)` without the time; "nothing auto-publishes" was
+true then and is true again); in SECURITY the old texts of §3b
+("Isi email: nama depan saja": since D-129 the OTP mail and the binding notice greet a staff account "Yth. <nama
+lengkap>,", students keep the first name; a question for the lead in §9) and of §3m-1 ("Validasi": `url:https`,
+`max:2048`), kept as history next to a dated EM2 note; notification rows stored before 2026-10-10
+keep their old sentences (Humas: "Statusnya kini Dipublikasikan.", appreciation notices with a date only); outside
+the repo the lead's report `hasil-uji-email-sth-2026-10-09.html` (mails in the old template) and the mail test guide
+(step 3-6 names another path to "Koreksi" than the app has; the lead's note: Arsip surat › siswa › Koreksi).
 
 ## 9. Open questions (answers come from the school; don't guess in code)
 Decided by the lead on 2026-10-04, no longer open: the letter template (= the school's own files: one team
@@ -730,6 +895,33 @@ should the photo sentence be copied too, keep or drop M3-E's additions ("Lihat" 
 should alumni rows be offered in Apresiasi › Tambah prestasi.
 Question for the lead from QA6 (marked *sementara* in DECISIONS §D10): D-113 lets an issued letter verify before "Kirim";
 the other choice was "no Cetak or Download before Kirim".
+Questions for the lead from EM2 (the *sementara* parts of DECISIONS §D13; full list in `docs/dev-notes/EM2.md`,
+backlog #81). Bell (D-127): the first check after an action comes at 2.5 s and the queue writes the row after 2–3 s, so
+the bell often changes only at 8 s (write the bell row at once, or check at about 3.5 s?); a read-only session for
+the counts route; a message in a tab whose session ended; the sidebar key `siswa.lomba-saya` that nothing counts
+(give it a meaning or remove it). Lomba form (D-125, links): "Lainnya (…)" in the Excel column (a pivot splits
+"Lainnya"), the typed kind on the queue and catalog cards, one word for "Link resmi" / "Website resmi", no blocklist
+of domain endings (`.test` is accepted, `http://` refused), a name field for the capaian "Penghargaan khusus". Lomba
+change notice (D-126; "never to all students" is settled, lead 2026-10-10): the fact list, the status scope and the limit of 50; "ditambahkan" for a first link or juknis
+(today "diganti"); "Kesiswaan mengubah …" also when an Admin did; no merge window (three saves = three notices, a
+one-letter fix of "Tempat" notifies); should the info alert also show, or count, when only `menunggu_laporan`
+registrations exist (a moved final date is told to them); an input rule against a web address in "Tempat" (today
+only the notice leaves the value out); wanted or not: a notice to TU once letters exist, a notice when a lomba is
+closed, a question before saving a past deadline, refusing "tim" while individu registrations run, "Baru" /
+"Diperbarui" tags in the catalog. Humas (D-122): a daily nudge while a row stays "Lewat jadwal" (today one reminder
+per schedule, stamped even when no Humas account could log in); rename "Jadwalkan" to "Jadwalkan pengingat"; the
+dialog line for an alumnus. Apresiasi (D-123, D-124): "Ubah acara" (a wrong time or date needs delete + create);
+members of one team added in separate clicks still give the guru one notice per click; merge a student's own notices
+in one click; the caps 30 / 100; the general sentence for a single stale tick; the named rule (`NamedStudent`) for eligibility (#80). Confirm dialogs
+(D-128; the five swept dialogs stay, lead 2026-10-10): silent no-op also for `Talenta::reject()` and `Lomba\Index::publishPast()`
+(today 404 without the ask); "Siswa bisa …" vs "Ketua bisa mengirim ulang laporan."; a sentence for Kesiswaan when the
+ketua cannot log in (today the resend sentence is only left out); **should Apresiasi "Masukkan" ask above a few
+ticks, and "Simpan perubahan" ask on a published lomba with registered students?** Today neither asks: one "Masukkan"
+can queue up to 30 student mails plus the guru mails and each "Lepas dari acara" afterwards sends one more; one
+"Simpan perubahan" can send up to 50 mails (`CompetitionChange::MAIL_LIMIT`). Mails (D-129; look and greeting accepted by the lead on 2026-10-10, also "Yth. <nama lengkap>," for staff in the OTP mail and the binding notice, although a real mail has not been seen yet): the hidden inbox preview line in the OTP mail; button
+labels; an Auto-Submitted header. Provider: the production provider (DECISIONS §D13 addendum: Amazon SES, Postmark,
+Resend, or a mailbox on the school's hosting); on Brevo meanwhile: retention of logs and previews, a second sender for
+the OTP mails (a block is per sender), and one look at "Show original" of an OTP mail for the unsubscribe header.
 Public DNS check of 2026-10-01 (not yet confirmed with the school): the domain's DNS is on Cloudflare (`www`, `mail`,
 `webmail` proxied); the main website and the school mail are on Desnet shared hosting (SPF, DKIM and DMARC `p=none`
 exist), so apparently **not** on the Ubuntu server (§1 assumes the same host: confirm). No `prestasi` record exists
@@ -738,8 +930,8 @@ IPs, which breaks the per-IP login/OTP limits). The noreply mailbox would then b
 SMTP host must not be `mail.<domain>` (proxied) and its hourly send limit needs asking.
 
 ## 10. Status
-Last updated: 2026-10-09 (waves 1–2 done, W3-A integration pass, backlog wave B1–B6, W4 integration, D1 docs sync, CI green on GitHub, Q1 end-to-end/security/performance pass, PERF1 by S, M1 = the lead's 18 hand-test changes, M2 = fixes after the QA pass, QA4 by S, M3 = the lead's six requests of 2026-10-06, QA5 = fixes after the retest of M3, QA6 = explore round after PR 14, UI3 = visual direction v3 and the lead's review of it, QA7 = explore round after UI3, QA8 = explore round after PR 17, EM1 = real mail from a local stack, QA9 = explore round after EM1, QA10 = explore round after QA9). Update this section whenever a milestone moves.
-EM1 2026-10-08 (`docs/dev-notes/EM1.md`, D-121, commit `4766b56` on `feat/email-brevo-dev`, pulled into the lead's local `main` on 2026-10-09; no PR yet): the lead chose Brevo for development with a temporary Gmail sender. Built: the mailer `allowlist` (listed addresses → the real provider, everything else → Mailpit, local only), two boot guards (no allowlist outside local; in local no default mailer that delivers every mail), `sth:mail-test` says which way an address goes, a commented block in `.env.example`. The lead's first real mail through Brevo arrived (sender shown as `…@<id>.brevosend.com`, Gmail shows "Berhenti berlangganan"). No migration, no notification changed yet. Suite numbers: TEST-RESULTS in `docs/dev-notes/EM1.md`. Open: backlog #78.
+Last updated: 2026-10-10 (waves 1–2 done, W3-A integration pass, backlog wave B1–B6, W4 integration, D1 docs sync, CI green on GitHub, Q1 end-to-end/security/performance pass, PERF1 by S, M1 = the lead's 18 hand-test changes, M2 = fixes after the QA pass, QA4 by S, M3 = the lead's six requests of 2026-10-06, QA5 = fixes after the retest of M3, QA6 = explore round after PR 14, UI3 = visual direction v3 and the lead's review of it, QA7 = explore round after UI3, QA8 = explore round after PR 17, EM1 = real mail from a local stack, QA9 = explore round after EM1, QA10 = explore round after QA9, EM2 = fixes after the lead's mail and notification test of 2026-10-09). Update this section whenever a milestone moves.
+EM1 2026-10-08 (`docs/dev-notes/EM1.md`, D-121, commit `4766b56` on `feat/email-brevo-dev`; merged into `main` together with QA9 and QA10 by PR 19, merge commit `a2d21e1` of 2026-10-09): the lead chose Brevo for development with a temporary Gmail sender. Built: the mailer `allowlist` (listed addresses → the real provider, everything else → Mailpit, local only), two boot guards (no allowlist outside local; in local no default mailer that delivers every mail), `sth:mail-test` says which way an address goes, a commented block in `.env.example`. The lead's first real mail through Brevo arrived (sender shown as `…@<id>.brevosend.com`, Gmail shows "Berhenti berlangganan"). No migration, no notification changed yet. Suite numbers: TEST-RESULTS in `docs/dev-notes/EM1.md`. Open: backlog #78.
 M1 2026-10-05 (`docs/dev-notes/M1.md`, plain summary for the team in `catatan.md`; branch `feat/ui-uji-manual-m1`): full suite `--parallel --processes=4` → **1767 passed (8945 assertions)**, exit 0 (680 s); `pint --test` clean (610 files); `npm run build` OK; the four M1 migrations ran on the local MySQL. Dev page times after `reload.bat` + warm-up, all seven roles: 150–540 ms per menu, login 0.75–0.93 s (`catatan.md` §2). Not re-run after M1: the email scenario and the Playwright smoke (backlog).
 M2 2026-10-06 (`docs/dev-notes/M2.md` + `M2-A`…`M2-C`, D-92…D-101, plain summary in `catatan.md` §6; same branch): fixes for the 12 most important findings of the QA pass of 2026-10-05 (64 findings; the rest is backlog #57–#68) and the Trivy fix in `docker/Dockerfile.prod`; two migrations run on the local MySQL; suite numbers: TEST-RESULTS in `docs/dev-notes/M2.md`. PR 9 (M1 + M2) merged into `main` on 2026-10-06 (`b4b6f77`).
 Follow-up 2026-10-06 (D-102, `docs/dev-notes/M2.md` "Follow-up", branch `fix/auth-back-setelah-keluar`): the two leftovers of the browser check (account name back on the second Back; next login on the previous account's page) fixed, tested and checked in Chrome + Chromium. `dokumentasi.md` (repo root) lists the test data left in the lead's local database, which the lead chose not to wipe.
@@ -773,15 +965,15 @@ the team, "terlambat" belongs to the first report (and the screens say so), and 
 the screens follow the settings. A review agent read the commit; the two-tab case was checked in the browser as
 Kesiswaan, which also found that Verifikasi hasil kept the address of the first report (now it follows the shown
 report, hook `sth-address`). No migration. Suite numbers: TEST-RESULTS in `docs/dev-notes/QA8.md`.
-QA9 2026-10-09 (`docs/dev-notes/QA9.md`, committed on the lead's local `main` as `e80c9d2` after EM1, not pushed, no PR by
-the lead's request): five read-only agents explored (the allowlist mailer, the stale-screen pattern on every screen, Admin,
+QA9 2026-10-09 (`docs/dev-notes/QA9.md`, commit `e80c9d2` after EM1; merged into `main` by PR 19, merge commit `a2d21e1`
+of 2026-10-09): five read-only agents explored (the allowlist mailer, the stale-screen pattern on every screen, Admin,
 Talenta and Guru, public pages and consent), four implementer agents fixed in parallel, test-first, each on its own
 files. 32 fixes, among them: the nightly archive no longer turns a disabled student into a named public alumnus, a stale
 Talenta tab no longer moves a row twice, the student's review text stays out of the audit log, a mail sent by name can
 no longer bypass the allowlist, a disabled teammate's certificate is no longer public, and about fifteen screens answer a
 record changed elsewhere with a toast instead of a 403/404 page. No migration. Suite numbers: TEST-RESULTS in
 `docs/dev-notes/QA9.md`. Open: backlog #79.
-QA10 2026-10-09 (`docs/dev-notes/QA10.md`, committed on the lead's local `main` as `8b9762d` after QA9, not pushed): five read-only agents explored
+QA10 2026-10-09 (`docs/dev-notes/QA10.md`, commit `8b9762d` after QA9; merged into `main` by PR 19, merge commit `a2d21e1` of 2026-10-09): five read-only agents explored
 registrations and letters, login / reset / 2FA, the student screens, lomba / points / exports, notifications and scheduled
 jobs; four implementers fixed in parallel, test-first, plus four leftovers by the coordinator. About 30 fixes, among them: a
 classmate can no longer keep a student's account locked (K3) while 30 failures a day still close it to unknown devices,
@@ -790,6 +982,32 @@ guessed through other addresses, auto-publish no longer names a disabled student
 alert the Admins, letter mails no longer 404 after a correction, a lomba closed early no longer strands team invitations,
 the Kepala Sekolah PDF report has a row limit. No migration. Suite numbers: TEST-RESULTS in `docs/dev-notes/QA10.md`. Open:
 backlog #80.
+EM2 2026-10-10 (`docs/dev-notes/EM2.md`, D-122…D-129, branch `fix/em2-uji-email` from `main` at `a2d21e1` = `origin/main`, the merge of PR 19 with EM1, QA9 and QA10; PR 20, not merged yet):
+fixes for the lead's mail and notification test of 2026-10-09 (67 steps in 11 stories, 4 marked "bermasalah", 19 notes;
+the tested code was EM1, before QA9 and QA10). Every note was diagnosed in the code first, then seven implementer
+agents fixed in parallel, test-first, each on its own files. What changed: the bell and the sidebar counts follow the
+state without a page load (new JSON address `notifikasi.jumlah`, asked by `app.js`); link fields are cleaned before the
+check and every refusal names its reason; "Jenis penyelenggara: Lainnya" has a typed field; a changed fact of a
+published lomba is told to the students registered for it and their guru pembimbing; the publication schedule only
+reminds Humas (the auto-publish job is gone, "Lewat jadwal" on the screens, a count on the menu item Jadwal);
+appreciation events have a start time and "Tambah prestasi" is a search with ticks and one "Masukkan"; "Tolak" on a
+report and five more actions ask in the app's own dialog (no `wire:confirm` is left); notification and OTP mails come
+from the app's own templates with one greeting rule and one link. Three migrations (`competitions.organizer_type_other`,
+`publications.reminded_at`, `appreciation_events.held_time`). No code needed: 1-6 (the jumping lock times, fixed by
+QA10), 3-6 (the test guide named the wrong path), 5-4 (the third team member has no address yet), and the Brevo notes
+(provider limits: addendum in DECISIONS §D13). The three settings the test had changed on the lead's local database
+(weights, letter template, signature image) were put back. Review after the build: one independent reviewer per track
+and one for the seams between the tracks, every finding challenged by a skeptic before a fixer touched it: 13
+confirmed, all minor (12 fixed in code with tests, 1 in the docs), 1 rejected, the nits left are listed in the note.
+On the lead's dev stack on 2026-10-10: the three migrations ran on the local MySQL, the assets were rebuilt, php-fpm
+was reloaded, `queue` and `scheduler` were restarted. Browser check by the coordinator the same day, as the demo
+Kesiswaan account: the bell after "Tandai dibaca", the dialogs "Tolak laporan ini?" and "Tutup lomba ini?", the field
+"Jenis penyelenggara lainnya", the info alert of "Ubah lomba", Apresiasi (time field, picker, search), two sample
+mails in Mailpit. The dialog "Tandai sudah terbit?" was opened as the demo Humas account. Not checked in a browser: an overdue publication card and the Jadwal count, the Talenta, Import and "Batalkan undangan" dialogs,
+phone widths, the bell's background tick and Back / Forward, a real mail in Gmail on a phone. The email scenario was run on the
+isolated project (123 mails, 0 missing, 0 unexpected, 0 leaks, 0 failed jobs with the OTP test mode it expects).
+On PR 20 the PHP job, gitleaks and the Playwright smoke passed; the Docker job first failed on Trivy for the nginx base of the web image (`tiff`, CVE-2026-4775), fixed on the `apk upgrade` line of `docker/Dockerfile.prod`. Suite numbers: TEST-RESULTS in docs/dev-notes/EM2.md.
+The lead's answers of 2026-10-10 (chat): no notice to all students (D-126), the new mail look and greeting (D-129), the five swept dialogs (D-128) and "required before publishing" for the typed organizer kind (D-125) are accepted. Open: backlog #81.
 
 | area | owner | state (details in `docs/dev-notes/<ID>.md`) |
 |---|---|---|
@@ -825,8 +1043,9 @@ backlog #80.
 | QA6 explore round after PR 14 on 2026-10-07 (`docs/dev-notes/QA6.md`, D-113…D-116): confirmations (bulk approve, Kirim), letters (shared invitation fields, Koreksi from Arsip, QR before Kirim), talent (assessment date, long words), team invitations (withdraw, not activated), registrant count | – | built; no migration; browser check of Talenta (Kesiswaan); Kepala Sekolah, TU and student screens render-tested only |
 | QA7 explore round after UI3 on 2026-10-08 (`docs/dev-notes/QA7.md`): long words on every screen (`body` rule + `[overflow-wrap:anywhere]` columns), dashboard chart / TU tabs / Lomba saya letters / catalog paging on a phone, the phone tab on account pages, the WEBP cover message | – | built; no migration; 42 pages × 4 widths measured in headless Chromium with worst-case words; dialogs, Admin › Pengguna / Pengaturan and the PDFs not checked |
 | QA8 explore round after PR 17 on 2026-10-08 (`docs/dev-notes/QA8.md`): letter signature never alone on a page, stored file names follow the content, honest Humas toasts, a report decided elsewhere, queue team count, the late flag after a revision, report days / archive months from the settings | – | built; no migration; letter PDFs probed with long and extreme words, dialogs measured at 360 / 390 px; the agents' lower-confidence points are open questions in the note (#77) |
-| QA10 explore round after QA9 on 2026-10-09 (`docs/dev-notes/QA10.md`): login locks per account + address (K3), reset-code and TOTP limits per account, named rule for Humas / auto-publish, large-export alerts, letter links, honest notices, registration window after an early close, expired invitations, student screens, lomba form / Bobot / PDF cap / NoWebAddress, scheduler `--date` and overlap locks | – | committed on the lead's local `main` (`8b9762d`), not pushed; no migration |
-| QA9 explore round after EM1 on 2026-10-09 (`docs/dev-notes/QA9.md`): stale screens everywhere (toast instead of 403/404), archive vs disabled accounts, Talenta double move and honest toasts, audit-log privacy, named-mailer guard, public certificates, Admin resets / role changes / import password, public cache after a lomba edit | – | committed on the lead's local `main` (`e80c9d2`), not pushed; no migration; browser check of the Kesiswaan screens only (see the note) |
+| EM2 fixes after the lead's mail and notification test of 2026-10-09 (`docs/dev-notes/EM2.md`, D-122…D-129): live bell and sidebar counts (`notifikasi.jumlah`), link fields (clean first, one sentence per reason), "Jenis penyelenggara lainnya", lomba change notice, publication schedule = reminder only (`RemindDuePublications`, "Lewat jadwal"), appreciation start time (`EventWhen`) and picker (`RecordAppreciations`), confirm dialogs instead of one-click or native confirms (`NoNativeConfirmTest`), mail templates + `MailGreeting` | – (lead's request; touches user and S files) | built and reviewed (13 minor findings, all settled), PR 20 (branch `fix/em2-uji-email`, not merged yet); three migrations, run on the local MySQL on 2026-10-10; browser check by the coordinator of the bell, the Kesiswaan screens, Apresiasi, the Humas dialog "Tandai sudah terbit?" and two sample mails in Mailpit; the other dialogs, an overdue publication card, phone widths and a real mail in Gmail unseen; email scenario run on the isolated project (123 mails, 0 missing); Playwright smoke green in CI on PR 20; the lead accepted the four coordinator choices he was asked about (2026-10-10); open: backlog #81 |
+| QA10 explore round after QA9 on 2026-10-09 (`docs/dev-notes/QA10.md`): login locks per account + address (K3), reset-code and TOTP limits per account, named rule for Humas / auto-publish, large-export alerts, letter links, honest notices, registration window after an early close, expired invitations, student screens, lomba form / Bobot / PDF cap / NoWebAddress, scheduler `--date` and overlap locks | – | merged into `main` by PR 19 (`8b9762d`, merge commit `a2d21e1`, 2026-10-09); no migration |
+| QA9 explore round after EM1 on 2026-10-09 (`docs/dev-notes/QA9.md`): stale screens everywhere (toast instead of 403/404), archive vs disabled accounts, Talenta double move and honest toasts, audit-log privacy, named-mailer guard, public certificates, Admin resets / role changes / import password, public cache after a lomba edit | – | merged into `main` by PR 19 (`e80c9d2`, merge commit `a2d21e1`, 2026-10-09); no migration; browser check of the Kesiswaan screens only (see the note) |
 | UI3 visual direction v3 "Tinta dan Sampul" on 2026-10-07 and the lead's review of it on 2026-10-07/08 (`docs/dev-notes/UI3.md` + `UI3-A`, `UI3-B`, D-117…D-120): tokens + Public Sans + type scale, `<x-sth.sampul>` and `files.cover`, banner motif, component and phone-layout fixes, staff copy; then capsules (`<x-sth.lomba-card>`, `<x-sth.lomba-head>`, Portofolio), the school crest as brand mark, one way to each place, same-height boxes | – (lead's request; touches S and user files) | built; no migration; full suite green; every page checked in the browser at 1440 and 390 px, after the review also a text scan at 1366, 1280 and 360 px; backend owner still has to review D-118 (*sementara*); the school should give a larger or vector crest (D-120) |
 
 Verified 2026-10-01 (W3-A, details in `docs/dev-notes/W3-A.md`): `php artisan test` → **925 passed (3726 assertions)** twice in a
@@ -863,7 +1082,7 @@ M2 (2026-10-06): the "re-run" half of #46 is done (email scenario on 2026-10-05 
 (`hasil-uji/ringkasan-temuan.md` next to the repo; QA ids Q1-xx / Q2-xx; one line per finding in `docs/dev-notes/M2.md`).
 QA4 and M3 (2026-10-06) closed or changed parts of #39, #46, #55, #57, #63, #65, #66 and #67 (marked in the rows). Added by M3:
 #69–#74 = what the four M3 notes and QA4 leave open (`docs/dev-notes/M3.md`). QA5 (2026-10-07) closed or changed parts of
-#46, #56, #63, #67, #69 and #71; QA6 (same day, after PR 14) parts of #46, #61, #62, #65 and #66. QA8 (2026-10-08) closed the Q1-20 part of #62 and added #77. QA9 (2026-10-09) closed one part of #77 and added #79. QA10 (same day) added #80.
+#46, #56, #63, #67, #69 and #71; QA6 (same day, after PR 14) parts of #46, #61, #62, #65 and #66. QA8 (2026-10-08) closed the Q1-20 part of #62 and added #77. QA9 (2026-10-09) closed one part of #77 and added #79. QA10 (same day) added #80. EM2 (2026-10-10) closed or changed parts of #46, #63, #65, #75, #77 and #78 and added #81.
 
 | # | item | source | owner |
 |---|---|---|---|
@@ -882,7 +1101,7 @@ QA4 and M3 (2026-10-06) closed or changed parts of #39, #46, #55, #57, #63, #65,
 | 43 | `PdfScanner` (D-70): PDFs made on the lead's laptop with Word, Excel, PowerPoint, "Microsoft Print to PDF", Edge, Chrome and photo/scan images are accepted, hostile and oversized ones refused (19 files; results and a rerun script are in `uji-pdf/` next to the repo, not in git). Still to try: Canva downloads, the school's copier/scanner, phone scan apps, organizers' original certificates | Q1 | I |
 | 44 | A staff account reset by an Admin only gets account notices until its owner verifies the email again (D-68): add this to PANDUAN-PENGGUNA (Admin). Dev stack: after a Docker restart `queue`/`scheduler` come up before MySQL and fill `laravel.log` with connection errors until `start.bat` runs | Q1 | I |
 | 45 | Counterweight for D-79: flag "masih pakai kata sandi dari sekolah" in Status aktivasi (active student with `password_changed_at` null, or the audit event `activation.password_kept`) + a reminder to change it; a pending row can now show a masked email (bound, password step open). Add the D-79 risk to the D-14 risk-acceptance form. Since D-92 `users.temporary_password_issued_at` tells an Admin's temporary password from the school password, so the flag can name only the kept school passwords | M1-B, M2-A | user |
-| 46 | ~~Re-run `tests/E2E/support/email-scenario.php` and the Playwright smoke after M1~~ (done 2026-10-05, see above; not re-run with the M2 code unless TEST-RESULTS in `docs/dev-notes/M2.md` says so). Still open: scenario steps 9d/9e: talent review request (mail to every Kesiswaan) and restore (mail to the student), a step that deletes an appreciation event (mail to the scheduled students), and a step for `ReleaseAppreciation` (mail "Jadwal apresiasi berubah" to the student, D-97); the restore step could pass a target stage (D-104); since QA5 also the guru pembimbing mails of D-110 (report decisions, appreciation); since QA6 the mail "Undangan tim dibatalkan" (D-115). Neither the scenario nor the smoke was re-run with the M3 code by the M3 agents | M1, M1-D, M1-E, M2-B, M3-A | I |
+| 46 | ~~Re-run `tests/E2E/support/email-scenario.php` and the Playwright smoke after M1~~ (done 2026-10-05, see above; not re-run with the M2 code unless TEST-RESULTS in `docs/dev-notes/M2.md` says so). Still open: scenario steps 9d/9e: talent review request (mail to every Kesiswaan) and restore (mail to the student), a step that deletes an appreciation event (mail to the scheduled students), and a step for `ReleaseAppreciation` (mail "Jadwal apresiasi berubah" to the student, D-97); the restore step could pass a target stage (D-104); since QA5 also the guru pembimbing mails of D-110 (report decisions, appreciation; for the decisions and "Masukkan" see the EM2 sentences below); since QA6 the mail "Undangan tim dibatalkan" (D-115). Neither the scenario nor the smoke was re-run with the M3 code by the M3 agents. EM2 edited the scenario for its changes and ran it on 2026-10-10 (123 mails, 0 missing, 0 unexpected, 0 leaks, 0 failed jobs with `STH_OTP_TEST_MODE=true` on the isolated project; with a developer `.env` that has real OTP codes the two work mails of the unverified second Humas account are reported missing, so pin that flag on the E2E `app` service): 8b (`CreateAppreciationEvent` with a time), 8c (only the Humas reminder at the scheduled time), new 8d (the row is still `terjadwal`, then `PublishPublication` → the student's mail), 10j (greeting "Yth. …"), 11a (`RemindDuePublications`); its template check and leak scan depend on the new mail template. The review of EM2 added the four guru pembimbing mails the expected lists had been missing since D-110 (7b "Laporan binaan perlu revisi: …", 7d "Laporan binaan diverifikasi: …", 7f "Laporan binaan ditolak: …", 8b "Binaan masuk daftar apresiasi"), written by reading the notification classes and confirmed by that run. The guru mails for `ReleaseAppreciation` and `DeleteAppreciationEvent` still have no step. Still missing since EM2: a step that edits a published lomba with a running registration (D-126). When it is written: after 4c and before 6a; change the place only (a new batas daftar is told only to `menunggu_konfirmasi`); expect one "Info lomba berubah" per member of **every** registration on that lomba and one "Info lomba binaan berubah" to their guru, no lomba address in either; confirm the recipients with a real run | M1, M1-D, M1-E, M2-B, M3-A, EM2 | I |
 | 47 | Optional sidebar badge on "Talenta siswa" for open review requests (`TalentApplication::query()->reviewRequested()->count()`): since D-100 a badge key in `Navigation` + one line in `NavigationServiceProvider::count()` | M1-D, M2-C | S |
 | 48 | `<x-sth.modal size="xl">` (≈ 960 px) so the Status aktivasi class popup can show the email as its own column (today `lg`, 760 px) | M1-E | S |
 | 49 | `student.class_changed` (about 750 rows per yearly import): should it be in `SecurityEventSubscriber::AUDITED_EVENT_PREFIXES`, and in the history of `Admin\ArsipOtomatis::EVENTS` (it can move an archive date)? | M1-C | user |
@@ -899,9 +1118,9 @@ QA4 and M3 (2026-10-06) closed or changed parts of #39, #46, #55, #57, #63, #65,
 | 60 | ~~Top bar search (Q1-06, Q1-12, Q2-24): it does not filter the TU queue (`TataUsaha\SuratTugas` has no `q`) and points to `/tu` from Arsip surat; Kesiswaan's box says "Cari lomba atau siswa" but only finds lomba; two search boxes at once on Guru › Siswa binaan and TU › Arsip surat. One box per screen, label matching what it finds (D-90)~~ (done QA5 retest: TU queue `q`, labels, one box per screen) | QA | S |
 | 61 | ~~Letters (Q1-13, Q1-15, Q1-23): "Koreksi" from Arsip surat opens the siswa tab instead of the chosen letter; what TU typed for the siswa letter is not carried into the guru form; a letter revoked **before** it was sent answers "Tidak ditemukan" on `/verifikasi-surat` although TU could already print it~~ (done QA6: `?koreksi=`, D-116, D-113). Still for the lead: confirm D-113 (*sementara*) or choose "no Cetak before Kirim" | QA | S + user |
 | 62 | Data checks (QA): ~~a PNG named `.pdf` is accepted as a brochure (Q1-20)~~ (done QA8: accepted, stored as `.png`); ~~an assessment date in the past (2020) is accepted in Talenta (Q2-13)~~ (done QA6, D-114); the per-class table of Status aktivasi counts alumni (Q2-11) [user + S]; ~~Admin › Status sistem "Staf aktif" counts accounts that are not activated~~ (done QA5), and "Aktivitas Admin terbaru" shows fewer rows than its title (Q2-12; 8 of 8 on 2026-10-07) [S + user] | QA | user + S |
-| 63 | Account pages (QA): ~~no "Keluar" on `/aktivasi` (Q1-11, Q2-04)~~ (done QA5); "Email ini sudah dipakai akun lain." lets a signed-in account test which emails exist: limit the tries or answer neutrally (Q1-19, Q2-06) [user]; ~~a download that asks for the password does not continue after the confirmation, and that page has no "Batal" (Q2-18)~~ (done QA4); ~~closing the Status aktivasi class popup with X or a click outside leaves `?kelas=` in the address (Q2-16)~~ (done QA5, `on-close`); ~~the bell count stays until a reload after "Tandai dibaca" (Q2-26)~~ (updates, QA5 retest) | QA | S + user |
+| 63 | Account pages (QA): ~~no "Keluar" on `/aktivasi` (Q1-11, Q2-04)~~ (done QA5); "Email ini sudah dipakai akun lain." lets a signed-in account test which emails exist: limit the tries or answer neutrally (Q1-19, Q2-06) [user]; ~~a download that asks for the password does not continue after the confirmation, and that page has no "Batal" (Q2-18)~~ (done QA4); ~~closing the Status aktivasi class popup with X or a click outside leaves `?kelas=` in the address (Q2-16)~~ (done QA5, `on-close`); ~~the bell count stays until a reload after "Tandai dibaca" (Q2-26)~~ (done EM2, D-127; the QA5 retest that had struck this through checked "Tandai semua dibaca", which reloaded the page on purpose; browser check of the new client side: #81) | QA | S + user |
 | 64 | Admin › Log audit (Q2-33, Q2-35): ~~16 events still show their raw key~~ (done QA5: every key the app writes has a label, a test scans `app/`), the Subjek column shows ids, details are raw JSON (the new properties `previous_expires_at`, `past_dates`, `student_note_from_draft` too), the CSV uses commas while the Status aktivasi CSV uses semicolons | QA, M2-B | S + user |
-| 65 | Forms and lists (QA) [S unless noted]: ~~validation messages appear one at a time in Usulkan lomba, Kelola lomba, Tambah pengguna, Jadwalkan, Buat acara (Q1-08, Q2-28)~~ (done QA5 for Tambah pengguna, Jadwalkan, Buat acara; Kelola lomba and Usulkan lomba already showed every error); "Tambah prestasi" is one select without search (Q2-20); ~~one long word from a student makes Kesiswaan › Talenta scroll sideways (Q2-29)~~ (done QA6); Kepala Sekolah › Persetujuan: ~~"Pilih semua" does not follow the selection~~ (follows it on 2026-10-07), ~~bulk approve and TU's "Kirim" have no confirmation (Q1-10)~~ (done QA6); native `confirm()` in Import and "Tandai dipublikasikan" (Q2-34); ~~tour highlight about 23 px off~~ (within 1 px on 2026-10-07; the tour also no longer comes back on reload, QA5), last button "Lanjut" on step 5 of 5 before the closing card (Q1-09); ~~"Kirim ulang" countdown jumps every 5 s (Q1-24)~~ (done QA5); the note for the guru pembina is cut at about 300 letters (Q2-21); ~~Humas › Arsip: empty Flyer column (Q2-19)~~ (done M3-E: the column is gone, the last cell is "Lihat"); Database prestasi: no sorting (Q2-23, see #32) | QA | S |
+| 65 | Forms and lists (QA) [S unless noted]: ~~validation messages appear one at a time in Usulkan lomba, Kelola lomba, Tambah pengguna, Jadwalkan, Buat acara (Q1-08, Q2-28)~~ (done QA5 for Tambah pengguna, Jadwalkan, Buat acara; Kelola lomba and Usulkan lomba already showed every error); ~~"Tambah prestasi" is one select without search (Q2-20)~~ (done EM2, D-124: search, ticks, one "Masukkan"); ~~one long word from a student makes Kesiswaan › Talenta scroll sideways (Q2-29)~~ (done QA6); Kepala Sekolah › Persetujuan: ~~"Pilih semua" does not follow the selection~~ (follows it on 2026-10-07), ~~bulk approve and TU's "Kirim" have no confirmation (Q1-10)~~ (done QA6); ~~native `confirm()` in Import and "Tandai dipublikasikan" (Q2-34)~~ (done EM2, D-128 / D-122: both ask in an `<x-sth.modal>`, also Kelola lomba "Tutup"; `NoNativeConfirmTest` keeps `wire:confirm` out); ~~tour highlight about 23 px off~~ (within 1 px on 2026-10-07; the tour also no longer comes back on reload, QA5), last button "Lanjut" on step 5 of 5 before the closing card (Q1-09); ~~"Kirim ulang" countdown jumps every 5 s (Q1-24)~~ (done QA5); the note for the guru pembina is cut at about 300 letters (Q2-21); ~~Humas › Arsip: empty Flyer column (Q2-19)~~ (done M3-E: the column is gone, the last cell is "Lihat"); Database prestasi: no sorting (Q2-23, see #32) | QA | S |
 | 66 | Import and teams (QA): ~~the Excel template's NIS/NISN columns are not Text (leading zeros are lost)~~ (done QA4, No HP too) and the "rows to check" file lacks NISN and birth date (Q1-21) [user + S]; ~~a student who is not activated can be invited to a team, and an open invitation cannot be withdrawn (Q1-22)~~ (done QA6, D-115: the search marks "belum aktivasi akun", the ketua withdraws an unanswered invitation) | QA | user + S |
 | 67 | Wording (Q1-27, Q1-28, Q2-36; together with #56): ~~"peramban" in the mail footer~~ (done QA5, also the session list), ~~"Daring · Daring"~~ (done QA5), ~~mixed "Anda" / "kamu" for staff~~ (done UI3, D-119), ~~internal codes such as "(D-08)" on Admin screens~~ (done QA5; the last one, "(U-04)", UI3), "1000" vs "1.000". Speed and phone width (ringkasan §5, §6): Kepala Sekolah › Laporan PDF 8.7 s and letter PDF 1.7–3.4 s without a "sedang dibuat" text (~~flyer PNG 3.3 s~~: no longer applies, STH makes no flyer since D-107), portfolio PDF 878 kB for one empty page (fonts not subset), ~~Kepala Sekolah dashboard scrolls 107 px sideways at phone width (Q2-31)~~ (no longer reproduces at 390 px, QA5 retest), touch targets under 44 px (Q2-32; see also #53) | QA | S + user |
 | 68 | Small leftovers of the M2 notes: optional demo rows (a pending student with less than 72 h left, a talent row with a `student_note_draft`); optional `data-sth-back` hook for a real history back on the error pages ("Kembali" is a plain link to the Referer); an unknown address has no session, so its 404 links to `/` even for a signed-in visitor; Fortify's login keeps the guest session row from before the login (no `user_id`); the temporary password an Admin types for staff is not checked against the common-password list; `docs/dev-notes/W1-D.md` still shows the old badge resolver signature | M2-A…M2-C | user + S |
@@ -911,12 +1130,13 @@ QA4 and M3 (2026-10-06) closed or changed parts of #39, #46, #55, #57, #63, #65,
 | 72 | Delete `resources/fonts/{DejaVuSans.ttf,DejaVuSans-Bold.ttf,LICENSE-DejaVu.txt}` (1.4 MB): only the deleted `FlyerRenderer` read them, the PDFs use dompdf's own DejaVu. Optional: GD's `--with-freetype` in both Dockerfiles was only needed to draw flyer text | M3-E | S + I |
 | 73 | The E2E seed (`tests/E2E/support/setup-app.sh` runs with `APP_ENV=local`) now renders about 98 demo PDFs (about 30 s on the lead's laptop): set `STH_DEMO_FILES=placeholder` on the E2E app service if that time matters in CI. A real `migrate:fresh --seed` on MySQL with the realistic documents has not been run yet (the seeder's refresh ran only in a test) | M3-D | I |
 | 74 | Small leftovers of the M3 notes: one JPG evidence in the demo data so the image path of the popup can be tried by hand; `FileController::previewType()` could move to `App\Models\File`; Admin › Log audit has no "preview" label for `file.downloaded` with `inline: true`, prints the new property `rejected_from` (`talent.restored`) and a `filters.tahap` with several statuses (`talent.exported`) as stored, and keeps the label `publication.flyer_generated` for old rows only (with #64); the comment in `livewire/partials/resume-download.blade.php` still says the call is a literal "export"; Esc does not close the popup while keyboard focus is inside the PDF viewer; `letters.printed` is null for demo letters; whether Tailwind reads `database/seeders/demo/*.blade.php` as a source was not checked; the invented signer names of the sample certificates were not searched for real namesakes; a dompdf PDF with an SVG can differ by one unused font entry between an empty and a filled `storage/app/pdf-fonts` (harmless unless letter hashes are compared) | M3-A, M3-C, M3-D, M3-E | user + S |
-| 75 | Small leftovers of QA6: `w2cDraft()` in `tests/Feature/TataUsaha/SuratTugasTest.php` prints the fixed letter date 2026-10-01 and `IssueLetters` refuses a date older than one year, so those tests fail from 2027-10-02 (move to a date relative to today, with the month / year assertions); one line on "Batalkan undangan" and its mail in PANDUAN-PENGGUNA (Siswa); a browser click-through of the QA6 dialogs (Kepala Sekolah "Setujui terpilih", TU "Kirim", Arsip › Koreksi, "Batalkan undangan"), render-tested only | QA6 | S + I |
+| 75 | Small leftovers of QA6: `w2cDraft()` in `tests/Feature/TataUsaha/SuratTugasTest.php` prints the fixed letter date 2026-10-01 and `IssueLetters` refuses a date older than one year, so those tests fail from 2027-10-02 (move to a date relative to today, with the month / year assertions); ~~one line on "Batalkan undangan" and its mail in PANDUAN-PENGGUNA (Siswa)~~ (done EM2 for the button, its dialog and its messages, §2; the mail the invitee gets is still not named there); a browser click-through of the QA6 dialogs (Kepala Sekolah "Setujui terpilih", TU "Kirim", Arsip › Koreksi, "Batalkan undangan"), render-tested only | QA6 | S + I |
 | 76 | UI3 leftovers (`docs/dev-notes/UI3.md`): the backend owner's review of D-118 (`files.cover` is not audited and may stay in the browser for a day; posters only after login; old cover files stay when a cover is replaced: `UpdateCompetition` never calls `StoreUpload::discard()`); the cover in the preview popup on Kesiswaan › "Periksa lomba" and Guru › Lomba; posters on public pages; Publik › Prestasi per bidang opens with an empty right panel; menu name vs page title (Kepsek, TU, Humas; QA7 also found Dashboard / Dashboard prestasi, Arsip / Arsip publikasi, Import siswa / Import data siswa) and the formal words in staff mails (`UI3-B.md`); `docs/dev-notes/W1-D.md` and the mockups show the old look. From QA7: Portofolio shows the drawing, not the poster, for a lomba Kesiswaan closed (`CompetitionPolicy::view`; most achievements belong to closed lomba: allow the cover of a lomba the student took part in?); `Admin\Ringkasan` and `Siswa\Beranda` still build unused `links`; the medal icon on Siswa › Peringkat is white on gold (Beranda uses ink) | UI3, QA7 | user + S |
-| 77 | Lower-confidence points of the QA8 reviews, read in the code, not reproduced (`docs/dev-notes/QA8.md`, "Requests for the lead"): lowering the archive months archives every student whose new date passed that night (show the count before saving); a stale consent form can overwrite a newer consent, and a `terjadwal` publication from before a withdrawn consent comes back with a new consent; "Bukan saya?" (`email_notices`) survives an Admin reset; binding an email of a deleted account may answer a 500; "Tolak" in Verifikasi hasil has no confirmation; the first report's evidence files stay after a revision; a disabled ketua leaves nobody who may report; `perlu_revisi` counted as open on the Kesiswaan dashboard; no own tracker state for `ditolak` / `dibatalkan`; ~~the same ketua in two tabs still gets a 403 on the second "Laporkan hasil"~~ (done QA9) | QA8 | user + S |
-| 78 | Mail delivery after EM1 (`docs/dev-notes/EM1.md`): real flows through the allowlist (activation with a real code, one registration end to end, an HTML notification in Gmail and on a phone); then the notification work (wording, which notices stay mail and which are in-app only, a daily quota guard that keeps room for OTP, failed mails visible to Admin). For production, still to decide (D-121): the provider (Brevo adds an unsubscribe header to transactional mail and blocks who uses it, rewrites links, keeps mail previews; switching these off needs an Enterprise plan), the sender `noreply@…` (needs the school's DNS), the school's consent to a third-party processor. @I: pin the E2E project's mail settings to Mailpit (`tests/E2E/compose.e2e.yaml`) and give DEPLOY §9 the chosen path | EM1 | user + I |
+| 77 | Lower-confidence points of the QA8 reviews, read in the code, not reproduced (`docs/dev-notes/QA8.md`, "Requests for the lead"): lowering the archive months archives every student whose new date passed that night (show the count before saving); a stale consent form can overwrite a newer consent, and a `terjadwal` publication from before a withdrawn consent comes back with a new consent (since D-122 it only gets its late reminder to Humas, nothing is published by itself); "Bukan saya?" (`email_notices`) survives an Admin reset; binding an email of a deleted account may answer a 500; ~~"Tolak" in Verifikasi hasil has no confirmation~~ (done EM2, D-128); the first report's evidence files stay after a revision; a disabled ketua leaves nobody who may report (since EM2 the revision banner no longer says "Ketua bisa mengirim ulang laporan." then, `RequestReportRevision::leaderCanResend()`; the dead end itself stays); `perlu_revisi` counted as open on the Kesiswaan dashboard; no own tracker state for `ditolak` / `dibatalkan`; ~~the same ketua in two tabs still gets a 403 on the second "Laporkan hasil"~~ (done QA9) | QA8 | user + S |
+| 78 | Mail delivery after EM1 (`docs/dev-notes/EM1.md`): ~~real flows through the allowlist (activation with a real code, one registration end to end, an HTML notification in Gmail and on a phone)~~ (the lead's test of 2026-10-09: 67 steps over every role through Brevo, 105 mails that day; its findings = EM2; whether the OTP test mode was off for the codes is not recorded); then the notification work: ~~the mail look, greeting and footer~~ (done EM2, D-129: own templates, one greeting rule, one link; the look waits for the lead, #81; the wording of the sentences themselves is unchanged, #76), which notices stay mail and which are in-app only (`CompetitionChanged` / `BinaanCompetitionChanged` already have a bell-only mode, `$mail`, that a mail budget can reuse), a daily quota guard that keeps room for OTP, failed mails visible to Admin. For production, still to decide (D-121 and the Brevo addendum in DECISIONS §D13): the provider (confirmed on Brevo's own pages on 2026-10-10: the unsubscribe header cannot be removed below the Enterprise plan, an address that uses it is blocked for that sender, OTP included, and tracking cannot be switched off; logs can be kept 1–24 months and previews not stored; candidates: Amazon SES, Postmark, Resend, or a mailbox on the school's hosting), the sender `noreply@…` (needs the school's DNS), the school's consent to a third-party processor. @I: pin the E2E project's mail settings to Mailpit (`tests/E2E/compose.e2e.yaml`) and give DEPLOY §9 the chosen path | EM1, EM2 | user + I |
 | 79 | Questions from QA9 (`docs/dev-notes/QA9.md`, "Requests for the lead"): an audited "Aktifkan lagi" for a disabled account (a reset of a disabled account is refused now, so a mistaken disable cannot be undone); should "Pulihkan" bring back as disabled an account the old archive job archived from `disabled` (local demo data may hold such rows); Talenta: forward into Peserta pembinaan without a guru pembina (D-109 covers only the restore), alumni rows in the pipeline; points shown with one decimal (12,75 and 12,80 both read 12,8) and tingkat weights rounded on Portofolio; winners per lomba mix live lomba labels with snapshot points; one helper for the "named" rule (`PublicAchievements::mapRow()` + `FilePolicy::appearsByName()`); a queued mail cancelled by `LocalMailGuard` ends as a success; "Sudah diarsipkan" sorts by `archive_at`; DECISIONS D-61 still quotes "Akunmu belum punya peran" | QA9 | user + S |
 | 80 | Questions from QA10 (`docs/dev-notes/QA10.md`, "Requests for the lead"): re-invite a member whose invitation expired after the deadline was extended (D-50); a registration that reaches "menunggu laporan" late is late from day one; the Laporan PDF cap of 250 rows; refuse a lower "Maks anggota" only when a team is already bigger; login trade-offs (30-failure account lock reachable from one address in ~10 h for new devices, 20 reset codes a day can be used up from 2 addresses so only an Admin reset helps (longer codes / signed links), a shared PC stays a known device, a NAT flood makes everyone wait up to 60 s, alerts past 5 an hour only logged, code-to-browser link in the cache); a `number_key` column for letter numbers (migration); `final_on` moved later after "menunggu laporan"; `VerifyReport` reads the weight version outside its transaction; pending-activation gurus offered as pembimbing; Humas › Arsip and "Tambah prestasi" still use consent only; the named rule in three places | QA10 | user + S |
+| 81 | What EM2 leaves open (`docs/dev-notes/EM2.md`). **Browser checks** [I + S]. Seen by the coordinator on 2026-10-10 in the app's browser as the demo Kesiswaan account: the bell ("Tandai dibaca" lowers it at once, two checks after the action, a JSON answer, no console error), the dialogs "Tolak laporan ini?" and "Tutup lomba ini?", the field "Jenis penyelenggara lainnya" and the info alert of "Ubah lomba", Apresiasi (three validation messages at once, the time on the event card, the picker and a search with a tick kept), two sample mails in Mailpit. Still open: the rest of the live counts in a real browser (steps in the note: the request headers, "Tandai semua dibaca" without a page load, the Notifikasi list and another role's sidebar count rising by themselves, the background tick, no request from a hidden or unused tab, Back / Forward, Keluar, the switch at 0, a blocked address that comes back by itself and two 401 answers that still stop it); the new link hints; the toast of "Ubah lomba" and the two-click path of a stale "Periksa lomba" drawer; Humas: an overdue card and its panel, the dialog "Tandai sudah terbit?" at 360 / 390 px, the count on the menu item Jadwal; Apresiasi at 360 / 1280 / 1366 px: 31 ticks, a team added with one click, and typing "nadia ", a pause, then "putri" into "Cari prestasi"; the Talenta bulk dialog, the Import dialog and the student's "Batalkan undangan" dialog (with #75); every phone width; one real mail of each kind (with a button, without one, OTP) in Mailpit (HTML and Text tab) and in Gmail on a phone in dark mode, Outlook desktop. **E2E** [I]: the Playwright smoke passed in CI on PR 20 and the email scenario ran (#46). No bell test exists yet: a Playwright bell test must mock `**/notifikasi/jumlah` (the E2E stack has no queue worker), and a step that waits for network idle after a Livewire action now sees two more requests (2.5 s and 8 s later). **Dev stack**: done on the lead's stack on 2026-10-10 (the three migrations on the local MySQL, `npm run build`, `reload.bat`, restart of `queue` + `scheduler`); on any other checkout of this code the same four steps are needed (a worker that was not restarted still holds the deleted `AutoPublishPublications` class and the old mail config; a queued payload of that job fails once). **Product choices**: the EM2 list in §9. **Left by the review** (nits read in the code, not fixed; one line each in the note) [user + S]: the same trimmed write-back on a live search box in `Humas\Arsip::updatedQ`, `TataUsaha\ArsipSurat::updatedQ` and `Kesiswaan\Lomba\Index::updatedQ` (trim where the query is built, not in the hook) [S]; `Siswa\Pendaftaran\Form::undang()` puts its refusal on `members`, which the screen no longer draws once the team went to the Kepala Sekolah; a count check can still run beside the next page's request after a Livewire full-page redirect, and the ±10 s jitter also applies at the 30 s floor; the typed "Lainnya" kind is dropped only when the input carries `organizer_type`; `ExternalUrl::normalize()` also removes ZWNJ / ZWJ inside an IDN host; `LinkFieldsTest` would pass with the hint on one link field only; a first link or juknis is announced as "diganti"; `publishingId` survives a dismissed dialog; `publication.reminded` is audited also when no Humas account was told; a stale tick the screen no longer shows can stay in `$picked`; `AppreciationEvent::startsAt()` and `BinaanAppreciationNotice::scheduled()` have only tests as callers; `MailGreetingTest` expects "Halo Bambang," for the Kepala Sekolah on student-audience notices; the Jadwal count can run ahead of the open Jadwal / Publikasi page; `RecordAppreciation::blockedMessage()` prints the event date without its time. **Not built** [user + S]: "Ubah acara" for an appreciation event; a start time for Talenta "Jadwal asesmen"; an appreciation line on a student or guru screen; for a lomba change: a notice to TU once letters exist, a notice on close, a question before saving a past deadline, the individu → tim guard, catalog tags; the six-digit code fields still refuse a code pasted with spaces. **Small leftovers**: `Siswa\Pendaftaran\Form` repeats three refusal sentences of `WithdrawInvitation` and the "team is ready" rule of `ConfirmMembership` to word its dialog (a static helper on those Actions would be the one source) [user]; the demo event is still named "Upacara Senin, 5 Oktober 2026" (its notices repeat the date), and the event already in the lead's database has no start time; a closed demo lomba in the lead's database keeps a bare "Lainnya" (no backfill); optional `humas.jadwal` in the Humas preview badges of `resources/views/dev/components.blade.php`; the unused "Whoops!" line in `lang/id.json`; a paratest run prints no summary when a failure's stack points into a compiled view of a worker that already removed its folder (read the names with `--tmp-dir` and the per-worker JUnit files) | EM2 | user + S + I |
 
 ## 11. Team, ownership and agent protocol
 - **user** (lead, backend core, 40%): `app/{Enums,Models,Domain,Actions,Policies,Http,Providers,

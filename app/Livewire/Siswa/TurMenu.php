@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Livewire\Siswa;
 
 use App\Models\User;
+use App\Support\FirstName;
 use Illuminate\Contracts\View\View;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
@@ -71,7 +72,7 @@ class TurMenu extends Component
     public function render(): View
     {
         return view('livewire.siswa.tur-menu', [
-            'firstName' => strtok(trim((string) auth()->user()?->name), ' ') ?: 'kamu',
+            'firstName' => FirstName::of(auth()->user()?->name) ?? 'kamu',
             'desktop' => self::desktopTips(),
             'mobile' => self::mobileTips(),
         ]);

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Notifications\Registrations;
 
 use App\Models\Registration;
+use App\Notifications\Support\MailGreeting;
 use App\Notifications\Support\PlainMailMessage;
 use Illuminate\Notifications\Messages\MailMessage;
 
@@ -20,14 +21,14 @@ class MemberResponded extends RegistrationNotification
     {
         $mail = (new PlainMailMessage)
             ->subject(($this->accepted ? 'Anggota ikut tim: ' : 'Anggota menolak: ').$this->competitionName())
-            ->greeting('Halo '.self::firstName($notifiable).',')
+            ->greeting(MailGreeting::student($notifiable))
             ->line($this->message());
 
         if (! $this->accepted) {
             $mail->line('Tim tetap lanjut bila anggota lain sudah konfirmasi. Kalau tim jadi kurang orang, undang anggota pengganti sebelum batas pendaftaran, atau batalkan pendaftaran.');
         }
 
-        return $mail->action('Lihat pendaftaran', $this->url())->salutation('SMAGA Talent Hub');
+        return $mail->action('Lihat pendaftaran', $this->url());
     }
 
     /** @return array<string, mixed> */

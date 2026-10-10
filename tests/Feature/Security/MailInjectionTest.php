@@ -139,7 +139,9 @@ it('keeps user text as plain text in the mail', function (string $hostile, strin
         ->and((string) $mail->getTextBody())->toContain($hostile);
 })->with('hostile text')->with(['usulan lomba', 'undangan tim', 'pendaftaran ditolak', 'revisi laporan', 'surat dicabut', 'peringatan akun']);
 
-it('still renders the greeting, the lines, the action button and the fallback link', function (): void {
+// D-129: the published template (resources/views/vendor). The verifier is staff, so the greeting is formal; the
+// address under the button is text, never a second link; the text part carries no Markdown ("# Halo," before).
+it('still renders the greeting, the lines, the action button and the fallback address', function (): void {
     $name = 'Olimpiade Sains Nasional (OSN) 2026 - "Tingkat Kota" & Provinsi, 40,8 poin *)';
     $competition = F::pendingCompetition(F::user(F::student()), ['name' => $name]);
     $url = route('kesiswaan.lomba.index', ['tab' => 'verifikasi']);
@@ -149,13 +151,18 @@ it('still renders the greeting, the lines, the action button and the fallback li
     $text = (string) $mail->getTextBody();
 
     expect($mail->getSubject())->toBe('Usulan lomba baru: '.$name)
-        ->and($html)->toMatch('~<h1[^>]*>Halo,</h1>~')
+        ->and($html)->toMatch('~<h1[^>]*>Yth\. Hendra Kusuma, S\.Pd\., M\.Si\.,</h1>~')
         ->and($html)->toMatch('~<a href="'.preg_quote(e($url), '~').'" class="button button-primary"[^>]*>Buka antrean</a>~')
-        ->and($html)->toMatch('~<span class="break-all"[^>]*><a href="'.preg_quote(e($url), '~').'"~')
+        ->and($html)->toMatch('~<span class="break-all"[^>]*>'.preg_quote(e($url), '~').'</span>~')
+        ->and(preg_match_all('~<a\b~i', $html))->toBe(1)
+        ->and(mailInjectionTargets($html))->toBe([$url])
         ->and(substr_count($html, '<p'))->toBeGreaterThanOrEqual(4)
         ->and(mailInjectionVisible($html))->toContain('Nadia Putri Anindya mengusulkan '.$name.'. Periksa penyelenggara dan link-nya sebelum dipublikasikan.')
-        ->and(mailInjectionVisible($html))->toContain('SMAGA Talent Hub Jika tombol "Buka antrean" tidak bisa diklik')
-        ->and($text)->toContain('# Halo,')
+        ->and(mailInjectionVisible($html))->toContain('Tombol "Buka antrean" tidak bisa dibuka? Salin alamat ini ke browser:'.$url)
+        ->and(mailInjectionVisible($html))->not->toContain('Jika tombol')
+        ->and(explode("\n", $text)[0])->toBe('Yth. Hendra Kusuma, S.Pd., M.Si.,')
+        ->and(preg_match('/^\s*#/m', $text))->toBe(0)
+        ->and($text)->not->toContain('](')
         ->and($text)->toContain('Nadia Putri Anindya mengusulkan '.$name.'.')
         ->and($text)->toContain('Buka antrean: '.$url);
 });

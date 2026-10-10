@@ -7,17 +7,22 @@ use App\Actions\Competitions\UpdateCompetition;
 use App\Actions\Competitions\VerifyCompetition;
 use App\Actions\Reports\VerifyReport;
 use App\Enums\CompetitionStatus;
+use App\Enums\RegistrationStatus;
+use App\Enums\RegistrationType;
 use App\Enums\ResultType;
 use App\Enums\RoleName;
 use App\Livewire\Kesiswaan\Lomba\Form;
 use App\Livewire\Kesiswaan\Lomba\Index;
 use App\Livewire\Publik\Data\PublicAchievements;
 use App\Models\Competition;
+use App\Notifications\Competitions\BinaanCompetitionChanged;
+use App\Notifications\Competitions\CompetitionChanged;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
 use Livewire\Livewire;
 use Tests\Feature\Kesiswaan\KesiswaanFixtures as F;
+use Tests\Feature\Kesiswaan\LombaChangeFixtures as C;
 
 /*
  * QA9: Kesiswaan › Kelola lomba with a second Kesiswaan or Admin account working on the same lomba. A card or drawer
@@ -118,7 +123,8 @@ it('tells a second account that a lomba was already closed or rejected when it c
 
     expect($competition->fresh()->status)->toBe(CompetitionStatus::from($state));
 })->with([
-    'close, closed' => ['close', 'ditutup', 'Lomba ini sudah ditutup. Daftar sudah diperbarui.'],
+    // D-128: "Tutup" is askClose() now (it opens the confirm dialog); close() alone does nothing (LombaTutupDialogTest).
+    'close, closed' => ['askClose', 'ditutup', 'Lomba ini sudah ditutup. Daftar sudah diperbarui.'],
     'edit, closed' => ['edit', 'ditutup', 'Lomba ini sudah ditutup. Daftar sudah diperbarui.'],
     'edit, rejected' => ['edit', 'ditolak', 'Lomba ini sudah ditolak. Daftar sudah diperbarui.'],
 ]);
@@ -190,6 +196,83 @@ it('keeps the typed changes when another account published the lomba before "Sim
     // "Simpan" now saves the change on the published lomba.
     $component->call('save')->assertHasNoErrors()->assertDispatched('sth-toast', message: 'Perubahan lomba tersimpan.', tone: 'success');
     expect($competition->fresh()->name)->toBe('Lomba Karya Tulis Ilmiah Fiktif Nasional 2026');
+});
+
+// Since D-126 a save on a published lomba tells its registered students and their guru. A "Periksa lomba" drawer
+// that stayed open while a colleague published the lomba therefore gets the same stop as "Simpan & publikasikan":
+// nothing is saved or sent on the first "Simpan", the drawer turns into "Ubah lomba" with the hint, the second saves.
+it('asks for a second "Simpan" when another account published the lomba while "Periksa lomba" was open (EM2)', function (): void {
+    $competition = Competition::factory()->create([
+        'name' => 'Lomba Karya Tulis Ilmiah Fiktif 2026', 'mode' => 'luring', 'location' => 'Kota Semarang',
+    ]);
+    $component = Livewire::actingAs($this->kesiswaan)->test(Form::class)
+        ->call('open', $competition->getKey())
+        ->assertSet('formMode', 'verify')
+        ->assertDontSee('sedang terdaftar di lomba ini');
+
+    qa9LombaDecide($this, $competition, 'dipublikasikan');
+    $guru = F::staff(RoleName::Guru, 'Pak Hendra Kusuma');
+    $ketua = F::student('Raka Pradipta', 'XII-2');
+    C::registration($competition->fresh(), RegistrationStatus::MenungguKepsek, $ketua, $guru, RegistrationType::Individu);
+
+    $component->set('form.location', 'Aula SMA Negeri 3 Semarang')
+        ->call('save')
+        ->assertOk()
+        ->assertDispatched('sth-toast', message: 'Lomba ini sudah dipublikasikan. Perubahan belum tersimpan, periksa lalu simpan.', tone: 'warning')
+        ->assertDispatched('lomba-saved')
+        ->assertNotDispatched('sth-modal-close')
+        ->assertSet('formMode', 'edit')
+        ->assertSet('form.location', 'Aula SMA Negeri 3 Semarang')
+        ->assertSee('Ubah lomba')
+        ->assertSee('1 siswa sedang terdaftar di lomba ini')
+        ->assertSee('Simpan perubahan')
+        ->assertDontSee('Simpan & publikasikan');
+
+    // Not assertNothingSent(): the colleague's publish itself told the submitter.
+    expect($competition->fresh()->location)->toBe('Kota Semarang');
+    Notification::assertNotSentTo($ketua->user, CompetitionChanged::class);
+    Notification::assertNotSentTo($guru, BinaanCompetitionChanged::class);
+
+    $component->call('save')
+        ->assertHasNoErrors()
+        ->assertDispatched('sth-modal-close', id: Form::DIALOG)
+        ->assertDispatched('sth-toast', message: 'Perubahan lomba tersimpan. 1 siswa dan 1 guru pembimbing diberi tahu.', tone: 'success');
+
+    expect($competition->fresh()->location)->toBe('Aula SMA Negeri 3 Semarang');
+    Notification::assertSentTo($ketua->user, CompetitionChanged::class);
+    Notification::assertSentTo($guru, BinaanCompetitionChanged::class);
+});
+
+it('still saves a queued lomba with one "Simpan" from "Periksa lomba" (EM2)', function (): void {
+    $competition = Competition::factory()->create(['location' => 'Kota Semarang']);
+
+    Livewire::actingAs($this->kesiswaan)->test(Form::class)
+        ->call('open', $competition->getKey())
+        ->assertSet('formMode', 'verify')
+        ->set('form.location', 'Aula SMA Negeri 3 Semarang')
+        ->call('save')
+        ->assertHasNoErrors()
+        ->assertDispatched('sth-modal-close', id: Form::DIALOG)
+        ->assertDispatched('sth-toast', message: 'Perubahan lomba tersimpan.', tone: 'success');
+
+    expect($competition->fresh()->location)->toBe('Aula SMA Negeri 3 Semarang')
+        ->and($competition->fresh()->status)->toBe(CompetitionStatus::MenungguVerifikasi);
+    Notification::assertNothingSent();
+});
+
+it('opens "Ubah lomba" on a published lomba right after a "Periksa lomba" drawer, without the warning (EM2)', function (): void {
+    $queued = Competition::factory()->create();
+    $published = F::competition();
+
+    Livewire::actingAs($this->kesiswaan)->test(Form::class)
+        ->call('open', $queued->getKey())
+        ->assertSet('formMode', 'verify')
+        ->call('open', $published->getKey())
+        ->assertOk()
+        ->assertSet('competitionId', $published->getKey())
+        ->assertSet('formMode', 'edit')
+        ->assertDispatched('sth-modal-open', id: Form::DIALOG)
+        ->assertNotDispatched('sth-toast');
 });
 
 // Public pages ------------------------------------------------------------------------------------------------------

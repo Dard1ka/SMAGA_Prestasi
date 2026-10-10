@@ -120,7 +120,10 @@ final class DemoSeeder extends Seeder
         'bagas' => ['Bagas Wirayudha', 'XII-5', '222223009', '0064792251', '2006-08-07', false, true],
     ];
 
-    /** Organizer presets: [name, organizer type, weight category, event status]. */
+    /**
+     * Organizer presets: [name, organizer type, weight category, event status, kind typed for "lainnya" (optional,
+     * `organizer_type_other`, D-125)].
+     */
     private const ORGANIZERS = [
         'puspresnas' => ['Puspresnas', 'pemerintah_pusat', 'A', 'puspresnas'],
         'pemkot' => ['Pemerintah Kota Semarang', 'pemerintah_daerah', 'B', 'pemerintah_non_puspresnas'],
@@ -143,7 +146,7 @@ final class DemoSeeder extends Seeder
         'iysa' => ['IYSA', 'yayasan_lembaga', 'D', 'non_pemerintah'],
         'eduversal' => ['Eduversal', 'perusahaan_swasta', 'D', 'non_pemerintah'],
         'swasta' => ['Penyelenggara swasta', 'perusahaan_swasta', 'D', 'non_pemerintah'],
-        'sanggar' => ['Sanggar Seni Pelajar Semarang', 'lainnya', 'E', 'non_pemerintah'],
+        'sanggar' => ['Sanggar Seni Pelajar Semarang', 'lainnya', 'E', 'non_pemerintah', 'Sanggar seni'],
     ];
 
     /**
@@ -566,6 +569,7 @@ final class DemoSeeder extends Seeder
                 'bidang' => Bidang::from($bidang),
                 'organizer_name' => $organizerName,
                 'organizer_type' => OrganizerType::from($organizerType),
+                'organizer_type_other' => self::ORGANIZERS[$organizer][4] ?? null,
                 'weight_category' => WeightCategory::from($category),
                 'event_status' => EventStatus::from($eventStatus),
                 'level' => Level::from($level),
@@ -793,6 +797,7 @@ final class DemoSeeder extends Seeder
             'bidang' => Bidang::from($bidang),
             'organizer_name' => $organizerName,
             'organizer_type' => OrganizerType::from($organizerType),
+            'organizer_type_other' => self::ORGANIZERS[$organizer][4] ?? null,
             'weight_category' => WeightCategory::from($category),
             'event_status' => EventStatus::from($eventStatus),
             'level' => Level::from($level),
@@ -844,6 +849,9 @@ final class DemoSeeder extends Seeder
                 'status' => $status,
                 'channels' => $channels,
                 'scheduled_at' => $scheduledAt,
+                // D-122: a schedule is only a reminder. A demo row whose time is already past counts as reminded, so a
+                // fresh local stack does not mail the demo Humas by itself; the row shows as "Lewat jadwal".
+                'reminded_at' => $scheduledAt !== null && CarbonImmutable::parse($scheduledAt)->isPast() ? $scheduledAt : null,
                 'caption' => $status === PublicationStatus::Siap ? null : sprintf(
                     'Selamat kepada %s (%s) atas %s di %s!',
                     $studentName,
@@ -858,7 +866,8 @@ final class DemoSeeder extends Seeder
             ]);
         }
 
-        $event = AppreciationEvent::query()->create(['name' => 'Upacara Senin, 5 Oktober 2026', 'held_on' => '2026-10-05']);
+        // The event has a start time (D-123): the notices and the cards print "…, 07.00 WIB".
+        $event = AppreciationEvent::query()->create(['name' => 'Upacara Senin, 5 Oktober 2026', 'held_on' => '2026-10-05', 'held_time' => '07:00:00']);
 
         foreach (['fiksi26:raka', 'o2snprov26:fajar'] as $key) {
             Appreciation::query()->create([

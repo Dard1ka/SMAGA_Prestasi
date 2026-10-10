@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Actions\Publications\AutoPublishPublication;
+use App\Actions\Publications\RemindDuePublication;
 use App\Enums\PublicationStatus;
 use App\Enums\UserStatus;
 use App\Livewire\Humas\HumasQueries;
@@ -22,6 +22,9 @@ use Tests\Feature\Humas\HumasFixtures;
  * deleted, account not disabled; an alumnus stays named). Before, the auto-publish job published a disabled student's
  * scheduled card and mailed every Humas "upload sekarang" with the name, while the public pages hid that student
  * (D-30). The `?pilih=` link of that mail answered a full-screen 404 once the card left the queue. Fictional data only.
+ *
+ * EM2 (lead, 2026-10-10; D-122): the job no longer publishes, it only reminds Humas (RemindDuePublication). The named
+ * rule is unchanged: no reminder with the name of a hidden student; an alumnus with consent is still reminded about.
  */
 
 uses(RefreshDatabase::class);
@@ -56,13 +59,14 @@ function qa10NoticeHideStudent(Publication $publication, string $state): void
     };
 }
 
-it('does not auto-publish a hidden student and mails nobody (QA10)', function (string $state): void {
+it('does not remind Humas about a hidden student and mails nobody (QA10)', function (string $state): void {
     $publication = qa10NoticeScheduled();
     qa10NoticeHideStudent($publication, $state);
 
-    expect(AutoPublishPublication::due(CarbonImmutable::now())->pluck('id')->all())->not->toContain($publication->getKey())
-        ->and(app(AutoPublishPublication::class)->handle($publication->getKey()))->toBeNull()
+    expect(RemindDuePublication::due(CarbonImmutable::now())->pluck('id')->all())->not->toContain($publication->getKey())
+        ->and(app(RemindDuePublication::class)->handle($publication->getKey()))->toBeNull()
         ->and($publication->fresh()->status)->toBe(PublicationStatus::Terjadwal)
+        ->and($publication->fresh()->reminded_at)->toBeNull()
         ->and(PublicationPolicy::eligible($publication->fresh()))->toBeFalse();
 
     Notification::assertNothingSent();
@@ -73,21 +77,28 @@ it('keeps a hidden student out of the Humas queue and the badge (QA10)', functio
     $hidden = HumasFixtures::publication(studentName: 'Fajar Ramadhan', competitionName: 'OPSI 2026');
     qa10NoticeHideStudent($hidden, $state);
 
+    $hidden->forceFill(['status' => PublicationStatus::Terjadwal, 'scheduled_at' => now()->subDay()])->save();
+
+    // Neither count names the hidden card: not the queue, not the overdue schedule (D-122).
     expect(HumasQueries::visiblePublications()->pluck('id')->all())->toBe([$shown->getKey()])
-        ->and(HumasQueries::badges($this->humas)['humas.publikasi'])->toBe(1);
+        ->and(HumasQueries::badges($this->humas)['humas.publikasi'])->toBe(1)
+        ->and(HumasQueries::badges($this->humas)['humas.jadwal'])->toBe(0);
 
     Livewire::actingAs($this->humas)->test(Publikasi::class)
         ->assertSee('Raka Pradipta')
         ->assertDontSee('Fajar Ramadhan');
 })->with(['disabled account' => ['disabled'], 'deleted account' => ['deleted account']]);
 
-it('still auto-publishes an alumnus with consent (QA10 guard)', function (): void {
+it('still reminds Humas about an alumnus with consent (QA10 guard)', function (): void {
     $publication = qa10NoticeScheduled();
     $publication->achievement->student->user->forceFill(['status' => UserStatus::Archived])->save();
 
-    expect(app(AutoPublishPublication::class)->handle($publication->getKey()))->not->toBeNull()
-        ->and($publication->fresh()->status)->toBe(PublicationStatus::Dipublikasikan)
-        ->and(HumasQueries::visiblePublications()->whereKey($publication->getKey())->exists())->toBeTrue();
+    expect(app(RemindDuePublication::class)->handle($publication->getKey()))->not->toBeNull()
+        // D-122: reminded, not published. The card waits as "lewat jadwal" for "Tandai dipublikasikan".
+        ->and($publication->fresh()->status)->toBe(PublicationStatus::Terjadwal)
+        ->and($publication->fresh()->reminded_at)->not->toBeNull()
+        ->and(HumasQueries::visiblePublications()->whereKey($publication->getKey())->exists())->toBeTrue()
+        ->and(HumasQueries::overduePublications()->whereKey($publication->getKey())->exists())->toBeTrue();
 });
 
 it('answers an old ?pilih= link of a card that left the queue with a warning toast, not a 404 (QA10)', function (): void {

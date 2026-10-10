@@ -26,7 +26,8 @@ use Throwable;
  * Usulan lomba by siswa or guru (UI-MAP #10, guru `guru.lomba.index`). Always lands in
  * menunggu_verifikasi (D-27) with submitted_by = actor; only name, organizer, official link, note
  * and brochure. The brochure goes through StoreUpload (private, never public before verification).
- * Limit: 5 per 24 h per user (SECURITY §3d/§3m-2). The link is validated, never fetched (§3m-1).
+ * Limit: 5 per 24 h per user (SECURITY §3d/§3m-2). The link is cleaned at both ends, validated (a refusal names
+ * its reason, ExternalUrl::problem()) and never fetched (§3m-1).
  * Kesiswaan's own "Tambah lomba" (full form) is W2-B's CreateCompetition.
  */
 final class SubmitCompetition
@@ -126,10 +127,13 @@ final class SubmitCompetition
     {
         $trim = fn (mixed $v): ?string => is_string($v) && trim($v) !== '' ? trim($v) : null;
 
+        // The link is cleaned the way the sheet cleans it (spaces, line breaks and invisible characters of a paste).
+        $link = ExternalUrl::normalize($data['website_url'] ?? null);
+
         $clean = [
             'name' => $trim($data['name'] ?? null),
             'organizer_name' => $trim($data['organizer_name'] ?? null),
-            'website_url' => $trim($data['website_url'] ?? null),
+            'website_url' => $link === '' ? null : $link,
             'description' => $trim($data['description'] ?? null),
         ];
 
@@ -146,8 +150,10 @@ final class SubmitCompetition
             $errors['organizer_name'] = 'Nama penyelenggara maks. 200 karakter.';
         }
 
-        if ($clean['website_url'] !== null && ! ExternalUrl::passes($clean['website_url'])) {
-            $errors['website_url'] = ExternalUrl::MESSAGE;
+        $linkProblem = $clean['website_url'] !== null ? ExternalUrl::problem($clean['website_url']) : null;
+
+        if ($linkProblem !== null) {
+            $errors['website_url'] = $linkProblem;
         }
 
         if ($clean['description'] !== null && mb_strlen($clean['description']) > 1000) {

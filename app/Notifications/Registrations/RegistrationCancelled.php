@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Notifications\Registrations;
 
 use App\Models\Registration;
+use App\Notifications\Support\MailGreeting;
 use App\Notifications\Support\PlainMailMessage;
 use Illuminate\Notifications\Messages\MailMessage;
 
@@ -31,7 +32,7 @@ class RegistrationCancelled extends RegistrationNotification
     {
         $mail = (new PlainMailMessage)
             ->subject($this->subject())
-            ->greeting($this->audience === 'siswa' ? 'Halo '.self::firstName($notifiable).',' : 'Yth. '.trim((string) ($notifiable->name ?? '')).',')
+            ->greeting($this->audience === 'siswa' ? MailGreeting::student($notifiable) : MailGreeting::staff($notifiable))
             ->line($this->message());
 
         if ($this->audience === 'kepsek') {
@@ -42,7 +43,7 @@ class RegistrationCancelled extends RegistrationNotification
             $mail->action('Lihat pendaftaran', $this->url());
         }
 
-        return $mail->salutation('SMAGA Talent Hub');
+        return $mail;
     }
 
     /** @return array<string, mixed> */

@@ -13,8 +13,8 @@ use App\Enums\RegistrationStatus;
 use App\Enums\RegistrationType;
 use App\Enums\RoleName;
 use App\Enums\UserStatus;
-use App\Jobs\AutoPublishPublications;
 use App\Jobs\ExpireInvitations;
+use App\Jobs\RemindDuePublications;
 use App\Livewire\Siswa\LombaSaya\Index as LombaSaya;
 use App\Livewire\Siswa\Pendaftaran\Form;
 use App\Models\Competition;
@@ -265,7 +265,7 @@ it('tells the ketua when the expired team is too small and keeps it waiting', fu
 
 it('schedules both B3 jobs every five minutes on one server', function (): void {
     $jobs = collect(app(Schedule::class)->events())
-        ->filter(fn ($e): bool => $e instanceof CallbackEvent && in_array($e->description, [ExpireInvitations::class, AutoPublishPublications::class], true));
+        ->filter(fn ($e): bool => $e instanceof CallbackEvent && in_array($e->description, [ExpireInvitations::class, RemindDuePublications::class], true));
 
     expect($jobs)->toHaveCount(2);
     $jobs->each(fn (CallbackEvent $e) => expect($e->expression)->toBe('*/5 * * * *')
@@ -330,7 +330,10 @@ it('withdraws from the registration panel and marks a student who has not activa
     expect($form->get('hasil')[0]['pending'])->toBeTrue();
     $form->assertSee('belum aktivasi akun');
 
-    $form->call('batalkanUndangan', $this->dimas->getKey())
+    // D-128: the × asks first (dialog "batal-undangan"), the answer there withdraws (WithdrawInvitationDialogTest).
+    $form->call('askBatalkanUndangan', $this->dimas->getKey())
+        ->assertDispatched('sth-modal-open', id: 'batal-undangan')
+        ->call('batalkanUndangan')
         ->assertHasNoErrors()
         ->assertDispatched('sth-toast', tone: 'success')
         ->assertDispatched('pendaftaran-berubah')
@@ -338,10 +341,11 @@ it('withdraws from the registration panel and marks a student who has not activa
 
     expect($registration->members()->where('student_id', $this->dimas->getKey())->exists())->toBeFalse();
 
-    // The ketua is no invitation: the action names the problem instead of failing.
+    // The ketua is no invitation: the screen names the problem instead of failing, and asks nothing.
     Livewire::actingAs(F::user($this->nadia))->test(Form::class, ['competitionId' => $lomba->getKey()])
-        ->call('batalkanUndangan', $this->nadia->getKey())
-        ->assertHasErrors(['members']);
+        ->call('askBatalkanUndangan', $this->nadia->getKey())
+        ->assertHasErrors(['members'])
+        ->assertNotDispatched('sth-modal-open');
 });
 
 it('refuses a withdraw once the team waits for the Kepala Sekolah or registration has closed (QA6 review)', function (): void {

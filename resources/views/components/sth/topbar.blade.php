@@ -10,12 +10,20 @@
     </x-sth.topbar>
 
     Props: nav (Navigation::for) · title · subtitle · notifications (unread count)
+           counts-url (address app.js asks for fresh counts, null = never ask) · counts-every (seconds between
+           two background checks); both come from the app layout (NotificationCountController::pollUrl / pollSeconds)
     Slots: lead (replaces title block) · actions
+
+    Live bell (D-127): the bubble is [data-sth-badge="akun.notifikasi"] with data-sth-badge-max="99" (shows "99+")
+    and data-sth-count (the real number); the button is [data-sth-badge-label="akun.notifikasi"] with
+    data-label-none / data-label-some (":n" = the number). A screen changes them with
+        $this->dispatch('sth-badges', badges: [Navigation::BELL => $unread]);
 --}}
-@props(['nav', 'title' => null, 'subtitle' => null, 'notifications' => 0])
+@props(['nav', 'title' => null, 'subtitle' => null, 'notifications' => 0, 'countsUrl' => null, 'countsEvery' => 60])
 @php
     $search = $nav['search'] ?? null;
-    $count = (int) $notifications;
+    $count = max(0, (int) $notifications);
+    $bellKey = \App\Support\Navigation::BELL;
     $notifUrl = \Illuminate\Support\Facades\Route::has('notifikasi.index') ? route('notifikasi.index') : null;
     $securityUrl = \Illuminate\Support\Facades\Route::has('akun.keamanan') ? route('akun.keamanan') : null;
     $canLogout = \Illuminate\Support\Facades\Route::has('logout');
@@ -61,17 +69,22 @@
             @endunless
         @endif
 
-        {{-- B1: bell → notifikasi.index; unread count badge (99+) instead of the plain dot. --}}
-        <span class="relative inline-flex">
+        {{-- B1: bell → notifikasi.index; unread count bubble (99+) instead of the plain dot.
+             D-127: the bubble is always printed (hidden at 0) and the button carries both label texts, so the
+             browser event `sth-badges` (key App\Support\Navigation::BELL) shows, changes and hides the number and
+             rewrites the aria-label without a page load. With `counts-url` app.js also asks the server for fresh
+             counts while the page stays open. No display class on the bubble: `hidden` has to win. --}}
+        <span class="relative inline-flex" @if ($countsUrl) data-sth-counts-url="{{ $countsUrl }}" data-sth-counts-every="{{ (int) $countsEvery }}" @endif>
             <x-sth.icon-button
                 icon="bell"
                 :label="$count > 0 ? 'Notifikasi, '.$count.' belum dibaca' : 'Notifikasi'"
                 :href="$notifUrl"
                 :disabled="$notifUrl === null"
+                :data-sth-badge-label="$bellKey"
+                data-label-none="Notifikasi"
+                data-label-some="Notifikasi, :n belum dibaca"
             />
-            @if ($count > 0)
-                <span class="pointer-events-none absolute -top-1 -right-1 min-w-5 rounded-full border-2 border-white bg-primary px-1 text-center text-xs leading-4 font-bold text-white" aria-hidden="true">{{ $count > 99 ? '99+' : $count }}</span>
-            @endif
+            <span class="pointer-events-none absolute -top-1 -right-1 min-w-5 rounded-full border-2 border-white bg-primary px-1 text-center text-xs leading-4 font-bold text-white" aria-hidden="true" data-sth-badge="{{ $bellKey }}" data-sth-badge-max="99" data-sth-count="{{ $count }}" @if ($count === 0) hidden @endif>{{ $count > 99 ? '99+' : $count }}</span>
         </span>
 
         <div class="relative" data-sth-menu>

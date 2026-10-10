@@ -1,6 +1,7 @@
 # SMAGA Talent Hub — DESIGN SPEC v3 ("Tinta dan Sampul")
 
-Decision: `docs/DECISIONS.md` D-117…D-119 (7 Oct 2026). This file **replaces the look** of
+Decision: `docs/DECISIONS.md` D-117…D-119 (7 Oct 2026); added on 10 Oct 2026 (EM2): the confirmation dialog pattern
+(§4, D-128) and the mail template (§9, D-129, *sementara*). This file **replaces the look** of
 `DESIGN-SPEC-v2.md`: its §2 (visual direction), the values of §3 (helmet) and the appearance of the §4
 components. Everything else in v2 stays valid: the product flow (§1), the component list and contracts
 (§4, `docs/dev-notes/W1-D.md`), the fictional data set (§5) and the icons (§6). The v2 mockups
@@ -117,6 +118,16 @@ only kept so old class names do not break.
 - **Top three of a ranking**: one row with the medal (gold, silver, bronze: `bg-medal`, `bg-medal-2`,
   `bg-medal-3`) and the name, below a line the points on the left and the count on the right. No avatar there.
 - **Public header**: solid white, no blur. **Dialogs**: radius 12.
+- **Confirmation dialog** (D-128, EM2, 10 Oct 2026): a question before an action is always `<x-sth.modal size="sm">`,
+  never the browser's own confirm box. The one-click and bulk actions swept in EM2 got one; D-128 lists the senders
+  left without a question on purpose (among them Apresiasi "Masukkan" and "Simpan perubahan" on a published lomba,
+  an open question for the lead). Title = the question ("Tolak laporan ini?", "Tutup lomba ini?"); the line under
+  the title says who is told, and names only people who really get a notice (on a student screen it never states
+  another student's account status: a neutral, always-true sentence stands there instead, never an empty line); body = where the action is about one item, a `bg-subtle` tile that names it (name in semibold, one
+  muted 13 px line: a report, a lomba, a publication), then one sentence on what happens and, where true, that it
+  cannot be undone (a bulk action states its counts instead); footer = a quiet "Batal" ("Kembali" when the action itself
+  is called "Batalkan …") and the action button, which repeats the verb of the button that opened the dialog
+  ("Tolak" → "Tolak laporan"; `danger` for a destructive action). Every dialog has its description on first render.
 
 ## 5. Sampul (covers) — new component `<x-sth.sampul>`
 
@@ -174,7 +185,9 @@ floating beside a hero headline, pill tags, a second typeface, `text-[Npx]` size
 "eyebrow pill" above a headline, the "Cari lomba" button above the student menu or on the home banner, a menu
 item repeated as a button on the same screen, "Lombaku" / "Profil" as tab names, "kamu" on a staff screen, a
 portrait poster shown small in the middle of a wide band on a lomba or prestasi card, the shield icon as the
-brand mark.
+brand mark. Since EM2 (10 Oct 2026): the browser's own confirm box (`wire:confirm`) for any action (§4); in a mail
+(§9): the framework's default look, an image, a second link, a sign-off line, a greeting built from the first word of
+a name ("Halo Drs.,") or "Halo!".
 
 ## 8. Checking a screen
 
@@ -185,3 +198,65 @@ at **1366 / 1280 px** (the school's laptops: a column next to a side panel gets 
 (small Android phones): no text may touch or cover other text, be cut without "…", or leave its box. A box
 whose width depends on a side panel takes its columns from a container query (`@container` +
 `@min-[…]:grid-cols-n`), not from the window width.
+
+## 9. Email (EM2, 10 Oct 2026; D-129, *sementara*)
+
+Every mail STH sends looks like the app: the same ink and the same type scale, on one card. Files: the notification
+view `resources/views/vendor/notifications/email.blade.php`, its components in `resources/views/vendor/mail/{html,text}`
+and the theme `resources/views/vendor/mail/html/themes/sth.css` (`config/mail.php`: `markdown.theme` = `sth`). The
+OTP mail (`resources/views/auth/mail/otp-code.blade.php`, plain Blade with inline styles) repeats the theme's values
+by hand: change both together. D-129 is *sementara*: the lead has not seen a real mail yet (the coordinator looked at
+two sample mails in Mailpit on 10 Oct 2026, the HTML card and the text part; a phone, Gmail in dark mode and Outlook
+desktop were not tried), and the greeting rule, the text part, the single link and the footer
+sentence are reviewed together with the look when the lead does.
+
+**Tokens used by `sth.css`** (the values of §3, written as hex because a mail has no stylesheet of ours):
+
+| token | value | where |
+|---|---|---|
+| `page` | `#F3F5F8` | the background around the card |
+| `surface` | `#FFFFFF` | the card |
+| `line` | `#DDE2E9` | the 1 px border of the card, the line under the header and above the fallback address |
+| `ink` | `#141A2B` | greeting and body text, the address under the button, the OTP code |
+| `ink-2` | `#3A4254` | the two small sentences under the code in the OTP mail |
+| `muted` | `#566072` | the school line of the header, the fallback address sentence, the footer |
+| `primary` | `#1B2A4E` | the product name in the header, the button |
+| `link` | `#1C4A9C` | the colour of `a` (the theme sets it; a mail has no text link today) |
+| `green` / `red` | `#1B6B45` / `#B42318` | the button of a mail whose level is `success` / `error` |
+
+**Sizes** (px; nothing under 13): product name 16/700 · school line 13 · greeting (`h1`) 18/600, line height 1.4 ·
+body text and lists 16, line height 1.5 · button 15/600 · fallback address sentence 14 · footer 13, centred · the
+OTP code 32/700 with 8 px letter spacing. Font stack: `'Public Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI',
+Roboto, Helvetica, Arial, sans-serif`; no web font is loaded, so Public Sans shows only where it is installed.
+
+**Layout**: page padding 24 px above, 12 px at the sides. One card, 570 px wide, radius 10, 1 px `line` border, no
+shadow. Inside it the header (padding 20 / 32 / 16, a line below) and the content (padding 24 / 32). The footer
+sentence stands under the card, not in it. Under 600 px the card and the footer take the full width with 20 px side
+padding; under 500 px the button takes the full width. `color-scheme: light` (meta), as the app has no dark theme.
+
+**Parts, top to bottom**
+1. **Header**: two lines of text, "SMAGA Talent Hub" and "SMA Negeri 3 Semarang". No link, no image, no crest (the
+   brand mark of D-120 is a raster file and a mail carries no image).
+2. **Greeting**, one rule for every mail (`App\Notifications\Support\MailGreeting`): a student "Halo <nama depan>,"
+   (the first word of the name that is not an abbreviation, `App\Support\FirstName`), staff and an account without a
+   role "Yth. <nama lengkap>,", an unknown recipient "Halo,". Never "kamu" in a staff mail (D-119).
+3. **Lines**: short sentences, one fact per line where a notice lists changes.
+4. **Button**, at most one per mail and its only link: ink `#1B2A4E` with white text, radius 6, 15/600, 45 px high
+   (21 px line + 12 px above and below; at least 44), 20 px at the sides, left-aligned; the label is a verb ("Lihat
+   pendaftaran", "Buka publikasi"). A mail without an action has no link at all; the OTP mail never has one.
+5. **Fallback address** under a line, only in the HTML part and only with a button: `Tombol "<label>" tidak bisa
+   dibuka? Salin alamat ini ke browser:` and the address as text (it may break anywhere), never a second link.
+6. **Footer**, one sentence for every mail (`PlainMailMessage::FOOTER`): "Email otomatis dari SMAGA Talent Hub, SMA
+   Negeri 3 Semarang. Jangan balas email ini." No sign-off line, no copyright line.
+
+A hidden **inbox preview line** carries the first sentence of the mail (in the OTP mail the intro sentence, never the
+code). The **text part** is plain text: greeting, lines, `Label: address`, a line `--`, the footer sentence; no `#`,
+no `[address](address)`, no header line.
+
+**Not in a mail**: an image, a web font or any other remote file, a gradient, a shadow, a second
+link, an emoji, text under 13 px. The theme also styles the Markdown components `panel` and `table`; no notification
+uses them yet.
+
+**Editing a mail view**: the notification view is read as Markdown, so keep every line flush left and leave no blank
+line inside an HTML block. After a change run `reload.bat` and restart `queue`. `MailTemplateTest` checks the rules
+above on the rendered mail (one `<a>`, no `<img>`, the colours, the smallest font size, the text part).

@@ -14,22 +14,36 @@ use App\Notifications\Verification\BinaanReportDecided;
 use App\Notifications\Verification\ReportRejected;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Kesiswaan rejects a laporan hasil (reason required): report → ditolak, no achievements, and the
  * registration laporan_dikirim → selesai (the only terminal transition the state machine allows; the
  * tracker shows it as ended without points). The members get the reason (queued), and so does the guru
- * pembimbing (D-110).
+ * pembimbing (D-110). Nothing takes a rejected report back, so the screen asks first (D-128) and checks the
+ * reason with reason() before it opens that dialog.
  */
 final class RejectReport
 {
+    public const NOTE_REQUIRED = 'Tulis alasan penolakan untuk siswa.';
+
     public function __construct(private readonly RegistrationStateMachine $stateMachine) {}
+
+    /**
+     * The reason as it is stored and sent: trimmed, required, at most 1.000 characters (error key `note`).
+     *
+     * @throws ValidationException
+     */
+    public static function reason(string $note): string
+    {
+        return RequestReportRevision::requiredNote($note, self::NOTE_REQUIRED);
+    }
 
     public function handle(User $actor, Report $report, string $note): Report
     {
         Gate::forUser($actor)->authorize('verify', $report);
 
-        $note = RequestReportRevision::requiredNote($note, 'Tulis alasan penolakan untuk siswa.');
+        $note = self::reason($note);
 
         $locked = DB::transaction(function () use ($actor, $report, $note): Report {
             /** @var Report $locked */

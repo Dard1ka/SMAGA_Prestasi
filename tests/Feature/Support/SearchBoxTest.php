@@ -45,6 +45,9 @@ it('hides the top bar search on a page that has its own search box', function (R
     'Admin log audit' => [RoleName::Admin, 'admin.audit.index'],
     'Guru siswa binaan' => [RoleName::Guru, 'guru.beranda'],
     'Admin pengaturan' => [RoleName::Admin, 'admin.pengaturan'],
+    // D-124: "Tambah prestasi" on Apresiasi has a search box of its own (shared screen, two routes).
+    'Humas apresiasi' => [RoleName::Humas, 'humas.apresiasi.index'],
+    'Kesiswaan apresiasi' => [RoleName::Kesiswaan, 'kesiswaan.apresiasi.index'],
 ]);
 
 it('keeps the top bar search on a page without a search box of its own', function (): void {

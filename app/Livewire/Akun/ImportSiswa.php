@@ -50,6 +50,9 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
  * account and its password are never touched or shown.
  * QA9 (SECURITY §3m-9): the import itself needs a password confirmation from the last 15 minutes (Kesiswaan and
  * Admin); the password page brings the user back here, and the file is chosen again.
+ * D-128 (lead, 2026-10-10): "Impor N siswa" asks in the app's own dialog (IMPORT_DIALOG), not in the browser's
+ * confirm(). askImport() runs the checks of the import first and opens it; import() is the confirm step and does
+ * nothing without that question.
  */
 #[Title('Import data siswa')]
 #[Layout('layouts::app', ['subtitle' => 'Akun siswa dibuat otomatis dari file Excel.'])]
@@ -60,6 +63,9 @@ class ImportSiswa extends Component
     use WithKesiswaanBadges;
 
     public const PREVIEW_ROWS = 50;
+
+    /** id of the "Impor data siswa?" confirm dialog (<x-sth.modal>). */
+    public const IMPORT_DIALOG = 'impor-siswa';
 
     private const CACHE_MINUTES = 30;
 
@@ -82,6 +88,10 @@ class ImportSiswa extends Component
 
     #[Locked]
     public ?string $previewToken = null;
+
+    /** The preview (`previewToken`) the open "Impor data siswa?" dialog asks about; set only by askImport(). */
+    #[Locked]
+    public ?string $importAsked = null;
 
     /** Summary after the real import. @var array{created: int, moved: int, invalid: int}|null */
     #[Locked]
@@ -187,19 +197,42 @@ class ImportSiswa extends Component
         $this->filter = 'all';
     }
 
-    public function import(ImportStudents $import): void
+    /**
+     * "Impor N siswa" under the preview (D-128): runs the checks of the import, then opens the dialog that says what
+     * will be written. Nothing is written before import(). The password is asked here, before the question, so the
+     * answer in the dialog is not followed by the password page (which does not keep the file).
+     */
+    public function askImport(): void
     {
-        if ($this->file === null || $this->previewToken === null) {
-            $this->addError('file', 'Upload file dulu.');
+        $this->authorize(Permission::StudentImport->value);
+        $this->importAsked = null;
+        $this->resetErrorBag('file');
 
+        if ($this->previewToImport() === null || ! $this->passwordRecentlyConfirmed()) {
             return;
         }
 
-        $preview = $this->preview();
+        $this->importAsked = $this->previewToken;
+        $this->dispatch('sth-modal-open', id: self::IMPORT_DIALOG);
+    }
+
+    /**
+     * "Impor N siswa" in the dialog. Without a dialog opened by askImport() for the preview on screen there is nothing
+     * to confirm: it returns without a word (never an error), so a second click after the import changes nothing.
+     */
+    public function import(ImportStudents $import): void
+    {
+        $asked = $this->importAsked !== null && $this->importAsked === $this->previewToken;
+        $this->importAsked = null;
+        $this->dispatch('sth-modal-close', id: self::IMPORT_DIALOG);
+
+        if (! $asked) {
+            return;
+        }
+
+        $preview = $this->previewToImport();
 
         if ($preview === null) {
-            $this->addError('file', 'Preview sudah kedaluwarsa. Upload file lagi.');
-
             return;
         }
 
@@ -336,6 +369,8 @@ class ImportSiswa extends Component
             'summary' => $summary,
             'changeCount' => $changeCount,
             'confirm' => self::confirmText($summary, $changeCount),
+            // The dialog shows its sentence and its confirm button only for the preview it was opened for.
+            'importAsking' => $preview !== null && $this->importAsked !== null && $this->importAsked === $this->previewToken,
             'invalidCount' => count($invalid),
             'notedCount' => count($noted),
             // Registered students whose archive date changes: normal for a few (tinggal kelas, salah kelas), a sign of a
@@ -371,7 +406,8 @@ class ImportSiswa extends Component
     }
 
     /**
-     * The question before the import writes anything.
+     * What the import writes, as the sentence of the "Impor data siswa?" dialog (D-128; before, the question of the
+     * browser's confirm box): "Buat 312 akun siswa dan pindahkan 640 siswa ke kelas di file."
      *
      * @param  array{new: int, moved: int, unchanged: int, skipped: int, rejected: int}  $summary
      */
@@ -382,7 +418,30 @@ class ImportSiswa extends Component
             $summary[StudentImportReport::MOVED] > 0 ? 'pindahkan '.$summary[StudentImportReport::MOVED].' siswa ke kelas di file' : null,
         ]);
 
-        return $parts === [] ? 'Simpan '.$changeCount.' perbaikan data sekarang?' : ucfirst(implode(' dan ', $parts)).' sekarang?';
+        return $parts === [] ? 'Simpan '.$changeCount.' perbaikan data.' : ucfirst(implode(' dan ', $parts)).'.';
+    }
+
+    /**
+     * The preview an import starts from, or null with the reason on the field `file` (no file yet, or the preview
+     * ran out). The same check for the question and for the confirm step.
+     *
+     * @return array{rows: list<array<string, mixed>>, fileName: string, schoolYear: string}|null
+     */
+    private function previewToImport(): ?array
+    {
+        if ($this->file === null || $this->previewToken === null) {
+            $this->addError('file', 'Upload file dulu.');
+
+            return null;
+        }
+
+        $preview = $this->preview();
+
+        if ($preview === null) {
+            $this->addError('file', 'Preview sudah kedaluwarsa. Upload file lagi.');
+        }
+
+        return $preview;
     }
 
     /** @return array{rows: list<array<string, mixed>>, fileName: string, schoolYear: string}|null */
@@ -405,6 +464,8 @@ class ImportSiswa extends Component
         }
 
         $this->previewToken = null;
+        // An "Impor data siswa?" question about the preview that is gone is void.
+        $this->importAsked = null;
     }
 
     private function cacheKey(): string

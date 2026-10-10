@@ -128,4 +128,8 @@ it('builds the local demo data set with the spec leaderboard and queues', functi
         ->and($nadia->user->must_change_password)->toBeTrue()
         ->and(Hash::check(app(InitialPassword::class)->make($nadia->birth_date), $nadia->user->password))->toBeTrue()
         ->and(User::query()->where('username', 'operator')->first()->hasRole(RoleName::Admin->value))->toBeTrue();
+
+    // D-125: a demo organizer of the type "Lainnya" carries the typed kind; every other type has none.
+    expect(Competition::query()->where('organizer_type', 'lainnya')->pluck('organizer_type_other')->unique()->all())->toBe(['Sanggar seni'])
+        ->and(Competition::query()->where('organizer_type', '!=', 'lainnya')->whereNotNull('organizer_type_other')->count())->toBe(0);
 });

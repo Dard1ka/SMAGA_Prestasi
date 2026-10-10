@@ -45,7 +45,7 @@ it('creates an appreciation event (Humas and Kesiswaan)', function (RoleName $ro
     $actor = $role === RoleName::Humas ? $this->humas : AuthTestHelpers::staff($role);
     $date = now()->addDays(4)->toDateString();
 
-    $event = app(CreateAppreciationEvent::class)->handle($actor, '  Upacara   Senin, 5 Oktober 2026 ', $date);
+    $event = app(CreateAppreciationEvent::class)->handle($actor, '  Upacara   Senin, 5 Oktober 2026 ', $date, '07:00');
 
     expect($event->name)->toBe('Upacara Senin, 5 Oktober 2026')
         ->and($event->fresh()->held_on->toDateString())->toBe($date)
@@ -53,14 +53,14 @@ it('creates an appreciation event (Humas and Kesiswaan)', function (RoleName $ro
 })->with([RoleName::Humas, RoleName::Kesiswaan, RoleName::Admin]);
 
 it('accepts today as the event date', function (): void {
-    $event = app(CreateAppreciationEvent::class)->handle($this->humas, 'Apel pagi', now()->toDateString());
+    $event = app(CreateAppreciationEvent::class)->handle($this->humas, 'Apel pagi', now()->toDateString(), '07:00');
 
     expect($event->exists)->toBeTrue();
 });
 
 it('validates the event', function (string $name, string $date, string $key): void {
     try {
-        app(CreateAppreciationEvent::class)->handle($this->humas, $name, $date);
+        app(CreateAppreciationEvent::class)->handle($this->humas, $name, $date, '07:00');
         $this->fail('Expected a validation error.');
     } catch (ValidationException $e) {
         expect($e->errors())->toHaveKey($key);
@@ -77,14 +77,14 @@ it('validates the event', function (string $name, string $date, string $key): vo
 
 it('rejects a duplicate event', function (): void {
     $date = now()->addWeek()->toDateString();
-    app(CreateAppreciationEvent::class)->handle($this->humas, 'Upacara Senin', $date);
+    app(CreateAppreciationEvent::class)->handle($this->humas, 'Upacara Senin', $date, '07:00');
 
-    expect(fn () => app(CreateAppreciationEvent::class)->handle($this->humas, 'Upacara Senin', $date))
+    expect(fn () => app(CreateAppreciationEvent::class)->handle($this->humas, 'Upacara Senin', $date, '07:00'))
         ->toThrow(ValidationException::class, 'Acara ini sudah ada.');
 });
 
 it('refuses roles without appreciation.manage', function (RoleName $role): void {
-    expect(fn () => app(CreateAppreciationEvent::class)->handle(AuthTestHelpers::staff($role), 'Upacara', now()->addDay()->toDateString()))
+    expect(fn () => app(CreateAppreciationEvent::class)->handle(AuthTestHelpers::staff($role), 'Upacara', now()->addDay()->toDateString(), '07:00'))
         ->toThrow(AuthorizationException::class);
 })->with([RoleName::Guru, RoleName::TataUsaha, RoleName::KepalaSekolah]);
 

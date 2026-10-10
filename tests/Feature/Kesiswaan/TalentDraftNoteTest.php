@@ -230,6 +230,9 @@ it('sends a saved draft with the row button and with a bulk move, and says so', 
         ->call('advanceRow', $a->getKey())
         ->assertDispatched('sth-toast', message: 'Dipindahkan ke Pemetaan. Catatan untuk siswa yang tersimpan ikut terkirim.', tone: 'success')
         ->set('checked', [$b->getKey(), $c->getKey()])
+        // D-128: the bulk move asks first, and the dialog names the saved draft that goes out.
+        ->call('askBulkAdvance')
+        ->assertViewHas('advancing', fn (array $advancing): bool => $advancing['count'] === 2 && $advancing['drafts'] === 1)
         ->call('bulkAdvance')
         ->assertDispatched('sth-toast', message: '2 pilihan talenta dipindahkan ke tahap berikutnya. 1 catatan untuk siswa yang tersimpan ikut terkirim.', tone: 'success');
 

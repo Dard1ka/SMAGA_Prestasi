@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Notifications\Publications;
 
+use App\Actions\Publications\EventWhen;
 use App\Models\Appreciation;
 use App\Models\AppreciationEvent;
+use App\Notifications\Support\MailGreeting;
 use App\Notifications\Support\PlainMailMessage;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -37,7 +39,8 @@ final class AppreciationReleased extends Notification implements ShouldQueue
     {
         return new self(
             eventName: (string) $event->name,
-            eventDate: (string) $event->held_on?->locale('id')->translatedFormat('l, j F Y'),
+            // Day and start time in one phrase (D-123); the property keeps its name for jobs already queued.
+            eventDate: EventWhen::sentence($event),
             achievement: trim(
                 (string) ($appreciation->achievement?->result?->label() ?? 'Prestasi')
                 .' '.(string) ($appreciation->achievement?->competition?->name ?? 'lomba')
@@ -66,14 +69,11 @@ final class AppreciationReleased extends Notification implements ShouldQueue
 
     public function toMail(object $notifiable): MailMessage
     {
-        $firstName = strtok(trim((string) ($notifiable->name ?? '')), ' ') ?: null;
-
         return (new PlainMailMessage)
             ->subject($this->title())
-            ->greeting($firstName !== null ? 'Halo '.$firstName.',' : 'Halo,')
+            ->greeting(MailGreeting::student($notifiable))
             ->line($this->body())
-            ->action('Buka SMAGA Talent Hub', $this->url())
-            ->salutation('SMAGA Talent Hub');
+            ->action('Buka SMAGA Talent Hub', $this->url());
     }
 
     /** @return array<string, string> */

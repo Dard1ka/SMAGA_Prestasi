@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Http\Controllers\FileController;
 use App\Http\Controllers\LetterVerificationController;
+use App\Http\Controllers\NotificationCountController;
 use App\Http\Middleware\PublicPageHeaders;
 use App\Livewire\Akun\BukanSaya;
 use App\Livewire\Akun\Keamanan;
@@ -127,6 +128,11 @@ Route::get('/berkas/publik/{file}', [FileController::class, 'publik'])
 Route::middleware(['auth', 'active', 'activated', 'staff.2fa'])->group(function (): void {
     Route::livewire('/akun/keamanan', Keamanan::class)->name('akun.keamanan');
     Route::livewire('/notifikasi', Notifikasi::class)->name('notifikasi.index');
+
+    // D-127: the counts an open page asks for (bell + sidebar), JSON, asked by resources/js/app.js only. Its own
+    // counter: a page asks about once a minute and twice after an action. Without JSON headers → notifikasi.index.
+    Route::get('/notifikasi/jumlah', NotificationCountController::class)
+        ->middleware('throttle:30,1,lonceng')->name('notifikasi.jumlah');
 });
 
 // Signed, single-use link from the email-binding notice (7 days). Guests too; GET only shows the page.

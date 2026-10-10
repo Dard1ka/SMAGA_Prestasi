@@ -9,11 +9,12 @@ use App\Actions\Fortify\LoginLockout;
 use App\Mail\OtpCodeMail;
 use App\Models\OtpCode;
 use App\Models\User;
+use App\Notifications\Support\MailGreeting;
+use App\Support\FirstName;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Str;
 
 /**
  * Creates a fresh 6-digit OTP for (user, purpose, email) and mails it from noreply (queued + encrypted).
@@ -89,7 +90,7 @@ final class IssueOtpCode
             $this->requesters->remember($requester, $user, $purpose, (string) $otp->getKey());
         }
 
-        Mail::to($email)->queue(new OtpCodeMail(self::firstName($user->name), $code, $purpose, $ttl));
+        Mail::to($email)->queue(new OtpCodeMail((string) FirstName::of($user->name), $code, $purpose, $ttl, MailGreeting::for($user)));
 
         return true;
     }
@@ -160,10 +161,5 @@ final class IssueOtpCode
             ->where('expires_at', '>', now())
             ->latest('created_at')
             ->value('email');
-    }
-
-    private static function firstName(string $name): string
-    {
-        return Str::of($name)->trim()->explode(' ')->first() ?: 'Siswa';
     }
 }

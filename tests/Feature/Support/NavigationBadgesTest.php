@@ -137,9 +137,31 @@ it('counts only for a user who may see the queue', function (): void {
         ->and(NavigationServiceProvider::badges($admin, 'kesiswaan'))->toBe(['kesiswaan.usulan' => 2, 'kesiswaan.verifikasi' => 0])
         ->and(NavigationServiceProvider::badges($admin, 'tata_usaha'))->toBe(['tu.surat' => 1]);
 
-    // An Admin page shows the Admin menu, which has no badge.
+    // An Admin page shows the Admin menu, which has no badge. The only count hook left on the page is the bell
+    // of the top bar (D-127), which every signed-in page carries once.
     $html = $this->actingAs($admin)->get(route('notifikasi.index'))->assertOk()->getContent();
-    expect($html)->not->toContain('data-sth-badge=');
+    expect(substr_count($html, 'data-sth-badge='))->toBe(1)
+        ->and($html)->toContain('data-sth-badge="'.Navigation::BELL.'"');
+});
+
+it('keeps the bell out of the menu keys and adds it to the live counts (D-127)', function (): void {
+    Registration::factory()->status(RegistrationStatus::Disetujui)->create();
+
+    $tu = H::staff(RoleName::TataUsaha);
+    $siswa = User::query()->findOrFail(H::activeStudent()->user_id);
+
+    // The bell is a key of the `sth-badges` event, not a menu item: no menu lists it, the sidebar never counts it.
+    expect(Navigation::BELL)->toBe('akun.notifikasi')
+        ->and(Navigation::BADGES)->not->toContain(Navigation::BELL)
+        ->and(NavigationServiceProvider::badges($tu, 'tata_usaha'))->not->toHaveKey(Navigation::BELL);
+
+    // What GET notifikasi.jumlah answers: the bell first, then the counts of the user's own menus.
+    $counts = NavigationServiceProvider::liveCounts($tu);
+
+    expect(array_key_first($counts))->toBe(Navigation::BELL)
+        ->and($counts)->toEqual([Navigation::BELL => 0] + NavigationServiceProvider::badges($tu, 'tata_usaha'))
+        ->and($counts['tu.surat'])->toBe(1)
+        ->and(NavigationServiceProvider::liveCounts($siswa))->toBe([Navigation::BELL => 0]);
 });
 
 it('runs one COUNT per badge and nothing else', function (): void {
@@ -186,7 +208,7 @@ it('lists the badge keys of every role menu', function (): void {
     expect(Navigation::badgeKeys('kesiswaan'))->toBe(['kesiswaan.usulan', 'kesiswaan.verifikasi'])
         ->and(Navigation::badgeKeys('tata_usaha'))->toBe(['tu.surat'])
         ->and(Navigation::badgeKeys('kepala_sekolah'))->toBe(['kepsek.persetujuan'])
-        ->and(Navigation::badgeKeys('humas'))->toBe(['humas.publikasi'])
+        ->and(Navigation::badgeKeys('humas'))->toBe(['humas.publikasi', 'humas.jadwal'])
         ->and(Navigation::badgeKeys('siswa'))->toBe(['siswa.lomba-saya'])
         ->and(Navigation::badgeKeys('admin'))->toBe([])
         ->and(Navigation::badgeKeys('guru'))->toBe([])

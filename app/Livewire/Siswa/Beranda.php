@@ -15,6 +15,7 @@ use App\Models\RegistrationMember;
 use App\Models\Student;
 use App\Models\TalentApplication;
 use App\Models\User;
+use App\Support\FirstName;
 use App\Support\Leaderboard\PersonalRank;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\View\View;
@@ -49,7 +50,7 @@ class Beranda extends Component
         $openTotal = Competition::query()->openForRegistration()->count();
 
         return view('livewire.siswa.beranda', [
-            'firstName' => strtok(trim((string) $user->name), ' ') ?: 'Siswa',
+            'firstName' => FirstName::of($user->name) ?? 'Siswa',
             // "Masih ada N lomba yang bisa kamu daftar": open lomba this student is not in yet (the lead, 2026-10-08).
             // openTotal tells "nothing is open" from "you are in every open lomba" when N is 0.
             'openCount' => $student ? $this->openFor($student)->count() : $openTotal,

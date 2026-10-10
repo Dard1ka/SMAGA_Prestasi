@@ -61,6 +61,25 @@ final class NavigationServiceProvider extends ServiceProvider
         return $badges;
     }
 
+    /**
+     * What an open page asks for while it stays open (D-127; GET `notifikasi.jumlah`, asked by resources/js/app.js):
+     * the bell (Navigation::BELL = the user's own unread notifications) and the sidebar counts of every menu the
+     * user's roles have. Same policy checks and the same queries as badges(), so the answer can never differ from a
+     * freshly loaded page. Siswa, guru and Admin cost one COUNT; a queue role one more per count of its menu.
+     *
+     * @return array<string, int>
+     */
+    public static function liveCounts(User $user): array
+    {
+        $counts = [Navigation::BELL => $user->unreadNotifications()->count()];
+
+        foreach ($user->getRoleNames() as $role) {
+            $counts += self::badges($user, (string) $role);
+        }
+
+        return $counts;
+    }
+
     /** The queue size behind one badge key, or null when this user may not see that queue (or nothing counts it). */
     private static function count(User $user, string $key): ?int
     {
@@ -83,6 +102,10 @@ final class NavigationServiceProvider extends ServiceProvider
             // Humas\HumasQueries::badges().
             'humas.publikasi' => $user->can(Permission::PublicationManage->value)
                 ? HumasQueries::visiblePublications()->where('status', PublicationStatus::Siap)->count()
+                : null,
+            // Humas › Jadwal: scheduled publications past their time, not marked as published yet (D-122).
+            'humas.jadwal' => $user->can(Permission::PublicationManage->value)
+                ? HumasQueries::overduePublications()->count()
                 : null,
             // 'siswa.lomba-saya': no screen computes a count for it today.
             default => null,

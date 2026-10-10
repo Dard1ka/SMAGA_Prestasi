@@ -42,6 +42,7 @@ class Competition extends Model
         'bidang',
         'organizer_name',
         'organizer_type',
+        'organizer_type_other',
         'weight_category',
         'event_status',
         'level',
@@ -205,5 +206,23 @@ class Competition extends Model
     public function allowsRegistrationType(RegistrationType $type): bool
     {
         return $this->participation instanceof Participation && $this->participation->allows($type);
+    }
+
+    /**
+     * "Jenis penyelenggara" for a screen or an export: "Perguruan tinggi negeri", or "Lainnya (Sanggar seni)" when
+     * the kind was typed by hand (`organizer_type_other`, D-125); null while no type is set. Needs the full row:
+     * do not call it on a lomba loaded with a column subset (strict models).
+     */
+    public function organizerTypeLabel(): ?string
+    {
+        $type = $this->organizer_type;
+
+        if (! $type instanceof OrganizerType) {
+            return null;
+        }
+
+        $other = trim((string) $this->organizer_type_other);
+
+        return $type === OrganizerType::Lainnya && $other !== '' ? $type->label().' ('.$other.')' : $type->label();
     }
 }

@@ -66,7 +66,8 @@
                                     <x-sth.button variant="quiet" size="sm" :aria-label="'Ubah '.$row['name']" wire:click="edit('{{ $row['id'] }}')">Ubah</x-sth.button>
                                 @endif
                                 @if ($row['canClose'])
-                                    <x-sth.button variant="quiet" size="sm" :aria-label="'Tutup '.$row['name']" wire:click="close('{{ $row['id'] }}')" wire:confirm="Tutup lomba ini? Lomba tidak tampil lagi di katalog siswa.">Tutup</x-sth.button>
+                                    {{-- D-128: opens the dialog "Tutup lomba ini?" at the end of this file (the app's own dialog, no browser box). --}}
+                                    <x-sth.button variant="quiet" size="sm" :aria-label="'Tutup '.$row['name']" wire:click="askClose('{{ $row['id'] }}')" aria-haspopup="dialog">Tutup</x-sth.button>
                                 @endif
                             </div>
                         </td>
@@ -179,6 +180,27 @@
             <x-sth.button variant="quiet" data-sth-close>Batal</x-sth.button>
             @if ($pastLomba)
                 <x-sth.button icon="check" wire:click="publishPast" wire:loading.attr="disabled" wire:target="publishPast">Tetap publikasikan</x-sth.button>
+            @endif
+        </x-slot:footer>
+    </x-sth.modal>
+
+    {{-- D-128: "Tutup" asks here (opened by askClose()): a closed lomba cannot be opened again. --}}
+    <x-sth.modal :id="\App\Livewire\Kesiswaan\Lomba\Index::CLOSE_DIALOG" size="sm" title="Tutup lomba ini?" description="Lomba tidak tampil lagi di katalog siswa dan tidak bisa dibuka lagi.">
+        @if ($closingLomba)
+            <div class="flex flex-col gap-3">
+                <div class="rounded-tile bg-subtle px-3 py-2.5">
+                    <p class="m-0 font-semibold [overflow-wrap:anywhere]">{{ $closingLomba['name'] }}</p>
+                    <p class="num m-0 text-xs text-muted">{{ $closingLomba['count'] }} siswa terdaftar</p>
+                </div>
+                <p class="m-0 text-md">Pendaftaran yang sudah ada tetap berjalan.</p>
+            </div>
+        @else
+            <p class="m-0 text-md text-muted">Lomba tidak ditemukan. Tutup lalu coba lagi.</p>
+        @endif
+        <x-slot:footer>
+            <x-sth.button variant="quiet" data-sth-close>Batal</x-sth.button>
+            @if ($closingLomba)
+                <x-sth.button variant="danger" wire:click="close" wire:loading.attr="disabled" wire:target="close">Tutup lomba</x-sth.button>
             @endif
         </x-slot:footer>
     </x-sth.modal>

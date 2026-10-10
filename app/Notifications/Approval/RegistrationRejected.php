@@ -6,6 +6,7 @@ namespace App\Notifications\Approval;
 
 use App\Models\Registration;
 use App\Notifications\Registrations\RegistrationNotification;
+use App\Notifications\Support\MailGreeting;
 use App\Notifications\Support\PlainMailMessage;
 use Illuminate\Notifications\Messages\MailMessage;
 
@@ -33,13 +34,12 @@ class RegistrationRejected extends RegistrationNotification
     {
         return (new PlainMailMessage)
             ->subject($this->subject())
-            ->greeting($this->audience === 'guru' ? 'Yth. '.trim((string) ($notifiable->name ?? '')).',' : 'Halo '.self::firstName($notifiable).',')
+            ->greeting($this->audience === 'guru' ? MailGreeting::staff($notifiable) : MailGreeting::student($notifiable))
             ->line($this->audience === 'guru'
                 ? 'Pendaftaran binaan di '.$this->competitionName().' ('.$this->leaderName().') tidak disetujui Kepala Sekolah.'
                 : 'Kepala Sekolah tidak menyetujui pendaftaranmu di '.$this->competitionName().'.')
             ->line('Alasan: '.$this->reason())
-            ->action('Lihat pendaftaran', $this->url())
-            ->salutation('SMAGA Talent Hub');
+            ->action('Lihat pendaftaran', $this->url());
     }
 
     /** @return array<string, mixed> */

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Notifications\Registrations;
 
+use App\Notifications\Support\MailGreeting;
 use App\Notifications\Support\PlainMailMessage;
 use Illuminate\Notifications\Messages\MailMessage;
 
@@ -14,11 +15,10 @@ class RegistrationAwaitingPrincipal extends RegistrationNotification
     {
         return (new PlainMailMessage)
             ->subject('Pendaftaran lomba menunggu persetujuan')
-            ->greeting('Yth. '.trim((string) ($notifiable->name ?? 'Kepala Sekolah')).',')
+            ->greeting(MailGreeting::staff($notifiable))
             ->line($this->summary())
             ->line('Mohon tinjau dan beri keputusan di SMAGA Talent Hub.')
-            ->action('Buka persetujuan', $this->url())
-            ->salutation('SMAGA Talent Hub');
+            ->action('Buka persetujuan', $this->url());
     }
 
     /** @return array<string, mixed> */
