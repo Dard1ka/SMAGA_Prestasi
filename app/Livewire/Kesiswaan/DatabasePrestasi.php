@@ -48,8 +48,8 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
  * Kesiswaan · Database prestasi (UI-MAP §4a `kesiswaan.prestasi.index`, backlog #4, owner B4): every
  * verified achievement with filters (tahun ajaran, siswa, kelas, angkatan, bidang, tingkat, jenis
  * penyelenggara, status ajang, pembimbing, individu/tim, capaian), totals, a detail drawer and an audited
- * Excel export (ExportAchievements, `achievement.export`, password from the last 15 minutes). NIS is masked
- * on screen. Filters live in the URL; the same AchievementFilters object drives list, totals and export.
+ * Excel export (ExportAchievements, `achievement.export`, password from the last 15 minutes). The NIS is shown
+ * in full, as in the file (D-131). Filters live in the URL; the same AchievementFilters object drives list, totals and export.
  */
 #[Title('Database prestasi')]
 #[Layout('layouts::app', ['subtitle' => 'Semua prestasi terverifikasi, bisa disaring dan di-download.'])]
@@ -232,7 +232,7 @@ final class DatabasePrestasi extends Component
             'id' => (string) $a->getKey(),
             'name' => $a->student?->user?->name ?? 'Siswa',
             'kelas' => $a->student?->classroom?->name ?? '–',
-            'nis' => self::maskNis($a->student?->nis),
+            'nis' => (string) $a->student?->nis,
             'lomba' => $competition?->name ?? 'Lomba',
             'organizer' => $competition?->organizer_name,
             'bidang' => $competition?->bidang,
@@ -276,7 +276,7 @@ final class DatabasePrestasi extends Component
             'name' => $user?->name ?? 'Siswa',
             'student' => [
                 ['label' => 'Kelas', 'value' => $student?->classroom?->name ?? '–'],
-                ['label' => 'NIS', 'value' => self::maskNis($student?->nis) ?: '–'],
+                ['label' => 'NIS', 'value' => (string) $student?->nis ?: '–'],
                 ['label' => 'Angkatan', 'value' => $student?->grade12_start_date !== null ? (string) ($student->grade12_start_date->year - 2) : '–'],
                 ['label' => 'Status akun', 'value' => match (true) {
                     $user === null || $user->trashed() || ($student?->trashed() ?? false) => 'Dihapus',
@@ -377,15 +377,6 @@ final class DatabasePrestasi extends Component
         foreach (AchievementFilters::KEYS as $key) {
             $this->{$key} = $clean[$key] ?? '';
         }
-    }
-
-    private static function maskNis(?string $nis): string
-    {
-        if ($nis === null || $nis === '') {
-            return '';
-        }
-
-        return mb_strlen($nis) <= 4 ? '••••' : mb_substr($nis, 0, 4).'•••'.mb_substr($nis, -2);
     }
 
     private static function schoolYear(?DateTimeInterface $date): string

@@ -12,9 +12,10 @@ use Illuminate\Support\Collection;
 use Spatie\Activitylog\Models\Activity;
 
 /**
- * K9 activation report per class (docs/SECURITY.md §3a, B1) for Admin and Kesiswaan: name, class, masked NIS,
- * state (belum/aktif/kedaluwarsa/dibekukan/nonaktif/arsip), activation time, last login, masked email and
- * automatic flags (activation outside school hours, many failed logins, "Bukan saya?" report).
+ * K9 activation report per class (docs/SECURITY.md §3a, B1) for Admin and Kesiswaan: name, class, NIS (in full
+ * since D-131, lead 2026-10-11: both roles work with the class lists, also in the CSV), state
+ * (belum/aktif/kedaluwarsa/dibekukan/nonaktif/arsip), activation time, last login, masked email and automatic
+ * flags (activation outside school hours, many failed logins, "Bukan saya?" report).
  * Read-only; ~1 100 students fit in memory, so states are derived in PHP (same rules as the login controls).
  * Not flagged yet (needs data B1 does not store): activation from outside the school network, ≥ 3 accounts
  * activated from one browser session within an hour.
@@ -171,18 +172,6 @@ final class ActivationReport
         return $value !== '' && in_array($value[0], ['=', '+', '-', '@', "\t", "\r", '|', '%'], true) ? "'".$value : $value;
     }
 
-    /** "225226201" → "2252•••01" (lists never show the full NIS, as in Kesiswaan › Talenta). */
-    public static function maskNis(?string $nis): string
-    {
-        $nis = (string) $nis;
-
-        if ($nis === '') {
-            return '';
-        }
-
-        return mb_strlen($nis) <= 4 ? '••••' : mb_substr($nis, 0, 4).'•••'.mb_substr($nis, -2);
-    }
-
     public static function outsideSchoolHours(?CarbonImmutable $at): bool
     {
         if ($at === null) {
@@ -224,7 +213,7 @@ final class ActivationReport
         return [
             'userId' => (int) $user->getKey(),
             'name' => (string) $user->name,
-            'nis' => self::maskNis($student->nis),
+            'nis' => (string) $student->nis,
             'classroomId' => $classroom?->getKey(),
             'classroom' => $classroomName,
             'level' => $level,

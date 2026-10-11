@@ -14,6 +14,7 @@ use App\Enums\SettingKey;
 use App\Mail\LocalMailGuard;
 use App\Mail\Transport\AllowlistTransport;
 use App\Models\Setting;
+use App\Notifications\Channels\BellChannel;
 use App\Support\Audit\AuditChain;
 use App\Support\Audit\SecurityEventSubscriber;
 use Illuminate\Auth\Events\Lockout;
@@ -24,6 +25,7 @@ use Illuminate\Http\Request;
 use Illuminate\Mail\Events\MessageSending;
 use Illuminate\Mail\MailManager;
 use Illuminate\Mail\Markdown;
+use Illuminate\Notifications\Channels\DatabaseChannel;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Route;
@@ -56,6 +58,10 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(GraduationCalculator::class, fn (): GraduationCalculator => new GraduationCalculator(
             self::settingInt(SettingKey::ArchiveMonthsAfterGrade12, GraduationCalculator::DEFAULT_ARCHIVE_MONTHS, GraduationCalculator::MAX_ARCHIVE_MONTHS),
         ));
+
+        // Bell rows keep the path of their target, not the absolute address, so "Buka" still works when the app is
+        // reached under another host (RV1; the notification manager resolves the database channel by this class name).
+        $this->app->bind(DatabaseChannel::class, BellChannel::class);
 
         // Local development (D-121): mail transport "allowlist" = real delivery for listed addresses, Mailpit for the rest.
         $this->callAfterResolving('mail.manager', function (MailManager $manager): void {

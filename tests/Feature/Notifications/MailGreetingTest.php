@@ -136,6 +136,7 @@ function mailGreetingCases(): array
         [$fixed(RegistrationCancelled::for($registration, 'guru')), 'staf'],
         [$fixed(RegistrationCancelled::for($registration, 'kepsek')), 'staf'],
         [$fixed(RegistrationApproved::for($registration, 'guru')), 'staf'],
+        [$fixed(RegistrationApproved::for($registration, 'guru', true, 'Bu Retno Wulandari, S.Pd.')), 'staf'],
         [$fixed(RegistrationApproved::for($registration, 'tu')), 'staf'],
         [$fixed(RegistrationRejected::for($registration, 'guru')), 'staf'],
         [$fixed(LettersIssued::for($registration, 'guru')), 'staf'],

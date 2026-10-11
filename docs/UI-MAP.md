@@ -109,7 +109,7 @@ Conventions
 
 | # | Board | Route name · URL | Livewire class | Access (permission / policy) · Actions | Owner | M · Wave |
 |---|---|---|---|---|---|---|
-| 19 | `Kepsek-Persetujuan` (Kepala Sekolah · Persetujuan) | `kepsek.persetujuan.index` · `/kepsek/persetujuan` | `Kepsek\Persetujuan` | `registration.approve` + `RegistrationPolicy::decide` (**Kepala Sekolah only; Admin denied**, D-01/§3m-9); `ApproveRegistration`, `RejectRegistration` (reason required); bulk approve = one authorized Action call per row | S / user | M1 · W2 (**built** W2-C) |
+| 19 | `Kepsek-Persetujuan` (Kepala Sekolah · Persetujuan) | `kepsek.persetujuan.index` · `/kepsek/persetujuan` | `Kepsek\Persetujuan` | `registration.approve` + `RegistrationPolicy::decide` (**Kepala Sekolah only; Admin denied**, D-01/§3m-9); `ApproveRegistration`, `RejectRegistration` (reason required); bulk approve = one authorized Action call per row; "Ganti guru" = approve one row with another guru pembimbing (`RegistrationPolicy::changeMentor`, dialog `ganti-pembimbing`, D-132, §6g) | S / user | M1 · W2 (**built** W2-C; "Ganti guru" RV1) |
 | 20 | `Dashboard-Sekolah` (Kepala Sekolah · Dashboard) | `kepsek.beranda` · `/kepsek` (`?tahun=`) | `Sekolah\Dashboard` (shared with Admin) | `dashboard.view`; aggregate queries only; "Data contoh" chip only when `APP_ENV=local` | S / user | M3 · W2 (**built** W2-C) |
 | – | sidebar "Prestasi per bidang" | `kepsek.prestasi` · `/kepsek/prestasi` (`?bidang=&tahun=&tingkat=&siswa=<ulid>`) | `Kepsek\PrestasiBidang` (internal drill-down, staff layout) | staff may see all names; still no NIS/NISN in lists | S / user | M3 · W2 (**built** B5) |
 | – | sidebar "Laporan" | `kepsek.laporan` · `/kepsek/laporan` (`?tahun=YYYY/YYYY\|semua\|rentang&dari=&sampai=&bidang=`; roles kepala_sekolah and admin) | `Kepsek\Laporan` | `AchievementPolicy::{viewSchoolReport,exportSchoolReport}` (`achievement.export`, now also Kepsek, D-57); `ExportPrestasiReport` PDF/XLSX, password confirmation, watermarked, audited `school_report.exported` | S / user | M3 · W2 (**built** B5) |
@@ -302,6 +302,21 @@ unseen in a browser: an overdue publication card and the Jadwal count (the dialo
 
 New route: `GET /notifikasi/jumlah` → `notifikasi.jumlah` (`NotificationCountController`, JSON, §2; D-127). New sidebar
 count key: `humas.jadwal`. No new `<x-sth.*>` component.
+
+## 6g. Screen changes of RV1 (D-130…D-133, the demo and the joint review of 2026-10-11)
+Not drawn in the mockup. Details: `docs/dev-notes/RV1.md`. One new dialog, built like those of §6f (D-128):
+`ganti-pembimbing`. No new route, menu item or `<x-sth.*>` component.
+
+| screen | change |
+|---|---|
+| Kepala Sekolah › Persetujuan (#19) | every waiting row has "Ganti guru" under the name of the guru pembimbing → dialog "Setujui dengan guru pembimbing lain?" (lomba and students, "Pilihan siswa: …", the pick list of every other guru who can log in, who is told) → "Setujui dengan guru ini" approves the row with that guru. A decided row shows "Ditetapkan Kepala Sekolah, menggantikan …" under the new name. "Setujui" and "Setujui terpilih" keep the student's guru (D-132). The facts of a row (Peserta, Pembimbing, Jadwal lomba, Didaftarkan) now take their columns from the width of the card, not of the window (`@container`): four columns from 520 px, below that Peserta and Pembimbing on a row each and the two dates side by side; before, the five fixed columns were 77 px wide on a 1280 px laptop and 26 px at 1024 px |
+| Siswa › Lomba saya (#12), card Tim / Peserta | "Ditetapkan Kepala Sekolah" under the guru pembimbing, only when the Kepala Sekolah replaced the student's choice; the approval notice names the guru in every case (D-132) |
+| Siswa › Undangan tim | "Ikut tim" and "Tolak undangan" work again: the page had been wrapped in an `@if`, so Livewire had taken the poster box as the component and the two buttons did nothing (since QA9; found by the lead on 2026-10-11) |
+| Guru › Siswa binaan | no new element: a registration approved with another guru leaves the old guru's list and appears in the new guru's; the notice "Ditetapkan sebagai guru pembimbing" links here (D-132); the old guru gets no notice (D-134) |
+| Status aktivasi (Kesiswaan, Admin) | the NIS in full in the list, in the class popup and in the CSV; the sentence under the filters now reads "Email ditampilkan tersamar." (D-131) |
+| Kesiswaan › Talenta (#18), Database prestasi | the NIS in full in the table (and in the detail of Database prestasi), as their Excel files already had it (D-131) |
+| Tata Usaha › Surat tugas, PDF surat tugas siswa | the student letter stands in the middle of the page (equal left and right margins); the on-screen preview already did. Letters issued before keep their file (D-133) |
+| Admin › Log audit | label "Guru pembimbing diganti Kepala Sekolah" (`registration.mentor_changed`) |
 
 ## 7. Board checklist (24/24 mapped)
 Main (#1) · Prestasi-Bidang (#2) · Peringkat (#3) · Masuk (#4) · Aktivasi (#5) · Tur-Menu-Mobile (#6) ·

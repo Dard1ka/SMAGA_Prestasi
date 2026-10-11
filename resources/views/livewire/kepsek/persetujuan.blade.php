@@ -47,7 +47,9 @@
                                aria-label="Pilih {{ $who !== '' ? $who.', ' : '' }}{{ $title }}">
                     </label>
 
-                    <div class="flex min-w-0 flex-1 flex-col gap-3">
+                    {{-- The facts below take their columns from the width of this column, not of the window: beside the
+                         sidebar and the summary panel it is narrow on a 1280 px laptop (RV1). --}}
+                    <div class="@container flex min-w-0 flex-1 flex-col gap-3">
                         <div class="flex flex-wrap items-start gap-3.5">
                             {{-- Phones: no icon tile (the bidang tag says it) and the two decision buttons get their own row,
                                  so the title keeps the full width instead of being squeezed to one word per line. --}}
@@ -84,8 +86,10 @@
                             @endif
                         </div>
 
-                        <dl class="m-0 grid grid-cols-2 gap-4 sm:grid-cols-5 sm:pl-[62px]">
-                            <div class="col-span-2 flex min-w-0 flex-col gap-1">
+                        {{-- Narrow: Peserta and Pembimbing each on a row of their own, then Jadwal and Didaftarkan side by
+                             side. From 520 px: four columns, Pembimbing wide enough for "Ganti guru" under the name. --}}
+                        <dl class="m-0 grid grid-cols-2 gap-4 sm:pl-[62px] @min-[520px]:grid-cols-[minmax(0,2fr)_minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,1fr)]">
+                            <div class="col-span-2 flex min-w-0 flex-col gap-1 @min-[520px]:col-span-1">
                                 <dt class="text-xs font-semibold text-muted">Peserta</dt>
                                 <dd class="m-0 flex min-w-0 items-start gap-2">
                                     <x-sth.avatar-stack :names="$members->map(fn ($m) => $m->student?->user?->name ?? '')->all()" :max="3" />
@@ -96,9 +100,18 @@
                                     </span>
                                 </dd>
                             </div>
-                            <div class="flex min-w-0 flex-col gap-1">
+                            <div class="col-span-2 flex min-w-0 flex-col gap-1 @min-[520px]:col-span-1">
                                 <dt class="text-xs font-semibold text-muted">Pembimbing</dt>
-                                <dd class="m-0 text-sm font-semibold">{{ $mentorName }}</dd>
+                                <dd class="m-0 flex min-w-0 flex-col items-start gap-1 [overflow-wrap:anywhere]">
+                                    <span class="text-sm font-semibold">{{ $mentorName }}</span>
+                                    @if ($pending)
+                                        {{-- D-132: the Kepala Sekolah may approve the row with another guru than the student chose. --}}
+                                        <x-sth.button size="sm" variant="quiet" wire:click="askMentor('{{ $row->id }}')" aria-haspopup="dialog"
+                                                      aria-label="Ganti guru pembimbing {{ $who !== '' ? $who.', ' : '' }}{{ $title }}">Ganti guru</x-sth.button>
+                                    @elseif ($state === 'ok' && isset($replaced[$row->id]))
+                                        <span class="muted text-xs">{{ $replaced[$row->id] !== '' ? 'Ditetapkan Kepala Sekolah, menggantikan '.$replaced[$row->id] : 'Ditetapkan Kepala Sekolah' }}</span>
+                                    @endif
+                                </dd>
                             </div>
                             <div class="flex min-w-0 flex-col gap-1">
                                 <dt class="text-xs font-semibold text-muted">Jadwal lomba</dt>
@@ -164,6 +177,46 @@
             <x-sth.button variant="quiet" data-sth-close>Batal</x-sth.button>
             @if ($checkedCount > 0)
                 <x-sth.button icon="check" wire:click="approveSelected" wire:loading.attr="disabled" wire:target="approveSelected">Setujui {{ $checkedCount }} pendaftaran</x-sth.button>
+            @endif
+        </x-slot:footer>
+    </x-sth.modal>
+
+    {{-- D-132: approve one row with another guru pembimbing. One decision: nothing is saved and nobody is told before
+         "Setujui dengan guru ini" (D-128); the sentences promise a notice only to the people who get one (D-109). --}}
+    <x-sth.modal :id="\App\Livewire\Kepsek\Persetujuan::MENTOR_DIALOG" title="Setujui dengan guru pembimbing lain?"
+                 description="Pendaftaran langsung disetujui dan masuk antrean TU. Persetujuan tidak bisa dibatalkan dari layar ini." size="sm">
+        <form id="ganti-pembimbing-form" wire:submit="approveWithMentor" class="flex flex-col gap-3" novalidate>
+            @if ($mentorDialog)
+                <div class="rounded-tile bg-subtle px-3 py-2.5">
+                    <p class="m-0 font-semibold [overflow-wrap:anywhere]">{{ $mentorDialog['title'] }}</p>
+                    <p class="m-0 text-xs text-muted [overflow-wrap:anywhere]">{{ $mentorDialog['who'] }}</p>
+                </div>
+                <p class="m-0 text-md [overflow-wrap:anywhere]">
+                    @if ($mentorDialog['current'])
+                        Pilihan siswa: <span class="font-semibold">{{ $mentorDialog['current'] }}</span>
+                    @else
+                        Siswa belum memilih guru pembimbing.
+                    @endif
+                </p>
+                @if ($mentorDialog['options'] !== [])
+                    <x-sth.select wire:model="mentorChoice" id="guru-pengganti" :label="$mentorDialog['current'] ? 'Guru pembimbing pengganti' : 'Guru pembimbing'"
+                                  placeholder="Pilih guru" :options="$mentorDialog['options']" />
+                    <ul class="m-0 flex list-disc flex-col gap-1 pl-5 text-sm text-ink-2">
+                        @foreach ($mentorDialog['notices'] as $notice)
+                            <li class="[overflow-wrap:anywhere]">{{ $notice }}</li>
+                        @endforeach
+                    </ul>
+                @else
+                    <x-sth.alert tone="warning">Belum ada akun guru lain yang bisa dipilih.</x-sth.alert>
+                @endif
+            @else
+                <p class="m-0 text-md text-muted">Tidak ada pendaftaran yang dipilih. Tutup lalu coba lagi.</p>
+            @endif
+        </form>
+        <x-slot:footer>
+            <x-sth.button variant="quiet" data-sth-close>Batal</x-sth.button>
+            @if ($mentorDialog && $mentorDialog['options'] !== [])
+                <x-sth.button type="submit" form="ganti-pembimbing-form" icon="check" wire:loading.attr="disabled" wire:target="approveWithMentor">Setujui dengan guru ini</x-sth.button>
             @endif
         </x-slot:footer>
     </x-sth.modal>

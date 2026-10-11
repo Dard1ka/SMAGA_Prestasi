@@ -91,13 +91,13 @@ it('grants the database and the export through the policy', function (): void {
 
 // List, totals, filters -----------------------------------------------------------------------------
 
-it('lists every verified achievement with totals and a masked NIS', function (): void {
+it('lists every verified achievement with totals and the NIS in full (D-131)', function (): void {
     Livewire::actingAs($this->kesiswaan)->test(DatabasePrestasi::class)
         ->assertSee('Nadia Putri Anindya')
         ->assertSee('Dimas Arya Nugroho')
         ->assertSee('OPSI 2025')
-        ->assertSee('2252•••01')
-        ->assertDontSee('225226201')
+        ->assertSee('225226201')
+        ->assertDontSee('2252•••01')
         ->assertViewHas('totals', fn (array $t): bool => $t === ['count' => '4', 'students' => '4', 'points' => '246', 'podium' => '3']);
 });
 

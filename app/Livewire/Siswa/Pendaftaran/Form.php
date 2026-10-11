@@ -8,6 +8,7 @@ use App\Actions\Registrations\CancelRegistration;
 use App\Actions\Registrations\CreateRegistration;
 use App\Actions\Registrations\ExpirePendingInvitations;
 use App\Actions\Registrations\InviteMembers;
+use App\Actions\Registrations\MentorChoice;
 use App\Actions\Registrations\WithdrawInvitation;
 use App\Enums\MemberRole;
 use App\Enums\Participation;
@@ -530,9 +531,8 @@ class Form extends Component
     /** @return array<int, string> */
     private function mentorOptions(): array
     {
-        return User::query()->gurus()->canLogIn()->with('staffProfile:id,user_id,honorific')->orderBy('name')->get(['id', 'name'])
-            ->mapWithKeys(fn (User $u): array => [$u->id => trim(($u->staffProfile?->honorific ? $u->staffProfile->honorific.' ' : '').$u->name)])
-            ->all();
+        // The same list the Kepala Sekolah picks from when replacing the guru (D-132).
+        return MentorChoice::options();
     }
 
     /** @return array<string, mixed> */

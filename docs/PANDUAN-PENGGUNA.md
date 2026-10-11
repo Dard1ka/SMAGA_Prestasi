@@ -148,6 +148,10 @@ diganti."
 pendaftaran**). Anggota lain dan guru pembimbing diberi tahu; Kepala Sekolah juga, bila pendaftaran itu sudah menunggu
 persetujuannya.
 
+**Pendaftaran disetujui**: notifikasinya menyebut **guru pembimbingmu**. Kepala Sekolah boleh menetapkan guru lain
+dari yang kamu pilih; kalau begitu, notifikasinya menulis guru yang baru dan guru yang digantikan, dan di **Lomba
+saya** tertulis "Ditetapkan Kepala Sekolah" di bawah nama gurumu.
+
 **Pendaftaran tidak disetujui**: kamu dan guru pembimbing menerima notifikasi berisi alasan Kepala Sekolah.
 
 **Surat tugas**: setelah Kepala Sekolah menyetujui, Tata Usaha mengirim surat tugas. Buka **Lomba saya**, lalu
@@ -219,6 +223,10 @@ sendiri, tanpa memuat ulang halaman.
 - **Notifikasi untuk pembimbing**: pendaftaran binaan **disetujui**, **tidak disetujui** (dengan alasan Kepala
   Sekolah), atau **dibatalkan** ketuanya; surat perintah tugas **terbit** atau **diperbarui**. Tombol di email membuka
   pendaftaran itu.
+  - **Ditetapkan sebagai guru pembimbing**: saat menyetujui, Kepala Sekolah boleh menetapkan guru lain dari yang
+    dipilih siswa. Guru yang ditetapkan menerima notifikasi ini dan pendaftarannya muncul di **Siswa binaan**.
+    Guru yang dipilih siswa tetapi diganti **tidak** menerima notifikasi (ia juga tidak diberi tahu saat dipilih):
+    pendaftaran itu hanya hilang dari **Siswa binaan**-nya.
   - **Info lomba binaan berubah**: perubahan tanggal, tempat, pelaksanaan, link, atau juknis lomba yang diikuti
     binaan diberitahukan dalam satu notifikasi setiap kali Kesiswaan menyimpan perubahan, berapa pun jumlah binaan
     di lomba itu. Perubahan batas daftar dan jumlah peserta hanya diberitahukan ke siswa.
@@ -298,7 +306,8 @@ memuat ulang halaman. Angka itu tampil di semua halaman, juga di **Status aktiva
      mengirim ulang laporan.") hanya tertulis bila akun ketua bisa masuk, karena hanya ketua yang bisa mengirim ulang
      laporan. Kalau kalimat itu tidak ada, laporan belum bisa dikirim ulang.
 
-**Talenta siswa**: saring per tahap/jenis/kelas, lalu klik ikon mata untuk membuka satu pilihan.
+**Talenta siswa**: saring per tahap/jenis/kelas, lalu klik ikon mata untuk membuka satu pilihan. NIS siswa tampil
+lengkap di tabel, di panel, dan di file Excel-nya.
 - Ada **dua catatan**, keduanya boleh kosong:
   - **Catatan untuk guru pembina**: hanya dibaca guru pembina dan Kesiswaan. Tersimpan dengan **Simpan**.
   - **Catatan untuk siswa**: dibaca siswa di notifikasi dan Profil talenta. Terkirim saat Anda menekan **Lolos ke …**
@@ -343,7 +352,8 @@ memuat ulang halaman. Angka itu tampil di semua halaman, juga di **Status aktiva
 **Database prestasi**: semua prestasi terverifikasi dengan filter → **Download Excel** (tercatat di log audit). Klik
 nama sertifikat di rincian sebuah prestasi untuk melihatnya di jendela preview (lihat §1). Jenis penyelenggara yang
 diisi manual tampil sebagai "Lainnya (Sanggar seni)", di rincian dan di kolom "Jenis penyelenggara" file Excel; filter
-**Jenis penyelenggara: Lainnya** tetap memuat semuanya.
+**Jenis penyelenggara: Lainnya** tetap memuat semuanya. NIS siswa tampil lengkap di tabel dan di rincian, seperti di
+file Excel-nya.
 
 **Import siswa** (dipakai saat awal dan **diulang tiap tahun ajaran** agar kelas selalu benar)
 1. **Import siswa** → **Download template Excel** → isi Nama lengkap, NIS, NISN, Tanggal lahir, **Kelas** (kelas
@@ -371,6 +381,8 @@ diisi manual tampil sebagai "Lainnya (Sanggar seni)", di rincian dan di kolom "J
 **Status aktivasi** (menu **Data**, juga lewat notifikasi peringatan): siapa yang sudah/belum aktivasi per kelas.
 - Tekan **Lihat** di baris kelas: daftar siswa kelas itu terbuka dalam **popup** (status, email tersamar, aktivasi,
   login terakhir; 40 baris per langkah, **Tampilkan lebih banyak**). Tutup dengan **Tutup**.
+- **NIS tampil lengkap** di daftar siswa, di popup kelas, dan di file **Download CSV**, supaya mudah dicocokkan dengan
+  daftar kelas. Email tetap ditampilkan tersamar (mis. `n•••@gmail.com`), juga di CSV. NISN tidak ditampilkan di sini.
 - **Buka ulang** memberi siswa waktu sampai paling sedikit 72 jam dari sekarang (alasan wajib, minimal 10 karakter).
   Batas yang masih lebih lama **tidak pernah dipendekkan**. Tombolnya hanya ada bila memang perlu: batas sudah lewat,
   akun dibekukan, atau sisa waktunya kurang dari 72 jam. Sebelum Anda menekan, dialognya menulis hasilnya ("Dibuka
@@ -386,6 +398,14 @@ diisi manual tampil sebagai "Lainnya (Sanggar seni)", di rincian dan di kolom "J
   beberapa sekaligus; **Pilih semua** hanya memilih yang sedang tampil) atau **Tolak** dengan alasan (wajib). Setelah
   disetujui, Tata Usaha membuat surat tugas. Bila ditolak, siswa dan guru pembimbingnya menerima alasannya. Angka di
   menu **Persetujuan** langsung berkurang, tanpa memuat ulang halaman.
+- **Ganti guru** (di bawah nama pembimbing tiap pendaftaran yang menunggu): untuk menyetujui pendaftaran dengan guru
+  pembimbing **lain** dari yang dipilih siswa. Pilih guru pengganti, lalu **Setujui dengan guru ini**. Pendaftaran
+  langsung disetujui dengan guru itu; tidak ada langkah simpan terpisah, dan setelah disetujui guru tidak bisa
+  diganti lagi (surat tugas menyebut guru itu). **Setujui** biasa dan **Setujui terpilih** memakai guru pilihan siswa.
+  - Siswa membaca nama guru pembimbingnya di notifikasi persetujuan, baik diganti maupun tidak.
+  - Guru yang ditetapkan diberi tahu ("Ditetapkan sebagai guru pembimbing"). Guru pilihan siswa yang diganti tidak
+    diberi tahu, karena ia juga tidak diberi tahu saat dipilih. Dialognya menulis siapa saja yang akan diberi tahu
+    sebelum tombol ditekan.
 - Bila ketua membatalkan pendaftaran yang sedang menunggu keputusan Anda, Anda diberi tahu ("Pendaftaran lomba
   dibatalkan") dan pendaftaran itu hilang dari daftar.
 - **Dashboard**: ringkasan prestasi per tahun.
@@ -397,7 +417,10 @@ diisi manual tampil sebagai "Lainnya (Sanggar seni)", di rincian dan di kolom "J
 ## 6. Tata Usaha
 
 **Surat tugas**: tiap pendaftaran punya **dua surat** (surat siswa dan surat guru pendamping). Masing-masing punya tab,
-nomor, dan isian sendiri. Bila pendaftaran belum punya guru pembimbing, hanya surat siswa yang dibuat.
+nomor, dan isian sendiri. Bila pendaftaran belum punya guru pembimbing, hanya surat siswa yang dibuat. Guru di surat
+adalah guru pembimbing saat pendaftaran disetujui (bisa guru yang ditetapkan Kepala Sekolah, bukan pilihan siswa).
+PDF surat siswa dicetak di tengah halaman (margin kiri dan kanan sama); surat yang dibuat sebelum 11 Okt 2026 tetap
+seperti saat dibuat, dan **Koreksi** membuat surat baru dengan tata letak sekarang.
 1. **Antrean surat** → buka pendaftaran yang sudah disetujui.
 2. Pilih tab **Surat siswa**. Isi:
    - **Nomor surat**: ketik **nomor lengkap** sesuai buku agenda, mis. `400.3.8/313/MRD/X/2026`. Di bawah kolom ada

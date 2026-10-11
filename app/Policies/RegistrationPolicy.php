@@ -130,6 +130,16 @@ class RegistrationPolicy
             && $registration->status === RegistrationStatus::MenungguKepsek;
     }
 
+    /**
+     * Put another guru pembimbing in the place of the one the student chose (D-132): part of the approval, so the
+     * same people at the same moment as decide(): the Kepala Sekolah, while the registration waits for the decision.
+     * Nobody changes the guru before that (the student's choice stands) or after it (the letters name that guru).
+     */
+    public function changeMentor(User $user, Registration $registration): bool
+    {
+        return $this->decide($user, $registration);
+    }
+
     // --- B3: invite (replacement) members, backlog #9 ---
 
     /**

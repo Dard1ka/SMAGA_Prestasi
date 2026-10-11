@@ -32,7 +32,13 @@
             <span class="label">Guru pembimbing</span>
             <div class="flex items-center gap-3">
                 <x-sth.avatar :name="$d['mentor']" size="sm" />
-                <span class="text-sm font-bold">{{ $d['mentor'] }}</span>
+                <span class="flex min-w-0 flex-col [overflow-wrap:anywhere]">
+                    <span class="text-sm font-bold">{{ $d['mentor'] }}</span>
+                    {{-- D-132: said only when the Kepala Sekolah replaced the guru the student chose. --}}
+                    @if ($d['mentorByPrincipal'] ?? false)
+                        <span class="muted text-xs">Ditetapkan Kepala Sekolah</span>
+                    @endif
+                </span>
             </div>
         </div>
     @endif

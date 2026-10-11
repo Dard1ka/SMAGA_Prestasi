@@ -85,7 +85,7 @@ docker/                    # Dockerfiles, nginx.conf (inside container), php.ini
 |---|---|---|---|
 | menunggu_konfirmasi | 1 Daftar | team created, not all members confirmed | menunggu_kepsek · dibatalkan |
 | menunggu_kepsek | 2 Persetujuan | individu submitted, or all members confirmed (email to Kepala Sekolah) | disetujui · ditolak · dibatalkan |
-| disetujui | 3 Surat tugas | Kepala Sekolah approves (email to students, mentor, TU) | surat_terbit |
+| disetujui | 3 Surat tugas | Kepala Sekolah approves, with the student's guru pembimbing or another one (D-132, §8i; email to students, the guru of the registration and TU; the guru who was replaced is told nothing, D-134) | surat_terbit |
 | ditolak | 2 (end) | Kepala Sekolah rejects with required note (email to students) | — |
 | surat_terbit | 3 → 4 | TU issued every required letter (its own full number, form and PDF per letter, D-82/D-83), then sent them | berlangsung (scheduler on starts_on) |
 | berlangsung | 4 Lomba | today ≥ starts_on | menunggu_laporan (scheduler after final_on) |
@@ -160,7 +160,7 @@ expects (details and the run with real OTP codes: TEST-RESULTS in `docs/dev-note
 | Invitation withdrawn by the ketua (`WithdrawInvitation`, kind `registration.invitation_withdrawn`, D-115) | the student whose unanswered invitation was withdrawn (when the account can log in); the Kepala Sekolah when the team is complete after it, as after a decline |
 | Member accepted / declined (`ConfirmMembership`, `DeclineMembership`), invitations expired | the ketua |
 | Registration waiting for approval (individual: at once; team: when complete) | holders of `registration.approve` (Kepala Sekolah) |
-| Registration approved (`ApproveRegistration`) | all members, the guru pembimbing, every Tata Usaha |
+| Registration approved (`ApproveRegistration`) | all members, the guru pembimbing, every Tata Usaha. The members' notice always names their guru pembimbing (D-132). When the Kepala Sekolah replaced the guru with the approval: the members read both names, the **new** guru gets the notice as an appointment ("Ditetapkan sebagai guru pembimbing"), and the guru who was replaced gets **nothing**: neither the approval notice nor a notice of the change (D-134; that account never heard it had been chosen, a new registration is told to the Kepala Sekolah and the team only) |
 | Registration rejected (`RejectRegistration`) | all members, the guru pembimbing |
 | Registration cancelled (`CancelRegistration`) | the other members, the guru pembimbing; the Kepala Sekolah only if it had reached `menunggu_kepsek` |
 | Letters sent / revised (`SendLetters`, `RevokeLetter`) | members (siswa letter), guru pembimbing (guru letter); a revocation also goes to the Kepala Sekolah |
@@ -576,6 +576,74 @@ are per table). No new permission. Details: `docs/dev-notes/EM2.md`.
   names, ids or addresses); new property `held_time` on `appreciation.event_created`, `.recorded`, `.released`,
   `.event_completed` and `.event_deleted` (null for an event without a time). The count endpoint, the dialogs and
   the mail templates write nothing.
+
+### 8i. Rules added by RV1 (D-130…D-133, the demo and the joint review of 2026-10-11)
+No migration, no new permission, no new route. Details: `docs/dev-notes/RV1.md`.
+- **Local mail allowlist, open mode** (D-130, *sementara*, `APP_ENV=local` only): `STH_MAIL_ALLOWLIST=*`.
+  `RecipientAllowlist::fromString()` reads the single star as "open" (`isOpen()`); `allows()` then accepts every
+  well-formed address except a fictional one (`isFictional()`: a host without a dot or written as numbers, the
+  endings `.test`, `.example`, `.invalid`, `.localhost`, `.local`, and `example.com|net|org` with their
+  subdomains). A listed entry still delivers as before; an entry that opens one domain is still dropped into
+  `rejected()`, and a star next to any dropped entry does not open the list (`openRefused()`, said by
+  `sth:mail-test`): a typing mistake never sends more mail out. Both boot guards of D-121 are unchanged.
+- **NIS in full for Kesiswaan and Admin** (D-131): `ActivationReport::row()['nis']`, the rows of `Kesiswaan\Talenta`
+  and the rows and detail of `Kesiswaan\DatabasePrestasi` carry the NIS as stored; the Status aktivasi CSV too. The
+  email stays masked (`AccountControls::maskEmail()`); the NISN is on none of these screens. No route, policy or
+  export rule changed.
+- **Guru pembimbing at the approval** (D-132):
+  - `App\Actions\Registrations\MentorChoice` is the one rule for who may be a guru pembimbing: `query()` (role guru
+    + `canLogIn()`), `find(int|string|null $id): ?User`, `options(int ...$except): array<int, string>` (by name,
+    without the given accounts), `name(?User): ?string` (honorific + name) and `closing(string): string` (a name at
+    the end of a sentence). The student's form, `CreateRegistration` and the approval use it.
+  - `ApproveRegistration::handle(User $actor, Registration $registration, ?string $note = null, int|string|null
+    $mentorId = null)`: `$mentorId` null, '' or the guru the registration already has = nothing changes. Otherwise,
+    inside the same transaction and after the lock: `RegistrationPolicy::changeMentor` (= `decide`: the Kepala
+    Sekolah while `menunggu_kepsek`), `MentorChoice::find()` (else `ValidationException` key `mentor`,
+    `ApproveRegistration::MSG_MENTOR`, and nothing is decided), `mentor_id` is set together with the status, and
+    the audit row `registration.mentor_changed` (`from`, `to`: user ids, `from` null when there was none) is
+    written before `registration.approved`. The model the caller passed is updated and its `mentor` relation
+    dropped. There is no other way to change `mentor_id` of an existing registration, and none after the decision.
+  - Who is told (after commit): the members (`memberUsers()`), the guru the registration has **now**
+    (`mentorToTell()`) and Tata Usaha. The guru who was replaced is told **nothing** (D-134: that account never
+    heard a student had chosen it, so "diganti" would be the first thing it hears; the class `MentorReplaced` and
+    `replacedMentorToTell()` of the first version are gone). The actor never gets a guru notice of their own decision,
+    also not as the registration's guru (an account can be Kepala Sekolah and guru at once). `RegistrationApproved::for(Registration, string $audience, bool $mentorChanged = false,
+    ?string $replacedMentorName = null)` keeps the names as they were at the decision in plain properties with
+    defaults (`mentorName`, `mentorChanged`, `replacedMentorName`), so a notice queued before this change still
+    unserializes; `mentorLine()` is the students' sentence ("Guru pembimbing: …", null without a guru); the `tu`
+    audience carries no guru. A rejection changes nothing: `RejectRegistration` still tells the guru the student
+    chose (D-77).
+  - `ApproveRegistration::mentorWasReplaced(Registration): bool` reads the audit row; Siswa › Lomba saya shows
+    "Ditetapkan Kepala Sekolah" under the guru only then.
+  - Screen: `Kepsek\Persetujuan::askMentor(string $id)` → dialog `Persetujuan::MENTOR_DIALOG` (`ganti-pembimbing`)
+    → `approveWithMentor()`; the ask stores the row in `#[Locked] $mentorFor`, the confirm step is a silent no-op
+    without it (D-128), a refused guru lands under the field, a row decided or cancelled meanwhile is a toast
+    (QA9). The dialog lists `MentorChoice::options()` without the current guru and without the Kepala Sekolah's
+    own account, and says in two plain sentences who is told (D-109, D-134): the students ("Siswa diberi tahu bahwa
+    pendaftarannya disetujui dan siapa guru pembimbingnya.", or the variants for accounts that cannot log in) and
+    the new guru ("Guru pengganti diberi tahu bahwa ia ditetapkan sebagai guru pembimbing."); nothing about the
+    guru the student chose. "Setujui" and "Setujui terpilih" pass no guru.
+- **Student letter centred** (D-133): `resources/pdf/layout.blade.php` prints the surat tugas siswa with equal left
+  and right margins (61.14 pt) and 473 pt wide blocks. Issued letters keep their stored PDF.
+- **Guards against dead controls** (lead: "jangan ada error simpel seperti tombol Ikut tim"). The root element of a
+  Livewire view comes first, with no directive around it (Livewire puts `wire:id` on the first tag that starts a
+  line; an `@if` before the root prints a marker in front of it). Three tests keep this and its relatives away:
+  `tests/Feature/Support/LivewireRootTest.php` (the source of every screen), `PageWiringTest.php` (opens every page
+  each role reaches with the demo data: status 200, every `wire:` control inside a component, its method or
+  property exists, every opened dialog and referenced form is on the page) and `ViewWiringTest.php` (the same
+  names read from the Blade sources, so branches no test renders count too; `data-sth-*` hooks known to
+  `app.js`; `route('…')`, `@include` and `<x-sth.*>` exist; every view compiles to PHP that parses).
+- **A bell row keeps the path of its target** (found when the demo ran behind a tunnel whose address changes at
+  every start). A notification builds one address with `route()` for the mail button and for the bell row. The
+  mail needs it absolute; the bell row is opened inside the app, and `Akun\Notifikasi::internalTarget()` only offers
+  "Buka" for an address of the app host or of the host the page runs on, so a row written under another address
+  (127.0.0.1 by the queue worker, an older tunnel address, the same database on a second machine) had lost its
+  button without a word. `App\Notifications\Channels\BellChannel` (extends Laravel's `DatabaseChannel`, bound to
+  that class name in `AppServiceProvider::register()`, which is how the notification manager resolves the
+  `database` channel) cuts `data['url']` down to path + query + fragment when it starts with this application's own
+  root at that moment (`BellChannel::relative()`); an address of any other site is stored as it came and stays
+  refused by the screen. `toArray()` of a notification keeps passing `route()`; `internalTarget()` and its host
+  check are unchanged. Nothing may read a stored `data['url']` as an absolute address.
 
 ## 9. Environments
 - Dev: `docker compose up` → app (php-fpm 8.4 + nginx on 127.0.0.1:8080), mysql 8.4 (127.0.0.1:3307), mailpit (127.0.0.1:8025), vite, scheduler, queue worker. Because the repo is bind-mounted from a Windows drive, the dev php-fpm workers read a cached config and keep compiled views in the container's own filesystem (`docker/php/fpm.dev.conf`, `docker/php/dev-cache.sh`; pool env only, never the command line), so after editing PHP, Blade, `config/` or `.env` run `reload.bat`; the test suite refuses to run on a cached config (D-91).

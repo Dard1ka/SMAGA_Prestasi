@@ -175,7 +175,8 @@ final class CreateRegistration
 
     private function mentor(?int $mentorId): User
     {
-        $mentor = $mentorId === null ? null : User::query()->gurus()->canLogIn()->whereKey($mentorId)->first();
+        // One rule for who may be a guru pembimbing, shared with the Kepala Sekolah's "Ganti guru" (MentorChoice, D-132).
+        $mentor = MentorChoice::find($mentorId);
 
         if ($mentor === null) {
             throw ValidationException::withMessages(['mentor' => 'Pilih guru pembimbing.']);

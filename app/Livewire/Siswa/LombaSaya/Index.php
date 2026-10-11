@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Livewire\Siswa\LombaSaya;
 
+use App\Actions\Registrations\ApproveRegistration;
 use App\Actions\Registrations\CancelRegistration;
 use App\Actions\Reports\SubmitReport;
 use App\Enums\LetterType;
@@ -290,6 +291,8 @@ final class Index extends Component
                 'me' => $m->student_id === $student?->getKey(),
             ])->all(),
             'mentor' => $registration->mentor !== null ? $this->mentorName($registration->mentor) : null,
+            // D-132: the Kepala Sekolah approved the registration with another guru than the one the student chose.
+            'mentorByPrincipal' => $registration->mentor !== null && ApproveRegistration::mentorWasReplaced($registration),
             'decidedOn' => self::longDate($registration->principal_decided_at),
             'registeredOn' => self::longDate($registration->created_at),
             'allConfirmed' => $registration->members->every(fn (RegistrationMember $m): bool => $m->confirmed_at !== null),

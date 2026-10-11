@@ -16,23 +16,42 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\ValidationException;
+use Spatie\Activitylog\Models\Activity;
 
 /**
  * Kepala Sekolah approves one registration (D-05, UI-MAP #19): menunggu_kepsek → disetujui. The team
  * roster is locked from here on. Notifies the members, the guru pembimbing and Tata Usaha (queued, after
  * commit). Bulk approve = one call per row, each authorized on its own.
+ *
+ * D-132 (lead, 2026-10-11): with the approval the Kepala Sekolah may put another guru in the place of the one the
+ * student chose ($mentorId). It is one decision in one transaction, so no registration ever waits with a guru nobody
+ * was told about: the members read the final guru in their approval notice (also when nothing changed) and the new
+ * guru gets the approval notice as an appointment. The change is audited as `registration.mentor_changed` (user ids
+ * only). After the approval nobody changes the guru: the letters name that person.
+ *
+ * D-134 (lead, same day): the guru who was replaced is told nothing. A new registration is told to the Kepala Sekolah
+ * and the team only, so that account never heard that a student had chosen it; "guru pembimbing diganti" would be
+ * the first and only thing it hears about this registration. It never gets the approval notice either.
  */
 final class ApproveRegistration
 {
     public const MAX_NOTE = 500;
 
+    public const EVENT_MENTOR_CHANGED = 'registration.mentor_changed';
+
+    public const MSG_MENTOR = 'Guru ini tidak bisa dipilih. Pilih guru lain.';
+
     public function __construct(private readonly RegistrationStateMachine $stateMachine) {}
 
     /**
+     * @param  int|string|null  $mentorId  D-132: the guru the Kepala Sekolah puts in the place of the student's choice;
+     *                                     null, '' or the guru the registration already has = the choice stays
+     *
      * @throws AuthorizationException when the actor may not decide (not the Kepala Sekolah)
-     * @throws ValidationException when the registration was already decided or cancelled
+     * @throws ValidationException when the registration was already decided or cancelled, or (key `mentor`) the
+     *                             chosen account is not a guru who can log in
      */
-    public function handle(User $actor, Registration $registration, ?string $note = null): Registration
+    public function handle(User $actor, Registration $registration, ?string $note = null, int|string|null $mentorId = null): Registration
     {
         Gate::forUser($actor)->authorize('viewApprovalQueue', Registration::class);
 
@@ -42,7 +61,10 @@ final class ApproveRegistration
             throw ValidationException::withMessages(['note' => 'Catatan maksimal 500 karakter.']);
         }
 
-        $locked = DB::transaction(function () use ($actor, $registration, $note): Registration {
+        /** @var array{changed: bool, replaced: ?User} $change what the transaction did to the guru */
+        $change = ['changed' => false, 'replaced' => null];
+
+        $locked = DB::transaction(function () use ($actor, $registration, $note, $mentorId, &$change): Registration {
             /** @var Registration $locked */
             $locked = Registration::query()->whereKey($registration->getKey())->lockForUpdate()->firstOrFail();
 
@@ -50,12 +72,36 @@ final class ApproveRegistration
             Gate::forUser($actor)->authorize('decide', $locked);
             $this->stateMachine->assertTransition($locked->status, RegistrationStatus::Disetujui);
 
+            $newMentor = self::replacement($actor, $locked, $mentorId);
+            $previousId = $locked->mentor_id !== null ? (int) $locked->mentor_id : null;
+
             $locked->forceFill([
                 'status' => RegistrationStatus::Disetujui,
                 'principal_decision_by' => $actor->getKey(),
                 'principal_decided_at' => now(),
                 'principal_note' => $note === '' ? null : $note,
-            ])->save();
+            ]);
+
+            if ($newMentor !== null) {
+                $locked->forceFill(['mentor_id' => $newMentor->getKey()]);
+            }
+
+            $locked->save();
+
+            if ($newMentor !== null) {
+                $change = [
+                    'changed' => true,
+                    'replaced' => $previousId !== null ? User::query()->with('staffProfile')->find($previousId) : null,
+                ];
+
+                // User ids only: the audit log never carries names.
+                activity('registration')
+                    ->performedOn($locked)
+                    ->causedBy($actor)
+                    ->event(self::EVENT_MENTOR_CHANGED)
+                    ->withProperties(['from' => $previousId, 'to' => (int) $newMentor->getKey()])
+                    ->log(self::EVENT_MENTOR_CHANGED);
+            }
 
             activity('registration')
                 ->performedOn($locked)
@@ -68,8 +114,10 @@ final class ApproveRegistration
         });
 
         $registration->setRawAttributes($locked->getAttributes(), true);
+        // A caller that had the old guru loaded must not go on showing that person.
+        $registration->unsetRelation('mentor');
 
-        $this->notify($locked);
+        $this->notify($actor, $locked, $change['changed'], $change['replaced']);
 
         return $registration;
     }
@@ -115,15 +163,67 @@ final class ApproveRegistration
             : User::query()->gurus()->canLogIn()->whereKey($registration->mentor_id)->first();
     }
 
-    private function notify(Registration $registration): void
+    /**
+     * Did the Kepala Sekolah put another guru in the place of the student's choice when approving (D-132)? Read from
+     * the audit row of that decision: a screen says "ditetapkan Kepala Sekolah" only then.
+     */
+    public static function mentorWasReplaced(Registration $registration): bool
     {
-        $members = self::memberUsers($registration);
+        return $registration->principal_decided_at !== null
+            && Activity::query()
+                ->where('event', self::EVENT_MENTOR_CHANGED)
+                ->where('subject_type', $registration->getMorphClass())
+                ->where('subject_id', $registration->getKey())
+                ->exists();
+    }
 
-        if ($members->isNotEmpty()) {
-            Notification::send($members, RegistrationApproved::for($registration, 'siswa'));
+    /**
+     * The guru the Kepala Sekolah chose instead of the student's (D-132), or null when the guru stays: no id given,
+     * or the id of the guru the registration already has.
+     *
+     * @throws AuthorizationException
+     * @throws ValidationException key `mentor`
+     */
+    private static function replacement(User $actor, Registration $registration, int|string|null $mentorId): ?User
+    {
+        if ($mentorId === null || $mentorId === '') {
+            return null;
         }
 
-        self::mentorToTell($registration)?->notify(RegistrationApproved::for($registration, 'guru'));
+        Gate::forUser($actor)->authorize('changeMentor', $registration);
+
+        $mentor = MentorChoice::find($mentorId);
+
+        if ($mentor === null) {
+            throw ValidationException::withMessages(['mentor' => self::MSG_MENTOR]);
+        }
+
+        return $registration->mentor_id !== null && (int) $registration->mentor_id === (int) $mentor->getKey() ? null : $mentor;
+    }
+
+    /**
+     * @param  bool  $changed  D-132: the Kepala Sekolah replaced the guru with this approval
+     * @param  User|null  $replaced  the guru who was replaced (null: the guru stayed, or there was none before); only
+     *                               the name is used, in the notices of the students and the new guru: that account
+     *                               itself is told nothing (D-134)
+     */
+    private function notify(User $actor, Registration $registration, bool $changed, ?User $replaced): void
+    {
+        $members = self::memberUsers($registration);
+        $replacedName = MentorChoice::name($replaced);
+
+        if ($members->isNotEmpty()) {
+            Notification::send($members, RegistrationApproved::for($registration, 'siswa', $changed, $replacedName));
+        }
+
+        // The guru the registration has NOW: after a change the new one, never the one who was replaced, and never
+        // the actor (a Kepala Sekolah who is also a guru is not told about a decision they just made, as in
+        // RejectRegistration).
+        $mentor = self::mentorToTell($registration);
+
+        if ($mentor !== null && ! $mentor->is($actor)) {
+            $mentor->notify(RegistrationApproved::for($registration, 'guru', $changed, $replacedName));
+        }
 
         $tu = User::query()->role(RoleName::TataUsaha->value)->canLogIn()->get();
 

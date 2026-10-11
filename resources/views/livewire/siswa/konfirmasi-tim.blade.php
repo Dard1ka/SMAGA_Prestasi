@@ -1,12 +1,13 @@
 {{-- Siswa · Undangan tim (confirm/decline). Data + rules: App\Livewire\Siswa\KonfirmasiTim. --}}
+{{-- The root element comes first, with no @if around it: Livewire puts wire:id on the first tag that starts a
+     line, and an @if before the root prints a marker in front of it (the id then lands on an inner element and
+     every button outside that element is dead). --}}
+<div class="mx-auto flex w-full max-w-[760px] flex-col gap-[18px]">
 @if ($withdrawn)
-{{-- QA9: the ketua withdrew this invitation; nothing of the team is shown any more. --}}
-<div class="mx-auto flex w-full max-w-[760px] flex-col gap-[18px]">
+    {{-- QA9: the ketua withdrew this invitation; nothing of the team is shown any more. --}}
     <x-sth.alert tone="warning" title="Undangan dibatalkan">{{ \App\Livewire\Siswa\KonfirmasiTim::WITHDRAWN }} Kamu tidak perlu menjawabnya lagi.</x-sth.alert>
-</div>
 @else
-@php($bidangKey = $competition->bidang?->cssKey() ?? 'sains')
-<div class="mx-auto flex w-full max-w-[760px] flex-col gap-[18px]">
+    @php($bidangKey = $competition->bidang?->cssKey() ?? 'sains')
     {{-- Same head as Detail lomba: poster on the left, the invitation, the name and the key facts beside it. --}}
     <x-sth.lomba-head :bidang="$bidangKey" :seed="$competition->getKey()" :poster="\App\Support\Sampul::poster($competition)" :facts="$facts"
                       alt="Poster {{ $competition->name }}" aria-labelledby="h-undangan">
@@ -80,5 +81,5 @@
     @else
         <x-sth.alert tone="warning">Undangan ini sudah tidak berlaku.</x-sth.alert>
     @endif
-</div>
 @endif
+</div>

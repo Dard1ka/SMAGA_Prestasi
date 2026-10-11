@@ -220,9 +220,9 @@ it('lays the student letter out like the school sheet', function (): void {
         // verification + "replaces" footer stay
         ->toContain('Kode verifikasi: '.str_repeat('a', 32))
         ->toContain('Surat ini menggantikan surat nomor 400.3.8/300/MRD/X/2026 yang telah dicabut.')
-        // Helvetica (= Arial metrics), sheet margins
+        // Helvetica (= Arial metrics); equal left and right margins, so the letter stands in the middle of the page (RV1)
         ->toContain('font-family: Helvetica, Arial, sans-serif')
-        ->toContain('@page { margin: 56.7pt 39.7pt 56.7pt 39.7pt; }');
+        ->toContain('@page { margin: 56.7pt 61.14pt 56.7pt 61.14pt; }');
 });
 
 it('lays the guru letter out like the school Word file, "Kepada" stacked with its colons', function (): void {

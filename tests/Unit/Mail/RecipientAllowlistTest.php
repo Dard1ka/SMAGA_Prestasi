@@ -57,7 +57,7 @@ it('drops an entry that would open a whole domain or is not an address, and reme
         ->and($list->rejected())->toBe([strtolower($entry)])
         ->and($list->allows('siapa.saja@example.test'))->toBeFalse();
 })->with([
-    'every address' => ['*'],
+    'two stars' => ['**'],
     'a whole domain' => ['*@example.test'],
     'only stars before the @' => ['**@example.test'],
     'a star in the domain' => ['tim@*.test'],
@@ -74,3 +74,66 @@ it('never allows an empty or malformed recipient', function (string $address): v
 
     expect($list->allows($address))->toBeFalse();
 })->with(['', '   ', 'tim.uji', '@example.test', "tim.uji@example.test\nBcc: lain@example.test"]);
+
+it('opens the list with a single star, but never to an address that cannot exist (D-130)', function (): void {
+    $list = RecipientAllowlist::fromString('*');
+
+    expect($list->isOpen())->toBeTrue()
+        ->and($list->isEmpty())->toBeFalse()
+        ->and($list->rejected())->toBe([])
+        ->and($list->allows('siapa.saja@gmail.com'))->toBeTrue()
+        ->and($list->allows('Guru.Uji@sman3-smg.sch.id'))->toBeTrue()
+        ->and($list->allows('nadia@sth.test'))->toBeFalse()
+        ->and($list->allows('nadia@STH.TEST'))->toBeFalse()
+        ->and($list->allows('orang@mail.sth.test'))->toBeFalse()
+        ->and($list->allows('orang@example.com'))->toBeFalse()
+        ->and($list->allows('orang@sub.example.org'))->toBeFalse()
+        ->and($list->allows('orang@contoh.invalid'))->toBeFalse()
+        ->and($list->allows('orang@pc.local'))->toBeFalse()
+        ->and($list->allows('orang@localhost'))->toBeFalse()
+        ->and($list->allows('orang@notexample.com'))->toBeTrue()
+        ->and($list->allows('orang@contest.id'))->toBeTrue()
+        // Written as numbers, a host is not a mailbox anybody has.
+        ->and($list->allows('orang@127.0.0.1'))->toBeFalse()
+        ->and($list->allows('orang@gmail.com.'))->toBeFalse()
+        ->and($list->allows("orang@gmail.com\nBcc: lain@gmail.com"))->toBeFalse()
+        ->and($list->allows('orang@a@gmail.com'))->toBeFalse();
+});
+
+it('does not open the list when the star stands next to an entry it did not understand', function (string $raw, array $rejected): void {
+    // "* @gmail.com" is what a slip of "nama+*@gmail.com" leaves behind: before D-130 it delivered nothing, and it
+    // still must not deliver to everybody.
+    $list = RecipientAllowlist::fromString($raw);
+
+    expect($list->isOpen())->toBeFalse()
+        ->and($list->openRefused())->toBeTrue()
+        ->and($list->rejected())->toBe($rejected)
+        ->and($list->allows('siapa.saja@gmail.com'))->toBeFalse()
+        ->and($list->allows('nadia@sth.test'))->toBeFalse();
+})->with([
+    'a space inside a pattern' => ['* @gmail.com', ['@gmail.com']],
+    'a comma inside a pattern' => ['*,@gmail.com', ['@gmail.com']],
+    'a whole domain next to the star' => ['*, *@gmail.com', ['*@gmail.com']],
+    'a word that is not an address' => ['* semua', ['semua']],
+]);
+
+it('keeps what is listed deliverable when the star is refused, and reports nothing for a clean list', function (): void {
+    $refused = RecipientAllowlist::fromString('*, tim.uji@example.test, @gmail.com');
+    $open = RecipientAllowlist::fromString('*, tim.uji@example.test');
+
+    expect($refused->allows('tim.uji@example.test'))->toBeTrue()
+        ->and($refused->isEmpty())->toBeFalse()
+        ->and($open->isOpen())->toBeTrue()
+        ->and($open->openRefused())->toBeFalse()
+        ->and(RecipientAllowlist::fromString('tim.uji@example.test')->openRefused())->toBeFalse();
+});
+
+it('keeps a listed address deliverable in open mode and stays closed without the star', function (): void {
+    $open = RecipientAllowlist::fromString('*, tim.uji@example.test');
+    $closed = RecipientAllowlist::fromString('tim.uji@example.test');
+
+    expect($open->allows('tim.uji@example.test'))->toBeTrue()
+        ->and($open->allows('lain@example.test'))->toBeFalse()
+        ->and($closed->isOpen())->toBeFalse()
+        ->and($closed->allows('siapa.saja@gmail.com'))->toBeFalse();
+});

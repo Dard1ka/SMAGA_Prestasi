@@ -63,7 +63,7 @@
     </table>
     <div class="s-baris"></div>
 
-    {{-- Like the sheet's long cells, these two sentences may run past the last column (to the page margin). --}}
+    {{-- These two sentences have no width of their own: they run to the page margin, which is the last column (RV1). --}}
     <div>untuk mengikuti {{ $content->activity() }}, pada :</div>
     <div class="s-baris"></div>
 

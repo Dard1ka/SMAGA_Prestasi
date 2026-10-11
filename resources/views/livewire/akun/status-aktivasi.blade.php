@@ -82,7 +82,7 @@
                     </div>
 
                     <p class="m-0 border-b border-line bg-subtle px-4 py-2.5 text-sm text-muted" aria-live="polite">
-                        {{ $filteredCount }} siswa{{ $hasMore ? ', '.$rows->count().' tampil' : '' }}. Email dan NIS ditampilkan tersamar.
+                        {{ $filteredCount }} siswa{{ $hasMore ? ', '.$rows->count().' tampil' : '' }}. Email ditampilkan tersamar.
                     </p>
 
                     @if ($rows->isEmpty())
@@ -202,7 +202,7 @@
     {{-- on-close: X, Esc and a click outside reset ?kelas= too, not only "Tutup" (QA5 retest, #63). --}}
     <x-sth.modal id="aktivasi-kelas" size="lg" :open="$openClassOnLoad" on-close="closeClass"
         :title="$classDialog ? 'Kelas '.$classDialog['name'] : 'Status aktivasi kelas'"
-        description="Email dan NIS ditampilkan tersamar.">
+        description="Email ditampilkan tersamar.">
         @if ($classDialog)
             <div class="flex flex-col gap-3">
                 <div class="seg flex-wrap self-start" role="group" aria-label="Status siswa kelas {{ $classDialog['name'] }}">

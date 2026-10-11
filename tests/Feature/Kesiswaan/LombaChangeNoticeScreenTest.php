@@ -300,7 +300,8 @@ it('delivers a bell row and a mail with one sentence per line, and never the new
         'Website resmi dihapus.',
     ];
 
-    // The bell: one row per person, kind + title + one paragraph + the link to the own registration / binaan page.
+    // The bell: one row per person, kind + title + one paragraph + the link to the own registration / binaan page
+    // (stored as a path, App\Notifications\Channels\BellChannel).
     $row = $team['ketua']->notifications()->sole();
     $guruRow = $team['guru']->notifications()->sole();
 
@@ -309,7 +310,7 @@ it('delivers a bell row and a mail with one sentence per line, and never the new
             'kind' => 'competition.changed',
             'title' => 'Info lomba berubah: '.C::NAME,
             'body' => 'Kesiswaan mengubah data lomba ini. '.implode(' ', $sentences),
-            'url' => route('siswa.lomba-saya.show', ['registration' => $team['registration']->getKey()]),
+            'url' => route('siswa.lomba-saya.show', ['registration' => $team['registration']->getKey()], false),
             'registration_id' => $team['registration']->getKey(),
         ])
         ->and($guruRow->type)->toBe(BinaanCompetitionChanged::class)
@@ -317,7 +318,7 @@ it('delivers a bell row and a mail with one sentence per line, and never the new
             'kind' => 'competition.binaan_changed',
             'title' => 'Info lomba binaan berubah: '.C::NAME,
             'body' => 'Kesiswaan mengubah data lomba yang diikuti siswa binaan. '.implode(' ', $sentences),
-            'url' => route('guru.binaan.show', ['registration' => $team['registration']->getKey()]),
+            'url' => route('guru.binaan.show', ['registration' => $team['registration']->getKey()], false),
         ])
         ->and(DatabaseNotification::query()->count())->toBe(4)
         ->and($this->kesiswaan->notifications()->count())->toBe(0);

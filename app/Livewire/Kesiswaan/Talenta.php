@@ -47,7 +47,7 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
  * Talenta siswa (UI-MAP #18, board Kesiswaan-Talenta): pipeline tabs, filters (jenis → cabang, kelas,
  * nama/NIS), table with bulk moves, detail panel (pembina, jadwal asesmen, two notes). Every change goes
  * through MoveTalentStage / RejectTalentApplication / UpdateTalentAssessment (one call per row for bulk
- * moves), which notify the student. NIS is masked in the table; the Excel export escapes formulas, needs
+ * moves), which notify the student. The table shows the NIS in full (D-131); the Excel export escapes formulas, needs
  * a password from the last 15 minutes, is capped and audited with its filters.
  *
  * Notes (lead, 2026-10-04), both optional: "Catatan untuk guru pembina" (`panelNote`, internal, saved by every
@@ -1151,7 +1151,7 @@ class Talenta extends Component
             'id' => $a->getKey(),
             'name' => $student?->user?->name ?? 'Siswa',
             'class' => $student?->classroom?->name,
-            'nis' => self::maskNis($student?->nis),
+            'nis' => (string) $student?->nis,
             'type' => $a->talentType?->code?->label() ?? $a->talentType?->name,
             'bidang' => $a->talentType?->bidang,
             'branch' => $a->talentBranch?->name ?? 'Tanpa cabang',
@@ -1599,15 +1599,6 @@ class Talenta extends Component
         if ($this->kelas !== '' && ! Classroom::query()->whereKey($this->kelas)->exists()) {
             $this->kelas = '';
         }
-    }
-
-    private static function maskNis(?string $nis): string
-    {
-        if ($nis === null || $nis === '') {
-            return '';
-        }
-
-        return mb_strlen($nis) <= 4 ? '••••' : mb_substr($nis, 0, 4).'•••'.mb_substr($nis, -2);
     }
 
     /**

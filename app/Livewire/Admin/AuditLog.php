@@ -79,6 +79,7 @@ final class AuditLog extends Component
         'publication.flyer_generated' => 'E-flyer dibuat',
         'registration.created' => 'Pendaftaran dibuat',
         'registration.approved' => 'Pendaftaran disetujui',
+        'registration.mentor_changed' => 'Guru pembimbing diganti Kepala Sekolah',
         'registration.rejected' => 'Pendaftaran ditolak',
         'registration.cancelled' => 'Pendaftaran dibatalkan',
         'report.submitted' => 'Laporan hasil dikirim',
