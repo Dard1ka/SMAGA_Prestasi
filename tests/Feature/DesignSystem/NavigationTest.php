@@ -134,7 +134,7 @@ it('links the backlog screens from the role menus (W4)', function (string $role,
     'kesiswaan' => ['kesiswaan', ['prestasi' => 'kesiswaan.prestasi.index', 'aktivasi' => 'kesiswaan.aktivasi.index']],
     'kepala sekolah' => ['kepala_sekolah', ['prestasi' => 'kepsek.prestasi', 'surat' => 'kepsek.surat.index', 'laporan' => 'kepsek.laporan']],
     'tata usaha' => ['tata_usaha', ['template' => 'tu.surat.template']],
-    'admin' => ['admin', ['aktivasi' => 'admin.aktivasi.index', 'arsip' => 'admin.arsip.index', 'audit' => 'admin.audit.index']],
+    'admin' => ['admin', ['prestasi' => 'kesiswaan.prestasi.index', 'aktivasi' => 'admin.aktivasi.index', 'arsip' => 'admin.arsip.index', 'audit' => 'admin.audit.index']],
 ]);
 
 it('marks the backlog screens current on their own routes', function (string $role, string $route, string $key): void {
@@ -144,6 +144,7 @@ it('marks the backlog screens current on their own routes', function (string $ro
         ->and(collect($items)->where('current', true))->toHaveCount(1);
 })->with([
     ['kesiswaan', 'kesiswaan.aktivasi.index', 'aktivasi'],
+    ['admin', 'kesiswaan.prestasi.index', 'prestasi'],
     ['admin', 'admin.aktivasi.index', 'aktivasi'],
     ['admin', 'admin.arsip.index', 'arsip'],
     ['admin', 'admin.audit.index', 'audit'],

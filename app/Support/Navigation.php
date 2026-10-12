@@ -382,6 +382,8 @@ final class Navigation
                         ['key' => 'kelola-lomba', 'label' => 'Kelola lomba', 'icon' => 'trophy', 'route' => ['kesiswaan.lomba.index', 'admin.lomba'], 'match' => ['kesiswaan.lomba.*', 'admin.lomba*']],
                     ]],
                     ['label' => 'Data', 'items' => [
+                        // FS1 (D-135): same screen as Kesiswaan, allowed by role:kesiswaan|admin.
+                        ['key' => 'prestasi', 'label' => 'Database prestasi', 'icon' => 'database', 'route' => ['kesiswaan.prestasi.index'], 'match' => ['kesiswaan.prestasi*']],
                         ['key' => 'import', 'label' => 'Import siswa', 'icon' => 'upload', 'route' => ['admin.import']],
                         ['key' => 'pengguna', 'label' => 'Pengguna & peran', 'icon' => 'users', 'route' => ['admin.pengguna.index', 'admin.pengguna'], 'match' => ['admin.pengguna*']],
                         // B1 (K9/K2/K1): activation report + activation window setting.
