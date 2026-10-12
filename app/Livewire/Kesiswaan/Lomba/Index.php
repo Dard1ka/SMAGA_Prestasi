@@ -392,6 +392,8 @@ class Index extends Component
                 CompetitionStatus::Dipublikasikan->value, $now->toDateTimeString(),
                 CompetitionStatus::MenungguVerifikasi->value, CompetitionStatus::Dipublikasikan->value,
             ])
+            // FS1 (D-135): pending lomba oldest first.
+            ->orderByRaw('case when status = ? then created_at end', [CompetitionStatus::MenungguVerifikasi->value])
             ->orderByRaw('case when registration_closes_at is null then 1 else 0 end')
             ->orderBy('registration_closes_at')
             ->orderByDesc('created_at')
