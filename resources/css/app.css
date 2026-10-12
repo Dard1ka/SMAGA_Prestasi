@@ -101,7 +101,7 @@
     --color-orange-bg: #fdebd8;
     --color-orange-line: #f3cfa8;
     --color-orange-wash: #fff8f0;
-    --color-red: #b42318; /* rejected / error */
+    --color-red: #b42318; /* rejected / error; count badges (D-136) */
     --color-red-bg: #fceae7;
     --color-red-line: #efc1ba;
     --color-gray: #3a4254; /* waiting / neutral */
@@ -879,7 +879,7 @@
         color: var(--color-white);
     }
 
-    /* Count (nav badge, tab counts). */
+    /* Count (nav badge: red = something waits, D-136; tab counts .cnt stay gray). */
     .badge {
         margin-left: auto;
         display: inline-flex;
@@ -889,7 +889,7 @@
         height: 22px;
         padding: 0 6px;
         border-radius: 999px;
-        background: var(--color-primary);
+        background: var(--color-red);
         color: var(--color-white);
         font-size: var(--text-xs);
         font-weight: 700;

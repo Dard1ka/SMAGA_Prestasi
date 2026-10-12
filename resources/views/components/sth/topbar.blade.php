@@ -84,7 +84,7 @@
                 data-label-none="Notifikasi"
                 data-label-some="Notifikasi, :n belum dibaca"
             />
-            <span class="pointer-events-none absolute -top-1 -right-1 min-w-5 rounded-full border-2 border-white bg-primary px-1 text-center text-xs leading-4 font-bold text-white" aria-hidden="true" data-sth-badge="{{ $bellKey }}" data-sth-badge-max="99" data-sth-count="{{ $count }}" @if ($count === 0) hidden @endif>{{ $count > 99 ? '99+' : $count }}</span>
+            <span class="pointer-events-none absolute -top-1 -right-1 min-w-5 rounded-full border-2 border-white bg-red px-1 text-center text-xs leading-4 font-bold text-white" aria-hidden="true" data-sth-badge="{{ $bellKey }}" data-sth-badge-max="99" data-sth-count="{{ $count }}" @if ($count === 0) hidden @endif>{{ $count > 99 ? '99+' : $count }}</span>
         </span>
 
         <div class="relative" data-sth-menu>
