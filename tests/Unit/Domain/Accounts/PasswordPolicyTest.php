@@ -165,3 +165,14 @@ it('does not treat a short piece or a bare number of the username or email as th
         ->and($policy->validate('kopi susu 42 pagi', username: null, email: null))->toBe([])
         ->and($policy->validate('kopi susu 42 pagi', username: '', email: ''))->toBe([]);
 });
+
+it('refuses the configured initial password as a new password, whatever case and separators (D-138)', function (): void {
+    $policy = new PasswordPolicy(10, 'Pelangi-Rindang-88');
+
+    expect($policy->validate('pelangi rindang 88'))->toBe([PasswordPolicy::MSG_INITIAL_PATTERN])
+        ->and($policy->validate('PELANGI_RINDANG_88'))->toBe([PasswordPolicy::MSG_INITIAL_PATTERN])
+        ->and($policy->validate('Pelangi-Rindang-89'))->toBe([])
+        ->and((new PasswordPolicy(10, '12345'))->validate('12345'))->toContain(PasswordPolicy::MSG_INITIAL_PATTERN)
+        ->and((new PasswordPolicy(10, '12345'))->validate('Hujan-12345-pagi'))->not->toContain(PasswordPolicy::MSG_INITIAL_PATTERN)
+        ->and((new PasswordPolicy(10))->validate('Pelangi-Rindang-88'))->toBe([]);
+});

@@ -819,3 +819,15 @@ it('offers "Keluar" while the activation is open, not on the finished screen', f
         ->assertSet('step', Activation::STEP_DONE)
         ->assertDontSee('Salah akun?');
 });
+
+it('refuses the initial password from school as the new password, also a long one set by the school (D-138)', function (): void {
+    config(['sth.initial_student_password' => 'Pelangi-Rindang-88']);
+    $component = m1bToPasswordStep(H::pendingStudent()->user)
+        ->set('password', 'pelangi rindang 88')
+        ->set('password_confirmation', 'pelangi rindang 88')
+        ->call('savePassword')
+        ->assertHasErrors('password')
+        ->assertSet('step', Activation::STEP_PASSWORD);
+
+    expect($component->errors()->get('password'))->toBe([PasswordPolicy::MSG_INITIAL_PATTERN]);
+});
