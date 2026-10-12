@@ -240,6 +240,38 @@ it('writes a watermarked, formula-safe sheet without NISN', function (): void {
         ->and($sheet)->not->toContain('<f>');
 });
 
+it('writes the sheet without Kategori, with the total right under Poin (FS1 §2.4, D-135)', function (): void {
+    $file = app(ExportAchievements::class)->handle($this->kesiswaan, AchievementFilters::fromInput([]));
+
+    try {
+        $rows = collect(SimpleExcelReader::create($file->path)->noHeaderRow()->getRows()->all());
+    } finally {
+        @unlink($file->path);
+    }
+
+    $header = $rows->first(fn (array $row): bool => ($row[0] ?? null) === 'No');
+    $raka = $rows->first(fn (array $row): bool => ($row[1] ?? null) === 'Raka Pradipta');
+    $total = $rows->first(fn (array $row): bool => ($row[1] ?? null) === 'Total poin');
+
+    expect($header)->toBe([
+        'No', 'Nama', 'NIS', 'Kelas', 'Angkatan', 'Status akun', 'Lomba', 'Penyelenggara', 'Jenis penyelenggara',
+        'Status ajang', 'Bidang', 'Tingkat', 'Capaian', 'Peserta', 'Pembimbing', 'Tahun ajaran',
+        'Tanggal final', 'Bobot tingkat', 'Bobot capaian', 'Bobot penyelenggara', 'Poin', 'Diverifikasi', 'Verifikator',
+    ])
+        ->and(array_search('Poin', $header, true))->toBe(20)
+        ->and($raka[9])->toBe('Puspresnas')   // Status ajang follows Jenis penyelenggara directly
+        ->and($raka[19])->toBe('1,00')        // Bobot penyelenggara stays
+        ->and((float) $raka[20])->toBe(80.0)
+        ->and($total)->toHaveCount(21)
+        ->and((float) $total[20])->toBe(246.0);
+
+    // The detail drawer may keep the category (spec §2.4); same call as the drawer test at line 162.
+    $achievement = Achievement::query()->where('student_id', $this->raka->getKey())->firstOrFail();
+    Livewire::actingAs($this->kesiswaan)->test(DatabasePrestasi::class)
+        ->call('showDetail', (string) $achievement->getKey())
+        ->assertSee('Kategori A');
+});
+
 it('refuses the export without achievement.export', function (): void {
     $humas = KesiswaanFixtures::staff(RoleName::Humas, 'Humas');
 
