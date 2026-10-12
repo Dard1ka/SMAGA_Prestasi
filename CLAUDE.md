@@ -32,7 +32,7 @@ consent flags (D-16, SECURITY §3m-7).
 ## 2. Sources of truth (read before changing behaviour)
 | file | content |
 |---|---|
-| `docs/DECISIONS.md` | decision log D-01…D-134 (D-130…D-134 = §D14, the demo and the joint review of 2026-10-11 (RV1): open mode of the local mail allowlist, NIS in full for Kesiswaan and Admin, the Kepala Sekolah may replace the guru pembimbing with the approval and the approval notice names the guru, student letter centred, the replaced guru is told nothing; D-122…D-129 = §D13, the lead's mail and notification test of 2026-10-09 (EM2): publication schedule = reminder only, appreciation start time and picker, "Lainnya" field, lomba change notice, live bell and counts, confirm dialogs, mail templates; §D13 also carries a dated addendum of Brevo facts for D-121; D-121 = §D12, real mail from a local stack: Brevo + allowlist, *sementara*; D-45…D-61 = backlog wave + W4 product choices, *sementara*; D-62…D-65 = security hardening, *final*; D-66…D-77 = Q1 security/performance pass and the lead's follow-up choices; D-78…D-91 = §D6, the lead's choices after the hand test of 2026-10-04; D-92…D-102 = §D7, the rules changed by the fixes after the QA pass of 2026-10-05; D-103…D-108 = §D8, the lead's six requests of 2026-10-06 (wave M3) and the schema change of QA4; D-109…D-112 = §D9, the lead's answers after the retest of M3 on 2026-10-07 (QA5); D-113…D-116 = §D10, the explore round after PR 14 (QA6); D-117…D-120 = §D11, the visual direction v3 "Tinta dan Sampul", lomba covers, the staff copy rule and the school crest as the brand mark (UI3)), U-01…U-06, open questions §F. **Wins over everything.** |
+| `docs/DECISIONS.md` | decision log D-01…D-136 (D-135…D-136 = §D15, the school's feedback of 2026-10-12 (FS1) package A: three new names, the Admin menu item Database prestasi, the Excel without Kategori, oldest-first pending lomba, red count badges; D-130…D-134 = §D14, the demo and the joint review of 2026-10-11 (RV1): open mode of the local mail allowlist, NIS in full for Kesiswaan and Admin, the Kepala Sekolah may replace the guru pembimbing with the approval and the approval notice names the guru, student letter centred, the replaced guru is told nothing; D-122…D-129 = §D13, the lead's mail and notification test of 2026-10-09 (EM2): publication schedule = reminder only, appreciation start time and picker, "Lainnya" field, lomba change notice, live bell and counts, confirm dialogs, mail templates; §D13 also carries a dated addendum of Brevo facts for D-121; D-121 = §D12, real mail from a local stack: Brevo + allowlist, *sementara*; D-45…D-61 = backlog wave + W4 product choices, *sementara*; D-62…D-65 = security hardening, *final*; D-66…D-77 = Q1 security/performance pass and the lead's follow-up choices; D-78…D-91 = §D6, the lead's choices after the hand test of 2026-10-04; D-92…D-102 = §D7, the rules changed by the fixes after the QA pass of 2026-10-05; D-103…D-108 = §D8, the lead's six requests of 2026-10-06 (wave M3) and the schema change of QA4; D-109…D-112 = §D9, the lead's answers after the retest of M3 on 2026-10-07 (QA5); D-113…D-116 = §D10, the explore round after PR 14 (QA6); D-117…D-120 = §D11, the visual direction v3 "Tinta dan Sampul", lomba covers, the staff copy rule and the school crest as the brand mark (UI3)), U-01…U-06, open questions §F. **Wins over everything.** |
 | `docs/ARCHITECTURE.md` | binding contract: data model, enums, state machine, domain rules |
 | `docs/SECURITY.md` | threat model, top-10 risks §1, controls §3a–§3m (K1–K12), pre-release checklist §4 |
 | `docs/TALENT-FORM.md` | talent types/branches (seed source for `talent_types`, `talent_branches`) |
@@ -577,7 +577,7 @@ logs in through `POST /login` and expects a 403/404 on the next GET would see th
   typeface (Public Sans 400–700) on a fixed scale `text-xs 13 · sm 14 · md 15 · base 16 · lg 18 · xl 20 · 2xl 24 ·
   3xl 28 · 4xl 36 · 5xl 44`, **nothing smaller than 13px and no `text-[Npx]`** (only the scaled paper preview of a
   letter in `tata-usaha/partials` is exempt); radius 6 controls · 8 tiles · 10 cards · 4 tags; one colour = one
-  meaning (status green/orange/red/gray/blue, gold only for points/medals, bidang colours), the frame itself is
+  meaning (status green/orange/red/gray/blue, gold only for points/medals, bidang colours, count badges red (D-136)), the frame itself is
   ink and gray; no gradients, glow shadows, blur, tilted cards or page wash; AA contrast (input border 3.6:1,
   focus ring 4.7:1); ≥ 44px touch targets on touch devices; every input has a label; status tags always carry text.
 - **Covers** (D-118): `<x-sth.sampul :bidang :seed :src bentuk="lebar|tegak|utuh" tone="terang|pekat">`. A lomba
@@ -878,6 +878,18 @@ chose; a guru's name or any other name in the audit row `registration.mentor_cha
 that answers 404 without its question, or a dialog that promises a notice to somebody who gets none; a student letter
 that stands at the left margin; a Livewire view whose root element sits inside or behind a directive.
 
+The school's feedback of 2026-10-12 (FS1), package A, **D-135…D-136** (DECISIONS §D15, `docs/dev-notes/FS1.md`): the panel
+on Detail lomba is "Pendaftaran lomba"; the lomba proposal queue is "Verifikasi usulan lomba" everywhere (Kesiswaan menu, its
+tab, the Beranda tile and card, the stat tile, the proposal mail subject and button, the Kepala Sekolah dashboard sentence); the
+talent page is "Database talenta siswa" (menu, `#[Title]`, Excel title row, notification action); Admin has "Database prestasi"
+in its Data section (→ `kesiswaan.prestasi.index`, allowed by `role:kesiswaan|admin`); the Database prestasi sheet has no
+Kategori column (Bobot penyelenggara stays; the drawer may still show the category); the Kelola lomba catalog lists
+`menunggu_verifikasi` lomba oldest first (`created_at` ascending, the queue stays `oldest()`); count badges (sidebar and bell)
+are red `#B42318` with white text, while `.cnt` stays gray and the unread row marker in Notifikasi stays navy; a long sidebar
+label wraps to two lines. Routes, URLs and menu / badge keys did not change. Do not bring back: "Daftar lomba" as the panel
+title, "Usulan lomba" / "Antrean verifikasi" / "Upload lomba" for the queue, "Talenta siswa" as the page name, a Kategori
+column in the Database prestasi sheet, navy count badges, and a `truncate`d sidebar label.
+
 Known stale text (do not "fix" code to match it): `docs/DEPLOY.md` §9 path A (Google Workspace relay) is not an option
 for the school (lead, 2026-10-08) and §9 has no Brevo path yet; SECURITY.md §0/§3a still say `sm4g4_DD-MM-YYYY`;
 DESIGN-SPEC-v2 §1 and the Admin-Pengaturan mockup still show 30 days (and the mockup's WICE deadline
@@ -1018,7 +1030,7 @@ IPs, which breaks the per-IP login/OTP limits). The noreply mailbox would then b
 SMTP host must not be `mail.<domain>` (proxied) and its hourly send limit needs asking.
 
 ## 10. Status
-Last updated: 2026-10-11 (waves 1–2 done, W3-A integration pass, backlog wave B1–B6, W4 integration, D1 docs sync, CI green on GitHub, Q1 end-to-end/security/performance pass, PERF1 by S, M1 = the lead's 18 hand-test changes, M2 = fixes after the QA pass, QA4 by S, M3 = the lead's six requests of 2026-10-06, QA5 = fixes after the retest of M3, QA6 = explore round after PR 14, UI3 = visual direction v3 and the lead's review of it, QA7 = explore round after UI3, QA8 = explore round after PR 17, EM1 = real mail from a local stack, QA9 = explore round after EM1, QA10 = explore round after QA9, EM2 = fixes after the lead's mail and notification test of 2026-10-09, RV1 = the demo and the joint review of 2026-10-11). Update this section whenever a milestone moves.
+Last updated: 2026-10-12 (waves 1–2 done, W3-A integration pass, backlog wave B1–B6, W4 integration, D1 docs sync, CI green on GitHub, Q1 end-to-end/security/performance pass, PERF1 by S, M1 = the lead's 18 hand-test changes, M2 = fixes after the QA pass, QA4 by S, M3 = the lead's six requests of 2026-10-06, QA5 = fixes after the retest of M3, QA6 = explore round after PR 14, UI3 = visual direction v3 and the lead's review of it, QA7 = explore round after UI3, QA8 = explore round after PR 17, EM1 = real mail from a local stack, QA9 = explore round after EM1, QA10 = explore round after QA9, EM2 = fixes after the lead's mail and notification test of 2026-10-09, RV1 = the demo and the joint review of 2026-10-11, FS1-A = school feedback package A). Update this section whenever a milestone moves.
 EM1 2026-10-08 (`docs/dev-notes/EM1.md`, D-121, commit `4766b56` on `feat/email-brevo-dev`; merged into `main` together with QA9 and QA10 by PR 19, merge commit `a2d21e1` of 2026-10-09): the lead chose Brevo for development with a temporary Gmail sender. Built: the mailer `allowlist` (listed addresses → the real provider, everything else → Mailpit, local only), two boot guards (no allowlist outside local; in local no default mailer that delivers every mail), `sth:mail-test` says which way an address goes, a commented block in `.env.example`. The lead's first real mail through Brevo arrived (sender shown as `…@<id>.brevosend.com`, Gmail shows "Berhenti berlangganan"). No migration, no notification changed yet. Suite numbers: TEST-RESULTS in `docs/dev-notes/EM1.md`. Open: backlog #78.
 M1 2026-10-05 (`docs/dev-notes/M1.md`, plain summary for the team in `catatan.md`; branch `feat/ui-uji-manual-m1`): full suite `--parallel --processes=4` → **1767 passed (8945 assertions)**, exit 0 (680 s); `pint --test` clean (610 files); `npm run build` OK; the four M1 migrations ran on the local MySQL. Dev page times after `reload.bat` + warm-up, all seven roles: 150–540 ms per menu, login 0.75–0.93 s (`catatan.md` §2). Not re-run after M1: the email scenario and the Playwright smoke (backlog).
 M2 2026-10-06 (`docs/dev-notes/M2.md` + `M2-A`…`M2-C`, D-92…D-101, plain summary in `catatan.md` §6; same branch): fixes for the 12 most important findings of the QA pass of 2026-10-05 (64 findings; the rest is backlog #57–#68) and the Trivy fix in `docker/Dockerfile.prod`; two migrations run on the local MySQL; suite numbers: TEST-RESULTS in `docs/dev-notes/M2.md`. PR 9 (M1 + M2) merged into `main` on 2026-10-06 (`b4b6f77`).
@@ -1125,6 +1137,14 @@ another address (106 of 120 rows on the lead's laptop, rewritten once). And the 
 "Ganti guru" dialog (D-134): the guru who was replaced is told nothing, the dialog says who is told in two plain
 sentences. Final state of the day: full suite **3439 passed, 1 skipped (21342 assertions)**, `pint --test` clean
 (757 files), php-fpm reloaded and `queue` + `scheduler` restarted on the lead's stack. Open: backlog #82.
+FS1-A 2026-10-12 (`docs/dev-notes/FS1.md`, D-135…D-136, branch `feat/fs1-feedback-sekolah`, not pushed): package A of the school's
+feedback of 2026-10-12 (five packages, order A → D → C → E → B; design `2026-10-12-feedback-sekolah-fs1-design.md` in the lead's
+workspace). Built: the panel "Pendaftaran lomba", the queue "Verifikasi usulan lomba" everywhere (menu, tab, Beranda, stat tile, mail
+subject and button, Kepala Sekolah dashboard), "Database talenta siswa", the Database prestasi Excel without Kategori, the Admin menu item
+Database prestasi, red count badges (sidebar and bell), pending lomba oldest first in the Kelola lomba catalog, a sidebar label that
+wraps instead of being cut. No migration. Full suite `--parallel --processes=4` → **3466 passed, 1 skipped (21422 assertions)**, exit 0
+(1889 s); `pint --test` clean (763 files); `npm run build` OK. Browser check as Kesiswaan, Kepala Sekolah and Admin at 1366 and 390 px
+(read from the page, the pane was hidden); the Siswa screens (panel title, Bantuan) and the email scenario were not run in a browser.
 
 | area | owner | state (details in `docs/dev-notes/<ID>.md`) |
 |---|---|---|

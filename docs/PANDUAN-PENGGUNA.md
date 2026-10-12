@@ -2,7 +2,7 @@
 
 Alamat: **https://prestasi.sman3-smg.sch.id** · Buka di browser HP atau laptop (Chrome, Edge, Firefox, Safari terbaru).
 Nama layar di panduan ini sama dengan judul layar dan menu di aplikasi (rujukan teknis: `docs/UI-MAP.md`).
-Semua contoh nama di panduan ini fiktif. Diperbarui 10 Oktober 2026 (EM2: perbaikan setelah uji email dan notifikasi
+Semua contoh nama di panduan ini fiktif. Diperbarui 12 Oktober 2026 (FS1 Paket A: penamaan dan tampilan dari feedback sekolah, §D15, D-135…D-136; sebelumnya EM2: perbaikan setelah uji email dan notifikasi
 lead 9 Oktober 2026, `docs/DECISIONS.md` §D13, D-122…D-129; sebelumnya enam permintaan lead 6 Oktober 2026, §D8, perbaikan
 setelah uji 5 Oktober 2026, §D7, dan perubahan setelah uji manual lead, §D6).
 
@@ -64,7 +64,7 @@ tampil di jendela kecil (preview) di halaman yang sama, tanpa di-download.
 Hapus isinya, daftar kembali penuh. Dari halaman lain, ketik lalu tekan Enter untuk membuka halaman daftarnya.
 
 **Menu akun** (klik avatar di kanan atas, semua peran; siswa juga lewat menu samping **Akun**):
-- **Notifikasi** (juga ikon lonceng; angkanya = belum dibaca): kabar lomba, surat, dan akun. **Buka** untuk langsung
+- **Notifikasi** (juga ikon lonceng; angkanya = belum dibaca, berwarna merah): kabar lomba, surat, dan akun. **Buka** untuk langsung
   ke layarnya, **Belum dibaca** untuk menyaring, **Tandai semua dibaca** untuk mengosongkan tanda baru.
   - **Lonceng berubah sendiri** (sejak 10 Oktober 2026): angka di lonceng naik saat ada notifikasi baru dan turun
     begitu sebuah notifikasi ditandai dibaca, tanpa memuat ulang halaman. Kabar baru biasanya tampil beberapa detik
@@ -115,10 +115,10 @@ Jangan pernah membagikan kata sandi atau kode email kepada siapa pun, termasuk g
 
 ## 2. Siswa
 
-**Daftar lomba**
+**Pendaftaran lomba**
 1. **Cari lomba** → ketik nama lomba di kotak cari (daftar langsung tersaring; hapus ketikan untuk melihat semua lagi)
    → pilih lomba → baca detail, juknis, dan tanggal penting.
-2. Klik **Daftar lomba**, pilih **individu** atau **tim**, lalu pilih **guru pembimbing** (wajib).
+2. Isi panel **Pendaftaran lomba**: pilih **individu** atau **tim**, lalu pilih **guru pembimbing** (wajib).
 3. Tim: cari anggota dengan nama atau NIS, lalu kirim undangan. Pendaftaran baru maju setelah **semua anggota
    konfirmasi** lewat akun masing-masing.
 4. Pantau di **Lomba saya**: jalur 6 fase *Daftar → Persetujuan → Surat tugas → Lomba → Laporan hasil → Poin & apresiasi*.
@@ -236,7 +236,7 @@ sendiri, tanpa memuat ulang halaman.
 
 ## 4. Kesiswaan
 
-Angka di menu samping (**Usulan lomba**, **Verifikasi hasil**) berubah sendiri setelah Anda memeriksa; tidak perlu
+Angka di menu samping (**Verifikasi usulan lomba**, **Verifikasi hasil**) berwarna merah: ada yang menunggu. Angka itu berubah sendiri setelah Anda memeriksa; tidak perlu
 memuat ulang halaman. Angka itu tampil di semua halaman, juga di **Status aktivasi**, Notifikasi, dan Keamanan akun.
 
 **Kelola lomba**
@@ -245,14 +245,14 @@ memuat ulang halaman. Angka itu tampil di semua halaman, juga di **Status aktiva
    sebelum batas daftar**; kalau terbalik, form menolak dengan pesan itu.
    - **Jenis penyelenggara: Lainnya**: bila tidak ada jenis yang cocok, pilih **Lainnya**. Di bawahnya muncul isian
      **Jenis penyelenggara lainnya** (maks. 60 karakter, mis. komunitas, sanggar seni, media). Isian ini boleh kosong
-     selama lomba masih di **Usulan lomba**, tetapi **wajib diisi sebelum dipublikasikan**: kartu usulan menulis
+     selama lomba masih di **Verifikasi usulan lomba**, tetapi **wajib diisi sebelum dipublikasikan**: kartu usulan menulis
      "Perlu dilengkapi: … Jenis penyelenggara lainnya". Memilih jenis lain menghapus isian itu saat disimpan. Poin
      tidak terpengaruh; poin tetap mengikuti kategori bobot.
    - **Website resmi** dan **Link registrasi**: diawali `https://`. Spasi yang ikut tersalin dibuang sendiri; link
      yang ditolak disertai pesan yang menyebut apa yang salah (daftar pesannya di §9).
-2. Semua lomba baru (juga buatan Kesiswaan sendiri, guru, dan usulan siswa) masuk **Usulan lomba**. Verifikator lain
+2. Semua lomba baru (juga buatan Kesiswaan sendiri, guru, dan usulan siswa) masuk **Verifikasi usulan lomba**. Verifikator lain
    (Kesiswaan dan Admin) mendapat email saat ada lomba baru, juga bila yang menambahkan adalah Admin.
-3. **Usulan lomba** → **Periksa & lengkapi** → **Publikasikan**, atau **Tolak** → **Kirim penolakan**.
+3. **Verifikasi usulan lomba** → **Periksa & lengkapi** → **Publikasikan**, atau **Tolak** → **Kirim penolakan**.
    - **Alasan penolakan boleh dikosongkan** dan tidak ada panjang minimal (maksimal 1.000 karakter). Kalau diisi,
      alasan itu dikirim ke pengirim. Kalau kosong, pengirim tetap diberi tahu bahwa lombanya tidak dipublikasikan,
      dengan kalimat "Kesiswaan tidak menulis alasan. Tanyakan ke Kesiswaan bila perlu."
@@ -272,7 +272,7 @@ memuat ulang halaman. Angka itu tampil di semua halaman, juga di **Status aktiva
      sedang terdaftar dan guru pembimbingnya (notifikasi dan email), satu pemberitahuan per orang setiap kali
      disimpan. Batas daftar dan peserta hanya ke tim yang masih menunggu konfirmasi anggota, tanpa guru.
    - Perbaikan nama, deskripsi, penyelenggara, bidang, atau sampul **tidak** mengirim apa pun. Lomba yang masih di
-     **Usulan lomba** juga tidak.
+     **Verifikasi usulan lomba** juga tidak.
    - Pesan setelah simpan menyebut siapa yang diberi tahu, mis. "Perubahan lomba tersimpan. 3 siswa dan 1 guru
      pembimbing diberi tahu." Kalau hanya tertulis "Perubahan lomba tersimpan.", tidak ada yang perlu diberi tahu.
    - Lebih dari 50 orang sekaligus: pemberitahuan hanya lewat notifikasi di aplikasi, tanpa email (pesannya
@@ -306,7 +306,7 @@ memuat ulang halaman. Angka itu tampil di semua halaman, juga di **Status aktiva
      mengirim ulang laporan.") hanya tertulis bila akun ketua bisa masuk, karena hanya ketua yang bisa mengirim ulang
      laporan. Kalau kalimat itu tidak ada, laporan belum bisa dikirim ulang.
 
-**Talenta siswa**: saring per tahap/jenis/kelas, lalu klik ikon mata untuk membuka satu pilihan. NIS siswa tampil
+**Database talenta siswa**: saring per tahap/jenis/kelas, lalu klik ikon mata untuk membuka satu pilihan. NIS siswa tampil
 lengkap di tabel, di panel, dan di file Excel-nya.
 - Ada **dua catatan**, keduanya boleh kosong:
   - **Catatan untuk guru pembina**: hanya dibaca guru pembina dan Kesiswaan. Tersimpan dengan **Simpan**.
@@ -353,7 +353,7 @@ lengkap di tabel, di panel, dan di file Excel-nya.
 nama sertifikat di rincian sebuah prestasi untuk melihatnya di jendela preview (lihat §1). Jenis penyelenggara yang
 diisi manual tampil sebagai "Lainnya (Sanggar seni)", di rincian dan di kolom "Jenis penyelenggara" file Excel; filter
 **Jenis penyelenggara: Lainnya** tetap memuat semuanya. NIS siswa tampil lengkap di tabel dan di rincian, seperti di
-file Excel-nya.
+file Excel-nya. File Excel tidak memuat kolom Kategori; kategori tetap terlihat di rincian.
 
 **Import siswa** (dipakai saat awal dan **diulang tiap tahun ajaran** agar kelas selalu benar)
 1. **Import siswa** → **Download template Excel** → isi Nama lengkap, NIS, NISN, Tanggal lahir, **Kelas** (kelas
@@ -529,8 +529,10 @@ surat mengikuti surat asli sekolah, lengkap dengan lambang Pemprov dan lambang s
 
 ## 8. Admin
 
-Menu Admin: **Dashboard**, **Kelola lomba** · Data: **Import siswa**, **Pengguna & peran**, **Status aktivasi**,
+Menu Admin: **Dashboard**, **Kelola lomba** · Data: **Database prestasi**, **Import siswa**, **Pengguna & peran**, **Status aktivasi**,
 **Arsip otomatis** · Sistem: **Status sistem**, **Log audit**, **Pengaturan**.
+
+**Database prestasi** di menu Admin membuka halaman yang sama dengan yang dipakai Kesiswaan (lihat §4).
 
 Mulai dari **Status sistem**: daftar hal yang belum siap (mis. belum ada Kepala Sekolah atau tanda tangan) dan
 aktivitas Admin terbaru.
