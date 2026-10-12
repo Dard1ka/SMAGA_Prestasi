@@ -58,7 +58,7 @@ it('seeds the settings defaults and never the initial-password pattern', functio
         ->and(Setting::get(SettingKey::LetterFormatSiswa))->toBe('400.3.8/{seq}/MRD/{roman_month}/{year}')
         ->and(Setting::query()->find(SettingKey::PublicIndexing->value)?->value)->toBeFalse()
         ->and(Setting::query()->find(SettingKey::PublicCertificates->value)?->value)->toBeFalse()
-        ->and(Setting::query()->pluck('value')->implode(' '))->not->toContain(InitialPassword::PREFIX);
+        ->and(Setting::query()->pluck('value')->implode(' '))->not->toContain(InitialPassword::LEGACY_PREFIX);
 });
 
 it('registers the dummy signature image on the private disk', function () {
@@ -126,7 +126,7 @@ it('builds the local demo data set with the spec leaderboard and queues', functi
         ->and(Letter::lastSequence(LetterType::Guru, 2026))->toBe(1680)
         ->and($nadia->nis)->toBe('225226201')
         ->and($nadia->user->must_change_password)->toBeTrue()
-        ->and(Hash::check(app(InitialPassword::class)->make($nadia->birth_date), $nadia->user->password))->toBeTrue()
+        ->and(Hash::check(app(InitialPassword::class)->make(), $nadia->user->password))->toBeTrue()
         ->and(User::query()->where('username', 'operator')->first()->hasRole(RoleName::Admin->value))->toBeTrue();
 
     // D-125: a demo organizer of the type "Lainnya" carries the typed kind; every other type has none.

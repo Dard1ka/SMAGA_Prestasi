@@ -519,7 +519,7 @@ final class EmailScenario
     private function needles(): array
     {
         $needles = [
-            'initial password pattern' => [InitialPassword::PREFIX, rtrim(InitialPassword::PREFIX, '_')],
+            'initial password pattern' => [InitialPassword::LEGACY_PREFIX, rtrim(InitialPassword::LEGACY_PREFIX, '_')],
             'a password typed in this run' => $this->secrets,
             'full NIS/NISN' => [],
             'birth date' => [],

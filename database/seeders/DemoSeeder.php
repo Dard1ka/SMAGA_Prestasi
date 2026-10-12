@@ -72,8 +72,8 @@ use RuntimeException;
  *
  * - Staff sign in with their username (kesiswaan, kepsek, tu, humas, operator, retno.w, hendra.k, maya.a,
  *   agus.s) and the dev-only password "password".
- * - Students sign in with NIS or NISN; their password is the initial password built by
- *   App\Domain\Accounts\InitialPassword from the seeded birth date (must_change_password = true).
+ * - Students sign in with their NISN; their password is the initial password of App\Domain\Accounts\InitialPassword
+ *   (config `sth.initial_student_password`, D-138; must_change_password = true).
  * - Leaderboard totals match the spec (Raka 312 … Nadia 104 = #14 of active students).
  */
 final class DemoSeeder extends Seeder
@@ -438,7 +438,7 @@ final class DemoSeeder extends Seeder
                 'name' => $name,
                 'email' => null,
                 // Hashed by the model cast; the plain value is never stored or printed.
-                'password' => $initialPassword->make($birthDate),
+                'password' => $initialPassword->make(),
                 'status' => $alumni ? UserStatus::Archived : UserStatus::PendingActivation,
                 'must_change_password' => ! $alumni,
             ]);

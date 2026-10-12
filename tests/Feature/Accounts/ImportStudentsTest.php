@@ -167,8 +167,8 @@ it('creates only the valid rows as pending students with a hashed initial passwo
         ->and($user->must_change_password)->toBeTrue()
         ->and($user->email)->toBeNull()
         ->and($user->hasRole('siswa'))->toBeTrue()
-        ->and($user->password)->not->toContain(app(InitialPassword::class)->make('2010-03-02'))
-        ->and(Hash::check(app(InitialPassword::class)->make('2010-03-02'), $user->password))->toBeTrue()
+        ->and($user->password)->not->toContain(app(InitialPassword::class)->make())
+        ->and(Hash::check(app(InitialPassword::class)->make(), $user->password))->toBeTrue()
         ->and($nadia->nisn)->toBe('0098765432')
         ->and($nadia->birth_date->format('Y-m-d'))->toBe('2010-03-02')
         ->and($nadia->import_school_year)->toBe('2026/2027')
@@ -184,7 +184,7 @@ it('creates only the valid rows as pending students with a hashed initial passwo
         ->and($log->causer_id)->toBe($this->kesiswaan->getKey());
 
     // The student can now log in with the NISN and lands on activation.
-    $this->from('/login')->post('/login', ['identifier' => '0098765432', 'password' => app(InitialPassword::class)->make('2010-03-02')])
+    $this->from('/login')->post('/login', ['identifier' => '0098765432', 'password' => app(InitialPassword::class)->make()])
         ->assertRedirect(route('aktivasi'));
 });
 
@@ -806,4 +806,15 @@ it('names the archive months the Admin set, not a fixed 18 (QA8)', function (): 
         ->assertHasNoErrors()
         ->assertSee('Arsip otomatis = 12 bulan setelah awal kelas XII.')
         ->assertDontSee('18 bulan');
+});
+
+it('hashes the configured initial password for a new student, never the birth-date pattern (D-138)', function (): void {
+    config(['sth.initial_student_password' => 'Awal-Uji-7319']);
+
+    app(ImportStudents::class)->handle($this->kesiswaan, w1cCsv([w1cMixedRows()[0]]), 'csv', '2026/2027', dryRun: false);
+
+    $user = Student::query()->where('nisn', '0098765432')->sole()->user;
+    expect(Hash::check('Awal-Uji-7319', $user->password))->toBeTrue()
+        ->and(Hash::check('sm4g4_020310', $user->password))->toBeFalse()
+        ->and($user->must_change_password)->toBeTrue();
 });

@@ -482,7 +482,8 @@ it('resets to a random temporary password valid for 72 hours, never the initial 
 
     $user = b1User($student);
     expect(Hash::check($temporary, $user->password))->toBeTrue()
-        ->and(Hash::check(app(InitialPassword::class)->make('2010-03-02'), $user->password))->toBeFalse()
+        ->and(Hash::check(app(InitialPassword::class)->make(), $user->password))->toBeFalse()
+        ->and(Hash::check('sm4g4_020310', $user->password))->toBeFalse()
         ->and($user->must_change_password)->toBeTrue()
         ->and(AccountControls::isFrozen($user))->toBeFalse()
         ->and(abs(AccountControls::date($user, 'initial_password_expires_at')->diffInMinutes(now()->addHours(72))))->toBeLessThan(2);

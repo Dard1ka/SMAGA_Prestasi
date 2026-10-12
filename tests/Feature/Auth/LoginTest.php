@@ -307,20 +307,18 @@ it('locks the account bucket progressively after repeated failures at their addr
         ->assertRedirect(route('aktivasi'));
 });
 
-it('flags the initial password pattern tried on an already activated account (K7) without logging in', function (): void {
+it('flags the initial password tried on an already activated account (K7), new value and old pattern', function (string $tried): void {
     Log::spy();
+    H::activeStudent()->user->forceFill(['password' => Hash::make('Kata-sandi-baru-2026')])->save();
 
-    $student = H::activeStudent();
-    $student->user->forceFill(['password' => Hash::make('Kata-sandi-baru-2026')])->save();
-
-    // Fictional birth date 2010-03-02 → pattern built by the domain class, never by auth code.
-    $pattern = app(InitialPassword::class)->make('2010-03-02');
-
-    w1cLogin(H::NISN, $pattern)->assertSessionHasErrors(['identifier' => AuthenticateUser::GENERIC_ERROR]);
+    w1cLogin(H::NISN, $tried)->assertSessionHasErrors(['identifier' => AuthenticateUser::GENERIC_ERROR]);
 
     $this->assertGuest();
     Log::shouldHaveReceived('warning')->withArgs(fn (string $message) => $message === 'security.initial_password_on_active')->once();
-});
+})->with([
+    'configured value' => [fn (): string => app(InitialPassword::class)->make()],
+    'old D-24 pattern (birth date 2010-03-02)' => ['sm4g4_020310'],
+]);
 
 it('sends staff with confirmed 2FA to the TOTP challenge', function (): void {
     $staff = H::staff(RoleName::Kesiswaan);

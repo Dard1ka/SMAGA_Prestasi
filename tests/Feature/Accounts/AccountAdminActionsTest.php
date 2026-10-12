@@ -54,7 +54,8 @@ it('resets a hijacked student account to a random temporary password and clears 
         ->and(Hash::check('Dipakai-penyerang-99', $user->password))->toBeFalse()
         ->and(strlen($temporary))->toBe(12)
         ->and(Hash::check($temporary, $user->password))->toBeTrue()
-        ->and(Hash::check(app(InitialPassword::class)->make('2010-03-02'), $user->password))->toBeFalse()
+        ->and(Hash::check(app(InitialPassword::class)->make(), $user->password))->toBeFalse()
+        ->and(Hash::check('sm4g4_020310', $user->password))->toBeFalse()
         ->and(H::sessionCount($user))->toBe(0)
         ->and($otp->fresh()->used_at)->not->toBeNull();
 

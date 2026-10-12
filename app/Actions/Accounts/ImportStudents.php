@@ -38,7 +38,7 @@ use Throwable;
  * - A new row (neither number known): name ≤ 150, NIS 4–20 digits, NISN exactly 10 digits, birth date valid and
  *   age 13–21, class exists (active), phone ^(\+62|0)8\d{7,12}$, NIS/NISN unique within the file and against
  *   every existing student (a NIS may not equal another student's NISN either, because login accepts both).
- *   grade12_start_date / archive_at from GraduationCalculator; initial password from InitialPassword, hashed
+ *   grade12_start_date / archive_at from GraduationCalculator; initial password from InitialPassword (config, D-138), hashed
  *   immediately, must_change_password = true. The plaintext is never stored, logged or returned.
  * - A row whose NIS AND NISN belong to one registered student is an UPDATE (M1-C, lead 2026-10-04: every school
  *   year Kesiswaan uploads all students with their current class). It moves the student to the class in the
@@ -645,7 +645,7 @@ final class ImportStudents
         $user = new User;
         $user->forceFill([
             'name' => $data['name'],
-            'password' => Hash::make($this->initialPassword->make($data['birth_date'])),
+            'password' => Hash::make($this->initialPassword->make()),
             'status' => UserStatus::PendingActivation,
             'must_change_password' => true,
             // B1 — K1: the initial password works only during the activation window (setting, default 14 days).

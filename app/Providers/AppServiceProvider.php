@@ -7,6 +7,7 @@ namespace App\Providers;
 use App\Actions\Fortify\KnownDevices;
 use App\Actions\Fortify\LoginIdentifier;
 use App\Actions\Fortify\LoginLockout;
+use App\Domain\Accounts\InitialPassword;
 use App\Domain\Accounts\PasswordPolicy;
 use App\Domain\Archive\GraduationCalculator;
 use App\Domain\Deadlines\ReportDeadline;
@@ -49,6 +50,9 @@ class AppServiceProvider extends ServiceProvider
     {
         // Lead decision (SECURITY K5): new passwords need at least 10 characters.
         $this->app->bind(PasswordPolicy::class, fn (): PasswordPolicy => new PasswordPolicy(self::MIN_PASSWORD_LENGTH));
+
+        // D-138: the one initial password of every new student comes from config. bind(), not singleton: a changed config value is read on the next resolve.
+        $this->app->bind(InitialPassword::class, fn (): InitialPassword => new InitialPassword((string) config('sth.initial_student_password')));
 
         // Admin-editable settings (D-25, Admin › Pengaturan › Batas & arsip). bind(), not singleton: a long-running
         // queue worker or scheduler must see a changed value on the next resolve.

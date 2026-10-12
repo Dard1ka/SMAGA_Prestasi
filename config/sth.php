@@ -23,4 +23,11 @@ return [
         'poll_seconds' => max(0, (int) env('STH_COUNTS_POLL_SECONDS', 60)),
     ],
 
+    /*
+    | Initial password of every newly imported student (D-138). Hashed at import only, never shown or logged
+    | (CLAUDE.md rule 3). Kesiswaan tells students outside the app; they must replace it at the first login.
+    | Empty or unset = the default below. After a change: reload.bat.
+    */
+    'initial_student_password' => (string) (env('STH_INITIAL_STUDENT_PASSWORD') ?: '12345'),
+
 ];
