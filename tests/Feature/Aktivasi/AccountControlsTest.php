@@ -145,7 +145,7 @@ it('keeps the window and the failed-login count running while only the email is 
     $this->assertGuest();
 });
 
-it('ends the window once the student kept the password at the last activation step', function (): void {
+it('ends the window once the student chose a new password at the last activation step', function (): void {
     $student = H::pendingStudent();
     $user = b1User($student);
     $user->forceFill([
@@ -154,11 +154,11 @@ it('ends the window once the student kept the password at the last activation st
         'initial_password_expires_at' => now()->addDay(),
     ])->saveQuietly();
 
-    app(CompleteActivation::class)->keepPassword($user);
+    app(CompleteActivation::class)->changePassword($user, 'Pelangi-senja-2026', 'Pelangi-senja-2026');
 
     $this->travel(30)->days();
 
-    b1Login(H::NISN)->assertRedirect(route('home'));
+    b1Login(H::NISN, 'Pelangi-senja-2026')->assertRedirect(route('home'));
     $this->assertAuthenticatedAs(b1User($student));
 });
 
@@ -386,7 +386,7 @@ it('sends the bound address a notice with a single-use "Bukan saya?" link when t
         ->and(AccountControls::date($user, 'activated_at'))->toBeNull()
         ->and(DB::table('email_notices')->where('user_id', $user->getKey())->where('kind', 'bound')->count())->toBe(1);
 
-    app(CompleteActivation::class)->keepPassword($user);
+    app(CompleteActivation::class)->changePassword($user, 'Pelangi-senja-2026', 'Pelangi-senja-2026');
 
     $user = b1User($student);
     expect($user->status)->toBe(UserStatus::Active)

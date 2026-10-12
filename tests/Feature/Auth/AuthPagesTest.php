@@ -22,7 +22,7 @@ it('renders the login page without ever showing the initial password pattern', f
         // M1-B: one field for NIS, NISN or the email bound at activation; the note follows the new order.
         ->assertSee('NISN atau email')->assertDontSee('NIS, NISN')
         ->assertSee('Sudah aktivasi? Bisa juga masuk pakai email. Guru dan staf: username atau email.')
-        ->assertSee('Nanti diminta menghubungkan email dulu. Setelah itu boleh ganti kata sandi.')
+        ->assertSee('Baru pertama masuk? Nanti diminta menghubungkan email dulu, lalu membuat kata sandi baru.')
         ->assertSee('name="identifier"', false)
         ->assertSee(route('password.request'), false)
         ->assertDontSee('sm4g4')
@@ -49,7 +49,7 @@ it('renders the activation page for a first login: the email comes first', funct
         ->assertDontSee('sm4g4');
 });
 
-it('renders the password step with the skip button for a student whose email is bound', function (): void {
+it('renders the password step without a skip button for a student whose email is bound', function (): void {
     $user = H::pendingStudent()->user;
     $user->forceFill(['email' => 'nadia.anindya@example.test', 'email_verified_at' => now()])->save();
 
@@ -57,8 +57,9 @@ it('renders the password step with the skip button for a student whose email is 
         ->get(route('aktivasi'))
         ->assertOk()
         ->assertSee('Langkah 3 dari 3')
-        ->assertSee('Ganti kata sandi')
-        ->assertSee('Lewati, pakai kata sandi sekarang')
+        ->assertSee('Buat kata sandi baru')
+        ->assertSee('Ganti kata sandi dari sekolah dengan kata sandi milikmu sendiri.')
+        ->assertDontSee('Lewati, pakai kata sandi sekarang')
         ->assertSee('Minimal 10 karakter')
         // M2-A: the hint names every rule, including the common-password one.
         ->assertSee('Jangan pakai tanggal lahir, NIS/NISN, nama, atau kata yang mudah ditebak.')

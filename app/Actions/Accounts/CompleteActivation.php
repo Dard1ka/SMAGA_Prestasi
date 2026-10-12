@@ -9,7 +9,6 @@ use App\Enums\UserStatus;
 use App\Models\OtpCode;
 use App\Models\User;
 use App\Notifications\Accounts\EmailBindingNotice;
-use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
@@ -22,12 +21,9 @@ use Illuminate\Validation\ValidationException;
  *   "Bukan saya?" link to that address (SendEmailBindingNotice). The account stays `pending_activation` until the
  *   password step, unless no password step is left (the password was already chosen: an account that was half-way
  *   in the old order), then it becomes active here.
- * - changePassword(): step 3, new password (SetNewPassword rules, must differ from the current one).
- * - keepPassword(): step 3 for STUDENTS only, and only for the school password of the import: keeps the stored hash
- *   (the password itself is never built, shown or logged, CLAUDE.md rule 3). Audited as `activation.password_kept`;
- *   `password_changed_at` stays null, so the school can list who still uses the password it handed out. Staff must
- *   change theirs (403), and so must a student whose password is the temporary one of an Admin reset
- *   (`temporary_password_issued_at`, M2-A after QA Q2-02: the Admin saw that password on screen).
+ * - changePassword(): step 3, new password (SetNewPassword rules, must differ from the current one). Every account
+ *   replaces its password here, students and staff alike (D-138; D-92 now holds for all): there is no way to keep
+ *   the stored one, so the password of the school or of an Admin reset never outlives the first login.
  * - whenPasswordAlreadyChosen(): closes the activation after "Lupa kata sandi" on a half-activated account.
  *
  * The account becomes `active` in the same transaction as the password step: `activated_at` (K9 report) is set and
@@ -42,6 +38,7 @@ final class CompleteActivation
 
     public const EVENT_PASSWORD_CHANGED = 'account.initial_password_changed';
 
+    /** Audit rows written before D-138 only: the skip is gone, but old rows keep their label. */
     public const EVENT_PASSWORD_KEPT = 'activation.password_kept';
 
     public const EVENT_ACTIVATED = 'account.activated';
@@ -52,23 +49,11 @@ final class CompleteActivation
 
     public const MSG_ALREADY_ACTIVE = 'Akun ini sudah aktif.';
 
-    public const MSG_MUST_CHANGE = 'Kata sandi akun ini wajib diganti.';
-
     public function __construct(
         private readonly SendEmailBindingNotice $notices,
         private readonly SetNewPassword $setPassword,
         private readonly DetermineActivationStep $activationStep,
     ) {}
-
-    /**
-     * Only a student account may keep its password, and only the school password of the import. Staff got theirs
-     * typed by an Admin, and a student's temporary password of an Admin reset was shown on the Admin's screen:
-     * both must be replaced.
-     */
-    public static function mayKeepPassword(User $user): bool
-    {
-        return ! self::hasTemporaryPassword($user) && $user->student()->exists() && ! $user->isStaff();
-    }
 
     /** The stored password is the temporary one of an Admin reset (ResetStudentAccount) and was not replaced yet. */
     public static function hasTemporaryPassword(User $user): bool
@@ -152,7 +137,7 @@ final class CompleteActivation
             ['password' => 'kata sandi'],
         )->validate();
 
-        // Typing the current password again would be a hidden "keep": students have a button for that, staff may not.
+        // Typing the current password again would be a hidden "keep": every account must replace it (D-138).
         if (Hash::check($password, (string) $user->password)) {
             throw ValidationException::withMessages(['password' => self::MSG_SAME_PASSWORD]);
         }
@@ -162,44 +147,6 @@ final class CompleteActivation
             $this->assertPasswordStep($locked);
 
             $this->setPassword->handle($locked, $password, $keepSessionId, self::EVENT_PASSWORD_CHANGED);
-            $this->activate($locked);
-
-            $this->sync($user, $locked);
-        });
-    }
-
-    /**
-     * Step 3 without a change (students with the school password only): the stored hash stays as it is.
-     *
-     * @throws AuthorizationException for an account that is not a student's, or whose password is an Admin's
-     *                                temporary one
-     * @throws ValidationException when the account is not at the password step
-     */
-    public function keepPassword(User $user): void
-    {
-        if (! self::mayKeepPassword($user)) {
-            throw new AuthorizationException(self::MSG_MUST_CHANGE);
-        }
-
-        DB::transaction(function () use ($user): void {
-            $locked = $this->lock($user);
-
-            // Again on the locked row: an Admin reset may have landed after the caller loaded the account.
-            if (! self::mayKeepPassword($locked)) {
-                throw new AuthorizationException(self::MSG_MUST_CHANGE);
-            }
-
-            $this->assertPasswordStep($locked);
-
-            $locked->forceFill(['must_change_password' => false])->save();
-
-            // No password material: only the fact, the account and the time.
-            activity('auth')
-                ->performedOn($locked)
-                ->causedBy($locked)
-                ->event(self::EVENT_PASSWORD_KEPT)
-                ->log(self::EVENT_PASSWORD_KEPT);
-
             $this->activate($locked);
 
             $this->sync($user, $locked);
@@ -251,7 +198,7 @@ final class CompleteActivation
             ->event(self::EVENT_ACTIVATED)
             ->withProperties([
                 'otp_test_mode' => VerifyOtpCode::testModeActive(),
-                // false = the owner kept the password the school handed out (never an Admin's temporary one).
+                // Always true since D-138; false only on rows written when a student could still keep the school password.
                 'password_changed' => $user->password_changed_at !== null,
             ])
             ->log(self::EVENT_ACTIVATED);

@@ -25,9 +25,8 @@ use Livewire\Component;
 
 /**
  * First-login activation (SECURITY §3a K4; order of the lead's decision of 2026-10-04): 1 bind email →
- * 2 six-digit code → 3 password → done. At step 3 a student chooses: a new password, or "Lewati" to keep the
- * school password; staff must set a new one (no skip), and so must a student whose account an Admin reset: that
- * temporary password was shown on the Admin's screen (M2-A, QA Q2-02). The same screen serves a restored account.
+ * 2 six-digit code → 3 password → done. At step 3 every account replaces its password, students and staff alike
+ * (D-138; D-92 now holds for all): there is no "Lewati". The same screen serves a restored account.
  * The step shown is only a view hint: every action re-derives the real step from the database
  * (DetermineActivationStep), so a tampered client cannot skip a step. All state changes are in CompleteActivation.
  * The session id is renewed (and the old session row deleted) after the code and after the password step, never on
@@ -235,30 +234,6 @@ class Activation extends Component
         $this->step = self::STEP_DONE;
     }
 
-    /**
-     * Step 3, "Lewati": only a student who still has the school password (403 for staff and for a student with the
-     * temporary password of an Admin reset, also re-checked in the Action).
-     */
-    public function keepPassword(DetermineActivationStep $activationStep, CompleteActivation $complete): void
-    {
-        $this->resetErrorBag();
-
-        $user = $this->user();
-
-        abort_unless(CompleteActivation::mayKeepPassword($user), 403);
-
-        if (! $this->isAt(DetermineActivationStep::PASSWORD, $activationStep, $user)) {
-            return;
-        }
-
-        $complete->keepPassword($user);
-        session()->regenerate(true);
-
-        $this->reset('password', 'password_confirmation');
-        $this->passwordChanged = false;
-        $this->step = self::STEP_DONE;
-    }
-
     public function start(DetermineActivationStep $activationStep): mixed
     {
         $user = $this->user();
@@ -280,7 +255,7 @@ class Activation extends Component
             'resendIn' => $this->step === self::STEP_CODE ? $otp->secondsUntilResend($user, CompleteActivation::PURPOSE) : 0,
             'passwordHint' => $setPassword->hint($user),
             'isStudent' => LoginIdentifier::isStudentAccount($user),
-            'canKeepPassword' => CompleteActivation::mayKeepPassword($user),
+            'temporaryPassword' => CompleteActivation::hasTemporaryPassword($user),
         ]);
     }
 

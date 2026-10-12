@@ -720,7 +720,7 @@ $startActivation = function (string $key) use ($siswa, $mail): void {
 
 /**
  * Activation steps 2 + 3: the code read from the mail binds the email (CompleteActivation::bindEmail), then the
- * student chooses a new password (changePassword; "Lewati" would be keepPassword). Step 3 sends no mail.
+ * student chooses a new password (changePassword; every account replaces its password, D-138). Step 3 sends no mail.
  */
 $finishActivation = function (string $key) use ($siswa, $mail, $scenario, $newPassword, $passwords): bool {
     $code = $scenario->codeFromMail($mail($key), 'Kode verifikasi email');

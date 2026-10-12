@@ -1,6 +1,5 @@
-{{-- Aktivasi akun (urutan keputusan lead 2026-10-04): 1 email → 2 kode → 3 kata sandi → selesai. "Lewati" hanya untuk
-     siswa yang masih memakai kata sandi dari sekolah ($canKeepPassword); staf dan siswa yang akunnya direset Admin
-     wajib membuat kata sandi baru (M2-A). --}}
+{{-- Aktivasi akun (urutan keputusan lead 2026-10-04): 1 email → 2 kode → 3 kata sandi → selesai. Setiap akun wajib
+     mengganti kata sandinya di langkah 3 (D-138; D-92 berlaku untuk semua): tidak ada "Lewati". --}}
 <div class="flex flex-col gap-6">
     @if ($step < 4)
         <div class="flex flex-col gap-2">
@@ -87,11 +86,10 @@
         </div>
     @elseif ($step === 3)
         <div class="flex flex-col gap-2">
-            @if ($canKeepPassword)
-                <h1 class="title-page">Kata sandi</h1>
-                <p class="muted">Email {{ $sentTo }} sudah terhubung. Ganti kata sandi supaya akunmu lebih aman, atau lewati langkah ini.</p>
+            <h1 class="title-page">Buat kata sandi baru</h1>
+            @if ($isStudent && ! $temporaryPassword)
+                <p class="muted">Email {{ $sentTo }} sudah terhubung. Ganti kata sandi dari sekolah dengan kata sandi milikmu sendiri.</p>
             @else
-                <h1 class="title-page">Buat kata sandi baru</h1>
                 <p class="muted">Email {{ $sentTo }} sudah terhubung. Ganti kata sandi sementara dari Admin.</p>
             @endif
         </div>
@@ -117,12 +115,6 @@
             <x-sth.button type="submit" size="lg" block wire:loading.attr="disabled">Ganti kata sandi</x-sth.button>
         </form>
 
-        @if ($canKeepPassword)
-            <div class="flex flex-col gap-2">
-                <x-sth.button variant="quiet" size="lg" block wire:click="keepPassword" wire:loading.attr="disabled">Lewati, pakai kata sandi sekarang</x-sth.button>
-                <p class="text-sm muted">Kalau dilewati, kamu bisa ganti kata sandi kapan saja di menu Keamanan akun.</p>
-            </div>
-        @endif
     @else
         <div class="flex flex-col gap-2">
             <h1 class="title-page">Akun sudah aktif</h1>

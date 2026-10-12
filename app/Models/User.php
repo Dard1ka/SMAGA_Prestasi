@@ -70,7 +70,7 @@ class User extends Authenticatable
             'failed_activation_attempts' => 'integer',
             'frozen_at' => 'immutable_datetime',
             'activated_at' => 'immutable_datetime',
-            // M2-A: set while the stored password is the temporary one of an Admin reset (no "Lewati" then).
+            // M2-A: set while the stored password is the temporary one of an Admin reset (the activation screen words its password step for it; every account replaces its password, D-138).
             'temporary_password_issued_at' => 'immutable_datetime',
         ];
     }

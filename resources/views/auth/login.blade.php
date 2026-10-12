@@ -43,7 +43,7 @@
             <x-sth.button type="submit" size="lg" block>Masuk</x-sth.button>
         </form>
 
-        <x-sth.alert>Baru pertama masuk? Nanti diminta menghubungkan email dulu. Setelah itu boleh ganti kata sandi.</x-sth.alert>
+        <x-sth.alert>Baru pertama masuk? Nanti diminta menghubungkan email dulu, lalu membuat kata sandi baru.</x-sth.alert>
 
         <p class="text-sm muted">Kesulitan masuk? Hubungi admin sekolah.</p>
     </div>
