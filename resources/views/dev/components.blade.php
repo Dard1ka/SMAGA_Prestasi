@@ -394,7 +394,7 @@
         <x-sth.card padding="sm" class="flex flex-wrap items-center justify-between gap-3">
             <x-sth.tabs panels id="demo-kelola" variant="pill" label="Daftar lomba" active="katalog" :items="[
                 ['key' => 'katalog', 'label' => 'Katalog', 'count' => 8],
-                ['key' => 'usulan', 'label' => 'Usulan lomba', 'count' => 3],
+                ['key' => 'usulan', 'label' => 'Verifikasi usulan lomba', 'count' => 3],
             ]" />
             <x-sth.tab-panel tabs="demo-kelola" name="katalog" active class="text-xs text-muted">Urut dari batas daftar terdekat</x-sth.tab-panel>
             <x-sth.tab-panel tabs="demo-kelola" name="usulan" class="text-xs text-muted">Semua upload menunggu verifikasi</x-sth.tab-panel>

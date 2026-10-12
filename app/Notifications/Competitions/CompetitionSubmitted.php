@@ -47,11 +47,11 @@ class CompetitionSubmitted extends Notification implements ShouldQueue
     public function toMail(object $notifiable): MailMessage
     {
         return (new PlainMailMessage)
-            ->subject('Usulan lomba baru: '.$this->competition->name)
+            ->subject('Verifikasi usulan lomba: '.$this->competition->name)
             ->greeting(MailGreeting::for($notifiable))
             ->line($this->message())
             ->line('Periksa penyelenggara dan link-nya sebelum dipublikasikan.')
-            ->action('Buka antrean', $this->url());
+            ->action('Verifikasi usulan lomba', $this->url());
     }
 
     /** @return array<string, mixed> */

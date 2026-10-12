@@ -9,7 +9,7 @@
     <div class="flex flex-wrap items-center justify-between gap-3">
         <x-sth.tabs label="Daftar lomba" variant="pill" :active="$tab" :items="[
             ['key' => 'katalog', 'label' => 'Katalog', 'count' => $catalogCount, 'attributes' => ['wire:click' => 'setTab(\'katalog\')']],
-            ['key' => 'verifikasi', 'label' => 'Antrean verifikasi', 'count' => $pendingCount, 'attributes' => ['wire:click' => 'setTab(\'verifikasi\')']],
+            ['key' => 'verifikasi', 'label' => 'Verifikasi usulan lomba', 'count' => $pendingCount, 'attributes' => ['wire:click' => 'setTab(\'verifikasi\')']],
         ]" />
         <div class="flex w-full flex-wrap items-center gap-3 sm:w-auto">
             @if ($tab === 'katalog')

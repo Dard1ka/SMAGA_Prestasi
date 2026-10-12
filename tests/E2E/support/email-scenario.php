@@ -868,8 +868,8 @@ $scenario->step('2a', 'Guru (retno.w) uploads a lomba with a brochure (SubmitCom
         'description' => 'Usulan dari guru pembina (data fiktif untuk skenario E2E).',
     ], $pdf('brosur-ospn-2026.pdf'))->getKey();
 }, [
-    [$at('kesiswaan'), 'Usulan lomba baru: '.$lomba['l1']],
-    [$at('operator'), 'Usulan lomba baru: '.$lomba['l1']],
+    [$at('kesiswaan'), 'Verifikasi usulan lomba: '.$lomba['l1']],
+    [$at('operator'), 'Verifikasi usulan lomba: '.$lomba['l1']],
 ]);
 
 $scenario->step('2b', 'Kesiswaan completes the lomba data and publishes it (UpdateCompetition + VerifyCompetition)', function () use ($state, $staff, $lomba, $today): void {
@@ -907,8 +907,8 @@ $scenario->step('2c', 'Student (Galuh) proposes a lomba (SubmitCompetition)', fu
         'website_url' => 'https://example.org/lomba/cerdas-cermat',
     ])->getKey();
 }, [
-    [$at('kesiswaan'), 'Usulan lomba baru: '.$lomba['l2']],
-    [$at('operator'), 'Usulan lomba baru: '.$lomba['l2']],
+    [$at('kesiswaan'), 'Verifikasi usulan lomba: '.$lomba['l2']],
+    [$at('operator'), 'Verifikasi usulan lomba: '.$lomba['l2']],
 ]);
 
 $scenario->step('2d', 'Kesiswaan rejects the proposal with a note (VerifyCompetition: ditolak)', function () use ($state, $staff): void {
@@ -939,7 +939,7 @@ $scenario->step('2e', 'Admin adds a lomba with the full form (CreateCompetition)
     ]);
     $state['l3'] = $competition->getKey();
     $scenario->note('status after create: '.$competition->status->value.' (the other verifiers are told; the Admin who added it is not)');
-}, [[$at('kesiswaan'), 'Usulan lomba baru: '.$lomba['l3']]]);
+}, [[$at('kesiswaan'), 'Verifikasi usulan lomba: '.$lomba['l3']]]);
 
 $scenario->step('2f', 'Kesiswaan publishes the Admin\'s lomba (VerifyCompetition)', function () use ($state, $staff): void {
     app(VerifyCompetition::class)->handle($staff('kesiswaan'), Competition::query()->findOrFail($state['l3']), CompetitionStatus::Dipublikasikan);
@@ -982,12 +982,12 @@ $scenario->step('2g', 'Guru proposes a lomba whose NAME is Markdown (a link + an
         'organizer_name' => 'Panitia Fiktif',
     ])->getKey();
 
-    $message = $scenario->newest($at('kesiswaan'), 'Usulan lomba baru: '.$hostileName);
+    $message = $scenario->newest($at('kesiswaan'), 'Verifikasi usulan lomba: '.$hostileName);
     $scenario->note('subject shows the literal name: yes (matched below)');
     $assertPlain('2g', $message, $hostileName);
 }, [
-    [$at('kesiswaan'), 'Usulan lomba baru: '.$hostileName],
-    [$at('operator'), 'Usulan lomba baru: '.$hostileName],
+    [$at('kesiswaan'), 'Verifikasi usulan lomba: '.$hostileName],
+    [$at('operator'), 'Verifikasi usulan lomba: '.$hostileName],
 ]);
 
 $scenario->step('2h', 'Kesiswaan rejects it with a NOTE written as Markdown (VerifyCompetition: ditolak)', function () use ($state, $staff, $hostileName, $hostileNote, $scenario, $assertPlain, $at): void {

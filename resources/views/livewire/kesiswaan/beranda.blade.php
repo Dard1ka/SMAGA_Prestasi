@@ -22,7 +22,7 @@
         </x-sth.card>
 
         <x-sth.card as="section" aria-labelledby="h-upload" class="flex flex-col gap-3">
-            <x-sth.page-header id="h-upload" :level="2" title="Upload lomba">
+            <x-sth.page-header id="h-upload" :level="2" title="Verifikasi usulan lomba">
                 <x-slot:actions><x-sth.link :href="route('kesiswaan.lomba.index', ['tab' => 'verifikasi'])" icon-right="chevron-right">Buka</x-sth.link></x-slot:actions>
             </x-sth.page-header>
             @forelse ($uploads as $item)

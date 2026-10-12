@@ -66,7 +66,7 @@ class Beranda extends Component
 
         return view('livewire.kesiswaan.beranda', [
             'stats' => [
-                ['icon' => 'inbox', 'tone' => 'orange', 'label' => 'Upload lomba', 'value' => (string) $badges['kesiswaan.usulan'], 'note' => 'menunggu verifikasi', 'href' => route('kesiswaan.lomba.index', ['tab' => 'verifikasi'])],
+                ['icon' => 'inbox', 'tone' => 'orange', 'label' => 'Verifikasi usulan lomba', 'value' => (string) $badges['kesiswaan.usulan'], 'note' => 'menunggu diperiksa', 'href' => route('kesiswaan.lomba.index', ['tab' => 'verifikasi'])],
                 ['icon' => 'shield', 'tone' => 'blue', 'label' => 'Laporan hasil', 'value' => (string) $badges['kesiswaan.verifikasi'], 'note' => 'menunggu verifikasi', 'href' => route('kesiswaan.verifikasi.index')],
                 ['icon' => 'users', 'tone' => 'gray', 'label' => 'Talenta terdaftar', 'value' => (string) ($canTalent ? TalentApplication::query()->inStatus(TalentStatus::Terdaftar)->count() : 0), 'note' => 'belum dipetakan', 'href' => $canTalent ? route('kesiswaan.talenta.index', ['tahap' => 'terdaftar']) : null],
                 ['icon' => 'trophy', 'tone' => 'green', 'label' => 'Lomba aktif', 'value' => (string) Competition::query()->openForRegistration($now)->count(), 'note' => 'pendaftaran dibuka', 'href' => route('kesiswaan.lomba.index')],

@@ -118,3 +118,13 @@ it('fits the chart of the dashboard on a 360px phone: year labels break after th
         // The bars of three years needed 278px in a 239px plot: a year group may get narrower than its 16px bars.
         ->assertSeeHtml('class="flex h-full min-w-0 flex-1 items-end justify-center gap-1.5"');
 });
+
+it('names the queue of old pending lomba "Verifikasi usulan lomba" (FS1 §2.2)', function (): void {
+    Competition::factory()->create(['created_at' => now()->subDays(8)]);
+    Competition::factory()->create(['created_at' => now()->subDays(2)]);
+
+    Livewire::actingAs($this->kepsek)->test(Dashboard::class)
+        ->assertSee('Verifikasi usulan lomba: 1 belum diperiksa')
+        ->assertSee('Di Kesiswaan lebih dari 7 hari.')
+        ->assertDontSee('usulan lomba belum diperiksa');
+});

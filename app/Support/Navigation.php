@@ -324,7 +324,7 @@ final class Navigation
                         ['key' => 'beranda', 'label' => 'Beranda', 'icon' => 'home', 'route' => ['kesiswaan.beranda']],
                         $kelolaLomba,
                         // D-27: this queue lists every pending lomba upload (siswa, guru, staf).
-                        ['key' => 'usulan', 'label' => 'Usulan lomba', 'icon' => 'inbox', 'route' => [['kesiswaan.lomba.index', ['tab' => 'verifikasi']], 'kesiswaan.usulan'], 'match' => ['kesiswaan.usulan*'], 'query' => ['tab' => 'verifikasi'], 'badge' => 'kesiswaan.usulan'],
+                        ['key' => 'usulan', 'label' => 'Verifikasi usulan lomba', 'icon' => 'inbox', 'route' => [['kesiswaan.lomba.index', ['tab' => 'verifikasi']], 'kesiswaan.usulan'], 'match' => ['kesiswaan.usulan*'], 'query' => ['tab' => 'verifikasi'], 'badge' => 'kesiswaan.usulan'],
                         ['key' => 'verifikasi', 'label' => 'Verifikasi hasil', 'icon' => 'shield', 'route' => ['kesiswaan.verifikasi.index', 'kesiswaan.verifikasi'], 'match' => ['kesiswaan.verifikasi*'], 'badge' => 'kesiswaan.verifikasi'],
                     ]],
                     ['label' => 'Data', 'items' => [

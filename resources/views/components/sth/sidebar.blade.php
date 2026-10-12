@@ -36,7 +36,7 @@
                         @if ($item['current']) aria-current="page" @endif
                     >
                         <x-sth.icon :name="$item['icon']" />
-                        <span class="min-w-0 flex-1 truncate">{{ $item['label'] }}</span>
+                        <span class="min-w-0 flex-1 leading-snug">{{ $item['label'] }}</span>
                         {{-- Always printed for items with a badge key, so the browser event `sth-badges` (app.js) can
                              change or hide the count after a Livewire action without a page reload. --}}
                         @if ($item['badgeKey'] ?? null)

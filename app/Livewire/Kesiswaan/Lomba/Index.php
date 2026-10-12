@@ -530,7 +530,7 @@ class Index extends Component
         return [
             ['icon' => 'trophy', 'tone' => 'blue', 'label' => 'Lomba aktif', 'value' => (string) $active, 'note' => 'pendaftaran dibuka', 'href' => null],
             ['icon' => 'users', 'tone' => 'green', 'label' => 'Pendaftar 30 hari', 'value' => (string) $students, 'note' => 'siswa di '.$competitions.' lomba', 'href' => null],
-            ['icon' => 'inbox', 'tone' => 'orange', 'label' => 'Menunggu verifikasi', 'value' => (string) $pending, 'note' => 'upload lomba', 'href' => route('kesiswaan.lomba.index', ['tab' => 'verifikasi'])],
+            ['icon' => 'inbox', 'tone' => 'orange', 'label' => 'Verifikasi usulan lomba', 'value' => (string) $pending, 'note' => 'menunggu diperiksa', 'href' => route('kesiswaan.lomba.index', ['tab' => 'verifikasi'])],
             ['icon' => 'clock', 'tone' => 'red', 'label' => 'Tutup minggu ini', 'value' => (string) $closingSoon->count(),
                 'note' => $next !== null ? mb_strimwidth($next->name, 0, 22, '…').' · '.self::shortDate($next->registration_closes_at, false) : 'tidak ada', 'href' => null],
         ];

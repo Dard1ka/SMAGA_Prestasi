@@ -329,7 +329,7 @@ class Dashboard extends Component
 
         if ($staleProposals > 0) {
             $items[] = [
-                'title' => $staleProposals.' usulan lomba belum diperiksa',
+                'title' => 'Verifikasi usulan lomba: '.$staleProposals.' belum diperiksa',
                 'note' => 'Di Kesiswaan lebih dari 7 hari.',
                 'tone' => 'gray',
                 'url' => null,

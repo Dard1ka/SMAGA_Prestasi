@@ -211,7 +211,7 @@ it('serves the local showcase pages without inline styles or inline handlers (CS
         ->not->toMatch('/\son[a-z]+="/i');
 })->with([
     'app shell, siswa' => ['/_dev/components', 'Nadia Putri Anindya'],
-    'app shell, kesiswaan' => ['/_dev/components?role=kesiswaan', 'Usulan lomba'],
+    'app shell, kesiswaan' => ['/_dev/components?role=kesiswaan', 'Verifikasi usulan lomba'],
     'app shell, kepala sekolah' => ['/_dev/components?role=kepala_sekolah', 'Persetujuan'],
     'public' => ['/_dev/components/public', 'Prestasi siswa SMAGA, dalam satu tempat.'],
     'auth split' => ['/_dev/components/auth', 'Pakai NIS atau NISN dan kata sandi dari sekolah.'],
