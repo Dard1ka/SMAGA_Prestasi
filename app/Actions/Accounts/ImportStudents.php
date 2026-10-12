@@ -36,8 +36,9 @@ use Throwable;
  *   = + - @ (and tab/CR/LF) stripped before validation (names must then consist of letters only). Rows where
  *   that happened carry `sanitized = true` in the report ("Sel dibersihkan", lead decision, backlog #19).
  * - A new row (neither number known): name ≤ 150, NIS 4–20 digits, NISN exactly 10 digits, birth date valid and
- *   age 13–21, class exists (active), phone ^(\+62|0)8\d{7,12}$, NIS/NISN unique within the file and against
- *   every existing student (a NIS may not equal another student's NISN either, because login accepts both).
+ *   age 13–21, class exists (active), phone ^(\+62|0)8\d{7,12}$, NIS and NISN each unique in their own column,
+ *   within the file and against existing students; the NIS is stored only (D-137), so it may equal another
+ *   student's NISN.
  *   grade12_start_date / archive_at from GraduationCalculator; initial password from InitialPassword (config, D-138), hashed
  *   immediately, must_change_password = true. The plaintext is never stored, logged or returned.
  * - A row whose NIS AND NISN belong to one registered student is an UPDATE (M1-C, lead 2026-10-04: every school
@@ -308,12 +309,17 @@ final class ImportStudents
 
         [$byNis, $byNisn] = $this->registeredStudents($clean);
 
-        // Occurrences inside the file (NIS and NISN share one namespace because login accepts both).
-        $seen = [];
+        // Occurrences inside the file, counted per column (the NIS is stored only, D-137).
+        $seenNis = [];
+        $seenNisn = [];
 
         foreach ($clean as $row) {
-            foreach (array_unique(array_filter([$row['nis'], $row['nisn']])) as $number) {
-                $seen[$number] = ($seen[$number] ?? 0) + 1;
+            if ($row['nis'] !== '') {
+                $seenNis[$row['nis']] = ($seenNis[$row['nis']] ?? 0) + 1;
+            }
+
+            if ($row['nisn'] !== '') {
+                $seenNisn[$row['nisn']] = ($seenNisn[$row['nisn']] ?? 0) + 1;
             }
         }
 
@@ -328,13 +334,13 @@ final class ImportStudents
 
             if (! $nisOk) {
                 $errors[] = 'NIS harus 4–20 angka.';
-            } elseif (($seen[$row['nis']] ?? 0) > 1) {
+            } elseif (($seenNis[$row['nis']] ?? 0) > 1) {
                 $errors[] = 'NIS dobel di file ini.';
             }
 
             if (! $nisnOk) {
                 $errors[] = 'NISN harus 10 angka (format sel sebagai teks).';
-            } elseif (($seen[$row['nisn']] ?? 0) > 1) {
+            } elseif (($seenNisn[$row['nisn']] ?? 0) > 1) {
                 $errors[] = 'NISN dobel di file ini.';
             }
 
@@ -355,15 +361,6 @@ final class ImportStudents
                     $errors[] = 'NIS sudah terdaftar dengan NISN lain.';
                 } elseif ($ownerOfNisn !== null) {
                     $errors[] = 'NISN sudah terdaftar dengan NIS lain.';
-                } else {
-                    // A new student: neither number may be another student's login number.
-                    if (isset($byNisn[$row['nis']])) {
-                        $errors[] = 'NIS sudah dipakai sebagai NISN siswa lain.';
-                    }
-
-                    if (isset($byNis[$row['nisn']])) {
-                        $errors[] = 'NISN sudah dipakai sebagai NIS siswa lain.';
-                    }
                 }
             }
 
@@ -490,6 +487,7 @@ final class ImportStudents
                     'row' => $row['line'],
                     'name' => $row['name'] !== '' ? $row['name'] : null,
                     'nis' => $row['nis'] !== '' ? $row['nis'] : null,
+                    'nisn' => $row['nisn'] !== '' ? $row['nisn'] : null,
                     'classroom' => $classroom?->name ?? ($row['classroom'] !== '' ? $row['classroom'] : null),
                     'errors' => $errors,
                     'grade12_start_date' => $dates?->grade12StartDate->format('Y-m-d'),

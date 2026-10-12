@@ -144,7 +144,7 @@ it('reports valid and invalid rows in a dry run without creating anything', func
     // The report never carries birth dates, phones or passwords.
     // B2 (#19): `sanitized` flags rows whose cells lost a leading = + - @ ("Sel dibersihkan").
     // M1-C: `action` (new/moved/unchanged/skipped/rejected), the class a student leaves, notes, and `changes`.
-    expect(array_keys($report->rows[0]))->toBe(['row', 'name', 'nis', 'classroom', 'errors', 'grade12_start_date', 'archive_at', 'sanitized', 'action', 'previous_classroom', 'notes', 'changes'])
+    expect(array_keys($report->rows[0]))->toBe(['row', 'name', 'nis', 'nisn', 'classroom', 'errors', 'grade12_start_date', 'archive_at', 'sanitized', 'action', 'previous_classroom', 'notes', 'changes'])
         ->and($byRow[4]['sanitized'])->toBeTrue()
         ->and($byRow[2]['sanitized'])->toBeFalse()
         ->and($byRow[2])->toMatchArray(['action' => StudentImportReport::NEW, 'previous_classroom' => null, 'notes' => [], 'changes' => true])
@@ -432,7 +432,7 @@ it('refuses a row when only the NIS or only the NISN belongs to a registered stu
         ['Nadia Putri Anindya', '225226201', '0098765499', '02-03-2010', 'XI-4', ''], // 2 her NIS, another NISN
         ['Nadia Putri Anindya', '225226299', '0098765432', '02-03-2010', 'XI-4', ''], // 3 another NIS, her NISN
         ['Citra Ayu', '225226999', '0098765432', '08-08-2010', 'XI-4', ''],           // 4 NIS and NISN of two students (also NISN dobel)
-        ['Dimas Saputra', '0011111111', '0098765450', '06-06-2010', 'X-1', ''],       // 5 new NIS = another student's NISN
+        ['Dimas Saputra', '0011111111', '0098765450', '06-06-2010', 'X-1', ''],       // 5 new NIS = another student's NISN: accepted since D-137
         ['Gita Permata', '225226777', '0225226999', '10-10-2010', 'X-1', ''],         // 6 unknown numbers: new
     ]), 'csv', '2027/2028', dryRun: false);
 
@@ -441,10 +441,10 @@ it('refuses a row when only the NIS or only the NISN belongs to a registered stu
     expect($byRow[2]['errors'])->toBe(['NIS sudah terdaftar dengan NISN lain.'])
         ->and($byRow[3]['errors'])->toContain('NISN sudah terdaftar dengan NIS lain.')
         ->and($byRow[4]['errors'])->toContain('NIS dan NISN ini milik dua siswa yang berbeda.')
-        ->and($byRow[5]['errors'])->toBe(['NIS sudah dipakai sebagai NISN siswa lain.'])
+        ->and($byRow[5]['errors'])->toBe([])
         ->and($byRow[6]['errors'])->toBe([])
-        ->and($report->summary())->toMatchArray(['new' => 1, 'moved' => 0, 'rejected' => 4])
-        ->and($report->created)->toBe(1)
+        ->and($report->summary())->toMatchArray(['new' => 2, 'moved' => 0, 'rejected' => 3])
+        ->and($report->created)->toBe(2)
         ->and($nadia->refresh()->classroom->name)->toBe('X-1')
         ->and(Activity::query()->where('event', 'student.class_changed')->count())->toBe(0);
 });
@@ -833,4 +833,26 @@ it('keeps the configured initial password out of the report, the audit log and e
     expect(json_encode($report->rows))->not->toContain('Awal-Uji-7319')
         ->and(json_encode(Activity::query()->get(['description', 'event', 'properties'])))->not->toContain('Awal-Uji-7319')
         ->and(implode("\n", $logged))->not->toContain('Awal-Uji-7319');
+});
+
+it('accepts a new NIS that equals another student NISN, and the login still finds the NISN owner (D-137)', function (): void {
+    app(ImportStudents::class)->handle($this->kesiswaan, w1cCsv([
+        ['Dimas Saputra', '0011111111', '0098765450', '06-06-2010', 'X-1', ''],
+    ]), 'csv', '2026/2027', dryRun: false);
+
+    $owner = Student::query()->where('nisn', '0011111111')->sole();
+    expect(Student::query()->where('nis', '0011111111')->sole()->nisn)->toBe('0098765450');
+
+    $this->from('/login')->post('/login', ['identifier' => '0011111111', 'password' => 'password'])->assertRedirect();
+    $this->assertAuthenticatedAs($owner->user);
+});
+
+it('counts NIS and NISN duplicates per column inside the file', function (): void {
+    $report = app(ImportStudents::class)->handle($this->kesiswaan, w1cCsv([
+        ['Dimas Saputra', '0098765460', '0098765461', '06-06-2010', 'X-1', ''],
+        ['Intan Lestari', '225226290', '0098765460', '07-07-2010', 'X-1', ''],
+    ]), 'csv', '2026/2027');
+
+    expect(collect($report->rows)->pluck('errors')->all())->toBe([[], []])
+        ->and($report->rows[0]['nisn'])->toBe('0098765461');
 });

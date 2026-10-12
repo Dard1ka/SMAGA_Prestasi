@@ -87,7 +87,7 @@
                         @if ($imported['invalid'] > 0)
                             {{ $imported['invalid'] }} baris ditolak dan belum diimpor. Perbaiki lalu upload ulang.
                         @elseif ($imported['created'] > 0)
-                            Siswa baru bisa masuk dengan NIS atau NISN dan kata sandi awal dari sekolah.
+                            Siswa baru bisa masuk dengan NISN dan kata sandi awal dari sekolah.
                         @else
                             Data kelas sudah sesuai dengan file.
                         @endif
@@ -125,7 +125,7 @@
                         <x-slot:head>
                             <th scope="col" class="w-14">Baris</th>
                             <th scope="col">Nama</th>
-                            <th scope="col">NIS</th>
+                            <th scope="col">NISN</th>
                             <th scope="col">Kelas</th>
                             <th scope="col">Angkatan</th>
                             <th scope="col">Kelas XII mulai</th>
@@ -136,7 +136,7 @@
                             <tr wire:key="row-{{ $row['row'] }}" @class(['bg-red-bg' => $row['errors'] !== []])>
                                 <td class="num">{{ $row['row'] }}</td>
                                 <td class="font-bold">{{ $row['name'] ?? '–' }}</td>
-                                <td class="num">{{ $row['nis'] ?? '–' }}</td>
+                                <td class="num">{{ $row['nisn'] ?? '–' }}</td>
                                 <td>{{ $row['kelas'] ?? '–' }}</td>
                                 <td class="num">{{ $row['angkatan'] ?? '–' }}</td>
                                 <td>{{ $row['grade12'] }}</td>

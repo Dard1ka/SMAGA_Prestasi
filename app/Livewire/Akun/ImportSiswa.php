@@ -330,7 +330,7 @@ class ImportSiswa extends Component
             $writer->addRow([
                 'Baris' => $row['row'],
                 'Nama lengkap' => self::cell($row['name']),
-                'NIS' => self::cell($row['nis']),
+                'NISN' => self::cell($row['nisn'] ?? null),
                 'Kelas' => self::cell($row['classroom']),
                 'Status' => self::ACTION_LABELS[$row['action'] ?? StudentImportReport::REJECTED][0],
                 'Keterangan' => self::cell(implode(' ', [...$row['errors'], ...($row['notes'] ?? [])])),
