@@ -4,7 +4,7 @@
     <div class="grid grid-cols-1 items-start gap-[18px] lg:grid-cols-[minmax(0,1fr)_340px]">
         <div class="flex min-w-0 flex-col gap-[18px]">
             @foreach ([
-                ['icon' => 'search', 'title' => 'Daftar lomba', 'text' => 'Buka Cari lomba, pilih lomba, lalu klik Daftar lomba. Pilih guru pembimbing. Untuk tim, undang anggota; setiap anggota konfirmasi dari akunnya sendiri.'],
+                ['icon' => 'search', 'title' => 'Pendaftaran lomba', 'text' => 'Buka Cari lomba, pilih lomba, lalu isi panel Pendaftaran lomba. Pilih guru pembimbing. Untuk tim, undang anggota; setiap anggota konfirmasi dari akunnya sendiri.'],
                 ['icon' => 'check-circle', 'title' => 'Persetujuan dan surat tugas', 'text' => 'Kepala Sekolah menyetujui pendaftaranmu, lalu Tata Usaha mengirim surat tugas. Download suratnya di Lomba saya.'],
                 ['icon' => 'upload', 'title' => 'Laporkan hasil', 'text' => "Ketua tim melapor paling lambat {$days} hari setelah tanggal final, lengkap dengan sertifikat atau foto. Setelah Kesiswaan memverifikasi, setiap anggota mendapat poin penuh."],
                 ['icon' => 'plus', 'title' => 'Usulkan lomba', 'text' => 'Lomba belum ada di katalog? Klik Usulkan lomba di Cari lomba. Lomba tampil setelah Kesiswaan memeriksanya.'],

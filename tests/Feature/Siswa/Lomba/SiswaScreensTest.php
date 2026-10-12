@@ -57,7 +57,7 @@ it('renders every W2-A1 siswa page', function (): void {
     $this->actingAs(F::user($this->nadia));
     $this->get(route('siswa.beranda'))->assertOk()->assertSee('Halo, Nadia');
     $this->get(route('siswa.lomba.index'))->assertOk()->assertSee($lomba->name)->assertSee('Usulkan lomba');
-    $this->get(route('siswa.lomba.show', $lomba))->assertOk()->assertSee('Daftar lomba')->assertSee('Kirim pendaftaran');
+    $this->get(route('siswa.lomba.show', $lomba))->assertOk()->assertSee('Pendaftaran lomba')->assertSee('Kirim pendaftaran');
     $this->get(route('siswa.bantuan'))->assertOk()->assertSee('Tour singkat menu');
 });
 

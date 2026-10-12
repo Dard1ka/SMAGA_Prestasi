@@ -1,7 +1,7 @@
-{{-- "Daftar lomba" panel (board Detail-Lomba, right column). State + rules: App\Livewire\Siswa\Pendaftaran\Form. --}}
+{{-- "Pendaftaran lomba" panel (board Detail-Lomba, right column). State + rules: App\Livewire\Siswa\Pendaftaran\Form. --}}
 <div class="flex flex-col gap-4">
     <div class="flex items-center justify-between gap-3">
-        <h2 id="h-daftar" class="title-section m-0">Daftar lomba</h2>
+        <h2 id="h-daftar" class="title-section m-0">Pendaftaran lomba</h2>
         @if ($closesShort)
             <x-sth.chip tone="gray" class="num">Batas {{ $closesShort }}</x-sth.chip>
         @endif
