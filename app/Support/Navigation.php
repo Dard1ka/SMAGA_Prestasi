@@ -329,7 +329,7 @@ final class Navigation
                     ]],
                     ['label' => 'Data', 'items' => [
                         ['key' => 'prestasi', 'label' => 'Database prestasi', 'icon' => 'database', 'route' => ['kesiswaan.prestasi.index', 'kesiswaan.prestasi']],
-                        ['key' => 'talenta', 'label' => 'Talenta siswa', 'icon' => 'users', 'route' => ['kesiswaan.talenta.index', 'kesiswaan.talenta']],
+                        ['key' => 'talenta', 'label' => 'Database talenta siswa', 'icon' => 'users', 'route' => ['kesiswaan.talenta.index', 'kesiswaan.talenta']],
                         ['key' => 'apresiasi', 'label' => 'Apresiasi', 'icon' => 'award', 'route' => ['kesiswaan.apresiasi.index', 'kesiswaan.apresiasi']],
                         // D-26: Kesiswaan may import students too.
                         ['key' => 'import', 'label' => 'Import siswa', 'icon' => 'upload', 'route' => ['kesiswaan.import']],

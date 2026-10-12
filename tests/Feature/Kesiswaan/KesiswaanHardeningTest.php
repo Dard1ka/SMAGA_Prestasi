@@ -201,7 +201,7 @@ it('alerts every Admin when a talent export has more than 500 rows', function ()
         ->and($log->properties['large'])->toBeTrue()
         ->and($log->properties['filters'])->toBe([]);
 
-    Notification::assertSentTo($this->admin, LargeExportNotice::class);
+    Notification::assertSentTo($this->admin, LargeExportNotice::class, fn (LargeExportNotice $n): bool => str_contains(implode(' ', $n->lines()), 'men-download Database talenta siswa berisi 501 baris'));
     Notification::assertNotSentTo($this->kesiswaan, LargeExportNotice::class);
 });
 

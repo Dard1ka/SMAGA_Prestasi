@@ -55,7 +55,8 @@ it('stores the request without touching the status and notifies every Kesiswaan,
     foreach ([$this->kesiswaan, $second] as $recipient) {
         Notification::assertSentTo($recipient, TalentReviewRequested::class, fn (TalentReviewRequested $n): bool => str_contains($n->body, 'Nadia Putri Anindya (XI-4) minta pilihan talenta')
             && str_contains($n->body, 'Pesan siswa: Saya sakit saat asesmen. Mohon dijadwalkan ulang.')
-            && ! str_contains($n->body, (string) $this->nadia->nis));
+            && ! str_contains($n->body, (string) $this->nadia->nis)
+            && $n->actionLabel === 'Buka Database talenta siswa');
     }
 
     Notification::assertNotSentTo($disabled, TalentReviewRequested::class);

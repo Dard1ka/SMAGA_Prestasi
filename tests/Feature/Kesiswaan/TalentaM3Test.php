@@ -433,7 +433,7 @@ it('puts only the ticked statuses into the file and says so in its "Filter:" lin
     $rows = m3aExportRows($component);
 
     // Everything QA4 put on the sheet is still there.
-    expect($rows[0][0])->toBe('Talenta siswa SMAGA Talent Hub')
+    expect($rows[0][0])->toBe('Database talenta siswa SMAGA Talent Hub')
         ->and($rows[1][0])->toStartWith('Diekspor oleh '.$this->kesiswaan->name.' · ')
         ->and($rows[1][0])->toEndWith(' WIB')
         ->and($rows[2][0])->toBe('Filter: Tahap: Terdaftar, Tidak lolos')

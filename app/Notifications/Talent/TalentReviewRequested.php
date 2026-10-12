@@ -30,7 +30,7 @@ final class TalentReviewRequested extends Notice
             body: $body,
             routeName: 'kesiswaan.talenta.index',
             routeParameters: ['tahap' => 'tidak_lolos'],
-            actionLabel: 'Buka talenta siswa',
+            actionLabel: 'Buka Database talenta siswa',
             extra: ['talent_application_id' => (string) $application->getKey()],
         );
     }

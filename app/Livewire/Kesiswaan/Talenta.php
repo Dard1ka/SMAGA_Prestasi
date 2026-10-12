@@ -44,7 +44,7 @@ use Spatie\SimpleExcel\SimpleExcelWriter;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 /**
- * Talenta siswa (UI-MAP #18, board Kesiswaan-Talenta): pipeline tabs, filters (jenis → cabang, kelas,
+ * Database talenta siswa (UI-MAP #18, board Kesiswaan-Talenta): pipeline tabs, filters (jenis → cabang, kelas,
  * nama/NIS), table with bulk moves, detail panel (pembina, jadwal asesmen, two notes). Every change goes
  * through MoveTalentStage / RejectTalentApplication / UpdateTalentAssessment (one call per row for bulk
  * moves), which notify the student. The table shows the NIS in full (D-131); the Excel export escapes formulas, needs
@@ -75,8 +75,8 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
  * once, sends the saved draft notes, and a stage cannot be moved back. askBulkAdvance() fixes which rows move and from
  * which stage (`$advanceAsk`); bulkAdvance() is the confirm step and does nothing without that question.
  */
-#[Title('Talenta siswa')]
-#[Layout('layouts::app', ['subtitle' => 'Penjaringan, pemetaan, dan seleksi peserta pembinaan.'])]
+#[Title('Database talenta siswa')]
+#[Layout('layouts::app', ['subtitle' => 'Data talenta pilihan siswa.'])]
 class Talenta extends Component
 {
     use RequiresRecentPassword, WithKesiswaanBadges;
@@ -837,7 +837,7 @@ class Talenta extends Component
         $describe = $this->describeFilters($statuses);
 
         // Marked like Database prestasi (ExportAchievements, SECURITY §3m): title, who exported it and when, filter.
-        $writer->addRow(self::exportRow(['Talenta siswa SMAGA Talent Hub'], $bold));
+        $writer->addRow(self::exportRow(['Database talenta siswa SMAGA Talent Hub'], $bold));
         $writer->addRow(self::exportRow(['Diekspor oleh '.$actor->name.' · '.$exportedAt->format('d-m-Y H.i').' WIB']));
         $writer->addRow(self::exportRow(['Filter: '.($describe === [] ? 'semua talenta' : implode('; ', $describe))]));
         $writer->addRow(self::exportRow(['']));
@@ -879,7 +879,7 @@ class Talenta extends Component
             ->log('talent.exported');
 
         if ($count > LargeExportNotice::LIMIT) {
-            Notification::send($recipients->admins(), new LargeExportNotice((string) $actor->name, 'data talenta siswa', $count, now()->translatedFormat('j F Y H:i')));
+            Notification::send($recipients->admins(), new LargeExportNotice((string) $actor->name, 'Database talenta siswa', $count, now()->translatedFormat('j F Y H:i')));
         }
 
         return response()->download($path, 'talenta-siswa-'.$exportedAt->format('Ymd').'.xlsx')->deleteFileAfterSend();
