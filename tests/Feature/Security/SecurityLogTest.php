@@ -83,6 +83,7 @@ it('records a password typed into the identifier field only as a fingerprint', f
         ->and(json_encode(b2SecurityRecords()))->not->toContain($typed)
         ->and(SecurityEventSubscriber::identifier('Staf.TU@Example.test'))->toBe('staf.tu@example.test')
         ->and(SecurityEventSubscriber::identifier('0098765432'))->toBe('0098765432')
+        ->and(SecurityEventSubscriber::identifier('225226201'))->toStartWith('fp:')
         ->and(SecurityEventSubscriber::identifier('kesiswaan01'))->toStartWith('fp:');
 });
 
@@ -227,4 +228,19 @@ it('treats account, role, archive, consent, settings and export events as securi
     ['registration.created', false],
     ['report.verified', false],
     ['', false],
+]);
+
+it('never logs the initial password typed into the login field, only a fingerprint (CLAUDE.md rule 3)', function (string $typed): void {
+    $this->post(route('login.store'), ['identifier' => $typed, 'password' => 'x'])->assertSessionHasErrors();
+
+    expect(b2SecurityRecordsNamed('security.login_failed')[0]['context']['identifier'])->toStartWith('fp:')
+        ->and(json_encode(b2SecurityRecords()))->not->toContain($typed);
+})->with([
+    'the default' => ['12345'],
+    // Bound dataset: Pest resolves the closure after beforeEach, inside the test, so config() works here.
+    'a 10-digit value chosen by the school' => [function (): string {
+        config(['sth.initial_student_password' => '2026202620']);
+
+        return '2026202620';
+    }],
 ]);

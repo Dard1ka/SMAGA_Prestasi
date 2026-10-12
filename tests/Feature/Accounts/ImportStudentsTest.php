@@ -21,7 +21,9 @@ use App\Models\User;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Log\Events\MessageLogged;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Validation\ValidationException;
@@ -817,4 +819,18 @@ it('hashes the configured initial password for a new student, never the birth-da
     expect(Hash::check('Awal-Uji-7319', $user->password))->toBeTrue()
         ->and(Hash::check('sm4g4_020310', $user->password))->toBeFalse()
         ->and($user->must_change_password)->toBeTrue();
+});
+
+it('keeps the configured initial password out of the report, the audit log and every log line (CLAUDE.md rule 3)', function (): void {
+    config(['sth.initial_student_password' => 'Awal-Uji-7319']);
+    $logged = [];
+    Event::listen(MessageLogged::class, function (MessageLogged $e) use (&$logged): void {
+        $logged[] = $e->message.' '.json_encode($e->context);
+    });
+
+    $report = app(ImportStudents::class)->handle($this->kesiswaan, w1cCsv(w1cMixedRows()), 'csv', '2026/2027', dryRun: false);
+
+    expect(json_encode($report->rows))->not->toContain('Awal-Uji-7319')
+        ->and(json_encode(Activity::query()->get(['description', 'event', 'properties'])))->not->toContain('Awal-Uji-7319')
+        ->and(implode("\n", $logged))->not->toContain('Awal-Uji-7319');
 });

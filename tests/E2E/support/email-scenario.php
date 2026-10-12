@@ -9,7 +9,7 @@ declare(strict_types=1);
  *
  * Nothing is faked: the script never calls notify() itself. It only arranges time where a human would wait
  * (competition dates moved into the past before the timeline commands; a real sleep for the 60 s OTP cooldown).
- * Every mail body is also scanned for data that must never be mailed (initial password pattern, full NIS/NISN,
+ * Every mail body is also scanned for data that must never be mailed (initial password and its old pattern, every NIS/NISN,
  * birth dates, the passwords typed in this run) and for a broken template (empty part, unrendered Blade, HTML
  * entities shown literally).
  *
@@ -469,7 +469,7 @@ final class EmailScenario
 
         $this->out();
         $this->out(sprintf(
-            'LEAK SCAN: %d mails (subject + text + HTML) × %d strings (initial password pattern, every NIS/NISN, birth dates, passwords typed in this run); control phrase found in %d/%d mails.',
+            'LEAK SCAN: %d mails (subject + text + HTML) × %d strings (initial password and its old pattern, every NIS/NISN, birth dates, passwords typed in this run); control phrase found in %d/%d mails.',
             $this->scanned,
             $this->needleCount,
             $this->controlHits,
@@ -519,7 +519,8 @@ final class EmailScenario
     private function needles(): array
     {
         $needles = [
-            'initial password pattern' => [InitialPassword::LEGACY_PREFIX, rtrim(InitialPassword::LEGACY_PREFIX, '_')],
+            'initial password' => [app(InitialPassword::class)->make()],
+            'initial password, old pattern' => [InitialPassword::LEGACY_PREFIX, rtrim(InitialPassword::LEGACY_PREFIX, '_')],
             'a password typed in this run' => $this->secrets,
             'full NIS/NISN' => [],
             'birth date' => [],
@@ -539,6 +540,22 @@ final class EmailScenario
         }
 
         return $needles;
+    }
+
+    /**
+     * Does $value occur in the (lower-cased) mail text? The initial password only counts as a whole token: it is
+     * a short number, and a 6-digit OTP code that happens to contain it is not a leak. Every other label is a
+     * plain substring match.
+     */
+    private function found(string $label, string $haystack, string $value): bool
+    {
+        $value = mb_strtolower($value);
+
+        if ($label === 'initial password') {
+            return preg_match('/(?<![\p{L}\p{N}])'.preg_quote($value, '/').'(?![\p{L}\p{N}])/u', $haystack) === 1;
+        }
+
+        return str_contains($haystack, $value);
     }
 
     /**
@@ -567,7 +584,7 @@ final class EmailScenario
 
         foreach ($needles as $label => $values) {
             foreach ($values as $value) {
-                if ($value !== '' && str_contains($haystack, mb_strtolower($value))) {
+                if ($value !== '' && $this->found($label, $haystack, $value)) {
                     $line = sprintf('[%s] "%s" to %s contains %s', $step, $message['subject'], implode(', ', $message['to']), $label);
                     $this->leaks[] = $line;
                     $this->out('    => LEAK: '.$line);
