@@ -116,7 +116,7 @@ it('edits consent from Admin › Pengguna › Bantuan akun siswa', function (): 
     $student->forceFill(['photo_consent' => false, 'publish_consent' => true])->save();
 
     Livewire::test(Pengguna::class)
-        ->set('studentQuery', H::NIS)
+        ->set('studentQuery', H::NISN)
         ->call('findStudent')
         ->assertSet('photoConsent', false)
         ->assertSet('publishConsent', true)

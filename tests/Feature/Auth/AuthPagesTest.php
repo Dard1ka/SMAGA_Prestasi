@@ -18,9 +18,9 @@ beforeEach(function (): void {
 it('renders the login page without ever showing the initial password pattern', function (): void {
     $this->get('/login')
         ->assertOk()
-        ->assertSee('Pakai NIS atau NISN dan kata sandi dari sekolah.')
+        ->assertSee('Pakai NISN dan kata sandi dari sekolah.')
         // M1-B: one field for NIS, NISN or the email bound at activation; the note follows the new order.
-        ->assertSee('NIS, NISN, atau email')
+        ->assertSee('NISN atau email')->assertDontSee('NIS, NISN')
         ->assertSee('Sudah aktivasi? Bisa juga masuk pakai email. Guru dan staf: username atau email.')
         ->assertSee('Nanti diminta menghubungkan email dulu. Setelah itu boleh ganti kata sandi.')
         ->assertSee('name="identifier"', false)
@@ -33,7 +33,7 @@ it('renders the forgot password page for guests', function (): void {
     $this->get(route('password.request'))
         ->assertOk()
         ->assertSee('Lupa kata sandi')
-        ->assertSee('NIS, NISN, atau email')
+        ->assertSee('NISN atau email')
         ->assertDontSee('sm4g4');
 });
 
@@ -43,7 +43,7 @@ it('renders the activation page for a first login: the email comes first', funct
         ->assertOk()
         ->assertSee('Langkah 1 dari 3')
         ->assertSee('Hubungkan email')
-        ->assertSee(H::NIS)
+        ->assertSee('NISN '.H::NISN)->assertDontSee(H::NIS)
         ->assertDontSee('Kata sandi baru')
         ->assertDontSee('Lewati, pakai kata sandi sekarang')
         ->assertDontSee('sm4g4');

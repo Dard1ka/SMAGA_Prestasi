@@ -35,7 +35,7 @@ use Laravel\Fortify\Fortify;
  */
 final class AuthenticateUser
 {
-    public const GENERIC_ERROR = 'NIS/NISN atau kata sandi salah.';
+    public const GENERIC_ERROR = 'NISN atau kata sandi salah.';
 
     private const RESOLVED = 'sth.login.authenticated_user';
 

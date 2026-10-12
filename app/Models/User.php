@@ -24,7 +24,7 @@ use Spatie\Permission\Traits\HasRoles;
 
 /**
  * Account for every role. users.id stays BIGINT (ARCHITECTURE §4).
- * Students sign in with NIS/NISN (via `student`), staff with username or email.
+ * Students sign in with NISN (via `student`), staff with username or email.
  *
  * Not mass-assignable on purpose (CLAUDE.md §3.6): status, must_change_password, password_changed_at,
  * last_login_at, email_verified_at and the B1 account-control columns (initial_password_expires_at,

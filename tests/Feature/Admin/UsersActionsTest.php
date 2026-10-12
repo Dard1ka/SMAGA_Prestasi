@@ -248,7 +248,7 @@ it('creates staff and finds students by exact NIS/NISN on the Pengguna tab', fun
         ->call('createStaff')
         ->assertHasNoErrors()
         ->assertSee('Mas Galih Prasetyo')
-        ->set('studentQuery', substr(H::NIS, 0, 6))
+        ->set('studentQuery', substr(H::NISN, 0, 6))
         ->call('findStudent')
         ->assertHasErrors('studentQuery')
         ->set('studentQuery', H::NISN)
@@ -280,7 +280,7 @@ it('resets a student account from the Pengguna tab with a reason', function (): 
     $student = H::activeStudent();
 
     Livewire::test(Pengguna::class)
-        ->set('studentQuery', H::NIS)
+        ->set('studentQuery', H::NISN)
         ->call('findStudent')
         ->call('openStudent', 'siswa-reset')
         ->assertDispatched('sth-modal-open', id: 'siswa-reset')

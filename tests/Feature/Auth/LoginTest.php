@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 use App\Actions\Accounts\AccountControls;
 use App\Actions\Fortify\AuthenticateUser;
+use App\Actions\Fortify\LoginIdentifier;
 use App\Domain\Accounts\InitialPassword;
 use App\Enums\RoleName;
 use App\Enums\UserStatus;
+use App\Models\Student;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
@@ -25,19 +27,38 @@ function w1cLogin(string $identifier, string $password = H::PASSWORD): TestRespo
     return test()->from('/login')->post('/login', ['identifier' => $identifier, 'password' => $password]);
 }
 
-it('logs a student in with the NIS and sends a first login to activation', function (): void {
+it('logs a student in with the NISN and sends a first login to activation', function (): void {
     $student = H::pendingStudent();
 
-    w1cLogin(H::NIS)->assertRedirect(route('aktivasi'));
+    w1cLogin(H::NISN)->assertRedirect(route('aktivasi'));
 
     $this->assertAuthenticatedAs($student->user);
     expect($student->user->fresh()->last_login_at)->not->toBeNull();
 });
 
+it('refuses a student NIS with the generic error: only the NISN logs a student in (D-137)', function (): void {
+    $student = H::activeStudent();
+
+    w1cLogin(H::NIS)->assertSessionHasErrors(['identifier' => AuthenticateUser::GENERIC_ERROR]);
+
+    $this->assertGuest();
+    expect(app(LoginIdentifier::class)->bucketFor(H::NIS))->toStartWith('x:')
+        ->and(app(LoginIdentifier::class)->bucketFor(H::NISN))->toBe(LoginIdentifier::accountBucket($student->user));
+});
+
+it('resolves a number that is one student NIS and another student NISN to the NISN owner only', function (): void {
+    $owner = H::pendingStudent();
+    Student::factory()->create(['nis' => H::NISN, 'nisn' => '0091234568']);
+
+    w1cLogin(H::NISN)->assertRedirect(route('aktivasi'));
+
+    $this->assertAuthenticatedAs($owner->user);
+});
+
 it('never issues a remember-me cookie', function (): void {
     H::activeStudent();
 
-    $response = $this->from('/login')->post('/login', ['identifier' => H::NIS, 'password' => H::PASSWORD, 'remember' => 'on']);
+    $response = $this->from('/login')->post('/login', ['identifier' => H::NISN, 'password' => H::PASSWORD, 'remember' => 'on']);
 
     $response->assertRedirect(route('home'));
     expect(collect($response->headers->getCookies())->contains(fn ($c) => str_starts_with($c->getName(), 'remember_web_')))->toBeFalse();
@@ -54,7 +75,7 @@ it('logs a student in with the NISN', function (): void {
 it('ignores surrounding spaces in the identifier', function (): void {
     $student = H::pendingStudent();
 
-    w1cLogin('  '.H::NIS.' ')->assertRedirect(route('aktivasi'));
+    w1cLogin('  '.H::NISN.' ')->assertRedirect(route('aktivasi'));
 
     $this->assertAuthenticatedAs($student->user);
 });
@@ -126,10 +147,10 @@ it('never lets a student log in with a username', function (): void {
     $this->assertGuest();
 });
 
-it('counts NIS, NISN and email of one student in the same rate-limit bucket', function (): void {
+it('counts NISN and email of one student in the same rate-limit bucket', function (): void {
     H::activeStudent();
 
-    foreach ([H::NIS, 'nadia.anindya@example.test', H::NISN, 'NADIA.ANINDYA@example.test', H::NIS] as $identifier) {
+    foreach ([H::NISN, 'nadia.anindya@example.test', H::NISN, 'NADIA.ANINDYA@example.test', H::NISN] as $identifier) {
         w1cLogin($identifier, 'salah-sekali-123')->assertSessionHasErrors(['identifier' => AuthenticateUser::GENERIC_ERROR]);
     }
 
@@ -140,7 +161,7 @@ it('counts NIS, NISN and email of one student in the same rate-limit bucket', fu
     $this->assertGuest();
 });
 
-it('locks the account progressively for failures by email at their address, also for the NIS (QA10: per address)', function (): void {
+it('locks the account progressively for failures by email at their address, also for the NISN (QA10: per address)', function (): void {
     H::activeStudent();
 
     // One address, 13 s apart: when the sixth try comes the per-minute limiter has started a new window, so only the
@@ -153,7 +174,7 @@ it('locks the account progressively for failures by email at their address, also
 
     // The lock holds for the NIS as well: one account, one bucket.
     $this->withServerVariables(['REMOTE_ADDR' => '10.0.0.1'])
-        ->from('/login')->post('/login', ['identifier' => H::NIS, 'password' => H::PASSWORD])
+        ->from('/login')->post('/login', ['identifier' => H::NISN, 'password' => H::PASSWORD])
         ->assertSessionHasErrors('identifier');
 
     expect(session('errors')->first('identifier'))->toStartWith('Terlalu banyak percobaan');
@@ -161,7 +182,7 @@ it('locks the account progressively for failures by email at their address, also
 
     // Another address is not held up by these failures.
     $this->withServerVariables(['REMOTE_ADDR' => '10.0.1.1'])
-        ->from('/login')->post('/login', ['identifier' => H::NIS, 'password' => H::PASSWORD])
+        ->from('/login')->post('/login', ['identifier' => H::NISN, 'password' => H::PASSWORD])
         ->assertRedirect(route('home'));
     auth()->logout();
 
@@ -185,7 +206,7 @@ it('limits an email that resolves to nobody like any unknown identifier', functi
     expect(session('errors')->first('identifier'))->toStartWith('Terlalu banyak percobaan');
 
     // The account's own bucket is untouched: the owner still gets in with the NIS.
-    w1cLogin(H::NIS)->assertRedirect(route('aktivasi'));
+    w1cLogin(H::NISN)->assertRedirect(route('aktivasi'));
     $this->assertAuthenticatedAs($student->user);
 });
 
@@ -217,7 +238,7 @@ it('keeps the staff login as it was: email works before activation, and leads to
 it('shows one generic error for a wrong password and an unknown identifier', function (): void {
     H::pendingStudent();
 
-    w1cLogin(H::NIS, 'salah-sekali-123')->assertSessionHasErrors(['identifier' => AuthenticateUser::GENERIC_ERROR]);
+    w1cLogin(H::NISN, 'salah-sekali-123')->assertSessionHasErrors(['identifier' => AuthenticateUser::GENERIC_ERROR]);
     w1cLogin('999999999', 'salah-sekali-123')->assertSessionHasErrors(['identifier' => AuthenticateUser::GENERIC_ERROR]);
 
     $this->assertGuest();
@@ -229,7 +250,7 @@ it('refuses archived and disabled accounts with the generic error and revokes th
     $student = H::activeStudent(['status' => $status]);
     H::fakeSessions($student->user);
 
-    w1cLogin(H::NIS)->assertSessionHasErrors(['identifier' => AuthenticateUser::GENERIC_ERROR]);
+    w1cLogin(H::NISN)->assertSessionHasErrors(['identifier' => AuthenticateUser::GENERIC_ERROR]);
 
     $this->assertGuest();
     expect(H::sessionCount($student->user))->toBe(0);
@@ -247,19 +268,13 @@ it('logs out a signed-in user whose account was archived meanwhile', function ()
     $this->assertGuest();
 });
 
-it('rate limits one account bucket, shared by NIS and NISN', function (): void {
+it('keeps a typed NIS out of the account bucket', function (): void {
     H::pendingStudent();
-
-    foreach ([H::NIS, H::NISN, H::NIS, H::NISN, H::NIS] as $identifier) {
-        w1cLogin($identifier, 'salah-sekali-123')->assertSessionHasErrors('identifier');
+    foreach (range(1, 5) as $i) {
+        w1cLogin(H::NIS, 'salah-sekali-123')->assertSessionHasErrors(['identifier' => AuthenticateUser::GENERIC_ERROR]);
     }
-
-    // Sixth attempt in the same minute is blocked even with the right password.
-    $response = w1cLogin(H::NISN);
-
-    $response->assertSessionHasErrors('identifier');
-    expect(session('errors')->first('identifier'))->toStartWith('Terlalu banyak percobaan');
-    $this->assertGuest();
+    // The NIS resolves to nobody, so five NIS failures leave the account's own bucket alone.
+    w1cLogin(H::NISN)->assertRedirect(route('aktivasi'));
 });
 
 it('locks the account bucket progressively after repeated failures at their address (QA10: per address)', function (): void {
@@ -268,12 +283,12 @@ it('locks the account bucket progressively after repeated failures at their addr
     // One address, 13 s apart, so only the lockout (per account AND address since QA10) answers the sixth try.
     foreach (range(1, 5) as $i) {
         $this->withServerVariables(['REMOTE_ADDR' => '10.0.0.1'])
-            ->from('/login')->post('/login', ['identifier' => H::NIS, 'password' => 'salah-sekali-123']);
+            ->from('/login')->post('/login', ['identifier' => H::NISN, 'password' => 'salah-sekali-123']);
         $this->travel(13)->seconds();
     }
 
     $this->withServerVariables(['REMOTE_ADDR' => '10.0.0.1'])
-        ->from('/login')->post('/login', ['identifier' => H::NIS, 'password' => H::PASSWORD])
+        ->from('/login')->post('/login', ['identifier' => H::NISN, 'password' => H::PASSWORD])
         ->assertSessionHasErrors('identifier');
 
     expect(session('errors')->first('identifier'))->toStartWith('Terlalu banyak percobaan');
@@ -281,14 +296,14 @@ it('locks the account bucket progressively after repeated failures at their addr
 
     // Another address is not held up by these failures.
     $this->withServerVariables(['REMOTE_ADDR' => '10.0.1.1'])
-        ->from('/login')->post('/login', ['identifier' => H::NIS, 'password' => H::PASSWORD])
+        ->from('/login')->post('/login', ['identifier' => H::NISN, 'password' => H::PASSWORD])
         ->assertRedirect(route('aktivasi'));
     auth()->logout();
 
     $this->travel(61)->seconds();
 
     $this->withServerVariables(['REMOTE_ADDR' => '10.0.0.1'])
-        ->from('/login')->post('/login', ['identifier' => H::NIS, 'password' => H::PASSWORD])
+        ->from('/login')->post('/login', ['identifier' => H::NISN, 'password' => H::PASSWORD])
         ->assertRedirect(route('aktivasi'));
 });
 
@@ -301,7 +316,7 @@ it('flags the initial password pattern tried on an already activated account (K7
     // Fictional birth date 2010-03-02 → pattern built by the domain class, never by auth code.
     $pattern = app(InitialPassword::class)->make('2010-03-02');
 
-    w1cLogin(H::NIS, $pattern)->assertSessionHasErrors(['identifier' => AuthenticateUser::GENERIC_ERROR]);
+    w1cLogin(H::NISN, $pattern)->assertSessionHasErrors(['identifier' => AuthenticateUser::GENERIC_ERROR]);
 
     $this->assertGuest();
     Log::shouldHaveReceived('warning')->withArgs(fn (string $message) => $message === 'security.initial_password_on_active')->once();

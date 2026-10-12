@@ -58,16 +58,16 @@ it('defines a daily security channel kept for 90 days (null while the test suite
         ->and($config['channels']['security'])->toMatchArray(['driver' => 'stack', 'channels' => ['null']]);
 });
 
-it('logs a failed login with the NIS, IP and never the password', function (): void {
+it('logs a failed login with the NISN, IP and never the password', function (): void {
     H::activeStudent();
 
-    $this->post(route('login.store'), ['identifier' => H::NIS, 'password' => 'salah-sekali-123'])->assertSessionHasErrors();
+    $this->post(route('login.store'), ['identifier' => H::NISN, 'password' => 'salah-sekali-123'])->assertSessionHasErrors();
 
     $records = b2SecurityRecordsNamed('security.login_failed');
 
     expect($records)->toHaveCount(1)
         ->and($records[0]['level'])->toBe('warning')
-        ->and($records[0]['context']['identifier'])->toBe(H::NIS)
+        ->and($records[0]['context']['identifier'])->toBe(H::NISN)
         ->and($records[0]['context']['ip'])->toBe('127.0.0.1')
         ->and(json_encode(b2SecurityRecords()))->not->toContain('salah-sekali-123');
 });
@@ -89,7 +89,7 @@ it('records a password typed into the identifier field only as a fingerprint', f
 it('logs a successful login', function (): void {
     $student = H::activeStudent();
 
-    $this->post(route('login.store'), ['identifier' => H::NIS, 'password' => H::PASSWORD]);
+    $this->post(route('login.store'), ['identifier' => H::NISN, 'password' => H::PASSWORD]);
 
     $records = b2SecurityRecordsNamed('security.login');
 

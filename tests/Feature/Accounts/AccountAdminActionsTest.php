@@ -166,7 +166,7 @@ it('disables an account: sessions revoked, login refused, audited', function ():
         ->and(H::sessionCount($user))->toBe(0)
         ->and(Activity::query()->where('event', 'account.disabled')->firstOrFail()->properties['reason'])->toBe('Pindah sekolah.');
 
-    $this->from('/login')->post('/login', ['identifier' => H::NIS, 'password' => H::PASSWORD])
+    $this->from('/login')->post('/login', ['identifier' => H::NISN, 'password' => H::PASSWORD])
         ->assertSessionHasErrors(['identifier' => AuthenticateUser::GENERIC_ERROR]);
     $this->assertGuest();
 });

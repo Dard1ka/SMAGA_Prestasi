@@ -18,10 +18,10 @@
     @else
         <div>
             <h1 class="title-page lg:text-4xl">Masuk</h1>
-            <p class="m-0 mt-2 text-md leading-normal text-muted">Pakai NIS atau NISN dan kata sandi dari sekolah.</p>
+            <p class="m-0 mt-2 text-md leading-normal text-muted">Pakai NISN dan kata sandi dari sekolah.</p>
         </div>
         <form class="flex flex-col gap-4" action="#" method="GET">
-            <x-sth.input name="login" label="NIS / NISN" inputmode="numeric" autocomplete="username" placeholder="Ketik NIS atau NISN" size="lg" />
+            <x-sth.input name="login" label="NISN" inputmode="numeric" autocomplete="username" placeholder="Ketik NISN" size="lg" />
             <div class="flex flex-col gap-1">
                 <div class="flex h-9 items-center justify-between">
                     <label class="label" for="f-password">Kata sandi</label>

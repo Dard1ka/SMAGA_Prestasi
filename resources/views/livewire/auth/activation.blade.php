@@ -34,7 +34,7 @@
             <div class="min-w-0">
                 <p class="font-semibold">{{ $user->name }}</p>
                 @if ($user->student)
-                    <p class="text-sm muted">NIS {{ $user->student->nis }} · {{ $user->student->classroom?->name }}</p>
+                    <p class="text-sm muted">NISN {{ $user->student->nisn }} · {{ $user->student->classroom?->name }}</p>
                 @endif
             </div>
         </div>
@@ -148,7 +148,7 @@
         </ul>
 
         @if ($isStudent)
-            <x-sth.alert>Lain kali kamu bisa masuk pakai NIS, NISN, atau email ini.</x-sth.alert>
+            <x-sth.alert>Lain kali kamu bisa masuk pakai NISN atau email ini.</x-sth.alert>
         @endif
 
         <x-sth.button size="lg" block wire:click="start">Mulai</x-sth.button>

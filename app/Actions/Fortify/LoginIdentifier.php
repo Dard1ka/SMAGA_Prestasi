@@ -9,21 +9,19 @@ use App\Enums\RoleName;
 use App\Models\Student;
 use App\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 use Laravel\Fortify\Fortify;
 
 /**
  * Resolves the login field (docs/SECURITY.md §3a K11):
- * - digits only → student by NIS or NISN (10 digits is usually a NISN; both columns are checked, and if the
- *   value matches two different accounts the login is refused and a security event is logged);
+ * - digits only → student by NISN (D-137; the NIS is stored, never an identifier: a typed NIS resolves to nobody);
  * - contains "@" → the one account with that email (`users.email` is unique): a staff account always, a student
  *   account only once its first-login activation is finished (email bound and verified, status `active`; lead's
  *   decision of 2026-10-04). Before that, and for a disabled or archived student, the address resolves to nobody:
  *   same answer, same timing and same rate-limit bucket as an address nobody uses;
  * - anything else → staff user by username.
- * Students never log in by username and staff never by NIS/NISN.
+ * Students never log in by username and staff never by NISN.
  *
- * bucketKey() gives every identifier of one account (NIS, NISN, email) the same rate-limit bucket ("u:<id>"), and
+ * bucketKey() gives every identifier of one account (NISN, email) the same rate-limit bucket ("u:<id>"), and
  * a stable HMAC bucket for unknown identifiers so limiter behaviour does not reveal whether an account exists.
  */
 final class LoginIdentifier
@@ -93,7 +91,7 @@ final class LoginIdentifier
     }
 
     /**
-     * The same bucket for a typed identifier outside the login request ("Lupa kata sandi", QA10): NIS, NISN and email
+     * The same bucket for a typed identifier outside the login request ("Lupa kata sandi", QA10): NISN and email
      * of one account share it, an identifier that resolves to nobody gets its stable HMAC bucket.
      */
     public function bucketFor(string $identifier): string
@@ -133,19 +131,7 @@ final class LoginIdentifier
             return null;
         }
 
-        $userIds = Student::query()
-            ->where('nis', $digits)
-            ->orWhere('nisn', $digits)
-            ->pluck('user_id')
-            ->unique();
-
-        if ($userIds->count() > 1) {
-            Log::warning('security.login_identifier_ambiguous', ['user_ids' => $userIds->values()->all()]);
-
-            return null;
-        }
-
-        $userId = $userIds->first();
+        $userId = Student::query()->where('nisn', $digits)->value('user_id');
 
         return $userId === null ? null : User::query()->find($userId);
     }

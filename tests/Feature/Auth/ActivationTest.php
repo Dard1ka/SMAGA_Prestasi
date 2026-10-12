@@ -157,7 +157,7 @@ it('lets a student skip the password change: the stored password stays and the s
 
     // The kept password logs the student in afterwards.
     auth()->logout();
-    $this->from('/login')->post('/login', ['identifier' => H::NIS, 'password' => H::PASSWORD])->assertRedirect(route('home'));
+    $this->from('/login')->post('/login', ['identifier' => H::NISN, 'password' => H::PASSWORD])->assertRedirect(route('home'));
 });
 
 it('lets a student choose a new password at step 3', function (): void {
@@ -443,7 +443,7 @@ it('resumes at the right step when the student left in the middle', function ():
 
     // Left after the code → the next login goes to the password step, not back to the email.
     auth()->logout();
-    $this->from('/login')->post('/login', ['identifier' => H::NIS, 'password' => H::PASSWORD])->assertRedirect(route('aktivasi'));
+    $this->from('/login')->post('/login', ['identifier' => H::NISN, 'password' => H::PASSWORD])->assertRedirect(route('aktivasi'));
 
     Livewire::test(Activation::class)
         ->assertSet('step', Activation::STEP_PASSWORD)
@@ -480,7 +480,7 @@ it('makes a student replace the temporary password of an Admin reset: same order
     expect(CompleteActivation::hasTemporaryPassword($user->fresh()))->toBeTrue()
         ->and(CompleteActivation::mayKeepPassword($user->fresh()))->toBeFalse();
 
-    $this->from('/login')->post('/login', ['identifier' => H::NIS, 'password' => $temporary])->assertRedirect(route('aktivasi'));
+    $this->from('/login')->post('/login', ['identifier' => H::NISN, 'password' => $temporary])->assertRedirect(route('aktivasi'));
 
     $component = m1bToPasswordStep($user->fresh())
         ->assertSee('Buat kata sandi baru')
@@ -559,7 +559,7 @@ it('deletes the old session row when the id is renewed, so no ghost device stays
 
     $user = H::pendingStudent()->user;
 
-    $this->from('/login')->post('/login', ['identifier' => H::NIS, 'password' => H::PASSWORD])->assertRedirect(route('aktivasi'));
+    $this->from('/login')->post('/login', ['identifier' => H::NISN, 'password' => H::PASSWORD])->assertRedirect(route('aktivasi'));
 
     $atLogin = session()->getId();
     expect(H::sessionCount($user))->toBe(1)
@@ -607,7 +607,7 @@ it('renews the session after a new password at step 3 and signs every other devi
     $user = H::pendingStudent()->user;
     $user->forceFill(['email' => M1B_EMAIL, 'email_verified_at' => now()])->saveQuietly();
 
-    $this->from('/login')->post('/login', ['identifier' => H::NIS, 'password' => H::PASSWORD])->assertRedirect(route('aktivasi'));
+    $this->from('/login')->post('/login', ['identifier' => H::NISN, 'password' => H::PASSWORD])->assertRedirect(route('aktivasi'));
 
     $before = session()->getId();
     H::fakeSessions($user, 2);

@@ -66,7 +66,7 @@ function qa10AuthHShown(TestResponse $response): string
 /** The owner signs in once at $ip; the browser keeps the known-device cookie from then on. */
 function qa10AuthHKnownDevice(string $ip): string
 {
-    $device = qa10AuthHLogin($ip, H::NIS)->assertRedirect(route('home'))->getCookie(KnownDevices::COOKIE);
+    $device = qa10AuthHLogin($ip, H::NISN)->assertRedirect(route('home'))->getCookie(KnownDevices::COOKIE);
     expect($device)->not->toBeNull();
     Auth::guard('web')->logout();
 
@@ -85,13 +85,13 @@ it('keeps the known device of the owner in at a shared address while a stranger 
     $device = qa10AuthHKnownDevice(QA10_AUTH_H_NAT);
 
     foreach (range(1, 5) as $i) {
-        qa10AuthHLogin(QA10_AUTH_H_NAT, H::NIS, QA10_AUTH_H_WRONG)->assertSessionHasErrors('identifier');
+        qa10AuthHLogin(QA10_AUTH_H_NAT, H::NISN, QA10_AUTH_H_WRONG)->assertSessionHasErrors('identifier');
     }
 
-    expect(qa10AuthHShown(qa10AuthHLogin(QA10_AUTH_H_NAT, H::NIS)))->toStartWith('Terlalu banyak percobaan');
+    expect(qa10AuthHShown(qa10AuthHLogin(QA10_AUTH_H_NAT, H::NISN)))->toStartWith('Terlalu banyak percobaan');
 
     $this->withCookie(KnownDevices::COOKIE, $device);
-    qa10AuthHLogin(QA10_AUTH_H_NAT, H::NIS)->assertRedirect(route('home'));
+    qa10AuthHLogin(QA10_AUTH_H_NAT, H::NISN)->assertRedirect(route('home'));
     $this->assertAuthenticatedAs($student->user);
 });
 
@@ -100,14 +100,14 @@ it('keeps the known device of the owner in after a stranger at that address fail
     $device = qa10AuthHKnownDevice(QA10_AUTH_H_NAT);
 
     foreach (range(1, 20) as $i) {
-        qa10AuthHLogin(QA10_AUTH_H_NAT, H::NIS, QA10_AUTH_H_WRONG)->assertSessionHasErrors('identifier');
+        qa10AuthHLogin(QA10_AUTH_H_NAT, H::NISN, QA10_AUTH_H_WRONG)->assertSessionHasErrors('identifier');
         $this->travel(16)->minutes();
     }
 
-    expect(qa10AuthHShown(qa10AuthHLogin(QA10_AUTH_H_NAT, H::NIS)))->toStartWith('Terlalu banyak percobaan');
+    expect(qa10AuthHShown(qa10AuthHLogin(QA10_AUTH_H_NAT, H::NISN)))->toStartWith('Terlalu banyak percobaan');
 
     $this->withCookie(KnownDevices::COOKIE, $device);
-    qa10AuthHLogin(QA10_AUTH_H_NAT, H::NIS)->assertRedirect(route('home'));
+    qa10AuthHLogin(QA10_AUTH_H_NAT, H::NISN)->assertRedirect(route('home'));
     $this->assertAuthenticatedAs($student->user);
 });
 
@@ -116,10 +116,10 @@ it('still locks the known device after its own wrong passwords (QA10)', function
     $this->withCookie(KnownDevices::COOKIE, qa10AuthHKnownDevice(QA10_AUTH_H_NAT));
 
     foreach (range(1, 5) as $i) {
-        qa10AuthHLogin(QA10_AUTH_H_NAT, H::NIS, QA10_AUTH_H_WRONG)->assertSessionHasErrors('identifier');
+        qa10AuthHLogin(QA10_AUTH_H_NAT, H::NISN, QA10_AUTH_H_WRONG)->assertSessionHasErrors('identifier');
     }
 
-    expect(qa10AuthHShown(qa10AuthHLogin(QA10_AUTH_H_NAT, H::NIS)))->toStartWith('Terlalu banyak percobaan');
+    expect(qa10AuthHShown(qa10AuthHLogin(QA10_AUTH_H_NAT, H::NISN)))->toStartWith('Terlalu banyak percobaan');
     $this->assertGuest();
 });
 
@@ -128,7 +128,7 @@ it('still locks the known device after its own wrong passwords (QA10)', function
 it('answers an identifier sent as a list with a validation error, not a server error (QA10)', function (): void {
     H::activeStudent();
 
-    $this->from('/login')->post('/login', ['identifier' => [H::NIS], 'password' => H::PASSWORD])
+    $this->from('/login')->post('/login', ['identifier' => [H::NISN], 'password' => H::PASSWORD])
         ->assertRedirect('/login')
         ->assertSessionHasErrors('identifier');
 
@@ -143,12 +143,12 @@ it('locks and answers the 30th failure as usual when the alert cannot be sent (Q
     Log::spy();
 
     foreach (range(1, 25) as $i) {
-        qa10AuthHLogin('10.92.0.'.$i, H::NIS, QA10_AUTH_H_WRONG)->assertSessionHasErrors('identifier');
+        qa10AuthHLogin('10.92.0.'.$i, H::NISN, QA10_AUTH_H_WRONG)->assertSessionHasErrors('identifier');
     }
 
     // The 30th failure is the 5th from one address: it starts that address's lock.
     foreach (range(1, 5) as $i) {
-        qa10AuthHLogin('10.93.0.1', H::NIS, QA10_AUTH_H_WRONG)
+        qa10AuthHLogin('10.93.0.1', H::NISN, QA10_AUTH_H_WRONG)
             ->assertSessionHasErrors(['identifier' => AuthenticateUser::GENERIC_ERROR]);
     }
 
@@ -165,14 +165,14 @@ it('releases the "Lupa kata sandi" limits of the account when its locks are clea
     $limits = app(ResetCodeLimits::class);
 
     foreach (range(1, 3) as $i) {
-        expect($limits->hit(ResetCodeLimits::SEND, H::NIS, '10.66.0.1'))->toBeNull();
+        expect($limits->hit(ResetCodeLimits::SEND, H::NISN, '10.66.0.1'))->toBeNull();
     }
 
-    expect($limits->hit(ResetCodeLimits::SEND, H::NIS, '10.66.0.1'))->toBeGreaterThan(0);
+    expect($limits->hit(ResetCodeLimits::SEND, H::NISN, '10.66.0.1'))->toBeGreaterThan(0);
 
     app(LoginLockout::class)->clear(LoginIdentifier::accountBucket($student->user));
 
-    expect($limits->hit(ResetCodeLimits::SEND, H::NIS, '10.66.0.1'))->toBeNull();
+    expect($limits->hit(ResetCodeLimits::SEND, H::NISN, '10.66.0.1'))->toBeNull();
 });
 
 // 5. SECURITY §3b: code requests 30 an hour per address.
@@ -261,18 +261,18 @@ it('counts refused tries against the address, while the locked identifier still 
 
     foreach (range(0, 4) as $second) {
         qa10AuthHAt($start, $second);
-        qa10AuthHLogin(QA10_AUTH_H_NAT, H::NIS, QA10_AUTH_H_WRONG);
+        qa10AuthHLogin(QA10_AUTH_H_NAT, H::NISN, QA10_AUTH_H_WRONG);
     }
 
     foreach (range(65, 69) as $second) {
         qa10AuthHAt($start, $second);
-        qa10AuthHLogin(QA10_AUTH_H_NAT, H::NIS, QA10_AUTH_H_WRONG);
+        qa10AuthHLogin(QA10_AUTH_H_NAT, H::NISN, QA10_AUTH_H_WRONG);
     }
 
     // Locked until second 969. Sixty refused tries in one second from this address.
     qa10AuthHAt($start, 70);
     foreach (range(1, 60) as $i) {
-        expect(qa10AuthHShown(qa10AuthHLogin(QA10_AUTH_H_NAT, H::NIS)))->toBe(AppServiceProvider::retryMessage(899));
+        expect(qa10AuthHShown(qa10AuthHLogin(QA10_AUTH_H_NAT, H::NISN)))->toBe(AppServiceProvider::retryMessage(899));
     }
 
     // Another account at the same address now waits for the address window (from second 65): 54 seconds.
@@ -280,7 +280,7 @@ it('counts refused tries against the address, while the locked identifier still 
     expect(qa10AuthHShown(qa10AuthHLogin(QA10_AUTH_H_NAT, 'bu.dwi')))->toBe(AppServiceProvider::retryMessage(54));
 
     qa10AuthHAt($start, 80);
-    expect(qa10AuthHShown(qa10AuthHLogin(QA10_AUTH_H_NAT, H::NIS)))->toBe(AppServiceProvider::retryMessage(889));
+    expect(qa10AuthHShown(qa10AuthHLogin(QA10_AUTH_H_NAT, H::NISN)))->toBe(AppServiceProvider::retryMessage(889));
 
     qa10AuthHAt($start, 126);
     qa10AuthHLogin(QA10_AUTH_H_NAT, 'bu.dwi')->assertRedirect(route('home'));

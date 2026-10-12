@@ -1488,14 +1488,14 @@ $scenario->step('10c', 'Laras types the code: email changed (VerifyOtpCode + Cha
     [$newLarasEmail, 'Email ini sekarang dipakai di SMAGA Talent Hub'],
 ]);
 
-$scenario->step('10d', 'Bayu forgot his password: asks for a reset code with his NIS (RequestPasswordResetCode)', function () use ($students): void {
-    app(RequestPasswordResetCode::class)->handle($students['bayu'][0]);
+$scenario->step('10d', 'Bayu forgot his password: asks for a reset code with his NISN (RequestPasswordResetCode)', function () use ($students): void {
+    app(RequestPasswordResetCode::class)->handle(Student::query()->where('nis', $students['bayu'][0])->value('nisn'));
 }, [[$mail('bayu'), 'Kode atur ulang kata sandi']]);
 
 $scenario->step('10e', 'Bayu types the code + a new password (ResetPasswordWithCode)', function () use ($students, $siswa, $mail, $newPassword, $passwords, $scenario): void {
     $code = $scenario->codeFromMail($mail('bayu'), 'Kode atur ulang kata sandi');
     $new = $newPassword($siswa('bayu'));
-    app(ResetPasswordWithCode::class)->handle($students['bayu'][0], $code, $new, $new);
+    app(ResetPasswordWithCode::class)->handle(Student::query()->where('nis', $students['bayu'][0])->value('nisn'), $code, $new, $new);
     $passwords['bayu'] = $new;
 }, [[$mail('bayu'), 'Kata sandi sudah diganti']]);
 
@@ -1635,7 +1635,7 @@ $scenario->step('10p', 'Frozen account: "Lupa kata sandi" (RequestPasswordResetC
     $codes = fn (): int => $user->otpCodes()->where('purpose', RequestPasswordResetCode::PURPOSE)->count();
     $before = $codes();
 
-    app(RequestPasswordResetCode::class)->handle($students['laras'][0]);
+    app(RequestPasswordResetCode::class)->handle(Student::query()->where('nis', $students['laras'][0])->value('nisn'));
     $scenario->note('reset codes issued for her: '.($codes() - $before));
 
     if ($codes() !== $before) {
@@ -1645,7 +1645,7 @@ $scenario->step('10p', 'Frozen account: "Lupa kata sandi" (RequestPasswordResetC
     $new = $newPassword($user);
 
     try {
-        app(ResetPasswordWithCode::class)->handle($students['laras'][0], '123456', $new, $new);
+        app(ResetPasswordWithCode::class)->handle(Student::query()->where('nis', $students['laras'][0])->value('nisn'), '123456', $new, $new);
         $scenario->problem('10p', 'ResetPasswordWithCode succeeded for a frozen account');
     } catch (ValidationException $e) {
         $scenario->note('ResetPasswordWithCode refused: '.json_encode($e->errors(), JSON_UNESCAPED_UNICODE));

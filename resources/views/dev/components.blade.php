@@ -271,7 +271,7 @@
         <x-sth.card class="grid grid-cols-1 gap-5 lg:grid-cols-2">
             <x-sth.input name="demo_nama" label="Nama lomba" placeholder="Contoh: OSN Tingkat Kota Semarang 2026" hint="Tulis tanpa singkatan." />
             <x-sth.input name="demo_web" type="url" label="Website resmi" placeholder="https://" optional icon="link" />
-            <x-sth.input name="demo_nis" label="NIS / NISN" inputmode="numeric" autocomplete="off" size="lg" placeholder="Ketik NIS atau NISN" />
+            <x-sth.input name="demo_nis" label="NISN" inputmode="numeric" autocomplete="off" size="lg" placeholder="Ketik NISN" />
             <x-sth.input name="demo_sandi" type="password" label="Kata sandi" revealable autocomplete="off" size="lg" placeholder="Ketik kata sandi" />
             <x-sth.input name="demo_email" type="email" label="Email" value="n•••@gmail" error="Format email belum benar." />
             <x-sth.select name="demo_guru" label="Guru pembimbing" value="hendra" :options="[
@@ -490,7 +490,7 @@
                 <x-sth.alert>Baru pertama masuk? Kamu akan diminta mengganti kata sandi dan menghubungkan email.</x-sth.alert>
                 <x-sth.alert tone="success">Pendaftaran terkirim. Menunggu persetujuan Kepala Sekolah.</x-sth.alert>
                 <x-sth.alert tone="warning" title="Perlu tindakan">Laporkan hasil WICE 2026 sebelum 8 Nov 2026.</x-sth.alert>
-                <x-sth.alert tone="error">NIS/NISN atau kata sandi salah.</x-sth.alert>
+                <x-sth.alert tone="error">NISN atau kata sandi salah.</x-sth.alert>
             </div>
             <p class="note"><x-sth.icon name="users" :size="18" />Setiap anggota tim mendapat poin penuh.</p>
         </x-sth.card>

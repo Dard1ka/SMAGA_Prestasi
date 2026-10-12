@@ -203,7 +203,7 @@ return [
         'current_password' => 'kata sandi saat ini',
         'code' => 'kode',
         'reason' => 'alasan',
-        'identifier' => 'NIS/NISN atau nama pengguna',
+        'identifier' => 'NISN atau email',
         'file' => 'berkas',
         'nip' => 'NIP',
         'rank' => 'pangkat/golongan',
