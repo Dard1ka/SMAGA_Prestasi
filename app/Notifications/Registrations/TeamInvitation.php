@@ -17,7 +17,7 @@ class TeamInvitation extends RegistrationNotification
             ->subject('Undangan tim: '.$this->competitionName())
             ->greeting(MailGreeting::student($notifiable))
             ->line($this->leaderName().' mengajak kamu ikut tim '.$this->competitionName().'.')
-            ->line('Konfirmasi sebelum batas pendaftaran agar pendaftaran bisa diteruskan ke Kepala Sekolah.')
+            ->line('Konfirmasi sebelum batas pendaftaran agar pendaftaran bisa diteruskan untuk persetujuan.')
             ->action('Lihat undangan', $this->url());
     }
 

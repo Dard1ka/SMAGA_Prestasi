@@ -69,7 +69,7 @@ final class IssueLetters
                 $locked = Registration::query()->whereKey($registration->getKey())->lockForUpdate()->firstOrFail();
 
                 if ($locked->status !== RegistrationStatus::Disetujui) {
-                    throw ValidationException::withMessages(['registration' => 'Pendaftaran ini belum disetujui Kepala Sekolah atau suratnya sudah dikirim.']);
+                    throw ValidationException::withMessages(['registration' => 'Pendaftaran ini belum disetujui atau suratnya sudah dikirim.']);
                 }
 
                 if ($type === LetterType::Guru && $locked->mentor_id === null) {

@@ -105,11 +105,11 @@
                                 <dd class="m-0 flex min-w-0 flex-col items-start gap-1 [overflow-wrap:anywhere]">
                                     <span class="text-sm font-semibold">{{ $mentorName }}</span>
                                     @if ($pending)
-                                        {{-- D-132: the Kepala Sekolah may approve the row with another guru than the student chose. --}}
+                                        {{-- D-132: the approver (Kepala Sekolah or Tata Usaha, D-150) may approve the row with another guru than the student chose. --}}
                                         <x-sth.button size="sm" variant="quiet" wire:click="askMentor('{{ $row->id }}')" aria-haspopup="dialog"
                                                       aria-label="Ganti guru pembimbing {{ $who !== '' ? $who.', ' : '' }}{{ $title }}">Ganti guru</x-sth.button>
                                     @elseif ($state === 'ok' && isset($replaced[$row->id]))
-                                        <span class="muted text-xs">{{ $replaced[$row->id] !== '' ? 'Ditetapkan Kepala Sekolah, menggantikan '.$replaced[$row->id] : 'Ditetapkan Kepala Sekolah' }}</span>
+                                        <span class="muted text-xs">{{ $replaced[$row->id] !== '' ? 'Ditetapkan '.$deciderRole.', menggantikan '.$replaced[$row->id] : 'Ditetapkan '.$deciderRole }}</span>
                                     @endif
                                 </dd>
                             </div>

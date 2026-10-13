@@ -47,7 +47,7 @@
                     <span @class(['inline-flex size-7 shrink-0 items-center justify-center rounded-full text-sm font-bold', 'bg-green-bg text-green' => $status['phase'] > 2, 'bg-primary-tint text-primary' => $status['phase'] <= 2])>
                         @if ($status['phase'] > 2)<x-sth.icon name="check" :size="16" />@else<span class="num">{{ $status['isTeam'] ? 2 : 1 }}</span>@endif
                     </span>
-                    <span class="font-semibold">Kepala Sekolah menyetujui</span>
+                    <span class="font-semibold">Sekolah menyetujui</span>
                 </li>
                 <li class="flex items-start gap-3">
                     <span @class(['inline-flex size-7 shrink-0 items-center justify-center rounded-full text-sm font-bold', 'bg-green-bg text-green' => $status['phase'] > 3, 'bg-subtle text-muted' => $status['phase'] <= 3])>
@@ -128,10 +128,10 @@
                 </div>
 
                 {{-- D-128: "Batalkan undangan" asks first. The invitee is told, and a team whose other members all
-                     confirmed goes to the Kepala Sekolah with this step (no more members after that). --}}
+                     confirmed goes on to approval (Kepala Sekolah or Tata Usaha) with this step (no more members after that). --}}
                 <x-sth.modal :id="\App\Livewire\Siswa\Pendaftaran\Form::WITHDRAW_DIALOG" title="Batalkan undangan?" :description="$withdrawing['notice'] ?? 'Siswa yang diundang diberi tahu.'" size="sm">
                     @if ($withdrawing)
-                        <p class="m-0 [overflow-wrap:anywhere]">Undangan untuk {{ $withdrawing['name'] }} dibatalkan. {{ $withdrawing['ready'] ? 'Anggota lain sudah konfirmasi, jadi pendaftaran langsung diteruskan ke Kepala Sekolah dan anggota tidak bisa ditambah lagi.' : 'Kamu bisa mengundangnya lagi selama tim masih menunggu konfirmasi.' }}</p>
+                        <p class="m-0 [overflow-wrap:anywhere]">Undangan untuk {{ $withdrawing['name'] }} dibatalkan. {{ $withdrawing['ready'] ? 'Anggota lain sudah konfirmasi, jadi pendaftaran langsung diteruskan untuk persetujuan dan anggota tidak bisa ditambah lagi.' : 'Kamu bisa mengundangnya lagi selama tim masih menunggu konfirmasi.' }}</p>
                     @else
                         <p class="m-0 text-muted">Tidak ada undangan yang dipilih. Tutup lalu coba lagi.</p>
                     @endif
@@ -268,9 +268,9 @@
                     @elseif (! $setuju)
                         Centang pernyataan di atas untuk mengirim.
                     @elseif ($type === 'tim')
-                        Anggota konfirmasi dulu, lalu Kepala Sekolah menyetujui.
+                        Anggota konfirmasi dulu, lalu sekolah menyetujui.
                     @else
-                        Pendaftaran diteruskan ke Kepala Sekolah.
+                        Pendaftaran diteruskan untuk persetujuan.
                     @endif
                 </p>
             </div>

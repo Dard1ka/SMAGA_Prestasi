@@ -126,7 +126,7 @@ class Detail extends Component
             },
             'Didampingi satu guru pembimbing.',
             $competition->participation === Participation::Individu ? null : 'Setiap anggota tim mengonfirmasi lewat akunnya sendiri.',
-            'Pendaftaran perlu persetujuan Kepala Sekolah sebelum surat tugas dibuat.',
+            'Pendaftaran perlu persetujuan sekolah sebelum surat tugas dibuat.',
             $competition->juknis_file_id !== null ? 'Persyaratan lengkap ada di juknis (tab Dokumen).' : null,
         ]));
     }

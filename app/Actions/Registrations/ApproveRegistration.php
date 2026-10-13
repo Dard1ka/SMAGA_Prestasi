@@ -164,8 +164,8 @@ final class ApproveRegistration
     }
 
     /**
-     * Did the Kepala Sekolah put another guru in the place of the student's choice when approving (D-132)? Read from
-     * the audit row of that decision: a screen says "ditetapkan Kepala Sekolah" only then.
+     * Did the approver put another guru in the place of the student's choice when approving (D-132)? Read from the audit
+     * row of that decision: a screen says "Ditetapkan <peran>" (StaffRoleLabel, D-150) only then.
      */
     public static function mentorWasReplaced(Registration $registration): bool
     {
@@ -213,7 +213,7 @@ final class ApproveRegistration
         $replacedName = MentorChoice::name($replaced);
 
         if ($members->isNotEmpty()) {
-            Notification::send($members, RegistrationApproved::for($registration, 'siswa', $changed, $replacedName));
+            Notification::send($members, RegistrationApproved::for($registration, 'siswa', $changed, $replacedName, $actor));
         }
 
         // The guru the registration has NOW: after a change the new one, never the one who was replaced, and never
@@ -222,7 +222,7 @@ final class ApproveRegistration
         $mentor = self::mentorToTell($registration);
 
         if ($mentor !== null && ! $mentor->is($actor)) {
-            $mentor->notify(RegistrationApproved::for($registration, 'guru', $changed, $replacedName));
+            $mentor->notify(RegistrationApproved::for($registration, 'guru', $changed, $replacedName, $actor));
         }
 
         // Tata Usaha makes the letters; a Tata Usaha account that approved itself (D-150) is not told about its own
@@ -232,7 +232,7 @@ final class ApproveRegistration
             ->values();
 
         if ($tu->isNotEmpty()) {
-            Notification::send($tu, RegistrationApproved::for($registration, 'tu'));
+            Notification::send($tu, RegistrationApproved::for($registration, 'tu', decider: $actor));
         }
     }
 }

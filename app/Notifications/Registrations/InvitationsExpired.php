@@ -11,7 +11,7 @@ use Illuminate\Notifications\Messages\MailMessage;
 
 /**
  * To the ketua when unanswered team invitations expired at the registration deadline (B3, backlog #9).
- * `ready`: the remaining team (≥ 2, all confirmed) went on to the Kepala Sekolah; otherwise the team is
+ * `ready`: the remaining team (≥ 2, all confirmed) went on to approval (Kepala Sekolah or Tata Usaha, D-150); otherwise the team is
  * too small (D-36) and the ketua should cancel the registration.
  */
 class InvitationsExpired extends RegistrationNotification
@@ -24,7 +24,7 @@ class InvitationsExpired extends RegistrationNotification
     public function toMail(object $notifiable): MailMessage
     {
         return (new PlainMailMessage)
-            ->subject(($this->ready ? 'Tim diteruskan ke Kepala Sekolah: ' : 'Tim kurang anggota: ').$this->competitionName())
+            ->subject(($this->ready ? 'Tim diteruskan untuk persetujuan: ' : 'Tim kurang anggota: ').$this->competitionName())
             ->greeting(MailGreeting::student($notifiable))
             ->line($this->message())
             ->action('Lihat pendaftaran', $this->url());
@@ -36,7 +36,7 @@ class InvitationsExpired extends RegistrationNotification
         return [
             'type' => 'registration.invitations_expired',
             'registration_id' => $this->registration->getKey(),
-            'title' => $this->ready ? 'Tim diteruskan ke Kepala Sekolah' : 'Tim kurang anggota',
+            'title' => $this->ready ? 'Tim diteruskan untuk persetujuan' : 'Tim kurang anggota',
             'message' => $this->message(),
             'url' => $this->url(),
             'ready' => $this->ready,
@@ -48,7 +48,7 @@ class InvitationsExpired extends RegistrationNotification
         $what = $this->expired.' undangan tim '.$this->competitionName().' tidak dijawab sampai batas pendaftaran dan sudah tidak berlaku.';
 
         return $this->ready
-            ? $what.' Tim '.$this->team.' orang diteruskan ke Kepala Sekolah.'
+            ? $what.' Tim '.$this->team.' orang diteruskan untuk persetujuan.'
             : $what.' Tim kurang dari 2 orang, jadi pendaftaran tidak bisa diteruskan. Batalkan pendaftaran ini di Lomba saya.';
     }
 

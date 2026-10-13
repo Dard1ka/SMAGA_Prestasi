@@ -164,6 +164,8 @@ final class Index extends Component
                 'letters',
                 'report.files.file',
                 'report.verifier.roles',
+                // D-150: who approved or rejected (Kepala Sekolah or Tata Usaha), for "Disetujui oleh …" / "Ditetapkan …".
+                'principalDecider.roles',
             ])
             ->first();
 
@@ -295,8 +297,13 @@ final class Index extends Component
                 'me' => $m->student_id === $student?->getKey(),
             ])->all(),
             'mentor' => $registration->mentor !== null ? $this->mentorName($registration->mentor) : null,
-            // D-132: the Kepala Sekolah approved the registration with another guru than the one the student chose.
+            // D-132: the approver put another guru in the place of the one the student chose.
             'mentorByPrincipal' => $registration->mentor !== null && ApproveRegistration::mentorWasReplaced($registration),
+            // D-150: the role that decided ("sekolah" before a decision) and, once approved, who by name.
+            'approverRole' => StaffRoleLabel::forDecision($registration->principalDecider),
+            'approvedBy' => $registration->principalDecider !== null
+                ? 'Disetujui oleh '.$registration->principalDecider->name.' ('.StaffRoleLabel::forDecision($registration->principalDecider).').'
+                : null,
             'decidedOn' => self::longDate($registration->principal_decided_at),
             'registeredOn' => self::longDate($registration->created_at),
             'allConfirmed' => $registration->members->every(fn (RegistrationMember $m): bool => $m->confirmed_at !== null),

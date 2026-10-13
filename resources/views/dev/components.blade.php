@@ -162,7 +162,7 @@
                 <x-sth.chip tone="green" icon="check">Disetujui</x-sth.chip>
                 <x-sth.chip tone="orange" icon="clock">Menunggu laporan · batas 8 Nov</x-sth.chip>
                 <x-sth.chip tone="red" icon="x">Ditolak</x-sth.chip>
-                <x-sth.chip tone="gray" icon="clock">Menunggu Kepala Sekolah</x-sth.chip>
+                <x-sth.chip tone="gray" icon="clock">Menunggu persetujuan</x-sth.chip>
                 <x-sth.chip tone="blue" icon="info">Nomor surat diproses</x-sth.chip>
                 <x-sth.chip tone="gold" class="num">+68 poin</x-sth.chip>
                 <x-sth.chip tone="gray" size="sm">Alumni</x-sth.chip>
@@ -411,7 +411,7 @@
             </div>
             <div class="flex flex-col gap-3">
                 <span class="label">LPB 2026 · tahap 2</span>
-                <x-sth.tracker :phase="2" :dates="[1 => '29 Sep', 2 => 'Menunggu Kepala Sekolah', 4 => '17 Okt']" />
+                <x-sth.tracker :phase="2" :dates="[1 => '29 Sep', 2 => 'Menunggu persetujuan', 4 => '17 Okt']" />
             </div>
             <div class="flex flex-col gap-3">
                 <span class="label">OPSI 2026 · selesai</span>
@@ -488,7 +488,7 @@
             </x-sth.lomba-head>
             <div class="grid gap-3 lg:grid-cols-2">
                 <x-sth.alert>Baru pertama masuk? Kamu akan diminta mengganti kata sandi dan menghubungkan email.</x-sth.alert>
-                <x-sth.alert tone="success">Pendaftaran terkirim. Menunggu persetujuan Kepala Sekolah.</x-sth.alert>
+                <x-sth.alert tone="success">Pendaftaran terkirim. Menunggu persetujuan sekolah.</x-sth.alert>
                 <x-sth.alert tone="warning" title="Perlu tindakan">Laporkan hasil WICE 2026 sebelum 8 Nov 2026.</x-sth.alert>
                 <x-sth.alert tone="error">NISN atau kata sandi salah.</x-sth.alert>
             </div>

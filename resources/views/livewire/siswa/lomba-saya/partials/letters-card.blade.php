@@ -19,7 +19,7 @@
             <div class="flex items-center gap-3 rounded-tile bg-subtle p-3.5">
                 <span class="text-muted" aria-hidden="true"><x-sth.icon name="file" /></span>
                 <p class="m-0 text-sm text-ink-2">
-                    {{ $d['status'] === S::Disetujui ? 'Tata Usaha sedang menyiapkan surat tugas.' : 'Surat tugas dibuat setelah Kepala Sekolah menyetujui.' }}
+                    {{ $d['status'] === S::Disetujui ? 'Tata Usaha sedang menyiapkan surat tugas.' : 'Surat tugas dibuat setelah pendaftaran disetujui.' }}
                 </p>
             </div>
         @else

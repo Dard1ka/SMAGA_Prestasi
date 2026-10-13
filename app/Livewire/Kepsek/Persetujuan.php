@@ -13,6 +13,7 @@ use App\Models\Competition;
 use App\Models\Registration;
 use App\Models\RegistrationMember;
 use App\Models\User;
+use App\Support\StaffRoleLabel;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Contracts\View\View;
@@ -377,6 +378,8 @@ class Persetujuan extends Component
             'summary' => $this->summary($waiting),
             'upcoming' => $this->upcoming(),
             'mentorDialog' => $this->mentorDialog($rows),
+            // Rows decided during this visit were decided by this account: "Ditetapkan <peran>" (D-150).
+            'deciderRole' => StaffRoleLabel::forDecision($this->user()),
         ])->layoutData([
             'subtitle' => 'Setujui pendaftaran agar Tata Usaha bisa membuat surat tugas.',
             'badges' => ['kepsek.persetujuan' => $waiting],

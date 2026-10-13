@@ -19,7 +19,7 @@
                 </div>
                 <p class="muted m-0 text-sm">
                     Didaftarkan {{ $d['registeredOn'] }}.
-                    {{ $d['allConfirmed'] ? ($d['isTeam'] ? 'Semua anggota sudah konfirmasi.' : 'Menunggu keputusan Kepala Sekolah.') : 'Menunggu konfirmasi anggota tim.' }}
+                    {{ $d['allConfirmed'] ? ($d['isTeam'] ? 'Semua anggota sudah konfirmasi.' : 'Menunggu persetujuan sekolah.') : 'Menunggu konfirmasi anggota tim.' }}
                 </p>
             </div>
             @if ($d['canCancel'])
@@ -36,7 +36,7 @@
                     <h3 id="setuju-judul" class="title-card">Persetujuan</h3>
                     <x-sth.chip tone="green" icon="check">Disetujui {{ $d['decidedOn'] }}</x-sth.chip>
                 </div>
-                <p class="muted m-0 text-sm">Tata Usaha sedang menyiapkan surat tugas.</p>
+                <p class="muted m-0 text-sm">{{ $d['approvedBy'] ? $d['approvedBy'].' ' : '' }}Tata Usaha sedang menyiapkan surat tugas.</p>
             </div>
         </x-sth.card>
         @break
@@ -50,7 +50,7 @@
                     <x-sth.chip tone="red">Ditolak {{ $d['decidedOn'] }}</x-sth.chip>
                 </div>
                 @if ($registration->principal_note)
-                    <p class="m-0 text-sm"><span class="font-semibold">Catatan Kepala Sekolah:</span> {{ $registration->principal_note }}</p>
+                    <p class="m-0 text-sm"><span class="font-semibold">Catatan {{ $d['approverRole'] }}:</span> {{ $registration->principal_note }}</p>
                 @endif
             </div>
         </x-sth.card>

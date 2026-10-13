@@ -54,7 +54,7 @@
     @if ($canRespond)
         <x-sth.card as="section" tone="warn" aria-labelledby="h-jawab" class="flex flex-col gap-3">
             <h2 id="h-jawab" class="title-card m-0">Ikut tim ini?</h2>
-            <p class="m-0 text-sm text-ink-2">Setelah semua anggota konfirmasi, pendaftaran diteruskan ke Kepala Sekolah. Hanya kamu yang bisa menjawab undangan ini.</p>
+            <p class="m-0 text-sm text-ink-2">Setelah semua anggota konfirmasi, pendaftaran diteruskan untuk persetujuan. Hanya kamu yang bisa menjawab undangan ini.</p>
             <div class="flex flex-wrap gap-2">
                 <x-sth.button icon="check" wire:click="ikut" wire:loading.attr="disabled">Ikut tim</x-sth.button>
                 <x-sth.button variant="quiet" data-sth-open="tolak-undangan" aria-haspopup="dialog">Tolak</x-sth.button>

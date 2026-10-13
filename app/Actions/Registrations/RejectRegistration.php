@@ -80,14 +80,14 @@ final class RejectRegistration
         $members = ApproveRegistration::memberUsers($locked);
 
         if ($members->isNotEmpty()) {
-            Notification::send($members, RegistrationRejected::for($locked, 'siswa'));
+            Notification::send($members, RegistrationRejected::for($locked, 'siswa', $actor));
         }
 
         // The guru pembimbing hears about it too (lead, 2026-10-02) while still a guru (QA10); the approver is the actor.
         $mentor = ApproveRegistration::mentorToTell($locked);
 
         if ($mentor !== null && ! $mentor->is($actor)) {
-            $mentor->notify(RegistrationRejected::for($locked, 'guru'));
+            $mentor->notify(RegistrationRejected::for($locked, 'guru', $actor));
         }
 
         return $registration;
