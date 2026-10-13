@@ -89,7 +89,7 @@ final class BinaanDetail extends Component
             'revising' => $report?->status === ReportStatus::PerluRevisi,
             'facts' => array_values(array_filter([
                 ['icon' => 'trophy', 'label' => 'Tingkat', 'value' => $competition?->level?->label() ?? '–'],
-                ['icon' => 'calendar', 'label' => 'Tanggal lomba', 'value' => self::dateRange($competition?->starts_on, $competition?->final_on) ?: '–'],
+                ['icon' => 'calendar', 'label' => 'Pelaksanaan', 'value' => self::dateRange($competition?->starts_on, $competition?->final_on) ?: '–'],
                 ['icon' => 'pin', 'label' => 'Tempat', 'value' => $competition?->location ?: '–'],
                 ['icon' => 'users', 'label' => 'Peserta', 'value' => $this->binaanType($registration, $active->count())],
             ])),
