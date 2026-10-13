@@ -10,7 +10,7 @@ use App\Models\Student;
 use App\Models\User;
 
 /**
- * To the members: Kesiswaan needs a corrected laporan hasil (note included). Only the ketua may fix it
+ * To the members: the verifier needs a corrected laporan hasil (note included; `$decider` names the role, D-139). Only the ketua may fix it
  * (ReportPolicy::create), so only the ketua is asked to "Perbaiki laporan" (QA10); every other member hears that
  * the ketua does it, like the guru (BinaanReportDecided::revision), and gets a link to the lomba, not a fix button.
  */
@@ -23,12 +23,12 @@ final class ReportRevisionRequested extends Notice
 
     public string $memberBody = '';
 
-    public static function for(Report $report, string $competitionName, string $note): self
+    public static function for(Report $report, string $competitionName, string $note, string $decider): self
     {
         $notice = new self(
             kind: 'report.revision_requested',
             title: 'Perbaiki laporan hasil: '.$competitionName,
-            body: 'Catatan Kesiswaan: '.$note,
+            body: 'Catatan '.$decider.': '.$note,
             routeName: 'siswa.lomba-saya.show',
             routeParameters: ['registration' => (string) $report->registration_id],
             actionLabel: 'Perbaiki laporan',
@@ -37,7 +37,7 @@ final class ReportRevisionRequested extends Notice
 
         $notice->leaderUserId = self::leaderUserId($report);
         $notice->memberTitle = 'Laporan hasil perlu revisi: '.$competitionName;
-        $notice->memberBody = 'Catatan Kesiswaan: '.self::sentence($note).' Ketua tim memperbaiki laporan dari akunnya.';
+        $notice->memberBody = 'Catatan '.$decider.': '.self::sentence($note).' Ketua tim memperbaiki laporan dari akunnya.';
 
         return $notice;
     }

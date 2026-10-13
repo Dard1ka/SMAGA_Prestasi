@@ -12,6 +12,7 @@ use App\Enums\ReportFileKind;
 use App\Enums\ReportStatus;
 use App\Enums\ResultType;
 use App\Enums\RoleName;
+use App\Enums\UserStatus;
 use App\Models\File;
 use App\Models\Report;
 use App\Notifications\Reports\ReportSubmitted;
@@ -243,4 +244,26 @@ it('keeps a late report late when it is sent again after a revision request (QA8
     $again = app(SubmitReport::class)->handle($this->nadia->user, $this->registration->fresh(), w2a2ReportData());
 
     expect($again->late)->toBeTrue();
+});
+
+it('tells Kesiswaan and Humas about a new report, each with the link of the own area (D-139)', function (): void {
+    $humas = F::staff(RoleName::Humas, 'Mas Galih Prasetyo');
+    $both = F::staff(RoleName::Kesiswaan, 'Ibu Ratna Sari');
+    $both->assignRole(RoleName::Humas->value);
+    $frozen = F::staff(RoleName::Humas, 'Bu Fitri Handayani');
+    $frozen->forceFill(['status' => UserStatus::Disabled])->save();
+    $guru = F::staff(RoleName::Guru, 'Pak Hendra Kusuma');
+
+    app(SubmitReport::class)->handle($this->nadia->user, $this->registration, w2a2ReportData());
+
+    Notification::assertSentToTimes($this->kesiswaan, ReportSubmitted::class, 1);
+    Notification::assertSentToTimes($humas, ReportSubmitted::class, 1);
+    Notification::assertSentToTimes($both, ReportSubmitted::class, 1);
+    Notification::assertNothingSentTo($frozen);
+    Notification::assertNothingSentTo($guru);
+    Notification::assertSentTo($humas, ReportSubmitted::class, fn (ReportSubmitted $n): bool => $n->toArray($humas)['url'] === route('humas.verifikasi.index')
+        && $n->toMail($humas)->actionUrl === route('humas.verifikasi.index')
+        && $n->toMail($humas)->actionText === 'Buka verifikasi hasil');
+    Notification::assertSentTo($this->kesiswaan, ReportSubmitted::class, fn (ReportSubmitted $n): bool => $n->toArray($this->kesiswaan)['url'] === route('kesiswaan.verifikasi.index'));
+    Notification::assertSentTo($both, ReportSubmitted::class, fn (ReportSubmitted $n): bool => $n->toArray($both)['url'] === route('kesiswaan.verifikasi.index'));
 });

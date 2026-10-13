@@ -230,3 +230,22 @@ it('tells no guru when the report has no pembimbing or the guru cannot log in', 
     Notification::assertNothingSentTo($frozen);
     Notification::assertSentTimes(BinaanReportDecided::class, 0);
 });
+
+it('names the role that decided in the notices to the team and the guru (D-139)', function (RoleName $role, string $label): void {
+    $decider = F::staff($role, 'Petugas '.$role->label());
+    $guru = F::staff(RoleName::Guru, 'Retno Wulandari, S.Pd.');
+    $nadia = F::student('Nadia Putri Anindya', 'XI-4');
+    $raka = F::student('Raka Pradipta', 'XII-2');
+
+    app(VerifyReport::class)->handle($decider, F::pendingReport($nadia, [], ResultType::Juara2, $guru), ResultType::Juara2, F::allChecks());
+    app(RequestReportRevision::class)->handle($decider, F::pendingReport($raka, mentor: $guru), 'Sertifikat belum terbaca.');
+
+    Notification::assertSentTo($nadia->user, ReportVerified::class, fn (ReportVerified $n): bool => str_contains($n->body, 'sudah diverifikasi '.$label.'. Kamu mendapat'));
+    Notification::assertSentTo($raka->user, ReportRevisionRequested::class, fn (ReportRevisionRequested $n): bool => $n->body === 'Catatan '.$label.': Sertifikat belum terbaca.');
+    Notification::assertSentTo($guru, BinaanReportDecided::class, fn (BinaanReportDecided $n): bool => $n->kind === 'report.binaan_revision'
+        && str_contains($n->body, 'Catatan '.$label.': Sertifikat belum terbaca.'));
+})->with([
+    'kesiswaan' => [RoleName::Kesiswaan, 'Kesiswaan'],
+    'humas' => [RoleName::Humas, 'Humas'],
+    'admin' => [RoleName::Admin, 'Admin'],
+]);

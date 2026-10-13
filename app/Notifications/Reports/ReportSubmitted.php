@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace App\Notifications\Reports;
 
 use App\Models\Report;
+use App\Models\User;
 use App\Notifications\Support\MailGreeting;
 use App\Notifications\Support\PlainMailMessage;
+use App\Support\VerificationArea;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -14,7 +16,9 @@ use Illuminate\Notifications\Notification;
 use Illuminate\Support\Facades\Route;
 
 /**
- * To Kesiswaan after a leader sends (or re-sends) a laporan hasil (SubmitReport). No NIS/NISN, no files.
+ * To Kesiswaan and Humas (D-139) after a leader sends (or re-sends) a laporan hasil (SubmitReport). The link is per
+ * recipient: a Humas account gets the Humas verification screen, anyone else the Kesiswaan one (never a 403 address).
+ * No NIS/NISN, no files.
  */
 class ReportSubmitted extends Notification implements ShouldQueue
 {
@@ -60,7 +64,7 @@ class ReportSubmitted extends Notification implements ShouldQueue
             ->greeting(MailGreeting::for($notifiable))
             ->line($this->body());
 
-        $url = $this->url();
+        $url = $this->url($notifiable);
 
         return $url !== null ? $message->action('Buka verifikasi hasil', $url) : $message;
     }
@@ -72,7 +76,7 @@ class ReportSubmitted extends Notification implements ShouldQueue
             'kind' => 'report.submitted',
             'title' => $this->title(),
             'body' => $this->body(),
-            'url' => $this->url(),
+            'url' => $this->url($notifiable),
             'report_id' => $this->reportId,
         ];
     }
@@ -89,8 +93,10 @@ class ReportSubmitted extends Notification implements ShouldQueue
             .' Mohon diverifikasi.';
     }
 
-    private function url(): ?string
+    private function url(object $notifiable): ?string
     {
-        return Route::has('kesiswaan.verifikasi.index') ? route('kesiswaan.verifikasi.index') : null;
+        $area = $notifiable instanceof User ? VerificationArea::forUser($notifiable) : VerificationArea::KESISWAAN;
+
+        return Route::has($area.'.verifikasi.index') ? VerificationArea::indexUrl($area) : null;
     }
 }

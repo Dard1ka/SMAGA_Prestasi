@@ -14,6 +14,7 @@ use App\Models\Report;
 use App\Models\User;
 use App\Notifications\Verification\BinaanReportDecided;
 use App\Notifications\Verification\ReportRevisionRequested;
+use App\Support\StaffRoleLabel;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
@@ -65,11 +66,13 @@ final class RequestReportRevision
 
         $competitionName = self::competitionName($locked);
 
+        $decider = StaffRoleLabel::forDecision($actor);
+
         foreach (self::memberUsers($locked) as $user) {
-            $user->notify(ReportRevisionRequested::for($locked, $competitionName, $note));
+            $user->notify(ReportRevisionRequested::for($locked, $competitionName, $note, $decider));
         }
 
-        self::mentorUser($locked)?->notify(BinaanReportDecided::revision($locked, $competitionName, $note));
+        self::mentorUser($locked)?->notify(BinaanReportDecided::revision($locked, $competitionName, $note, $decider));
 
         return $locked;
     }

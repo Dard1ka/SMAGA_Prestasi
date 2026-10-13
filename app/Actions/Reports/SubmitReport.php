@@ -15,7 +15,6 @@ use App\Enums\FilePurpose;
 use App\Enums\RegistrationStatus;
 use App\Enums\ReportFileKind;
 use App\Enums\ReportStatus;
-use App\Enums\RoleName;
 use App\Models\Competition;
 use App\Models\File;
 use App\Models\Registration;
@@ -23,7 +22,6 @@ use App\Models\Report;
 use App\Models\User;
 use App\Notifications\Reports\ReportSubmitted;
 use Carbon\CarbonImmutable;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -36,7 +34,7 @@ use Throwable;
  * menunggu_laporan → laporan_dikirim, report status `dikirim`. The same row is re-used after
  * "perlu revisi" (reports.registration_id is unique). Evidence goes through StoreUpload (private disk,
  * sniffed MIME, images re-encoded without EXIF). A report after final_on + report_deadline_days is still
- * accepted but flagged `late` (D-25). Kesiswaan is notified after commit (queued mail + database).
+ * accepted but flagged `late` (D-25). Kesiswaan and Humas are notified after commit (queued mail + database).
  *
  * Validation errors use the field names of the Livewire form (hasil, asli, sertifikat, foto, pengumuman,
  * judul, abstrak, laporan, artikel, poster).
@@ -115,7 +113,7 @@ final class SubmitReport
             throw $e;
         }
 
-        $this->notifyKesiswaan($report, $registration, $resubmitted);
+        $this->notifyVerifiers($report, $registration, $resubmitted);
 
         return $report;
     }
@@ -299,12 +297,9 @@ final class SubmitReport
         return $report->refresh();
     }
 
-    private function notifyKesiswaan(Report $report, Registration $registration, bool $resubmitted): void
+    private function notifyVerifiers(Report $report, Registration $registration, bool $resubmitted): void
     {
-        $recipients = User::query()
-            ->canLogIn()
-            ->whereHas('roles', fn (Builder $q) => $q->where('name', RoleName::Kesiswaan->value))
-            ->get();
+        $recipients = ReportVerifiers::recipients();
 
         if ($recipients->isEmpty()) {
             return;

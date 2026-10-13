@@ -13,7 +13,7 @@ use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Support\Collection;
 
 /**
- * To the guru pembimbing when Kesiswaan decides on a binaan's laporan hasil (QA5, lead 2026-10-07, D-110):
+ * To the guru pembimbing when the verifier decides on a binaan's laporan hasil (QA5, lead 2026-10-07, D-110):
  * verified (capaian + points), revision asked (the note) or rejected (the reason). The members get their own
  * notices (ReportVerified, ReportRevisionRequested, ReportRejected); this one links to the guru's binaan page
  * and greets the guru formally ("Yth. <full name>,", like the other notices for staff). Names only, never NIS/NISN.
@@ -38,10 +38,10 @@ final class BinaanReportDecided extends Notice
         );
     }
 
-    public static function revision(Report $report, string $competitionName, string $note): self
+    public static function revision(Report $report, string $competitionName, string $note, string $decider): self
     {
         return self::make($report, $competitionName, 'report.binaan_revision', 'Laporan binaan perlu revisi: ',
-            'Catatan Kesiswaan: '.self::sentence($note).' Ketua tim memperbaiki laporan dari akunnya.');
+            'Catatan '.$decider.': '.self::sentence($note).' Ketua tim memperbaiki laporan dari akunnya.');
     }
 
     public static function rejected(Report $report, string $competitionName, string $note): self

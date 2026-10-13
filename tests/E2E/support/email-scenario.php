@@ -72,6 +72,7 @@ use App\Actions\Reports\RequestReportRevision;
 use App\Actions\Reports\SubmitReport;
 use App\Actions\Reports\SubmitReportData;
 use App\Actions\Reports\VerifyReport;
+use App\Actions\Roles\ApplyRoleChange;
 use App\Actions\Roles\RequestRoleChange;
 use App\Actions\Settings\PublishWeightVersion;
 use App\Actions\Settings\ReplaceSignatureImage;
@@ -99,6 +100,7 @@ use App\Models\Letter;
 use App\Models\Publication;
 use App\Models\Registration;
 use App\Models\Report;
+use App\Models\RoleChangeRequest;
 use App\Models\Student;
 use App\Models\TalentApplication;
 use App\Models\TalentBranch;
@@ -787,7 +789,7 @@ $scenario->clearMailbox();
 // 0. Setup: a second Humas account, so "every Humas" is more than one mailbox
 // =================================================================================================================
 
-$scenario->step('0a', 'Setup: Admin creates a second Humas account, fitri.h (CreateStaffAccount, role given at once)', function () use ($staff, $scenario): void {
+$scenario->step('0a', 'Setup: Admin creates a second Humas account, fitri.h (privileged since D-139: request, applied at once here)', function () use ($staff, $scenario): void {
     $password = app(GenerateTemporaryPassword::class)->handle().'-'.random_int(1000, 9999);
     $scenario->secret($password);
 
@@ -800,7 +802,18 @@ $scenario->step('0a', 'Setup: Admin creates a second Humas account, fitri.h (Cre
         'honorific' => 'Bu',
         'position' => 'Humas',
     ]);
-}, [[$at('operator'), 'Akun staf baru dibuat']]);
+
+    // The only demo Admin puts the request in delay mode; the scenario does not wait 24 h.
+    RoleChangeRequest::query()->whereNull('applied_at')->whereNull('cancelled_at')->sole()->forceFill(['effective_at' => now()->subMinute()])->save();
+    app(ApplyRoleChange::class)->applyDue();
+}, [
+    [$at('operator'), 'Akun staf baru menunggu persetujuan peran'],
+    [$at('kepsek'), 'Akun staf baru menunggu persetujuan peran'],
+    ['fitri.h@sth.test', 'Akun staf baru menunggu persetujuan peran'],
+    [$at('operator'), 'Peran akun staf diubah'],
+    [$at('kepsek'), 'Peran akun staf diubah'],
+    ['fitri.h@sth.test', 'Peran akun staf diubah'],
+]);
 
 // =================================================================================================================
 // 1. Import + first-login activation
@@ -1315,7 +1328,11 @@ $scenario->step('7a', 'Galuh (ketua) submits the laporan hasil with certificate 
         certificate: $pdf('sertifikat-ospn-2026.pdf'),
         photos: [$png('dokumentasi-ospn-1.png')],
     ));
-}, [[$at('kesiswaan'), 'Laporan hasil baru: '.$lomba['l1']]]);
+}, [
+    [$at('kesiswaan'), 'Laporan hasil baru: '.$lomba['l1']],
+    [$at('humas'), 'Laporan hasil baru: '.$lomba['l1']],
+    ['fitri.h@sth.test', 'Laporan hasil baru: '.$lomba['l1']],
+]);
 
 $scenario->step('7b', 'Kesiswaan asks for a revision (RequestReportRevision)', function () use ($staff, $report): void {
     app(RequestReportRevision::class)->handle($staff('kesiswaan'), $report('r1'), 'Sertifikat kurang jelas, upload ulang hasil pindai yang terbaca.');
@@ -1334,7 +1351,11 @@ $scenario->step('7c', 'Galuh sends the corrected report (SubmitReport again)', f
         authentic: true,
         certificate: $pdf('sertifikat-ospn-2026-pindai-ulang.pdf'),
     ));
-}, [[$at('kesiswaan'), 'Laporan hasil diperbaiki: '.$lomba['l1']]]);
+}, [
+    [$at('kesiswaan'), 'Laporan hasil diperbaiki: '.$lomba['l1']],
+    [$at('humas'), 'Laporan hasil diperbaiki: '.$lomba['l1']],
+    ['fitri.h@sth.test', 'Laporan hasil diperbaiki: '.$lomba['l1']],
+]);
 
 $scenario->step('7d', 'Kesiswaan verifies the result (VerifyReport): points for every member, Humas queue', function () use ($state, $staff, $report, $scenario, $mail, $lomba): void {
     $achievements = app(VerifyReport::class)->handle($staff('kesiswaan'), $report('r1'), ResultType::Juara2, array_keys(VerifyReport::CHECKS));
@@ -1363,7 +1384,11 @@ $scenario->step('7e', 'Wulan submits her laporan hasil (SubmitReport)', function
         certificate: $pdf('sertifikat-ospn-wulan.pdf'),
         photos: [$png('dokumentasi-ospn-wulan.png')],
     ));
-}, [[$at('kesiswaan'), 'Laporan hasil baru: '.$lomba['l1']]]);
+}, [
+    [$at('kesiswaan'), 'Laporan hasil baru: '.$lomba['l1']],
+    [$at('humas'), 'Laporan hasil baru: '.$lomba['l1']],
+    ['fitri.h@sth.test', 'Laporan hasil baru: '.$lomba['l1']],
+]);
 
 $scenario->step('7f', 'Kesiswaan rejects Wulan\'s report (RejectReport)', function () use ($staff, $report, $scenario, $state): void {
     app(RejectReport::class)->handle($staff('kesiswaan'), $report('r4'), 'Sertifikat tidak memuat nama peserta dan tidak cocok dengan pengumuman panitia.');

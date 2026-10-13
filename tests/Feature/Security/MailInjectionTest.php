@@ -99,7 +99,7 @@ function mailInjectionCase(string $kind, string $hostile): array
                 'leader_student_id' => $student->getKey(),
             ]), fn (Registration $registration) => $registration->forceFill(['principal_note' => $hostile])->save())),
         ],
-        'revisi laporan' => [F::user($student), ReportRevisionRequested::for(Report::factory()->create(), $hostile, $hostile)],
+        'revisi laporan' => [F::user($student), ReportRevisionRequested::for(Report::factory()->create(), $hostile, $hostile, 'Humas')],
         'surat dicabut' => [
             F::staff(RoleName::KepalaSekolah),
             new LetterRevokedNotice($hostile, 'Surat Tugas', '400.3.8/313/MRD/X/2026', '400.3.8/314/MRD/X/2026', $hostile, $hostile),
