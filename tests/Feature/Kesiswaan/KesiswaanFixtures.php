@@ -52,7 +52,7 @@ final class KesiswaanFixtures
         return AuthTestHelpers::staff($role, ['name' => $name, 'email' => str($name)->slug().'.'.$role->value.'@example.test']);
     }
 
-    public static function student(string $name = 'Rizky Maulana', string $classroom = 'XI-1', ?string $nis = null): Student
+    public static function student(string $name = 'Rizky Maulana', string $classroom = 'XI-1', ?string $nis = null, ?string $nisn = null): Student
     {
         $user = User::factory()->create(['name' => $name])->fresh();
         $user->forceFill(['status' => UserStatus::Active, 'must_change_password' => false, 'password_changed_at' => now()])->save();
@@ -64,6 +64,7 @@ final class KesiswaanFixtures
             'user_id' => $user->getKey(),
             'classroom_id' => $room->getKey(),
             'nis' => $nis,
+            'nisn' => $nisn,
         ]))->fresh(['user']);
     }
 

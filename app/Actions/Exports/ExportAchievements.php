@@ -30,7 +30,7 @@ use Spatie\SimpleExcel\SimpleExcelWriter;
  *
  * - `achievement.export` (AchievementPolicy::export); the screen also asks for a password from the last
  *   15 minutes before calling this.
- * - Same rows as the screen (AchievementFilters), at most MAX_ROWS; no NISN, phone, email or birth date;
+ * - Same rows as the screen (AchievementFilters), at most MAX_ROWS; the NISN instead of the NIS (D-137), no phone, email or birth date;
  *   no Kategori column (D-135).
  * - Formula injection: every text cell is written as an explicit string cell (OpenSpout would turn a
  *   leading "=" into a formula) AND values starting with = + - @ tab CR LF get a leading apostrophe
@@ -51,7 +51,7 @@ final class ExportAchievements
     public const FORMULA_PREFIXES = ['=', '+', '-', '@', "\t", "\r", "\n"];
 
     private const HEADER = [
-        'No', 'Nama', 'NIS', 'Kelas', 'Angkatan', 'Status akun', 'Lomba', 'Penyelenggara', 'Jenis penyelenggara',
+        'No', 'Nama', 'NISN', 'Kelas', 'Angkatan', 'Status akun', 'Lomba', 'Penyelenggara', 'Jenis penyelenggara',
         'Status ajang', 'Bidang', 'Tingkat', 'Capaian', 'Peserta', 'Pembimbing', 'Tahun ajaran',
         'Tanggal final', 'Bobot tingkat', 'Bobot capaian', 'Bobot penyelenggara', 'Poin', 'Diverifikasi', 'Verifikator',
     ];
@@ -167,7 +167,7 @@ final class ExportAchievements
         return new Row([
             new NumericCell($number, null),
             self::text($user?->name),
-            self::text($student?->nis),
+            self::text($student?->nisn),
             self::text($student?->classroom?->name),
             self::text($grade12 !== null ? (string) ($grade12->year - 2) : ''),
             self::text($status),

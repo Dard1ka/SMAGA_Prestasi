@@ -89,13 +89,14 @@ it('derives the K9 state, flags and per-class counts', function (): void {
         ->and($summary['X-1']['counts']['arsip'])->toBe(1);
 });
 
-it('shows the NIS in full and the email masked (D-131), and filters by class, status and exact NIS', function (): void {
+it('shows the NISN in full and the email masked (D-137), and filters by class, status and exact NIS', function (): void {
     $this->actingAs($this->kesiswaan);
     $nis = (string) $this->raka->nis;
+    $nisn = (string) $this->raka->nisn;
 
     Livewire::test(StatusAktivasi::class)
-        ->assertSee($nis)
-        ->assertDontSee(mb_substr($nis, 0, 4).'•••'.mb_substr($nis, -2))
+        ->assertSee($nisn)
+        ->assertDontSee($nis)
         ->assertDontSee('NIS ditampilkan tersamar')
         ->assertSee('Email ditampilkan tersamar.')
         ->assertSee('n•••@example.test')
@@ -131,7 +132,7 @@ it('opens the students of a class in a dialog instead of filtering the list at t
         ->assertSeeHtml($inDialog($this->salsa))
         ->assertDontSeeHtml($inDialog($this->dimas))
         // The dialog shows the NIS in full as well (D-131); the email stays masked.
-        ->assertSee((string) $this->raka->nis)
+        ->assertSee((string) $this->raka->nisn)
         ->assertDontSee('nadia.anindya@example.test')
         // The list at the bottom keeps every class: "Lihat" no longer touches it.
         ->assertSet('daftarKelas', '')
@@ -319,12 +320,12 @@ it('exports a formula-safe CSV after a recent password confirmation, audited', f
 
     $csv = base64_decode((string) $download['content']);
     expect($csv)->toStartWith("\xEF\xBB\xBF")
-        ->toContain('Kelas;Nama;NIS;Status')
+        ->toContain('Kelas;Nama;NISN;Status')
         ->toContain('"\'=HYPERLINK(""http://evil.example"",""klik"")"')
         ->toContain('Kedaluwarsa')
         // D-131: the file carries the NIS in full, as the screen does; the email stays masked.
-        ->toContain(';'.$this->raka->nis.';')
-        ->not->toContain('•••'.mb_substr((string) $this->raka->nis, -2))
+        ->toContain(';'.$this->raka->nisn.';')
+        ->not->toContain(';'.$this->raka->nis.';')
         ->toContain('n•••@example.test')
         ->not->toContain('nadia.anindya@example.test');
 

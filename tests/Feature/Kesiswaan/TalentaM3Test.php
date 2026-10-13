@@ -438,6 +438,7 @@ it('puts only the ticked statuses into the file and says so in its "Filter:" lin
         ->and($rows[1][0])->toEndWith(' WIB')
         ->and($rows[2][0])->toBe('Filter: Tahap: Terdaftar, Tidak lolos')
         ->and($rows[3][0])->toBe('Nama')
+        ->and($rows[3][1])->toBe('NISN')
         ->and($rows[3][5])->toBe('Tahap')
         ->and(m3aExportedStudents($rows))->toBe(['Citra Ayu Lestari | Tidak lolos', 'Hana Safira | Terdaftar']);
 

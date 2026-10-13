@@ -192,16 +192,16 @@ it('needs a note to ask for a revision from the screen', function (): void {
     expect($report->fresh()->status)->toBe(ReportStatus::PerluRevisi);
 });
 
-it('shows the NIS in full in the talent table (D-131) and moves checked rows in bulk', function (): void {
-    $hana = F::student('Hana Safira', 'X-8', '226227088');
+it('shows the NISN in full in the talent table (D-137) and moves checked rows in bulk', function (): void {
+    $hana = F::student('Hana Safira', 'X-8', '226227088', '0103456714');
     $a = F::application($hana);
     $b = F::application(F::student('Aurelia Maharani', 'X-3'), TalentStatus::Pemetaan, 'Kimia');
 
     $component = Livewire::actingAs($this->kesiswaan)->test(Talenta::class)
         ->call('showPanel', $b->getKey())
         ->assertSee('Hana Safira')
-        ->assertSee('226227088')
-        ->assertDontSee('2262•••88')
+        ->assertSee('0103456714')
+        ->assertDontSee('226227088')
         ->set('checked', [$a->getKey(), $b->getKey()])
         // D-128: the bulk move asks first (details: TalentaPindahkanDialogTest).
         ->call('askBulkAdvance')

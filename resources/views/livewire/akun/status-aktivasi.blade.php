@@ -107,7 +107,7 @@
                                             <x-sth.avatar :name="$row['name']" size="sm" />
                                             <div class="flex min-w-0 flex-col">
                                                 <span class="ellip font-bold">{{ $row['name'] }}</span>
-                                                <span class="text-xs text-muted">{{ $row['classroom'] }} · <span class="num">{{ $row['nis'] }}</span></span>
+                                                <span class="text-xs text-muted">{{ $row['classroom'] }} · <span class="num">{{ $row['nisn'] }}</span></span>
                                             </div>
                                         </div>
                                     </td>
@@ -221,9 +221,9 @@
                     <x-sth.empty-state icon="users" title="Tidak ada siswa dengan status ini" :card="false">Pilih status lain.</x-sth.empty-state>
                 @else
                     <x-sth.table caption="Status aktivasi siswa kelas {{ $classDialog['name'] }}" class="overflow-hidden rounded-tile border border-line" :card="false">
-                        {{-- Four columns so the table fits the 760px dialog without sideways scrolling: NIS and email sit under the name. --}}
+                        {{-- Four columns so the table fits the 760px dialog without sideways scrolling: NISN and email sit under the name. --}}
                         <x-slot:head>
-                            <th scope="col" class="min-w-44">Siswa, NIS, email</th>
+                            <th scope="col" class="min-w-44">Siswa, NISN, email</th>
                             <th scope="col" class="min-w-28">Status</th>
                             <th scope="col" class="min-w-40">Aktivasi dan login terakhir</th>
                             <th scope="col" class="min-w-24"><span class="sr-only">Aksi</span></th>
@@ -233,7 +233,7 @@
                                 <td>
                                     <div class="flex min-w-0 flex-col">
                                         <span class="font-bold">{{ $row['name'] }}</span>
-                                        <span class="text-xs text-muted">NIS <span class="num">{{ $row['nis'] }}</span></span>
+                                        <span class="text-xs text-muted">NISN <span class="num">{{ $row['nisn'] }}</span></span>
                                         <span class="text-xs text-muted">{{ $row['email'] ?? 'Belum ada email' }}</span>
                                     </div>
                                 </td>

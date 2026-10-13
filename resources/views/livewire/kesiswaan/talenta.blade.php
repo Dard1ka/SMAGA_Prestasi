@@ -76,7 +76,7 @@
                                     <x-sth.avatar :name="$row['name']" size="sm" class="hidden 2xl:inline-flex" />
                                     <div class="flex min-w-0 flex-col">
                                         <span class="ellip font-bold">{{ $row['name'] }}</span>
-                                        <span class="text-xs text-muted">{{ $row['class'] }} · <span class="num">{{ $row['nis'] }}</span></span>
+                                        <span class="text-xs text-muted">{{ $row['class'] }} · <span class="num">{{ $row['nisn'] }}</span></span>
                                     </div>
                                 </div>
                             </td>

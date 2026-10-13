@@ -45,9 +45,9 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 /**
  * Database talenta siswa (UI-MAP #18, board Kesiswaan-Talenta): pipeline tabs, filters (jenis → cabang, kelas,
- * nama/NIS), table with bulk moves, detail panel (pembina, jadwal asesmen, two notes). Every change goes
+ * nama/NISN), table with bulk moves, detail panel (pembina, jadwal asesmen, two notes). Every change goes
  * through MoveTalentStage / RejectTalentApplication / UpdateTalentAssessment (one call per row for bulk
- * moves), which notify the student. The table shows the NIS in full (D-131); the Excel export escapes formulas, needs
+ * moves), which notify the student. The table shows the NISN in full (D-137); the Excel export escapes formulas, needs
  * a password from the last 15 minutes, is capped and audited with its filters.
  *
  * Notes (lead, 2026-10-04), both optional: "Catatan untuk guru pembina" (`panelNote`, internal, saved by every
@@ -84,7 +84,7 @@ class Talenta extends Component
     public const EXPORT_MAX_ROWS = 10000;
 
     private const EXPORT_HEADER = [
-        'Nama', 'NIS', 'Kelas', 'Jenis', 'Cabang', 'Tahap', 'Guru pembina', 'Jadwal asesmen',
+        'Nama', 'NISN', 'Kelas', 'Jenis', 'Cabang', 'Tahap', 'Guru pembina', 'Jadwal asesmen',
         'Catatan untuk guru pembina', 'Catatan untuk siswa', 'Didaftarkan',
     ];
 
@@ -853,7 +853,7 @@ class Talenta extends Component
                 foreach ($chunk as $a) {
                     $writer->addRow(self::exportRow([
                         (string) $a->student?->user?->name,
-                        (string) $a->student?->nis,
+                        (string) $a->student?->nisn,
                         (string) $a->student?->classroom?->name,
                         (string) $a->talentType?->code?->label(),
                         (string) $a->talentBranch?->name,
@@ -1151,7 +1151,7 @@ class Talenta extends Component
             'id' => $a->getKey(),
             'name' => $student?->user?->name ?? 'Siswa',
             'class' => $student?->classroom?->name,
-            'nis' => (string) $student?->nis,
+            'nisn' => (string) $student?->nisn,
             'type' => $a->talentType?->code?->label() ?? $a->talentType?->name,
             'bidang' => $a->talentType?->bidang,
             'branch' => $a->talentBranch?->name ?? 'Tanpa cabang',
@@ -1185,7 +1185,7 @@ class Talenta extends Component
         return [
             'id' => $a->getKey(),
             'name' => $student->user?->name ?? 'Siswa',
-            'meta' => trim(($student->classroom?->name ?? '').' · NIS '.$student->nis, ' ·'),
+            'meta' => trim(($student->classroom?->name ?? '').' · NISN '.$student->nisn, ' ·'),
             'points' => $sum !== null && $sum->n > 0 ? $formatter->format((string) $sum->total) : null,
             'prestasi' => (int) ($sum->n ?? 0),
             'choices' => $others->map(fn (TalentApplication $o): array => [

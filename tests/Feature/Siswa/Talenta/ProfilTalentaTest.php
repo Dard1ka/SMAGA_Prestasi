@@ -38,7 +38,7 @@ it('renders the six jenis from the DB with bidang, and the account data', functi
         ->assertSeeInOrder(['OSN', 'Riset', 'FLS3N', 'O2SN', 'OLPAIN', 'Debat'])
         ->assertSee('Seni Budaya')
         ->assertSee('Nadia Putri Anindya')
-        ->assertSee('NIS '.$this->nadia->nis)
+        ->assertSee('NISN '.$this->nadia->nisn)
         ->assertSee('Pilih jenis talenta dulu.')
         ->assertSee('Penjaringan pembinaan talenta');
 });

@@ -81,7 +81,7 @@
                                     <x-sth.avatar :name="$row['name']" size="sm" class="hidden sm:inline-flex" />
                                     <div class="flex min-w-0 flex-col">
                                         <span class="font-bold break-words">{{ $row['name'] }}</span>
-                                        <span class="text-xs text-muted">{{ $row['kelas'] }}@if ($row['nis']) · <span class="num">{{ $row['nis'] }}</span>@endif</span>
+                                        <span class="text-xs text-muted">{{ $row['kelas'] }}@if ($row['nisn']) · <span class="num">{{ $row['nisn'] }}</span>@endif</span>
                                     </div>
                                 </div>
                             </td>

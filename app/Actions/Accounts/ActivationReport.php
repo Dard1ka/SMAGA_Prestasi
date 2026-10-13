@@ -12,7 +12,7 @@ use Illuminate\Support\Collection;
 use Spatie\Activitylog\Models\Activity;
 
 /**
- * K9 activation report per class (docs/SECURITY.md §3a, B1) for Admin and Kesiswaan: name, class, NIS (in full
+ * K9 activation report per class (docs/SECURITY.md §3a, B1) for Admin and Kesiswaan: name, class, NISN (in full
  * since D-131, lead 2026-10-11: both roles work with the class lists, also in the CSV), state
  * (belum/aktif/kedaluwarsa/dibekukan/nonaktif/arsip), activation time, last login, masked email and automatic
  * flags (activation outside school hours, many failed logins, "Bukan saya?" report).
@@ -33,7 +33,7 @@ final class ActivationReport
 
     /**
      * @return Collection<int, array{
-     *     userId: int, name: string, nis: string, classroomId: ?string, classroom: string, level: int,
+     *     userId: int, name: string, nisn: string, classroomId: ?string, classroom: string, level: int,
      *     state: string, email: ?string, activatedAt: ?CarbonImmutable, lastLoginAt: ?CarbonImmutable,
      *     expiresAt: ?CarbonImmutable, frozenReason: ?string, attempts: int, flags: list<string>, sort: string,
      * }>
@@ -54,7 +54,7 @@ final class ActivationReport
                     'failed_activation_attempts', 'frozen_at', 'frozen_reason', 'activated_at', 'last_login_at',
                 ]),
             ])
-            ->get(['id', 'user_id', 'nis', 'classroom_id'])
+            ->get(['id', 'user_id', 'nisn', 'classroom_id'])
             ->filter(fn (Student $s): bool => $s->user !== null)
             ->map(fn (Student $s): array => $this->row($s, $now))
             ->when($state !== null && $state !== '', fn (Collection $c) => $c->where('state', $state))
@@ -147,13 +147,13 @@ final class ActivationReport
     public function writeCsv(Collection $rows, mixed $stream): void
     {
         fwrite($stream, "\xEF\xBB\xBF");
-        fputcsv($stream, ['Kelas', 'Nama', 'NIS', 'Status', 'Email', 'Aktivasi', 'Login terakhir', 'Batas kata sandi awal', 'Catatan'], ';', '"', '');
+        fputcsv($stream, ['Kelas', 'Nama', 'NISN', 'Status', 'Email', 'Aktivasi', 'Login terakhir', 'Batas kata sandi awal', 'Catatan'], ';', '"', '');
 
         foreach ($rows as $row) {
             fputcsv($stream, array_map(self::cell(...), [
                 $row['classroom'],
                 $row['name'],
-                $row['nis'],
+                $row['nisn'],
                 AccountControls::stateLabel($row['state']),
                 $row['email'] ?? '',
                 $row['activatedAt']?->format('Y-m-d H:i') ?? '',
@@ -213,7 +213,7 @@ final class ActivationReport
         return [
             'userId' => (int) $user->getKey(),
             'name' => (string) $user->name,
-            'nis' => (string) $student->nis,
+            'nisn' => (string) $student->nisn,
             'classroomId' => $classroom?->getKey(),
             'classroom' => $classroomName,
             'level' => $level,

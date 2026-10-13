@@ -452,7 +452,7 @@ final class ProfilTalenta extends Component
         return view('livewire.siswa.profil-talenta', [
             'identity' => [
                 'name' => $student->user->name,
-                'meta' => trim(($student->classroom?->name ?? '').' · NIS '.$student->nis, ' ·'),
+                'meta' => trim(($student->classroom?->name ?? '').' · NISN '.$student->nisn, ' ·'),
             ],
             'rows' => $applications->map(fn (TalentApplication $a): array => [
                 'id' => (string) $a->getKey(),
