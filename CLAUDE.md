@@ -24,15 +24,15 @@ Roles (spatie/laravel-permission, guard `web`). Kepala Sekolah and Admin are sep
 | `humas` | public relations | publication queue with the data for the flyer Humas designs itself (D-107), *apresiasi* |
 | `admin` | operator | everything: users, import, settings, signature image, replace the Kepsek account (all audited) |
 
-Students log in with NIS or NISN and, once their activation is finished, also with the email they bound
-(D-78); staff with `username` or email. Public pages (no login): prestasi overview, per-*bidang*
+Students log in with their NISN and, once their activation is finished, also with the email they bound
+(D-78, D-137); the NIS is stored only (import matching, the student letter); staff with `username` or email. Public pages (no login): prestasi overview, per-*bidang*
 drill-down, winners per lomba, cumulative ranking; only name + class + verified achievements, gated by
 consent flags (D-16, SECURITY §3m-7).
 
 ## 2. Sources of truth (read before changing behaviour)
 | file | content |
 |---|---|
-| `docs/DECISIONS.md` | decision log D-01…D-136 (D-135…D-136 = §D15, the school's feedback of 2026-10-12 (FS1) package A: three new names, the Admin menu item Database prestasi, the Excel without Kategori, oldest-first pending lomba, red count badges; D-130…D-134 = §D14, the demo and the joint review of 2026-10-11 (RV1): open mode of the local mail allowlist, NIS in full for Kesiswaan and Admin, the Kepala Sekolah may replace the guru pembimbing with the approval and the approval notice names the guru, student letter centred, the replaced guru is told nothing; D-122…D-129 = §D13, the lead's mail and notification test of 2026-10-09 (EM2): publication schedule = reminder only, appreciation start time and picker, "Lainnya" field, lomba change notice, live bell and counts, confirm dialogs, mail templates; §D13 also carries a dated addendum of Brevo facts for D-121; D-121 = §D12, real mail from a local stack: Brevo + allowlist, *sementara*; D-45…D-61 = backlog wave + W4 product choices, *sementara*; D-62…D-65 = security hardening, *final*; D-66…D-77 = Q1 security/performance pass and the lead's follow-up choices; D-78…D-91 = §D6, the lead's choices after the hand test of 2026-10-04; D-92…D-102 = §D7, the rules changed by the fixes after the QA pass of 2026-10-05; D-103…D-108 = §D8, the lead's six requests of 2026-10-06 (wave M3) and the schema change of QA4; D-109…D-112 = §D9, the lead's answers after the retest of M3 on 2026-10-07 (QA5); D-113…D-116 = §D10, the explore round after PR 14 (QA6); D-117…D-120 = §D11, the visual direction v3 "Tinta dan Sampul", lomba covers, the staff copy rule and the school crest as the brand mark (UI3)), U-01…U-06, open questions §F. **Wins over everything.** |
+| `docs/DECISIONS.md` | decision log D-01…D-138 (D-135…D-138 = §D15, the school's feedback of 2026-10-12 (FS1): package A = D-135…D-136: three new names, the Admin menu item Database prestasi, the Excel without Kategori, oldest-first pending lomba, red count badges; package D = D-137…D-138: students log in with the NISN only and see the NISN instead of the NIS, one initial password for every student from config, replaced at the first login, no "Lewati"; D-130…D-134 = §D14, the demo and the joint review of 2026-10-11 (RV1): open mode of the local mail allowlist, NIS in full for Kesiswaan and Admin, the Kepala Sekolah may replace the guru pembimbing with the approval and the approval notice names the guru, student letter centred, the replaced guru is told nothing; D-122…D-129 = §D13, the lead's mail and notification test of 2026-10-09 (EM2): publication schedule = reminder only, appreciation start time and picker, "Lainnya" field, lomba change notice, live bell and counts, confirm dialogs, mail templates; §D13 also carries a dated addendum of Brevo facts for D-121; D-121 = §D12, real mail from a local stack: Brevo + allowlist, *sementara*; D-45…D-61 = backlog wave + W4 product choices, *sementara*; D-62…D-65 = security hardening, *final*; D-66…D-77 = Q1 security/performance pass and the lead's follow-up choices; D-78…D-91 = §D6, the lead's choices after the hand test of 2026-10-04; D-92…D-102 = §D7, the rules changed by the fixes after the QA pass of 2026-10-05; D-103…D-108 = §D8, the lead's six requests of 2026-10-06 (wave M3) and the schema change of QA4; D-109…D-112 = §D9, the lead's answers after the retest of M3 on 2026-10-07 (QA5); D-113…D-116 = §D10, the explore round after PR 14 (QA6); D-117…D-120 = §D11, the visual direction v3 "Tinta dan Sampul", lomba covers, the staff copy rule and the school crest as the brand mark (UI3)), U-01…U-06, open questions §F. **Wins over everything.** |
 | `docs/ARCHITECTURE.md` | binding contract: data model, enums, state machine, domain rules |
 | `docs/SECURITY.md` | threat model, top-10 risks §1, controls §3a–§3m (K1–K12), pre-release checklist §4 |
 | `docs/TALENT-FORM.md` | talent types/branches (seed source for `talent_types`, `talent_branches`) |
@@ -55,9 +55,11 @@ conflict silently: write it in your dev-note and ask the lead (the user).
    photos from them into code, seeders, factories, tests, docs, screenshots or commits. Use only the
    fictional set in DESIGN-SPEC-v2 §5 (e.g. *Nadia Putri Anindya*, NIS 225226201) or random Faker data.
    No school DB dumps in dev/CI (D-20).
-3. **Initial password pattern (D-24) is never displayed or logged**: not in UI, emails, flash
-   messages, exceptions, logs, seeder/test output. Only `App\Domain\Accounts\InitialPassword` builds it,
-   only at import / Admin reset, and only to hash it. Login only compares stored hashes (K6, K12).
+3. **The initial student password (D-138) is never displayed or logged**: not in UI, emails, flash
+   messages, exceptions, logs, audit rows, seeder/test output. Only `App\Domain\Accounts\InitialPassword::make()`
+   returns it (config `sth.initial_student_password`, env `STH_INITIAL_STUDENT_PASSWORD`), only at import and in the
+   local demo seed, and only to hash it; Kesiswaan tells students outside the app. Login only compares stored hashes
+   (K6, K12).
 4. **All user uploads go through `App\Domain\Files`** (allowlist + sniffed MIME + size limit + image
    re-encode/EXIF strip) onto the private `local` disk (`storage/app/private`). Downloads only through
    the policy-checked file controller. Never put user files on the `public` disk; never fetch a
@@ -354,16 +356,21 @@ logs in through `POST /login` and expects a 403/404 on the next GET would see th
   `tu.surat.show?koreksi=<letter>`; "Kirim" asks first once every letter exists (QA6). The student letter stands in
   the middle of the page (D-133: equal left and right margins of 61.14 pt, every block 473 pt wide, in
   `resources/pdf/layout.blade.php`); the guru letter keeps the measures of the school's Word file.
-- **Accounts**: students log in by NIS or NISN (10 digits → NISN) and, once activation is finished, by
-  the bound email (`LoginIdentifier`, D-78); staff by `users.username` or email. First login (D-79):
-  bind email → 6-digit OTP → password; at the password step a student may change it or keep the current
-  one (`CompleteActivation::keepPassword()`, audit `activation.password_kept`), staff must change it.
-  Only the school password of the import may be kept: after an Admin reset the student **must** choose a new
-  password (no "Lewati"; `users.temporary_password_issued_at` is set by `ResetStudentAccount`, cleared by
-  `SetNewPassword`, read by `CompleteActivation::mayKeepPassword()`; D-92).
-  No activation code (D-14). Initial password only via `App\Domain\Accounts\InitialPassword`. New student
+- **Accounts**: students log in by their **NISN** (10 digits) and, once activation is finished, by the bound
+  email (`LoginIdentifier::resolveStudent()`, D-78, D-137); the NIS is only stored (import matching D-81, the
+  student letter). A number that matches only a NIS resolves to nobody: the same answer as an unknown account
+  (`AuthenticateUser::GENERIC_ERROR` "NISN atau kata sandi salah.", dummy hash, HMAC bucket). Staff by
+  `users.username` or email. First login (D-79): bind email → 6-digit OTP → a **new password, required for every
+  account** (D-138: `CompleteActivation::keepPassword()` / `mayKeepPassword()` and the "Lewati" button are deleted,
+  not made always false; `users.temporary_password_issued_at` (D-92) still marks an Admin's temporary password for
+  the wording of step 3 and is cleared by `SetNewPassword`; `activation.password_kept` exists only on rows from
+  before D-138). The initial password of an imported student is the config value `sth.initial_student_password`
+  (D-138), the same for everyone, hashed at import (`InitialPassword::make()`); `matches()` serves K7 detection only
+  and also knows the old birth-date pattern, which survives only in accounts imported before 2026-10-12 (no mass
+  reset, an Admin reset still gives a random temporary password).
+  No activation code (D-14). New student
   passwords: **min 10 characters** and `App\Domain\Accounts\PasswordPolicy` rejects birth date / `sm4g4` /
-  NIS / NISN / name (K5, lead 2026-10-01) and, for every account, the username, the email's local part and common
+  NIS / NISN / name (K5, lead 2026-10-01), the configured initial password (D-138, equality) and, for every account, the username, the email's local part and common
   passwords (built-in word list + alphabet/keyboard/digit runs, refused when fewer than 5 other letters remain:
   `password123` fails; D-94). The hint under a new-password field comes from `SetNewPassword::hint($user)`.
   Sessions (D-93): renew the id with `session()->regenerate(true)` (the old row is deleted) and only **after** the
@@ -377,8 +384,9 @@ logs in through `POST /login` and expects a 403/404 on the next GET would see th
   "Lupa kata sandi" code belongs to the browser that asked (`OtpRequester`), screen limits per account + address
   (`ResetCodeLimits`), at most 20 reset codes a day per account (alert at 20 wrong ones); at most 5 attack alerts an hour; the staff TOTP challenge is per account, ends after 10
   minutes, 10 wrong codes or a password change. Status aktivasi, Kesiswaan › Talenta and Kesiswaan › Database
-  prestasi show the **NIS in full** (D-131: these screens are Kesiswaan and Admin only; the Status aktivasi CSV carries
-  it too; the email stays masked, the NISN is on none of them). Import (Excel/CSV, dry-run first) by Kesiswaan and Admin
+  prestasi show the **NISN in full** (D-131, since D-137 the NISN instead of the NIS: these screens are Kesiswaan and
+  Admin only; the Status aktivasi CSV carries it too, with a hint line; the email stays masked; Profil talenta and the
+  import rows to check show the NISN as well; searches by name or NISN everywhere). Import (Excel/CSV, dry-run first) by Kesiswaan and Admin
   (D-12, D-26). The yearly file may be uploaded again (D-81): a registered student (NIS **and** NISN
   match) moves to the class in the file; only class, school year, archive dates and phone are written,
   never name, birth date, password, email, status or consent. Account Actions live in
@@ -668,7 +676,7 @@ logs in through `POST /login` and expects a 403/404 on the next GET would see th
   refusal the screen could not show under a field is also a warning toast (`Form::refuseWithdrawal()`), and a result
   message is read from what the Action wrote, not from what the dialog predicted (the toast after a withdrawal adds
   "Pendaftaran diteruskan ke Kepala Sekolah."; `RequestReportRevision::leaderCanResend()` decides whether the revision
-  banner may say "… bisa mengirim ulang laporan."). Built this way: `tolak-laporan` (Verifikasi hasil), `batal-undangan` (Daftar lomba), `pindahkan-talenta`
+  banner may say "… bisa mengirim ulang laporan."). Built this way: `tolak-laporan` (Verifikasi hasil), `batal-undangan` (Pendaftaran lomba), `pindahkan-talenta`
   (bulk move), `tutup-lomba` (Kelola lomba), `impor-siswa` (Import siswa; the password page comes before the dialog),
   `tandai-terbit` (Humas). Older confirm steps (`Talenta::reject()`, `Lomba\Index::publishPast()`) still answer 404
   without their ask.
@@ -703,7 +711,7 @@ logs in through `POST /login` and expects a 403/404 on the next GET would see th
 
 ## 8. Decisions you must not undo
 Full log: `docs/DECISIONS.md` (append-only; a changed decision gets a new entry that "menggantikan D-xx").
-- Initial password is **`sm4g4_DDMMYY`** from the birth date (D-24), not DD-MM-YYYY. Never shown in the UI.
+- Initial student password = the configured value (D-138, `sth.initial_student_password`), the same for every student and replaced at the first login; the birth-date pattern `sm4g4_DDMMYY` (D-24) only survives in accounts imported before 2026-10-12 and in K7 detection. Never shown in the UI.
 - Report deadline is **45 days after the final date** (D-25), not 30 days after the lomba.
 - **All** competition uploads, from any role, need Kesiswaan verification before they appear (D-27).
 - **Alumni (archived) cannot log in** (D-29); their achievements stay public/ranked.
@@ -717,7 +725,7 @@ characters (K5); leader cancels while `menunggu_konfirmasi` or `menunggu_kepsek`
 `selesai` without points; guru pembimbing required; decline rule (≥ 2 confirmed remain); personal rank among
 active students, public ranking with alumni (how alumni are shown: D-80); names only with `publish_consent`,
 `noindex` by default; certificate links only with consent + Admin switch; Kepsek replacement after 24 h; max
-3 Admins + `sth:create-admin`; staff login username/email, students NIS/NISN (plus the bound email after
+3 Admins + `sth:create-admin`; staff login username/email, students NISN (D-137; plus the bound email after
 activation, D-78); letters Issue then Send (issue is per letter since D-83), student letter prints NIS;
 `users.id` bigint, domain tables ULID. Also binding: W1-A's schema additions
 (`docs/dev-notes/W1-A.md`) accepted; prod web port **8080**; the OTP flag is **`STH_OTP_TEST_MODE`** (read
@@ -738,7 +746,7 @@ cancelled registration, the Kepala Sekolah about a cancel once it had reached `m
 Lead's choices after the hand test of 2026-10-04, **D-78…D-91** (DECISIONS §D6, `docs/dev-notes/M1.md`), **final**:
 D-78 a student may log in with the bound email once activation is finished; D-79 first login = email → code → password,
 and a student may keep the school password (accepted risk: it stays guessable from the birth date for as long as it is
-kept, K7 cannot see it; staff must change theirs); D-80 public ranking filter Siswa aktif / Alumni / Semua, alumni show
+kept, K7 cannot see it; staff must change theirs; *since D-138 nobody may keep it*); D-80 public ranking filter Siswa aktif / Alumni / Semua, alumni show
 "Alumni" instead of the last class; D-81 the yearly student file updates the class of registered students (the file
 winning over a manual archive date, and leaving students who are missing from the file alone, are *sementara*); D-82 TU
 types the complete letter number, unique per letter type, the Admin format is only an example; D-83 one form and one
@@ -753,7 +761,7 @@ cached config. Do not bring back: "change password first", "NIS already register
 validation, one draft for both letters, the "Tampilkan alumni" tick, a required rejection note in Talenta.
 Fixes after the QA pass of 2026-10-05, **D-92…D-101** (DECISIONS §D7, `docs/dev-notes/M2.md`; the lead: "lakukan sesuai
 saranmu"), **final** unless noted: D-92 after an Admin reset a student must choose a new password (takes back the last
-sentence of D-79; the school password of the import may still be kept); D-93 credential pages are `no-store`, password
+sentence of D-79; the school password of the import may still be kept; *since D-138 for every account*); D-93 credential pages are `no-store`, password
 fields are emptied, and a renewed session destroys the old one, never on a refused attempt; D-94 new passwords refuse
 the username, the email's local part and common passwords; D-95 "Buka ulang" never shortens a deadline, its reason and
 a lomba rejection need 10 characters (the lomba half was taken back by D-103); D-96 the talent note for the
@@ -878,7 +886,7 @@ chose; a guru's name or any other name in the audit row `registration.mentor_cha
 that answers 404 without its question, or a dialog that promises a notice to somebody who gets none; a student letter
 that stands at the left margin; a Livewire view whose root element sits inside or behind a directive.
 
-The school's feedback of 2026-10-12 (FS1), package A, **D-135…D-136** (DECISIONS §D15, `docs/dev-notes/FS1.md`): the panel
+The school's feedback of 2026-10-12 (FS1), packages A and D, **D-135…D-138** (DECISIONS §D15, `docs/dev-notes/FS1.md`); package A: the panel
 on Detail lomba is "Pendaftaran lomba"; the lomba proposal queue is "Verifikasi usulan lomba" everywhere (Kesiswaan menu, its
 tab, the Beranda tile and card, the stat tile, the proposal mail subject and button, the Kepala Sekolah dashboard sentence); the
 talent page is "Database talenta siswa" (menu, `#[Title]`, Excel title row, notification action); Admin has "Database prestasi"
@@ -889,9 +897,18 @@ are red `#B42318` with white text, while `.cnt` stays gray and the unread row ma
 label wraps to two lines. Routes, URLs and menu / badge keys did not change. Do not bring back: "Daftar lomba" as the panel
 title, "Usulan lomba" / "Antrean verifikasi" / "Upload lomba" for the queue, "Talenta siswa" as the page name, a Kategori
 column in the Database prestasi sheet, navy count badges, and a `truncate`d sidebar label.
+Package D, **D-137…D-138**: students log in with the NISN (or the bound email after activation); the NIS is only stored; the
+login field is "NISN atau email" and the one failure answer is "NISN atau kata sandi salah."; the NISN replaces the NIS on
+Status aktivasi + CSV (with a hint line), Database talenta siswa, Database prestasi + Excel, Profil talenta and the import rows
+to check; searches take a name or a NISN; every student gets the same initial password (config `sth.initial_student_password`,
+env `STH_INITIAL_STUDENT_PASSWORD`), refused as a new password, and must replace it at the first login (no "Lewati"). Do not
+bring back: login by NIS, "Lewati" or any other way to keep a password at activation, an initial password built from the birth
+date or shown anywhere, the NIS instead of the NISN on Status aktivasi + CSV, Database talenta siswa, Database prestasi + Excel,
+Profil talenta and the import rows to check, the import error "NIS sudah dipakai sebagai NISN siswa lain", a digit identifier
+other than a 10-digit NISN written to the security log as typed.
 
 Known stale text (do not "fix" code to match it): `docs/DEPLOY.md` §9 path A (Google Workspace relay) is not an option
-for the school (lead, 2026-10-08) and §9 has no Brevo path yet; SECURITY.md §0/§3a still say `sm4g4_DD-MM-YYYY`;
+for the school (lead, 2026-10-08) and §9 has no Brevo path yet;
 DESIGN-SPEC-v2 §1 and the Admin-Pengaturan mockup still show 30 days (and the mockup's WICE deadline
 24 Okt is now **8 Nov 2026**); SECURITY/DECISIONS call the OTP flag `STH_OTP_DEV_BYPASS`; SECURITY says
 port 8081; SECURITY §3e's vhost sample has inline `#` comments Apache rejects (use `docker/apache/*.conf`);
@@ -931,6 +948,12 @@ row "Masking di list" (§3i) and the Kepala Sekolah cell of the matrix row "Pend
 as history next to a dated RV1 note; D-35's and D-84's old status lines (each carries a dated pointer to D-132 /
 D-133); notification rows and mails of approvals from before 2026-10-11 (no guru line); letter PDFs issued before that
 day (the student letter at the left margin; the file is kept as issued).
+Stale since FS1-D (D-137…D-138): the mockup boards `Masuk` ("Pakai NIS atau NISN", the field "Ketik NIS atau NISN"), `Aktivasi`
+(a skip choice), `Admin-Import-Siswa`, `Admin-Pengaturan` and `Detail-Lomba` ("Cari nama, NIS, atau NISN" and "Cari NIS atau NISN"; mockups are design
+history and are not edited), `DESIGN-SPEC-v2.md` §1 ("search by nama/NIS/NISN"); the dev-notes that describe `keepPassword()` /
+`mayKeepPassword()` or the skip button (`M1-B.md`, `M2-A.md`, `M2.md`, `M1.md`); the old texts of D-14, D-24, D-42, D-78,
+D-79, D-92 and D-131 in DECISIONS and of K1, K4, K5, K6, K7, K11 and K12 in SECURITY §3a, each kept as history next to a dated 12 Okt 2026 note;
+students imported before 2026-10-12 keep the old birth-date hash until an Admin resets them.
 Stale since EM2 (D-122…D-129): the mockup boards `Humas-Publikasi`, `Kesiswaan-Verifikasi-Hasil` and
 `Kesiswaan-Kelola-Lomba` know none of it (no "Lewat jadwal", no start time, no picker, no confirm dialog, no
 "Lainnya" field; mockups are design history and are not edited); D-47's sentence "mengubah status ke `dipublikasikan`
@@ -959,12 +982,12 @@ From DECISIONS §F and SECURITY §5: parental consent for names, photos,
 certificates on public pages (U-04); go-live date + team hours; Ubuntu Pro (U-01); Docker static
 binaries (U-02); mandatory staff TOTP + break-glass (U-03); letter QR (U-05); WordPress isolation (U-06);
 server/DNS admins; Kepsek consent for the signature image, TTE?; hijack recovery owner + risk-acceptance
-signature (D-14, which must now also name the D-79 risk); per-class activation schedule; SMTP provider;
+signature (D-14, which must now also name the D-79 and D-138 risks); per-class activation schedule; SMTP provider;
 off-site backups + key holder; DPO.
 Questions for the lead from M1 (marked *sementara* in DECISIONS §D6; backlog #45, #49–#51): does the yearly
 student file win over a manual archive date, and what happens to a registered student who is missing from
 the file (D-81); may Kesiswaan restore a rejected talent choice without a student's request (D-86); the
-flag and reminder for students who kept the school password (D-79).
+flag and reminder for students who kept the school password (D-79; moot for new activations since D-138).
 Questions for the lead from M2 (marked *sementara* in DECISIONS §D7; backlog #57, #58): should a saved draft
 note go out with the quick actions and bulk moves in Talenta (D-96); may students open the guru letter, which
 the QA summary asked the lead to decide (D-99: today they may not); should the other reason fields (reject a
@@ -1016,7 +1039,7 @@ the letters exist would also need new letters); ~~should the guru who was replac
 should the guru be told when a student chooses them, before any decision (today a guru first hears of a
 registration when it is decided or cancelled, while a waiting registration already stands in that guru's Siswa
 binaan list); should a rejection or a cancel still reach the guru the student chose (D-77: today yes, although that
-guru was never told of being chosen, the reason the lead gave for D-134); the wording of the two notices. NIS (D-131): should the NISN be
+guru was never told of being chosen, the reason the lead gave for D-134); the wording of the two notices. NIS (D-131; the NISN question is settled by D-137, which shows the NISN instead of the NIS): should the NISN be
 shown or added to the CSV, and should the CSV carry the full email (the lead named the student number only); a NIS
 with a leading zero would lose it when the CSV is opened in Excel (none exists in the school's numbering as far as
 the demo data shows). Demo (D-130): keep the open mode once a real provider and sender exist, and a daily quota guard
@@ -1030,7 +1053,7 @@ IPs, which breaks the per-IP login/OTP limits). The noreply mailbox would then b
 SMTP host must not be `mail.<domain>` (proxied) and its hourly send limit needs asking.
 
 ## 10. Status
-Last updated: 2026-10-12 (waves 1–2 done, W3-A integration pass, backlog wave B1–B6, W4 integration, D1 docs sync, CI green on GitHub, Q1 end-to-end/security/performance pass, PERF1 by S, M1 = the lead's 18 hand-test changes, M2 = fixes after the QA pass, QA4 by S, M3 = the lead's six requests of 2026-10-06, QA5 = fixes after the retest of M3, QA6 = explore round after PR 14, UI3 = visual direction v3 and the lead's review of it, QA7 = explore round after UI3, QA8 = explore round after PR 17, EM1 = real mail from a local stack, QA9 = explore round after EM1, QA10 = explore round after QA9, EM2 = fixes after the lead's mail and notification test of 2026-10-09, RV1 = the demo and the joint review of 2026-10-11, FS1-A = school feedback package A). Update this section whenever a milestone moves.
+Last updated: 2026-10-13 (waves 1–2 done, W3-A integration pass, backlog wave B1–B6, W4 integration, D1 docs sync, CI green on GitHub, Q1 end-to-end/security/performance pass, PERF1 by S, M1 = the lead's 18 hand-test changes, M2 = fixes after the QA pass, QA4 by S, M3 = the lead's six requests of 2026-10-06, QA5 = fixes after the retest of M3, QA6 = explore round after PR 14, UI3 = visual direction v3 and the lead's review of it, QA7 = explore round after UI3, QA8 = explore round after PR 17, EM1 = real mail from a local stack, QA9 = explore round after EM1, QA10 = explore round after QA9, EM2 = fixes after the lead's mail and notification test of 2026-10-09, RV1 = the demo and the joint review of 2026-10-11, FS1-A = school feedback package A, FS1-D = school feedback package D). Update this section whenever a milestone moves.
 EM1 2026-10-08 (`docs/dev-notes/EM1.md`, D-121, commit `4766b56` on `feat/email-brevo-dev`; merged into `main` together with QA9 and QA10 by PR 19, merge commit `a2d21e1` of 2026-10-09): the lead chose Brevo for development with a temporary Gmail sender. Built: the mailer `allowlist` (listed addresses → the real provider, everything else → Mailpit, local only), two boot guards (no allowlist outside local; in local no default mailer that delivers every mail), `sth:mail-test` says which way an address goes, a commented block in `.env.example`. The lead's first real mail through Brevo arrived (sender shown as `…@<id>.brevosend.com`, Gmail shows "Berhenti berlangganan"). No migration, no notification changed yet. Suite numbers: TEST-RESULTS in `docs/dev-notes/EM1.md`. Open: backlog #78.
 M1 2026-10-05 (`docs/dev-notes/M1.md`, plain summary for the team in `catatan.md`; branch `feat/ui-uji-manual-m1`): full suite `--parallel --processes=4` → **1767 passed (8945 assertions)**, exit 0 (680 s); `pint --test` clean (610 files); `npm run build` OK; the four M1 migrations ran on the local MySQL. Dev page times after `reload.bat` + warm-up, all seven roles: 150–540 ms per menu, login 0.75–0.93 s (`catatan.md` §2). Not re-run after M1: the email scenario and the Playwright smoke (backlog).
 M2 2026-10-06 (`docs/dev-notes/M2.md` + `M2-A`…`M2-C`, D-92…D-101, plain summary in `catatan.md` §6; same branch): fixes for the 12 most important findings of the QA pass of 2026-10-05 (64 findings; the rest is backlog #57–#68) and the Trivy fix in `docker/Dockerfile.prod`; two migrations run on the local MySQL; suite numbers: TEST-RESULTS in `docs/dev-notes/M2.md`. PR 9 (M1 + M2) merged into `main` on 2026-10-06 (`b4b6f77`).
@@ -1143,8 +1166,9 @@ workspace). Built: the panel "Pendaftaran lomba", the queue "Verifikasi usulan l
 subject and button, Kepala Sekolah dashboard), "Database talenta siswa", the Database prestasi Excel without Kategori, the Admin menu item
 Database prestasi, red count badges (sidebar and bell), pending lomba oldest first in the Kelola lomba catalog, a sidebar label that
 wraps instead of being cut. No migration. Full suite `--parallel --processes=4` → **3466 passed, 1 skipped (21422 assertions)**, exit 0
-(1889 s); `pint --test` clean (763 files); `npm run build` OK. Browser check as Kesiswaan, Kepala Sekolah and Admin at 1366 and 390 px
-(read from the page, the pane was hidden); the Siswa screens (panel title, Bantuan) and the email scenario were not run in a browser.
+(1889 s); `pint --test` clean (763 files); `npm run build` OK. Browser check (read from the page, the pane was hidden): Kesiswaan at 1366 and 390 px, Kepala Sekolah and Admin at 1366 px only.
+Not checked or not run: the Siswa screens (panel title, Bantuan), the menu-tour positions (`TurMenu`), the Playwright smoke and the composer audit.
+FS1-D 2026-10-12 (`docs/dev-notes/FS1.md`, D-137…D-138, branch `feat/fs1-feedback-sekolah`, not pushed): package D of the school's feedback (accounts). Built: students log in with the NISN only (or the bound email after activation; the NIS is stored only, a NIS gets the generic answer, now "NISN atau kata sandi salah."); the NISN replaces the NIS on Status aktivasi + CSV (with a hint line), Database talenta siswa, Database prestasi + Excel, Profil talenta and the import rows to check; searches take a name or a NISN; the import no longer cross-checks NIS against NISN; every student gets one initial password from config (`sth.initial_student_password`, env `STH_INITIAL_STUDENT_PASSWORD`), kept out of logs, refused as a new password, and replaced at the first login (activation has no "Lewati" any more). No migration. Full suite `--parallel --processes=4` → **3486 passed, 1 skipped, 1 failed (21371 assertions)**, 1832 s: the one failure was a test cleanup of this package (a constant from another test file), fixed in `9439eaf` and green alone; the suite was not run a second time. `pint --test` clean (765 files); `npm run build` OK. Browser check as Kesiswaan and Admin at the pane's own width (read from the page): login page, forgot-password page, the generic error, Status aktivasi, Database talenta siswa, Database prestasi, the Admin search placeholder. Not browser-checked (feature tests only): every student screen, a phone width, the downloaded Excel/CSV, the import dialog. Not run: the email scenario, the Playwright smoke, `composer audit`. Open: the lead confirms the new generic error text, the Kepala Sekolah signs the D-138 risk, no tool moves old accounts to the new initial password, a trim of `STH_INITIAL_STUDENT_PASSWORD` (FS1.md).
 
 | area | owner | state (details in `docs/dev-notes/<ID>.md`) |
 |---|---|---|
@@ -1238,7 +1262,7 @@ QA4 and M3 (2026-10-06) closed or changed parts of #39, #46, #55, #57, #63, #65,
 | 42 | Staff 2FA follow-ups: hourly ceiling for confirm-password (D-67 is 5 per minute), staff can still disable their own TOTP after confirming the password (audited; `staff.2fa` forces setup again) | Q1 | user |
 | 43 | `PdfScanner` (D-70): PDFs made on the lead's laptop with Word, Excel, PowerPoint, "Microsoft Print to PDF", Edge, Chrome and photo/scan images are accepted, hostile and oversized ones refused (19 files; results and a rerun script are in `uji-pdf/` next to the repo, not in git). Still to try: Canva downloads, the school's copier/scanner, phone scan apps, organizers' original certificates | Q1 | I |
 | 44 | A staff account reset by an Admin only gets account notices until its owner verifies the email again (D-68): add this to PANDUAN-PENGGUNA (Admin). Dev stack: after a Docker restart `queue`/`scheduler` come up before MySQL and fill `laravel.log` with connection errors until `start.bat` runs | Q1 | I |
-| 45 | Counterweight for D-79: flag "masih pakai kata sandi dari sekolah" in Status aktivasi (active student with `password_changed_at` null, or the audit event `activation.password_kept`) + a reminder to change it; a pending row can now show a masked email (bound, password step open). Add the D-79 risk to the D-14 risk-acceptance form. Since D-92 `users.temporary_password_issued_at` tells an Admin's temporary password from the school password, so the flag can name only the kept school passwords | M1-B, M2-A | user |
+| 45 | *(12 Okt 2026, D-138: no new activation keeps the school password, so the flag only matters for accounts activated before; the risk-acceptance form also needs the D-138 risk.)* Counterweight for D-79: flag "masih pakai kata sandi dari sekolah" in Status aktivasi (active student with `password_changed_at` null, or the audit event `activation.password_kept`) + a reminder to change it; a pending row can now show a masked email (bound, password step open). Add the D-79 risk to the D-14 risk-acceptance form. Since D-92 `users.temporary_password_issued_at` tells an Admin's temporary password from the school password, so the flag can name only the kept school passwords | M1-B, M2-A | user |
 | 46 | ~~Re-run `tests/E2E/support/email-scenario.php` and the Playwright smoke after M1~~ (done 2026-10-05, see above; not re-run with the M2 code unless TEST-RESULTS in `docs/dev-notes/M2.md` says so). Still open: scenario steps 9d/9e: talent review request (mail to every Kesiswaan) and restore (mail to the student), a step that deletes an appreciation event (mail to the scheduled students), and a step for `ReleaseAppreciation` (mail "Jadwal apresiasi berubah" to the student, D-97); the restore step could pass a target stage (D-104); since QA5 also the guru pembimbing mails of D-110 (report decisions, appreciation; for the decisions and "Masukkan" see the EM2 sentences below); since QA6 the mail "Undangan tim dibatalkan" (D-115). Neither the scenario nor the smoke was re-run with the M3 code by the M3 agents. EM2 edited the scenario for its changes and ran it on 2026-10-10 (123 mails, 0 missing, 0 unexpected, 0 leaks, 0 failed jobs with `STH_OTP_TEST_MODE=true` on the isolated project; with a developer `.env` that has real OTP codes the two work mails of the unverified second Humas account are reported missing, so pin that flag on the E2E `app` service): 8b (`CreateAppreciationEvent` with a time), 8c (only the Humas reminder at the scheduled time), new 8d (the row is still `terjadwal`, then `PublishPublication` → the student's mail), 10j (greeting "Yth. …"), 11a (`RemindDuePublications`); its template check and leak scan depend on the new mail template. The review of EM2 added the four guru pembimbing mails the expected lists had been missing since D-110 (7b "Laporan binaan perlu revisi: …", 7d "Laporan binaan diverifikasi: …", 7f "Laporan binaan ditolak: …", 8b "Binaan masuk daftar apresiasi"), written by reading the notification classes and confirmed by that run. The guru mails for `ReleaseAppreciation` and `DeleteAppreciationEvent` still have no step. Still missing since EM2: a step that edits a published lomba with a running registration (D-126). When it is written: after 4c and before 6a; change the place only (a new batas daftar is told only to `menunggu_konfirmasi`); expect one "Info lomba berubah" per member of **every** registration on that lomba and one "Info lomba binaan berubah" to their guru, no lomba address in either; confirm the recipients with a real run. Since RV1 (D-132) also missing: a step that approves with another guru than the student chose (the mails are named in #82; seen once by hand on the isolated project on 2026-10-11) | M1, M1-D, M1-E, M2-B, M3-A, EM2, RV1 | I |
 | 47 | Optional sidebar badge on "Talenta siswa" for open review requests (`TalentApplication::query()->reviewRequested()->count()`): since D-100 a badge key in `Navigation` + one line in `NavigationServiceProvider::count()` | M1-D, M2-C | S |
 | 48 | `<x-sth.modal size="xl">` (≈ 960 px) so the Status aktivasi class popup can show the email as its own column (today `lg`, 760 px) | M1-E | S |
@@ -1249,7 +1273,7 @@ QA4 and M3 (2026-10-06) closed or changed parts of #39, #46, #55, #57, #63, #65,
 | 53 | ~~The TU letter screen (`tu.surat.show`) overflows sideways below about 480 px~~ (no longer reproduces at 390 px, QA5 retest) | M1 | S |
 | 54 | Print both letters on a real printer ("Cetak" was only opened on screen) and compare them with the school's paper; then confirm `resources/pdf/assets/**` is in the production image (read only so far) | M1-A | I |
 | 55 | ~~Update `panduan-uji-manual-sth.html` (outside the repo, next to it) to the M1 screens~~ (rewritten on 2026-10-06). Still to do: check it against the M3 screens (optional rejection reason, restore dialog, download dialog, preview popup, "Data untuk flyer"); the docs pass of M3 did not open it | M1, M3 | user |
-| 56 | Small leftovers of the M1 notes: old note text "mengganti kata sandi dan menghubungkan email" in `resources/views/dev/{auth,components}.blade.php` and the example in `components/sth/alert.blade.php`; the generic login error still says "NIS/NISN atau kata sandi salah." although it now also answers an email (`lang/id/auth.php`, `lang/id.json`, `LangIdTest`); `AppreciationEventFactory::completed()` state; demo letters without `schedule_date` (~~invitation number and date~~: done QA5; `basis_from` is filled); no bulk "Pulihkan" and no note for the student in the bulk "Pindahkan ke …"; the guru pembina is not told when a talent choice is rejected or restored; Kepala Sekolah "Surat atas nama saya" only downloads (no "Cetak"); `<x-sth.icon>` has no printer icon ("Cetak" uses `external`) | M1-A…M1-E | S + user |
+| 56 | Small leftovers of the M1 notes: old note text "mengganti kata sandi dan menghubungkan email" in `resources/views/dev/{auth,components}.blade.php` and the example in `components/sth/alert.blade.php`; ~~the generic login error still says "NIS/NISN atau kata sandi salah." although it now also answers an email (`lang/id/auth.php`, `lang/id.json`, `LangIdTest`)~~ (done FS1-D, D-137: "NISN atau kata sandi salah."); `AppreciationEventFactory::completed()` state; demo letters without `schedule_date` (~~invitation number and date~~: done QA5; `basis_from` is filled); no bulk "Pulihkan" and no note for the student in the bulk "Pindahkan ke …"; the guru pembina is not told when a talent choice is rejected or restored; Kepala Sekolah "Surat atas nama saya" only downloads (no "Cetak"); `<x-sth.icon>` has no printer icon ("Cetak" uses `external`) | M1-A…M1-E | S + user |
 | 57 | Reason fields (Q1-18, rest): "Buka ulang" needs 10 characters (D-95); the lomba rejection is no longer in this list (its reason is optional since D-103, by the lead's request); reject a registration (Kepala Sekolah), reject / ask a revision of a report and "Buka pembekuan" (`UnfreezeAccount`) still accept two letters. Same minimum there needs the lead's yes | QA, M2-B, M3 | user |
 | 58 | Confirm the two *sementara* points of §D7: quick actions and bulk moves in Talenta send a saved draft note (D-96); students cannot open the guru letter, which the QA summary asked the lead to decide (D-99) | M2-B, M2-C | user |
 | 59 | Browser check of M2, done on 2026-10-06 in Chrome (`hasil-uji/qa-3-cek-perbaikan.md`): Back after Keluar (D-102), activation after an Admin reset, the dialogs `tidak-lolos-talenta` and "Lepas dari acara", 403 / 404, `GET /logout`, the redirect after login. Still not run: the Back scenario in Firefox and Safari, the dialog `lomba-tanggal-lewat` (publishing with past dates), "Tambah prestasi" for an achievement that is already on an event, the error pages 419 / 429 / 500 / 503. On a production-like stack (`APP_DEBUG=false`, https, real OTP): repeat Q2-03 (405 size and time), check the `secure` cookie + HSTS and that links in mails use the configured host, not the request's (Q2-08, suspected) | M2, QA | I |

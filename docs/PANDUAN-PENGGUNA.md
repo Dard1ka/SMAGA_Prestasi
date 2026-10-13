@@ -12,8 +12,8 @@ Isi: [Semua pengguna](#1-semua-pengguna) · [Siswa](#2-siswa) · [Guru pembimbin
 
 ## 1. Semua pengguna
 
-**Masuk** (tombol **Masuk** di kanan atas halaman publik). Isi kolom **NIS, NISN, atau email** dan kata sandi.
-- Siswa: isi **NIS atau NISN**. Kalau sudah selesai aktivasi, kamu juga bisa masuk pakai **email** yang kamu hubungkan.
+**Masuk** (tombol **Masuk** di kanan atas halaman publik). Isi kolom **NISN atau email** dan kata sandi.
+- Siswa: isi **NISN** (10 angka; NIS tidak dipakai untuk masuk). Kalau sudah selesai aktivasi, kamu juga bisa masuk pakai **email** yang kamu hubungkan.
 - Guru dan staf: isi **username atau email**.
 - Lupa kata sandi: **Lupa kata sandi?** → isi akun → masukkan kode 6 angka dari email → buat kata sandi baru.
   Belum pernah menghubungkan email? Minta reset ke Admin.
@@ -22,14 +22,10 @@ Isi: [Semua pengguna](#1-semua-pengguna) · [Siswa](#2-siswa) · [Guru pembimbin
 1. **Hubungkan email**: isi email yang aktif (email pribadi, bukan email teman) → **Kirim kode**.
 2. **Kode verifikasi**: masukkan kode 6 angka yang dikirim ke email itu → **Verifikasi**. Kode belum datang? Tunggu
    sebentar lalu **Kirim ulang kode**. Salah ketik email? **Ganti email**.
-3. **Kata sandi**: pilih salah satu.
-   - **Ganti kata sandi** (disarankan): ikuti aturan kata sandi di bawah.
-   - **Lewati, pakai kata sandi sekarang**: kamu tetap memakai kata sandi dari sekolah. Kata sandi itu mudah ditebak
-     orang yang tahu tanggal lahirmu, jadi sebaiknya segera ganti di **Keamanan akun**.
-   - **Akunmu baru direset Admin?** Tombol "Lewati" tidak ada. Kamu **wajib membuat kata sandi baru**, karena kata
-     sandi sementara dari Admin tidak boleh dipakai terus.
+3. **Buat kata sandi baru**: wajib, kata sandi dari sekolah tidak bisa dipakai terus dan tidak diterima sebagai kata
+   sandi baru. Ikuti aturan kata sandi di bawah. Hal yang sama berlaku bila akunmu baru direset Admin.
 
-Setelah muncul "Akun sudah aktif", tekan **Mulai**. Lain kali kamu bisa masuk pakai NIS, NISN, atau email itu.
+Setelah muncul "Akun sudah aktif", tekan **Mulai**. Lain kali kamu bisa masuk pakai NISN atau email itu.
 
 **Masuk pertama kali (guru dan staf)**: langkahnya sama (email → kode → kata sandi), tetapi kata sandi sementara dari
 Admin **wajib** diganti. Sesudah itu pasang verifikasi dua langkah: pasang aplikasi authenticator di HP (mis. Google
@@ -40,7 +36,7 @@ Verifikasi dua langkah hanya untuk guru dan staf; akun siswa tidak memakainya.
 di bawah kolom "Kata sandi baru".
 - Siswa: minimal 10 karakter, ada huruf dan angka. Guru dan staf: ikuti panjang dan jenis karakter yang tertulis di
   bawah kolom.
-- Jangan memakai data dirimu: tanggal lahir, NIS, NISN, nama, nama pengguna, atau bagian depan emailmu (sebelum "@").
+- Jangan memakai kata sandi dari sekolah atau data dirimu: tanggal lahir, NIS, NISN, nama, nama pengguna, atau bagian depan emailmu (sebelum "@").
 - Jangan memakai kata sandi yang mudah ditebak, mis. `password123`, `qwerty2026`, `admin12345`, atau urutan seperti
   `abcd` dan `12345`. Pesannya: "Kata sandi ini terlalu mudah ditebak." Menambah angka atau simbol saja tidak cukup;
   tambahkan kata lain yang tidak umum.
@@ -80,7 +76,7 @@ Hapus isinya, daftar kembali penuh. Dari halaman lain, ketik lalu tekan Enter un
   - **Perangkat yang masuk**: **Keluarkan** perangkat yang tidak kamu kenal, atau **Keluarkan semua perangkat lain**.
   - Guru dan staf: **Pasang 2FA** / **Kelola 2FA** (verifikasi dua langkah).
 - **Keluar**: selalu keluar setelah memakai komputer bersama. Halaman masuk tidak disimpan browser dan kolom kata
-  sandinya dikosongkan, jadi tombol Back tidak memunculkan lagi NIS dan kata sandi orang sebelumnya. Keluar hanya
+  sandinya dikosongkan, jadi tombol Back tidak memunculkan lagi NISN dan kata sandi orang sebelumnya. Keluar hanya
   lewat menu ini; mengetik `/logout` di kolom alamat tidak mengeluarkan akun (kamu hanya dibawa ke beranda).
 
 **Halaman error**: bila alamat salah atau halaman itu bukan untuk akunmu, muncul halaman berisi kode (mis. "Kode 404"),
@@ -119,7 +115,7 @@ Jangan pernah membagikan kata sandi atau kode email kepada siapa pun, termasuk g
 1. **Cari lomba** → ketik nama lomba di kotak cari (daftar langsung tersaring; hapus ketikan untuk melihat semua lagi)
    → pilih lomba → baca detail, juknis, dan tanggal penting.
 2. Isi panel **Pendaftaran lomba**: pilih **individu** atau **tim**, lalu pilih **guru pembimbing** (wajib).
-3. Tim: cari anggota dengan nama atau NIS, lalu kirim undangan. Pendaftaran baru maju setelah **semua anggota
+3. Tim: cari anggota dengan nama atau NISN, lalu kirim undangan. Pendaftaran baru maju setelah **semua anggota
    konfirmasi** lewat akun masing-masing.
 4. Pantau di **Lomba saya**: jalur 6 fase *Daftar → Persetujuan → Surat tugas → Lomba → Laporan hasil → Poin & apresiasi*.
 
@@ -306,8 +302,8 @@ memuat ulang halaman. Angka itu tampil di semua halaman, juga di **Status aktiva
      mengirim ulang laporan.") hanya tertulis bila akun ketua bisa masuk, karena hanya ketua yang bisa mengirim ulang
      laporan. Kalau kalimat itu tidak ada, laporan belum bisa dikirim ulang.
 
-**Database talenta siswa**: saring per tahap/jenis/kelas, lalu klik ikon mata untuk membuka satu pilihan. NIS siswa tampil
-lengkap di tabel, di panel, dan di file Excel-nya.
+**Database talenta siswa**: saring per tahap/jenis/kelas, lalu klik ikon mata untuk membuka satu pilihan. NISN siswa tampil
+lengkap di tabel, di panel, dan di file Excel-nya; cari dengan nama atau NISN.
 - Ada **dua catatan**, keduanya boleh kosong:
   - **Catatan untuk guru pembina**: hanya dibaca guru pembina dan Kesiswaan. Tersimpan dengan **Simpan**.
   - **Catatan untuk siswa**: dibaca siswa di notifikasi dan Profil talenta. Terkirim saat Anda menekan **Lolos ke …**
@@ -352,8 +348,8 @@ lengkap di tabel, di panel, dan di file Excel-nya.
 **Database prestasi**: semua prestasi terverifikasi dengan filter → **Download Excel** (tercatat di log audit). Klik
 nama sertifikat di rincian sebuah prestasi untuk melihatnya di jendela preview (lihat §1). Jenis penyelenggara yang
 diisi manual tampil sebagai "Lainnya (Sanggar seni)", di rincian dan di kolom "Jenis penyelenggara" file Excel; filter
-**Jenis penyelenggara: Lainnya** tetap memuat semuanya. NIS siswa tampil lengkap di tabel dan di rincian, seperti di
-file Excel-nya. File Excel tidak memuat kolom Kategori; kategori tetap terlihat di rincian.
+**Jenis penyelenggara: Lainnya** tetap memuat semuanya. NISN siswa tampil lengkap di tabel dan di rincian, seperti di
+file Excel-nya; cari dengan nama atau NISN. File Excel tidak memuat kolom Kategori; kategori tetap terlihat di rincian.
 
 **Import siswa** (dipakai saat awal dan **diulang tiap tahun ajaran** agar kelas selalu benar)
 1. **Import siswa** → **Download template Excel** → isi Nama lengkap, NIS, NISN, Tanggal lahir, **Kelas** (kelas
@@ -381,8 +377,10 @@ file Excel-nya. File Excel tidak memuat kolom Kategori; kategori tetap terlihat 
 **Status aktivasi** (menu **Data**, juga lewat notifikasi peringatan): siapa yang sudah/belum aktivasi per kelas.
 - Tekan **Lihat** di baris kelas: daftar siswa kelas itu terbuka dalam **popup** (status, email tersamar, aktivasi,
   login terakhir; 40 baris per langkah, **Tampilkan lebih banyak**). Tutup dengan **Tutup**.
-- **NIS tampil lengkap** di daftar siswa, di popup kelas, dan di file **Download CSV**, supaya mudah dicocokkan dengan
-  daftar kelas. Email tetap ditampilkan tersamar (mis. `n•••@gmail.com`), juga di CSV. NISN tidak ditampilkan di sini.
+- **NISN tampil lengkap** di daftar siswa, di popup kelas, dan di file **Download CSV**, supaya mudah dicocokkan dengan
+  daftar kelas. Email tetap ditampilkan tersamar (mis. `n•••@gmail.com`), juga di CSV. NIS tidak ditampilkan di sini.
+  Di dekat tombol **Download CSV** ada petunjuk singkat untuk membuka file CSV di Excel (agar angka NISN tidak kehilangan
+  nol di depan).
 - **Buka ulang** memberi siswa waktu sampai paling sedikit 72 jam dari sekarang (alasan wajib, minimal 10 karakter).
   Batas yang masih lebih lama **tidak pernah dipendekkan**. Tombolnya hanya ada bila memang perlu: batas sudah lewat,
   akun dibekukan, atau sisa waktunya kurang dari 72 jam. Sebelum Anda menekan, dialognya menulis hasilnya ("Dibuka
@@ -557,8 +555,10 @@ aktivitas Admin terbaru.
 - **Reset kata sandi & email** (siswa lupa atau akun diambil alih): cek identitas siswa tatap muka dulu. Sistem
   membuat **kata sandi sementara acak, berlaku 72 jam, ditampilkan sekali** → berikan langsung ke siswa (jangan difoto
   atau dikirim lewat chat) → **Sudah saya berikan**. Email dilepas, semua perangkat dikeluarkan, siswa mengulang aktivasi
-  (email → kode → kata sandi) dan **wajib membuat kata sandi baru**: untuk akun yang direset tidak ada tombol "Lewati",
-  dan kata sandi sementara itu tidak bisa dipakai terus.
+  (email → kode → kata sandi) dan **wajib membuat kata sandi baru**: tidak ada tombol "Lewati" untuk siapa pun,
+  dan kata sandi sementara itu tidak bisa dipakai terus. Siswa baru dari import memakai satu kata sandi awal dari sekolah
+  (nilainya diberi tahu Kesiswaan di luar aplikasi, tidak tampil di layar); akun yang di-import sebelum 12 Okt 2026 tetap
+  memakai kata sandi lamanya sampai direset.
   Akun yang **dibekukan** tidak menerima email apa pun dan tidak bisa memakai "Lupa kata sandi"; reset inilah jalannya.
 - **Reset akun** staf: Anda mengetik kata sandi sementara; email diverifikasi ulang dan 2FA dipasang ulang saat login
   berikutnya. Sampai pemiliknya memverifikasi email lagi, ia hanya menerima email tentang akunnya, **bukan email
@@ -604,7 +604,7 @@ tahu, tanpa nama).
 | Masalah | Yang dilakukan |
 |---|---|
 | Kode email tidak datang | Tunggu 1 menit, cek folder spam, lalu **Kirim ulang kode**. Masih gagal: hubungi Admin. |
-| Email tidak bisa dipakai untuk masuk | Email baru bisa dipakai setelah aktivasi selesai (sampai langkah kata sandi). Masuk dulu pakai NIS atau NISN. |
+| Email tidak bisa dipakai untuk masuk | Email baru bisa dipakai setelah aktivasi selesai (sampai langkah kata sandi). Masuk dulu pakai NISN. |
 | "Akun dibekukan" | Hubungi Kesiswaan atau Admin (bawa kartu pelajar/identitas). Selama dibekukan, akun tidak menerima email dan "Lupa kata sandi" tidak mengirim kode. |
 | Lomba tidak ada di katalog | Mungkin belum diverifikasi atau pendaftarannya sudah tutup. Pakai **Usulkan lomba**. |
 | Anggota tim belum bisa diundang | Anggota harus punya akun aktif dan belum terdaftar di lomba yang sama. |
@@ -636,7 +636,7 @@ tahu, tanpa nama).
 | Kesiswaan: "Batas aktivasi siswa ini masih sampai … Belum perlu dibuka ulang." | Waktu siswa itu masih lebih dari 72 jam, jadi tidak ada yang perlu dibuka. |
 | "Kata sandi ini terlalu mudah ditebak." | Jangan memakai kata umum seperti password, admin, atau qwerty, dan urutan seperti 12345. Lihat aturan kata sandi di §1. |
 | "Jangan memakai nama pengguna." / "Jangan memakai email sendiri." | Kata sandi tidak boleh berisi username atau bagian depan emailmu. |
-| Aktivasi setelah direset Admin: tombol "Lewati" tidak ada | Memang begitu: kata sandi sementara dari Admin wajib diganti dengan kata sandi buatanmu sendiri. |
+| Aktivasi: tombol "Lewati" tidak ada | Memang begitu: kata sandi dari sekolah atau dari Admin wajib diganti dengan kata sandi buatanmu sendiri. |
 | Halaman "Akses ditolak" (kode 403) | Halaman itu bukan untuk akunmu. Tekan **Kembali ke beranda**. |
 | Halaman "Tidak ditemukan" (kode 404) | Alamatnya salah, atau data itu bukan milikmu. Tekan **Kembali ke beranda**. |
 | Halaman "Kedaluwarsa" (kode 419) | Halaman terlalu lama terbuka. Muat ulang, lalu ulangi. |
