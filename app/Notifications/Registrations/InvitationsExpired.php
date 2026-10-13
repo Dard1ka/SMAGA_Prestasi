@@ -45,7 +45,9 @@ class InvitationsExpired extends RegistrationNotification
 
     public function message(): string
     {
-        $what = $this->expired.' undangan tim '.$this->competitionName().' tidak dijawab sampai batas pendaftaran dan sudah tidak berlaku.';
+        // D-148: a team resumed late had its own three days (answer_until), not the registration deadline.
+        $until = $this->registration->answer_until !== null ? 'batas jawab' : 'batas pendaftaran';
+        $what = $this->expired.' undangan tim '.$this->competitionName().' tidak dijawab sampai '.$until.' dan sudah tidak berlaku.';
 
         return $this->ready
             ? $what.' Tim '.$this->team.' orang diteruskan ke Kepala Sekolah.'

@@ -144,6 +144,8 @@ class KonfirmasiTim extends Component
             'expired' => $mine !== null && ! $canRespond && (in_array((string) $mine->getKey(), $expiredIds, true)
                 || ($unanswered && $registration->status === RegistrationStatus::MenungguKonfirmasi
                     && ! RegistrationPolicy::teamWindowOpen($registration))),
+            // D-148: a team resumed late had its own three days to answer, not the registration deadline.
+            'expiredBy' => $registration->answer_until !== null ? 'batas jawab' : 'batas pendaftaran',
             'notifiesLeader' => ConfirmMembership::notifiesLeader($registration),
             'members' => $registration->members
                 ->sortBy(fn (RegistrationMember $m): string => ($m->role === MemberRole::Ketua ? '0' : '1').$m->student?->user?->name)

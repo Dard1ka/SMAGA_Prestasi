@@ -73,7 +73,7 @@
         </x-sth.modal>
     @elseif ($expired)
         {{-- QA10: expired at the deadline (or about to be), not declined by the student. --}}
-        <x-sth.alert tone="warning">Undangan ini sudah tidak berlaku karena batas pendaftaran lewat.</x-sth.alert>
+        <x-sth.alert tone="warning">Undangan ini sudah tidak berlaku karena {{ $expiredBy }} lewat.</x-sth.alert>
     @elseif ($mine?->declined_at)
         <x-sth.alert>Kamu sudah menolak undangan ini.</x-sth.alert>
     @elseif ($mine?->confirmed_at)

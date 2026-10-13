@@ -94,6 +94,7 @@ it('gives a team resumed after the deadline three days to answer', function (): 
         ->assertSee('Ikut tim')->assertSee('Batas jawab')->assertSee($grace);
     Livewire::actingAs($this->rizkyUser)->test(PendaftaranForm::class, ['competitionId' => $r->competition_id])
         ->assertSee('Konfirmasi sebelum '.$grace.'.');
+    $this->actingAs($this->rizkyUser)->get(route('siswa.beranda'))->assertOk()->assertSee('jawab sebelum '.$grace);
 
     // A minute after the three days: closed, and the expiry run declines the open invitation as usual.
     $this->travelTo($publishedAt->addDays(3)->addMinute());
@@ -101,7 +102,10 @@ it('gives a team resumed after the deadline three days to answer', function (): 
         ->and(ExpirePendingInvitations::due(CarbonImmutable::now())->pluck('id')->all())->toBe([$r->getKey()])
         ->and(app(ExpirePendingInvitations::class)->handle($r))->toMatchArray(['expired' => 1, 'ready' => false]);
     expect($r->members()->where('role', MemberRole::Anggota)->sole()->declined_at)->not->toBeNull();
-    Notification::assertSentTo($this->nadiaUser, InvitationsExpired::class);
+    Notification::assertSentTo($this->nadiaUser, InvitationsExpired::class,
+        fn (InvitationsExpired $n): bool => str_contains($n->message(), 'tidak dijawab sampai batas jawab'));
+    Livewire::actingAs($this->rizkyUser)->test(KonfirmasiTim::class, ['registration' => $r])
+        ->assertSee('Undangan ini sudah tidak berlaku karena batas jawab lewat.');
 });
 
 it('lets the anggota of a resumed team join within the three days', function (): void {
