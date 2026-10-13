@@ -121,7 +121,7 @@ it('counts only failed passwords: correct logins never fill the hourly limit of 
     $student = H::activeStudent();
 
     foreach (range(1, 25) as $i) {
-        qa10AuthLogin(QA10_AUTH_OWNER_IP, $i % 2 === 0 ? H::NISN : QA10_AUTH_EMAIL)->assertRedirect(route('home'));
+        qa10AuthLogin(QA10_AUTH_OWNER_IP, $i % 2 === 0 ? H::NISN : $student->user->email)->assertRedirect(route('home'));
         $this->assertAuthenticatedAs($student->user);
 
         Auth::guard('web')->logout();
