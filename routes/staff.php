@@ -44,6 +44,8 @@ Route::middleware(['area.staff', 'role:kepala_sekolah'])->prefix('kepsek')->name
 
 Route::middleware(['area.staff', 'role:tata_usaha'])->prefix('tu')->name('tu.')->group(function (): void {
     Route::livewire('/', SuratTugas::class)->name('beranda');
+    // D-150: Tata Usaha approves registrations too; the Kepala Sekolah's screen under the TU address (ApprovalQueue).
+    Route::livewire('/persetujuan', Persetujuan::class)->name('persetujuan.index');
     Route::livewire('/surat/arsip', ArsipSurat::class)->name('surat.arsip');
     Route::livewire('/surat/{registration}', SuratTugas::class)
         ->whereUlid('registration')

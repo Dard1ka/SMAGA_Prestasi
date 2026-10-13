@@ -359,6 +359,8 @@ final class Navigation
                 'sections' => [
                     ['label' => 'Menu', 'items' => [
                         ['key' => 'surat', 'label' => 'Antrean surat', 'icon' => 'mail', 'route' => ['tu.beranda', 'tu.surat.index', 'tu.surat'], 'match' => ['tu.surat.*'], 'badge' => 'tu.surat'],
+                        // D-150: Tata Usaha approves registrations too (the Kepala Sekolah's screen, its count).
+                        ['key' => 'persetujuan', 'label' => 'Persetujuan lomba', 'icon' => 'check-circle', 'route' => ['tu.persetujuan.index'], 'match' => ['tu.persetujuan*'], 'badge' => 'kepsek.persetujuan'],
                         ['key' => 'arsip', 'label' => 'Arsip surat', 'icon' => 'folder', 'route' => ['tu.surat.arsip', 'tu.arsip']],
                         ['key' => 'template', 'label' => 'Template surat', 'icon' => 'file', 'route' => ['tu.surat.template', 'tu.template']],
                     ]],

@@ -94,6 +94,8 @@ it('gives Admin every permission except approving registrations (D-01)', functio
     expect($admin->hasPermissionTo(PermissionName::StudentImport->value))->toBeTrue()
         ->and($admin->hasPermissionTo(PermissionName::RegistrationApprove->value))->toBeFalse()
         ->and($kepsek->hasPermissionTo(PermissionName::RegistrationApprove->value))->toBeTrue()
+        // D-150: Tata Usaha approves too.
+        ->and(Role::findByName(RoleName::TataUsaha->value, 'web')->hasPermissionTo(PermissionName::RegistrationApprove->value))->toBeTrue()
         ->and(Role::findByName(RoleName::Kesiswaan->value, 'web')->hasPermissionTo(PermissionName::StudentImport->value))->toBeTrue();
 });
 

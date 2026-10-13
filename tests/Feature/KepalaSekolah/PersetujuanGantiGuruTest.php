@@ -213,19 +213,21 @@ it('refuses a choice that is not a guru who can log in, and decides nothing', fu
     'not a number' => [fn (object $t): string => 'bukan-id'],
 ]);
 
-it('lets only the Kepala Sekolah change the guru, and only while the registration waits', function (): void {
+it('lets only the Kepala Sekolah and Tata Usaha change the guru, and only while the registration waits', function (): void {
     $waiting = gantiGuruRegistration($this->retno);
     $approved = F::registration(RegistrationStatus::Disetujui, ['Hana Safira'], $this->retno);
     $rejected = F::registration(RegistrationStatus::Ditolak, ['Fajar Ramadhan'], $this->retno);
     $unconfirmed = F::registration(RegistrationStatus::MenungguKonfirmasi, ['Raka Pradipta'], $this->retno);
 
-    expect($this->kepsek->can('changeMentor', $waiting))->toBeTrue();
+    expect($this->kepsek->can('changeMentor', $waiting))->toBeTrue()
+        // D-150: Tata Usaha approves too, "Ganti guru" included (D-132).
+        ->and(F::staff(RoleName::TataUsaha)->can('changeMentor', $waiting))->toBeTrue();
 
     foreach ([$approved, $rejected, $unconfirmed] as $registration) {
         expect($this->kepsek->can('changeMentor', $registration))->toBeFalse();
     }
 
-    foreach ([RoleName::Admin, RoleName::TataUsaha, RoleName::Kesiswaan, RoleName::Humas] as $role) {
+    foreach ([RoleName::Admin, RoleName::Kesiswaan, RoleName::Humas] as $role) {
         $actor = F::staff($role);
 
         expect($actor->can('changeMentor', $waiting))->toBeFalse();
@@ -587,7 +589,7 @@ it('answers 404 for "Ganti guru" on a row that never was in the queue, and refus
         ->call('askMentor', $approved->getKey())
         ->assertNotFound();
 
-    foreach ([RoleName::Admin, RoleName::TataUsaha, RoleName::Kesiswaan, RoleName::Guru] as $role) {
+    foreach ([RoleName::Admin, RoleName::Kesiswaan, RoleName::Guru] as $role) {
         Livewire::actingAs(F::staff($role))->test(Persetujuan::class)->assertForbidden();
     }
 

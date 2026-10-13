@@ -39,7 +39,7 @@ enum RoleName: string
 
     /**
      * Seeded permission set (RoleSeeder). Admin gets everything except approving registrations,
-     * which stays with the Kepala Sekolah (D-01, CLAUDE.md §8).
+     * which stays with the Kepala Sekolah and Tata Usaha (D-01, D-150, CLAUDE.md §8).
      *
      * @return list<Permission>
      */
@@ -86,6 +86,7 @@ enum RoleName: string
             ],
             self::TataUsaha => [
                 Permission::CompetitionCreate,
+                Permission::RegistrationApprove, // D-150: Kepala Sekolah or Tata Usaha approves
                 Permission::RegistrationViewAll,
                 Permission::LetterGenerate,
                 Permission::LetterSend,

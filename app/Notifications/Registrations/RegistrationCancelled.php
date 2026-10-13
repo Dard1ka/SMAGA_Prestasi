@@ -12,7 +12,8 @@ use Illuminate\Notifications\Messages\MailMessage;
 /**
  * The ketua cancelled the registration. Three audiences (lead, 2026-10-02): `siswa` (the other team members),
  * `guru` (pembimbing, opens the registration in the guru area) and `kepsek` (everyone who was asked to approve
- * it; only sent when the registration had already reached menunggu_kepsek). Names and the lomba only (§3m-3).
+ * it: Kepala Sekolah and Tata Usaha since D-150, each linked to its own Persetujuan address; only sent when the
+ * registration had already reached menunggu_kepsek). Names and the lomba only (§3m-3).
  */
 class RegistrationCancelled extends RegistrationNotification
 {
@@ -36,11 +37,11 @@ class RegistrationCancelled extends RegistrationNotification
             ->line($this->message());
 
         if ($this->audience === 'kepsek') {
-            $mail->line('Pendaftaran ini tidak perlu diputuskan lagi.')->action('Buka persetujuan', $this->url());
+            $mail->line('Pendaftaran ini tidak perlu diputuskan lagi.')->action('Buka persetujuan', $this->url($notifiable));
         }
 
         if ($this->audience === 'guru') {
-            $mail->action('Lihat pendaftaran', $this->url());
+            $mail->action('Lihat pendaftaran', $this->url($notifiable));
         }
 
         return $mail;
@@ -54,7 +55,7 @@ class RegistrationCancelled extends RegistrationNotification
             'registration_id' => $this->registration->getKey(),
             'title' => $this->audience === 'siswa' ? 'Pendaftaran dibatalkan' : $this->subject(),
             'message' => $this->message(),
-            'url' => $this->url(),
+            'url' => $this->url($notifiable),
         ];
     }
 
@@ -79,11 +80,12 @@ class RegistrationCancelled extends RegistrationNotification
         };
     }
 
-    private function url(): string
+    private function url(object $notifiable): string
     {
         return match ($this->audience) {
             'guru' => self::link([['guru.binaan.show', ['registration' => $this->registration->getKey()]], 'guru.beranda']),
-            'kepsek' => self::link(['kepsek.persetujuan.index', 'kepsek.beranda']),
+            // D-150: each approver's own Persetujuan address (Kepala Sekolah or Tata Usaha).
+            'kepsek' => self::approvalLink($notifiable),
             default => self::link(['siswa.lomba-saya.index', 'siswa.beranda']),
         };
     }

@@ -1059,6 +1059,7 @@ $scenario->step('3c', 'Laras accepts (ConfirmMembership): team complete, goes to
 }, [
     [$mail('galuh'), 'Anggota ikut tim: '.$lomba['l1']],
     [$at('kepsek'), 'Pendaftaran lomba menunggu persetujuan'],
+    [$at('tu'), 'Pendaftaran lomba menunggu persetujuan'], // D-150: Tata Usaha approves too
 ]);
 
 $scenario->step('3d', 'Galang registers a second TEAM and invites Sekar (CreateRegistration)', function () use ($state, $siswa, $staff, $studentId, $l1): void {
@@ -1091,11 +1092,11 @@ $scenario->step('3g', 'Galang (ketua) cancels the team while it still waits for 
 
 $scenario->step('3h', 'Sekar registers INDIVIDUALLY (CreateRegistration): straight to the Kepala Sekolah', function () use ($state, $siswa, $staff, $l1): void {
     $state['r3'] = app(CreateRegistration::class)->handle($siswa('sekar'), $l1(), RegistrationType::Individu, [], (int) $staff('hendra.k')->getKey())->getKey();
-}, [[$at('kepsek'), 'Pendaftaran lomba menunggu persetujuan']]);
+}, [[$at('kepsek'), 'Pendaftaran lomba menunggu persetujuan'], [$at('tu'), 'Pendaftaran lomba menunggu persetujuan']]);
 
 $scenario->step('3i', 'Wulan registers INDIVIDUALLY (CreateRegistration)', function () use ($state, $siswa, $staff, $l1): void {
     $state['r4'] = app(CreateRegistration::class)->handle($siswa('wulan'), $l1(), RegistrationType::Individu, [], (int) $staff('hendra.k')->getKey())->getKey();
-}, [[$at('kepsek'), 'Pendaftaran lomba menunggu persetujuan']]);
+}, [[$at('kepsek'), 'Pendaftaran lomba menunggu persetujuan'], [$at('tu'), 'Pendaftaran lomba menunggu persetujuan']]);
 
 $scenario->step('3j', 'Galang registers a new TEAM with Ma\'ruf, who accepts: the team now waits for the Kepala Sekolah (CreateRegistration + ConfirmMembership)', function () use ($state, $siswa, $staff, $studentId, $l1, $scenario): void {
     $created = app(CreateRegistration::class)->handle($siswa('galang'), $l1(), RegistrationType::Tim, [$studentId('maruf')], (int) $staff('hendra.k')->getKey());
@@ -1108,17 +1109,21 @@ $scenario->step('3j', 'Galang registers a new TEAM with Ma\'ruf, who accepts: th
     [$mail('maruf'), 'Undangan tim: '.$lomba['l1']],
     [$mail('galang'), 'Anggota ikut tim: '.$lomba['l1']],
     [$at('kepsek'), 'Pendaftaran lomba menunggu persetujuan'],
+    [$at('tu'), 'Pendaftaran lomba menunggu persetujuan'],
 ]);
 
 $scenario->step('3k', 'Galang (ketua) cancels the team that already waits for approval (CancelRegistration): member + guru + Kepala Sekolah', function () use ($siswa, $registration, $scenario, $state, $at, $lomba): void {
     $result = app(CancelRegistration::class)->handle($siswa('galang'), $registration('r5'));
     $scenario->note('registration status: '.$result->status->value.' (it was menunggu_kepsek: the Kepala Sekolah had been asked to decide)');
     $scenario->assertRendered('3k', $at('kepsek'), 'Pendaftaran lomba dibatalkan', 'Yth. Drs. Bambang Hartono, M.Pd.,', 'Galang Putra Mahendra membatalkan pendaftaran '.$lomba['l1'].' (tim). Pendaftaran ini tidak perlu diputuskan lagi.', 'Buka persetujuan', '/kepsek/persetujuan');
+    // D-150: Tata Usaha is an approver too and opens its own address.
+    $scenario->assertRendered('3k', $at('tu'), 'Pendaftaran lomba dibatalkan', 'Yth. Sri Handayani,', 'Pendaftaran ini tidak perlu diputuskan lagi.', 'Buka persetujuan', '/tu/persetujuan');
     $scenario->assertRendered('3k', $at('hendra.k'), 'Pendaftaran binaan dibatalkan', 'Yth. Hendra Kusuma, S.Pd., M.Si.,', 'Galang Putra Mahendra membatalkan pendaftaran binaan di '.$lomba['l1'].'.', 'Lihat pendaftaran', '/guru/binaan/'.$state['r5']);
 }, [
     [$mail('maruf'), 'Pendaftaran dibatalkan: '.$lomba['l1']],
     [$at('hendra.k'), 'Pendaftaran binaan dibatalkan'],
     [$at('kepsek'), 'Pendaftaran lomba dibatalkan'],
+    [$at('tu'), 'Pendaftaran lomba dibatalkan'],
 ]);
 
 // =================================================================================================================
