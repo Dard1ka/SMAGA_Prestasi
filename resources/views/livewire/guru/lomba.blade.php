@@ -1,41 +1,17 @@
-{{-- Guru · Lomba (backlog #3, B4): katalog (read-only) + upload saya. Uploads use W2-A1's Lomba\UsulanForm (<dialog id="usul">). --}}
+{{-- Guru · Lomba (backlog #3, B4): the published catalog, read-only. A guru no longer uploads lomba info (D-145). --}}
 <div class="flex flex-col gap-[22px]">
-    <div class="flex flex-wrap items-center justify-between gap-3">
-        <div class="seg flex-wrap" role="group" aria-label="Tampilkan">
-            <button type="button" class="seg-btn" wire:click="setTab('katalog')" aria-pressed="{{ $isCatalog ? 'true' : 'false' }}">
-                Katalog <span class="cnt">{{ $counts['katalog'] }}</span>
-            </button>
-            <button type="button" class="seg-btn" wire:click="setTab('unggahan')" aria-pressed="{{ $isCatalog ? 'false' : 'true' }}">
-                Upload saya <span class="cnt">{{ $counts['unggahan'] }}</span>
-            </button>
-        </div>
-        @if ($canUpload)
-            <x-sth.button icon="plus" data-sth-open="usul" aria-haspopup="dialog">Upload info lomba</x-sth.button>
-        @endif
-    </div>
-
     <div class="flex flex-wrap items-end gap-3">
         <x-sth.input type="search" wire:model.live.debounce.400ms="q" label="Cari lomba" hide-label icon="search"
-                     :placeholder="$isCatalog ? 'Nama lomba atau penyelenggara' : 'Nama lomba'" maxlength="100" class="w-full sm:w-80" />
-        @if ($isCatalog)
-            <x-sth.select wire:model.live="bidang" label="Bidang" hide-label placeholder="Semua bidang" :options="$bidangOptions" class="w-full sm:w-[190px]" />
-        @elseif ($counts['menunggu'] > 0)
-            <x-sth.chip tone="gray" icon="clock" class="num">{{ $counts['menunggu'] }} menunggu verifikasi Kesiswaan</x-sth.chip>
-        @endif
+                     placeholder="Nama lomba atau penyelenggara" maxlength="100" class="w-full sm:w-80" />
+        <x-sth.select wire:model.live="bidang" label="Bidang" hide-label placeholder="Semua bidang" :options="$bidangOptions" class="w-full sm:w-[190px]" />
     </div>
 
     <div class="@container flex flex-col gap-4" wire:loading.class="opacity-70">
         @if ($total === 0)
-            @if ($isCatalog)
-                <x-sth.empty-state icon="search" title="Belum ada lomba yang cocok">
-                    Ubah pencarian, atau upload info lomba baru.
-                </x-sth.empty-state>
-            @else
-                <x-sth.empty-state icon="upload" title="Belum ada info lomba yang di-upload">
-                    Kesiswaan memeriksa setiap upload sebelum tampil di katalog.
-                </x-sth.empty-state>
-            @endif
-        @elseif ($isCatalog)
+            <x-sth.empty-state icon="search" title="Belum ada lomba yang cocok">
+                Ubah pencarian.
+            </x-sth.empty-state>
+        @else
             <div class="grid grid-cols-1 gap-4 @min-[900px]:grid-cols-2 @min-[1360px]:grid-cols-3">
                 @foreach ($cards as $card)
                     <x-sth.lomba-card wire:key="lomba-{{ $card['id'] }}"
@@ -46,36 +22,6 @@
                         :seed="$card['id']" :poster="$card['poster']" />
                 @endforeach
             </div>
-        @else
-            <x-sth.table caption="Info lomba yang di-upload, {{ $total }} lomba" fixed table-class="min-w-[520px]">
-                <x-slot:head>
-                    <th scope="col">Lomba</th>
-                    <th scope="col" class="hidden w-32 sm:table-cell">Dikirim</th>
-                    <th scope="col" class="w-44">Status</th>
-                    <th scope="col" class="w-24"><span class="sr-only">Aksi</span></th>
-                </x-slot:head>
-                @foreach ($uploads as $row)
-                    <tr wire:key="up-{{ $row['id'] }}">
-                        <td>
-                            <div class="flex min-w-0 flex-col">
-                                <span class="font-bold break-words">{{ $row['name'] }}</span>
-                                <span class="text-xs text-muted">{{ $row['organizer'] ?: 'Penyelenggara belum diisi' }}<span class="sm:hidden"> · {{ $row['sent'] }}</span></span>
-                                @if ($row['note'])
-                                    <span class="text-xs text-red">Catatan: {{ $row['note'] }}</span>
-                                @endif
-                            </div>
-                        </td>
-                        <td class="num hidden text-sm sm:table-cell">{{ $row['sent'] }}</td>
-                        <td>
-                            <div class="flex flex-col items-start gap-1">
-                                <x-sth.chip :tone="$row['tone']" size="sm">{{ $row['status'] }}</x-sth.chip>
-                                @if ($row['checked'])<span class="num text-xs text-muted">Diperiksa {{ $row['checked'] }}</span>@endif
-                            </div>
-                        </td>
-                        <td class="text-right"><x-sth.link :href="$row['href']">Lihat<span class="sr-only"> {{ $row['name'] }}</span></x-sth.link></td>
-                    </tr>
-                @endforeach
-            </x-sth.table>
         @endif
 
         @if ($hasMore)
@@ -146,9 +92,5 @@
                 <x-sth.button variant="quiet" :href="$closeUrl">Tutup</x-sth.button>
             </x-slot:footer>
         </x-sth.modal>
-    @endif
-
-    @if ($canUpload)
-        <livewire:lomba.usulan-form :upload="true" />
     @endif
 </div>

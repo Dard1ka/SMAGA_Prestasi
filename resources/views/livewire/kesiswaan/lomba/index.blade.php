@@ -15,7 +15,9 @@
             @if ($tab === 'katalog')
                 <x-sth.input type="search" wire:model.live.debounce.400ms="q" label="Cari lomba" hide-label icon="search" placeholder="Cari nama lomba atau penyelenggara" class="w-full sm:w-80" />
             @endif
-            <x-sth.button icon="plus" wire:click="create" aria-haspopup="dialog">Tambah lomba</x-sth.button>
+            @if ($canCreate)
+                <x-sth.button icon="plus" wire:click="create" aria-haspopup="dialog">Tambah lomba</x-sth.button>
+            @endif
         </div>
     </div>
 
@@ -28,7 +30,7 @@
 
         @if ($rows->isEmpty())
             <x-sth.empty-state icon="search" title="Belum ada lomba yang cocok">
-                Ubah filter atau tambah lomba baru.
+                {{ $canCreate ? 'Ubah filter atau tambah lomba baru.' : 'Ubah filter.' }}
             </x-sth.empty-state>
         @else
             <x-sth.table caption="Katalog lomba SMAGA, {{ $rows->count() }} lomba ditampilkan" fixed table-class="min-w-[880px]">

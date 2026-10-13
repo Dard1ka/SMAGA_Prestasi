@@ -122,6 +122,7 @@ it('registers an individu entry from the panel', function (): void {
 
     Livewire::test(Form::class, ['competitionId' => $lomba->getKey()])
         ->set('mentorId', $this->guru->id)
+        ->set('phone', '081234567890')
         ->call('kirim')
         ->assertHasErrors(['setuju'])
         ->set('setuju', true)
@@ -144,6 +145,7 @@ it('builds a team through the member search and sends invitations', function ():
         ->call('tambah', $this->dimas->getKey())
         ->set('mentorId', $this->guru->id)
         ->set('setuju', true)
+        ->set('phone', '081234567890')
         ->call('kirim')
         ->assertHasNoErrors()
         ->assertSee('Anggota konfirmasi')
@@ -214,6 +216,7 @@ it('lets the invitee confirm on the invitation page and hides it from outsiders'
     $this->actingAs(F::user($this->dimas));
     Livewire::test(KonfirmasiTim::class, ['registration' => $registration])
         ->assertSee('Ikut tim ini?')
+        ->set('phone', '081234567891')
         ->call('ikut')
         ->assertRedirect(route('siswa.undangan.show', $registration));
 

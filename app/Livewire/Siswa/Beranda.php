@@ -88,11 +88,14 @@ class Beranda extends Component
 
         foreach ($invites as $invite) {
             $competition = $invite->registration->competition;
+            // D-148: a team resumed late answers until its own moment, not the registration deadline.
+            $grace = $invite->registration->graceText();
             $actions[] = [
                 'key' => 'invite-'.$invite->getKey(),
                 'icon' => 'users',
                 'title' => 'Undangan tim · '.$competition->name,
-                'note' => 'Dari '.$invite->registration->leader?->user?->name.' · batas daftar '.LombaPresenter::date($competition->registration_closes_at),
+                'note' => 'Dari '.$invite->registration->leader?->user?->name.' · '
+                    .($grace !== null ? 'jawab sebelum '.$grace : 'batas daftar '.LombaPresenter::date($competition->registration_closes_at)),
                 'button' => 'Lihat undangan',
                 'href' => route('siswa.undangan.show', $invite->registration),
             ];
@@ -126,7 +129,8 @@ class Beranda extends Component
     {
         return Registration::query()
             ->nonFinal()
-            ->whereHas('members', fn (Builder $m) => $m->where('student_id', $student->getKey())->whereNull('declined_at'))
+            // Not before the invitation went out (D-148: an anggota of a team whose lomba still waits was not invited yet).
+            ->whereHas('members', fn (Builder $m) => $m->where('student_id', $student->getKey())->whereNull('declined_at')->whereNotNull('invited_at'))
             ->with('competition')
             ->withCount(['members as team_size' => fn (Builder $m) => $m->whereNull('declined_at')])
             ->latest('updated_at')

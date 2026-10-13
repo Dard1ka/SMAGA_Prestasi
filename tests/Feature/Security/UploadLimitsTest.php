@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\ValidationException;
 use Tests\Feature\Auth\AuthTestHelpers as H;
+use Tests\Feature\Siswa\Lomba\LombaFixtures;
 
 uses(RefreshDatabase::class);
 
@@ -114,11 +115,12 @@ it('surfaces the limit as a validation error on the form field of an Action', fu
     RateLimiter::increment(UploadLimits::key($this->student), UploadLimits::DECAY_SECONDS, UploadLimits::MAX_PER_HOUR);
 
     try {
-        app(SubmitCompetition::class)->handle($this->student, ['name' => 'Olimpiade Sains Kota 2026'], b2Pdf());
+        app(SubmitCompetition::class)->handle($this->student, LombaFixtures::usulan(['name' => 'Olimpiade Sains Kota 2026']), b2Pdf());
         $this->fail('Expected a validation error.');
     } catch (ValidationException $e) {
-        expect($e->errors())->toHaveKey('brosur')
-            ->and($e->errors()['brosur'][0])->toStartWith('Batas upload tercapai');
+        // The usulan page shows it under "Juknis / brosur / undangan" (D-147).
+        expect($e->errors())->toHaveKey('juknis')
+            ->and($e->errors()['juknis'][0])->toStartWith('Batas upload tercapai');
     }
 });
 

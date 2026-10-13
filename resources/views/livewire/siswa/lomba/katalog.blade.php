@@ -1,67 +1,120 @@
-{{-- Siswa · Cari lomba (board Katalog-Lomba). Data prepared in App\Livewire\Siswa\Lomba\Katalog + LombaPresenter. --}}
+{{-- Siswa · Cari lomba (board Katalog-Lomba). Data prepared in App\Livewire\Siswa\Lomba\Katalog + LombaPresenter.
+     Tab "Usulan saya": the student's own lomba of every status, oldest first. --}}
 <div class="@container flex flex-col gap-[18px]">
     <x-slot:actions>
-        <x-sth.button variant="quiet" icon="plus" data-sth-open="usul" aria-haspopup="dialog">Usulkan lomba</x-sth.button>
+        <x-sth.button variant="quiet" icon="plus" :href="route('siswa.lomba.usulkan')">Usulkan lomba</x-sth.button>
     </x-slot:actions>
 
-    <section aria-label="Filter lomba" class="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-        <div role="group" aria-label="Bidang" class="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:px-0 sm:pb-0">
-            @foreach ($bidangOptions as $value => $label)
-                <button type="button" class="fchip shrink-0" aria-pressed="{{ $bidang === $value ? 'true' : 'false' }}"
-                        wire:click="pilihBidang('{{ $value }}')">{{ $label }}</button>
-            @endforeach
-        </div>
-        <div class="grid grid-cols-2 gap-2 sm:flex sm:items-center">
-            <x-sth.select wire:model.live="tingkat" id="f-tingkat" label="Tingkat" hide-label size="sm"
-                          placeholder="Semua tingkat" :options="$tingkatOptions" class="sm:w-44" />
-            <x-sth.select wire:model.live="status" id="f-status" label="Status pendaftaran" hide-label size="sm"
-                          placeholder="Semua status" :options="$statusOptions" class="sm:w-44" />
-            {{-- One search box at a time: from lg up the top bar search does this job (it filters while typing,
-                 app.js "top bar search"), below lg the top bar has no text box, so this one shows instead. --}}
+    <div class="seg flex-wrap self-start" role="group" aria-label="Tampilkan">
+        @foreach ($tabs as $value => $label)
+            <button type="button" class="seg-btn" wire:click="pilihTab('{{ $value }}')" aria-pressed="{{ $tab === $value ? 'true' : 'false' }}">
+                {{ $label }}@if ($value === 'usulan' && $proposalCount > 0) <span class="cnt">{{ $proposalCount }}</span>@endif
+            </button>
+        @endforeach
+    </div>
+
+    @if ($proposals)
+        {{-- The name search works on this tab too: the top bar from lg up, this box below lg (one box at any width). --}}
+        @if ($proposalCount > 0 || $q !== '')
             <x-sth.input wire:model.live.debounce.400ms="q" id="f-cari" type="search" label="Cari nama lomba" hide-label
-                         icon="search" placeholder="Cari lomba" maxlength="100" class="col-span-2 sm:w-60 lg:hidden" />
-        </div>
-    </section>
-
-    <p class="m-0 flex items-baseline gap-2" aria-live="polite">
-        <span class="display num text-xl font-bold">{{ $page->total() }} lomba</span>
-        @if ($page->total() > count($cards))
-            <span class="num text-sm text-muted">Menampilkan {{ $page->firstItem() }}–{{ $page->lastItem() }} dari {{ $page->total() }}</span>
+                         icon="search" placeholder="Cari usulan" maxlength="100" class="sm:w-60 lg:hidden" />
         @endif
-    </p>
 
-    @if ($cards === [])
-        <x-sth.empty-state icon="search" :title="$filtered ? 'Belum ada lomba yang cocok' : 'Belum ada lomba di katalog'">
-            {{ $filtered ? 'Coba ubah filter, atau usulkan lomba baru.' : 'Usulkan lomba yang ingin kamu ikuti.' }}
-            {{-- "Usulkan lomba" is the page's own button at the top; it is not repeated here. --}}
-            @if ($filtered)
+        @if ($rows === [] && $q !== '')
+            <x-sth.empty-state icon="search" title="Belum ada usulan yang cocok">
+                Coba kata lain.
                 <x-slot:actions>
-                    <x-sth.button variant="quiet" size="sm" wire:click="hapusFilter">Hapus filter</x-sth.button>
+                    <x-sth.button variant="quiet" size="sm" wire:click="hapusPencarian">Hapus pencarian</x-sth.button>
                 </x-slot:actions>
-            @endif
-        </x-sth.empty-state>
+            </x-sth.empty-state>
+        @elseif ($rows === [])
+            <x-sth.empty-state icon="send" title="Belum ada usulan lomba">
+                Lomba yang kamu usulkan tampil di sini, juga selama Kesiswaan memeriksanya.
+            </x-sth.empty-state>
+        @else
+            <x-sth.table caption="Usulan lomba kamu, {{ $page->total() }} lomba" fixed table-class="min-w-[520px]">
+                <x-slot:head>
+                    <th scope="col">Lomba</th>
+                    <th scope="col" class="hidden w-32 sm:table-cell">Dikirim</th>
+                    <th scope="col" class="w-44">Status</th>
+                    <th scope="col" class="w-24"><span class="sr-only">Aksi</span></th>
+                </x-slot:head>
+                @foreach ($rows as $row)
+                    <tr wire:key="usulan-{{ $row['id'] }}">
+                        <td>
+                            <div class="flex min-w-0 flex-col [overflow-wrap:anywhere]">
+                                <span class="font-bold">{{ $row['name'] }}</span>
+                                <span class="text-xs text-muted">{{ $row['organizer'] ?: 'Penyelenggara belum diisi' }}<span class="sm:hidden"> · Dikirim {{ $row['sent'] }}</span></span>
+                                @if ($row['note'])
+                                    <span class="text-xs text-red">Catatan Kesiswaan: {{ $row['note'] }}</span>
+                                @endif
+                            </div>
+                        </td>
+                        <td class="num hidden text-sm sm:table-cell">{{ $row['sent'] }}</td>
+                        <td><x-sth.chip :tone="$row['tone']" size="sm">{{ $row['status'] }}</x-sth.chip></td>
+                        <td class="text-right"><x-sth.link :href="$row['href']">Lihat<span class="sr-only"> {{ $row['name'] }}</span></x-sth.link></td>
+                    </tr>
+                @endforeach
+            </x-sth.table>
+        @endif
     @else
-        {{-- Capsules: the columns follow the width of the list, so a card is never much narrower than a phone. --}}
-        <div class="grid grid-cols-1 gap-[18px] @min-[900px]:grid-cols-2 @min-[1360px]:grid-cols-3">
-            @foreach ($cards as $card)
-                <x-sth.lomba-card wire:key="lomba-{{ $card['id'] }}"
-                    :title="$card['title']" :href="$card['href']" :bidang="$card['bidang']" :tingkat="$card['tingkat']"
-                    :status="$card['status']" :status-tone="$card['statusTone']" :peserta="$card['peserta']"
-                    :penyelenggara="$card['penyelenggara']" :date="$card['date']" :place="$card['place']"
-                    :names="$card['names']" :count="$card['count']" :note="$card['note']"
-                    :seed="$card['id']" :poster="$card['poster']" />
-            @endforeach
-        </div>
+        <section aria-label="Filter lomba" class="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+            <div role="group" aria-label="Bidang" class="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:px-0 sm:pb-0">
+                @foreach ($bidangOptions as $value => $label)
+                    <button type="button" class="fchip shrink-0" aria-pressed="{{ $bidang === $value ? 'true' : 'false' }}"
+                            wire:click="pilihBidang('{{ $value }}')">{{ $label }}</button>
+                @endforeach
+            </div>
+            <div class="grid grid-cols-2 gap-2 sm:flex sm:items-center">
+                <x-sth.select wire:model.live="tingkat" id="f-tingkat" label="Tingkat" hide-label size="sm"
+                              placeholder="Semua tingkat" :options="$tingkatOptions" class="sm:w-44" />
+                <x-sth.select wire:model.live="status" id="f-status" label="Status pendaftaran" hide-label size="sm"
+                              placeholder="Semua status" :options="$statusOptions" class="sm:w-44" />
+                {{-- One search box at a time: from lg up the top bar search does this job (it filters while typing,
+                     app.js "top bar search"), below lg the top bar has no text box, so this one shows instead. --}}
+                <x-sth.input wire:model.live.debounce.400ms="q" id="f-cari" type="search" label="Cari nama lomba" hide-label
+                             icon="search" placeholder="Cari lomba" maxlength="100" class="col-span-2 sm:w-60 lg:hidden" />
+            </div>
+        </section>
 
-        @if ($page->hasPages())
-            <nav aria-label="Halaman katalog" class="flex items-center justify-between gap-3">
-                <x-sth.button variant="quiet" size="sm" icon="chevron-left" wire:click="previousPage" :disabled="$page->onFirstPage()">Sebelumnya</x-sth.button>
-                {{-- On a narrow card (a 360px phone) "Halaman" is only read out, so both buttons fit (QA7). --}}
-                <span class="num text-sm font-semibold text-ink-2"><span class="@max-[400px]:sr-only">Halaman </span>{{ $page->currentPage() }} dari {{ $page->lastPage() }}</span>
-                <x-sth.button variant="quiet" size="sm" icon-right="chevron-right" wire:click="nextPage" :disabled="! $page->hasMorePages()">Berikutnya</x-sth.button>
-            </nav>
+        <p class="m-0 flex items-baseline gap-2" aria-live="polite">
+            <span class="display num text-xl font-bold">{{ $page->total() }} lomba</span>
+            @if ($page->total() > count($cards))
+                <span class="num text-sm text-muted">Menampilkan {{ $page->firstItem() }}–{{ $page->lastItem() }} dari {{ $page->total() }}</span>
+            @endif
+        </p>
+
+        @if ($cards === [])
+            <x-sth.empty-state icon="search" :title="$filtered ? 'Belum ada lomba yang cocok' : 'Belum ada lomba di katalog'">
+                {{ $filtered ? 'Coba ubah filter, atau usulkan lomba baru.' : 'Usulkan lomba yang ingin kamu ikuti.' }}
+                {{-- "Usulkan lomba" is the page's own button at the top; it is not repeated here. --}}
+                @if ($filtered)
+                    <x-slot:actions>
+                        <x-sth.button variant="quiet" size="sm" wire:click="hapusFilter">Hapus filter</x-sth.button>
+                    </x-slot:actions>
+                @endif
+            </x-sth.empty-state>
+        @else
+            {{-- Capsules: the columns follow the width of the list, so a card is never much narrower than a phone. --}}
+            <div class="grid grid-cols-1 gap-[18px] @min-[900px]:grid-cols-2 @min-[1360px]:grid-cols-3">
+                @foreach ($cards as $card)
+                    <x-sth.lomba-card wire:key="lomba-{{ $card['id'] }}"
+                        :title="$card['title']" :href="$card['href']" :bidang="$card['bidang']" :tingkat="$card['tingkat']"
+                        :status="$card['status']" :status-tone="$card['statusTone']" :peserta="$card['peserta']"
+                        :penyelenggara="$card['penyelenggara']" :date="$card['date']" :place="$card['place']"
+                        :names="$card['names']" :count="$card['count']" :note="$card['note']"
+                        :seed="$card['id']" :poster="$card['poster']" />
+                @endforeach
+            </div>
         @endif
     @endif
 
-    <livewire:lomba.usulan-form />
+    @if ($page->hasPages())
+        <nav aria-label="{{ $proposals ? 'Halaman usulan' : 'Halaman katalog' }}" class="flex items-center justify-between gap-3">
+            <x-sth.button variant="quiet" size="sm" icon="chevron-left" wire:click="previousPage" :disabled="$page->onFirstPage()">Sebelumnya</x-sth.button>
+            {{-- On a narrow card (a 360px phone) "Halaman" is only read out, so both buttons fit (QA7). --}}
+            <span class="num text-sm font-semibold text-ink-2"><span class="@max-[400px]:sr-only">Halaman </span>{{ $page->currentPage() }} dari {{ $page->lastPage() }}</span>
+            <x-sth.button variant="quiet" size="sm" icon-right="chevron-right" wire:click="nextPage" :disabled="! $page->hasMorePages()">Berikutnya</x-sth.button>
+        </nav>
+    @endif
 </div>

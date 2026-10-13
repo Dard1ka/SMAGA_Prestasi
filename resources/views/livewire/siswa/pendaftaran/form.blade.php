@@ -20,7 +20,7 @@
             @if ($status['pendingInvite'])
                 <div class="flex flex-col gap-2 rounded-tile bg-primary-tint p-4">
                     <p class="m-0 font-bold">{{ $status['leaderName'] }} mengajak kamu ikut tim.</p>
-                    <p class="m-0 text-sm text-ink-2">Konfirmasi sebelum batas pendaftaran.</p>
+                    <p class="m-0 text-sm text-ink-2">{{ $status['answerNote'] }}</p>
                     <x-sth.button size="sm" :href="$status['undangan']" class="self-start">Lihat undangan</x-sth.button>
                 </div>
             @else
@@ -28,6 +28,9 @@
                     <span class="inline-flex size-12 items-center justify-center rounded-full bg-green-bg text-green" aria-hidden="true"><x-sth.icon name="check" :size="26" /></span>
                     <h3 class="title-card m-0">{{ $status['isLeader'] ? 'Pendaftaran terkirim' : 'Kamu sudah terdaftar' }}</h3>
                     <x-sth.chip :tone="$status['tone']">{{ $status['label'] }}</x-sth.chip>
+                    @if ($status['waitingText'])
+                        <p class="m-0 text-sm text-ink-2">{{ $status['waitingText'] }}</p>
+                    @endif
                 </div>
             @endif
 
@@ -100,7 +103,7 @@
                     @else
                         <x-sth.input wire:model.live.debounce.500ms="q" id="undang-anggota" type="search" label="Undang anggota pengganti" icon="search"
                                      placeholder="Cari nama atau NISN" autocomplete="off" maxlength="60"
-                                     hint="Undangan berlaku sampai batas pendaftaran. Siswa yang belum aktivasi akun baru melihatnya setelah aktivasi." />
+                                     :hint="$status['inviteHint']" />
                         @if ($hasil !== [])
                             <ul aria-label="Akun siswa yang cocok" class="m-0 flex list-none flex-col gap-1.5 p-0">
                                 @foreach ($hasil as $row)
@@ -156,7 +159,7 @@
             </div>
 
             @if ($status['canCancel'])
-                <x-sth.modal id="batal-daftar" title="Batalkan pendaftaran?" description="Anggota tim akan diberi tahu. Kamu bisa mendaftar lagi selama pendaftaran masih dibuka." size="sm">
+                <x-sth.modal id="batal-daftar" title="Batalkan pendaftaran?" :description="$status['cancelNote']" size="sm">
                     <p class="m-0">Pendaftaran {{ $competition->name }} akan dibatalkan.</p>
                     <x-slot:footer>
                         <x-sth.button variant="quiet" data-sth-close>Kembali</x-sth.button>
@@ -170,8 +173,8 @@
             @if ($window['key'] === 'segera')
                 <x-sth.alert title="Belum dibuka">{{ $window['note'] }}.</x-sth.alert>
             @elseif ($window['key'] === 'menunggu')
-                {{-- QA10: a proposal Kesiswaan has not checked yet is not "ditutup". --}}
-                <x-sth.alert title="Belum dibuka">Pendaftaran dibuka setelah Kesiswaan memverifikasi lomba ini.</x-sth.alert>
+                {{-- QA10: a proposal Kesiswaan has not checked yet is not "ditutup" by itself; D-148: for its submitter the dates decide (Form::waitingNotice()). --}}
+                <x-sth.alert :tone="$waitingNotice['tone']" :title="$waitingNotice['title']">{{ $waitingNotice['text'] }}</x-sth.alert>
             @elseif ($window['key'] === 'ditolak')
                 <x-sth.alert tone="warning" title="Tidak dibuka">Usulan lomba ini ditolak Kesiswaan, jadi tidak menerima pendaftaran.</x-sth.alert>
             @elseif ($window['key'] === 'ditutup' || ! $competition->isPublished())
@@ -182,6 +185,19 @@
         </div>
     @else
         <form wire:submit="kirim" class="flex flex-col gap-4" novalidate>
+            {{-- D-149: the student's own data from the account (read-only) and the No HP to reach the student. --}}
+            <section aria-labelledby="h-peserta" class="flex flex-col gap-3 rounded-tile border border-line p-4">
+                <h3 id="h-peserta" class="title-card m-0">Data peserta</h3>
+                <dl class="m-0 grid grid-cols-[104px_minmax(0,1fr)] gap-x-3 gap-y-1.5 text-sm">
+                    @foreach ($peserta as $row)
+                        <dt class="text-muted">{{ $row['label'] }}</dt>
+                        <dd class="m-0 font-semibold [overflow-wrap:anywhere]">{{ $row['value'] }}</dd>
+                    @endforeach
+                </dl>
+                <p class="m-0 text-xs text-muted">Data salah? Hubungi Kesiswaan.</p>
+                <x-sth.input wire:model="phone" id="no-hp" type="tel" inputmode="tel" autocomplete="tel" label="No HP" hint="Contoh 081234567890." />
+            </section>
+
             <div class="flex flex-col gap-2">
                 <x-sth.segmented wire:model.live="type" label="Jenis peserta" block :options="[
                     'individu' => ['label' => 'Individu', 'icon' => 'user', 'disabled' => ! $individuAllowed],
@@ -267,6 +283,8 @@
                         Tambahkan minimal 1 anggota tim.
                     @elseif (! $setuju)
                         Centang pernyataan di atas untuk mengirim.
+                    @elseif ($lombaWaits)
+                        {{ \App\Livewire\Siswa\Lomba\LombaPresenter::WAITING_FOR_LOMBA }}
                     @elseif ($type === 'tim')
                         Anggota konfirmasi dulu, lalu sekolah menyetujui.
                     @else

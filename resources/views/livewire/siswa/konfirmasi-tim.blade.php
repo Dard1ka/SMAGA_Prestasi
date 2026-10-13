@@ -55,6 +55,8 @@
         <x-sth.card as="section" tone="warn" aria-labelledby="h-jawab" class="flex flex-col gap-3">
             <h2 id="h-jawab" class="title-card m-0">Ikut tim ini?</h2>
             <p class="m-0 text-sm text-ink-2">Setelah semua anggota konfirmasi, pendaftaran diteruskan untuk persetujuan. Hanya kamu yang bisa menjawab undangan ini.</p>
+            {{-- D-149: the anggota checks the own No HP before joining. --}}
+            <x-sth.input wire:model="phone" id="no-hp" type="tel" inputmode="tel" autocomplete="tel" label="No HP" hint="Contoh 081234567890." />
             <div class="flex flex-wrap gap-2">
                 <x-sth.button icon="check" wire:click="ikut" wire:loading.attr="disabled">Ikut tim</x-sth.button>
                 <x-sth.button variant="quiet" data-sth-open="tolak-undangan" aria-haspopup="dialog">Tolak</x-sth.button>
@@ -71,7 +73,7 @@
         </x-sth.modal>
     @elseif ($expired)
         {{-- QA10: expired at the deadline (or about to be), not declined by the student. --}}
-        <x-sth.alert tone="warning">Undangan ini sudah tidak berlaku karena batas pendaftaran lewat.</x-sth.alert>
+        <x-sth.alert tone="warning">Undangan ini sudah tidak berlaku karena {{ $expiredBy }} lewat.</x-sth.alert>
     @elseif ($mine?->declined_at)
         <x-sth.alert>Kamu sudah menolak undangan ini.</x-sth.alert>
     @elseif ($mine?->confirmed_at)

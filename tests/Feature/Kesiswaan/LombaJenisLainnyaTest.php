@@ -54,6 +54,8 @@ beforeEach(function (): void {
     $this->withoutVite();
 
     $this->kesiswaan = F::staff(RoleName::Kesiswaan);
+    // Only siswa and Admin add a lomba (D-145); Kesiswaan corrects and publishes it.
+    $this->admin = F::staff(RoleName::Admin, 'Operator STH');
 });
 
 /** F::form() with "Jenis penyelenggara: Lainnya" and the typed kind. @return array<string, mixed> */
@@ -102,7 +104,7 @@ it('labels the organizer type with the typed kind only for "Lainnya"', function 
 // CreateCompetition / UpdateCompetition ------------------------------------------------------------------------------
 
 it('stores the typed kind trimmed when the type is "Lainnya"', function (): void {
-    $competition = app(CreateCompetition::class)->handle($this->kesiswaan, lainnyaForm('  Komunitas film pelajar  '));
+    $competition = app(CreateCompetition::class)->handle($this->admin, lainnyaForm('  Komunitas film pelajar  '), F::pdf());
 
     expect($competition->fresh()->organizer_type)->toBe(OrganizerType::Lainnya)
         ->and($competition->fresh()->organizer_type_other)->toBe('Komunitas film pelajar')
@@ -110,7 +112,7 @@ it('stores the typed kind trimmed when the type is "Lainnya"', function (): void
 });
 
 it('drops a typed kind when the type is not "Lainnya"', function (?string $type): void {
-    $competition = app(CreateCompetition::class)->handle($this->kesiswaan, lainnyaForm('Sanggar seni', ['organizer_type' => $type]));
+    $competition = app(CreateCompetition::class)->handle($this->admin, lainnyaForm('Sanggar seni', ['organizer_type' => $type]), F::pdf());
 
     expect($competition->fresh()->organizer_type?->value)->toBe($type)
         ->and($competition->fresh()->organizer_type_other)->toBeNull();
@@ -120,7 +122,7 @@ it('drops a typed kind when the type is not "Lainnya"', function (?string $type)
 ]);
 
 it('accepts "Lainnya" without the typed kind for the queue', function (?string $other): void {
-    $competition = app(CreateCompetition::class)->handle($this->kesiswaan, lainnyaForm($other));
+    $competition = app(CreateCompetition::class)->handle($this->admin, lainnyaForm($other), F::pdf());
 
     expect($competition->fresh()->status)->toBe(CompetitionStatus::MenungguVerifikasi)
         ->and($competition->fresh()->organizer_type)->toBe(OrganizerType::Lainnya)
@@ -135,12 +137,12 @@ it('accepts "Lainnya" for the queue when the form has no such field at all', fun
     $input = lainnyaForm();
     unset($input['organizer_type_other']);
 
-    expect(app(CreateCompetition::class)->handle($this->kesiswaan, $input)->fresh()->organizer_type_other)->toBeNull();
+    expect(app(CreateCompetition::class)->handle($this->admin, $input, F::pdf())->fresh()->organizer_type_other)->toBeNull();
 });
 
 it('refuses a typed kind longer than 60 characters or one that is not text, on create and on update', function (mixed $other, ?string $sentence): void {
     try {
-        app(CreateCompetition::class)->handle($this->kesiswaan, lainnyaForm(overrides: ['organizer_type_other' => $other]));
+        app(CreateCompetition::class)->handle($this->admin, lainnyaForm(overrides: ['organizer_type_other' => $other]), F::pdf());
         $this->fail('The typed kind was accepted.');
     } catch (ValidationException $e) {
         expect($e->errors())->toHaveKey('organizer_type_other');
@@ -152,7 +154,7 @@ it('refuses a typed kind longer than 60 characters or one that is not text, on c
 
     expect(Competition::query()->count())->toBe(0);
 
-    $competition = app(CreateCompetition::class)->handle($this->kesiswaan, lainnyaForm());
+    $competition = app(CreateCompetition::class)->handle($this->admin, lainnyaForm(), F::pdf());
 
     expect(fn () => app(UpdateCompetition::class)->handle($this->kesiswaan, $competition, lainnyaForm(overrides: ['organizer_type_other' => $other])))
         ->toThrow(ValidationException::class);
@@ -164,13 +166,13 @@ it('refuses a typed kind longer than 60 characters or one that is not text, on c
 ]);
 
 it('accepts a typed kind of exactly 60 characters', function (): void {
-    $competition = app(CreateCompetition::class)->handle($this->kesiswaan, lainnyaForm(str_repeat('a', 60)));
+    $competition = app(CreateCompetition::class)->handle($this->admin, lainnyaForm(str_repeat('a', 60)), F::pdf());
 
     expect($competition->fresh()->organizer_type_other)->toBe(str_repeat('a', 60));
 });
 
 it('drops the typed kind when the type changes and stores a new one when it comes back', function (): void {
-    $competition = app(CreateCompetition::class)->handle($this->kesiswaan, lainnyaForm());
+    $competition = app(CreateCompetition::class)->handle($this->admin, lainnyaForm(), F::pdf());
     $update = app(UpdateCompetition::class);
 
     $update->handle($this->kesiswaan, $competition, lainnyaForm('Sanggar seni', ['organizer_type' => OrganizerType::Ptn->value]));
@@ -185,7 +187,7 @@ it('drops the typed kind when the type changes and stores a new one when it come
 });
 
 it('drops the typed kind when an update with another type does not send the field', function (): void {
-    $competition = app(CreateCompetition::class)->handle($this->kesiswaan, lainnyaForm());
+    $competition = app(CreateCompetition::class)->handle($this->admin, lainnyaForm(), F::pdf());
 
     // F::form() has no organizer_type_other key and the type "Perusahaan swasta".
     app(UpdateCompetition::class)->handle($this->kesiswaan, $competition, F::form());
@@ -217,7 +219,7 @@ it('lists the typed kind as missing only for "Lainnya" without it, right after t
 });
 
 it('does not publish a queued "Lainnya" lomba until the kind is typed', function (): void {
-    $competition = app(CreateCompetition::class)->handle($this->kesiswaan, lainnyaForm(null));
+    $competition = app(CreateCompetition::class)->handle($this->admin, lainnyaForm(null), F::pdf());
 
     try {
         app(VerifyCompetition::class)->handle($this->kesiswaan, $competition, CompetitionStatus::Dipublikasikan);
@@ -286,7 +288,7 @@ it('never lets the typed kind touch the points', function (): void {
 
 it('keeps the field closed to roles that do not manage lomba', function (RoleName $role): void {
     $user = $role === RoleName::Siswa ? F::student()->user : F::staff($role, 'Staf '.$role->value);
-    $competition = app(CreateCompetition::class)->handle($this->kesiswaan, lainnyaForm());
+    $competition = app(CreateCompetition::class)->handle($this->admin, lainnyaForm(), F::pdf());
 
     expect(fn () => app(CreateCompetition::class)->handle($user, lainnyaForm('Komunitas', ['name' => 'Lomba Esai Fiktif 2026'])))
         ->toThrow(AuthorizationException::class)
@@ -299,24 +301,26 @@ it('keeps the field closed to roles that do not manage lomba', function (RoleNam
         ->and($competition->fresh()->organizer_type_other)->toBe('Sanggar seni');
 })->with([RoleName::Siswa, RoleName::Guru, RoleName::Humas, RoleName::TataUsaha, RoleName::KepalaSekolah]);
 
-it('ignores an organizer type smuggled into an usulan', function (RoleName $role): void {
-    $user = $role === RoleName::Siswa ? F::student()->user : F::staff($role, 'Bu Retno Wulandari');
+it('keeps the typed kind of a lomba a student proposes only for "Lainnya" (D-145, D-125)', function (): void {
+    $student = F::student()->user;
 
-    $competition = app(SubmitCompetition::class)->handle($user, [
-        'name' => 'ISPO 2027',
-        'organizer_name' => 'Yayasan Contoh',
-        'organizer_type' => 'lainnya',
-        'organizer_type_other' => 'x',
-    ]);
+    $other = app(SubmitCompetition::class)->handle($student, LombaFixtures::usulan([
+        'organizer_type' => 'yayasan_lembaga', 'organizer_type_other' => 'Sanggar seni',
+    ]), F::pdf());
+    $lainnya = app(SubmitCompetition::class)->handle($student, LombaFixtures::usulan([
+        'name' => 'Festival Tari Pelajar Fiktif 2027', 'organizer_type' => 'lainnya', 'organizer_type_other' => '  Sanggar seni ',
+    ]), F::pdf());
 
-    expect($competition->fresh()->organizer_type)->toBeNull()
-        ->and($competition->fresh()->organizer_type_other)->toBeNull();
-})->with([RoleName::Siswa, RoleName::Guru]);
+    expect($other->fresh()->organizer_type)->toBe(OrganizerType::YayasanLembaga)
+        ->and($other->fresh()->organizer_type_other)->toBeNull()
+        ->and($lainnya->fresh()->organizerTypeLabel())->toBe('Lainnya (Sanggar seni)')
+        ->and($lainnya->fresh()->weight_category)->toBe(WeightCategory::E);
+});
 
 // The drawer ---------------------------------------------------------------------------------------------------------
 
 it('shows the field in the drawer only while "Lainnya" is chosen', function (): void {
-    Livewire::actingAs($this->kesiswaan)->test(Form::class)
+    Livewire::actingAs($this->admin)->test(Form::class)
         ->call('open')
         ->assertSee('Jenis penyelenggara')
         ->assertDontSee('Jenis penyelenggara lainnya')
@@ -330,9 +334,10 @@ it('shows the field in the drawer only while "Lainnya" is chosen', function (): 
 });
 
 it('saves the typed kind from the drawer and drops it when another type was chosen meanwhile', function (): void {
-    Livewire::actingAs($this->kesiswaan)->test(Form::class)
+    Livewire::actingAs($this->admin)->test(Form::class)
         ->call('open')
-        ->set('form', lainnyaForm('  Komunitas film pelajar '))
+        ->set(F::fields(lainnyaForm('  Komunitas film pelajar ')))
+        ->set('form.juknis', F::pdf())
         ->call('save')
         ->assertHasNoErrors()
         ->assertDispatched('lomba-saved');
@@ -365,7 +370,7 @@ it('fills the drawer with the stored kind, for Kesiswaan and for Admin', functio
 })->with([RoleName::Kesiswaan, RoleName::Admin]);
 
 it('marks the field and brings it into view when "Simpan & publikasikan" misses the typed kind', function (): void {
-    $competition = app(CreateCompetition::class)->handle($this->kesiswaan, lainnyaForm(null));
+    $competition = app(CreateCompetition::class)->handle($this->admin, lainnyaForm(null), F::pdf());
 
     Livewire::actingAs($this->kesiswaan)->test(Form::class)
         ->call('open', $competition->getKey())
@@ -385,9 +390,9 @@ it('marks the field and brings it into view when "Simpan & publikasikan" misses 
 });
 
 it('tells the 60-character limit on the field of the drawer', function (): void {
-    Livewire::actingAs($this->kesiswaan)->test(Form::class)
+    Livewire::actingAs($this->admin)->test(Form::class)
         ->call('open')
-        ->set('form', lainnyaForm(str_repeat('a', 61)))
+        ->set(F::fields(lainnyaForm(str_repeat('a', 61))))
         ->call('save')
         ->assertHasErrors(['form.organizer_type_other'])
         ->assertSee('Maksimal 60 karakter.');
@@ -396,7 +401,7 @@ it('tells the 60-character limit on the field of the drawer', function (): void 
 });
 
 it('names the missing kind on the card of the verification queue', function (): void {
-    $competition = app(CreateCompetition::class)->handle($this->kesiswaan, lainnyaForm(null));
+    $competition = app(CreateCompetition::class)->handle($this->admin, lainnyaForm(null), F::pdf());
 
     Livewire::withQueryParams(['tab' => 'verifikasi'])->actingAs($this->kesiswaan)->test(Index::class)
         ->assertSee('Perlu dilengkapi')
@@ -416,7 +421,7 @@ it('shows "Lainnya (…)" on Guru › Lomba and keeps another guru\'s unpublishe
     $retno = F::staff(RoleName::Guru, 'Bu Retno Wulandari');
     $hendra = F::staff(RoleName::Guru, 'Pak Hendra Kusuma');
     $published = lainnyaPublished();
-    $queued = app(CreateCompetition::class)->handle($this->kesiswaan, lainnyaForm('Komunitas rahasia', ['name' => 'Lomba Esai Fiktif 2026']));
+    $queued = app(CreateCompetition::class)->handle($this->admin, lainnyaForm('Komunitas rahasia', ['name' => 'Lomba Esai Fiktif 2026']), F::pdf());
     $queued->forceFill(['submitted_by' => $hendra->getKey()])->save();
 
     Livewire::actingAs($retno)->withQueryParams(['lihat' => $published->getKey()])->test(GuruLomba::class)

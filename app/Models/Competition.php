@@ -28,7 +28,9 @@ use Spatie\Activitylog\Support\LogOptions;
 
 /**
  * Lomba (catalog entry or student proposal). Every create starts at menunggu_verifikasi (D-27).
- * Not mass-assignable: status, submitted_by, verified_by, verified_at, verification_note (set in Actions).
+ * Not mass-assignable: status, submitted_by, verified_by, verified_at, verification_note and the weights
+ * weight_category + event_status (set in Actions with forceFill(); D-146: a student's lomba takes them from
+ * OrganizerWeight, never from its input).
  */
 class Competition extends Model
 {
@@ -43,8 +45,6 @@ class Competition extends Model
         'organizer_name',
         'organizer_type',
         'organizer_type_other',
-        'weight_category',
-        'event_status',
         'level',
         'mode',
         'registration_opens_at',
@@ -201,6 +201,33 @@ class Competition extends Model
             && ($this->registration_opens_at === null || $this->registration_opens_at <= $now)
             && $this->registration_closes_at !== null
             && $this->registration_closes_at >= $now;
+    }
+
+    /**
+     * D-148: open for this user's registration. A published lomba while its window runs (isOpenForRegistration()), or
+     * the user's own proposal that still waits for Kesiswaan, within the same date window: that registration waits as
+     * `menunggu_lomba` until the lomba is decided.
+     */
+    public function isOpenForRegistrationBy(User $user, ?DateTimeInterface $now = null): bool
+    {
+        $now ??= now();
+
+        if ($this->isOpenForRegistration($now)) {
+            return true;
+        }
+
+        return $this->isAwaitingVerificationFor($user)
+            && ($this->registration_opens_at === null || $this->registration_opens_at <= $now)
+            && $this->registration_closes_at !== null
+            && $this->registration_closes_at >= $now;
+    }
+
+    /** The user's own proposal that Kesiswaan has not decided yet (D-148). */
+    public function isAwaitingVerificationFor(User $user): bool
+    {
+        return $this->status === CompetitionStatus::MenungguVerifikasi
+            && $this->submitted_by !== null
+            && (int) $this->submitted_by === (int) $user->getKey();
     }
 
     public function allowsRegistrationType(RegistrationType $type): bool

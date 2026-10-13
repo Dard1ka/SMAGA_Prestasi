@@ -119,9 +119,11 @@ class Index extends Component
         $this->clampLimit();
     }
 
+    /** "Tambah lomba": Admin only since D-145 (siswa propose through Usulkan lomba). */
     public function create(): void
     {
         $this->authorize('manage', Competition::class);
+        $this->authorize('create', Competition::class);
         $this->dispatch('lomba-form-open', id: null, mode: 'create');
     }
 
@@ -339,6 +341,8 @@ class Index extends Component
             'statusFilters' => ['' => 'Semua'] + CompetitionStatus::options(),
             'pastLomba' => $this->pastLomba(),
             'closingLomba' => $this->closingLomba(),
+            // "Tambah lomba" is Admin only (D-145): Kesiswaan checks and corrects, it never adds a lomba.
+            'canCreate' => Auth::user()?->can('create', Competition::class) ?? false,
             // One search box per screen (D-90, backlog #60): this page has its own, so the top bar shows none.
         ])->layoutData(['badges' => $this->kesiswaanBadges(), 'search' => false]);
     }

@@ -12,6 +12,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\ValidationException;
 use Tests\Feature\Kesiswaan\KesiswaanFixtures as F;
+use Tests\Feature\Siswa\Lomba\LombaFixtures;
 
 /*
 | D-76: a lomba name must not carry a web address. The name is printed in mails from the school's address and mail
@@ -25,6 +26,8 @@ beforeEach(function (): void {
     Notification::fake();
 
     $this->kesiswaan = F::staff(RoleName::Kesiswaan);
+    // Only siswa and Admin add a lomba (D-145).
+    $this->admin = F::staff(RoleName::Admin, 'Operator STH');
 });
 
 it('finds a web address in a name', function (string $name): void {
@@ -58,7 +61,7 @@ it('refuses a usulan whose name carries a web address and stores nothing', funct
     $siswa = F::student('Raka Pradipta', 'XII-2')->user;
 
     try {
-        app(SubmitCompetition::class)->handle($siswa, ['name' => 'Lomba Sains, daftar ulang di www.situs-palsu.com']);
+        app(SubmitCompetition::class)->handle($siswa, LombaFixtures::usulan(['name' => 'Lomba Sains, daftar ulang di www.situs-palsu.com']), F::pdf());
         $this->fail('Expected a validation error.');
     } catch (ValidationException $e) {
         expect($e->errors()['name'][0] ?? null)->toBe(NoWebAddress::MESSAGE);
@@ -71,10 +74,10 @@ it('refuses a usulan whose name carries a web address and stores nothing', funct
 it('still accepts a usulan with an ordinary name and the address in the website field', function (): void {
     $siswa = F::student('Raka Pradipta', 'XII-2')->user;
 
-    $competition = app(SubmitCompetition::class)->handle($siswa, [
+    $competition = app(SubmitCompetition::class)->handle($siswa, LombaFixtures::usulan([
         'name' => 'Olimpiade Sains Pelajar Nusantara 2026',
         'website_url' => 'https://olimpiade-fiktif.example/2026',
-    ]);
+    ]), F::pdf());
 
     expect($competition->name)->toBe('Olimpiade Sains Pelajar Nusantara 2026')
         ->and($competition->website_url)->toBe('https://olimpiade-fiktif.example/2026');
@@ -84,13 +87,13 @@ it('refuses the same on the full form, on create and on update', function (): vo
     $create = app(CreateCompetition::class);
 
     try {
-        $create->handle($this->kesiswaan, F::form(['name' => 'Lomba resmi www.situs-palsu.com']));
+        $create->handle($this->admin, F::form(['name' => 'Lomba resmi www.situs-palsu.com']), F::pdf());
         $this->fail('Expected a validation error.');
     } catch (ValidationException $e) {
         expect($e->errors()['name'][0] ?? null)->toBe(NoWebAddress::MESSAGE);
     }
 
-    $competition = $create->handle($this->kesiswaan, F::form());
+    $competition = $create->handle($this->admin, F::form(), F::pdf());
 
     expect(fn () => app(UpdateCompetition::class)->handle($this->kesiswaan, $competition, F::form(['name' => 'Daftar di bit.ly/lomba'])))
         ->toThrow(ValidationException::class)

@@ -111,6 +111,28 @@ final class KesiswaanFixtures
     }
 
     /**
+     * Form input as the properties of the shared CompetitionFields form ("form.name" => …), for Livewire `set()` on the
+     * Kelola lomba drawer or Siswa › Usulkan lomba. Two different dates switch "Durasi lomba" to more than one day.
+     *
+     * @param  array<string, mixed>  $input
+     * @return array<string, mixed>
+     */
+    public static function fields(array $input): array
+    {
+        $fields = [];
+
+        if (($input['starts_on'] ?? null) !== null && ($input['starts_on'] ?? null) !== ($input['final_on'] ?? null)) {
+            $fields['form.duration'] = 'lebih_dari_satu_hari';
+        }
+
+        foreach ($input as $key => $value) {
+            $fields['form.'.$key] = $value;
+        }
+
+        return $fields;
+    }
+
+    /**
      * A report waiting for verification: registration laporan_dikirim, leader + confirmed anggota.
      *
      * @param  list<Student>  $members

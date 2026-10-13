@@ -123,6 +123,9 @@ it('refuses mass assignment of state and verification columns', function (Closur
     expect($create)->toThrow(MassAssignmentException::class);
 })->with([
     'competition status' => [fn () => Competition::query()->create(['name' => 'Lomba X', 'status' => 'dipublikasikan'])],
+    // Weights are set by the Actions only (CLAUDE §3.6, D-146): a student's lomba gets them from OrganizerWeight.
+    'competition weight category' => [fn () => Competition::query()->create(['name' => 'Lomba X', 'weight_category' => 'A'])],
+    'competition event status' => [fn () => Competition::query()->create(['name' => 'Lomba X', 'event_status' => 'puspresnas'])],
     'user status' => [fn () => User::query()->create(['name' => 'A', 'password' => 'x', 'status' => 'active'])],
     'achievement points' => [fn () => Achievement::query()->create(['points' => '999.00'])],
 ]);

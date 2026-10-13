@@ -4,9 +4,13 @@ declare(strict_types=1);
 
 namespace App\Actions\Competitions;
 
+use App\Actions\Registrations\ResumeWaitingRegistrations;
+use App\Domain\Competitions\OrganizerWeight;
 use App\Enums\CompetitionStatus;
+use App\Enums\EventStatus;
 use App\Enums\OrganizerType;
 use App\Enums\Participation;
+use App\Enums\RegistrationStatus;
 use App\Enums\RoleName;
 use App\Models\Competition;
 use App\Models\User;
@@ -27,16 +31,26 @@ use Illuminate\Validation\ValidationException;
  * accepted (this takes back the "note required" rule and the 10-character minimum of D-95 for a lomba
  * rejection); the submitter is told either way, with the reason only when one was written.
  *
- * M2-B (QA 2026-10-05): publishing refuses "Tanggal mulai" before "Batas daftar", and a lomba whose registration
+ * M2-B (QA 2026-10-05): publishing refuses "Tanggal mulai" before "Pendaftaran ditutup", and a lomba whose registration
  * deadline or final date has already passed is published only with `$confirmPastDates` (Q1-04: old lomba are
  * entered for the record, so the answer is a question, not a ban). The refusal carries the key
  * CompetitionDates::PAST_KEY; the confirmation is audited (`past_dates`).
  *
  * D-125 (the lead, 2026-10-09): a lomba whose "Jenis penyelenggara" is "Lainnya" is published only once the kind
  * was typed (`organizer_type_other`); the queue may hold it without.
+ *
+ * FS1 Paket B: publishing needs the juknis (D-147), and both decisions audit `weight_override` when the kategori
+ * bobot or status ajang differs from what the jenis penyelenggara gives (OrganizerWeight, D-146; the spec's event name
+ * "competition.verified" is these two events).
+ *
+ * D-148: the submitter's registrations that waited for this lomba (`menunggu_lomba`) move in the same transaction
+ * (ResumeWaitingRegistrations): published → on to the approvers or the team invitations, rejected → cancelled. The
+ * submitter's one decision notice names what happened to the own registration; the other notices follow the commit.
  */
 final class VerifyCompetition
 {
+    public function __construct(private readonly ResumeWaitingRegistrations $resume) {}
+
     /** Field → label for the "Lengkapi dulu" message (order = form order). */
     public const REQUIRED_TO_PUBLISH = [
         'name' => 'Nama lomba',
@@ -47,11 +61,13 @@ final class VerifyCompetition
         'event_status' => 'Status ajang',
         'mode' => 'Pelaksanaan',
         'level' => 'Tingkat',
-        'registration_closes_at' => 'Batas daftar',
+        'registration_closes_at' => 'Pendaftaran ditutup',
         'starts_on' => 'Tanggal mulai',
-        'final_on' => 'Tanggal final',
+        'final_on' => 'Tanggal selesai',
         'location' => 'Tempat',
         'participation' => 'Peserta',
+        // D-147: every published lomba carries its juknis, brosur or undangan.
+        'juknis_file_id' => 'Juknis / brosur / undangan',
     ];
 
     /**
@@ -75,7 +91,7 @@ final class VerifyCompetition
 
         $note = self::cleanNote($note);
 
-        $result = DB::transaction(function () use ($actor, $competition, $decision, $note, $confirmPastDates): Competition {
+        [$result, $outcome] = DB::transaction(function () use ($actor, $competition, $decision, $note, $confirmPastDates): array {
             /** @var Competition $locked */
             $locked = Competition::query()->whereKey($competition->getKey())->lockForUpdate()->firstOrFail();
 
@@ -127,10 +143,12 @@ final class VerifyCompetition
                     'note' => $note,
                     // Published although these dates had passed: the verifier confirmed it (empty = no question asked).
                     'past_dates' => array_keys($pastDates),
+                    // D-146: a weight that differs from what the jenis penyelenggara gives (null = it follows the map).
+                    'weight_override' => self::weightOverride($locked),
                 ])
                 ->log($decision === CompetitionStatus::Dipublikasikan ? 'competition.published' : 'competition.rejected');
 
-            return $locked;
+            return [$locked, $this->resume->handle($actor, $locked, $decision)];
         });
 
         $competition->setRawAttributes($result->getAttributes(), true);
@@ -139,9 +157,11 @@ final class VerifyCompetition
 
         if (self::notifiesSubmitter($submitter, $actor)) {
             $submitter->notify($decision === CompetitionStatus::Dipublikasikan
-                ? CompetitionPublished::for($result, $submitter->hasRole(RoleName::Siswa->value))
-                : CompetitionRejected::for($result, $note));
+                ? CompetitionPublished::for($result, $submitter->hasRole(RoleName::Siswa->value), $outcome->submitterNow)
+                : CompetitionRejected::for($result, $note, $outcome->submitterNow === RegistrationStatus::Dibatalkan));
         }
+
+        $this->resume->notify($outcome, $actor);
 
         return $result;
     }
@@ -203,6 +223,33 @@ final class VerifyCompetition
         }
 
         return $messages;
+    }
+
+    /**
+     * The weight Kesiswaan chose next to the one the map gives (OrganizerWeight, D-146), for the audit row of the
+     * decision; null when they agree, the lomba has no jenis penyelenggara or no weight was chosen yet (an incomplete
+     * entry that is rejected). A lomba stored before D-146 is not recomputed, so its hand-typed weight may show here
+     * as a difference from the map.
+     *
+     * @return array{computed: array{weight_category: string, event_status: string}, chosen: array{weight_category: ?string, event_status: ?string}}|null
+     */
+    private static function weightOverride(Competition $competition): ?array
+    {
+        $type = $competition->organizer_type;
+
+        if (! $type instanceof OrganizerType
+            || $competition->weight_category === null
+            || $competition->event_status === null
+            || ! OrganizerWeight::isOverride($type, $competition->weight_category, $competition->event_status)) {
+            return null;
+        }
+
+        $mapped = OrganizerWeight::for($type, $competition->event_status === EventStatus::Puspresnas);
+
+        return [
+            'computed' => ['weight_category' => $mapped->category->value, 'event_status' => $mapped->eventStatus->value],
+            'chosen' => ['weight_category' => $competition->weight_category?->value, 'event_status' => $competition->event_status?->value],
+        ];
     }
 
     private static function cleanNote(?string $note): ?string

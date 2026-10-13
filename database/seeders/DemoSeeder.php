@@ -563,7 +563,8 @@ final class DemoSeeder extends Seeder
             // Seven of the eight carry a cover (the list is DemoCoverArt::POSTERS); KRENOVA 2027 shows a card without one.
             $cover = DemoCoverArt::fileNameFor($name);
 
-            $this->competitions[$key] = Competition::query()->create([
+            // Status, verifier and weights are not fillable (CLAUDE §3.6): forceFill, like the Actions.
+            $this->competitions[$key] = tap((new Competition)->forceFill([
                 'name' => $name,
                 'description' => 'Info lomba contoh untuk pengembangan (data fiktif). Baca juknis untuk syarat lengkap.',
                 'bidang' => Bidang::from($bidang),
@@ -591,7 +592,7 @@ final class DemoSeeder extends Seeder
                 'verified_by' => $kesiswaan->getKey(),
                 'verified_at' => min($opens, '2026-09-25').' 08:00:00',
                 'created_at' => min($opens, '2026-09-25').' 07:30:00',
-            ]);
+            ]))->save();
         }
     }
 
@@ -607,7 +608,7 @@ final class DemoSeeder extends Seeder
         foreach ($proposals as [$name, $bidang, $organizer, $url, $brochure, $studentKey, $createdAt]) {
             $userId = $this->students[$studentKey]->user_id;
 
-            Competition::query()->create([
+            tap((new Competition)->forceFill([
                 'name' => $name,
                 'bidang' => Bidang::from($bidang),
                 'organizer_name' => $organizer,
@@ -617,7 +618,7 @@ final class DemoSeeder extends Seeder
                 'submitted_by' => $userId,
                 'created_at' => $createdAt,
                 'updated_at' => $createdAt,
-            ]);
+            ]))->save();
         }
     }
 
@@ -792,7 +793,7 @@ final class DemoSeeder extends Seeder
         $starts = CarbonImmutable::parse($startsOn);
         $kesiswaan = $this->staff['kesiswaan']->getKey();
 
-        return $this->competitions[$key] = Competition::query()->create([
+        return $this->competitions[$key] = tap((new Competition)->forceFill([
             'name' => $name,
             'bidang' => Bidang::from($bidang),
             'organizer_name' => $organizerName,
@@ -815,7 +816,7 @@ final class DemoSeeder extends Seeder
             'verified_at' => $starts->subDays(36)->setTime(8, 0),
             'created_at' => $starts->subDays(36)->setTime(7, 30),
             'updated_at' => $starts->addDays(1),
-        ]);
+        ]))->save();
     }
 
     // Humas ----------------------------------------------------------------------------------

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 use App\Enums\RoleName;
 use App\Livewire\Kesiswaan\Lomba\Form as KelolaLombaForm;
-use App\Livewire\Lomba\UsulanForm;
+use App\Livewire\Siswa\Lomba\Usulkan;
 use App\Models\Competition;
 use App\Models\User;
 use App\Rules\ExternalUrl;
@@ -16,9 +16,10 @@ use Tests\Feature\Kesiswaan\KesiswaanFixtures as K;
 use Tests\Feature\Siswa\Lomba\LombaFixtures as F;
 
 /*
-| The four link fields of the app answer one address the same way (the lead's mail test of 2026-10-09: "kadang bisa,
-| kadang engga"): Siswa › Usulkan lomba › Link resmi, Guru › Upload info lomba › Link resmi, Kesiswaan › Kelola lomba ›
-| Website resmi and Link registrasi. One rule (App\Rules\ExternalUrl), the same cleaning, the same sentence.
+| The link fields of the app answer one address the same way (the lead's mail test of 2026-10-09: "kadang bisa,
+| kadang engga"): Siswa › Usulkan lomba › Link resmi and Kelola lomba › Website resmi and Link registrasi. One rule
+| (App\Rules\ExternalUrl), the same cleaning, the same sentence. Guru › Upload info lomba is gone and only Admin adds
+| a lomba in Kelola lomba (D-145).
 */
 
 uses(RefreshDatabase::class);
@@ -29,28 +30,26 @@ beforeEach(function (): void {
     $this->withoutVite();
 
     $this->siswa = F::user(F::student());
-    $this->guru = K::staff(RoleName::Guru, 'Bu Retno Wulandari');
     $this->kesiswaan = K::staff(RoleName::Kesiswaan);
+    $this->admin = K::staff(RoleName::Admin, 'Operator STH');
 });
 
 /**
- * Sends one address through the usulan sheet as that user.
+ * Sends one address as the "Link resmi" of Siswa › Usulkan lomba (the whole lomba since D-145), as that user.
  *
  * @return array{error: ?string, stored: ?string, shown: mixed}
  */
-function linkThroughUsulan(User $user, bool $upload, string $typed): array
+function linkThroughUsulan(User $user, string $typed): array
 {
-    $sheet = Livewire::actingAs($user)->test(UsulanForm::class, ['upload' => $upload])
-        ->set('name', 'Lomba Uji Link 2026')
-        ->set('organizer_name', 'Panitia Uji')
-        ->set('website_url', $typed)
-        ->set('brosur', UploadedFile::fake()->image('brosur.jpg', 600, 800))
-        ->call('kirim');
+    $page = Livewire::actingAs($user)->test(Usulkan::class)
+        ->set(K::fields(F::usulan(['name' => 'Lomba Uji Link 2026', 'website_url' => $typed])))
+        ->set('form.juknis', UploadedFile::fake()->image('brosur.jpg', 600, 800))
+        ->call('simpan');
 
     return [
-        'error' => $sheet->errors()->first('website_url') ?: null,
+        'error' => $page->errors()->first('form.website_url') ?: null,
         'stored' => Competition::query()->where('submitted_by', $user->getKey())->value('website_url'),
-        'shown' => $sheet->get('website_url'),
+        'shown' => $page->get('form.website_url'),
     ];
 }
 
@@ -67,6 +66,7 @@ function linkThroughKelolaLomba(User $user, string $field, string $typed): array
         ->set('form.name', $name)
         ->set('form.bidang', 'sains')
         ->set('form.'.$field, $typed)
+        ->set('form.juknis', K::pdf())
         ->call('save');
 
     return [
@@ -76,12 +76,11 @@ function linkThroughKelolaLomba(User $user, string $field, string $typed): array
     ];
 }
 
-it('answers one address the same way on all four link fields', function (string $typed, ?string $stored, ?string $sentence): void {
+it('answers one address the same way on every link field', function (string $typed, ?string $stored, ?string $sentence): void {
     $answers = [
-        'siswa, Link resmi' => linkThroughUsulan($this->siswa, false, $typed),
-        'guru, Link resmi' => linkThroughUsulan($this->guru, true, $typed),
-        'kesiswaan, Website resmi' => linkThroughKelolaLomba($this->kesiswaan, 'website_url', $typed),
-        'kesiswaan, Link registrasi' => linkThroughKelolaLomba($this->kesiswaan, 'registration_url', $typed),
+        'siswa, Link resmi' => linkThroughUsulan($this->siswa, $typed),
+        'admin, Website resmi' => linkThroughKelolaLomba($this->admin, 'website_url', $typed),
+        'admin, Link registrasi' => linkThroughKelolaLomba($this->admin, 'registration_url', $typed),
     ];
 
     foreach ($answers as $field => $answer) {
@@ -90,8 +89,8 @@ it('answers one address the same way on all four link fields', function (string 
     }
 
     // The drawer brings its error into view like the sheet does.
-    expect($answers['kesiswaan, Website resmi']['invalid'])->toBe($sentence !== null)
-        ->and($answers['kesiswaan, Link registrasi']['invalid'])->toBe($sentence !== null);
+    expect($answers['admin, Website resmi']['invalid'])->toBe($sentence !== null)
+        ->and($answers['admin, Link registrasi']['invalid'])->toBe($sentence !== null);
 })->with([
     // Accepted as typed (the three addresses of the lead's test guide first).
     'guide address, uji' => ['https://contoh.test/lomba-uji', 'https://contoh.test/lomba-uji', null],
@@ -125,13 +124,11 @@ it('answers one address the same way on all four link fields', function (string 
     'too long' => ['https://contoh.example/'.str_repeat('a', 478), null, ExternalUrl::TOO_LONG],
 ]);
 
-it('accepts the addresses of the test guide for a student and for a guru alike', function (): void {
+it('accepts the addresses of the test guide for a student', function (): void {
     foreach (['https://contoh.test/lomba-siswa', 'https://contoh.test/lomba-guru'] as $address) {
-        foreach ([[$this->siswa, false], [$this->guru, true]] as [$user, $upload]) {
-            Competition::query()->where('submitted_by', $user->getKey())->delete();
+        Competition::query()->where('submitted_by', $this->siswa->getKey())->delete();
 
-            expect(linkThroughUsulan($user, $upload, $address))->toMatchArray(['error' => null, 'stored' => $address]);
-        }
+        expect(linkThroughUsulan($this->siswa, $address))->toMatchArray(['error' => null, 'stored' => $address]);
     }
 });
 

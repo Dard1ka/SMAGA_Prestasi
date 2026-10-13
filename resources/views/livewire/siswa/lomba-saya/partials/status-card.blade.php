@@ -8,6 +8,7 @@
 @endphp
 
 @switch($status)
+    @case(S::MenungguLomba)
     @case(S::MenungguKonfirmasi)
     @case(S::MenungguKepsek)
         <x-sth.card as="section" aria-labelledby="setuju-judul" class="flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -19,7 +20,11 @@
                 </div>
                 <p class="muted m-0 text-sm">
                     Didaftarkan {{ $d['registeredOn'] }}.
-                    {{ $d['allConfirmed'] ? ($d['isTeam'] ? 'Semua anggota sudah konfirmasi.' : 'Menunggu persetujuan sekolah.') : 'Menunggu konfirmasi anggota tim.' }}
+                    @if ($d['waitingText'])
+                        {{ $d['waitingText'] }}
+                    @else
+                        {{ $d['allConfirmed'] ? ($d['isTeam'] ? 'Semua anggota sudah konfirmasi.' : 'Menunggu persetujuan sekolah.') : 'Menunggu konfirmasi anggota tim.' }}
+                    @endif
                 </p>
             </div>
             @if ($d['canCancel'])
@@ -61,7 +66,7 @@
             <span class="flex size-11 shrink-0 items-center justify-center rounded-tile bg-gray-bg text-gray" aria-hidden="true"><x-sth.icon name="x" /></span>
             <div class="flex min-w-0 flex-col gap-1">
                 <h3 id="setuju-judul" class="title-card">Pendaftaran dibatalkan</h3>
-                <p class="muted m-0 text-sm">Kamu bisa mendaftar lagi selama pendaftaran lomba masih dibuka.</p>
+                <p class="muted m-0 text-sm">{{ $d['cancelledText'] }}</p>
             </div>
         </x-sth.card>
         @break

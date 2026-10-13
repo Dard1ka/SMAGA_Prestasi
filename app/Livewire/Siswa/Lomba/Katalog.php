@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace App\Livewire\Siswa\Lomba;
 
 use App\Enums\Bidang;
+use App\Enums\CompetitionStatus;
 use App\Enums\Level;
 use App\Models\Competition;
+use Carbon\CarbonImmutable;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Gate;
@@ -19,7 +21,12 @@ use Livewire\WithPagination;
 /**
  * Siswa · Cari lomba (UI-MAP #10, board Katalog-Lomba). Published lomba only (D-27), filters in the
  * URL (bidang, tingkat, status pendaftaran, q — the top bar search posts ?q= here), 9 per page.
- * "Usulkan lomba" opens the shared Lomba\UsulanForm sheet (SubmitCompetition → menunggu_verifikasi).
+ * "Usulkan lomba" opens the page Siswa\Lomba\Usulkan (`siswa.lomba.usulkan`, D-145: the whole lomba, then its
+ * registration; SubmitCompetition → menunggu_verifikasi).
+ *
+ * Tab "Usulan saya" (`?tab=usulan`, FS1 Paket B): the student's own lomba of every status, oldest first, each opening
+ * its Detail lomba (CompetitionPolicy::view lets the submitter in). The catalog filters do not apply there; the name
+ * search (?q=, the top bar search) does, so typing in the top bar never leaves the list unchanged.
  */
 #[Layout('layouts::app', ['subtitle' => 'Semua lomba sudah diperiksa Kesiswaan.'])]
 #[Title('Cari lomba')]
@@ -30,6 +37,12 @@ class Katalog extends Component
     public const PER_PAGE = 9;
 
     public const STATUSES = ['dibuka' => 'Dibuka', 'segera' => 'Segera dibuka', 'ditutup' => 'Ditutup'];
+
+    /** '' = the catalog, 'usulan' = the student's own proposals. */
+    public const TABS = ['' => 'Katalog', 'usulan' => 'Usulan saya'];
+
+    #[Url(except: '')]
+    public string $tab = '';
 
     #[Url(except: '')]
     public string $bidang = '';
@@ -51,16 +64,30 @@ class Katalog extends Component
 
     public function updated(string $property): void
     {
-        if (in_array($property, ['bidang', 'tingkat', 'status', 'q'], true)) {
+        if (in_array($property, ['tab', 'bidang', 'tingkat', 'status', 'q'], true)) {
             $this->normalise();
             $this->resetPage();
         }
+    }
+
+    public function pilihTab(string $tab): void
+    {
+        $this->tab = $tab;
+        $this->normalise();
+        $this->resetPage();
     }
 
     public function pilihBidang(string $bidang): void
     {
         $this->bidang = $bidang;
         $this->normalise();
+        $this->resetPage();
+    }
+
+    /** "Hapus pencarian" of an empty "Usulan saya": the catalog filters stay as they were. */
+    public function hapusPencarian(): void
+    {
+        $this->reset('q');
         $this->resetPage();
     }
 
@@ -72,21 +99,35 @@ class Katalog extends Component
 
     public function render(): View
     {
-        $page = $this->query()->paginate(self::PER_PAGE);
+        $proposals = $this->tab === 'usulan';
+        $query = $proposals ? $this->myProposals() : $this->query();
+        $page = $query->paginate(self::PER_PAGE);
 
         // QA10: a stale ?page= (an old link, or fewer lomba since) showed "N lomba" above "Belum ada lomba di katalog"
         // without a pager. Show the last page instead.
         if ($page->isEmpty() && $page->currentPage() > 1) {
             $this->setPage($page->lastPage());
-            $page = $this->query()->paginate(self::PER_PAGE);
+            $page = ($proposals ? $this->myProposals() : $this->query())->paginate(self::PER_PAGE);
         }
 
-        $registrants = LombaPresenter::registrants($page->getCollection());
-        $cards = $page->getCollection()
-            ->map(fn (Competition $c): array => LombaPresenter::card($c, $registrants, route('siswa.lomba.show', $c)))
-            ->all();
+        $cards = [];
+        $rows = [];
+
+        if ($proposals) {
+            $rows = $page->getCollection()->map(fn (Competition $c): array => self::proposalRow($c))->all();
+        } else {
+            $registrants = LombaPresenter::registrants($page->getCollection());
+            $cards = $page->getCollection()
+                ->map(fn (Competition $c): array => LombaPresenter::card($c, $registrants, route('siswa.lomba.show', $c)))
+                ->all();
+        }
 
         return view('livewire.siswa.lomba.katalog', [
+            'tabs' => self::TABS,
+            'proposals' => $proposals,
+            // The count on the tab is every own lomba, whatever the search.
+            'proposalCount' => $this->myProposals(search: false)->count(),
+            'rows' => $rows,
             'page' => $page,
             'cards' => $cards,
             'bidangOptions' => ['' => 'Semua'] + Bidang::options(),
@@ -121,8 +162,35 @@ class Katalog extends Component
             ->orderBy('name');
     }
 
+    /** @return Builder<Competition> the student's own lomba, every status, oldest first (spec §5.2), by name like query() */
+    private function myProposals(bool $search = true): Builder
+    {
+        return Competition::query()
+            ->where('submitted_by', auth()->id())
+            ->when($search && $this->q !== '', fn (Builder $q) => $q->where('name', 'like', '%'.addcslashes($this->q, '%_\\').'%'))
+            ->oldest('created_at')
+            ->orderBy('id');
+    }
+
+    /** @return array{id: string, name: string, organizer: ?string, status: string, tone: string, sent: string, note: ?string, href: string} */
+    private static function proposalRow(Competition $competition): array
+    {
+        return [
+            'id' => (string) $competition->getKey(),
+            'name' => $competition->name,
+            'organizer' => $competition->organizer_name,
+            'status' => $competition->status->label(),
+            'tone' => $competition->status->tone(),
+            'sent' => CarbonImmutable::instance($competition->created_at)->locale('id')->translatedFormat('j M Y'),
+            // A rejected usulan names Kesiswaan's reason when one was written (D-103).
+            'note' => $competition->status === CompetitionStatus::Ditolak ? $competition->verification_note : null,
+            'href' => route('siswa.lomba.show', $competition),
+        ];
+    }
+
     private function normalise(): void
     {
+        $this->tab = array_key_exists($this->tab, self::TABS) ? $this->tab : '';
         $this->bidang = Bidang::tryFrom($this->bidang)?->value ?? '';
         $this->tingkat = Level::tryFrom($this->tingkat)?->value ?? '';
         $this->status = array_key_exists($this->status, self::STATUSES) ? $this->status : '';

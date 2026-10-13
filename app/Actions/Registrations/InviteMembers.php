@@ -62,7 +62,7 @@ final class InviteMembers
             }
 
             // QA10: the registration deadline, not the published status (a lomba closed early keeps its teams going).
-            if (! RegistrationPolicy::teamWindowOpen($competition)) {
+            if (! RegistrationPolicy::teamWindowOpen($locked->setRelation('competition', $competition))) {
                 throw ValidationException::withMessages(['members' => 'Batas pendaftaran sudah lewat.']);
             }
 

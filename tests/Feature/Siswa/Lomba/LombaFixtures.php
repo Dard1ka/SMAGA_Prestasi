@@ -6,7 +6,10 @@ namespace Tests\Feature\Siswa\Lomba;
 
 use App\Enums\Bidang;
 use App\Enums\CompetitionStatus;
+use App\Enums\EventMode;
+use App\Enums\EventStatus;
 use App\Enums\Level;
+use App\Enums\OrganizerType;
 use App\Enums\Participation;
 use App\Enums\RoleName;
 use App\Enums\UserStatus;
@@ -74,6 +77,70 @@ final class LombaFixtures
     public static function teamCompetition(int $max = 3, array $attributes = []): Competition
     {
         return self::openCompetition(array_merge(['participation' => Participation::Tim, 'max_team_size' => $max], $attributes));
+    }
+
+    /**
+     * A complete "Usulkan lomba" input (CompetitionFields::toAttributes() shape, D-145): one-day individu lomba by a PTN,
+     * tingkat kota, registration closing in 20 days, the lomba in 35. No weight fields: the Action computes them.
+     *
+     * @param  array<string, mixed>  $overrides
+     * @return array<string, mixed>
+     */
+    public static function usulan(array $overrides = []): array
+    {
+        $final = now()->addDays(35)->format('Y-m-d');
+
+        return array_merge([
+            'name' => 'International Science Project Olympiad (ISPO) 2027',
+            'description' => 'Pendaftaran gratis (data fiktif).',
+            'bidang' => Bidang::Riset->value,
+            'level' => Level::Kota->value,
+            'organizer_name' => 'Universitas Negeri Contoh',
+            'organizer_type' => 'ptn',
+            'organizer_type_other' => null,
+            'puspresnas' => false,
+            'mode' => 'luring',
+            'location' => 'Kota Semarang',
+            'registration_opens_at' => null,
+            'registration_closes_at' => now()->addDays(20)->format('Y-m-d'),
+            'starts_on' => $final,
+            'final_on' => $final,
+            'participation' => Participation::Individu->value,
+            'max_team_size' => null,
+            'website_url' => 'https://example.org/ispo',
+            'registration_url' => null,
+        ], $overrides);
+    }
+
+    /**
+     * Model attributes of a complete queued student lomba (D-145): what SubmitCompetition stores for usulan(), weight
+     * included. Registration closes in 20 days, the lomba runs in 35; individu. Pass to pendingCompetition().
+     *
+     * @param  array<string, mixed>  $overrides
+     * @return array<string, mixed>
+     */
+    public static function usulanAttributes(array $overrides = []): array
+    {
+        $final = now()->addDays(35)->format('Y-m-d');
+
+        return array_merge([
+            'description' => 'Pendaftaran gratis (data fiktif).',
+            'bidang' => Bidang::Riset,
+            'level' => Level::Kota,
+            'organizer_name' => 'Universitas Negeri Contoh',
+            'organizer_type' => OrganizerType::Ptn,
+            'weight_category' => WeightCategory::C,
+            'event_status' => EventStatus::NonPemerintah,
+            'mode' => EventMode::Luring,
+            'location' => 'Kota Semarang',
+            'registration_opens_at' => null,
+            'registration_closes_at' => now()->addDays(20)->endOfDay(),
+            'starts_on' => $final,
+            'final_on' => $final,
+            'participation' => Participation::Individu,
+            'max_team_size' => null,
+            'website_url' => 'https://example.org/ispo',
+        ], $overrides);
     }
 
     public static function pendingCompetition(User $submitter, array $attributes = []): Competition
