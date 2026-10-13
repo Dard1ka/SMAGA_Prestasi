@@ -305,7 +305,7 @@ class Form extends Component
         // The status WithdrawInvitation wrote under its lock (it copies the locked row back into $registration).
         $forwarded = $registration->status === RegistrationStatus::MenungguKepsek;
 
-        $this->dispatch('sth-toast', message: 'Undangan untuk '.$name.' dibatalkan.'.($forwarded ? ' Pendaftaran diteruskan ke Kepala Sekolah.' : ''), tone: 'success');
+        $this->dispatch('sth-toast', message: 'Undangan untuk '.$name.' dibatalkan.'.($forwarded ? ' Pendaftaran diteruskan untuk persetujuan.' : ''), tone: 'success');
         $this->dispatch(self::CHANGED);
     }
 
@@ -404,7 +404,7 @@ class Form extends Component
     private function refuseWithdrawal(?Registration $registration): void
     {
         $message = $registration?->status === RegistrationStatus::MenungguKepsek
-            ? 'Undangan tidak bisa dibatalkan lagi: tim sudah lengkap dan diteruskan ke Kepala Sekolah.'
+            ? 'Undangan tidak bisa dibatalkan lagi: tim sudah lengkap dan diteruskan untuk persetujuan.'
             : 'Undangan tidak bisa dibatalkan lagi untuk pendaftaran ini.';
 
         $this->addError('members', $message);

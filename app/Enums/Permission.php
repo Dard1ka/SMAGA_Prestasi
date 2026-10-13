@@ -20,7 +20,7 @@ enum Permission: string
 
     // Registrations (D-03, D-05)
     case RegistrationCreate = 'registration.create';        // siswa registers individu/tim
-    case RegistrationApprove = 'registration.approve';      // Kepala Sekolah only (D-01: not Admin)
+    case RegistrationApprove = 'registration.approve';      // Kepala Sekolah or Tata Usaha (D-150; D-01: not Admin)
     case RegistrationViewAll = 'registration.view_all';
 
     // Surat tugas (D-06)

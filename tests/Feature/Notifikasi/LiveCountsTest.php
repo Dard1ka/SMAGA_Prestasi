@@ -159,7 +159,8 @@ it('never answers a queue the user may not open', function (): void {
 
     expect(NavigationServiceProvider::liveCounts($guru))->not->toHaveKey('tu.surat')
         ->and(NavigationServiceProvider::liveCounts($admin))->not->toHaveKey('kepsek.persetujuan')
-        ->and(NavigationServiceProvider::liveCounts(A::staff(RoleName::TataUsaha)))->not->toHaveKey('kepsek.persetujuan')
+        // D-150: Tata Usaha approves too, so its menu counts the approval queue.
+        ->and(NavigationServiceProvider::liveCounts(A::staff(RoleName::TataUsaha)))->toHaveKey('kepsek.persetujuan')
         ->and(NavigationServiceProvider::liveCounts(A::staff(RoleName::KepalaSekolah)))->not->toHaveKey('tu.surat');
 });
 

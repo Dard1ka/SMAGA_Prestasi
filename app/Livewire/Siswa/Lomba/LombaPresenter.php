@@ -21,6 +21,9 @@ use Illuminate\Support\Collection;
  */
 final class LombaPresenter
 {
+    /** "Laporan hasil" on the read screens: there is no report deadline (D-151), only this request. */
+    public const REPORT_LINE = 'Segera laporkan setelah lomba selesai';
+
     /**
      * Status of the registration window: [label, tone, key] with key dibuka|segera|ditutup|ditolak|menunggu.
      * QA10: the lomba's status comes first. Only a published lomba has a window from its dates; the proposer of a lomba
@@ -124,22 +127,46 @@ final class LombaPresenter
         return $parts === [] ? 'Penyelenggara belum diisi' : implode(' · ', $parts);
     }
 
+    /** "Pelaksanaan" (start – end of the lomba), "Tanggal menyusul" when no date is set (D-147). */
     public static function tanggal(Competition $competition): string
     {
-        $start = $competition->starts_on;
-        $final = $competition->final_on;
+        return self::range($competition->starts_on, $competition->final_on) ?? 'Tanggal menyusul';
+    }
 
-        if ($start === null && $final === null) {
-            return 'Tanggal menyusul';
+    /** "Pendaftaran" (registration opens – closes, D-147); null when neither date is set. */
+    public static function pendaftaran(Competition $competition): ?string
+    {
+        return self::range($competition->registration_opens_at, $competition->registration_closes_at);
+    }
+
+    /**
+     * A period the short way (D-147): "12–30 Okt 2026", "28 Sep – 5 Okt 2026", "28 Des 2026 – 5 Jan 2027"; one date
+     * when both are the same day or one is missing; null when both are missing. Compared by calendar day.
+     */
+    public static function range(?DateTimeInterface $from, ?DateTimeInterface $to): ?string
+    {
+        if ($from === null && $to === null) {
+            return null;
         }
 
-        if ($start !== null && $final !== null && ! $start->isSameDay($final)) {
-            return $start->isSameMonth($final)
-                ? $start->translatedFormat('j').'–'.self::date($final)
-                : self::date($start).' – '.self::date($final);
+        if ($from === null || $to === null) {
+            return self::date($from ?? $to);
         }
 
-        return self::date($start ?? $final);
+        $start = CarbonImmutable::instance($from)->locale('id');
+        $end = CarbonImmutable::instance($to)->locale('id');
+
+        if ($start->isSameDay($end)) {
+            return self::date($end);
+        }
+
+        if ($start->isSameMonth($end)) {
+            return $start->translatedFormat('j').'–'.self::date($end);
+        }
+
+        return $start->isSameYear($end)
+            ? $start->translatedFormat('j M').' – '.self::date($end)
+            : self::date($start).' – '.self::date($end);
     }
 
     public static function tempat(Competition $competition): string

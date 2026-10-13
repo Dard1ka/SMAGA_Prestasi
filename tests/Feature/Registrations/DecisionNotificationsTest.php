@@ -122,7 +122,7 @@ it('keeps the rejection wording for the members and gives the guru a bell entry'
 
     expect($mail['subject'])->toBe('Pendaftaran lomba tidak disetujui')
         ->and($mail['greeting'])->toBe('Halo Nadia,')
-        ->and($mail['lines'])->toBe(['Kepala Sekolah tidak menyetujui pendaftaranmu di '.$lomba.'.', 'Alasan: Kuota sekolah sudah penuh.'])
+        ->and($mail['lines'])->toBe(['Pendaftaranmu di '.$lomba.' tidak disetujui Kepala Sekolah.', 'Alasan: Kuota sekolah sudah penuh.'])
         ->and($mail['url'])->toBe(route('siswa.lomba-saya.show', ['registration' => $registration->getKey()]))
         ->and($siswa->toArray(F::user($this->nadia)))->toMatchArray([
             'type' => 'registration.rejected',

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Livewire\Siswa;
 
-use App\Domain\Deadlines\ReportDeadline;
+use App\Domain\Deadlines\ReportFollowUp;
 use App\Domain\Points\PointFormatter;
 use App\Enums\MemberRole;
 use App\Enums\RegistrationStatus;
@@ -55,7 +55,7 @@ class Beranda extends Component
             // openTotal tells "nothing is open" from "you are in every open lomba" when N is 0.
             'openCount' => $student ? $this->openFor($student)->count() : $openTotal,
             'openTotal' => $openTotal,
-            'actions' => $student ? $this->actions($student, $today) : [],
+            'actions' => $student ? $this->actions($student) : [],
             'mine' => $student ? $this->myRegistrations($student) : [],
             'points' => $points,
             'deadlines' => $this->deadlines($today),
@@ -73,7 +73,7 @@ class Beranda extends Component
      *
      * @return list<array<string, mixed>>
      */
-    private function actions(Student $student, CarbonImmutable $today): array
+    private function actions(Student $student): array
     {
         $actions = [];
 
@@ -98,7 +98,6 @@ class Beranda extends Component
             ];
         }
 
-        $deadline = app(ReportDeadline::class);
         $reports = Registration::query()
             ->where('leader_student_id', $student->getKey())
             ->where('status', RegistrationStatus::MenungguLaporan)
@@ -106,24 +105,16 @@ class Beranda extends Component
             ->get();
 
         foreach ($reports as $registration) {
-            $final = $registration->competition->final_on ?? $registration->competition->starts_on;
-
-            if ($final === null) {
-                continue;
-            }
-
-            $due = $deadline->dueDate($final);
-            $left = $deadline->daysLeft($final, $today);
+            // D-151: no deadline and no days left, only the request.
             $actions[] = [
                 'key' => 'report-'.$registration->getKey(),
                 'icon' => 'upload',
                 'title' => $registration->competition->name.' · laporan hasil',
-                'note' => 'Batas '.LombaPresenter::date($due).' · '.($left > 0 ? "{$left} hari lagi" : ($left === 0 ? 'hari ini' : 'terlambat')),
+                'note' => ReportFollowUp::PROMPT,
                 'button' => 'Laporkan hasil',
                 'href' => $this->route('siswa.lapor', ['registration' => $registration->getKey()])
                     ?? $this->route('siswa.lomba-saya.index')
                     ?? route('siswa.beranda'),
-                'sort' => $left,
             ];
         }
 
@@ -133,8 +124,6 @@ class Beranda extends Component
     /** @return list<array<string, mixed>> */
     private function myRegistrations(Student $student): array
     {
-        $deadline = app(ReportDeadline::class);
-
         return Registration::query()
             ->nonFinal()
             ->whereHas('members', fn (Builder $m) => $m->where('student_id', $student->getKey())->whereNull('declined_at'))
@@ -143,14 +132,10 @@ class Beranda extends Component
             ->latest('updated_at')
             ->limit(3)
             ->get()
-            ->map(function (Registration $r) use ($deadline): array {
+            ->map(function (Registration $r): array {
                 $competition = $r->competition;
+                // D-151: "Menunggu laporan" without a due date.
                 $label = $r->status->label();
-                $final = $competition->final_on ?? $competition->starts_on;
-
-                if ($r->status === RegistrationStatus::MenungguLaporan && $final !== null) {
-                    $label .= ' · batas '.$deadline->dueDate($final)->locale('id')->translatedFormat('j M');
-                }
 
                 return [
                     'id' => $r->getKey(),

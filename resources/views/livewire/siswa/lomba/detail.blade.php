@@ -87,17 +87,15 @@
                     @if ($jadwal === [])
                         <p class="m-0 text-muted">Jadwal belum diisi Kesiswaan.</p>
                     @else
-                        <ol class="m-0 flex list-none flex-col p-0">
+                        {{-- D-147: Pendaftaran, Pelaksanaan, Laporan hasil (no report deadline, D-151). --}}
+                        <dl class="m-0 flex flex-col p-0">
                             @foreach ($jadwal as $row)
-                                <li class="grid grid-cols-[110px_minmax(0,1fr)] items-center gap-x-4 gap-y-1 border-b border-line py-3 last:border-b-0 sm:grid-cols-[130px_minmax(0,1fr)_auto]">
-                                    <span class="display num text-md font-bold">{{ $row['date'] }}</span>
-                                    <span class="font-semibold">{{ $row['label'] }}</span>
-                                    @if ($row['chip'])
-                                        <x-sth.chip :tone="$row['tone']" size="sm" class="col-start-2 justify-self-start sm:col-start-auto sm:justify-self-end">{{ $row['chip'] }}</x-sth.chip>
-                                    @endif
-                                </li>
+                                <div class="grid grid-cols-1 gap-x-4 gap-y-1 border-b border-line py-3 last:border-b-0 sm:grid-cols-[130px_minmax(0,1fr)]">
+                                    <dt class="font-semibold">{{ $row['label'] }}</dt>
+                                    <dd class="num m-0">{{ $row['value'] }}</dd>
+                                </div>
                             @endforeach
-                        </ol>
+                        </dl>
                     @endif
                 </x-sth.tab-panel>
 

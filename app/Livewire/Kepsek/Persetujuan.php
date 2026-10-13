@@ -13,6 +13,7 @@ use App\Models\Competition;
 use App\Models\Registration;
 use App\Models\RegistrationMember;
 use App\Models\User;
+use App\Support\StaffRoleLabel;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Contracts\View\View;
@@ -30,6 +31,8 @@ use Livewire\Component;
  * Kepala Sekolah · Persetujuan (mockup Kepsek-Persetujuan, UI-MAP #19). Queue of registrations waiting for
  * the principal, bidang filter, bulk approve (one authorized Action call per row), per-row approve and reject
  * (reason required). Rows decided in this visit stay visible with their result until the page reloads.
+ * Tata Usaha decides too and opens this screen under tu.persetujuan.index (D-150, ApprovalQueue); the
+ * first of two approvers decides, the second gets the stale toast (decidedElsewhere()).
  * Admin never reaches this screen (route role + RegistrationPolicy::viewApprovalQueue, D-01).
  *
  * D-132 (lead, 2026-10-11): "Ganti guru" on a waiting row opens the dialog MENTOR_DIALOG, where the Kepala Sekolah
@@ -375,6 +378,8 @@ class Persetujuan extends Component
             'summary' => $this->summary($waiting),
             'upcoming' => $this->upcoming(),
             'mentorDialog' => $this->mentorDialog($rows),
+            // Rows decided during this visit were decided by this account: "Ditetapkan <peran>" (D-150).
+            'deciderRole' => StaffRoleLabel::forDecision($this->user()),
         ])->layoutData([
             'subtitle' => 'Setujui pendaftaran agar Tata Usaha bisa membuat surat tugas.',
             'badges' => ['kepsek.persetujuan' => $waiting],
@@ -510,9 +515,9 @@ class Persetujuan extends Component
     }
 
     /**
-     * The ketua cancelled the row or the Kepala Sekolah decided it on another device since this screen showed it
-     * (QA9): findVisible() answered a full-screen 404 and the reason never showed. Say so; the next render drops the
-     * row from the list.
+     * The ketua cancelled the row, or an approver (Kepala Sekolah or Tata Usaha, D-150) decided it on another device,
+     * since this screen showed it (QA9): findVisible() answered a full-screen 404 and the reason never showed. Say so;
+     * the next render drops the row from the list.
      */
     private function decidedElsewhere(Registration $registration): bool
     {

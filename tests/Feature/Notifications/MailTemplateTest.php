@@ -148,11 +148,11 @@ it('sends a text part without Markdown leftovers: greeting, lines, "Label: addre
 
     $mail = mailTemplateSend($nadia, new InvitationsExpired($registration, 1, true, 2));
 
-    expect($mail->getSubject())->toBe('Tim diteruskan ke Kepala Sekolah: Lomba Karya Tulis Ilmiah Nasional 2026')
+    expect($mail->getSubject())->toBe('Tim diteruskan untuk persetujuan: Lomba Karya Tulis Ilmiah Nasional 2026')
         ->and(rtrim((string) $mail->getTextBody()))->toBe(implode("\n", [
             'Halo Nadia,',
             '',
-            '1 undangan tim Lomba Karya Tulis Ilmiah Nasional 2026 tidak dijawab sampai batas pendaftaran dan sudah tidak berlaku. Tim 2 orang diteruskan ke Kepala Sekolah.',
+            '1 undangan tim Lomba Karya Tulis Ilmiah Nasional 2026 tidak dijawab sampai batas pendaftaran dan sudah tidak berlaku. Tim 2 orang diteruskan untuk persetujuan.',
             '',
             'Lihat pendaftaran: '.$url,
             '',
@@ -197,7 +197,7 @@ it('uses the STH theme: one link (the button), the address under it as text, no 
 
     $html = (string) mailTemplateSend($nadia, new InvitationsExpired($registration, 1, true, 2))->getHtmlBody();
     $visible = mailTemplateVisible($html);
-    $firstLine = '1 undangan tim Lomba Karya Tulis Ilmiah Nasional 2026 tidak dijawab sampai batas pendaftaran dan sudah tidak berlaku. Tim 2 orang diteruskan ke Kepala Sekolah.';
+    $firstLine = '1 undangan tim Lomba Karya Tulis Ilmiah Nasional 2026 tidak dijawab sampai batas pendaftaran dan sudah tidak berlaku. Tim 2 orang diteruskan untuk persetujuan.';
 
     expect(config('mail.markdown.theme'))->toBe('sth')
         ->and(config('mail.markdown.paths'))->toBe([resource_path('views/vendor/mail')])

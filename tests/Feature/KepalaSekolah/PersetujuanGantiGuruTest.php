@@ -110,11 +110,11 @@ it('approves with another guru: the students read the final guru, the new guru i
         expect($notice->audience)->toBe('siswa')
             ->and($mail['subject'])->toBe('Pendaftaran lomba disetujui')
             ->and($mail['lines'])->toBe([
-                'Kepala Sekolah menyetujui pendaftaranmu di National Science and Invention Fair (NSIF) 2026.',
+                'Pendaftaranmu di National Science and Invention Fair (NSIF) 2026 disetujui oleh Drs. Bambang Hartono, M.Pd. (Kepala Sekolah).',
                 'Guru pembimbing: Pak Hendra Kusuma, S.Pd., M.Si. (ditetapkan Kepala Sekolah, menggantikan Bu Retno Wulandari, S.Pd.).',
                 'Tata Usaha sedang menyiapkan surat tugas. Kamu akan diberi tahu saat surat siap.',
             ])
-            ->and($notice->toArray($member)['message'])->toBe('Kepala Sekolah menyetujui pendaftaranmu di National Science and Invention Fair (NSIF) 2026. '
+            ->and($notice->toArray($member)['message'])->toBe('Pendaftaranmu di National Science and Invention Fair (NSIF) 2026 disetujui oleh Drs. Bambang Hartono, M.Pd. (Kepala Sekolah). '
                 .'Guru pembimbing: Pak Hendra Kusuma, S.Pd., M.Si. (ditetapkan Kepala Sekolah, menggantikan Bu Retno Wulandari, S.Pd.).');
     }
 
@@ -160,7 +160,7 @@ it('names the guru in the students\' approval notice also when the Kepala Sekola
 
     expect((int) $fresh->mentor_id)->toBe((int) $this->retno->getKey())
         ->and($mail['lines'])->toBe([
-            'Kepala Sekolah menyetujui pendaftaranmu di National Science and Invention Fair (NSIF) 2026.',
+            'Pendaftaranmu di National Science and Invention Fair (NSIF) 2026 disetujui oleh Drs. Bambang Hartono, M.Pd. (Kepala Sekolah).',
             'Guru pembimbing: Bu Retno Wulandari, S.Pd.',
             'Tata Usaha sedang menyiapkan surat tugas. Kamu akan diberi tahu saat surat siap.',
         ])
@@ -213,19 +213,21 @@ it('refuses a choice that is not a guru who can log in, and decides nothing', fu
     'not a number' => [fn (object $t): string => 'bukan-id'],
 ]);
 
-it('lets only the Kepala Sekolah change the guru, and only while the registration waits', function (): void {
+it('lets only the Kepala Sekolah and Tata Usaha change the guru, and only while the registration waits', function (): void {
     $waiting = gantiGuruRegistration($this->retno);
     $approved = F::registration(RegistrationStatus::Disetujui, ['Hana Safira'], $this->retno);
     $rejected = F::registration(RegistrationStatus::Ditolak, ['Fajar Ramadhan'], $this->retno);
     $unconfirmed = F::registration(RegistrationStatus::MenungguKonfirmasi, ['Raka Pradipta'], $this->retno);
 
-    expect($this->kepsek->can('changeMentor', $waiting))->toBeTrue();
+    expect($this->kepsek->can('changeMentor', $waiting))->toBeTrue()
+        // D-150: Tata Usaha approves too, "Ganti guru" included (D-132).
+        ->and(F::staff(RoleName::TataUsaha)->can('changeMentor', $waiting))->toBeTrue();
 
     foreach ([$approved, $rejected, $unconfirmed] as $registration) {
         expect($this->kepsek->can('changeMentor', $registration))->toBeFalse();
     }
 
-    foreach ([RoleName::Admin, RoleName::TataUsaha, RoleName::Kesiswaan, RoleName::Humas] as $role) {
+    foreach ([RoleName::Admin, RoleName::Kesiswaan, RoleName::Humas] as $role) {
         $actor = F::staff($role);
 
         expect($actor->can('changeMentor', $waiting))->toBeFalse();
@@ -344,7 +346,8 @@ it('leaves the guru line out when the registration has no guru, and reads a noti
     foreach ([$none, $old] as $notice) {
         expect($notice->mentorLine())->toBeNull()
             ->and(gantiGuruMail($notice, $member)['lines'])->toBe([
-                'Kepala Sekolah menyetujui pendaftaranmu di National Science and Invention Fair (NSIF) 2026.',
+                // D-150: without a decider (a notice built without one, or queued before D-150) it speaks of "sekolah".
+                'Pendaftaranmu di National Science and Invention Fair (NSIF) 2026 disetujui sekolah.',
                 'Tata Usaha sedang menyiapkan surat tugas. Kamu akan diberi tahu saat surat siap.',
             ]);
     }
@@ -587,7 +590,7 @@ it('answers 404 for "Ganti guru" on a row that never was in the queue, and refus
         ->call('askMentor', $approved->getKey())
         ->assertNotFound();
 
-    foreach ([RoleName::Admin, RoleName::TataUsaha, RoleName::Kesiswaan, RoleName::Guru] as $role) {
+    foreach ([RoleName::Admin, RoleName::Kesiswaan, RoleName::Guru] as $role) {
         Livewire::actingAs(F::staff($role))->test(Persetujuan::class)->assertForbidden();
     }
 

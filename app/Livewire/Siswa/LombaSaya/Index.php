@@ -6,7 +6,7 @@ namespace App\Livewire\Siswa\LombaSaya;
 
 use App\Actions\Registrations\ApproveRegistration;
 use App\Actions\Registrations\CancelRegistration;
-use App\Actions\Reports\SubmitReport;
+use App\Domain\Deadlines\ReportFollowUp;
 use App\Enums\LetterType;
 use App\Enums\RegistrationStatus;
 use App\Enums\RegistrationType;
@@ -164,6 +164,8 @@ final class Index extends Component
                 'letters',
                 'report.files.file',
                 'report.verifier.roles',
+                // D-150: who approved or rejected (Kepala Sekolah or Tata Usaha), for "Disetujui oleh …" / "Ditetapkan …".
+                'principalDecider.roles',
             ])
             ->first();
 
@@ -221,9 +223,10 @@ final class Index extends Component
                 return ['Perlu revisi', 'orange'];
             }
 
-            $info = $this->deadlineInfo($registration->competition);
+            // D-151: no deadline, no days left: only the request.
+            ['chip' => $chip, 'tone' => $tone] = $this->reportChip();
 
-            return $info !== null ? [$info['chip'], $info['tone']] : [$status->label(), $status->tone()];
+            return [$chip, $tone];
         }
 
         if ($status === RegistrationStatus::Selesai && $registration->report?->status === ReportStatus::Ditolak) {
@@ -250,7 +253,6 @@ final class Index extends Component
         $achievement = $report !== null && $student !== null
             ? Achievement::query()->where('report_id', $report->getKey())->where('student_id', $student->getKey())->first()
             : null;
-        $deadline = $this->deadlineInfo($competition);
         [$chip, $tone] = $this->statusChip($registration, $mine);
 
         return [
@@ -264,7 +266,7 @@ final class Index extends Component
             'typeLabel' => $this->typeLabel($registration, $registration->members->count()),
             'dateText' => self::dateRange($competition->starts_on, $competition->final_on),
             'place' => $competition->location,
-            'trackerDates' => $this->trackerDates($registration, $studentLetter, $achievement, $deadline),
+            'trackerDates' => $this->trackerDates($registration, $studentLetter, $achievement),
             'isLeader' => $isLeader,
             'isTeam' => $registration->type === RegistrationType::Tim,
             'pendingInvite' => $mine !== null && ! $mine->isLeader() && $mine->confirmed_at === null
@@ -280,9 +282,9 @@ final class Index extends Component
             'report' => $report,
             // The role that decided on the report, for "Catatan …" / "Diverifikasi …" (D-139); "sekolah" before a decision.
             'decider' => StaffRoleLabel::forDecision($report?->verifier),
-            'deadline' => $deadline,
-            // The sentence "ditandai terlambat" follows SubmitReport's rule (QA8).
-            'marksLate' => SubmitReport::marksLate($competition, $report),
+            // D-151: no report deadline, only the request (and the chip of reportChip()).
+            'reportPrompt' => ReportFollowUp::PROMPT,
+            'reportChip' => $report?->status === ReportStatus::PerluRevisi ? null : $this->reportChip(),
             'estimate' => $report !== null ? $this->previewBreakdown($competition, $report->claimed_result) : null,
             'achievement' => $achievement,
             'certificate' => $this->fileLink($report?->files->firstWhere('kind', ReportFileKind::Sertifikat)?->file_id),
@@ -295,8 +297,13 @@ final class Index extends Component
                 'me' => $m->student_id === $student?->getKey(),
             ])->all(),
             'mentor' => $registration->mentor !== null ? $this->mentorName($registration->mentor) : null,
-            // D-132: the Kepala Sekolah approved the registration with another guru than the one the student chose.
+            // D-132: the approver put another guru in the place of the one the student chose.
             'mentorByPrincipal' => $registration->mentor !== null && ApproveRegistration::mentorWasReplaced($registration),
+            // D-150: the role that decided ("sekolah" before a decision) and, once approved, who by name.
+            'approverRole' => StaffRoleLabel::forDecision($registration->principalDecider),
+            'approvedBy' => $registration->principalDecider !== null
+                ? 'Disetujui oleh '.$registration->principalDecider->name.' ('.StaffRoleLabel::forDecision($registration->principalDecider).').'
+                : null,
             'decidedOn' => self::longDate($registration->principal_decided_at),
             'registeredOn' => self::longDate($registration->created_at),
             'allConfirmed' => $registration->members->every(fn (RegistrationMember $m): bool => $m->confirmed_at !== null),
@@ -304,10 +311,11 @@ final class Index extends Component
     }
 
     /**
-     * @param  array{dueText: string}|null  $deadline
+     * Tracker dates per phase. Phase 5 shows the day the report was sent, never a due date (D-151).
+     *
      * @return array<int, string>
      */
-    private function trackerDates(Registration $registration, ?Letter $studentLetter, ?Achievement $achievement, ?array $deadline): array
+    private function trackerDates(Registration $registration, ?Letter $studentLetter, ?Achievement $achievement): array
     {
         $competition = $registration->competition;
         $report = $registration->report;
@@ -317,9 +325,7 @@ final class Index extends Component
             2 => self::shortDate($registration->principal_decided_at),
             3 => self::shortDate($studentLetter?->issued_on),
             4 => self::dateRange($competition->starts_on, $competition->final_on, false),
-            5 => $report?->submitted_at !== null
-                ? self::shortDate($report->submitted_at)
-                : ($deadline !== null && ! $registration->status->isFinal() ? 'Batas '.self::shortDate($deadline['due']) : ''),
+            5 => self::shortDate($report?->submitted_at),
             6 => self::shortDate($achievement?->verified_at),
         ], fn (string $text): bool => $text !== '');
     }

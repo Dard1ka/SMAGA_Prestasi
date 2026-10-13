@@ -84,25 +84,18 @@ it('lets the ketua send the report: laporan_dikirim, files on the private disk, 
         ->and(Activity::query()->where('event', 'registration.laporan_dikirim')->exists())->toBeTrue();
 
     Notification::assertSentTo($this->kesiswaan, ReportSubmitted::class, function (ReportSubmitted $n, array $channels): bool {
-        return $n->competitionName === 'WICE 2026' && $n->leaderName === 'Nadia Putri Anindya' && ! $n->late
+        return $n->competitionName === 'WICE 2026' && $n->leaderName === 'Nadia Putri Anindya'
             && $channels === ['mail', 'database'] && $n instanceof ShouldQueue;
     });
 });
 
-it('accepts a late report but flags it (D-25: final 24 Sep + 45 days = 8 Nov 2026)', function (): void {
-    F::today('2026-11-08');
-    $onTime = app(SubmitReport::class)->handle($this->nadia->user, $this->registration, w2a2ReportData());
-    expect($onTime->late)->toBeFalse();
+it('accepts a report long after the final and never marks it late (D-151)', function (): void {
+    F::today('2027-01-15'); // months after the final of 24 Sep 2026
+    $report = app(SubmitReport::class)->handle($this->nadia->user, $this->registration, w2a2ReportData());
 
-    $other = F::student('Keisha Larasati', 'XI-6');
-    $lateRegistration = F::registration($other);
-    F::today('2026-11-09');
-
-    $late = app(SubmitReport::class)->handle($other->user, $lateRegistration, w2a2ReportData());
-
-    expect($late->late)->toBeTrue()
-        ->and($lateRegistration->fresh()->status)->toBe(RegistrationStatus::LaporanDikirim);
-    Notification::assertSentTo($this->kesiswaan, ReportSubmitted::class, fn (ReportSubmitted $n): bool => $n->late);
+    expect($report->fresh()->late)->toBeFalse()
+        ->and($this->registration->fresh()->status)->toBe(RegistrationStatus::LaporanDikirim);
+    Notification::assertSentTo($this->kesiswaan, ReportSubmitted::class, fn (ReportSubmitted $n): bool => ! str_contains((string) $n->toArray($this->kesiswaan)['body'], 'batas waktu'));
 });
 
 it('only lets the ketua submit, and only while the registration waits for the report', function (): void {
@@ -235,15 +228,6 @@ it('keeps a report that came on time on time when it is sent again after a revis
     $again = app(SubmitReport::class)->handle($this->nadia->user, $this->registration->fresh(), w2a2ReportData());
 
     expect($again->late)->toBeFalse();
-});
-
-it('keeps a late report late when it is sent again after a revision request (QA8)', function (): void {
-    F::today('2026-11-09');
-    $report = app(SubmitReport::class)->handle($this->nadia->user, $this->registration, w2a2ReportData());
-    app(RequestReportRevision::class)->handle($this->kesiswaan, $report->fresh(), 'Sertifikat buram, kirim ulang.');
-    $again = app(SubmitReport::class)->handle($this->nadia->user, $this->registration->fresh(), w2a2ReportData());
-
-    expect($again->late)->toBeTrue();
 });
 
 it('tells Kesiswaan and Humas about a new report, each with the link of the own area (D-139)', function (): void {

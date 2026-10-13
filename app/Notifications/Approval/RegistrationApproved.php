@@ -10,18 +10,22 @@ use App\Models\User;
 use App\Notifications\Registrations\RegistrationNotification;
 use App\Notifications\Support\MailGreeting;
 use App\Notifications\Support\PlainMailMessage;
+use App\Support\StaffRoleLabel;
 use Illuminate\Notifications\Messages\MailMessage;
 
 /**
- * Kepala Sekolah approved a registration (ARCHITECTURE §6: email to students, mentor, TU).
- * One class, three audiences: `siswa` (team members), `guru` (pembimbing), `tu` (letter queue).
+ * An approver (Kepala Sekolah or Tata Usaha, D-150) approved a registration (ARCHITECTURE §6: email to students,
+ * mentor, TU). One class, three audiences: `siswa` (team members), `guru` (pembimbing), `tu` (letter queue).
  * Minimal content: lomba name, leader name, a link. Never NIS/NISN/contact data (SECURITY §3m-3).
  *
- * D-132 (lead, 2026-10-11): the students always read who their guru pembimbing is, and when the Kepala Sekolah put
+ * D-132 (lead, 2026-10-11): the students always read who their guru pembimbing is, and when the approver put
  * another guru in the place of their choice the notice says so and names both. The guru of the registration is then
  * the appointed one: that notice reads as an appointment, not as news about a binaan they already had. The names are
  * kept as they were at the decision (plain properties with defaults, so a notice queued before this change still
  * unserializes).
+ *
+ * D-150: the notices name the role that decided (StaffRoleLabel::forDecision()); the students and Tata Usaha also
+ * read the approver's name. A notice without a decider (queued before D-150) speaks of "sekolah".
  */
 class RegistrationApproved extends RegistrationNotification
 {
@@ -30,22 +34,38 @@ class RegistrationApproved extends RegistrationNotification
     /** The guru pembimbing after the decision ("Bu Retno Wulandari, S.Pd."), null when the registration has none. */
     public ?string $mentorName = null;
 
-    /** True when the Kepala Sekolah replaced the student's choice with this approval. */
+    /** True when the approver replaced the student's choice with this approval. */
     public bool $mentorChanged = false;
 
     /** The guru who was replaced, when there was one. */
     public ?string $replacedMentorName = null;
+
+    /** D-150: the name of the account that decided, null when unknown. */
+    public ?string $deciderName = null;
+
+    /** D-150: the role that decided ("Kepala Sekolah", "Tata Usaha"), null when unknown. */
+    public ?string $deciderRole = null;
 
     public function __construct(Registration $registration, public string $audience = 'siswa')
     {
         parent::__construct($registration);
     }
 
-    public static function for(Registration $registration, string $audience, bool $mentorChanged = false, ?string $replacedMentorName = null): self
-    {
+    public static function for(
+        Registration $registration,
+        string $audience,
+        bool $mentorChanged = false,
+        ?string $replacedMentorName = null,
+        ?User $decider = null,
+    ): self {
         $notification = new self($registration, in_array($audience, self::AUDIENCES, true) ? $audience : 'siswa');
 
-        // Tata Usaha reads the guru on the letter screen: its notice stays as it was.
+        if ($decider !== null) {
+            $notification->deciderName = (string) $decider->name;
+            $notification->deciderRole = StaffRoleLabel::forDecision($decider);
+        }
+
+        // Tata Usaha reads the guru on the letter screen: its notice stays without the guru.
         if ($notification->audience !== 'tu') {
             $notification->mentorName = MentorChoice::name($registration->mentor_id !== null
                 ? User::query()->with('staffProfile')->find($registration->mentor_id)
@@ -105,8 +125,19 @@ class RegistrationApproved extends RegistrationNotification
             return 'Guru pembimbing: '.MentorChoice::closing($this->mentorName);
         }
 
-        return 'Guru pembimbing: '.$this->mentorName.' (ditetapkan Kepala Sekolah'
+        return 'Guru pembimbing: '.$this->mentorName.' (ditetapkan '.$this->role()
             .($this->replacedMentorName !== null ? ', menggantikan '.$this->replacedMentorName : '').').';
+    }
+
+    /** The role that decided, "sekolah" when unknown (D-150). */
+    private function role(): string
+    {
+        return $this->deciderRole ?? StaffRoleLabel::FALLBACK;
+    }
+
+    private function hasDeciderName(): bool
+    {
+        return $this->deciderName !== null && $this->deciderName !== '';
     }
 
     private function subject(): string
@@ -121,15 +152,19 @@ class RegistrationApproved extends RegistrationNotification
     private function message(): string
     {
         $lomba = $this->competitionName();
+        $role = $this->role();
 
         return match ($this->audience) {
-            'tu' => 'Kepala Sekolah menyetujui pendaftaran '.$lomba.' ('.$this->leaderName().'). Isi nomor surat lalu buat PDF-nya.',
+            'tu' => ($this->hasDeciderName() ? $this->deciderName.' ('.$role.')' : ucfirst($role))
+                .' menyetujui pendaftaran '.$lomba.' ('.$this->leaderName().'). Isi nomor surat lalu buat PDF-nya.',
             'guru' => $this->mentorChanged
                 // The reader is the guru named after the colon: an appointment, told without a pronoun (D-119).
-                ? MentorChoice::closing('Kepala Sekolah menyetujui pendaftaran '.$lomba.' ('.$this->leaderName().') dan menetapkan guru pembimbingnya: '
+                ? MentorChoice::closing(ucfirst($role).' menyetujui pendaftaran '.$lomba.' ('.$this->leaderName().') dan menetapkan guru pembimbingnya: '
                     .$this->mentorName.($this->replacedMentorName !== null ? ', menggantikan '.$this->replacedMentorName : ''))
-                : 'Pendaftaran binaan di '.$lomba.' ('.$this->leaderName().') disetujui Kepala Sekolah.',
-            default => 'Kepala Sekolah menyetujui pendaftaranmu di '.$lomba.'.',
+                : 'Pendaftaran binaan di '.$lomba.' ('.$this->leaderName().') disetujui '.$role.'.',
+            default => $this->hasDeciderName()
+                ? 'Pendaftaranmu di '.$lomba.' disetujui oleh '.$this->deciderName.' ('.$role.').'
+                : 'Pendaftaranmu di '.$lomba.' disetujui '.$role.'.',
         };
     }
 

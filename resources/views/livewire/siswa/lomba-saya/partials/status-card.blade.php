@@ -19,7 +19,7 @@
                 </div>
                 <p class="muted m-0 text-sm">
                     Didaftarkan {{ $d['registeredOn'] }}.
-                    {{ $d['allConfirmed'] ? ($d['isTeam'] ? 'Semua anggota sudah konfirmasi.' : 'Menunggu keputusan Kepala Sekolah.') : 'Menunggu konfirmasi anggota tim.' }}
+                    {{ $d['allConfirmed'] ? ($d['isTeam'] ? 'Semua anggota sudah konfirmasi.' : 'Menunggu persetujuan sekolah.') : 'Menunggu konfirmasi anggota tim.' }}
                 </p>
             </div>
             @if ($d['canCancel'])
@@ -36,7 +36,7 @@
                     <h3 id="setuju-judul" class="title-card">Persetujuan</h3>
                     <x-sth.chip tone="green" icon="check">Disetujui {{ $d['decidedOn'] }}</x-sth.chip>
                 </div>
-                <p class="muted m-0 text-sm">Tata Usaha sedang menyiapkan surat tugas.</p>
+                <p class="muted m-0 text-sm">{{ $d['approvedBy'] ? $d['approvedBy'].' ' : '' }}Tata Usaha sedang menyiapkan surat tugas.</p>
             </div>
         </x-sth.card>
         @break
@@ -50,7 +50,7 @@
                     <x-sth.chip tone="red">Ditolak {{ $d['decidedOn'] }}</x-sth.chip>
                 </div>
                 @if ($registration->principal_note)
-                    <p class="m-0 text-sm"><span class="font-semibold">Catatan Kepala Sekolah:</span> {{ $registration->principal_note }}</p>
+                    <p class="m-0 text-sm"><span class="font-semibold">Catatan {{ $d['approverRole'] }}:</span> {{ $registration->principal_note }}</p>
                 @endif
             </div>
         </x-sth.card>
@@ -75,13 +75,8 @@
                     <h3 id="lomba-judul" class="title-card">{{ $status === S::Berlangsung ? 'Lomba berlangsung' : 'Siap berlomba' }}</h3>
                     <x-sth.chip tone="blue">{{ $status->label() }}</x-sth.chip>
                 </div>
-                <p class="muted m-0 text-sm">
-                    @if ($d['deadline'])
-                        Setelah final, laporkan hasil paling lambat {{ $d['deadline']['dueText'] }}.
-                    @else
-                        Setelah final, laporkan hasil lombamu di sini.
-                    @endif
-                </p>
+                {{-- D-151: no report deadline. --}}
+                <p class="muted m-0 text-sm">Setelah lomba selesai, laporkan hasil lombamu di sini.</p>
             </div>
         </x-sth.card>
         @break
@@ -93,13 +88,13 @@
                 <div class="flex min-w-0 flex-1 flex-col gap-1">
                     <div class="flex flex-wrap items-center gap-2">
                         <h3 id="lapor-judul" class="title-card">{{ $report?->status === RS::PerluRevisi ? 'Perbaiki laporan' : 'Laporkan hasil' }}</h3>
-                        @if ($d['deadline'])
-                            <x-sth.chip :tone="$d['deadline']['tone']" icon="clock">{{ $d['deadline']['chip'] }}</x-sth.chip>
+                        @if ($d['reportChip'])
+                            <x-sth.chip :tone="$d['reportChip']['tone']" icon="clock">{{ $d['reportChip']['chip'] }}</x-sth.chip>
                         @endif
                     </div>
                     <p class="muted m-0 text-sm">
                         @if ($d['canReport'])
-                            Upload sertifikat dan foto dokumentasi lombamu.
+                            {{ $d['reportPrompt'] }} Upload sertifikat dan foto dokumentasi lombamu.
                         @else
                             Ketua tim mengirim laporan hasil untuk seluruh tim.
                         @endif
@@ -120,11 +115,6 @@
             @if ($report?->status === RS::PerluRevisi && $report->note)
                 <x-sth.alert tone="warning" title="Catatan {{ $d['decider'] }}">{{ $report->note }}</x-sth.alert>
             @endif
-            @if ($d['deadline'] && $d['deadline']['overdue'] && $d['marksLate'])
-                <x-sth.alert tone="warning">Batas laporan sudah lewat. Laporan tetap bisa dikirim, tetapi ditandai terlambat.</x-sth.alert>
-            @elseif ($d['deadline'] && $d['deadline']['overdue'])
-                <x-sth.alert>Batas laporan sudah lewat, tetapi laporan pertama dikirim tepat waktu, jadi revisinya tidak ditandai terlambat.</x-sth.alert>
-            @endif
             @if ($d['isTeam'])
                 <p class="m-0 inline-flex items-center gap-2 text-sm text-ink-2"><x-sth.icon name="users" :size="18" />Setiap anggota tim mendapat poin penuh.</p>
             @endif
@@ -144,9 +134,6 @@
                 <div class="flex flex-wrap items-center gap-2">
                     <h3 id="lapor-ok" class="title-card">Laporan terkirim</h3>
                     <x-sth.chip tone="blue">Laporan dikirim</x-sth.chip>
-                    @if ($report?->late)
-                        <x-sth.chip tone="orange">Terlambat</x-sth.chip>
-                    @endif
                 </div>
                 @if ($report)
                     <p class="muted m-0 text-sm">

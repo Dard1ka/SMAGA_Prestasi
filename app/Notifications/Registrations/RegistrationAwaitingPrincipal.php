@@ -8,7 +8,10 @@ use App\Notifications\Support\MailGreeting;
 use App\Notifications\Support\PlainMailMessage;
 use Illuminate\Notifications\Messages\MailMessage;
 
-/** To the Kepala Sekolah when a registration enters menunggu_kepsek (individu sent, or all members confirmed). */
+/**
+ * To every approver (registration.approve: Kepala Sekolah and Tata Usaha, D-150) when a registration enters
+ * menunggu_kepsek (individu sent, or all members confirmed). The link opens the recipient's own Persetujuan address.
+ */
 class RegistrationAwaitingPrincipal extends RegistrationNotification
 {
     public function toMail(object $notifiable): MailMessage
@@ -18,7 +21,7 @@ class RegistrationAwaitingPrincipal extends RegistrationNotification
             ->greeting(MailGreeting::staff($notifiable))
             ->line($this->summary())
             ->line('Mohon tinjau dan beri keputusan di SMAGA Talent Hub.')
-            ->action('Buka persetujuan', $this->url());
+            ->action('Buka persetujuan', $this->url($notifiable));
     }
 
     /** @return array<string, mixed> */
@@ -29,7 +32,7 @@ class RegistrationAwaitingPrincipal extends RegistrationNotification
             'registration_id' => $this->registration->getKey(),
             'title' => 'Menunggu persetujuan',
             'message' => $this->summary(),
-            'url' => $this->url(),
+            'url' => $this->url($notifiable),
         ];
     }
 
@@ -40,8 +43,8 @@ class RegistrationAwaitingPrincipal extends RegistrationNotification
         return $this->competitionName().': '.$this->leaderName().' ('.$type.').';
     }
 
-    private function url(): string
+    private function url(object $notifiable): string
     {
-        return self::link(['kepsek.persetujuan.index', 'kepsek.beranda']);
+        return self::approvalLink($notifiable);
     }
 }

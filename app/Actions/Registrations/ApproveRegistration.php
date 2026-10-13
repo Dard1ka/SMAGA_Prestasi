@@ -19,9 +19,9 @@ use Illuminate\Validation\ValidationException;
 use Spatie\Activitylog\Models\Activity;
 
 /**
- * Kepala Sekolah approves one registration (D-05, UI-MAP #19): menunggu_kepsek → disetujui. The team
- * roster is locked from here on. Notifies the members, the guru pembimbing and Tata Usaha (queued, after
- * commit). Bulk approve = one call per row, each authorized on its own.
+ * Kepala Sekolah or Tata Usaha (D-150) approves one registration (D-05, UI-MAP #19): menunggu_kepsek → disetujui.
+ * The team roster is locked from here on. Notifies the members, the guru pembimbing and Tata Usaha (queued, after
+ * commit; never the approver itself). Bulk approve = one call per row, each authorized on its own.
  *
  * D-132 (lead, 2026-10-11): with the approval the Kepala Sekolah may put another guru in the place of the one the
  * student chose ($mentorId). It is one decision in one transaction, so no registration ever waits with a guru nobody
@@ -47,7 +47,7 @@ final class ApproveRegistration
      * @param  int|string|null  $mentorId  D-132: the guru the Kepala Sekolah puts in the place of the student's choice;
      *                                     null, '' or the guru the registration already has = the choice stays
      *
-     * @throws AuthorizationException when the actor may not decide (not the Kepala Sekolah)
+     * @throws AuthorizationException when the actor may not decide (not the Kepala Sekolah or Tata Usaha)
      * @throws ValidationException when the registration was already decided or cancelled, or (key `mentor`) the
      *                             chosen account is not a guru who can log in
      */
@@ -164,8 +164,8 @@ final class ApproveRegistration
     }
 
     /**
-     * Did the Kepala Sekolah put another guru in the place of the student's choice when approving (D-132)? Read from
-     * the audit row of that decision: a screen says "ditetapkan Kepala Sekolah" only then.
+     * Did the approver put another guru in the place of the student's choice when approving (D-132)? Read from the audit
+     * row of that decision: a screen says "Ditetapkan <peran>" (StaffRoleLabel, D-150) only then.
      */
     public static function mentorWasReplaced(Registration $registration): bool
     {
@@ -213,7 +213,7 @@ final class ApproveRegistration
         $replacedName = MentorChoice::name($replaced);
 
         if ($members->isNotEmpty()) {
-            Notification::send($members, RegistrationApproved::for($registration, 'siswa', $changed, $replacedName));
+            Notification::send($members, RegistrationApproved::for($registration, 'siswa', $changed, $replacedName, $actor));
         }
 
         // The guru the registration has NOW: after a change the new one, never the one who was replaced, and never
@@ -222,13 +222,17 @@ final class ApproveRegistration
         $mentor = self::mentorToTell($registration);
 
         if ($mentor !== null && ! $mentor->is($actor)) {
-            $mentor->notify(RegistrationApproved::for($registration, 'guru', $changed, $replacedName));
+            $mentor->notify(RegistrationApproved::for($registration, 'guru', $changed, $replacedName, $actor));
         }
 
-        $tu = User::query()->role(RoleName::TataUsaha->value)->canLogIn()->get();
+        // Tata Usaha makes the letters; a Tata Usaha account that approved itself (D-150) is not told about its own
+        // decision, its colleagues are.
+        $tu = User::query()->role(RoleName::TataUsaha->value)->canLogIn()->get()
+            ->reject(fn (User $user): bool => $user->is($actor))
+            ->values();
 
         if ($tu->isNotEmpty()) {
-            Notification::send($tu, RegistrationApproved::for($registration, 'tu'));
+            Notification::send($tu, RegistrationApproved::for($registration, 'tu', decider: $actor));
         }
     }
 }

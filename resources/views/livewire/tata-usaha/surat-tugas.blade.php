@@ -35,7 +35,7 @@
                         <span class="muted ellip text-xs">{{ $item->branch ? $item->branch.' · ' : '' }}{{ $item->isTeam() ? 'Tim '.$count.' siswa' : $count.' siswa' }}</span>
                         <span @class(['text-xs font-semibold', 'text-green' => $made === 0, 'text-blue' => $made > 0])>
                             @if ($made === 0)
-                                Disetujui Kepala Sekolah · {{ $item->principal_decided_at?->translatedFormat('j M') }}
+                                Disetujui {{ \App\Support\StaffRoleLabel::forDecision($item->principalDecider) }} · {{ $item->principal_decided_at?->translatedFormat('j M') }}
                             @elseif ($made < $needed)
                                 {{ $made }} dari {{ $needed }} PDF siap
                             @else
@@ -52,7 +52,7 @@
         {{-- A search found nothing: the sentence under "Hasil pencarian" says so; the queue itself is not empty. --}}
     @elseif (! $registration)
         <x-sth.empty-state icon="mail" title="Belum ada surat untuk dibuat">
-            Pendaftaran yang disetujui Kepala Sekolah muncul di sini.
+            Pendaftaran yang sudah disetujui muncul di sini.
             @if (Route::has('tu.surat.arsip'))
                 <x-slot:actions><x-sth.button variant="quiet" size="sm" href="{{ route('tu.surat.arsip') }}">Buka arsip surat</x-sth.button></x-slot:actions>
             @endif

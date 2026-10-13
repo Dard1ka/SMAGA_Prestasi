@@ -17,8 +17,8 @@ use DateTimeInterface;
 
 /**
  * Pendaftaran (ARCHITECTURE §6). Deny by default; not-yours → callers answer 404.
- * Owner of the file: W2-A1 (view, create, respond, cancel). W2-C adds `decide` (Kepala Sekolah only,
- * Admin denied, D-01) and other areas add their methods below the marked line.
+ * Owner of the file: W2-A1 (view, create, respond, cancel). W2-C adds `decide` (Kepala Sekolah or, since D-150,
+ * Tata Usaha; Admin denied, D-01) and other areas add their methods below the marked line.
  */
 class RegistrationPolicy
 {
@@ -112,18 +112,19 @@ class RegistrationPolicy
             && in_array($registration->status, [RegistrationStatus::MenungguKonfirmasi, RegistrationStatus::MenungguKepsek], true);
     }
 
-    // --- W2-C: decide (Kepala Sekolah only) and other areas' methods below ---
+    // --- W2-C: decide (Kepala Sekolah or Tata Usaha) and other areas' methods below ---
 
     /**
-     * Kepala Sekolah approval queue (UI-MAP #19). `registration.approve` is held by the Kepala Sekolah only;
-     * Admin has every permission except this one (D-01, SECURITY §3m-9), so Admin is denied here.
+     * Approval queue (UI-MAP #19). `registration.approve` is held by the Kepala Sekolah and Tata Usaha (D-150; each
+     * opens the same screen under its own address, App\Support\ApprovalQueue). Admin has every permission except this
+     * one (D-01, SECURITY §3m-9), so Admin is denied here.
      */
     public function viewApprovalQueue(User $user): bool
     {
         return $user->canLogIn() && $user->can(Permission::RegistrationApprove->value);
     }
 
-    /** Approve or reject one registration: Kepala Sekolah only, only while it waits for the decision. */
+    /** Approve or reject one registration: Kepala Sekolah or Tata Usaha (D-150), only while it waits for the decision. */
     public function decide(User $user, Registration $registration): bool
     {
         return $this->viewApprovalQueue($user)
@@ -132,7 +133,8 @@ class RegistrationPolicy
 
     /**
      * Put another guru pembimbing in the place of the one the student chose (D-132): part of the approval, so the
-     * same people at the same moment as decide(): the Kepala Sekolah, while the registration waits for the decision.
+     * same people at the same moment as decide(): the Kepala Sekolah or Tata Usaha (D-150), while the registration
+     * waits for the decision.
      * Nobody changes the guru before that (the student's choice stands) or after it (the letters name that guru).
      */
     public function changeMentor(User $user, Registration $registration): bool

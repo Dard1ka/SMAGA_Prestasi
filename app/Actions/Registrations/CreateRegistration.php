@@ -114,7 +114,7 @@ final class CreateRegistration
         return $registration;
     }
 
-    /** Active Kepala Sekolah accounts (registration.approve; Admin does not have it, D-01). */
+    /** Active approvers: Kepala Sekolah and Tata Usaha (registration.approve, D-150; Admin does not have it, D-01). */
     public static function principals(): Collection
     {
         return User::query()->canLogIn()->permission(Permission::RegistrationApprove->value)->get();

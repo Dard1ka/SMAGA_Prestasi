@@ -128,7 +128,7 @@ it('registers an individu entry from the panel', function (): void {
         ->call('kirim')
         ->assertHasNoErrors()
         ->assertSee('Pendaftaran terkirim')
-        ->assertSee('Menunggu Kepala Sekolah');
+        ->assertSee('Menunggu persetujuan');
 
     expect(Registration::query()->sole()->status)->toBe(RegistrationStatus::MenungguKepsek);
 });

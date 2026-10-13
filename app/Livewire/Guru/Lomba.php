@@ -237,8 +237,10 @@ final class Lomba extends Component
                 ['label' => 'Status ajang', 'value' => $competition->event_status?->label()],
                 ['label' => 'Tingkat', 'value' => $competition->level?->label()],
                 ['label' => 'Peserta', 'value' => $competition->participation !== null ? LombaPresenter::peserta($competition) : null],
-                ['label' => 'Batas daftar', 'value' => $competition->registration_closes_at !== null ? self::date($competition->registration_closes_at) : null],
-                ['label' => 'Tanggal lomba', 'value' => LombaPresenter::tanggal($competition) ?: null],
+                // D-147: the same three periods as Detail lomba (no report deadline, D-151).
+                ['label' => 'Pendaftaran', 'value' => LombaPresenter::pendaftaran($competition)],
+                ['label' => 'Pelaksanaan', 'value' => LombaPresenter::range($competition->starts_on, $competition->final_on)],
+                ['label' => 'Laporan hasil', 'value' => LombaPresenter::REPORT_LINE],
                 ['label' => 'Tempat', 'value' => $competition->location],
             ], fn (array $fact): bool => is_string($fact['value']) && $fact['value'] !== '')),
             'website' => $website,

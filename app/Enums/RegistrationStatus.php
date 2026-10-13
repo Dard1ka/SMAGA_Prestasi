@@ -29,7 +29,7 @@ enum RegistrationStatus: string
     {
         return match ($this) {
             self::MenungguKonfirmasi => 'Menunggu konfirmasi anggota',
-            self::MenungguKepsek => 'Menunggu Kepala Sekolah',
+            self::MenungguKepsek => 'Menunggu persetujuan', // D-150: Kepala Sekolah or Tata Usaha decides; the value stays
             self::Disetujui => 'Disetujui',
             self::Ditolak => 'Ditolak',
             self::SuratTerbit => 'Surat tugas terbit',

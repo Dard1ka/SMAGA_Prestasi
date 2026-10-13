@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Console\Commands\Registrations;
 
-use App\Domain\Deadlines\ReportDeadline;
+use App\Domain\Deadlines\ReportFollowUp;
 use App\Enums\RegistrationStatus;
 use App\Models\Registration;
 use App\Notifications\Reports\ReportReminder;
@@ -15,21 +15,22 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * Daily reminder for reports that are still missing (scheduled in routes/console.php, W2-A2 block).
- * For every registration in menunggu_laporan the ketua gets one reminder when the due date
- * (final_on + report_deadline_days, D-25) is 14 days away and one when it is 3 days away.
- * Idempotent: a row in `registration_reminders` (unique registration_id + kind) is inserted first and
- * only the run that inserts it sends the mail; if the job missed a day, only the most urgent reminder
- * that is due goes out. Overdue reports get no reminder (the Lomba saya screen shows "Lewat batas").
+ * D-151: a laporan hasil has no deadline. For every registration in menunggu_laporan without any report the ketua gets
+ * one reminder 3 days and one 14 days after `final_on` (ReportFollowUp::REMINDER_DAYS). Idempotent: a row in
+ * `registration_reminders` (unique registration_id + kind `report_after_<n>`) is inserted first and only the run that
+ * inserts it sends the mail. A missed day is caught up for CATCH_UP_DAYS, and then only the latest reminder that is due
+ * goes out; anything further back is left alone, so the first run after the deploy sends no burst to old rows.
+ * A report that waits for its revision (back in menunggu_laporan) was sent: no reminder.
  */
 final class SendReportReminders extends Command
 {
-    /** Days before the due date. */
-    public const THRESHOLDS = [14, 3];
+    /** How many days after its day a missed reminder is still sent. */
+    public const CATCH_UP_DAYS = 7;
 
     protected $signature = 'sth:reports:remind
         {--date= : Tanggal acuan Y-m-d (default: hari ini, Asia/Jakarta)}';
 
-    protected $description = 'Remind team leaders about laporan hasil that are due in 14 or 3 days.';
+    protected $description = 'Remind team leaders 3 and 14 days after the final to report the result.';
 
     public function handle(): int
     {
@@ -49,16 +50,22 @@ final class SendReportReminders extends Command
             return self::FAILURE;
         }
 
-        $deadline = app(ReportDeadline::class);
+        // Only finals that lie inside one of the reminder windows: day 3 … day max + CATCH_UP_DAYS.
+        $latest = $today->subDays(min(ReportFollowUp::REMINDER_DAYS))->toDateString();
+        $earliest = $today->subDays(max(ReportFollowUp::REMINDER_DAYS) + self::CATCH_UP_DAYS)->toDateString();
         $sent = 0;
 
         Registration::query()
             ->where('status', RegistrationStatus::MenungguLaporan)
-            ->whereHas('competition', fn (Builder $c) => $c->withTrashed()->whereNotNull('final_on'))
-            ->with(['competition', 'leader.user'])
-            ->chunkById(200, function ($registrations) use ($deadline, $today, &$sent): void {
+            ->whereDoesntHave('report')
+            ->whereHas('competition', fn (Builder $c) => $c->withTrashed()
+                ->whereNotNull('final_on')
+                ->whereDate('final_on', '>=', $earliest)
+                ->whereDate('final_on', '<=', $latest))
+            ->with(['competition' => fn ($c) => $c->withTrashed(), 'leader.user'])
+            ->chunkById(200, function ($registrations) use ($today, &$sent): void {
                 foreach ($registrations as $registration) {
-                    $sent += $this->remind($registration, $deadline, $today) ? 1 : 0;
+                    $sent += $this->remind($registration, $today) ? 1 : 0;
                 }
             });
 
@@ -67,14 +74,28 @@ final class SendReportReminders extends Command
         return self::SUCCESS;
     }
 
-    private function remind(Registration $registration, ReportDeadline $deadline, CarbonImmutable $today): bool
+    /** The reminder day due today (the latest one within its catch-up window), or null. */
+    public static function dueReminder(int $daysSinceFinal): ?int
     {
-        $finalOn = $registration->competition->final_on;
-        $daysLeft = $deadline->daysLeft($finalOn, $today);
+        $due = array_filter(
+            ReportFollowUp::REMINDER_DAYS,
+            fn (int $day): bool => $daysSinceFinal >= $day && $daysSinceFinal <= $day + self::CATCH_UP_DAYS,
+        );
 
-        $due = array_values(array_filter(self::THRESHOLDS, fn (int $days): bool => $daysLeft >= 0 && $daysLeft <= $days));
+        return $due === [] ? null : max($due);
+    }
 
-        if ($due === []) {
+    private function remind(Registration $registration, CarbonImmutable $today): bool
+    {
+        $finalOn = $registration->competition?->final_on;
+
+        if ($finalOn === null) {
+            return false;
+        }
+
+        $due = self::dueReminder(ReportFollowUp::daysSinceFinal($finalOn, $today));
+
+        if ($due === null) {
             return false;
         }
 
@@ -86,7 +107,7 @@ final class SendReportReminders extends Command
 
         $inserted = DB::table('registration_reminders')->insertOrIgnore([
             'registration_id' => $registration->getKey(),
-            'kind' => 'report_due_'.min($due),
+            'kind' => 'report_after_'.$due,
             'sent_at' => now(),
         ]);
 
@@ -97,8 +118,7 @@ final class SendReportReminders extends Command
         $user->notify(new ReportReminder(
             (string) $registration->getKey(),
             (string) $registration->competition->name,
-            $deadline->dueDate($finalOn)->locale('id')->translatedFormat('j M Y'),
-            $daysLeft,
+            $due,
         ));
 
         return true;

@@ -7,10 +7,8 @@ use App\Enums\RegistrationStatus;
 use App\Enums\ReportStatus;
 use App\Enums\ResultType;
 use App\Enums\RoleName;
-use App\Enums\SettingKey;
 use App\Livewire\Siswa\LombaSaya\LaporHasil;
 use App\Models\Report;
-use App\Models\Setting;
 use App\Models\WeightValue;
 use App\Models\WeightVersion;
 use App\Notifications\Reports\ReportSubmitted;
@@ -35,13 +33,14 @@ beforeEach(function (): void {
 
 afterEach(fn () => F::resetToday());
 
-it('renders the mobile page for the ketua with the deadline and the riset fields', function (): void {
+it('renders the mobile page for the ketua with the request to report and the riset fields', function (): void {
     $this->actingAs($this->nadia->user)
         ->get(route('siswa.lapor', $this->wice))
         ->assertOk()
         ->assertSee('<title>Laporkan hasil · SMAGA Talent Hub</title>', false)
         ->assertSee('WICE 2026 · Riset · Tim 2 orang')
-        ->assertSee('Batas 8 Nov 2026 (45 hari setelah final).')
+        ->assertSee('Segera laporkan hasil lombamu.')
+        ->assertDontSee('Batas')
         ->assertSee('Hasil yang diraih')
         ->assertSee('Penghargaan khusus')
         ->assertSee('(final setelah diverifikasi)', false)
@@ -147,38 +146,3 @@ it('pre-fills a revision with the Kesiswaan note and the earlier answers', funct
         ->assertSee('Perlu revisi')
         ->assertSee('Sertifikat buram, upload ulang.');
 });
-
-// QA8: explore round after PR 17 (2026-10-08) -------------------------------------------------------
-
-it('names the report deadline the Admin set, not a fixed 45 days (QA8)', function (): void {
-    Setting::put(SettingKey::ReportDeadlineDays, 60);
-
-    $this->actingAs($this->nadia->user)
-        ->get(route('siswa.lapor', $this->wice))
-        ->assertOk()
-        ->assertSee('Batas 23 Nov 2026 (60 hari setelah final).')
-        ->assertDontSee('45 hari');
-});
-
-it('says a revision will be marked late only when the first report was late (QA8)', function (bool $late, array $see, string $dontSee): void {
-    // The review of QA8: SubmitReport keeps the flag of the first report for the answer to a revision, but both screens
-    // still said "ditandai terlambat" whenever the deadline had passed.
-    F::today('2026-11-20'); // the WICE deadline (final 24 Sep + 45 days) was 8 Nov
-    $this->wice->forceFill(['status' => RegistrationStatus::MenungguLaporan])->save();
-    $report = Report::factory()->create(['registration_id' => $this->wice->getKey(), 'submitted_by' => $this->nadia->user->getKey()]);
-    $report->forceFill(['status' => ReportStatus::PerluRevisi, 'late' => $late, 'note' => 'Sertifikat buram, upload ulang.'])->save();
-
-    $this->actingAs($this->nadia->user)->get(route('siswa.lapor', $this->wice))
-        ->assertOk()->assertSee($see[0])->assertDontSee($dontSee);
-    $this->actingAs($this->nadia->user)->get(route('siswa.lomba-saya.show', $this->wice))
-        ->assertOk()->assertSee($see[1])->assertDontSee($dontSee);
-})->with([
-    'first report on time' => [false, [
-        'Batas 8 Nov 2026 sudah lewat, tetapi laporan pertama dikirim tepat waktu, jadi revisi ini tidak ditandai terlambat.',
-        'Batas laporan sudah lewat, tetapi laporan pertama dikirim tepat waktu, jadi revisinya tidak ditandai terlambat.',
-    ], 'tetapi ditandai terlambat'],
-    'first report late' => [true, [
-        'Batas 8 Nov 2026 sudah lewat. Laporan tetap diterima, tetapi ditandai terlambat.',
-        'Batas laporan sudah lewat. Laporan tetap bisa dikirim, tetapi ditandai terlambat.',
-    ], 'tidak ditandai terlambat'],
-]);

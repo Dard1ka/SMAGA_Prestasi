@@ -106,13 +106,13 @@ function mailGreetingCases(): array
         [$fixed(CompetitionPublished::for($competition, true)), 'akun'], // Notice family
         [$fixed(new CompetitionSubmitted($competition, 'Nadia Putri Anindya')), 'akun'],
         [$fixed(new PublicationDue('01jpub', 'Nadia Putri Anindya', 'Juara II', 'OPSI 2026', 'Instagram', '12 Okt 2026, 09.00')), 'akun'],
-        [$fixed(new ReportSubmitted('01jrep', 'OPSI 2026', 'Nadia Putri Anindya', 'Juara II', false, false)), 'akun'],
+        [$fixed(new ReportSubmitted('01jrep', 'OPSI 2026', 'Nadia Putri Anindya', 'Juara II', false)), 'akun'],
         // The Action passes the greeting of the account owner: the mail itself goes to a bare address.
         [fn (User $to): BaseNotification => new EmailBindingNotice(EmailBindingNotice::BOUND, (string) FirstName::of($to->name), 'n•••@gmail.com', $signed, 7, MailGreeting::for($to)), 'akun'],
 
         // Always students
-        [$fixed(new ReportReminder($registrationId, 'OPSI 2026', '8 Nov 2026', 3)), 'siswa'],
-        [$fixed(new ReportWindowOpened($registrationId, 'OPSI 2026', '8 Nov 2026')), 'siswa'],
+        [$fixed(new ReportReminder($registrationId, 'OPSI 2026', 3)), 'siswa'],
+        [$fixed(new ReportWindowOpened($registrationId, 'OPSI 2026')), 'siswa'],
         [$fixed(CompetitionChanged::for($competition, $registrationId, ['Babak final sekarang 20 November 2026.'])), 'siswa'],
         [$fixed(new AchievementPublished('01jpub', '01jach', 'OPSI 2026', 'Juara II', 'Instagram')), 'siswa'],
         [$fixed(new AppreciationScheduled('01japp', 'Upacara Senin', $when, 'OPSI 2026', 'Juara II')), 'siswa'],

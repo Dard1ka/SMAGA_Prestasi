@@ -147,10 +147,12 @@ class KonfirmasiTim extends Component
                 ])->values()->all(),
             'mentorName' => $mentor === null ? '–' : trim(($mentor->staffProfile?->honorific ? $mentor->staffProfile->honorific.' ' : '').$mentor->name),
             'facts' => [
-                ['icon' => 'clock', 'label' => 'Batas daftar', 'value' => LombaPresenter::date($competition->registration_closes_at)],
-                ['icon' => 'calendar', 'label' => 'Tanggal lomba', 'value' => LombaPresenter::tanggal($competition)],
+                // D-147: the same three periods as Detail lomba (no report deadline, D-151).
+                ['icon' => 'clock', 'label' => 'Pendaftaran', 'value' => LombaPresenter::pendaftaran($competition) ?? 'Menyusul'],
+                ['icon' => 'calendar', 'label' => 'Pelaksanaan', 'value' => LombaPresenter::tanggal($competition)],
+                ['icon' => 'upload', 'label' => 'Laporan hasil', 'value' => LombaPresenter::REPORT_LINE],
                 ['icon' => 'trophy', 'label' => 'Tingkat', 'value' => LombaPresenter::tingkat($competition)],
-                ['icon' => 'pin', 'label' => 'Pelaksanaan', 'value' => LombaPresenter::tempat($competition)],
+                ['icon' => 'pin', 'label' => 'Tempat', 'value' => LombaPresenter::tempat($competition)],
             ],
             'detailUrl' => Gate::allows('view', $competition) ? route('siswa.lomba.show', $competition) : null,
             'lombaSayaUrl' => Route::has('siswa.lomba-saya.show') ? route('siswa.lomba-saya.show', $registration) : null,

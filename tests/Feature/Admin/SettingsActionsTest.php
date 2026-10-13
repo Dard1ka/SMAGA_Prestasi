@@ -53,29 +53,31 @@ function sthPngUpload(string $name = 'ttd.png', int $width = 64, int $height = 3
 
 // Batas & arsip -------------------------------------------------------------------------------------
 
-it('updates the report deadline and recalculates archive dates of students who are not archived', function (): void {
+it('updates the archive months and recalculates archive dates', function (): void {
     $class = Classroom::factory()->level(12)->create(['name' => 'XII-2']);
     $current = Student::factory()->create(['classroom_id' => $class->id, 'grade12_start_date' => '2026-07-01', 'archive_at' => '2028-01-01']);
     $alumni = Student::factory()->archived()->create(['classroom_id' => $class->id, 'grade12_start_date' => '2023-07-01', 'archive_at' => '2025-01-01']);
 
-    $result = app(UpdateLimits::class)->handle($this->admin, 60, 24);
+    $result = app(UpdateLimits::class)->handle($this->admin, 24);
 
-    expect(Setting::int(SettingKey::ReportDeadlineDays))->toBe(60)
-        ->and(Setting::int(SettingKey::ArchiveMonthsAfterGrade12))->toBe(24)
+    expect(Setting::int(SettingKey::ArchiveMonthsAfterGrade12))->toBe(24)
+        // D-151: the report deadline is no longer edited here; the setting keeps its value.
+        ->and(Setting::int(SettingKey::ReportDeadlineDays))->toBe(45)
         ->and($result['recalculated'])->toBe(1)
         ->and($current->fresh()->archive_at->toDateString())->toBe('2028-07-01')
         ->and($alumni->fresh()->archive_at->toDateString())->toBe('2025-01-01');
 
     $log = Activity::query()->where('event', 'settings.limits_updated')->sole();
-    expect($log->properties['report_deadline_days'])->toBe(['from' => 45, 'to' => 60])
+    expect($log->properties['archive_months_after_grade12'])->toBe(['from' => 18, 'to' => 24])
+        ->and($log->properties->has('report_deadline_days'))->toBeFalse()
         ->and($log->properties['archive_dates_recalculated'])->toBe(1);
 });
 
 it('rejects out-of-range limits and non-admins', function (): void {
-    expect(fn () => app(UpdateLimits::class)->handle($this->admin, 0, 18))->toThrow(ValidationException::class)
-        ->and(fn () => app(UpdateLimits::class)->handle($this->admin, 45, 121))->toThrow(ValidationException::class)
-        ->and(fn () => app(UpdateLimits::class)->handle(A::staff(RoleName::Kesiswaan), 45, 18))->toThrow(AuthorizationException::class)
-        ->and(Setting::int(SettingKey::ReportDeadlineDays))->toBe(45);
+    expect(fn () => app(UpdateLimits::class)->handle($this->admin, 0))->toThrow(ValidationException::class)
+        ->and(fn () => app(UpdateLimits::class)->handle($this->admin, 121))->toThrow(ValidationException::class)
+        ->and(fn () => app(UpdateLimits::class)->handle(A::staff(RoleName::Kesiswaan), 18))->toThrow(AuthorizationException::class)
+        ->and(Setting::int(SettingKey::ArchiveMonthsAfterGrade12))->toBe(18);
 });
 
 it('saves limits from the Batas & arsip tab', function (): void {
@@ -83,13 +85,13 @@ it('saves limits from the Batas & arsip tab', function (): void {
     session(A::passwordConfirmed());
 
     Livewire::test(BatasArsip::class)
-        ->assertSet('reportDeadlineDays', 45)
-        ->assertSee('Final 24 Sep 2026 → batas lapor 8 Nov 2026.')
-        ->set('reportDeadlineDays', 30)
+        ->assertSet('archiveMonths', 18)
+        ->assertDontSee('batas lapor')
+        ->set('archiveMonths', 24)
         ->call('save')
         ->assertHasNoErrors();
 
-    expect(Setting::int(SettingKey::ReportDeadlineDays))->toBe(30);
+    expect(Setting::int(SettingKey::ArchiveMonthsAfterGrade12))->toBe(24);
 });
 
 // Surat & tanda tangan ------------------------------------------------------------------------------

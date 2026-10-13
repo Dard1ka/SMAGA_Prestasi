@@ -312,7 +312,8 @@ it('gives each registration only the sentences of the facts it relies on', funct
         ->and(lcnNotice($leaders['berlangsung']->user)->lines)->toBe(['Tempat sekarang Aula SMA Negeri 3 Semarang.']);
 });
 
-it('tells a registration that waits for its report about a new final date, with the report deadline of the settings', function (): void {
+it('tells a registration that waits for its report about a new final date', function (): void {
+    // D-151: no report deadline any more, also when the old setting is changed.
     Setting::put(SettingKey::ReportDeadlineDays, 30);
 
     $guru = F::staff(RoleName::Guru, 'Pak Hendra Kusuma');
@@ -324,9 +325,9 @@ it('tells a registration that waits for its report about a new final date, with 
 
     app(UpdateCompetition::class)->handle($this->kesiswaan, $competition, C::input($competition, ['final_on' => '2026-11-10']));
 
-    expect(lcnNotice($waiting->user)->lines)->toBe(['Tanggal final sekarang 10 Nov 2026, batas laporan hasil 10 Des 2026.'])
+    expect(lcnNotice($waiting->user)->lines)->toBe(['Tanggal selesai sekarang 10 Nov 2026.'])
         ->and(lcnNotice($running->user)->lines)->toBe(['Tanggal lomba sekarang 7–10 Nov 2026.'])
-        ->and(lcnNotice($guru, BinaanCompetitionChanged::class)->lines)->toBe(['Tanggal final sekarang 10 Nov 2026, batas laporan hasil 10 Des 2026.'])
+        ->and(lcnNotice($guru, BinaanCompetitionChanged::class)->lines)->toBe(['Tanggal selesai sekarang 10 Nov 2026.'])
         ->and(lcnNotice($guru, BinaanCompetitionChanged::class)->url())->toBe(route('guru.binaan.show', ['registration' => $registration->getKey()]));
 });
 

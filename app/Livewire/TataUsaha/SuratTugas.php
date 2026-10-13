@@ -516,7 +516,7 @@ class SuratTugas extends Component
         Gate::authorize('viewQueue', Letter::class);
 
         $queue = $this->searched($this->queueQuery())
-            ->with(['competition', 'members' => fn ($q) => $q->whereNotNull('confirmed_at')->whereNull('declined_at'), 'letters'])
+            ->with(['competition', 'members' => fn ($q) => $q->whereNotNull('confirmed_at')->whereNull('declined_at'), 'letters', 'principalDecider.roles'])
             ->get();
         $total = trim($this->q) === '' ? $queue->count() : $this->queueQuery()->count();
 
@@ -574,7 +574,7 @@ class SuratTugas extends Component
         }
 
         return view('livewire.tata-usaha.surat-tugas', $data)->layoutData([
-            'subtitle' => 'Pendaftaran yang sudah disetujui Kepala Sekolah.',
+            'subtitle' => 'Pendaftaran yang sudah disetujui.',
             'badges' => ['tu.surat' => $total],
         ]);
     }

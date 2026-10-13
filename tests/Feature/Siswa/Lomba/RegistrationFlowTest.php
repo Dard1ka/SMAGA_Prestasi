@@ -46,8 +46,9 @@ function w2a1Register(object $t, $student, $competition, RegistrationType $type,
     return app(CreateRegistration::class)->handle(F::user($student), $competition, $type, array_map(fn ($s) => $s->getKey(), $members), $mentor ?? $t->guru->id);
 }
 
-it('sends an individu registration straight to the Kepala Sekolah and notifies only the principal', function (): void {
+it('sends an individu registration straight to approval and notifies the approvers (Kepala Sekolah and Tata Usaha), not Admin', function (): void {
     $lomba = F::openCompetition();
+    $tu = F::staff(RoleName::TataUsaha, 'Tata Usaha Contoh');
 
     $registration = w2a1Register($this, $this->nadia, $lomba, RegistrationType::Individu);
 
@@ -57,6 +58,7 @@ it('sends an individu registration straight to the Kepala Sekolah and notifies o
     expect($leader->role)->toBe(MemberRole::Ketua)->and($leader->confirmed_at)->not->toBeNull();
 
     Notification::assertSentTo($this->kepsek, RegistrationAwaitingPrincipal::class);
+    Notification::assertSentTo($tu, RegistrationAwaitingPrincipal::class); // D-150
     Notification::assertNotSentTo($this->admin, RegistrationAwaitingPrincipal::class); // D-01
     expect(Activity::query()->where('event', 'registration.created')->exists())->toBeTrue();
 });

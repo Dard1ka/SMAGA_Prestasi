@@ -61,7 +61,7 @@ it('never moves registrations in other states', function (): void {
         ->and($cancelled->fresh()->status)->toBe(RegistrationStatus::Dibatalkan);
 });
 
-it('opens the report window the day after the final and tells the ketua the due date', function (): void {
+it('opens the report window the day after the final and asks the ketua to report (no due date, D-151)', function (): void {
     $registration = F::registration($this->nadia, RegistrationStatus::Berlangsung, $this->competition, [F::student('Dimas Arya Nugroho')]);
     $await = app(AwaitReport::class);
 
@@ -70,8 +70,8 @@ it('opens the report window the day after the final and tells the ketua the due 
 
     expect($await->handle($registration, CarbonImmutable::parse('2026-09-25'))?->status)->toBe(RegistrationStatus::MenungguLaporan);
 
-    Notification::assertSentTo($this->nadia->user, ReportWindowOpened::class, fn (ReportWindowOpened $n): bool => $n->dueOn === '8 Nov 2026'
-        && $n->registrationId === $registration->getKey());
+    // D-151: no due date in the notice any more.
+    Notification::assertSentTo($this->nadia->user, ReportWindowOpened::class, fn (ReportWindowOpened $n): bool => $n->registrationId === $registration->getKey());
     Notification::assertCount(1); // only the ketua reports
     expect(Activity::query()->where('event', 'registration.menunggu_laporan')->count())->toBe(1);
 });

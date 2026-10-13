@@ -1059,6 +1059,7 @@ $scenario->step('3c', 'Laras accepts (ConfirmMembership): team complete, goes to
 }, [
     [$mail('galuh'), 'Anggota ikut tim: '.$lomba['l1']],
     [$at('kepsek'), 'Pendaftaran lomba menunggu persetujuan'],
+    [$at('tu'), 'Pendaftaran lomba menunggu persetujuan'], // D-150: Tata Usaha approves too
 ]);
 
 $scenario->step('3d', 'Galang registers a second TEAM and invites Sekar (CreateRegistration)', function () use ($state, $siswa, $staff, $studentId, $l1): void {
@@ -1091,11 +1092,11 @@ $scenario->step('3g', 'Galang (ketua) cancels the team while it still waits for 
 
 $scenario->step('3h', 'Sekar registers INDIVIDUALLY (CreateRegistration): straight to the Kepala Sekolah', function () use ($state, $siswa, $staff, $l1): void {
     $state['r3'] = app(CreateRegistration::class)->handle($siswa('sekar'), $l1(), RegistrationType::Individu, [], (int) $staff('hendra.k')->getKey())->getKey();
-}, [[$at('kepsek'), 'Pendaftaran lomba menunggu persetujuan']]);
+}, [[$at('kepsek'), 'Pendaftaran lomba menunggu persetujuan'], [$at('tu'), 'Pendaftaran lomba menunggu persetujuan']]);
 
 $scenario->step('3i', 'Wulan registers INDIVIDUALLY (CreateRegistration)', function () use ($state, $siswa, $staff, $l1): void {
     $state['r4'] = app(CreateRegistration::class)->handle($siswa('wulan'), $l1(), RegistrationType::Individu, [], (int) $staff('hendra.k')->getKey())->getKey();
-}, [[$at('kepsek'), 'Pendaftaran lomba menunggu persetujuan']]);
+}, [[$at('kepsek'), 'Pendaftaran lomba menunggu persetujuan'], [$at('tu'), 'Pendaftaran lomba menunggu persetujuan']]);
 
 $scenario->step('3j', 'Galang registers a new TEAM with Ma\'ruf, who accepts: the team now waits for the Kepala Sekolah (CreateRegistration + ConfirmMembership)', function () use ($state, $siswa, $staff, $studentId, $l1, $scenario): void {
     $created = app(CreateRegistration::class)->handle($siswa('galang'), $l1(), RegistrationType::Tim, [$studentId('maruf')], (int) $staff('hendra.k')->getKey());
@@ -1108,17 +1109,21 @@ $scenario->step('3j', 'Galang registers a new TEAM with Ma\'ruf, who accepts: th
     [$mail('maruf'), 'Undangan tim: '.$lomba['l1']],
     [$mail('galang'), 'Anggota ikut tim: '.$lomba['l1']],
     [$at('kepsek'), 'Pendaftaran lomba menunggu persetujuan'],
+    [$at('tu'), 'Pendaftaran lomba menunggu persetujuan'],
 ]);
 
 $scenario->step('3k', 'Galang (ketua) cancels the team that already waits for approval (CancelRegistration): member + guru + Kepala Sekolah', function () use ($siswa, $registration, $scenario, $state, $at, $lomba): void {
     $result = app(CancelRegistration::class)->handle($siswa('galang'), $registration('r5'));
     $scenario->note('registration status: '.$result->status->value.' (it was menunggu_kepsek: the Kepala Sekolah had been asked to decide)');
     $scenario->assertRendered('3k', $at('kepsek'), 'Pendaftaran lomba dibatalkan', 'Yth. Drs. Bambang Hartono, M.Pd.,', 'Galang Putra Mahendra membatalkan pendaftaran '.$lomba['l1'].' (tim). Pendaftaran ini tidak perlu diputuskan lagi.', 'Buka persetujuan', '/kepsek/persetujuan');
+    // D-150: Tata Usaha is an approver too and opens its own address.
+    $scenario->assertRendered('3k', $at('tu'), 'Pendaftaran lomba dibatalkan', 'Yth. Sri Handayani,', 'Pendaftaran ini tidak perlu diputuskan lagi.', 'Buka persetujuan', '/tu/persetujuan');
     $scenario->assertRendered('3k', $at('hendra.k'), 'Pendaftaran binaan dibatalkan', 'Yth. Hendra Kusuma, S.Pd., M.Si.,', 'Galang Putra Mahendra membatalkan pendaftaran binaan di '.$lomba['l1'].'.', 'Lihat pendaftaran', '/guru/binaan/'.$state['r5']);
 }, [
     [$mail('maruf'), 'Pendaftaran dibatalkan: '.$lomba['l1']],
     [$at('hendra.k'), 'Pendaftaran binaan dibatalkan'],
     [$at('kepsek'), 'Pendaftaran lomba dibatalkan'],
+    [$at('tu'), 'Pendaftaran lomba dibatalkan'],
 ]);
 
 // =================================================================================================================
@@ -1278,8 +1283,8 @@ $moveLombaDates = function (int $finalDaysAgo) use ($state, $today): void {
 $statuses = fn (): string => 'team: '.Registration::query()->whereKey($state['r1'])->value('status')->value
     .', Wulan: '.Registration::query()->whereKey($state['r4'])->value('status')->value;
 
-$scenario->step('6a', 'Lomba is over (dates moved 31 days back) → `sth:registrations:advance`', function () use ($moveLombaDates, $scenario, $statuses): void {
-    $moveLombaDates(31);
+$scenario->step('6a', 'Lomba is over (final moved to yesterday) → `sth:registrations:advance`', function () use ($moveLombaDates, $scenario, $statuses): void {
+    $moveLombaDates(1);
     Artisan::call('sth:registrations:advance');
     $scenario->note('command output: '.trim(Artisan::output()));
     $scenario->note('registration status → '.$statuses());
@@ -1291,20 +1296,22 @@ $scenario->step('6a', 'Lomba is over (dates moved 31 days back) → `sth:registr
 $reminderSays = fn (string $phrase): string => 'reminder to Galuh says "'.$phrase.'": '
     .(str_contains($scenario->textOf($mail('galuh'), 'Laporan '.$lomba['l1'].' ditunggu'), $phrase) ? 'yes' : 'NO');
 
-$scenario->step('6b', '`sth:reports:remind`, 14 days before the deadline (final + 45 days)', function () use ($scenario, $reminderSays): void {
+// D-151: no report deadline; reminders 3 and 14 days after the final.
+$scenario->step('6b', '`sth:reports:remind`, 3 days after the final (final date moved to 3 days ago)', function () use ($moveLombaDates, $scenario, $reminderSays): void {
+    $moveLombaDates(3);
     Artisan::call('sth:reports:remind');
     $scenario->note('command output: '.trim(Artisan::output()));
-    $scenario->note($reminderSays('14 hari lagi'));
+    $scenario->note($reminderSays('sudah selesai'));
 }, [
     [$mail('galuh'), 'Laporan '.$lomba['l1'].' ditunggu'],
     [$mail('wulan'), 'Laporan '.$lomba['l1'].' ditunggu'],
 ]);
 
-$scenario->step('6c', '`sth:reports:remind`, 3 days before the deadline (final date moved to 42 days ago)', function () use ($moveLombaDates, $scenario, $reminderSays): void {
-    $moveLombaDates(42);
+$scenario->step('6c', '`sth:reports:remind`, 14 days after the final (final date moved to 14 days ago)', function () use ($moveLombaDates, $scenario, $reminderSays): void {
+    $moveLombaDates(14);
     Artisan::call('sth:reports:remind');
     $scenario->note('command output: '.trim(Artisan::output()));
-    $scenario->note($reminderSays('3 hari lagi'));
+    $scenario->note($reminderSays('sudah selesai'));
 }, [
     [$mail('galuh'), 'Laporan '.$lomba['l1'].' ditunggu'],
     [$mail('wulan'), 'Laporan '.$lomba['l1'].' ditunggu'],

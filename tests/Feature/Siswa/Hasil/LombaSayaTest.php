@@ -44,7 +44,7 @@ beforeEach(function (): void {
 
 afterEach(fn () => F::resetToday());
 
-it('lists running and finished lomba and opens the first one with the 6-phase tracker and deadline', function (): void {
+it('lists running and finished lomba and opens the first one with the 6-phase tracker and the report request (D-151)', function (): void {
     $opsi = F::registration($this->nadia, RegistrationStatus::Selesai, F::competition(['name' => 'OPSI 2026', 'final_on' => '2026-08-07', 'starts_on' => '2026-08-04']));
 
     $this->actingAs($this->nadia->user)
@@ -54,7 +54,7 @@ it('lists running and finished lomba and opens the first one with the 6-phase tr
         ->assertSee('WICE 2026')
         ->assertSee('LPB 2026')
         ->assertDontSee('OPSI 2026')
-        ->assertSee('Batas 8 Nov · 38 hari lagi')
+        ->assertSee('Segera laporkan')
         ->assertSee('aria-label="Jejak prestasi"', false)
         ->assertSee('Laporkan hasil')
         ->assertSee('Setiap anggota tim mendapat poin penuh.')

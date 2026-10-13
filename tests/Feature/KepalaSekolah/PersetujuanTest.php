@@ -28,10 +28,12 @@ beforeEach(function (): void {
 
 // Access ------------------------------------------------------------------------------------------
 
-it('opens the approval queue for the Kepala Sekolah only', function (): void {
+it('opens the approval queue for the Kepala Sekolah and Tata Usaha only', function (): void {
     $this->actingAs($this->kepsek)->get('/kepsek/persetujuan')->assertOk()->assertSee('Pilih semua');
+    // D-150: Tata Usaha opens the same screen under its own address.
+    $this->actingAs(F::staff(RoleName::TataUsaha))->get('/tu/persetujuan')->assertOk()->assertSee('Pilih semua');
 
-    foreach ([RoleName::Admin, RoleName::TataUsaha, RoleName::Humas, RoleName::Kesiswaan, RoleName::Guru] as $role) {
+    foreach ([RoleName::Admin, RoleName::Humas, RoleName::Kesiswaan, RoleName::Guru] as $role) {
         $this->actingAs(F::staff($role))->get('/kepsek/persetujuan')->assertForbidden();
     }
 
@@ -44,7 +46,7 @@ it('sends guests to the login page', function (): void {
     $this->get('/kepsek')->assertRedirect(route('login'));
 });
 
-it('lets only the Kepala Sekolah decide a waiting registration (Admin denied, D-01)', function (): void {
+it('lets only the Kepala Sekolah and Tata Usaha decide a waiting registration (Admin denied, D-01)', function (): void {
     $waiting = F::registration();
     $approved = F::registration(RegistrationStatus::Disetujui);
 
@@ -52,7 +54,8 @@ it('lets only the Kepala Sekolah decide a waiting registration (Admin denied, D-
         ->and($this->kepsek->can('decide', $approved))->toBeFalse()
         ->and(F::staff(RoleName::Admin)->can('decide', $waiting))->toBeFalse()
         ->and(F::staff(RoleName::Admin)->can('viewApprovalQueue', Registration::class))->toBeFalse()
-        ->and(F::staff(RoleName::TataUsaha)->can('decide', $waiting))->toBeFalse();
+        ->and(F::staff(RoleName::TataUsaha)->can('decide', $waiting))->toBeTrue()
+        ->and(F::staff(RoleName::TataUsaha)->can('decide', $approved))->toBeFalse();
 });
 
 // Actions -----------------------------------------------------------------------------------------
@@ -104,7 +107,7 @@ it('rejects with a required reason and tells the students and the guru pembimbin
 it('refuses Admin and other staff in the Actions', function (): void {
     $registration = F::registration();
 
-    foreach ([RoleName::Admin, RoleName::TataUsaha, RoleName::Kesiswaan] as $role) {
+    foreach ([RoleName::Admin, RoleName::Kesiswaan, RoleName::Humas, RoleName::Guru] as $role) {
         $actor = F::staff($role);
         expect(fn () => app(ApproveRegistration::class)->handle($actor, $registration))->toThrow(AuthorizationException::class);
         expect(fn () => app(RejectRegistration::class)->handle($actor, $registration, 'Alasan yang cukup panjang.'))->toThrow(AuthorizationException::class);
