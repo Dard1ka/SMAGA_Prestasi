@@ -21,6 +21,7 @@ use App\Enums\ResultType;
 use App\Enums\WeightCategory;
 use App\Models\Competition;
 use App\Models\WeightVersion;
+use App\Rules\ExternalUrl;
 use BackedEnum;
 use DateTimeInterface;
 use Illuminate\Validation\Rule;
@@ -197,6 +198,25 @@ final class CompetitionFields extends Form
             || ($competition->final_on !== null && $competition->starts_on->toDateString() === $competition->final_on->toDateString())
             ? self::DURATION_ONE_DAY
             : self::DURATION_MULTI_DAY;
+    }
+
+    /**
+     * Text as the Actions store it, written back so the fields show it: spaces around the typed text go, the two links
+     * are cleaned like ExternalUrl::normalize() does (line breaks and invisible characters of a paste).
+     */
+    public function cleanText(): void
+    {
+        foreach (['name', 'description', 'organizer_name', 'organizer_type_other', 'location'] as $field) {
+            if (is_string($this->{$field})) {
+                $this->{$field} = trim($this->{$field});
+            }
+        }
+
+        foreach (['website_url', 'registration_url'] as $field) {
+            if (is_string($this->{$field})) {
+                $this->{$field} = ExternalUrl::normalize($this->{$field});
+            }
+        }
     }
 
     public function isOneDay(): bool

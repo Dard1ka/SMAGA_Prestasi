@@ -19,7 +19,8 @@ use Livewire\WithPagination;
 /**
  * Siswa · Cari lomba (UI-MAP #10, board Katalog-Lomba). Published lomba only (D-27), filters in the
  * URL (bidang, tingkat, status pendaftaran, q — the top bar search posts ?q= here), 9 per page.
- * "Usulkan lomba" opens the shared Lomba\UsulanForm sheet (SubmitCompetition → menunggu_verifikasi).
+ * "Usulkan lomba" opens the page Siswa\Lomba\Usulkan (`siswa.lomba.usulkan`, D-145: the whole lomba, then its
+ * registration; SubmitCompetition → menunggu_verifikasi).
  */
 #[Layout('layouts::app', ['subtitle' => 'Semua lomba sudah diperiksa Kesiswaan.'])]
 #[Title('Cari lomba')]

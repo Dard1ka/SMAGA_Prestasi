@@ -1,7 +1,7 @@
 {{-- Siswa · Cari lomba (board Katalog-Lomba). Data prepared in App\Livewire\Siswa\Lomba\Katalog + LombaPresenter. --}}
 <div class="@container flex flex-col gap-[18px]">
     <x-slot:actions>
-        <x-sth.button variant="quiet" icon="plus" data-sth-open="usul" aria-haspopup="dialog">Usulkan lomba</x-sth.button>
+        <x-sth.button variant="quiet" icon="plus" :href="route('siswa.lomba.usulkan')">Usulkan lomba</x-sth.button>
     </x-slot:actions>
 
     <section aria-label="Filter lomba" class="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
@@ -62,6 +62,4 @@
             </nav>
         @endif
     @endif
-
-    <livewire:lomba.usulan-form />
 </div>

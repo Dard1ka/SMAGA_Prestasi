@@ -221,8 +221,9 @@ it('opens only dialogs that exist', function (): void {
 
     $missing = array_diff_key($opened, $dialogs);
 
+    // The floor only proves the scan read the views: ten dialogs since the "usul" sheet became a page (D-145).
     expect($missing)->toBe([])
-        ->and(count($opened))->toBeGreaterThan(10)
+        ->and(count($opened))->toBeGreaterThanOrEqual(10)
         // The tag reader itself: an attribute with "->" before the id must not hide the id.
         ->and(rv1OpeningTags('<x-sth.modal :title="$row->name" id="x" size="sm"><p>', ['x-sth.modal']))
         ->toBe(['<x-sth.modal :title="$row->name" id="x" size="sm">']);

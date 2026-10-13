@@ -2,16 +2,15 @@
 
 declare(strict_types=1);
 
-use App\Actions\Competitions\SubmitCompetition;
 use App\Enums\RoleName;
 use App\Livewire\Kesiswaan\Lomba\Form as KelolaLombaForm;
+use App\Livewire\Siswa\Lomba\Usulkan;
 use App\Models\Competition;
 use App\Models\User;
 use App\Rules\ExternalUrl;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Notification;
-use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
 use Tests\Feature\Kesiswaan\KesiswaanFixtures as K;
 use Tests\Feature\Siswa\Lomba\LombaFixtures as F;
@@ -36,23 +35,21 @@ beforeEach(function (): void {
 });
 
 /**
- * Sends one address as the "Link resmi" of a student's usulan (SubmitCompetition, the whole lomba since D-145).
+ * Sends one address as the "Link resmi" of Siswa › Usulkan lomba (the whole lomba since D-145), as that user.
  *
- * @return array{error: ?string, stored: ?string}
+ * @return array{error: ?string, stored: ?string, shown: mixed}
  */
-function linkThroughUsulan(User $user, bool $upload, string $typed): array
+function linkThroughUsulan(User $user, string $typed): array
 {
-    $error = null;
-
-    try {
-        app(SubmitCompetition::class)->handle($user, F::usulan(['name' => 'Lomba Uji Link 2026', 'website_url' => $typed]), UploadedFile::fake()->image('brosur.jpg', 600, 800));
-    } catch (ValidationException $e) {
-        $error = $e->errors()['website_url'][0] ?? null;
-    }
+    $page = Livewire::actingAs($user)->test(Usulkan::class)
+        ->set(K::fields(F::usulan(['name' => 'Lomba Uji Link 2026', 'website_url' => $typed])))
+        ->set('form.juknis', UploadedFile::fake()->image('brosur.jpg', 600, 800))
+        ->call('simpan');
 
     return [
-        'error' => $error,
+        'error' => $page->errors()->first('form.website_url') ?: null,
         'stored' => Competition::query()->where('submitted_by', $user->getKey())->value('website_url'),
+        'shown' => $page->get('form.website_url'),
     ];
 }
 
@@ -81,7 +78,7 @@ function linkThroughKelolaLomba(User $user, string $field, string $typed): array
 
 it('answers one address the same way on every link field', function (string $typed, ?string $stored, ?string $sentence): void {
     $answers = [
-        'siswa, Link resmi' => linkThroughUsulan($this->siswa, false, $typed),
+        'siswa, Link resmi' => linkThroughUsulan($this->siswa, $typed),
         'admin, Website resmi' => linkThroughKelolaLomba($this->admin, 'website_url', $typed),
         'admin, Link registrasi' => linkThroughKelolaLomba($this->admin, 'registration_url', $typed),
     ];
@@ -131,7 +128,7 @@ it('accepts the addresses of the test guide for a student', function (): void {
     foreach (['https://contoh.test/lomba-siswa', 'https://contoh.test/lomba-guru'] as $address) {
         Competition::query()->where('submitted_by', $this->siswa->getKey())->delete();
 
-        expect(linkThroughUsulan($this->siswa, false, $address))->toMatchArray(['error' => null, 'stored' => $address]);
+        expect(linkThroughUsulan($this->siswa, $address))->toMatchArray(['error' => null, 'stored' => $address]);
     }
 });
 

@@ -7,17 +7,22 @@ use App\Enums\CompetitionStatus;
 use App\Enums\FilePurpose;
 use App\Enums\RoleName;
 use App\Enums\UserStatus;
+use App\Livewire\Siswa\Lomba\Usulkan;
 use App\Models\Competition;
 use App\Models\File;
 use App\Models\User;
 use App\Notifications\Competitions\CompetitionSubmitted;
 use App\Rules\ExternalUrl;
+use App\Rules\NoWebAddress;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
+use Livewire\Features\SupportTesting\Testable;
+use Livewire\Livewire;
 use Spatie\Activitylog\Models\Activity;
 use Tests\Feature\Kesiswaan\KesiswaanFixtures as K;
 use Tests\Feature\Siswa\Lomba\LombaFixtures as F;
@@ -187,4 +192,139 @@ it('keeps the Action closed to an account that may not send a lomba', function (
     }
 
     expect(Competition::query()->count())->toBe(0);
+});
+
+// The page Siswa › Usulkan lomba (ported from the old sheet; the lead's mail test of 2026-10-09: a link was checked as
+// typed and every refusal had one sentence) --------------------------------------------------------------------------
+
+/** The page filled with a complete usulan (F::usulan()) and a juknis, as the student would send it. */
+function usulkanFilled(User $user, array $overrides = []): Testable
+{
+    return Livewire::actingAs($user)->test(Usulkan::class)
+        ->set(K::fields(F::usulan($overrides)))
+        ->set('form.juknis', UploadedFile::fake()->image('poster.jpg', 600, 800));
+}
+
+it('accepts a link pasted with spaces or a line break around it and stores it clean', function (string $typed): void {
+    usulkanFilled(F::user($this->nadia), [
+        'name' => '  ISPO 2027  ',
+        'organizer_name' => ' Yayasan Contoh ',
+        'website_url' => $typed,
+        'description' => "  Pendaftaran Januari.\n",
+    ])->call('simpan')->assertHasNoErrors();
+
+    $competition = Competition::query()->sole();
+
+    expect($competition->website_url)->toBe('https://ispo.example.id/info')
+        ->and($competition->name)->toBe('ISPO 2027')
+        ->and($competition->organizer_name)->toBe('Yayasan Contoh')
+        ->and($competition->description)->toBe('Pendaftaran Januari.');
+})->with([
+    'space behind' => ['https://ispo.example.id/info '],
+    'space in front' => [' https://ispo.example.id/info'],
+    'line break behind' => ["https://ispo.example.id/info\r\n"],
+    'tab in front' => ["\thttps://ispo.example.id/info"],
+    'no-break space' => ["\u{00A0}https://ispo.example.id/info\u{00A0}"],
+    'zero-width space' => ["https://ispo.example.id/info\u{200B}"],
+]);
+
+it('shows the cleaned link in the field when something else is still missing', function (): void {
+    Livewire::actingAs(F::user($this->nadia))->test(Usulkan::class)
+        ->set(K::fields(F::usulan(['website_url' => "  https://ispo.example.id/info \n"])))
+        ->call('simpan')
+        ->assertHasErrors(['form.juknis'])
+        ->assertHasNoErrors('form.website_url')
+        ->assertSet('form.website_url', 'https://ispo.example.id/info');
+
+    expect(Competition::query()->count())->toBe(0);
+});
+
+it('says what is wrong with the link on the page and brings the error into view', function (string $typed, string $sentence): void {
+    $files = File::query()->count();
+
+    usulkanFilled(F::user($this->nadia), ['website_url' => $typed])
+        ->call('simpan')
+        ->assertHasErrors(['form.website_url'])
+        ->assertSee($sentence)
+        ->assertDispatched('sth-form-invalid', form: 'usulkan')
+        ->assertSet('competitionId', null);
+
+    expect(Competition::query()->count())->toBe(0)
+        ->and(File::query()->count())->toBe($files);
+})->with([
+    'http' => ['http://ispo.example.id', ExternalUrl::HTTP],
+    'no scheme' => ['ispo.example.id/info', ExternalUrl::NO_HTTPS],
+    'comma for the dot' => ['https://ispo,example.id/info', ExternalUrl::HOST],
+    'space inside' => ['https://ispo.example.id/info lomba', ExternalUrl::SPACE],
+    'ip address' => ['https://127.0.0.1/info', ExternalUrl::IP],
+    'odd port' => ['https://ispo.example.id:8081/info', ExternalUrl::PORT],
+    'credentials' => ['https://user:rahasia@ispo.example.id/', ExternalUrl::CREDENTIALS],
+    'en dash' => ['https://ispo.example.id/info–2027', ExternalUrl::CHARACTERS],
+    'too long' => ['https://ispo.example.id/'.str_repeat('a', 480), ExternalUrl::TOO_LONG],
+]);
+
+it('tells the student what to copy under the link field', function (): void {
+    Livewire::actingAs(F::user($this->nadia))->test(Usulkan::class)
+        ->assertSee('Link resmi')
+        ->assertSee('Salin dari kolom alamat browser, diawali https://. Kesiswaan memeriksa link ini dulu.')
+        ->assertSeeHtml('spellcheck="false"')
+        ->assertSeeHtml('autocapitalize="off"')
+        ->assertSeeHtml('novalidate');
+});
+
+it('shows a web address in the name together with the other field errors', function (): void {
+    usulkanFilled(F::user($this->nadia), ['name' => 'Daftar di www.lomba-fiktif.example', 'website_url' => 'http://ispo.example.id', 'bidang' => null])
+        ->call('simpan')
+        ->assertHasErrors(['form.name', 'form.website_url', 'form.bidang'])
+        ->assertSee(NoWebAddress::MESSAGE)
+        ->assertSee(ExternalUrl::HTTP)
+        ->assertDispatched('sth-form-invalid', form: 'usulkan');
+
+    expect(Competition::query()->count())->toBe(0);
+});
+
+it('keeps the hourly limit untouched when the page refuses a file, and stops after ten sends an hour', function (): void {
+    $user = F::user($this->nadia);
+
+    usulkanFilled($user)
+        ->set('form.juknis', UploadedFile::fake()->create('juknis.docx', 20, 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'))
+        ->call('simpan')
+        ->assertHasErrors(['form.juknis']);
+
+    expect(RateLimiter::attempts('usulan:'.$user->id))->toBe(0);
+
+    for ($i = 0; $i < 10; $i++) {
+        RateLimiter::hit('usulan:'.$user->id, 3600);
+    }
+
+    usulkanFilled($user)->call('simpan')
+        ->assertHasErrors(['form.name'])
+        ->assertSee('Terlalu sering. Coba lagi beberapa menit lagi.');
+
+    expect(Competition::query()->count())->toBe(0);
+});
+
+it('brings a juknis the Action refuses into view as an error too', function (): void {
+    // Passes the page's own file rules (a PDF by name and content), refused by StoreUpload (active content).
+    $pdf = UploadedFile::fake()->createWithContent('brosur.pdf', "%PDF-1.4\n1 0 obj << /Type /Catalog /OpenAction 2 0 R >> endobj\n%%EOF");
+
+    usulkanFilled(F::user($this->nadia))
+        ->set('form.juknis', $pdf)
+        ->call('simpan')
+        ->assertHasErrors(['form.juknis'])
+        ->assertDispatched('sth-form-invalid', form: 'usulkan')
+        ->assertSet('competitionId', null);
+
+    expect(Competition::query()->count())->toBe(0)
+        ->and(File::query()->count())->toBe(0);
+});
+
+it('keeps the page closed to an account that may not send a lomba', function (): void {
+    $noRole = User::factory()->create()->fresh();
+    $disabled = F::user(F::student('Siswa Nonaktif', 'X-1', ['status' => UserStatus::Disabled]));
+    $archived = F::user(F::student('Siswa Alumni', 'XII-1', ['status' => UserStatus::Archived]));
+
+    foreach ([$noRole, $disabled, $archived] as $user) {
+        Livewire::actingAs($user)->test(Usulkan::class)->assertForbidden();
+    }
 });
