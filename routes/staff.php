@@ -63,6 +63,9 @@ Route::middleware(['area.staff', 'role:humas'])->prefix('humas')->name('humas.')
     Route::livewire('/jadwal', Jadwal::class)->name('jadwal');
     Route::livewire('/apresiasi', Apresiasi::class)->name('apresiasi.index');
     Route::livewire('/arsip', Arsip::class)->name('arsip');
+    // D-139: Humas verifies reports too; the same screen as kesiswaan.verifikasi.*, area-aware.
+    Route::livewire('/verifikasi-hasil', VerifikasiHasil::class)->name('verifikasi.index');
+    Route::livewire('/verifikasi-hasil/{report}', VerifikasiHasil::class)->whereUlid('report')->name('verifikasi.show');
 });
 
 // --- end W2-C ---

@@ -19,6 +19,7 @@ use App\Models\Report;
 use App\Models\ReportFile;
 use App\Models\User;
 use App\Models\WeightVersion;
+use App\Support\VerificationArea;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
@@ -30,7 +31,8 @@ use Livewire\Attributes\Title;
 use Livewire\Component;
 
 /**
- * Verifikasi hasil (UI-MAP #17, board Kesiswaan-Verifikasi-Hasil). Queue of `dikirim` reports on the left,
+ * Verifikasi hasil (UI-MAP #17, board Kesiswaan-Verifikasi-Hasil). Kesiswaan, Admin (kesiswaan.verifikasi.*) and Humas
+ * (humas.verifikasi.*, D-139); `$area` decides links and badge keys. Queue of `dikirim` reports on the left,
  * detail with evidence, capaian decision, live point formula, 4-item checklist and the three decisions on
  * the right. Rules live in VerifyReport / RequestReportRevision / RejectReport; the policy denies a verifier
  * who is the registration's guru pembimbing (§3c-10). "Buka" on an evidence file shows it in the preview
@@ -53,6 +55,10 @@ class VerifikasiHasil extends Component
     /** D-109: nobody of the team can log in and no guru pembimbing hears about it. */
     public const NO_NOTICE = 'Akun siswa tidak aktif, jadi tidak ada notifikasi.';
 
+    /** Address family this screen was opened under (VerificationArea); set once in mount(). */
+    #[Locked]
+    public string $area = VerificationArea::KESISWAAN;
+
     #[Locked]
     public ?string $selectedId = null;
 
@@ -74,6 +80,7 @@ class VerifikasiHasil extends Component
     public function mount(?Report $report = null): void
     {
         $this->authorize('viewQueue', Report::class);
+        $this->area = VerificationArea::resolve(Route::currentRouteName(), $this->actor());
 
         if ($report !== null) {
             $this->authorize('view', $report);
@@ -231,7 +238,25 @@ class VerifikasiHasil extends Component
             'checkLabels' => VerifyReport::CHECKS,
             'checkCount' => count(array_filter($this->checks)),
             'rejecting' => $this->rejecting($report),
-        ])->layoutData(['badges' => $this->kesiswaanBadges()]);
+        ])->layoutData(['badges' => $this->verificationBadges()]);
+    }
+
+    /**
+     * Sidebar counts of the area: the Kesiswaan keys, or Humas' own key for the same queue (D-139). Sent to the
+     * browser as well, so the numbers follow every decision without a reload.
+     *
+     * @return array<string, int>
+     */
+    private function verificationBadges(): array
+    {
+        if ($this->area === VerificationArea::KESISWAAN) {
+            return $this->kesiswaanBadges();
+        }
+
+        $badges = ['humas.verifikasi' => Report::query()->awaitingVerification()->count()];
+        $this->dispatch('sth-badges', badges: $badges);
+
+        return $badges;
     }
 
     /**
@@ -416,6 +441,9 @@ class VerifikasiHasil extends Component
             'pointsLabel' => $members->count() > 1 ? 'Poin tiap anggota' : 'Poin',
             'studentNote' => $report->note,
             'open' => $report->status === ReportStatus::Dikirim,
+            'catalogGap' => $this->area === VerificationArea::HUMAS
+                ? 'Tingkat atau kategori lomba belum diisi di katalog. Kesiswaan melengkapinya di Kelola lomba.'
+                : 'Tingkat atau kategori lomba belum diisi di katalog. Lengkapi dulu di Kelola lomba.',
             'canDecide' => $this->actor()->can('verify', $report),
             'ownMentee' => $registration?->mentor_id !== null && (int) $registration->mentor_id === (int) $this->actor()->getKey(),
         ];
@@ -483,8 +511,8 @@ class VerifikasiHasil extends Component
     private function showAddress(): void
     {
         $this->dispatch('sth-address', url: $this->selectedId !== null
-            ? route('kesiswaan.verifikasi.show', $this->selectedId)
-            : route('kesiswaan.verifikasi.index'));
+            ? VerificationArea::showUrl($this->area, $this->selectedId)
+            : VerificationArea::indexUrl($this->area));
     }
 
     private function showErrors(ValidationException $e): void

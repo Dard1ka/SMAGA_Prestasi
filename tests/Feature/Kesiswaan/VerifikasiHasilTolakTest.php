@@ -335,7 +335,7 @@ it('refuses the question to the report\'s own guru pembimbing, who has no "Tolak
 
     Livewire::actingAs($this->kesiswaan)->test(VerifikasiHasil::class)
         ->assertSet('selectedId', $report->getKey())
-        ->assertSee('Laporan binaan sendiri diverifikasi petugas Kesiswaan lain.')
+        ->assertSee('Laporan binaan sendiri diverifikasi petugas lain.')
         ->assertDontSeeHtml('wire:click="askReject"')
         ->set('note', 'Sertifikat bukan atas nama siswa.')
         ->call('askReject')

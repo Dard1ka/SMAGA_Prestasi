@@ -104,7 +104,7 @@
                             <span class="font-bold">{{ $detail['claim'] }}</span>
                         </div>
                         <div class="flex flex-col gap-0.5 rounded-tile border border-line p-3">
-                            <span class="label">Penetapan Kesiswaan</span>
+                            <span class="label">Penetapan sekolah</span>
                             <span class="font-bold">{{ $detail['resultLabel'] }}</span>
                             @if ($detail['changed'])<span class="text-xs font-bold text-orange">Diubah dari klaim</span>@endif
                         </div>
@@ -117,7 +117,7 @@
                         @if ($detail['points'] !== null)
                             <x-sth.rumus-poin :tingkat="$detail['wLevel']" :capaian="$detail['wResult']" :penyelenggara="$detail['wOrganizer']" :total="$detail['points']" result-label="Poin" />
                         @else
-                            <span class="text-sm text-ink-2">Tingkat atau kategori lomba belum diisi di katalog. Lengkapi dulu di Kelola lomba.</span>
+                            <span class="text-sm text-ink-2">{{ $detail['catalogGap'] }}</span>
                         @endif
                     </x-sth.card>
 
@@ -144,7 +144,7 @@
                         </div>
                         <p class="m-0 text-xs text-muted">{{ $checkCount < 4 ? 'Lengkapi 4 pemeriksaan untuk memberi poin. ' : '' }}Prestasi terverifikasi otomatis masuk antrean Humas dan peringkat.</p>
                     @elseif ($detail['ownMentee'])
-                        <x-sth.alert tone="warning">Laporan binaan sendiri diverifikasi petugas Kesiswaan lain.</x-sth.alert>
+                        <x-sth.alert tone="warning">Laporan binaan sendiri diverifikasi petugas lain.</x-sth.alert>
                     @endif
                 @else
                     <div class="flex flex-col gap-1 rounded-tile border border-line p-3">

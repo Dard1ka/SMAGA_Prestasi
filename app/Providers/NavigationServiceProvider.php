@@ -103,6 +103,10 @@ final class NavigationServiceProvider extends ServiceProvider
             'humas.publikasi' => $user->can(Permission::PublicationManage->value)
                 ? HumasQueries::visiblePublications()->where('status', PublicationStatus::Siap)->count()
                 : null,
+            // Humas › Verifikasi hasil: the same queue as kesiswaan.verifikasi (D-139).
+            'humas.verifikasi' => $user->can('viewQueue', Report::class)
+                ? Report::query()->awaitingVerification()->count()
+                : null,
             // Humas › Jadwal: scheduled publications past their time, not marked as published yet (D-122).
             'humas.jadwal' => $user->can(Permission::PublicationManage->value)
                 ? HumasQueries::overduePublications()->count()

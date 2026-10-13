@@ -208,7 +208,7 @@ it('lists the badge keys of every role menu', function (): void {
     expect(Navigation::badgeKeys('kesiswaan'))->toBe(['kesiswaan.usulan', 'kesiswaan.verifikasi'])
         ->and(Navigation::badgeKeys('tata_usaha'))->toBe(['tu.surat'])
         ->and(Navigation::badgeKeys('kepala_sekolah'))->toBe(['kepsek.persetujuan'])
-        ->and(Navigation::badgeKeys('humas'))->toBe(['humas.publikasi', 'humas.jadwal'])
+        ->and(Navigation::badgeKeys('humas'))->toBe(['humas.publikasi', 'humas.verifikasi', 'humas.jadwal'])
         ->and(Navigation::badgeKeys('siswa'))->toBe(['siswa.lomba-saya'])
         ->and(Navigation::badgeKeys('admin'))->toBe([])
         ->and(Navigation::badgeKeys('guru'))->toBe([])

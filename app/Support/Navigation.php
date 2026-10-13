@@ -36,6 +36,7 @@ final class Navigation
         'kepsek.persetujuan',
         'tu.surat',
         'humas.publikasi',
+        'humas.verifikasi',
         'humas.jadwal',
     ];
 
@@ -368,6 +369,7 @@ final class Navigation
                 'sections' => [
                     ['label' => 'Menu', 'items' => [
                         ['key' => 'publikasi', 'label' => 'Antrean publikasi', 'icon' => 'megaphone', 'route' => ['humas.beranda', 'humas.publikasi.index', 'humas.publikasi'], 'match' => ['humas.publikasi*'], 'badge' => 'humas.publikasi'],
+                        ['key' => 'verifikasi', 'label' => 'Verifikasi hasil', 'icon' => 'shield', 'route' => ['humas.verifikasi.index'], 'match' => ['humas.verifikasi*'], 'badge' => 'humas.verifikasi'],
                         ['key' => 'jadwal', 'label' => 'Jadwal', 'icon' => 'calendar', 'route' => ['humas.jadwal'], 'badge' => 'humas.jadwal'],
                         ['key' => 'apresiasi', 'label' => 'Apresiasi', 'icon' => 'award', 'route' => ['humas.apresiasi.index', 'humas.apresiasi']],
                         ['key' => 'arsip', 'label' => 'Arsip', 'icon' => 'folder', 'route' => ['humas.arsip']],
