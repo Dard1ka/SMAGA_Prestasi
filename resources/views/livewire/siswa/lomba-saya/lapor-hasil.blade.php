@@ -20,7 +20,7 @@
 
     @if ($revision)
         <x-sth.alert tone="warning" title="Perlu revisi">
-            {{ $revision->note ?: 'Kesiswaan meminta kamu memperbaiki laporan.' }}
+            {{ $revision->note ?: 'Sekolah meminta kamu memperbaiki laporan.' }}
             File yang tidak kamu ganti tetap dipakai.
         </x-sth.alert>
     @endif
@@ -158,7 +158,7 @@
     @if (! $inline)
         <x-slot:action>
             <x-sth.button type="submit" form="lapor-form" size="lg" block>Kirim laporan</x-sth.button>
-            <p class="muted m-0 text-center text-xs">Kesiswaan akan memverifikasi laporanmu.</p>
+            <p class="muted m-0 text-center text-xs">Sekolah akan memverifikasi laporanmu.</p>
         </x-slot:action>
     @endif
 </div>

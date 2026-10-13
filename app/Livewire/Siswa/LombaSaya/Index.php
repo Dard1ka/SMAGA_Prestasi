@@ -20,6 +20,7 @@ use App\Models\RegistrationMember;
 use App\Models\Report;
 use App\Models\Student;
 use App\Models\User;
+use App\Support\StaffRoleLabel;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
@@ -162,6 +163,7 @@ final class Index extends Component
                 'members.student.classroom',
                 'letters',
                 'report.files.file',
+                'report.verifier.roles',
             ])
             ->first();
 
@@ -276,6 +278,8 @@ final class Index extends Component
             'canReport' => Gate::allows('create', [Report::class, $registration]),
             'reportUrl' => route('siswa.lapor', $registration),
             'report' => $report,
+            // The role that decided on the report, for "Catatan …" / "Diverifikasi …" (D-139); "sekolah" before a decision.
+            'decider' => StaffRoleLabel::forDecision($report?->verifier),
             'deadline' => $deadline,
             // The sentence "ditandai terlambat" follows SubmitReport's rule (QA8).
             'marksLate' => SubmitReport::marksLate($competition, $report),

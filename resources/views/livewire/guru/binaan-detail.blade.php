@@ -14,7 +14,7 @@
         <x-sth.tracker :status="$status" :dates="$trackerDates" />
         @if ($deadline && $revising)
             <x-sth.alert :tone="$deadline['overdue'] ? 'error' : 'warning'" title="Laporan perlu direvisi">
-                Ketua tim memperbaiki laporan dari akunnya. Catatan Kesiswaan ada di Laporan hasil. Batas lapor {{ $deadline['dueText'] }}.
+                Ketua tim memperbaiki laporan dari akunnya. Catatan {{ $report['decider'] }} ada di Laporan hasil. Batas lapor {{ $deadline['dueText'] }}.
             </x-sth.alert>
         @elseif ($deadline)
             <x-sth.alert :tone="$deadline['overdue'] ? 'error' : 'warning'" title="Laporan hasil belum dikirim">
@@ -52,7 +52,7 @@
                         </div>
                     </dl>
                     @if ($report['note'])
-                        <x-sth.alert tone="warning" title="Catatan Kesiswaan">{{ $report['note'] }}</x-sth.alert>
+                        <x-sth.alert tone="warning" title="Catatan {{ $report['decider'] }}">{{ $report['note'] }}</x-sth.alert>
                     @endif
                     @if ($report['files'] !== [])
                         <ul class="m-0 flex list-none flex-col gap-2 p-0" aria-label="Lampiran laporan">

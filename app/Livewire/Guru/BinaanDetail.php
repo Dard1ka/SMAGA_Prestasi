@@ -17,6 +17,7 @@ use App\Models\Letter;
 use App\Models\Registration;
 use App\Models\RegistrationMember;
 use App\Models\ReportFile;
+use App\Support\StaffRoleLabel;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Gate;
@@ -53,6 +54,7 @@ final class BinaanDetail extends Component
             ->with([
                 'competition',
                 'report.files.file',
+                'report.verifier.roles',
                 'members' => fn ($m) => $m->orderByRaw("CASE WHEN role = 'ketua' THEN 0 ELSE 1 END")->orderBy('created_at'),
                 'members.student:id,user_id,classroom_id',
                 'members.student.user:id,name',
@@ -111,6 +113,7 @@ final class BinaanDetail extends Component
                 'final' => $report->final_result?->label(),
                 'submitted' => self::longDate($report->submitted_at),
                 'late' => (bool) $report->late,
+                'decider' => StaffRoleLabel::forDecision($report->verifier),
                 'note' => in_array($report->status, [ReportStatus::PerluRevisi, ReportStatus::Ditolak], true) ? $report->note : null,
                 'files' => $report->files
                     ->filter(fn (ReportFile $rf): bool => $rf->file !== null && Gate::allows('view', $rf->file))

@@ -44,7 +44,7 @@
                 <h2 class="sr-only">Prestasi terverifikasi</h2>
                 @if ($achievements === [])
                     <x-sth.empty-state icon="award" title="Belum ada prestasi terverifikasi">
-                        Prestasi muncul di sini setelah laporan hasilmu diverifikasi Kesiswaan.
+                        Prestasi muncul di sini setelah laporan hasilmu diverifikasi sekolah.
                     </x-sth.empty-state>
                 @else
                     {{-- Capsules like the lomba cards: the cover of the lomba stands on the left (3:4), the prestasi

@@ -177,7 +177,7 @@ final class LaporHasil extends Component
             poster: $isRiset ? $this->poster : null,
         ));
 
-        session()->flash('toast', ['tone' => 'success', 'message' => 'Laporan terkirim. Kesiswaan akan memverifikasi laporanmu.']);
+        session()->flash('toast', ['tone' => 'success', 'message' => 'Laporan terkirim. Sekolah akan memverifikasi laporanmu.']);
         $this->redirectRoute('siswa.lomba-saya.show', ['registration' => $this->registrationId], navigate: true);
     }
 

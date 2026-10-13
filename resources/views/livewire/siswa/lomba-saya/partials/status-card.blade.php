@@ -118,7 +118,7 @@
             </div>
 
             @if ($report?->status === RS::PerluRevisi && $report->note)
-                <x-sth.alert tone="warning" title="Catatan Kesiswaan">{{ $report->note }}</x-sth.alert>
+                <x-sth.alert tone="warning" title="Catatan {{ $d['decider'] }}">{{ $report->note }}</x-sth.alert>
             @endif
             @if ($d['deadline'] && $d['deadline']['overdue'] && $d['marksLate'])
                 <x-sth.alert tone="warning">Batas laporan sudah lewat. Laporan tetap bisa dikirim, tetapi ditandai terlambat.</x-sth.alert>
@@ -151,7 +151,7 @@
                 @if ($report)
                     <p class="muted m-0 text-sm">
                         {{ $report->claimed_result->label() }}@if ($d['estimate']) · perkiraan <span class="num">{{ app(\App\Domain\Points\PointFormatter::class)->format($d['estimate']->points) }}</span> poin{{ $d['isTeam'] ? ' untuk setiap anggota' : '' }}@endif.
-                        Kesiswaan akan memverifikasi laporanmu.
+                        Sekolah akan memverifikasi laporanmu.
                     </p>
                 @endif
             </div>
@@ -168,7 +168,7 @@
                         <x-sth.chip tone="red">Tanpa poin</x-sth.chip>
                     </div>
                     @if ($report->note)
-                        <p class="m-0 text-sm"><span class="font-semibold">Catatan Kesiswaan:</span> {{ $report->note }}</p>
+                        <p class="m-0 text-sm"><span class="font-semibold">Catatan {{ $d['decider'] }}:</span> {{ $report->note }}</p>
                     @endif
                 </div>
             </x-sth.card>
@@ -184,7 +184,7 @@
                                 <x-sth.chip tone="gold" icon="award">{{ $a->result->label() }}</x-sth.chip>
                                 <x-sth.chip tone="green" icon="check">Poin diberikan</x-sth.chip>
                             </div>
-                            <p class="muted m-0 text-sm">Diverifikasi Kesiswaan {{ $a->verified_at?->locale('id')->translatedFormat('j M Y') }}.</p>
+                            <p class="muted m-0 text-sm">Diverifikasi {{ $d['decider'] }} {{ $a->verified_at?->locale('id')->translatedFormat('j M Y') }}.</p>
                         </div>
                     </div>
                     <x-sth.rumus-poin :tingkat="$a->w_level" :capaian="$a->w_result" :penyelenggara="$a->w_organizer" :total="$a->points" result-label="Total" />
@@ -200,7 +200,7 @@
         @else
             <x-sth.card as="section" aria-labelledby="capaian-judul" class="flex flex-col gap-1">
                 <h3 id="capaian-judul" class="title-card">Selesai</h3>
-                <p class="muted m-0 text-sm">Laporan sudah diverifikasi Kesiswaan.</p>
+                <p class="muted m-0 text-sm">Laporan sudah diverifikasi {{ $d['decider'] }}.</p>
             </x-sth.card>
         @endif
         @break
