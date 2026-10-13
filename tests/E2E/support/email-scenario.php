@@ -1283,8 +1283,8 @@ $moveLombaDates = function (int $finalDaysAgo) use ($state, $today): void {
 $statuses = fn (): string => 'team: '.Registration::query()->whereKey($state['r1'])->value('status')->value
     .', Wulan: '.Registration::query()->whereKey($state['r4'])->value('status')->value;
 
-$scenario->step('6a', 'Lomba is over (dates moved 31 days back) → `sth:registrations:advance`', function () use ($moveLombaDates, $scenario, $statuses): void {
-    $moveLombaDates(31);
+$scenario->step('6a', 'Lomba is over (final moved to yesterday) → `sth:registrations:advance`', function () use ($moveLombaDates, $scenario, $statuses): void {
+    $moveLombaDates(1);
     Artisan::call('sth:registrations:advance');
     $scenario->note('command output: '.trim(Artisan::output()));
     $scenario->note('registration status → '.$statuses());
@@ -1296,20 +1296,22 @@ $scenario->step('6a', 'Lomba is over (dates moved 31 days back) → `sth:registr
 $reminderSays = fn (string $phrase): string => 'reminder to Galuh says "'.$phrase.'": '
     .(str_contains($scenario->textOf($mail('galuh'), 'Laporan '.$lomba['l1'].' ditunggu'), $phrase) ? 'yes' : 'NO');
 
-$scenario->step('6b', '`sth:reports:remind`, 14 days before the deadline (final + 45 days)', function () use ($scenario, $reminderSays): void {
+// D-151: no report deadline; reminders 3 and 14 days after the final.
+$scenario->step('6b', '`sth:reports:remind`, 3 days after the final (final date moved to 3 days ago)', function () use ($moveLombaDates, $scenario, $reminderSays): void {
+    $moveLombaDates(3);
     Artisan::call('sth:reports:remind');
     $scenario->note('command output: '.trim(Artisan::output()));
-    $scenario->note($reminderSays('14 hari lagi'));
+    $scenario->note($reminderSays('sudah selesai'));
 }, [
     [$mail('galuh'), 'Laporan '.$lomba['l1'].' ditunggu'],
     [$mail('wulan'), 'Laporan '.$lomba['l1'].' ditunggu'],
 ]);
 
-$scenario->step('6c', '`sth:reports:remind`, 3 days before the deadline (final date moved to 42 days ago)', function () use ($moveLombaDates, $scenario, $reminderSays): void {
-    $moveLombaDates(42);
+$scenario->step('6c', '`sth:reports:remind`, 14 days after the final (final date moved to 14 days ago)', function () use ($moveLombaDates, $scenario, $reminderSays): void {
+    $moveLombaDates(14);
     Artisan::call('sth:reports:remind');
     $scenario->note('command output: '.trim(Artisan::output()));
-    $scenario->note($reminderSays('3 hari lagi'));
+    $scenario->note($reminderSays('sudah selesai'));
 }, [
     [$mail('galuh'), 'Laporan '.$lomba['l1'].' ditunggu'],
     [$mail('wulan'), 'Laporan '.$lomba['l1'].' ditunggu'],

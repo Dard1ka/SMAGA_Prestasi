@@ -3,10 +3,6 @@
 declare(strict_types=1);
 
 use App\Enums\RegistrationStatus;
-use App\Enums\ReportStatus;
-use App\Enums\ResultType;
-use App\Models\Report;
-use App\Notifications\Reports\ReportReminder;
 use App\Notifications\Reports\ReportWindowOpened;
 use Illuminate\Console\Scheduling\Event;
 use Illuminate\Console\Scheduling\Schedule;
@@ -22,7 +18,7 @@ beforeEach(function (): void {
     F::boot();
 
     $this->nadia = F::student();
-    $this->competition = F::competition(); // starts 21 Sep, final 24 Sep 2026 → report due 8 Nov 2026
+    $this->competition = F::competition(); // starts 21 Sep, final 24 Sep 2026
 });
 
 afterEach(fn () => F::resetToday());
@@ -72,43 +68,6 @@ it('is idempotent and moves a lomba whose final has passed two steps in one run'
 it('rejects a malformed --date', function (): void {
     $this->artisan('sth:registrations:advance', ['--date' => '01-10-2026'])->assertFailed();
     $this->artisan('sth:reports:remind', ['--date' => '2026-13-40'])->assertFailed();
-});
-
-it('reminds the ketua 14 and 3 days before the report deadline, once each', function (): void {
-    $registration = F::registration($this->nadia, RegistrationStatus::MenungguLaporan, $this->competition, [F::student('Dimas Arya Nugroho')]);
-
-    $run = fn (string $date) => $this->artisan('sth:reports:remind', ['--date' => $date])->assertSuccessful();
-
-    $run('2026-10-24'); // 15 days left
-    Notification::assertNothingSent();
-
-    $run('2026-10-25'); // 14 days left
-    $run('2026-10-25');
-    $run('2026-10-30');
-    Notification::assertSentToTimes($this->nadia->user, ReportReminder::class, 1);
-    Notification::assertSentTo($this->nadia->user, ReportReminder::class, fn (ReportReminder $n): bool => $n->daysLeft === 14 && $n->dueOn === '8 Nov 2026');
-
-    $run('2026-11-05'); // 3 days left
-    $run('2026-11-08'); // due today: nothing new
-    $run('2026-11-12'); // overdue: nothing
-    Notification::assertSentToTimes($this->nadia->user, ReportReminder::class, 2);
-
-    $members = $registration->members()->where('student_id', '!=', $this->nadia->getKey())->with('student.user')->get();
-    Notification::assertNotSentTo($members->first()->student->user, ReportReminder::class);
-});
-
-it('sends only the most urgent reminder when the job missed days, and none once the report is sent', function (): void {
-    F::registration($this->nadia, RegistrationStatus::MenungguLaporan, $this->competition);
-    $sent = F::registration(F::student('Keisha Larasati', 'XI-6'), RegistrationStatus::LaporanDikirim, $this->competition);
-    Report::factory()->create(['registration_id' => $sent->getKey(), 'claimed_result' => ResultType::Finalis]);
-
-    $this->artisan('sth:reports:remind', ['--date' => '2026-11-06'])->assertSuccessful(); // 2 days left
-    $this->artisan('sth:reports:remind', ['--date' => '2026-11-07'])->assertSuccessful();
-
-    Notification::assertSentToTimes($this->nadia->user, ReportReminder::class, 1);
-    Notification::assertSentTo($this->nadia->user, ReportReminder::class, fn (ReportReminder $n): bool => $n->daysLeft === 2);
-    Notification::assertNotSentTo($sent->leader->user, ReportReminder::class);
-    expect($sent->report->status)->toBe(ReportStatus::Dikirim);
 });
 
 it('registers both jobs daily in Asia/Jakarta without overlapping', function (): void {

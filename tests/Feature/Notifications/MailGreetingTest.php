@@ -111,7 +111,7 @@ function mailGreetingCases(): array
         [fn (User $to): BaseNotification => new EmailBindingNotice(EmailBindingNotice::BOUND, (string) FirstName::of($to->name), 'n•••@gmail.com', $signed, 7, MailGreeting::for($to)), 'akun'],
 
         // Always students
-        [$fixed(new ReportReminder($registrationId, 'OPSI 2026', '8 Nov 2026', 3)), 'siswa'],
+        [$fixed(new ReportReminder($registrationId, 'OPSI 2026', 3)), 'siswa'],
         [$fixed(new ReportWindowOpened($registrationId, 'OPSI 2026')), 'siswa'],
         [$fixed(CompetitionChanged::for($competition, $registrationId, ['Babak final sekarang 20 November 2026.'])), 'siswa'],
         [$fixed(new AchievementPublished('01jpub', '01jach', 'OPSI 2026', 'Juara II', 'Instagram')), 'siswa'],
