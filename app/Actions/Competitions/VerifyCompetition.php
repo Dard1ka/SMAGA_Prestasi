@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace App\Actions\Competitions;
 
+use App\Actions\Registrations\ResumeWaitingRegistrations;
 use App\Domain\Competitions\OrganizerWeight;
 use App\Enums\CompetitionStatus;
 use App\Enums\EventStatus;
 use App\Enums\OrganizerType;
 use App\Enums\Participation;
+use App\Enums\RegistrationStatus;
 use App\Enums\RoleName;
 use App\Models\Competition;
 use App\Models\User;
@@ -40,9 +42,15 @@ use Illuminate\Validation\ValidationException;
  * FS1 Paket B: publishing needs the juknis (D-147), and both decisions audit `weight_override` when the kategori
  * bobot or status ajang differs from what the jenis penyelenggara gives (OrganizerWeight, D-146; the spec's event name
  * "competition.verified" is these two events).
+ *
+ * D-148: the submitter's registrations that waited for this lomba (`menunggu_lomba`) move in the same transaction
+ * (ResumeWaitingRegistrations): published → on to the approvers or the team invitations, rejected → cancelled. The
+ * submitter's one decision notice names what happened to the own registration; the other notices follow the commit.
  */
 final class VerifyCompetition
 {
+    public function __construct(private readonly ResumeWaitingRegistrations $resume) {}
+
     /** Field → label for the "Lengkapi dulu" message (order = form order). */
     public const REQUIRED_TO_PUBLISH = [
         'name' => 'Nama lomba',
@@ -83,7 +91,7 @@ final class VerifyCompetition
 
         $note = self::cleanNote($note);
 
-        $result = DB::transaction(function () use ($actor, $competition, $decision, $note, $confirmPastDates): Competition {
+        [$result, $outcome] = DB::transaction(function () use ($actor, $competition, $decision, $note, $confirmPastDates): array {
             /** @var Competition $locked */
             $locked = Competition::query()->whereKey($competition->getKey())->lockForUpdate()->firstOrFail();
 
@@ -140,7 +148,7 @@ final class VerifyCompetition
                 ])
                 ->log($decision === CompetitionStatus::Dipublikasikan ? 'competition.published' : 'competition.rejected');
 
-            return $locked;
+            return [$locked, $this->resume->handle($actor, $locked, $decision)];
         });
 
         $competition->setRawAttributes($result->getAttributes(), true);
@@ -149,9 +157,11 @@ final class VerifyCompetition
 
         if (self::notifiesSubmitter($submitter, $actor)) {
             $submitter->notify($decision === CompetitionStatus::Dipublikasikan
-                ? CompetitionPublished::for($result, $submitter->hasRole(RoleName::Siswa->value))
-                : CompetitionRejected::for($result, $note));
+                ? CompetitionPublished::for($result, $submitter->hasRole(RoleName::Siswa->value), $outcome->submitterNow)
+                : CompetitionRejected::for($result, $note, $outcome->submitterNow === RegistrationStatus::Dibatalkan));
         }
+
+        $this->resume->notify($outcome, $actor);
 
         return $result;
     }

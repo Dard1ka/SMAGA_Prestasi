@@ -6,6 +6,7 @@ namespace App\Livewire\Siswa\LombaSaya;
 
 use App\Actions\Registrations\ApproveRegistration;
 use App\Actions\Registrations\CancelRegistration;
+use App\Actions\Registrations\ResumeWaitingRegistrations;
 use App\Actions\Reports\SubmitReport;
 use App\Enums\LetterType;
 use App\Enums\RegistrationStatus;
@@ -303,6 +304,10 @@ final class Index extends Component
             'waitingText' => $status === RegistrationStatus::MenungguLomba
                 ? 'Pendaftaran diteruskan setelah Kesiswaan memverifikasi lomba ini.'.($registration->isTeam() ? ' Undangan tim dikirim saat itu.' : '')
                 : null,
+            // D-148: cancelled together with the rejected lomba; registering again is not possible then.
+            'cancelledText' => $status === RegistrationStatus::Dibatalkan && ResumeWaitingRegistrations::cancelledWithLomba($registration)
+                ? 'Usulan lomba ini ditolak Kesiswaan, jadi pendaftarannya ikut dibatalkan.'
+                : 'Kamu bisa mendaftar lagi selama pendaftaran lomba masih dibuka.',
             'allConfirmed' => $registration->members->every(fn (RegistrationMember $m): bool => $m->confirmed_at !== null),
         ];
     }

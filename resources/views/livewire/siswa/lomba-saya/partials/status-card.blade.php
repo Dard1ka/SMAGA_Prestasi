@@ -66,7 +66,7 @@
             <span class="flex size-11 shrink-0 items-center justify-center rounded-tile bg-gray-bg text-gray" aria-hidden="true"><x-sth.icon name="x" /></span>
             <div class="flex min-w-0 flex-col gap-1">
                 <h3 id="setuju-judul" class="title-card">Pendaftaran dibatalkan</h3>
-                <p class="muted m-0 text-sm">Kamu bisa mendaftar lagi selama pendaftaran lomba masih dibuka.</p>
+                <p class="muted m-0 text-sm">{{ $d['cancelledText'] }}</p>
             </div>
         </x-sth.card>
         @break
