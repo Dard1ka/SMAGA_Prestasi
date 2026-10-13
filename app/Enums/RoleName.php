@@ -97,6 +97,7 @@ enum RoleName: string
                 Permission::AchievementViewAll,
                 Permission::PublicationManage,
                 Permission::AppreciationManage,
+                Permission::ReportVerify,
             ],
             self::Admin => array_values(array_filter(
                 Permission::cases(),

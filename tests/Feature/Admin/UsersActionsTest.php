@@ -94,15 +94,15 @@ it('lets only user.manage create staff accounts', function (): void {
 });
 
 it('changes a staff role, revokes the sessions and audits it', function (): void {
-    $guru = A::staff(RoleName::Guru);
-    H::fakeSessions($guru, 2);
+    $humas = A::staff(RoleName::Humas);
+    H::fakeSessions($humas, 2);
 
-    app(ChangeStaffRole::class)->handle($this->admin, $guru, RoleName::Humas, 'Pindah tugas ke humas.');
+    app(ChangeStaffRole::class)->handle($this->admin, $humas, RoleName::Guru, 'Kembali mengajar.');
 
-    expect($guru->fresh()->getRoleNames()->all())->toBe([RoleName::Humas->value])
-        ->and(H::sessionCount($guru))->toBe(0)
-        ->and(Activity::query()->where('event', 'account.role_changed')->sole()->properties['from'])->toBe([RoleName::Guru->value]);
-    Notification::assertSentTo($guru, StaffAccountChanged::class);
+    expect($humas->fresh()->getRoleNames()->all())->toBe([RoleName::Guru->value])
+        ->and(H::sessionCount($humas))->toBe(0)
+        ->and(Activity::query()->where('event', 'account.role_changed')->sole()->properties['from'])->toBe([RoleName::Humas->value]);
+    Notification::assertSentTo($humas, StaffAccountChanged::class);
 });
 
 it('never changes roles of the Kepala Sekolah, students or yourself', function (): void {
@@ -244,7 +244,7 @@ it('creates staff and finds students by exact NISN on the Pengguna tab', functio
     $student = H::activeStudent();
 
     Livewire::test(Pengguna::class)
-        ->set('new', ['name' => 'Mas Galih Prasetyo', 'username' => 'galih.p', 'email' => '', 'role' => 'humas', 'honorific' => 'Mas', 'nip' => '', 'rank' => '', 'position' => '', 'password' => 'Sementara-2026!z', 'password_confirmation' => 'Sementara-2026!z'])
+        ->set('new', ['name' => 'Mas Galih Prasetyo', 'username' => 'galih.p', 'email' => '', 'role' => 'guru', 'honorific' => 'Mas', 'nip' => '', 'rank' => '', 'position' => '', 'password' => 'Sementara-2026!z', 'password_confirmation' => 'Sementara-2026!z'])
         ->call('createStaff')
         ->assertHasNoErrors()
         ->assertSee('Mas Galih Prasetyo')
@@ -258,7 +258,7 @@ it('creates staff and finds students by exact NISN on the Pengguna tab', functio
         ->assertSee($student->user->name)
         ->assertDontSee(H::NIS);
 
-    expect(User::query()->where('username', 'galih.p')->sole()->hasRole('humas'))->toBeTrue();
+    expect(User::query()->where('username', 'galih.p')->sole()->hasRole('guru'))->toBeTrue();
 });
 
 it('shows field errors of the create form under the new.* inputs', function (): void {

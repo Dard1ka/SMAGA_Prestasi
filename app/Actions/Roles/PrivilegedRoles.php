@@ -11,8 +11,9 @@ use Illuminate\Support\Collection;
 
 /**
  * Lead decision (backlog #13, SECURITY §3m-9): giving a staff account a privileged role needs a second Admin.
- * Privileged = admin, kepala_sekolah, tata_usaha, kesiswaan (2FA-mandatory roles). `kepala_sekolah` still moves
- * only through "Ganti Kepala Sekolah" (PrincipalReplacement, 24 h); the other three go through RequestRoleChange.
+ * Privileged = admin, kepala_sekolah, tata_usaha, kesiswaan, humas (2FA-mandatory roles; Humas since D-139, when it got
+ * `report.verify`). `kepala_sekolah` still moves only through "Ganti Kepala Sekolah" (PrincipalReplacement, 24 h); the
+ * other four go through RequestRoleChange. An account that is Humas already keeps its role and access.
  * Taking a privileged role away (e.g. kesiswaan → guru) applies at once.
  */
 final class PrivilegedRoles
@@ -22,7 +23,7 @@ final class PrivilegedRoles
     /** @return list<RoleName> */
     public static function all(): array
     {
-        return [RoleName::Admin, RoleName::KepalaSekolah, RoleName::TataUsaha, RoleName::Kesiswaan];
+        return [RoleName::Admin, RoleName::KepalaSekolah, RoleName::TataUsaha, RoleName::Kesiswaan, RoleName::Humas];
     }
 
     public static function isPrivileged(RoleName $role): bool

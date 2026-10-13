@@ -174,7 +174,7 @@
             </div>
             {{-- W4 (lead decision): privileged roles follow the "Ubah peran" approval rule. --}}
             <x-sth.select wire:model="new.role" label="Peran" :options="$roleOptions"
-                          hint="Admin, Kesiswaan, dan Tata Usaha: akun dibuat tanpa peran dulu. Perannya perlu persetujuan Admin lain, atau berlaku 24 jam kemudian bila hanya ada satu Admin." />
+                          hint="Admin, Kesiswaan, Tata Usaha, dan Humas: akun dibuat tanpa peran dulu. Perannya perlu persetujuan Admin lain, atau berlaku 24 jam kemudian bila hanya ada satu Admin." />
             <div class="grid gap-4 sm:grid-cols-3">
                 <x-sth.input wire:model="new.honorific" label="Sapaan" placeholder="Bu / Pak" optional autocomplete="off" />
                 <x-sth.input wire:model="new.nip" label="NIP" inputmode="numeric" optional autocomplete="off" class="sm:col-span-2" />
@@ -195,7 +195,7 @@
     <x-sth.modal id="staf-peran" title="Ubah peran" :description="$target ? 'Akun '.$target->name.'. Pengguna perlu login ulang.' : null" size="sm">
         <form id="staf-peran-form" wire:submit="changeRole" class="flex flex-col gap-4" novalidate>
             <x-sth.select wire:model="role" label="Peran baru" :options="$roleOptions"
-                          hint="Admin, Kesiswaan, dan Tata Usaha perlu persetujuan Admin lain, atau berlaku 24 jam kemudian bila hanya ada satu Admin." />
+                          hint="Admin, Kesiswaan, Tata Usaha, dan Humas perlu persetujuan Admin lain, atau berlaku 24 jam kemudian bila hanya ada satu Admin." />
             <x-sth.textarea wire:model="reason" label="Alasan" rows="2" />
         </form>
         <x-slot:footer>

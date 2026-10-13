@@ -347,7 +347,7 @@ it('refuses the question to the report\'s own guru pembimbing, who has no "Tolak
 
 it('keeps every other role away from the question (D-128)', function (): void {
     $report = F::pendingReport();
-    $roles = [RoleName::Guru, RoleName::KepalaSekolah, RoleName::TataUsaha, RoleName::Humas];
+    $roles = [RoleName::Guru, RoleName::KepalaSekolah, RoleName::TataUsaha];
 
     foreach ($roles as $role) {
         Livewire::actingAs(F::staff($role, 'Staf '.$role->value))->test(VerifikasiHasil::class)->assertForbidden();

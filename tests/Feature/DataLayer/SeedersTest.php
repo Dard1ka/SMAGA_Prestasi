@@ -97,6 +97,17 @@ it('gives Admin every permission except approving registrations (D-01)', functio
         ->and(Role::findByName(RoleName::Kesiswaan->value, 'web')->hasPermissionTo(PermissionName::StudentImport->value))->toBeTrue();
 });
 
+it('lets Humas verify reports next to Kesiswaan and Admin (D-139)', function () {
+    $this->seed(DatabaseSeeder::class);
+
+    foreach ([RoleName::Humas, RoleName::Kesiswaan, RoleName::Admin] as $role) {
+        expect(Role::findByName($role->value, 'web')->hasPermissionTo(PermissionName::ReportVerify->value))->toBeTrue($role->value);
+    }
+    foreach ([RoleName::Siswa, RoleName::Guru, RoleName::KepalaSekolah, RoleName::TataUsaha] as $role) {
+        expect(Role::findByName($role->value, 'web')->hasPermissionTo(PermissionName::ReportVerify->value))->toBeFalse($role->value);
+    }
+});
+
 it('builds the local demo data set with the spec leaderboard and queues', function () {
     app()['env'] = 'local';
     $this->seed(DatabaseSeeder::class);

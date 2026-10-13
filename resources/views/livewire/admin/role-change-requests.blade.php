@@ -9,7 +9,7 @@
                         <span class="cnt">{{ $pending->count() }}</span>
                     @endif
                 </div>
-                <p class="text-sm muted">Peran Admin, Kesiswaan, dan Tata Usaha perlu persetujuan Admin lain. Bila hanya ada satu Admin, berlaku 24 jam kemudian.</p>
+                <p class="text-sm muted">Peran Admin, Kesiswaan, Tata Usaha, dan Humas perlu persetujuan Admin lain. Bila hanya ada satu Admin, berlaku 24 jam kemudian.</p>
             </div>
 
             @if ($pending->isNotEmpty())

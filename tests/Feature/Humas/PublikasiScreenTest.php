@@ -630,14 +630,14 @@ it('publishes an overdue card from the panel, tells the student then and lowers 
 
     Livewire::actingAs($this->humas)
         ->test(Publikasi::class)
-        ->assertDispatched('sth-badges', badges: ['humas.publikasi' => 0, 'humas.jadwal' => 2])
+        ->assertDispatched('sth-badges', badges: ['humas.publikasi' => 0, 'humas.jadwal' => 2, 'kesiswaan.verifikasi' => 0])
         ->call('select', $overdue->getKey())
         ->call('askPublish')
         ->assertDispatched('sth-modal-open', id: Publikasi::PUBLISH_DIALOG)
-        ->assertDispatched('sth-badges', badges: ['humas.publikasi' => 0, 'humas.jadwal' => 2])
+        ->assertDispatched('sth-badges', badges: ['humas.publikasi' => 0, 'humas.jadwal' => 2, 'kesiswaan.verifikasi' => 0])
         ->call('publish')
         ->assertDispatched('sth-toast', message: 'Publikasi ditandai sudah terbit. Siswa sudah diberi tahu.', tone: 'success')
-        ->assertDispatched('sth-badges', badges: ['humas.publikasi' => 0, 'humas.jadwal' => 1])
+        ->assertDispatched('sth-badges', badges: ['humas.publikasi' => 0, 'humas.jadwal' => 1, 'kesiswaan.verifikasi' => 0])
         ->assertSee('Sudah terbit');
 
     $fresh = $overdue->fresh();

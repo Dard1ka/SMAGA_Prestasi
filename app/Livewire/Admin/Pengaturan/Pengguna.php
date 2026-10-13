@@ -151,7 +151,7 @@ final class Pengguna extends Component
             );
         }
 
-        // W4: a privileged role (Admin, Kesiswaan, Tata Usaha) waits as a RoleChangeRequest like "Ubah peran".
+        // W4: a privileged role (Admin, Kesiswaan, Tata Usaha, Humas) waits as a RoleChangeRequest like "Ubah peran".
         $request = RoleChangeRequest::query()->pending()->where('user_id', $user->getKey())->first();
 
         $this->resetNewForm();

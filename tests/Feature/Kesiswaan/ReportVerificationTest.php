@@ -129,14 +129,15 @@ it('never lets the guru pembimbing verify own binaan, even with Kesiswaan rights
     expect(app(VerifyReport::class)->handle($other, $report, ResultType::Juara3, F::allChecks()))->toHaveCount(1);
 });
 
-it('denies verification to siswa, guru, kepsek, tu and humas; allows admin', function (): void {
+it('denies verification to siswa, guru, kepsek and tu; allows admin and humas (D-139)', function (): void {
     $report = F::pendingReport();
 
-    foreach ([F::student('Raka Pradipta', 'XII-2')->user, F::staff(RoleName::Guru, 'Pak Hendra'), F::staff(RoleName::KepalaSekolah, 'Kepala'), F::staff(RoleName::TataUsaha, 'TU'), $this->humas] as $user) {
+    foreach ([F::student('Raka Pradipta', 'XII-2')->user, F::staff(RoleName::Guru, 'Pak Hendra'), F::staff(RoleName::KepalaSekolah, 'Kepala'), F::staff(RoleName::TataUsaha, 'TU')] as $user) {
         expect(fn () => app(VerifyReport::class)->handle($user, $report, ResultType::Juara3, F::allChecks()))->toThrow(AuthorizationException::class);
     }
 
-    expect(app(VerifyReport::class)->handle(F::staff(RoleName::Admin, 'Operator STH'), $report, ResultType::Juara3, F::allChecks()))->toHaveCount(1);
+    expect(app(VerifyReport::class)->handle(F::staff(RoleName::Admin, 'Operator STH'), $report, ResultType::Juara3, F::allChecks()))->toHaveCount(1)
+        ->and(app(VerifyReport::class)->handle($this->humas, F::pendingReport(F::student('Bima Satria Wicaksono', 'XI-4')), ResultType::Juara3, F::allChecks()))->toHaveCount(1);
 });
 
 it('cannot decide the same report twice', function (): void {

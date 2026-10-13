@@ -130,7 +130,7 @@ it('shows the number of overdue publications on the menu item Jadwal, on every H
     };
 
     expect(HumasQueries::overduePublications()->count())->toBe(2)
-        ->and(HumasQueries::badges($this->humas))->toBe(['humas.publikasi' => 1, 'humas.jadwal' => 2]);
+        ->and(HumasQueries::badges($this->humas))->toBe(['humas.publikasi' => 1, 'humas.jadwal' => 2, 'kesiswaan.verifikasi' => 0]);
 
     // A page that passes no badges (Notifikasi) and the screens that pass their own show the same number.
     foreach (['notifikasi.index', 'humas.jadwal', 'humas.beranda', 'humas.arsip'] as $route) {
