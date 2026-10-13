@@ -267,9 +267,11 @@ it('covers every toMail() in app/Notifications with the matrix above', function 
         }
     }
 
-    // A new notification with a toMail() of its own belongs in mailGreetingCases().
+    // A new notification with a toMail() of its own belongs in mailGreetingCases(). The floor only proves the scan
+    // found the classes: 42 since FS1-E (D-142) deleted the four talent stage notices (TalentStageChanged,
+    // TalentApplicationRejected, TalentApplicationRestored, TalentReviewRequested).
     expect($missing)->toBe([])
-        ->and($concrete)->toBeGreaterThanOrEqual(46);
+        ->and($concrete)->toBeGreaterThanOrEqual(42);
 });
 
 it('builds no greeting by hand and sets no sign-off anywhere', function (): void {
