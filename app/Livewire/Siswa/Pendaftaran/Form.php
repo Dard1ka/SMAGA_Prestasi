@@ -37,7 +37,7 @@ use Livewire\Component;
  * already in a registration of this lomba) it shows the status + next steps, and lets the leader
  * cancel while nobody has decided yet (CancelRegistration).
  *
- * Member search (SECURITY §3m-3): active students only, name ≥ 3 letters or an exact NIS/NISN,
+ * Member search (SECURITY §3m-3): active students only, name ≥ 3 letters or an exact NISN,
  * ≤ 10 results, only ULID + name + class reach the browser, 30/min and 300/day per user. A student who has not
  * activated the account is marked (QA6): the invitation waits until that student activates.
  *
@@ -123,7 +123,7 @@ class Form extends Component
         $digits = ctype_digit($term);
 
         if (! $digits && mb_strlen($term) < 3) {
-            $this->searchNote = 'Ketik minimal 3 huruf nama, atau NIS/NISN lengkap.';
+            $this->searchNote = 'Ketik minimal 3 huruf nama, atau NISN lengkap.';
 
             return;
         }
@@ -147,7 +147,7 @@ class Form extends Component
             ->active()
             ->whereKeyNot($me?->getKey())
             ->when($digits,
-                fn (Builder $q) => $q->where(fn (Builder $w) => $w->where('nis', $term)->orWhere('nisn', $term)),
+                fn (Builder $q) => $q->where('nisn', $term),
                 fn (Builder $q) => $q->whereHas('user', fn (Builder $u) => $u->where('name', 'like', '%'.addcslashes($term, '%_\\').'%')))
             ->with(['user:id,name,status', 'classroom:id,name'])
             ->limit(self::MAX_RESULTS)

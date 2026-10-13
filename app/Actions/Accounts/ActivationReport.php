@@ -45,7 +45,7 @@ final class ActivationReport
 
         $rows = Student::query()
             ->when($classroomId !== null && $classroomId !== '', fn ($q) => $q->where('classroom_id', $classroomId))
-            ->when($search !== '' && ctype_digit($search), fn ($q) => $q->where(fn ($w) => $w->where('nis', $search)->orWhere('nisn', $search)))
+            ->when($search !== '' && ctype_digit($search), fn ($q) => $q->where('nisn', $search))
             ->when($search !== '' && ! ctype_digit($search), fn ($q) => $q->whereHas('user', fn ($u) => $u->where('name', 'like', '%'.addcslashes($search, '%_\\').'%')))
             ->with([
                 'classroom:id,name,level',

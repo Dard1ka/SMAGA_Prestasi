@@ -89,7 +89,7 @@ it('derives the K9 state, flags and per-class counts', function (): void {
         ->and($summary['X-1']['counts']['arsip'])->toBe(1);
 });
 
-it('shows the NISN in full and the email masked (D-137), and filters by class, status and exact NIS', function (): void {
+it('shows the NISN in full and the email masked (D-137), and filters by class, status and exact NISN', function (): void {
     $this->actingAs($this->kesiswaan);
     $nis = (string) $this->raka->nis;
     $nisn = (string) $this->raka->nisn;
@@ -108,8 +108,10 @@ it('shows the NISN in full and the email masked (D-137), and filters by class, s
         ->assertSee('Dimas Saputra')->assertDontSee('Raka Pratama')
         ->call('resetFilters')
         ->assertSet('daftarKelas', '')
+        ->set('q', $nisn)
+        ->assertSee('Raka Pratama')->assertDontSee('Salsa Maharani')
         ->set('q', $nis)
-        ->assertSee('Raka Pratama')->assertDontSee('Salsa Maharani');
+        ->assertDontSee('Raka Pratama');
 });
 
 // --- M1-E: "Lihat" opens the class in a dialog (lead 2026-10-04, item 16) -------------------------------

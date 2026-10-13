@@ -111,14 +111,14 @@
     {{-- B5 (backlog #13): privileged role changes waiting for a second Admin or the 24 h delay. --}}
     <livewire:admin.role-change-requests :key="'peran-menunggu'" />
 
-    {{-- Bantuan akun siswa (exact NIS/NISN only, SECURITY §3m-3) --}}
+    {{-- Bantuan akun siswa (exact NISN only, SECURITY §3m-3) --}}
     <x-sth.card as="section" aria-labelledby="h-bantuan-siswa" class="flex flex-col gap-4">
         <div>
             <h3 id="h-bantuan-siswa" class="title-card">Bantuan akun siswa</h3>
             <p class="text-sm muted">Untuk siswa yang lupa kata sandi atau akunnya diambil alih orang lain.</p>
         </div>
         <form wire:submit="findStudent" class="flex flex-wrap items-end gap-3" novalidate>
-            <x-sth.input wire:model="studentQuery" label="NIS atau NISN" inputmode="numeric" autocomplete="off" class="w-full max-w-xs" />
+            <x-sth.input wire:model="studentQuery" label="NISN" inputmode="numeric" autocomplete="off" class="w-full max-w-xs" />
             <x-sth.button type="submit" variant="soft" icon="search">Cari</x-sth.button>
         </form>
 
@@ -271,7 +271,7 @@
                 <p class="m-0 rounded-tile border border-line bg-subtle px-4 py-3 text-center font-mono text-2xl font-bold tracking-[0.12em] select-all">{{ $issuedPassword }}</p>
                 <ul class="m-0 flex list-disc flex-col gap-1 pl-5 text-sm text-ink-2">
                     <li>Berlaku 72 jam. Setelah itu siswa perlu reset lagi.</li>
-                    <li>Siswa masuk dengan NIS/NISN dan kata sandi ini, menghubungkan email, lalu wajib membuat kata sandi baru. Kata sandi ini tidak bisa dipakai terus.</li>
+                    <li>Siswa masuk dengan NISN dan kata sandi ini, menghubungkan email, lalu wajib membuat kata sandi baru. Kata sandi ini tidak bisa dipakai terus.</li>
                     <li>Huruf besar dan kecil dibedakan.</li>
                 </ul>
             </div>

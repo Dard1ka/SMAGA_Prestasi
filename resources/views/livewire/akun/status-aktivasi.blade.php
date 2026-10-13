@@ -74,7 +74,7 @@
                         </div>
                         <div class="grid grid-cols-1 gap-3 md:grid-cols-[220px_minmax(0,1fr)_auto] md:items-end">
                             <x-sth.select wire:model.live="daftarKelas" label="Kelas" size="sm" placeholder="Semua kelas" :options="$classes" />
-                            <x-sth.input type="search" wire:model.live.debounce.400ms="q" label="Cari" icon="search" placeholder="Nama, atau NIS/NISN lengkap" />
+                            <x-sth.input type="search" wire:model.live.debounce.400ms="q" label="Cari" icon="search" placeholder="Nama, atau NISN lengkap" />
                             @if ($filtersActive)
                                 <x-sth.button variant="quiet" size="sm" wire:click="resetFilters">Hapus filter</x-sth.button>
                             @endif

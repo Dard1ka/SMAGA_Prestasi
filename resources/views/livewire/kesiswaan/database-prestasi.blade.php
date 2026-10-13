@@ -11,7 +11,7 @@
     <x-sth.card padding="none" class="flex min-w-0 flex-col">
         <div class="flex flex-col gap-3 border-b border-line p-4">
             <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                <x-sth.input type="search" wire:model.live.debounce.400ms="q" label="Siswa" icon="search" placeholder="Nama atau NIS" maxlength="100" />
+                <x-sth.input type="search" wire:model.live.debounce.400ms="q" label="Siswa" icon="search" placeholder="Nama atau NISN" maxlength="100" />
                 <x-sth.select wire:model.live="tahun" label="Tahun ajaran" placeholder="Semua tahun" :options="$options['tahun']" />
                 <x-sth.select wire:model.live="bidang" label="Bidang" placeholder="Semua bidang" :options="$options['bidang']" />
                 <x-sth.select wire:model.live="tingkat" label="Tingkat" placeholder="Semua tingkat" :options="$options['tingkat']" />

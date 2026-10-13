@@ -35,7 +35,7 @@ use Livewire\Component;
 /**
  * Pengguna & peran (Admin-Pengaturan tab + route admin.pengguna.index): staff accounts per role, "Tambah
  * pengguna", "Ubah peran", "Reset akun", "Nonaktifkan", "Ganti Kepala Sekolah" (24 h delay, cancellable)
- * and "Bantuan akun siswa" (exact NIS/NISN → reset / nonaktifkan / arsipkan with the W1-C Actions, and the
+ * and "Bantuan akun siswa" (exact NISN → reset / nonaktifkan / arsipkan with the W1-C Actions, and the
  * consent toggles photo/publish through App\Actions\Students\UpdateConsent).
  *
  * Targets are #[Locked] ids set only by the open*() methods; every action re-authorizes through the
@@ -105,7 +105,7 @@ final class Pengguna extends Component
             ? route('admin.pengguna.index')
             : route('admin.pengaturan', ['tab' => 'pengguna']);
 
-        if (preg_match('/^\d{9,10}$/', trim($this->search)) === 1) {
+        if (preg_match('/^\d{10}$/', trim($this->search)) === 1) {
             $this->studentQuery = trim($this->search);
             $this->search = '';
             $this->findStudent();
@@ -364,13 +364,13 @@ final class Pengguna extends Component
         $this->studentUserId = null;
         $query = trim($this->studentQuery);
         $this->validate(
-            ['studentQuery' => ['required', 'regex:/^\d{9,10}$/']],
-            ['studentQuery.regex' => 'Isi NIS (9 digit) atau NISN (10 digit) lengkap.'],
-            ['studentQuery' => 'NIS atau NISN'],
+            ['studentQuery' => ['required', 'regex:/^\d{10}$/']],
+            ['studentQuery.regex' => 'Isi NISN (10 digit) lengkap.'],
+            ['studentQuery' => 'NISN'],
         );
 
         // Exact match only (no prefix search, SECURITY §3m-3).
-        $student = Student::query()->where('nis', $query)->orWhere('nisn', $query)->first(['id', 'user_id', 'photo_consent', 'publish_consent']);
+        $student = Student::query()->where('nisn', $query)->first(['id', 'user_id', 'photo_consent', 'publish_consent']);
 
         if ($student === null) {
             $this->addError('studentQuery', 'Siswa tidak ditemukan.');

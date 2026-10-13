@@ -154,7 +154,7 @@ it('builds a team through the member search and sends invitations', function ():
         ->and($registration->members()->where('student_id', $this->dimas->getKey())->exists())->toBeTrue();
 });
 
-it('returns only name and class from the member search, with exact NIS/NISN matching (SECURITY §3m-3)', function (): void {
+it('returns only name and class from the member search, with exact NISN matching (SECURITY §3m-3)', function (): void {
     $lomba = F::teamCompetition(3);
     F::student('Dimas Alumni', 'XII-1', ['status' => UserStatus::Archived]);
     $this->actingAs(F::user($this->nadia));
@@ -170,9 +170,10 @@ it('returns only name and class from the member search, with exact NIS/NISN matc
         ->and(array_keys($hasil[0]))->toBe(['id', 'name', 'kelas', 'busy', 'declined', 'pending'])
         ->and($hasil[0]['name'])->toBe('Dimas Arya Nugroho'); // archived student excluded
 
-    $form->set('q', substr($this->keisha->nis, 0, 5))->assertSet('hasil', []);
-    $form->set('q', $this->keisha->nis);
+    $form->set('q', substr($this->keisha->nisn, 0, 5))->assertSet('hasil', []);
+    $form->set('q', $this->keisha->nisn);
     expect($form->get('hasil')[0]['name'])->toBe('Keisha Larasati');
+    $form->set('q', $this->keisha->nis)->assertSet('hasil', []);
     $form->set('q', 'Nadia')->assertSet('hasil', []); // never yourself
 });
 

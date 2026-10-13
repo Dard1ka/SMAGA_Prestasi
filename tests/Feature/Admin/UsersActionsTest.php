@@ -238,7 +238,7 @@ it('cancels a due replacement whose target is no longer eligible', function (): 
 
 // Screen --------------------------------------------------------------------------------------------
 
-it('creates staff and finds students by exact NIS/NISN on the Pengguna tab', function (): void {
+it('creates staff and finds students by exact NISN on the Pengguna tab', function (): void {
     $this->actingAs($this->admin);
     session(A::passwordConfirmed());
     $student = H::activeStudent();
@@ -374,4 +374,20 @@ it('clears the old errors of the create form once it passes', function (): void 
         ->set('new', ['name' => 'Mas Galih Prasetyo', 'username' => 'galih.p', 'email' => '', 'role' => 'humas', 'honorific' => 'Mas', 'nip' => '', 'rank' => '', 'position' => '', 'password' => 'Sementara-2026!z', 'password_confirmation' => 'Sementara-2026!z'])
         ->call('createStaff')
         ->assertHasNoErrors();
+});
+
+it('finds a student in Bantuan akun siswa by the 10-digit NISN only (D-137)', function (): void {
+    $this->actingAs($this->admin);
+    session(A::passwordConfirmed());
+    $student = H::activeStudent();
+
+    Livewire::test(Pengguna::class)
+        ->set('studentQuery', H::NIS)->call('findStudent')
+        ->assertHasErrors(['studentQuery' => 'Isi NISN (10 digit) lengkap.'])
+        ->assertSet('studentUserId', null)
+        ->set('studentQuery', H::NISN)->call('findStudent')
+        ->assertHasNoErrors()->assertSet('studentUserId', $student->user_id);
+
+    Livewire::withQueryParams(['q' => H::NIS])->test(Pengguna::class)->assertSet('studentUserId', null)->assertSet('search', H::NIS);
+    Livewire::withQueryParams(['q' => H::NISN])->test(Pengguna::class)->assertSet('studentUserId', $student->user_id);
 });

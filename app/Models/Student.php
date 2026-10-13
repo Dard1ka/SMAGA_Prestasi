@@ -146,7 +146,7 @@ class Student extends Model
     }
 
     /**
-     * Member search by name, NIS or NISN (D-03). Callers must only expose name + class.
+     * Member search by name or exact NISN (D-03, D-137: the NIS is stored only). Callers must only expose name + class.
      *
      * @param  Builder<Student>  $query
      */
@@ -160,7 +160,7 @@ class Student extends Model
 
         $query->where(function (Builder $q) use ($term) {
             if (ctype_digit($term)) {
-                $q->where('nis', $term)->orWhere('nisn', $term);
+                $q->where('nisn', $term);
             }
 
             $q->orWhereHas('user', fn (Builder $u) => $u->where('name', 'like', '%'.addcslashes($term, '%_\\').'%'));

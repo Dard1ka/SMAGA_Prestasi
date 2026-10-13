@@ -99,7 +99,7 @@
                         <p class="m-0 text-xs text-muted">Tim sudah penuh.</p>
                     @else
                         <x-sth.input wire:model.live.debounce.500ms="q" id="undang-anggota" type="search" label="Undang anggota pengganti" icon="search"
-                                     placeholder="Cari nama, NIS, atau NISN" autocomplete="off" maxlength="60"
+                                     placeholder="Cari nama atau NISN" autocomplete="off" maxlength="60"
                                      hint="Undangan berlaku sampai batas pendaftaran. Siswa yang belum aktivasi akun baru melihatnya setelah aktivasi." />
                         @if ($hasil !== [])
                             <ul aria-label="Akun siswa yang cocok" class="m-0 flex list-none flex-col gap-1.5 p-0">
@@ -225,7 +225,7 @@
                 @unless ($teamFull)
                     <div class="flex flex-col gap-2">
                         <x-sth.input wire:model.live.debounce.500ms="q" id="cari-anggota" type="search" label="Tambah anggota" icon="search"
-                                     placeholder="Cari nama, NIS, atau NISN" autocomplete="off" maxlength="60"
+                                     placeholder="Cari nama atau NISN" autocomplete="off" maxlength="60"
                                      hint="Nama diambil dari akun masing-masing siswa." />
                         @if ($hasil !== [])
                             <ul aria-label="Akun siswa yang cocok" class="m-0 flex list-none flex-col gap-1.5 p-0">
