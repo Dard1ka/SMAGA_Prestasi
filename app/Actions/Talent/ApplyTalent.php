@@ -28,7 +28,8 @@ use Throwable;
  * text ("Sebutkan", `TalentOtherText`, 3–60 characters); such a choice is jenis + cabang + that text, compared
  * without case and extra spaces, so one student may name several "Lainnya" talents. No unique index guards a
  * choice (nor the NULL cabang of OLPAIN), so the duplicate check runs here under a lock on the student row. A
- * choice deleted earlier is restored instead of inserted, keeping its old bukti unless a new one is given.
+ * choice deleted earlier is restored instead of inserted, keeping its old bukti unless a new one is given, and its
+ * guru pembina and note for him.
  * D-142: there are no stages any more; every new or restored row is `terdaftar`, and an old row of any status
  * (also "tidak lolos") is simply a choice the student already has.
  * Validation keys: jenis, cabang, lainnya, bukti.
@@ -157,12 +158,12 @@ final class ApplyTalent
                 $application->evidence_file_id = $file->getKey();
             }
 
+            // A restore is an undo of "Hapus" (D-142): the guru pembina and the note for him stay as Kesiswaan left
+            // them; the fields of the old stages are reset.
             $application->forceFill([
                 'status' => TalentStatus::Terdaftar,
                 'other_text' => $other,
-                'mentor_id' => null,
                 'assessment_on' => null,
-                'note' => null,
                 'student_note' => null,
                 'student_note_draft' => null,
                 'rejected_from' => null,

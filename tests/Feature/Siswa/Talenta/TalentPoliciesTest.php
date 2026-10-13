@@ -19,7 +19,7 @@ beforeEach(function (): void {
     $this->application = TalentApplication::factory()->create(['student_id' => $this->nadia->getKey()]);
 });
 
-it('TalentApplicationPolicy: students apply and cancel their own terdaftar choices', function (): void {
+it('TalentApplicationPolicy: students apply and cancel their own choices in every status', function (): void {
     $dimas = F::student('Dimas Arya Nugroho');
 
     expect($this->nadia->user->can('create', TalentApplication::class))->toBeTrue()
@@ -29,8 +29,15 @@ it('TalentApplicationPolicy: students apply and cancel their own terdaftar choic
         ->and($dimas->user->can('view', $this->application))->toBeFalse()
         ->and($dimas->user->can('cancel', $this->application))->toBeFalse();
 
-    $this->application->forceFill(['status' => TalentStatus::Seleksi])->save();
+    foreach (TalentStatus::cases() as $status) {
+        $this->application->forceFill(['status' => $status])->save();
+        expect($this->nadia->user->can('cancel', $this->application->fresh()))->toBeTrue()
+            ->and($dimas->user->can('cancel', $this->application->fresh()))->toBeFalse();
+    }
+
+    $this->application->delete();
     expect($this->nadia->user->can('cancel', $this->application->fresh()))->toBeFalse();
+    $this->application->restore();
 
     $this->nadia->user->forceFill(['status' => UserStatus::Disabled])->save();
     expect($this->nadia->user->fresh()->can('create', TalentApplication::class))->toBeFalse();
@@ -48,30 +55,6 @@ it('TalentApplicationPolicy: staff never apply; Kesiswaan and pembina may view',
         ->and($pembina->can('view', $this->application->fresh()))->toBeTrue()
         ->and(F::staff(RoleName::Guru, 'Guru lain')->can('view', $this->application))->toBeFalse()
         ->and(F::staff(RoleName::Humas)->can('view', $this->application))->toBeFalse();
-});
-
-it('TalentApplicationPolicy: only the owner asks for a second look, only while rejected and once', function (): void {
-    $dimas = F::student('Dimas Arya Nugroho');
-    $pembina = F::staff(RoleName::Guru, 'Retno Wulandari, S.Pd.');
-
-    expect($this->nadia->user->can('requestReview', $this->application))->toBeFalse();
-
-    $this->application->forceFill(['status' => TalentStatus::TidakLolos, 'rejected_from' => TalentStatus::Seleksi, 'mentor_id' => $pembina->getKey()])->save();
-    $rejected = $this->application->fresh();
-
-    expect($this->nadia->user->can('requestReview', $rejected))->toBeTrue()
-        ->and($this->nadia->user->can('cancel', $rejected))->toBeFalse()
-        ->and($dimas->user->can('requestReview', $rejected))->toBeFalse()
-        ->and($pembina->can('requestReview', $rejected))->toBeFalse()
-        ->and(F::staff(RoleName::Kesiswaan)->can('requestReview', $rejected))->toBeFalse()
-        ->and(F::staff(RoleName::Admin, 'Operator STH')->can('requestReview', $rejected))->toBeFalse();
-
-    $rejected->forceFill(['review_requested_at' => now()])->save();
-    expect($this->nadia->user->can('requestReview', $rejected->fresh()))->toBeFalse();
-
-    $rejected->forceFill(['review_requested_at' => null])->save();
-    $this->nadia->user->forceFill(['status' => UserStatus::Disabled])->save();
-    expect($this->nadia->user->fresh()->can('requestReview', $rejected->fresh()))->toBeFalse();
 });
 
 it('TalentApplicationPolicy: only talent.manage restores a rejected choice, never the student or the pembina', function (): void {

@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Policies;
 
 use App\Enums\Permission;
-use App\Enums\TalentStatus;
 use App\Models\TalentApplication;
 use App\Models\User;
 
@@ -44,25 +43,15 @@ class TalentApplicationPolicy
         return $this->owns($user, $application);
     }
 
-    /** The student withdraws a choice only while it is still "Terdaftar" (before Kesiswaan maps it). */
+    /**
+     * The student deletes an own choice at any time, whatever its old status (D-142, "Hapus" on Profil talenta). A
+     * deleted row is not deleted twice.
+     */
     public function cancel(User $user, TalentApplication $application): bool
     {
         return $this->isStudentApplicant($user)
             && $this->owns($user, $application)
-            && $application->status === TalentStatus::Terdaftar;
-    }
-
-    /**
-     * "Minta ditinjau ulang" (lead, 2026-10-04): the student's own rejected choice, one open request per
-     * rejection. The request never changes the status; Kesiswaan decides (restore).
-     */
-    public function requestReview(User $user, TalentApplication $application): bool
-    {
-        return $this->isStudentApplicant($user)
-            && $this->owns($user, $application)
-            && ! $application->trashed()
-            && $application->status === TalentStatus::TidakLolos
-            && $application->review_requested_at === null;
+            && ! $application->trashed();
     }
 
     private function isStudentApplicant(User $user): bool

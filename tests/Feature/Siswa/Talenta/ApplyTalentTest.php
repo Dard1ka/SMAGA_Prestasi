@@ -142,7 +142,7 @@ it('refuses an unsafe bukti and stores nothing', function (): void {
         ->and(Storage::disk('local')->allFiles())->toBe([]);
 });
 
-it('cancels only own choices that are still terdaftar, and re-applying restores the same row', function (): void {
+it('cancels own choices in any status, and re-applying restores the same row', function (): void {
     $cancel = app(CancelTalentApplication::class);
     $kimia = $this->apply->handle($this->nadia->user, w2a2TalentType(TalentTypeCode::Osn), w2a2TalentBranch(TalentTypeCode::Osn, 'Kimia'), F::pdf());
 
@@ -158,6 +158,9 @@ it('cancels only own choices that are still terdaftar, and re-applying restores 
         ->and($again->evidence_file_id)->toBe($kimia->evidence_file_id)
         ->and($again->status)->toBe(TalentStatus::Terdaftar);
 
+    // D-142: an old stage no longer blocks the student; a deleted row cannot be deleted twice.
     $again->forceFill(['status' => TalentStatus::Pemetaan])->save();
-    expect(fn () => $cancel->handle($this->nadia->user, $again->fresh()))->toThrow(AuthorizationException::class);
+    $cancel->handle($this->nadia->user, $again->fresh());
+    expect($again->fresh()->trashed())->toBeTrue()
+        ->and(fn () => $cancel->handle($this->nadia->user, $again->fresh()))->toThrow(AuthorizationException::class);
 });
