@@ -12,6 +12,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\ValidationException;
 use Tests\Feature\Kesiswaan\KesiswaanFixtures as F;
+use Tests\Feature\Siswa\Lomba\LombaFixtures;
 
 /*
 | D-76: a lomba name must not carry a web address. The name is printed in mails from the school's address and mail
@@ -60,7 +61,7 @@ it('refuses a usulan whose name carries a web address and stores nothing', funct
     $siswa = F::student('Raka Pradipta', 'XII-2')->user;
 
     try {
-        app(SubmitCompetition::class)->handle($siswa, ['name' => 'Lomba Sains, daftar ulang di www.situs-palsu.com']);
+        app(SubmitCompetition::class)->handle($siswa, LombaFixtures::usulan(['name' => 'Lomba Sains, daftar ulang di www.situs-palsu.com']), F::pdf());
         $this->fail('Expected a validation error.');
     } catch (ValidationException $e) {
         expect($e->errors()['name'][0] ?? null)->toBe(NoWebAddress::MESSAGE);
@@ -73,10 +74,10 @@ it('refuses a usulan whose name carries a web address and stores nothing', funct
 it('still accepts a usulan with an ordinary name and the address in the website field', function (): void {
     $siswa = F::student('Raka Pradipta', 'XII-2')->user;
 
-    $competition = app(SubmitCompetition::class)->handle($siswa, [
+    $competition = app(SubmitCompetition::class)->handle($siswa, LombaFixtures::usulan([
         'name' => 'Olimpiade Sains Pelajar Nusantara 2026',
         'website_url' => 'https://olimpiade-fiktif.example/2026',
-    ]);
+    ]), F::pdf());
 
     expect($competition->name)->toBe('Olimpiade Sains Pelajar Nusantara 2026')
         ->and($competition->website_url)->toBe('https://olimpiade-fiktif.example/2026');

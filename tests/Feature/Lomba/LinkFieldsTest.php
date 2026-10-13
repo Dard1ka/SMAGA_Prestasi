@@ -2,15 +2,16 @@
 
 declare(strict_types=1);
 
+use App\Actions\Competitions\SubmitCompetition;
 use App\Enums\RoleName;
 use App\Livewire\Kesiswaan\Lomba\Form as KelolaLombaForm;
-use App\Livewire\Lomba\UsulanForm;
 use App\Models\Competition;
 use App\Models\User;
 use App\Rules\ExternalUrl;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
 use Tests\Feature\Kesiswaan\KesiswaanFixtures as K;
 use Tests\Feature\Siswa\Lomba\LombaFixtures as F;
@@ -35,23 +36,23 @@ beforeEach(function (): void {
 });
 
 /**
- * Sends one address through the usulan sheet as that user.
+ * Sends one address as the "Link resmi" of a student's usulan (SubmitCompetition, the whole lomba since D-145).
  *
- * @return array{error: ?string, stored: ?string, shown: mixed}
+ * @return array{error: ?string, stored: ?string}
  */
 function linkThroughUsulan(User $user, bool $upload, string $typed): array
 {
-    $sheet = Livewire::actingAs($user)->test(UsulanForm::class, ['upload' => $upload])
-        ->set('name', 'Lomba Uji Link 2026')
-        ->set('organizer_name', 'Panitia Uji')
-        ->set('website_url', $typed)
-        ->set('brosur', UploadedFile::fake()->image('brosur.jpg', 600, 800))
-        ->call('kirim');
+    $error = null;
+
+    try {
+        app(SubmitCompetition::class)->handle($user, F::usulan(['name' => 'Lomba Uji Link 2026', 'website_url' => $typed]), UploadedFile::fake()->image('brosur.jpg', 600, 800));
+    } catch (ValidationException $e) {
+        $error = $e->errors()['website_url'][0] ?? null;
+    }
 
     return [
-        'error' => $sheet->errors()->first('website_url') ?: null,
+        'error' => $error,
         'stored' => Competition::query()->where('submitted_by', $user->getKey())->value('website_url'),
-        'shown' => $sheet->get('website_url'),
     ];
 }
 

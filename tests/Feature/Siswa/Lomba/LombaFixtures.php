@@ -76,6 +76,39 @@ final class LombaFixtures
         return self::openCompetition(array_merge(['participation' => Participation::Tim, 'max_team_size' => $max], $attributes));
     }
 
+    /**
+     * A complete "Usulkan lomba" input (CompetitionFields::toAttributes() shape, D-145): one-day individu lomba by a PTN,
+     * tingkat kota, registration closing in 20 days, the lomba in 35. No weight fields: the Action computes them.
+     *
+     * @param  array<string, mixed>  $overrides
+     * @return array<string, mixed>
+     */
+    public static function usulan(array $overrides = []): array
+    {
+        $final = now()->addDays(35)->format('Y-m-d');
+
+        return array_merge([
+            'name' => 'International Science Project Olympiad (ISPO) 2027',
+            'description' => 'Pendaftaran gratis (data fiktif).',
+            'bidang' => Bidang::Riset->value,
+            'level' => Level::Kota->value,
+            'organizer_name' => 'Universitas Negeri Contoh',
+            'organizer_type' => 'ptn',
+            'organizer_type_other' => null,
+            'puspresnas' => false,
+            'mode' => 'luring',
+            'location' => 'Kota Semarang',
+            'registration_opens_at' => null,
+            'registration_closes_at' => now()->addDays(20)->format('Y-m-d'),
+            'starts_on' => $final,
+            'final_on' => $final,
+            'participation' => Participation::Individu->value,
+            'max_team_size' => null,
+            'website_url' => 'https://example.org/ispo',
+            'registration_url' => null,
+        ], $overrides);
+    }
+
     public static function pendingCompetition(User $submitter, array $attributes = []): Competition
     {
         return Competition::factory()->proposal()->create(array_merge([

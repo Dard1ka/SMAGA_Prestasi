@@ -301,19 +301,21 @@ it('keeps the field closed to roles that do not manage lomba', function (RoleNam
         ->and($competition->fresh()->organizer_type_other)->toBe('Sanggar seni');
 })->with([RoleName::Siswa, RoleName::Guru, RoleName::Humas, RoleName::TataUsaha, RoleName::KepalaSekolah]);
 
-it('ignores an organizer type smuggled into an usulan', function (RoleName $role): void {
-    $user = $role === RoleName::Siswa ? F::student()->user : F::staff($role, 'Bu Retno Wulandari');
+it('keeps the typed kind of a lomba a student proposes only for "Lainnya" (D-145, D-125)', function (): void {
+    $student = F::student()->user;
 
-    $competition = app(SubmitCompetition::class)->handle($user, [
-        'name' => 'ISPO 2027',
-        'organizer_name' => 'Yayasan Contoh',
-        'organizer_type' => 'lainnya',
-        'organizer_type_other' => 'x',
-    ]);
+    $other = app(SubmitCompetition::class)->handle($student, LombaFixtures::usulan([
+        'organizer_type' => 'yayasan_lembaga', 'organizer_type_other' => 'Sanggar seni',
+    ]), F::pdf());
+    $lainnya = app(SubmitCompetition::class)->handle($student, LombaFixtures::usulan([
+        'name' => 'Festival Tari Pelajar Fiktif 2027', 'organizer_type' => 'lainnya', 'organizer_type_other' => '  Sanggar seni ',
+    ]), F::pdf());
 
-    expect($competition->fresh()->organizer_type)->toBeNull()
-        ->and($competition->fresh()->organizer_type_other)->toBeNull();
-})->with([RoleName::Siswa]); // Only siswa and Admin hold competition.create (D-145).
+    expect($other->fresh()->organizer_type)->toBe(OrganizerType::YayasanLembaga)
+        ->and($other->fresh()->organizer_type_other)->toBeNull()
+        ->and($lainnya->fresh()->organizerTypeLabel())->toBe('Lainnya (Sanggar seni)')
+        ->and($lainnya->fresh()->weight_category)->toBe(WeightCategory::E);
+});
 
 // The drawer ---------------------------------------------------------------------------------------------------------
 
