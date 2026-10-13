@@ -65,7 +65,8 @@ class RegistrationPolicy
 
     /**
      * Confirm or decline a team invite: only the invitee, only while the team waits (SECURITY §3m-3) and until the
-     * registration deadline (QA10: the same window ConfirmMembership checks, so "Ikut tim" only shows while it works).
+     * registration deadline (QA10: the same window ConfirmMembership checks, so "Ikut tim" only shows while it works;
+     * D-148: a team resumed late answers until `answer_until`, Registration::answersCloseAt()).
      */
     public function respond(User $user, Registration $registration): bool
     {
@@ -79,7 +80,7 @@ class RegistrationPolicy
             && $member->role === MemberRole::Anggota
             && $member->confirmed_at === null
             && $member->declined_at === null
-            && self::teamWindowOpen($this->competition($registration));
+            && self::teamWindowOpen($registration);
     }
 
     /**
@@ -87,15 +88,12 @@ class RegistrationPolicy
      * withdraw, until the lomba's registration deadline (end of that day), whatever the lomba's status. CloseCompetition
      * only takes the lomba out of the catalog: registrations that exist keep running, while a NEW registration still needs
      * an open, published lomba (create()). ExpirePendingInvitations expires the open invitations at the same deadline;
-     * a lomba without a deadline never expires them.
+     * a lomba without a deadline never expires them. D-148: a team resumed after (or shortly before) that deadline has
+     * until `answer_until`; the one source is Registration::answersCloseAt().
      */
-    public static function teamWindowOpen(?Competition $competition, ?DateTimeInterface $now = null): bool
+    public static function teamWindowOpen(Registration $registration, ?DateTimeInterface $now = null): bool
     {
-        if ($competition === null) {
-            return false;
-        }
-
-        $closes = $competition->registration_closes_at;
+        $closes = $registration->answersCloseAt();
 
         return $closes === null || $closes >= ($now ?? now());
     }
@@ -168,7 +166,7 @@ class RegistrationPolicy
             return false;
         }
 
-        return self::teamWindowOpen($this->competition($registration));
+        return self::teamWindowOpen($registration);
     }
 
     // --- end B3 ---
@@ -197,13 +195,6 @@ class RegistrationPolicy
     protected function student(User $user): ?Student
     {
         return $user->loadMissing('student')->getRelation('student');
-    }
-
-    protected function competition(Registration $registration): ?Competition
-    {
-        return $registration->relationLoaded('competition') && $registration->competition !== null
-            ? $registration->competition
-            : Competition::withTrashed()->find($registration->competition_id);
     }
 
     protected function membership(User $user, Registration $registration): ?RegistrationMember

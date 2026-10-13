@@ -7,6 +7,7 @@ namespace App\Livewire\Siswa;
 use App\Actions\Registrations\ConfirmMembership;
 use App\Actions\Registrations\DeclineMembership;
 use App\Actions\Registrations\ExpirePendingInvitations;
+use App\Actions\Registrations\ResumeWaitingRegistrations;
 use App\Enums\MemberRole;
 use App\Enums\RegistrationStatus;
 use App\Livewire\Siswa\Lomba\LombaPresenter;
@@ -128,7 +129,7 @@ class KonfirmasiTim extends Component
             // Expired by the job, or still unanswered after the deadline (before the job ran).
             'expired' => $mine !== null && ! $canRespond && (in_array((string) $mine->getKey(), $expiredIds, true)
                 || ($unanswered && $registration->status === RegistrationStatus::MenungguKonfirmasi
-                    && ! RegistrationPolicy::teamWindowOpen($competition))),
+                    && ! RegistrationPolicy::teamWindowOpen($registration))),
             'notifiesLeader' => ConfirmMembership::notifiesLeader($registration),
             'members' => $registration->members
                 ->sortBy(fn (RegistrationMember $m): string => ($m->role === MemberRole::Ketua ? '0' : '1').$m->student?->user?->name)
@@ -148,6 +149,10 @@ class KonfirmasiTim extends Component
             'mentorName' => $mentor === null ? '–' : trim(($mentor->staffProfile?->honorific ? $mentor->staffProfile->honorific.' ' : '').$mentor->name),
             'facts' => [
                 ['icon' => 'clock', 'label' => 'Batas daftar', 'value' => LombaPresenter::date($competition->registration_closes_at)],
+                // D-148: a team resumed after (or shortly before) the deadline answers until its own moment.
+                ...($canRespond && ($grace = ResumeWaitingRegistrations::graceText($registration)) !== null
+                    ? [['icon' => 'clock', 'label' => 'Batas jawab', 'value' => $grace]]
+                    : []),
                 ['icon' => 'calendar', 'label' => 'Tanggal lomba', 'value' => LombaPresenter::tanggal($competition)],
                 ['icon' => 'trophy', 'label' => 'Tingkat', 'value' => LombaPresenter::tingkat($competition)],
                 ['icon' => 'pin', 'label' => 'Pelaksanaan', 'value' => LombaPresenter::tempat($competition)],

@@ -7,6 +7,7 @@ namespace App\Models;
 use App\Enums\LetterType;
 use App\Enums\RegistrationStatus;
 use App\Enums\RegistrationType;
+use Carbon\CarbonImmutable;
 use Database\Factories\RegistrationFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
@@ -22,10 +23,13 @@ use Spatie\Activitylog\Support\LogOptions;
 
 /**
  * Pendaftaran (individu/tim). Status changes only in app/Actions/Registrations (ARCHITECTURE §6).
- * Not mass-assignable: status, principal_decision_by, principal_decided_at, principal_note, cancelled_at.
+ * Not mass-assignable: status, principal_decision_by, principal_decided_at, principal_note, cancelled_at, answer_until.
  */
 class Registration extends Model
 {
+    /** D-148: a team resumed after (or less than this many days before) "Pendaftaran ditutup" may answer this long. */
+    public const ANSWER_GRACE_DAYS = 3;
+
     /** @use HasFactory<RegistrationFactory> */
     use HasFactory, HasUlids, LogsActivity, SoftDeletes;
 
@@ -46,6 +50,7 @@ class Registration extends Model
             'status' => RegistrationStatus::class,
             'principal_decided_at' => 'immutable_datetime',
             'cancelled_at' => 'immutable_datetime',
+            'answer_until' => 'immutable_datetime',
         ];
     }
 
@@ -176,5 +181,26 @@ class Registration extends Model
     public function isTeam(): bool
     {
         return $this->type === RegistrationType::Tim;
+    }
+
+    /**
+     * Until when the team's invitations may be answered, and the ketua may invite or withdraw (QA10 window): the later
+     * of the lomba's "Pendaftaran ditutup" and `answer_until` (the grace of a team resumed late, D-148); null when
+     * neither is set (no deadline: the invitations never expire). RegistrationPolicy and ExpirePendingInvitations read
+     * only this.
+     */
+    public function answersCloseAt(): ?CarbonImmutable
+    {
+        $competition = $this->relationLoaded('competition') && $this->competition !== null
+            ? $this->competition
+            : Competition::withTrashed()->find($this->competition_id);
+        $closes = $competition?->registration_closes_at;
+        $until = $this->answer_until;
+
+        if ($closes === null || $until === null) {
+            return $closes ?? $until;
+        }
+
+        return $until->greaterThan($closes) ? $until : $closes;
     }
 }

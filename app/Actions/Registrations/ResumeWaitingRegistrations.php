@@ -15,6 +15,7 @@ use App\Models\Student;
 use App\Models\User;
 use App\Notifications\Registrations\RegistrationAwaitingPrincipal;
 use App\Notifications\Registrations\TeamInvitation;
+use Carbon\CarbonImmutable;
 use DateTimeInterface;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
@@ -27,7 +28,8 @@ use Spatie\Activitylog\Models\Activity;
  * make one) move in the same transaction as the decision (VerifyCompetition):
  * - published → individu `menunggu_kepsek` (the approvers are told), tim `menunggu_konfirmasi` (the anggota are invited
  *   now: `invited_at` = now). A "Pendaftaran ditutup" that passed before the publish does not cancel them: they were
- *   made before it.
+ *   made before it. A team resumed after that deadline, or less than three days before it, gets three days from now
+ *   to answer (`answer_until`, Registration::ANSWER_GRACE_DAYS; lead 2026-10-12).
  * - rejected → `dibatalkan` + cancelled_at. Nobody but the submitter hears of it, through the one rejection notice
  *   (VerifyCompetition): the anggota were never invited and the guru never told (the D-134 reasoning).
  * One audit row per registration (`registration.resumed` / `registration.cancelled`), causer = the verifier. A
@@ -63,7 +65,7 @@ final class ResumeWaitingRegistrations
             ? Student::query()->where('user_id', $locked->submitted_by)->value('id')
             : null;
         $published = $decision === CompetitionStatus::Dipublikasikan;
-        $now = now();
+        $now = CarbonImmutable::now();
         $invited = [];
         $toApprovers = [];
         $cancelled = 0;
@@ -93,6 +95,7 @@ final class ResumeWaitingRegistrations
                 ]);
 
                 if ($to === RegistrationStatus::MenungguKonfirmasi) {
+                    $this->extendAnswers($registration, $locked, $now);
                     $invited[] = ['registration' => $registration, 'users' => $this->invite($registration, $now)];
                 } else {
                     $toApprovers[] = $registration;
@@ -105,6 +108,19 @@ final class ResumeWaitingRegistrations
         }
 
         return new WaitingOutcome($invited, $toApprovers, $cancelled, $submitterNow);
+    }
+
+    /**
+     * "15 Okt 2026, 09.00": until when the anggota of a team resumed late may answer (the grace, D-148), for the screens
+     * and the invitation; null for every other registration, whose answers close with "Pendaftaran ditutup".
+     */
+    public static function graceText(Registration $registration): ?string
+    {
+        if ($registration->answer_until === null) {
+            return null;
+        }
+
+        return $registration->answersCloseAt()?->locale('id')->translatedFormat('j M Y, H.i');
     }
 
     /** Was this registration cancelled because Kesiswaan rejected its lomba (not by its leader)? Read from the audit. */
@@ -158,6 +174,17 @@ final class ResumeWaitingRegistrations
         return User::query()->canLogIn()
             ->whereHas('student', fn ($q) => $q->whereKey($open->pluck('student_id')->all()))
             ->get();
+    }
+
+    /** Three days from now to answer when the lomba's deadline is closer than that or passed (null deadline: also). */
+    private function extendAnswers(Registration $registration, Competition $locked, CarbonImmutable $now): void
+    {
+        $until = $now->addDays(Registration::ANSWER_GRACE_DAYS);
+        $closes = $locked->registration_closes_at;
+
+        if ($closes === null || $closes->lessThan($until)) {
+            $registration->forceFill(['answer_until' => $until])->save();
+        }
     }
 
     /** @param array<string, mixed> $properties */

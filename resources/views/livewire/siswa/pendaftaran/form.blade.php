@@ -20,7 +20,7 @@
             @if ($status['pendingInvite'])
                 <div class="flex flex-col gap-2 rounded-tile bg-primary-tint p-4">
                     <p class="m-0 font-bold">{{ $status['leaderName'] }} mengajak kamu ikut tim.</p>
-                    <p class="m-0 text-sm text-ink-2">Konfirmasi sebelum batas pendaftaran.</p>
+                    <p class="m-0 text-sm text-ink-2">{{ $status['answerNote'] }}</p>
                     <x-sth.button size="sm" :href="$status['undangan']" class="self-start">Lihat undangan</x-sth.button>
                 </div>
             @else

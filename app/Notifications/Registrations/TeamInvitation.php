@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Notifications\Registrations;
 
+use App\Actions\Registrations\ResumeWaitingRegistrations;
 use App\Notifications\Support\MailGreeting;
 use App\Notifications\Support\PlainMailMessage;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -17,7 +18,9 @@ class TeamInvitation extends RegistrationNotification
             ->subject('Undangan tim: '.$this->competitionName())
             ->greeting(MailGreeting::student($notifiable))
             ->line($this->leaderName().' mengajak kamu ikut tim '.$this->competitionName().'.')
-            ->line('Konfirmasi sebelum batas pendaftaran agar pendaftaran bisa diteruskan ke Kepala Sekolah.')
+            // D-148: a team resumed after (or shortly before) the deadline has its own three days to answer.
+            ->line('Konfirmasi sebelum '.(ResumeWaitingRegistrations::graceText($this->registration) ?? 'batas pendaftaran')
+                .' agar pendaftaran bisa diteruskan ke Kepala Sekolah.')
             ->action('Lihat undangan', $this->url());
     }
 

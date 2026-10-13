@@ -9,6 +9,7 @@ use App\Actions\Registrations\CreateRegistration;
 use App\Actions\Registrations\ExpirePendingInvitations;
 use App\Actions\Registrations\InviteMembers;
 use App\Actions\Registrations\MentorChoice;
+use App\Actions\Registrations\ResumeWaitingRegistrations;
 use App\Actions\Registrations\WithdrawInvitation;
 use App\Enums\CompetitionStatus;
 use App\Enums\MemberRole;
@@ -563,6 +564,10 @@ class Form extends Component
         return [
             'isLeader' => $mine?->role === MemberRole::Ketua,
             'pendingInvite' => $mine !== null && $mine->role === MemberRole::Anggota && $mine->confirmed_at === null && $registration->status === RegistrationStatus::MenungguKonfirmasi,
+            // D-148: a team resumed late answers until its own moment, not the registration deadline.
+            'answerNote' => ($grace = ResumeWaitingRegistrations::graceText($registration)) !== null
+                ? 'Konfirmasi sebelum '.$grace.'.'
+                : 'Konfirmasi sebelum batas pendaftaran.',
             'isTeam' => $registration->isTeam(),
             'label' => $registration->status->label(),
             'tone' => $registration->status->tone(),

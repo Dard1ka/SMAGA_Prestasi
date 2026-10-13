@@ -51,7 +51,7 @@ final class WithdrawInvitation
             $competition = Competition::withTrashed()->find($locked->competition_id);
 
             // QA10: the same window as the policy, re-checked under the lock (the deadline, not the published status).
-            if (! RegistrationPolicy::teamWindowOpen($competition)) {
+            if (! RegistrationPolicy::teamWindowOpen($locked->setRelation('competition', $competition))) {
                 throw ValidationException::withMessages(['members' => 'Batas pendaftaran sudah lewat.']);
             }
 
