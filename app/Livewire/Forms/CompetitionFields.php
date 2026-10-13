@@ -34,8 +34,9 @@ use Livewire\Form;
  * (`Kesiswaan\Lomba\Form`), drawn by `livewire/forms/competition-fields.blade.php` (D-145…D-147).
  *
  * One source of rules: the field rules stay in the Actions (CreateCompetition::rules(), CompetitionDates,
- * SubmitCompetition), so this object validates only what the Actions never see: the duration choice and the two
- * uploads (StoreUpload::rulesFor()). Action errors come back through addActionErrors().
+ * SubmitCompetition), so this object validates only what the Actions never see: the duration choice (with the
+ * "Tanggal mulai" it asks for) and the two uploads (StoreUpload::rulesFor()). Action errors come back through
+ * addActionErrors().
  *
  * "Durasi lomba" is screen state only (D-147): one day writes one date ("Tanggal lomba" = `final_on`, and `starts_on`
  * the same day); more days write "Tanggal mulai" and "Tanggal selesai". The schema does not change.
@@ -128,6 +129,9 @@ final class CompetitionFields extends Form
 
         return [
             'duration' => ['required', Rule::in([self::DURATION_ONE_DAY, self::DURATION_MULTI_DAY])],
+            // "Lebih dari 1 hari" needs its first day: the Actions would store a lomba without one, which reopens as a
+            // one-day lomba (fillFrom()). Screen state, so it is checked here and not in the Actions.
+            'starts_on' => ['nullable', 'required_if:duration,'.self::DURATION_MULTI_DAY],
             'juknis' => [
                 'nullable', 'file', 'max:'.$juknis->maxKilobytes(),
                 'extensions:'.implode(',', $juknis->extensions()),
@@ -147,6 +151,7 @@ final class CompetitionFields extends Form
         return [
             'duration.required' => 'Pilih durasi lomba.',
             'duration.in' => 'Pilih durasi lomba.',
+            'starts_on.required_if' => 'Wajib diisi.',
             'juknis.file' => 'File gagal di-upload. Coba lagi.',
             'juknis.max' => 'Ukuran maksimal 5 MB.',
             'juknis.extensions' => 'Pilih PDF, JPG, PNG, atau WEBP.',

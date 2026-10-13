@@ -163,3 +163,24 @@ it('audits no override when the weight follows the map', function (): void {
     expect(Activity::query()->where('event', 'competition.published')->sole()->properties->has('weight_override'))->toBeTrue()
         ->and(Activity::query()->where('event', 'competition.published')->sole()->properties['weight_override'])->toBeNull();
 });
+
+it('asks for "Tanggal mulai" when the lomba lasts more than one day', function (): void {
+    $c = drawerQueued();
+
+    Livewire::actingAs($this->kesiswaan)->test(Form::class)->call('open', $c->getKey())
+        ->set('form.duration', CompetitionFields::DURATION_MULTI_DAY)->set('form.starts_on', '')->set('form.final_on', '2026-11-10')
+        ->call('save')
+        ->assertHasErrors(['form.starts_on' => 'Wajib diisi.'])
+        ->assertSee('Wajib diisi.');
+
+    expect($c->fresh()->starts_on->toDateString())->toBe('2026-11-07')
+        ->and($c->fresh()->final_on->toDateString())->toBe('2026-11-07');
+});
+
+it('audits no override when no weight was chosen yet (an incomplete entry rejected)', function (): void {
+    $c = drawerQueued(['organizer_type' => OrganizerType::Ptn, 'weight_category' => null, 'event_status' => null]);
+
+    app(VerifyCompetition::class)->handle($this->kesiswaan, $c, CompetitionStatus::Ditolak);
+
+    expect(Activity::query()->where('event', 'competition.rejected')->sole()->properties['weight_override'])->toBeNull();
+});

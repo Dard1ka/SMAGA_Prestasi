@@ -48,7 +48,7 @@ it('keeps the catalog on the first tab and hides its filters on "Usulan saya"', 
         ->assertSee('Usulan Pertama')->assertDontSee('Lomba Katalog Fiktif 2026')->assertDontSee('Semua tingkat');
 });
 
-it('says so when the student proposed nothing yet', fn () => Livewire::actingAs($this->nadiaUser)->test(Katalog::class)->set('tab', 'usulan')->assertSee('Belum ada usulan lomba')->assertSee('Lomba yang kamu usulkan tampil di sini'));
+it('says so when the student proposed nothing yet', fn () => Livewire::actingAs($this->nadiaUser)->test(Katalog::class)->set('tab', 'usulan')->assertSee('Belum ada usulan lomba')->assertSee('Lomba yang kamu usulkan tampil di sini')->assertDontSeeHtml('placeholder="Cari usulan"'));
 
 it('ignores an unknown tab', fn () => Livewire::actingAs($this->nadiaUser)->test(Katalog::class)->set('tab', 'x')->assertSet('tab', ''));
 
@@ -58,4 +58,19 @@ it('opens the tab from the address', function (): void {
     $this->actingAs($this->nadiaUser)->get(route('siswa.lomba.index', ['tab' => 'usulan']))
         ->assertOk()
         ->assertSee('Usulan Pertama');
+});
+
+it('filters the own lomba by the top bar search and keeps the tab count', function (): void {
+    LombaFixtures::pendingCompetition($this->nadiaUser, ['name' => 'Olimpiade Sains Fiktif']);
+    LombaFixtures::pendingCompetition($this->nadiaUser, ['name' => 'Festival Tari Fiktif']);
+
+    Livewire::actingAs($this->nadiaUser)->test(Katalog::class)->set('tab', 'usulan')
+        ->assertSeeHtml('placeholder="Cari usulan"')
+        ->set('q', 'sains')
+        ->assertSee('Olimpiade Sains Fiktif')->assertDontSee('Festival Tari Fiktif')
+        ->assertSeeHtml('<span class="cnt">2</span>')
+        ->set('q', 'robotik')
+        ->assertSee('Belum ada usulan yang cocok')->assertDontSee('Belum ada usulan lomba')
+        ->call('hapusPencarian')->assertSet('q', '')
+        ->assertSee('Olimpiade Sains Fiktif')->assertSee('Festival Tari Fiktif');
 });

@@ -14,7 +14,20 @@
     </div>
 
     @if ($proposals)
-        @if ($rows === [])
+        {{-- The name search works on this tab too: the top bar from lg up, this box below lg (one box at any width). --}}
+        @if ($proposalCount > 0 || $q !== '')
+            <x-sth.input wire:model.live.debounce.400ms="q" id="f-cari" type="search" label="Cari nama lomba" hide-label
+                         icon="search" placeholder="Cari usulan" maxlength="100" class="sm:w-60 lg:hidden" />
+        @endif
+
+        @if ($rows === [] && $q !== '')
+            <x-sth.empty-state icon="search" title="Belum ada usulan yang cocok">
+                Coba kata lain.
+                <x-slot:actions>
+                    <x-sth.button variant="quiet" size="sm" wire:click="hapusPencarian">Hapus pencarian</x-sth.button>
+                </x-slot:actions>
+            </x-sth.empty-state>
+        @elseif ($rows === [])
             <x-sth.empty-state icon="send" title="Belum ada usulan lomba">
                 Lomba yang kamu usulkan tampil di sini, juga selama Kesiswaan memeriksanya.
             </x-sth.empty-state>

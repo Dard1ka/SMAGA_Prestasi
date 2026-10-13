@@ -25,7 +25,8 @@ use Livewire\WithPagination;
  * registration; SubmitCompetition → menunggu_verifikasi).
  *
  * Tab "Usulan saya" (`?tab=usulan`, FS1 Paket B): the student's own lomba of every status, oldest first, each opening
- * its Detail lomba (CompetitionPolicy::view lets the submitter in). The catalog filters do not apply there.
+ * its Detail lomba (CompetitionPolicy::view lets the submitter in). The catalog filters do not apply there; the name
+ * search (?q=, the top bar search) does, so typing in the top bar never leaves the list unchanged.
  */
 #[Layout('layouts::app', ['subtitle' => 'Semua lomba sudah diperiksa Kesiswaan.'])]
 #[Title('Cari lomba')]
@@ -83,6 +84,13 @@ class Katalog extends Component
         $this->resetPage();
     }
 
+    /** "Hapus pencarian" of an empty "Usulan saya": the catalog filters stay as they were. */
+    public function hapusPencarian(): void
+    {
+        $this->reset('q');
+        $this->resetPage();
+    }
+
     public function hapusFilter(): void
     {
         $this->reset('bidang', 'tingkat', 'status', 'q');
@@ -117,7 +125,8 @@ class Katalog extends Component
         return view('livewire.siswa.lomba.katalog', [
             'tabs' => self::TABS,
             'proposals' => $proposals,
-            'proposalCount' => $this->myProposals()->count(),
+            // The count on the tab is every own lomba, whatever the search.
+            'proposalCount' => $this->myProposals(search: false)->count(),
             'rows' => $rows,
             'page' => $page,
             'cards' => $cards,
@@ -153,11 +162,12 @@ class Katalog extends Component
             ->orderBy('name');
     }
 
-    /** @return Builder<Competition> the student's own lomba, every status, oldest first (spec §5.2) */
-    private function myProposals(): Builder
+    /** @return Builder<Competition> the student's own lomba, every status, oldest first (spec §5.2), by name like query() */
+    private function myProposals(bool $search = true): Builder
     {
         return Competition::query()
             ->where('submitted_by', auth()->id())
+            ->when($search && $this->q !== '', fn (Builder $q) => $q->where('name', 'like', '%'.addcslashes($this->q, '%_\\').'%'))
             ->oldest('created_at')
             ->orderBy('id');
     }

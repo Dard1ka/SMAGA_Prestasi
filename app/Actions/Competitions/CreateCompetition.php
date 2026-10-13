@@ -105,7 +105,7 @@ final class CreateCompetition
             return $competition;
         }));
 
-        // Same as a siswa/guru usulan (SubmitCompetition): the entry waits in the queue, so the other verifiers
+        // Same as a siswa usulan (SubmitCompetition): the entry waits in the queue, so the other verifiers
         // hear about it (e.g. Kesiswaan when the Admin adds a lomba). The actor is not mailed.
         $verifiers = User::query()
             ->canLogIn()

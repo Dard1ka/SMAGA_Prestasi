@@ -21,6 +21,8 @@ uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
     F::boot();
+    // The page tests render the layout; no built assets are needed for that.
+    $this->withoutVite();
 });
 
 it('gives competition.create to siswa and admin only (D-145)', function (RoleName $role, bool $may): void {

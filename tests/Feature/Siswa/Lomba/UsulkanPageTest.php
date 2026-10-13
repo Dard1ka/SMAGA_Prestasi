@@ -124,3 +124,21 @@ it('links "Usulkan lomba" on Cari lomba to the new page', function (): void {
         ->assertSee(route('siswa.lomba.usulkan'), false)
         ->assertDontSee('data-sth-open="usul"', false);
 });
+
+it('asks for "Tanggal mulai" when the lomba lasts more than one day', function (): void {
+    $t = Livewire::actingAs($this->nadiaUser)->test(Usulkan::class);
+
+    foreach (F::usulan(['starts_on' => null]) as $k => $v) {
+        $t->set("form.$k", $v);
+    }
+
+    $t->set('form.duration', 'lebih_dari_satu_hari')
+        ->set('form.juknis', K::pdf())
+        ->call('simpan')
+        ->assertHasErrors(['form.starts_on' => 'Wajib diisi.'])
+        ->assertSee('Wajib diisi.')
+        ->assertDispatched('sth-form-invalid', form: 'usulkan')
+        ->assertSet('competitionId', null);
+
+    expect(Competition::query()->count())->toBe(0);
+});

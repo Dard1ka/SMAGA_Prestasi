@@ -37,6 +37,7 @@ uses(RefreshDatabase::class);
 beforeEach(function (): void {
     F::roles();
     Notification::fake();
+    $this->withoutVite();
     $this->kesiswaan = F::staff(RoleName::Kesiswaan, 'Staf Kesiswaan');
     $this->admin = F::staff(RoleName::Admin, 'Operator');
     $this->nadia = F::student();

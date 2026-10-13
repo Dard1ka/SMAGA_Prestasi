@@ -217,7 +217,9 @@ final class VerifyCompetition
 
     /**
      * The weight Kesiswaan chose next to the one the map gives (OrganizerWeight, D-146), for the audit row of the
-     * decision; null when they agree or the lomba has no jenis penyelenggara.
+     * decision; null when they agree, the lomba has no jenis penyelenggara or no weight was chosen yet (an incomplete
+     * entry that is rejected). A lomba stored before D-146 is not recomputed, so its hand-typed weight may show here
+     * as a difference from the map.
      *
      * @return array{computed: array{weight_category: string, event_status: string}, chosen: array{weight_category: ?string, event_status: ?string}}|null
      */
@@ -226,6 +228,8 @@ final class VerifyCompetition
         $type = $competition->organizer_type;
 
         if (! $type instanceof OrganizerType
+            || $competition->weight_category === null
+            || $competition->event_status === null
             || ! OrganizerWeight::isOverride($type, $competition->weight_category, $competition->event_status)) {
             return null;
         }
