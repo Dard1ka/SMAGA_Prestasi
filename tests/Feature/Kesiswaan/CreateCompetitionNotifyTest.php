@@ -25,7 +25,7 @@ beforeEach(function (): void {
 });
 
 it('tells Kesiswaan when the Admin adds a lomba to the verification queue', function (): void {
-    app(CreateCompetition::class)->handle($this->admin, F::form());
+    app(CreateCompetition::class)->handle($this->admin, F::form(), F::pdf());
 
     Notification::assertSentTo($this->kesiswaan, CompetitionSubmitted::class);
     Notification::assertNotSentTo($this->admin, CompetitionSubmitted::class);
@@ -42,7 +42,7 @@ it('does not tell roles that cannot verify a lomba', function (): void {
     $guru = F::staff(RoleName::Guru, 'Pak Hendra Kusuma');
     $humas = F::staff(RoleName::Humas, 'Mas Galih');
 
-    app(CreateCompetition::class)->handle($this->admin, F::form());
+    app(CreateCompetition::class)->handle($this->admin, F::form(), F::pdf());
 
     Notification::assertNotSentTo([$guru, $humas], CompetitionSubmitted::class);
 });

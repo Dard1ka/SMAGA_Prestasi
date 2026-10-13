@@ -27,7 +27,7 @@ use Illuminate\Validation\ValidationException;
  * accepted (this takes back the "note required" rule and the 10-character minimum of D-95 for a lomba
  * rejection); the submitter is told either way, with the reason only when one was written.
  *
- * M2-B (QA 2026-10-05): publishing refuses "Tanggal mulai" before "Batas daftar", and a lomba whose registration
+ * M2-B (QA 2026-10-05): publishing refuses "Tanggal mulai" before "Pendaftaran ditutup", and a lomba whose registration
  * deadline or final date has already passed is published only with `$confirmPastDates` (Q1-04: old lomba are
  * entered for the record, so the answer is a question, not a ban). The refusal carries the key
  * CompetitionDates::PAST_KEY; the confirmation is audited (`past_dates`).
@@ -47,11 +47,13 @@ final class VerifyCompetition
         'event_status' => 'Status ajang',
         'mode' => 'Pelaksanaan',
         'level' => 'Tingkat',
-        'registration_closes_at' => 'Batas daftar',
+        'registration_closes_at' => 'Pendaftaran ditutup',
         'starts_on' => 'Tanggal mulai',
-        'final_on' => 'Tanggal final',
+        'final_on' => 'Tanggal selesai',
         'location' => 'Tempat',
         'participation' => 'Peserta',
+        // D-147: every published lomba carries its juknis, brosur or undangan.
+        'juknis_file_id' => 'Juknis / brosur / undangan',
     ];
 
     /**

@@ -271,6 +271,7 @@ it('shows a web address in the name together with the other field errors and kee
 it('brings the sixth usulan of the day into view as an error too', function (): void {
     $user = F::user($this->nadia);
     Competition::factory()->proposal()->count(SubmitCompetition::DAILY_LIMIT)->create(['submitted_by' => $user->id]);
+    $files = File::query()->count();
     $this->actingAs($user);
 
     Livewire::test(UsulanForm::class)
@@ -285,7 +286,7 @@ it('brings the sixth usulan of the day into view as an error too', function (): 
         ->assertSet('sent', false);
 
     expect(Competition::query()->count())->toBe(SubmitCompetition::DAILY_LIMIT)
-        ->and(File::query()->count())->toBe(0);
+        ->and(File::query()->count())->toBe($files);
 });
 
 it('brings a brochure the Action refuses into view as an error too', function (): void {

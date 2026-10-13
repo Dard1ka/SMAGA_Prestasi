@@ -419,7 +419,7 @@ it('stops showing a replaced or removed cover to students, and shows the new one
     $competition = app(CreateCompetition::class)->handle(
         F::staff(RoleName::Admin, 'Operator STH'),
         KesiswaanFixtures::form(),
-        null,
+        KesiswaanFixtures::pdf(),
         UploadedFile::fake()->image('poster-nsif-2026.jpg', 1200, 1500),
     );
     $competition->forceFill(['status' => CompetitionStatus::Dipublikasikan])->save();

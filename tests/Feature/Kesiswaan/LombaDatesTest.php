@@ -69,24 +69,24 @@ it('refuses a lomba that starts before its registration deadline when it is crea
     $create = app(CreateCompetition::class);
 
     try {
-        $create->handle($this->admin, F::form(['registration_closes_at' => '2026-10-20', 'starts_on' => '2026-10-19', 'final_on' => '2026-10-25']));
+        $create->handle($this->admin, F::form(['registration_closes_at' => '2026-10-20', 'starts_on' => '2026-10-19', 'final_on' => '2026-10-25']), F::pdf());
         $this->fail('Expected a validation error.');
     } catch (ValidationException $e) {
         expect($e->errors())->toHaveKey('starts_on')
-            ->and($e->errors()['starts_on'][0])->toBe('Tanggal mulai tidak boleh sebelum batas daftar.');
+            ->and($e->errors()['starts_on'][0])->toBe('Lomba tidak boleh dimulai sebelum pendaftaran ditutup.');
     }
 
     expect(Competition::query()->count())->toBe(0);
 
     // The same day is fine (registration closes at 23:59, the lomba runs that day), and so are the old rules.
-    expect($create->handle($this->admin, F::form(['registration_closes_at' => '2026-10-20', 'starts_on' => '2026-10-20', 'final_on' => '2026-10-20']))->exists)->toBeTrue()
-        ->and(fn () => $create->handle($this->admin, F::form(['final_on' => '2026-11-01'])))->toThrow(ValidationException::class, 'Tanggal selesai tidak boleh sebelum tanggal mulai.')
-        ->and(fn () => $create->handle($this->admin, F::form(['registration_closes_at' => '2026-09-01'])))->toThrow(ValidationException::class, 'Batas daftar tidak boleh sebelum tanggal dibuka.');
+    expect($create->handle($this->admin, F::form(['registration_closes_at' => '2026-10-20', 'starts_on' => '2026-10-20', 'final_on' => '2026-10-20']), F::pdf())->exists)->toBeTrue()
+        ->and(fn () => $create->handle($this->admin, F::form(['final_on' => '2026-11-01']), F::pdf()))->toThrow(ValidationException::class, 'Tanggal selesai tidak boleh sebelum tanggal mulai.')
+        ->and(fn () => $create->handle($this->admin, F::form(['registration_closes_at' => '2026-09-01']), F::pdf()))->toThrow(ValidationException::class, 'Pendaftaran ditutup tidak boleh sebelum pendaftaran dibuka.');
 });
 
 it('reports the date order together with the other field errors', function (): void {
     try {
-        app(CreateCompetition::class)->handle($this->admin, F::form(['website_url' => 'http://tidak-aman.test', 'starts_on' => '2026-10-01']));
+        app(CreateCompetition::class)->handle($this->admin, F::form(['website_url' => 'http://tidak-aman.test', 'starts_on' => '2026-10-01']), F::pdf());
         $this->fail('Expected a validation error.');
     } catch (ValidationException $e) {
         expect($e->errors())->toHaveKeys(['website_url', 'starts_on']);
@@ -96,7 +96,7 @@ it('reports the date order together with the other field errors', function (): v
 it('accepts dates in the past when a lomba is created or saved: old lomba are entered for the record', function (): void {
     $competition = app(CreateCompetition::class)->handle($this->admin, F::form([
         'registration_opens_at' => '2026-06-01', 'registration_closes_at' => '2026-08-01', 'starts_on' => '2026-08-10', 'final_on' => '2026-08-11',
-    ]));
+    ]), F::pdf());
 
     app(UpdateCompetition::class)->handle($this->kesiswaan, $competition, m2bFormOf($competition->fresh(), ['location' => 'Kota Semarang']));
 
@@ -109,7 +109,7 @@ it('refuses the wrong order when a queued lomba is updated', function (): void {
     $competition = m2bQueued('2026-10-20', '2026-11-07', '2026-11-07');
 
     expect(fn () => app(UpdateCompetition::class)->handle($this->kesiswaan, $competition, m2bFormOf($competition, ['starts_on' => '2026-10-10'])))
-        ->toThrow(ValidationException::class, 'Tanggal mulai tidak boleh sebelum batas daftar.');
+        ->toThrow(ValidationException::class, 'Lomba tidak boleh dimulai sebelum pendaftaran ditutup.');
 
     expect($competition->fresh()->starts_on->toDateString())->toBe('2026-11-07');
 });
@@ -135,7 +135,7 @@ it('keeps a published lomba with old dates editable and only refuses a newly wro
 
     // Touching one of the two dates brings the rule back.
     expect(fn () => $update->handle($this->kesiswaan, $old->fresh(), m2bFormOf($old, ['starts_on' => '2026-08-05', 'final_on' => '2026-08-06'])))
-        ->toThrow(ValidationException::class, 'Tanggal mulai tidak boleh sebelum batas daftar.');
+        ->toThrow(ValidationException::class, 'Lomba tidak boleh dimulai sebelum pendaftaran ditutup.');
     expect($old->fresh()->starts_on->toDateString())->toBe('2026-08-01');
 
     // Fixing the order works, also with dates in the past and without any confirmation.
@@ -155,7 +155,7 @@ it('publishes a lomba whose dates have passed only after an explicit confirmatio
     } catch (ValidationException $e) {
         expect($e->errors())->toHaveKey(CompetitionDates::PAST_KEY)
             ->and($e->errors()[CompetitionDates::PAST_KEY][0])
-            ->toBe('Tanggal lomba ini sudah lewat (batas daftar 1 Agt 2026, tanggal final 11 Agt 2026). Tetap publikasikan?');
+            ->toBe('Tanggal lomba ini sudah lewat (pendaftaran ditutup 1 Agt 2026, tanggal selesai 11 Agt 2026). Tetap publikasikan?');
     }
 
     expect($competition->fresh()->status)->toBe(CompetitionStatus::MenungguVerifikasi)
@@ -173,7 +173,7 @@ it('asks when only the registration deadline has passed, and not for a deadline 
     $verify = app(VerifyCompetition::class);
 
     expect(fn () => $verify->handle($this->kesiswaan, $closed, CompetitionStatus::Dipublikasikan))
-        ->toThrow(ValidationException::class, 'Tanggal lomba ini sudah lewat (batas daftar 5 Okt 2026). Tetap publikasikan?');
+        ->toThrow(ValidationException::class, 'Tanggal lomba ini sudah lewat (pendaftaran ditutup 5 Okt 2026). Tetap publikasikan?');
 
     $verify->handle($this->kesiswaan, $today, CompetitionStatus::Dipublikasikan);
 
@@ -210,7 +210,7 @@ it('does not let a confirmation open publishing to other roles', function (RoleN
 it('reads past dates from model values and from form values alike', function (): void {
     $now = CarbonImmutable::parse('2026-10-06 09:00:00');
 
-    expect(CompetitionDates::past('2026-10-05', '2026-10-05', $now))->toBe(['registration_closes_at' => 'batas daftar 5 Okt 2026', 'final_on' => 'tanggal final 5 Okt 2026'])
+    expect(CompetitionDates::past('2026-10-05', '2026-10-05', $now))->toBe(['registration_closes_at' => 'pendaftaran ditutup 5 Okt 2026', 'final_on' => 'tanggal selesai 5 Okt 2026'])
         ->and(CompetitionDates::past('2026-10-06', '2026-10-06', $now))->toBe([])
         ->and(CompetitionDates::past('2026-10-06 08:00:00', null, $now))->toHaveKey('registration_closes_at')
         ->and(CompetitionDates::past(CarbonImmutable::parse('2026-10-06 23:59:59'), CarbonImmutable::parse('2026-10-07'), $now))->toBe([])
@@ -229,7 +229,7 @@ it('asks "Tetap publikasikan?" in a dialog when "Publikasikan" is pressed on a l
 
     $component = Livewire::withQueryParams(['tab' => 'verifikasi'])->actingAs($this->kesiswaan)->test(Index::class)
         ->assertSee('Tanggal sudah lewat:')
-        ->assertSee('batas daftar 1 Agt 2026, tanggal final 11 Agt 2026')
+        ->assertSee('pendaftaran ditutup 1 Agt 2026, tanggal selesai 11 Agt 2026')
         ->call('publish', $past->getKey())
         ->assertDispatched('sth-modal-open', id: 'lomba-tanggal-lewat')
         ->assertNotDispatched('sth-toast')
@@ -273,13 +273,13 @@ it('shows a wrong date order on the queue card instead of a publish button', fun
 
     Livewire::withQueryParams(['tab' => 'verifikasi'])->actingAs($this->kesiswaan)->test(Index::class)
         ->assertSee('Perlu diperbaiki:')
-        ->assertSee('Tanggal mulai tidak boleh sebelum batas daftar.')
+        ->assertSee('Lomba tidak boleh dimulai sebelum pendaftaran ditutup.')
         ->assertDontSee('Data lengkap, siap dipublikasikan')
         ->assertDontSeeHtml("publish('".$wrong->getKey()."')")
         ->assertSeeHtml("edit('".$wrong->getKey()."')")
         // A forged call gets the reason.
         ->call('publish', $wrong->getKey())
-        ->assertDispatched('sth-toast', message: 'Tanggal mulai tidak boleh sebelum batas daftar.', tone: 'error');
+        ->assertDispatched('sth-toast', message: 'Lomba tidak boleh dimulai sebelum pendaftaran ditutup.', tone: 'error');
 
     expect($wrong->fresh()->status)->toBe(CompetitionStatus::MenungguVerifikasi);
 });
@@ -292,7 +292,7 @@ it('needs the tick "Tetap publikasikan" in the drawer before "Simpan & publikasi
         ->assertSet('formMode', 'verify')
         ->assertSet('confirmPast', false)
         ->assertSee('Tanggal lomba ini sudah lewat. Tetap publikasikan.')
-        ->assertSee('Sudah lewat: batas daftar 1 Agt 2026, tanggal final 11 Agt 2026.')
+        ->assertSee('Sudah lewat: pendaftaran ditutup 1 Agt 2026, tanggal selesai 11 Agt 2026.')
         ->set('form.location', 'Kota Semarang')
         ->call('saveAndPublish')
         ->assertHasErrors('confirmPast')
@@ -340,9 +340,10 @@ it('marks "Tanggal mulai" in the drawer when it lies before "Batas daftar"', fun
         ->call('open')
         ->assertSee('Tidak boleh sebelum batas daftar.')
         ->set('form', F::form(['registration_closes_at' => '2026-10-20', 'starts_on' => '2026-10-01', 'final_on' => '2026-10-25']))
+        ->set('juknis', F::pdf())
         ->call('save')
         ->assertHasErrors('form.starts_on')
-        ->assertSee('Tanggal mulai tidak boleh sebelum batas daftar.')
+        ->assertSee('Lomba tidak boleh dimulai sebelum pendaftaran ditutup.')
         ->assertNotDispatched('lomba-saved')
         ->set('form.starts_on', '2026-10-21')
         ->call('save')

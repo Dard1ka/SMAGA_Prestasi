@@ -145,6 +145,7 @@ it('creates a lomba from the drawer form into the queue and shows field errors',
         ->call('open')
         ->assertDispatched('sth-modal-open')
         ->set('form', F::form(['website_url' => 'http://tidak-aman.test']))
+        ->set('juknis', F::pdf())
         ->call('save')
         ->assertHasErrors('form.website_url')
         ->set('form.website_url', 'https://example.org/nsif')

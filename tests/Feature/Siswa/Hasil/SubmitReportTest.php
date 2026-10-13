@@ -37,6 +37,8 @@ beforeEach(function (): void {
     $this->nadia = F::student();
     $this->dimas = F::student('Dimas Arya Nugroho');
     $this->registration = F::registration($this->nadia, members: [$this->dimas]);
+    // The lomba of the registration carries its juknis (D-147); the checks below count what a report adds.
+    $this->filesBefore = File::query()->count();
 });
 
 afterEach(fn () => F::resetToday());
@@ -70,8 +72,9 @@ it('lets the ketua send the report: laporan_dikirim, files on the private disk, 
         ->and($report->files()->where('kind', ReportFileKind::Pengumuman)->count())->toBe(1)
         ->and($report->files()->where('kind', ReportFileKind::LaporanRiset)->count())->toBe(1);
 
-    $files = File::query()->get();
-    expect($files)->toHaveCount(5);
+    $files = File::query()->where('purpose', FilePurpose::ReportEvidence)->get();
+    expect($files)->toHaveCount(5)
+        ->and(File::query()->count())->toBe($this->filesBefore + 5);
     $files->each(function (File $file): void {
         expect($file->purpose)->toBe(FilePurpose::ReportEvidence)
             ->and($file->disk)->toBe('local')
@@ -123,7 +126,7 @@ it('only lets the ketua submit, and only while the registration waits for the re
     }
 
     expect(Report::query()->count())->toBe(0)
-        ->and(File::query()->count())->toBe(0);
+        ->and(File::query()->count())->toBe($this->filesBefore);
 });
 
 it('requires the authenticity statement, a certificate and at least one photo', function (): void {
@@ -143,7 +146,7 @@ it('requires the authenticity statement, a certificate and at least one photo', 
     ])))->toThrow(ValidationException::class);
 
     expect($this->registration->fresh()->status)->toBe(RegistrationStatus::MenungguLaporan)
-        ->and(File::query()->count())->toBe(0);
+        ->and(File::query()->count())->toBe($this->filesBefore);
 });
 
 it('requires title, abstract (max 250 words) and the research report only for riset lomba', function (): void {
@@ -189,7 +192,7 @@ it('refuses a PDF with active content and a fake image, storing nothing', functi
     expect(fn () => app(SubmitReport::class)->handle($this->nadia->user, $this->registration, w2a2ReportData(['photos' => [$notImage]])))
         ->toThrow(ValidationException::class);
 
-    expect(File::query()->count())->toBe(0)
+    expect(File::query()->count())->toBe($this->filesBefore)
         ->and(Storage::disk('local')->allFiles('lampiran'))->toBe([])
         ->and($this->registration->fresh()->status)->toBe(RegistrationStatus::MenungguLaporan);
 });

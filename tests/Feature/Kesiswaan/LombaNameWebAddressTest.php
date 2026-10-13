@@ -86,13 +86,13 @@ it('refuses the same on the full form, on create and on update', function (): vo
     $create = app(CreateCompetition::class);
 
     try {
-        $create->handle($this->admin, F::form(['name' => 'Lomba resmi www.situs-palsu.com']));
+        $create->handle($this->admin, F::form(['name' => 'Lomba resmi www.situs-palsu.com']), F::pdf());
         $this->fail('Expected a validation error.');
     } catch (ValidationException $e) {
         expect($e->errors()['name'][0] ?? null)->toBe(NoWebAddress::MESSAGE);
     }
 
-    $competition = $create->handle($this->admin, F::form());
+    $competition = $create->handle($this->admin, F::form(), F::pdf());
 
     expect(fn () => app(UpdateCompetition::class)->handle($this->kesiswaan, $competition, F::form(['name' => 'Daftar di bit.ly/lomba'])))
         ->toThrow(ValidationException::class)

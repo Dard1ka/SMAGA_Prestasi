@@ -128,7 +128,7 @@ it('accepts a cleared "Tanggal mulai" next to a final date in the past (QA10)', 
 it('accepts a new lomba for the record with "Daftar dibuka" left empty (QA10)', function (): void {
     $competition = app(CreateCompetition::class)->handle($this->admin, F::form([
         'registration_opens_at' => '', 'registration_closes_at' => '2026-08-01', 'starts_on' => '2026-08-10', 'final_on' => '2026-08-10',
-    ]));
+    ]), F::pdf());
 
     expect($competition->registration_opens_at)->toBeNull()
         ->and($competition->registration_closes_at->toDateString())->toBe('2026-08-01');
@@ -152,7 +152,7 @@ it('still refuses a deadline before the opening date when both are filled (QA10)
 
     expect(fn () => app(UpdateCompetition::class)->handle($this->kesiswaan, $competition, qa10LombaInput($competition, [
         'registration_opens_at' => '2026-10-05', 'registration_closes_at' => '2026-10-01',
-    ])))->toThrow(ValidationException::class, 'Batas daftar tidak boleh sebelum tanggal dibuka.');
+    ])))->toThrow(ValidationException::class, 'Pendaftaran ditutup tidak boleh sebelum pendaftaran dibuka.');
 });
 
 // Default guru pembimbing who is no longer active ----------------------------------------------------------------
@@ -175,7 +175,7 @@ it('still refuses to pick a guru who is no longer active (QA10)', function (): v
     expect(fn () => app(UpdateCompetition::class)->handle($this->kesiswaan, $competition, qa10LombaInput($competition, ['default_mentor_id' => $other->getKey()])))
         ->toThrow(ValidationException::class, 'Pilih guru pembimbing dari daftar.');
 
-    expect(fn () => app(CreateCompetition::class)->handle($this->admin, F::form(['default_mentor_id' => $kept->getKey()])))
+    expect(fn () => app(CreateCompetition::class)->handle($this->admin, F::form(['default_mentor_id' => $kept->getKey()]), F::pdf()))
         ->toThrow(ValidationException::class, 'Pilih guru pembimbing dari daftar.');
 });
 
@@ -266,6 +266,9 @@ it('shows the running-teams refusal on the "Peserta" field of the drawer (QA10)'
 
 it('discards the uploaded juknis and cover when the update is refused (QA10)', function (): void {
     $competition = Competition::factory()->create(['name' => 'Lomba Esai Fiktif 2026']);
+    // The factory lomba carries its juknis (D-147): count what the refused save adds.
+    $files = File::query()->count();
+    $juknis = $competition->juknis_file_id;
 
     expect(fn () => app(UpdateCompetition::class)->handle(
         $this->kesiswaan,
@@ -275,9 +278,9 @@ it('discards the uploaded juknis and cover when the update is refused (QA10)', f
         UploadedFile::fake()->image('poster.png', 300, 400),
     ))->toThrow(ValidationException::class);
 
-    expect(File::query()->count())->toBe(0)
+    expect(File::query()->count())->toBe($files)
         ->and(qa10LombaStoredFiles())->toBe([])
-        ->and($competition->fresh()->juknis_file_id)->toBeNull();
+        ->and($competition->fresh()->juknis_file_id)->toBe($juknis);
 });
 
 it('discards the uploaded files when creating the lomba fails (QA10)', function (): void {
@@ -296,8 +299,9 @@ it('stores no extra copy of the cover when a refused save is tried again (QA10)'
     $competition = Competition::factory()->create([
         'name' => 'Lomba Esai Fiktif 2026', 'registration_closes_at' => '2026-10-25 23:59:59', 'starts_on' => '2026-11-01', 'final_on' => '2026-11-01',
     ]);
+    $files = File::query()->count();
 
-    // "Batas daftar" after "Tanggal mulai": refused inside UpdateCompetition, after the upload was stored.
+    // "Pendaftaran ditutup" after "Tanggal mulai": refused inside UpdateCompetition, after the upload was stored.
     $component = Livewire::actingAs($this->kesiswaan)->test(Form::class)
         ->call('open', $competition->getKey())
         ->set('form.registration_closes_at', '2026-11-10')
@@ -306,6 +310,6 @@ it('stores no extra copy of the cover when a refused save is tried again (QA10)'
     $component->call('save')->assertHasErrors(['form.starts_on']);
     $component->call('save')->assertHasErrors(['form.starts_on']);
 
-    expect(File::query()->count())->toBe(0)
+    expect(File::query()->count())->toBe($files)
         ->and(qa10LombaStoredFiles())->toBe([]);
 });

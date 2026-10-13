@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Actions\Publications\PublishPublication;
 use App\Actions\Publications\RemindDuePublication;
 use App\Actions\Publications\SchedulePublication;
+use App\Enums\FilePurpose;
 use App\Enums\PublicationStatus;
 use App\Enums\RoleName;
 use App\Enums\UserStatus;
@@ -395,7 +396,7 @@ it('creates no file when reminding and leaves a flyer from before M3-E on the pr
     expect($publication->fresh()->status)->toBe(PublicationStatus::Terjadwal)
         ->and($publication->fresh()->flyer_file_id)->toBe($flyer->getKey())
         ->and($flyer->fresh()->disk)->toBe('local')
-        ->and(File::query()->count())->toBe(1)
+        ->and(File::query()->whereNot('purpose', FilePurpose::Juknis)->count())->toBe(1)
         ->and(Storage::disk('local')->allFiles())->toBe([$flyer->path])
         ->and(Storage::disk('public')->allFiles())->toBe([]);
 });

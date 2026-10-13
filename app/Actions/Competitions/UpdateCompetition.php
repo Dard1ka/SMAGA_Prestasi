@@ -27,9 +27,12 @@ use Illuminate\Validation\ValidationException;
  * keep their snapshot. A published lomba must stay complete (VerifyCompetition::REQUIRED_TO_PUBLISH).
  * Status is never changed here (VerifyCompetition / CloseCompetition).
  *
- * Dates (M2-B, Q1-04): "Tanggal mulai" before "Batas daftar" is refused; for a published lomba only when
+ * Dates (M2-B, Q1-04): "Tanggal mulai" before "Pendaftaran ditutup" is refused; for a published lomba only when
  * one of the two dates changes. Dates in the past need no confirmation here: that question belongs to
  * publishing (VerifyCompetition), and a published lomba gets old by itself.
+ *
+ * Juknis (D-147): kept when no new file comes; a lomba stored without one (from before D-147) is refused until a file
+ * is uploaded with the save. Such a lomba stays visible to students meanwhile.
  *
  * QA10: an unchanged default guru pembimbing who is no longer active is kept; "individu" or a lower "Maks anggota"
  * is refused while team registrations still run (assertTeamsStillFit()); uploads of a refused save are discarded.
@@ -98,7 +101,7 @@ final class UpdateCompetition
             $locked->fill(Arr::except($data, CreateCompetition::WEIGHT_FIELDS))
                 ->forceFill(Arr::only($data, CreateCompetition::WEIGHT_FIELDS));
 
-            // "Tanggal mulai" before "Batas daftar" is refused (Q1-04). A lomba that is already in the catalog
+            // "Tanggal mulai" before "Pendaftaran ditutup" is refused (Q1-04). A lomba that is already in the catalog
             // keeps whatever order it has while those two dates are left alone, so editing its other fields
             // is never blocked by old data.
             if (($locked->status !== CompetitionStatus::Dipublikasikan || self::orderedDays($locked) !== $datesBefore)
@@ -108,6 +111,11 @@ final class UpdateCompetition
 
             if ($files['juknis'] !== null) {
                 $locked->juknis_file_id = $files['juknis']->getKey();
+            }
+
+            // D-147: a lomba keeps its juknis. An old one stored without it stays visible, but its next save needs one.
+            if ($locked->juknis_file_id === null) {
+                throw ValidationException::withMessages(['juknis' => CreateCompetition::JUKNIS_MISSING]);
             }
 
             if ($files['cover'] !== null) {
@@ -253,7 +261,7 @@ final class UpdateCompetition
         }
     }
 
-    /** @return array{0: ?string, 1: ?string} the days of "Tanggal mulai" and "Batas daftar" (the time of day is not edited) */
+    /** @return array{0: ?string, 1: ?string} the days of "Tanggal mulai" and "Pendaftaran ditutup" (the time of day is not edited) */
     private static function orderedDays(Competition $competition): array
     {
         return [$competition->starts_on?->toDateString(), $competition->registration_closes_at?->toDateString()];

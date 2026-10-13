@@ -31,15 +31,16 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator as ValidatorInstance;
 use Throwable;
 
 /**
- * Kesiswaan/Admin "Tambah lomba" (UI-MAP #16): the full catalog form incl. the weight fields (D-02).
- * Even this entry starts at `menunggu_verifikasi` and appears in the verification queue (D-27);
- * VerifyCompetition publishes it. Juknis/brosur and cover go through App\Domain\Files (private disk).
- * Siswa/guru usulan use W2-A1's SubmitCompetition instead.
+ * Admin "Tambah lomba" (UI-MAP #16, D-145: Admin only; Kesiswaan checks and corrects): the full catalog form incl. the
+ * weight fields (D-02). Even this entry starts at `menunggu_verifikasi` and appears in the verification queue (D-27);
+ * VerifyCompetition publishes it. The juknis/brosur/undangan is required (D-147); it and the cover go through
+ * App\Domain\Files (private disk). A student's usulan uses SubmitCompetition, which shares these rules.
  *
- * Dates (M2-B, Q1-04): besides the per-field rules, "Tanggal mulai" may not lie before "Batas daftar"
+ * Dates (M2-B, Q1-04): besides the per-field rules, "Tanggal mulai" may not lie before "Pendaftaran ditutup"
  * (CompetitionDates). Dates in the past are accepted here, since old lomba are entered for the record;
  * VerifyCompetition asks for a confirmation before such an entry is published.
  */
@@ -57,6 +58,9 @@ final class CreateCompetition
      */
     public const WEIGHT_FIELDS = ['weight_category', 'event_status'];
 
+    /** Every lomba carries its juknis, brosur or undangan (D-147): new ones, re-saved ones and published ones. */
+    public const JUKNIS_MISSING = 'Upload juknis, brosur, atau undangan.';
+
     /**
      * @param  array<string, mixed>  $input  form fields (see rules())
      */
@@ -66,8 +70,10 @@ final class CreateCompetition
         Gate::forUser($actor)->authorize('manage', Competition::class);
 
         $validator = Validator::make(self::prepare($input), self::rules(), self::messages());
-        // "Tanggal mulai" before "Batas daftar" is refused together with the other field errors (Q1-04).
+        // "Tanggal mulai" before "Pendaftaran ditutup" is refused together with the other field errors (Q1-04), and so is
+        // a lomba without its juknis (D-147).
         $validator->after(CompetitionDates::checkOrder(...));
+        $validator->after(self::requireJuknis($juknis));
         $data = self::normalize($validator->validate());
 
         $files = self::storeFiles($actor, $juknis, $cover);
@@ -113,7 +119,22 @@ final class CreateCompetition
     }
 
     /**
-     * Juknis/brosur (PDF or image, 5 MB) and cover (image, 3 MB) through App\Domain\Files onto the private
+     * The "Upload juknis, brosur, atau undangan." check for a new lomba, as a validator `after` hook, so it is named
+     * together with the other field errors (D-147).
+     *
+     * @return Closure(ValidatorInstance): void
+     */
+    public static function requireJuknis(?UploadedFile $juknis): Closure
+    {
+        return function (ValidatorInstance $validator) use ($juknis): void {
+            if ($juknis === null) {
+                $validator->errors()->add('juknis', self::JUKNIS_MISSING);
+            }
+        };
+    }
+
+    /**
+     * Juknis/brosur/undangan (PDF or image, 5 MB) and cover (image, 3 MB) through App\Domain\Files onto the private
      * disk. Upload problems become validation errors on "juknis" / "cover".
      */
     public static function storeFile(User $actor, UploadedFile $upload, FilePurpose $purpose): File
@@ -256,7 +277,7 @@ final class CreateCompetition
             'max' => 'Terlalu panjang.',
             'enum' => 'Pilih salah satu opsi.',
             'date_format' => 'Tanggal tidak valid.',
-            'registration_closes_at.after_or_equal' => 'Batas daftar tidak boleh sebelum tanggal dibuka.',
+            'registration_closes_at.after_or_equal' => 'Pendaftaran ditutup tidak boleh sebelum pendaftaran dibuka.',
             'final_on.after_or_equal' => 'Tanggal selesai tidak boleh sebelum tanggal mulai.',
             'integer' => 'Isi dengan angka.',
             'max_team_size.min' => 'Minimal 2 anggota.',

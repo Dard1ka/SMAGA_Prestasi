@@ -68,6 +68,7 @@ function linkThroughKelolaLomba(User $user, string $field, string $typed): array
         ->set('form.name', $name)
         ->set('form.bidang', 'sains')
         ->set('form.'.$field, $typed)
+        ->set('juknis', K::pdf())
         ->call('save');
 
     return [
