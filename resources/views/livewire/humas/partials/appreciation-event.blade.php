@@ -86,9 +86,9 @@
                 </div>
             @endif
         </div>
-    @elseif ($event['canAdd'] || $event['canComplete'] || $event['canDelete'] || $event['completeNote'])
+    @elseif ($event['canAdd'] || $event['canComplete'] || $event['canDelete'] || $event['canPrint'] || $event['completeNote'])
         <div class="flex flex-col gap-2 border-t border-line pt-3">
-            @if ($event['canAdd'] || $event['canComplete'] || $event['canDelete'])
+            @if ($event['canAdd'] || $event['canComplete'] || $event['canDelete'] || $event['canPrint'])
                 <div class="flex flex-wrap gap-2">
                     @if ($event['canAdd'])
                         <x-sth.button variant="soft" size="sm" icon="plus" wire:click="startAdding('{{ $event['id'] }}')">Tambah prestasi</x-sth.button>
@@ -98,6 +98,9 @@
                     @endif
                     @if ($event['canDelete'])
                         <x-sth.button variant="quiet" size="sm" icon="trash" aria-haspopup="dialog" wire:click="confirmDelete('{{ $event['id'] }}')">Hapus acara</x-sth.button>
+                    @endif
+                    @if ($event['canPrint'])
+                        <x-sth.button variant="quiet" size="sm" icon="external" href="{{ $event['printUrl'] }}" target="_blank" rel="noopener" :navigate="false">Cetak daftar</x-sth.button>
                     @endif
                 </div>
             @endif

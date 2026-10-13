@@ -56,6 +56,7 @@ final class AuditLog extends Component
         'account.initial_password_changed' => 'Kata sandi awal diganti',
         'activation.password_kept' => 'Kata sandi dari sekolah tetap dipakai',
         'appreciation.event_deleted' => 'Acara apresiasi dihapus',
+        'appreciation.list_printed' => 'Daftar apresiasi dicetak',
         'appreciation.released' => 'Prestasi dilepas dari acara',
         'student.class_changed' => 'Kelas siswa diperbarui',
         'student.phone_updated' => 'No HP siswa diperbarui',
