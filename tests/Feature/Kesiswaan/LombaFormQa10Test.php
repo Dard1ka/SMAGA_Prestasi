@@ -305,10 +305,11 @@ it('stores no extra copy of the cover when a refused save is tried again (QA10)'
     $component = Livewire::actingAs($this->kesiswaan)->test(Form::class)
         ->call('open', $competition->getKey())
         ->set('form.registration_closes_at', '2026-11-10')
-        ->set('cover', UploadedFile::fake()->image('poster.png', 300, 400));
+        ->set('form.cover', UploadedFile::fake()->image('poster.png', 300, 400));
 
-    $component->call('save')->assertHasErrors(['form.starts_on']);
-    $component->call('save')->assertHasErrors(['form.starts_on']);
+    // A one-day lomba shows one date, "Tanggal lomba" (D-147): the error of its start lands there.
+    $component->call('save')->assertHasErrors(['form.final_on']);
+    $component->call('save')->assertHasErrors(['form.final_on']);
 
     expect(File::query()->count())->toBe($files)
         ->and(qa10LombaStoredFiles())->toBe([]);

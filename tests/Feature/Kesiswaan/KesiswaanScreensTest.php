@@ -144,8 +144,8 @@ it('creates a lomba from the drawer form into the queue and shows field errors',
     Livewire::actingAs($this->admin)->test(Form::class)
         ->call('open')
         ->assertDispatched('sth-modal-open')
-        ->set('form', F::form(['website_url' => 'http://tidak-aman.test']))
-        ->set('juknis', F::pdf())
+        ->set(F::fields(F::form(['website_url' => 'http://tidak-aman.test'])))
+        ->set('form.juknis', F::pdf())
         ->call('save')
         ->assertHasErrors('form.website_url')
         ->set('form.website_url', 'https://example.org/nsif')
@@ -501,12 +501,12 @@ it('rejects a non-spreadsheet upload on the import screen', function (): void {
 it('names every picture type the cover field takes when the file is refused (QA7)', function (): void {
     $component = Livewire::actingAs($this->admin)->test(Form::class)
         ->call('open')
-        ->set('form', F::form())
-        ->set('cover', UploadedFile::fake()->image('poster.gif'))
+        ->set(F::fields(F::form()))
+        ->set('form.cover', UploadedFile::fake()->image('poster.gif'))
         ->call('save')
-        ->assertHasErrors('cover');
+        ->assertHasErrors('form.cover');
 
-    expect($component->errors()->first('cover'))->toBe('Pilih gambar JPG, PNG, atau WEBP.');
+    expect($component->errors()->first('form.cover'))->toBe('Pilih gambar JPG, PNG, atau WEBP.');
 });
 
 it('lets the penyelenggara tag of a report take two lines instead of running out of the panel (QA7)', function (): void {

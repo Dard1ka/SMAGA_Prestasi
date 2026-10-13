@@ -11,20 +11,12 @@ use App\Actions\Competitions\UpdateCompetition;
 use App\Actions\Competitions\VerifyCompetition;
 use App\Domain\Points\PointCalculator;
 use App\Domain\Points\PointFormatter;
-use App\Domain\Points\WeightTable;
-use App\Enums\Bidang;
 use App\Enums\CompetitionStatus;
-use App\Enums\EventMode;
 use App\Enums\EventStatus;
-use App\Enums\Level;
-use App\Enums\OrganizerType;
-use App\Enums\Participation;
-use App\Enums\ResultType;
 use App\Enums\RoleName;
-use App\Enums\WeightCategory;
+use App\Livewire\Forms\CompetitionFields;
 use App\Models\Competition;
 use App\Models\User;
-use App\Models\WeightVersion;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
@@ -32,14 +24,18 @@ use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
 use Livewire\Component;
-use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use Livewire\WithFileUploads;
 
 /**
- * Drawer form of Kelola lomba (child of Lomba\Index): "Tambah lomba" (CreateCompetition → antrean, D-27),
- * "Ubah lomba" (UpdateCompetition) and "Periksa usulan" (UpdateCompetition + VerifyCompetition). All rules
- * live in the Actions; this component only maps their errors onto the `form.*` fields. The rumus preview
- * ("Jika Juara I: …") comes from App\Domain\Points with the active weight version.
+ * Drawer form of Kelola lomba (child of Lomba\Index): "Tambah lomba" (Admin only since D-145; CreateCompetition →
+ * antrean, D-27), "Ubah lomba" (UpdateCompetition) and "Periksa usulan" (UpdateCompetition + VerifyCompetition). The
+ * fields are the shared Form Object CompetitionFields, drawn by the same partial as Siswa › Usulkan lomba (D-147). All
+ * rules live in the Actions; this component only maps their errors onto the `form.*` fields. The rumus preview
+ * ("Perkiraan poin jika Juara I") comes from App\Domain\Points with the active weight version.
+ *
+ * D-146: picking the jenis penyelenggara or the Puspresnas tick fills kategori bobot and status ajang from the map
+ * (OrganizerWeight); Kesiswaan may still choose others, shown as "Diubah dari hasil peta." and audited by
+ * VerifyCompetition (`weight_override`).
  *
  * "Ubah lomba" of a published lomba (lead, 2026-10-10, D-126): UpdateCompetition tells the registered students and
  * their guru pembimbing when a fact they rely on changes. The drawer says so beforehand (the hint at the top, when
@@ -51,13 +47,6 @@ class Form extends Component
 
     public const DIALOG = 'lomba-form';
 
-    /** Keys of $form = CreateCompetition::rules() keys. */
-    private const FIELDS = [
-        'name', 'description', 'bidang', 'organizer_name', 'organizer_type', 'organizer_type_other', 'weight_category', 'event_status', 'level', 'mode',
-        'registration_opens_at', 'registration_closes_at', 'starts_on', 'final_on', 'location', 'participation', 'max_team_size',
-        'default_mentor_id', 'website_url', 'registration_url',
-    ];
-
     #[Locked]
     public ?string $competitionId = null;
 
@@ -65,16 +54,7 @@ class Form extends Component
     #[Locked]
     public string $formMode = 'create';
 
-    /** @var array<string, string|int|null> */
-    public array $form = [];
-
-    /** @var TemporaryUploadedFile|null */
-    public $juknis = null;
-
-    /** @var TemporaryUploadedFile|null */
-    public $cover = null;
-
-    public bool $removeCover = false;
+    public CompetitionFields $form;
 
     /**
      * "Tanggal lomba ini sudah lewat. Tetap publikasikan" (M2-B, Q1-04): the tick "Simpan & publikasikan"
@@ -85,7 +65,6 @@ class Form extends Component
     public function mount(): void
     {
         $this->authorize('manage', Competition::class);
-        $this->form = self::blank();
     }
 
     #[On('lomba-form-open')]
@@ -93,14 +72,14 @@ class Form extends Component
     {
         $this->authorize('manage', Competition::class);
         $this->resetErrorBag();
-        $this->reset(['juknis', 'cover', 'removeCover', 'confirmPast']);
+        $this->form->reset();
+        $this->reset('confirmPast');
 
         if ($id === null) {
             // "Tambah lomba" is Admin only (D-145): Kesiswaan checks and corrects, it never adds a lomba.
             $this->authorize('create', Competition::class);
             $this->competitionId = null;
             $this->formMode = 'create';
-            $this->form = self::blank();
         } else {
             $competition = $this->competition($id);
 
@@ -112,23 +91,42 @@ class Form extends Component
 
             $this->competitionId = $competition->getKey();
             $this->formMode = $competition->status === CompetitionStatus::MenungguVerifikasi ? 'verify' : 'edit';
-            $this->form = self::fromModel($competition);
+            $this->form->fillFrom($competition);
         }
 
         $this->dispatch('sth-modal-open', id: self::DIALOG);
+    }
+
+    /**
+     * Kategori bobot follows the jenis penyelenggara and the Puspresnas tick (D-146); a status ajang chosen by hand
+     * moves the tick with it. A chosen file is checked at once.
+     */
+    public function updatedForm(mixed $value, string $key): void
+    {
+        if (in_array($key, ['organizer_type', 'puspresnas'], true)) {
+            $this->form->applyOrganizerWeight();
+        }
+
+        if ($key === 'event_status') {
+            $this->form->puspresnas = $this->form->event_status === EventStatus::Puspresnas->value;
+        }
+
+        if (in_array($key, ['juknis', 'cover'], true)) {
+            $this->form->validateOnly($key);
+        }
     }
 
     public function save(CreateCompetition $create, UpdateCompetition $update): void
     {
         $this->resetErrorBag();
 
-        if (! $this->validateFiles()) {
+        if (! $this->validateForm()) {
             return;
         }
 
         try {
             if ($this->competitionId === null) {
-                $create->handle($this->actor(), $this->form, $this->juknis, $this->cover);
+                $create->handle($this->actor(), $this->form->toAttributes(), $this->form->juknis, $this->form->cover);
                 $message = 'Lomba tersimpan dan masuk antrean verifikasi.';
             } else {
                 $competition = $this->competition($this->competitionId);
@@ -142,7 +140,7 @@ class Form extends Component
                 // A changed fact of a published lomba is told to the students registered for it and their guru
                 // pembimbing (UpdateCompetition). The toast names them only when somebody was told.
                 $factsBefore = CompetitionChange::snapshot($competition);
-                $update->handle($this->actor(), $competition, $this->form, $this->juknis, $this->cover, $this->removeCover);
+                $this->updateWith($update, $competition);
                 $message = self::savedMessage(CompetitionChange::summary($factsBefore, $competition, $this->actor()));
             }
         } catch (ValidationException $e) {
@@ -158,7 +156,7 @@ class Form extends Component
     {
         $this->resetErrorBag();
 
-        if ($this->competitionId === null || $this->formMode !== 'verify' || ! $this->validateFiles()) {
+        if ($this->competitionId === null || $this->formMode !== 'verify' || ! $this->validateForm()) {
             return;
         }
 
@@ -170,13 +168,13 @@ class Form extends Component
             }
 
             $this->authorize('verify', $competition);
-            $update->handle($this->actor(), $competition, $this->form, $this->juknis, $this->cover, $this->removeCover);
+            $this->updateWith($update, $competition);
             // Without the tick VerifyCompetition refuses past dates under CompetitionDates::PAST_KEY; the
             // data above is saved either way, as with missing fields.
             $verify->handle($this->actor(), $competition->refresh(), CompetitionStatus::Dipublikasikan, null, $this->confirmPast);
         } catch (ValidationException $e) {
             $this->mapErrors($e);
-            $this->reset(['juknis', 'cover']);
+            $this->form->reset(['juknis', 'cover']);
 
             return;
         }
@@ -188,8 +186,12 @@ class Form extends Component
     {
         $competition = $this->competitionId !== null ? Competition::query()->with(['juknisFile', 'coverFile', 'submitter'])->find($this->competitionId) : null;
         [$mentors, $mentorHint] = $this->mentorOptions($competition);
+        $presentation = $this->form->presentation($calculator, $formatter);
+        $presentation['options']['mentors'] = $mentors;
 
         return view('livewire.kesiswaan.lomba.form', [
+            ...$presentation,
+            'staff' => true,
             'title' => match ($this->formMode) {
                 'edit' => 'Ubah lomba',
                 'verify' => 'Periksa lomba',
@@ -202,26 +204,15 @@ class Form extends Component
             'juknisUrl' => $competition?->juknisFile !== null && Route::has('files.show') ? route('files.show', $competition->juknisFile) : null,
             // Only publishing asks about past dates, so only the "Periksa lomba" drawer shows the tick.
             'pastDates' => $this->formMode === 'verify'
-                ? array_values(CompetitionDates::past($this->form['registration_closes_at'] ?? null, $this->form['final_on'] ?? null))
+                ? array_values(CompetitionDates::past($this->form->registration_closes_at, $this->form->final_on))
                 : [],
-            'rumus' => $this->rumus($calculator, $formatter),
-            // "Jenis penyelenggara: Lainnya" opens the field for the typed kind (D-125). The text stays in the form
-            // while another type is tried out; CreateCompetition::normalize() drops it on save.
-            'otherType' => ($this->form['organizer_type'] ?? null) === OrganizerType::Lainnya->value,
-            'options' => [
-                'bidang' => collect(Bidang::cases())->mapWithKeys(fn (Bidang $b): array => [$b->value => ['label' => $b->label(), 'icon' => $b->cssKey()]])->all(),
-                'organizer_type' => OrganizerType::options(),
-                'weight_category' => collect(WeightCategory::cases())->mapWithKeys(fn (WeightCategory $w): array => [
-                    $w->value => ['label' => $w->value, 'sub' => $formatter->formatWeight($this->weights()->organizer($w))],
-                ])->all(),
-                'event_status' => EventStatus::options(),
-                'mode' => EventMode::options(),
-                'level' => collect(array_reverse(Level::cases()))->mapWithKeys(fn (Level $l): array => [$l->value => $l->shortLabel()])->all(),
-                'participation' => Participation::options(),
-                'mentors' => $mentors,
-            ],
             'mentorHint' => $mentorHint,
         ]);
+    }
+
+    private function updateWith(UpdateCompetition $update, Competition $competition): void
+    {
+        $update->handle($this->actor(), $competition, $this->form->toAttributes(), $this->form->juknis, $this->form->cover, $this->form->remove_cover);
     }
 
     /**
@@ -242,50 +233,18 @@ class Form extends Component
 
         $name = (string) (User::withTrashed()->find($kept)?->name ?? 'Guru');
         $mentors[$kept] = $name.' (tidak aktif)';
-        $hint = (int) ($this->form['default_mentor_id'] ?? 0) === $kept
+        $hint = (int) ($this->form->default_mentor_id ?? 0) === $kept
             ? 'Guru pembimbing yang tercatat, '.$name.', tidak aktif lagi. Pilih guru lain atau kosongkan.'
             : null;
 
         return [$mentors, $hint];
     }
 
-    /** @return array{tingkat: ?string, capaian: string, penyelenggara: ?string, total: ?string} */
-    private function rumus(PointCalculator $calculator, PointFormatter $formatter): array
-    {
-        $weights = $this->weights();
-        $level = Level::tryFrom((string) ($this->form['level'] ?? ''));
-        $category = WeightCategory::tryFrom((string) ($this->form['weight_category'] ?? ''));
-
-        $total = $level !== null && $category !== null
-            ? $formatter->format($calculator->breakdown($weights, $level, ResultType::Juara1, $category)->points)
-            : null;
-
-        return [
-            'tingkat' => $level !== null ? $weights->level($level) : null,
-            'capaian' => $weights->result(ResultType::Juara1),
-            'penyelenggara' => $category !== null ? $weights->organizer($category) : null,
-            'total' => $total,
-        ];
-    }
-
-    private function weights(): WeightTable
-    {
-        return WeightVersion::active()?->toWeightTable() ?? WeightTable::defaults();
-    }
-
-    private function validateFiles(): bool
+    /** "Durasi lomba" and the two uploads (CompetitionFields::rules()); every other rule lives in the Actions. */
+    private function validateForm(): bool
     {
         try {
-            $this->validate([
-                'juknis' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:5120'],
-                'cover' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:3072'],
-            ], [
-                'juknis.mimes' => 'Pilih PDF, JPG, atau PNG.',
-                'juknis.max' => 'Ukuran maksimal 5 MB.',
-                'cover.image' => 'Pilih gambar JPG, PNG, atau WEBP.',
-                'cover.mimes' => 'Pilih gambar JPG, PNG, atau WEBP.',
-                'cover.max' => 'Ukuran maksimal 3 MB.',
-            ]);
+            $this->form->validate();
         } catch (ValidationException $e) {
             $this->setErrorBag($e->validator->errors());
             $this->dispatch('sth-form-invalid', form: self::DIALOG);
@@ -300,7 +259,7 @@ class Form extends Component
     {
         $this->resetErrorBag();
 
-        foreach ($e->errors() as $key => $messages) {
+        foreach ($this->form->addActionErrors($e) as $key => $messages) {
             // The question about past dates lands on its tick box (the view draws it and lists the dates).
             if ($key === CompetitionDates::PAST_KEY) {
                 $this->addError('confirmPast', 'Centang dulu kalau lomba ini tetap dipublikasikan.');
@@ -308,7 +267,8 @@ class Form extends Component
                 continue;
             }
 
-            $this->addError(in_array($key, self::FIELDS, true) ? 'form.'.$key : $key, (string) ($messages[0] ?? 'Periksa isian ini.'));
+            // decision, status: the summary alert at the top of the drawer.
+            $this->addError($key, $messages[0] ?? 'Periksa isian ini.');
         }
 
         // The alert and the marked fields sit in the scrolling drawer body, usually well above the footer
@@ -340,7 +300,8 @@ class Form extends Component
 
     private function finish(string $message): void
     {
-        $this->reset(['juknis', 'cover', 'removeCover', 'confirmPast']);
+        $this->form->reset(['juknis', 'cover', 'remove_cover']);
+        $this->reset('confirmPast');
         $this->dispatch('sth-modal-close', id: self::DIALOG);
         $this->dispatch('lomba-saved');
         $this->dispatch('sth-toast', message: $message, tone: 'success');
@@ -373,7 +334,8 @@ class Form extends Component
             $this->reset('confirmPast');
             $this->dispatch('sth-toast', message: 'Lomba ini sudah dipublikasikan. Perubahan belum tersimpan, periksa lalu simpan.', tone: 'warning');
         } else {
-            $this->reset(['juknis', 'cover', 'removeCover', 'confirmPast']);
+            $this->form->reset(['juknis', 'cover', 'remove_cover']);
+            $this->reset('confirmPast');
             $this->dispatch('sth-modal-close', id: self::DIALOG);
             $this->dispatch('sth-toast', message: ($competition->status === CompetitionStatus::Ditolak
                 ? 'Lomba ini sudah ditolak.'
@@ -401,28 +363,5 @@ class Form extends Component
         $user = Auth::user();
 
         return $user;
-    }
-
-    /** @return array<string, string|int|null> */
-    private static function blank(): array
-    {
-        return array_fill_keys(self::FIELDS, null);
-    }
-
-    /** @return array<string, string|int|null> */
-    private static function fromModel(Competition $c): array
-    {
-        $form = self::blank();
-
-        foreach (self::FIELDS as $field) {
-            $value = $c->getAttribute($field);
-            $form[$field] = match (true) {
-                $value instanceof \BackedEnum => $value->value,
-                $value instanceof \DateTimeInterface => $value->format('Y-m-d'),
-                default => $value,
-            };
-        }
-
-        return $form;
     }
 }

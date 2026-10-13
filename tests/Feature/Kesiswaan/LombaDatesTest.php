@@ -335,12 +335,12 @@ it('shows the tick only for past dates and never asks it for "Simpan"', function
         ->assertSee('Tanggal lomba ini sudah lewat. Tetap publikasikan.');
 });
 
-it('marks "Tanggal mulai" in the drawer when it lies before "Batas daftar"', function (): void {
+it('marks "Tanggal mulai" in the drawer when it lies before "Pendaftaran ditutup"', function (): void {
     Livewire::actingAs($this->admin)->test(Form::class)
         ->call('open')
-        ->assertSee('Tidak boleh sebelum batas daftar.')
-        ->set('form', F::form(['registration_closes_at' => '2026-10-20', 'starts_on' => '2026-10-01', 'final_on' => '2026-10-25']))
-        ->set('juknis', F::pdf())
+        ->assertSee('Tidak boleh sebelum pendaftaran ditutup.')
+        ->set(F::fields(F::form(['registration_closes_at' => '2026-10-20', 'starts_on' => '2026-10-01', 'final_on' => '2026-10-25'])))
+        ->set('form.juknis', F::pdf())
         ->call('save')
         ->assertHasErrors('form.starts_on')
         ->assertSee('Lomba tidak boleh dimulai sebelum pendaftaran ditutup.')

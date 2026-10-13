@@ -334,8 +334,8 @@ it('shows the field in the drawer only while "Lainnya" is chosen', function (): 
 it('saves the typed kind from the drawer and drops it when another type was chosen meanwhile', function (): void {
     Livewire::actingAs($this->admin)->test(Form::class)
         ->call('open')
-        ->set('form', lainnyaForm('  Komunitas film pelajar '))
-        ->set('juknis', F::pdf())
+        ->set(F::fields(lainnyaForm('  Komunitas film pelajar ')))
+        ->set('form.juknis', F::pdf())
         ->call('save')
         ->assertHasNoErrors()
         ->assertDispatched('lomba-saved');
@@ -390,7 +390,7 @@ it('marks the field and brings it into view when "Simpan & publikasikan" misses 
 it('tells the 60-character limit on the field of the drawer', function (): void {
     Livewire::actingAs($this->admin)->test(Form::class)
         ->call('open')
-        ->set('form', lainnyaForm(str_repeat('a', 61)))
+        ->set(F::fields(lainnyaForm(str_repeat('a', 61))))
         ->call('save')
         ->assertHasErrors(['form.organizer_type_other'])
         ->assertSee('Maksimal 60 karakter.');

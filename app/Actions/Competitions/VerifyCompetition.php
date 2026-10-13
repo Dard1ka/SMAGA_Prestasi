@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Actions\Competitions;
 
+use App\Domain\Competitions\OrganizerWeight;
 use App\Enums\CompetitionStatus;
+use App\Enums\EventStatus;
 use App\Enums\OrganizerType;
 use App\Enums\Participation;
 use App\Enums\RoleName;
@@ -34,6 +36,10 @@ use Illuminate\Validation\ValidationException;
  *
  * D-125 (the lead, 2026-10-09): a lomba whose "Jenis penyelenggara" is "Lainnya" is published only once the kind
  * was typed (`organizer_type_other`); the queue may hold it without.
+ *
+ * FS1 Paket B: publishing needs the juknis (D-147), and both decisions audit `weight_override` when the kategori
+ * bobot or status ajang differs from what the jenis penyelenggara gives (OrganizerWeight, D-146; the spec's event name
+ * "competition.verified" is these two events).
  */
 final class VerifyCompetition
 {
@@ -129,6 +135,8 @@ final class VerifyCompetition
                     'note' => $note,
                     // Published although these dates had passed: the verifier confirmed it (empty = no question asked).
                     'past_dates' => array_keys($pastDates),
+                    // D-146: a weight that differs from what the jenis penyelenggara gives (null = it follows the map).
+                    'weight_override' => self::weightOverride($locked),
                 ])
                 ->log($decision === CompetitionStatus::Dipublikasikan ? 'competition.published' : 'competition.rejected');
 
@@ -205,6 +213,29 @@ final class VerifyCompetition
         }
 
         return $messages;
+    }
+
+    /**
+     * The weight Kesiswaan chose next to the one the map gives (OrganizerWeight, D-146), for the audit row of the
+     * decision; null when they agree or the lomba has no jenis penyelenggara.
+     *
+     * @return array{computed: array{weight_category: string, event_status: string}, chosen: array{weight_category: ?string, event_status: ?string}}|null
+     */
+    private static function weightOverride(Competition $competition): ?array
+    {
+        $type = $competition->organizer_type;
+
+        if (! $type instanceof OrganizerType
+            || ! OrganizerWeight::isOverride($type, $competition->weight_category, $competition->event_status)) {
+            return null;
+        }
+
+        $mapped = OrganizerWeight::for($type, $competition->event_status === EventStatus::Puspresnas);
+
+        return [
+            'computed' => ['weight_category' => $mapped->category->value, 'event_status' => $mapped->eventStatus->value],
+            'chosen' => ['weight_category' => $competition->weight_category?->value, 'event_status' => $competition->event_status?->value],
+        ];
     }
 
     private static function cleanNote(?string $note): ?string
