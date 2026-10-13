@@ -185,6 +185,19 @@
         </div>
     @else
         <form wire:submit="kirim" class="flex flex-col gap-4" novalidate>
+            {{-- D-149: the student's own data from the account (read-only) and the No HP to reach the student. --}}
+            <section aria-labelledby="h-peserta" class="flex flex-col gap-3 rounded-tile border border-line p-4">
+                <h3 id="h-peserta" class="title-card m-0">Data peserta</h3>
+                <dl class="m-0 grid grid-cols-[104px_minmax(0,1fr)] gap-x-3 gap-y-1.5 text-sm">
+                    @foreach ($peserta as $row)
+                        <dt class="text-muted">{{ $row['label'] }}</dt>
+                        <dd class="m-0 font-semibold [overflow-wrap:anywhere]">{{ $row['value'] }}</dd>
+                    @endforeach
+                </dl>
+                <p class="m-0 text-xs text-muted">Data salah? Hubungi Kesiswaan.</p>
+                <x-sth.input wire:model="phone" id="no-hp" type="tel" inputmode="tel" autocomplete="tel" label="No HP" hint="Contoh 081234567890." />
+            </section>
+
             <div class="flex flex-col gap-2">
                 <x-sth.segmented wire:model.live="type" label="Jenis peserta" block :options="[
                     'individu' => ['label' => 'Individu', 'icon' => 'user', 'disabled' => ! $individuAllowed],

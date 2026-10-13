@@ -113,6 +113,7 @@ it('registers through the panel and shows the waiting state on the panel and on 
         ->assertSet('members', [$this->rizky->getKey()])
         ->set('mentorId', $this->guru->getKey())
         ->set('setuju', true)
+        ->set('phone', '081234567890')
         ->call('kirim')
         ->assertHasNoErrors();
 

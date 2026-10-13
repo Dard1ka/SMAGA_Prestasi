@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Policies;
 
 use App\Enums\Permission;
+use App\Enums\RoleName;
 use App\Models\Student;
 use App\Models\User;
 
@@ -24,5 +25,14 @@ final class StudentPolicy
     public function updateConsent(User $actor, Student $student): bool
     {
         return ! $student->trashed() && $actor->checkPermissionTo(Permission::StudentUpdate->value);
+    }
+
+    /** The student's own No HP (D-149, UpdateStudentPhone): only the account the record belongs to. */
+    public function updatePhone(User $actor, Student $student): bool
+    {
+        return ! $student->trashed()
+            && $student->user_id !== null
+            && (int) $student->user_id === (int) $actor->getKey()
+            && $actor->hasRoleName(RoleName::Siswa);
     }
 }

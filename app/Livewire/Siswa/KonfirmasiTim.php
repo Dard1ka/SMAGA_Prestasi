@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\Livewire\Siswa;
 
+use App\Actions\Accounts\UpdateStudentPhone;
 use App\Actions\Registrations\ConfirmMembership;
 use App\Actions\Registrations\DeclineMembership;
 use App\Actions\Registrations\ExpirePendingInvitations;
 use App\Actions\Registrations\ResumeWaitingRegistrations;
+use App\Domain\Accounts\PhoneNumber;
 use App\Enums\MemberRole;
 use App\Enums\RegistrationStatus;
 use App\Livewire\Siswa\Lomba\LombaPresenter;
@@ -46,6 +48,9 @@ class KonfirmasiTim extends Component
     #[Locked]
     public bool $withdrawn = false;
 
+    /** D-149: the anggota's own No HP, pre-filled from the account; ikut() saves a changed one (UpdateStudentPhone). */
+    public string $phone = '';
+
     public function mount(Registration $registration): void
     {
         if (! $this->isMember($registration)) {
@@ -55,9 +60,10 @@ class KonfirmasiTim extends Component
         }
 
         $this->registrationId = $registration->getKey();
+        $this->phone = (string) rescue(fn () => auth()->user()->loadMissing('student')->student?->phone, null, false);
     }
 
-    public function ikut(ConfirmMembership $confirm): void
+    public function ikut(ConfirmMembership $confirm, UpdateStudentPhone $phones): void
     {
         $registration = $this->registration();
 
@@ -73,6 +79,14 @@ class KonfirmasiTim extends Component
             return;
         }
 
+        $this->phone = PhoneNumber::normalize($this->phone);
+        $this->validate(
+            ['phone' => ['required', 'regex:'.PhoneNumber::PATTERN]],
+            ['phone.required' => UpdateStudentPhone::EMPTY, 'phone.regex' => PhoneNumber::INVALID],
+        );
+
+        // The own number first (D-149); a refusal of the confirmation below still leaves it saved: it is the student's own.
+        $phones->handle(auth()->user(), auth()->user()->loadMissing('student')->student, $this->phone);
         $confirm->handle(auth()->user(), $registration);
 
         session()->flash('toast', 'Kamu ikut tim '.$registration->competition->name.'.');

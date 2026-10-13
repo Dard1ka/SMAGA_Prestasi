@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Livewire\Siswa\Pendaftaran;
 
+use App\Actions\Accounts\UpdateStudentPhone;
 use App\Actions\Registrations\CancelRegistration;
 use App\Actions\Registrations\CreateRegistration;
 use App\Actions\Registrations\ExpirePendingInvitations;
@@ -11,6 +12,7 @@ use App\Actions\Registrations\InviteMembers;
 use App\Actions\Registrations\MentorChoice;
 use App\Actions\Registrations\ResumeWaitingRegistrations;
 use App\Actions\Registrations\WithdrawInvitation;
+use App\Domain\Accounts\PhoneNumber;
 use App\Enums\CompetitionStatus;
 use App\Enums\MemberRole;
 use App\Enums\Participation;
@@ -82,6 +84,9 @@ class Form extends Component
 
     public bool $setuju = false;
 
+    /** D-149: the own No HP, pre-filled from the account; kirim() saves a changed one (UpdateStudentPhone). */
+    public string $phone = '';
+
     /** The invited student (ULID) the open "Batalkan undangan?" dialog asks about; set only by askBatalkanUndangan(). */
     #[Locked]
     public ?string $withdrawingId = null;
@@ -97,6 +102,7 @@ class Form extends Component
         // used to stay selected out of sight and CreateRegistration refused the form without a visible message.
         $default = $competition->default_mentor_id !== null ? (int) $competition->default_mentor_id : null;
         $this->mentorId = $default !== null && array_key_exists($default, $this->mentorOptions()) ? $default : null;
+        $this->phone = self::ownPhone($this->student());
     }
 
     public function updatedType(): void
@@ -311,7 +317,7 @@ class Form extends Component
         $this->dispatch(self::CHANGED);
     }
 
-    public function kirim(CreateRegistration $create): void
+    public function kirim(CreateRegistration $create, UpdateStudentPhone $phones): void
     {
         $competition = $this->competition();
 
@@ -324,9 +330,22 @@ class Form extends Component
             return;
         }
 
+        // D-149: the same rule as the import and UpdateStudentPhone, checked with the other fields so every error shows at once.
+        $this->phone = PhoneNumber::normalize($this->phone);
         $this->validate(
-            ['setuju' => ['accepted'], 'mentorId' => ['required', 'integer'], 'type' => ['required', 'in:individu,tim']],
-            ['setuju.accepted' => 'Centang dulu pernyataan data benar.', 'mentorId.required' => 'Pilih guru pembimbing.', 'mentorId.integer' => 'Pilih guru pembimbing.'],
+            [
+                'setuju' => ['accepted'],
+                'mentorId' => ['required', 'integer'],
+                'type' => ['required', 'in:individu,tim'],
+                'phone' => ['required', 'regex:'.PhoneNumber::PATTERN],
+            ],
+            [
+                'setuju.accepted' => 'Centang dulu pernyataan data benar.',
+                'mentorId.required' => 'Pilih guru pembimbing.',
+                'mentorId.integer' => 'Pilih guru pembimbing.',
+                'phone.required' => UpdateStudentPhone::EMPTY,
+                'phone.regex' => PhoneNumber::INVALID,
+            ],
         );
 
         if (Gate::denies('create', [Registration::class, $competition])) {
@@ -337,7 +356,11 @@ class Form extends Component
             return;
         }
 
+        /** @var Student $me */
+        $me = $this->student();
+
         try {
+            $phones->handle(auth()->user(), $me, $this->phone);
             $create->handle(
                 auth()->user(),
                 $competition,
@@ -397,7 +420,30 @@ class Form extends Component
             'teamFull' => $this->teamFull(),
             'memberRows' => $this->memberRows(),
             'mentors' => $this->mentorOptions(),
+            'peserta' => $this->peserta($me),
         ]);
+    }
+
+    /** The account's own No HP for the field, '' when none (or one that cannot be decrypted any more). */
+    private static function ownPhone(?Student $student): string
+    {
+        return (string) rescue(fn () => $student?->phone, null, false);
+    }
+
+    /**
+     * "Data peserta" (D-149): read-only, from the account (D-03), shown to its owner only (this panel is the student's
+     * own form). Nama, Kelas, NISN, Tanggal lahir.
+     *
+     * @return list<array{label: string, value: string}>
+     */
+    private function peserta(?Student $me): array
+    {
+        return [
+            ['label' => 'Nama', 'value' => (string) auth()->user()?->name],
+            ['label' => 'Kelas', 'value' => $me?->classroom?->name ?? '–'],
+            ['label' => 'NISN', 'value' => $me?->nisn ?? '–'],
+            ['label' => 'Tanggal lahir', 'value' => $me?->birth_date?->locale('id')->translatedFormat('j F Y') ?? '–'],
+        ];
     }
 
     /**
@@ -462,6 +508,7 @@ class Form extends Component
         foreach ($e->errors() as $key => $messages) {
             $field = match (true) {
                 $key === 'mentor' => 'mentorId',
+                $key === 'phone' => 'phone',
                 $key === 'members' && $this->type === RegistrationType::Tim->value => 'members',
                 $key === 'registration' => 'registration',
                 default => 'competition',

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Actions\Accounts;
 
 use App\Domain\Accounts\InitialPassword;
+use App\Domain\Accounts\PhoneNumber;
 use App\Domain\Archive\GraduationCalculator;
 use App\Domain\Archive\SchoolYear;
 use App\Enums\Permission;
@@ -422,8 +423,8 @@ final class ImportStudents
                     $errors[] = 'Kelas tidak ditemukan.';
                 }
 
-                if ($row['phone'] !== null && preg_match('/^(\+62|0)8\d{7,12}$/', $row['phone']) !== 1) {
-                    $errors[] = 'No HP tidak valid (contoh 0812…).';
+                if ($row['phone'] !== null && ! PhoneNumber::isValid($row['phone'])) {
+                    $errors[] = PhoneNumber::INVALID;
                 }
             }
 
@@ -757,7 +758,8 @@ final class ImportStudents
     private static function phone(mixed $value): ?string
     {
         $raw = trim((string) ($value instanceof DateTimeInterface ? '' : (is_float($value) ? sprintf('%.0f', $value) : $value)));
-        $compact = (string) preg_replace('/[\s.\-()]/', '', $raw);
+        // One rule with the student's own edit (D-149): separators dropped, "62…" → "+62…", "8…" → "08…".
+        $compact = PhoneNumber::normalize($raw);
 
         if ($compact === '') {
             return null;
@@ -768,15 +770,7 @@ final class ImportStudents
             return $compact;
         }
 
-        $compact = self::sanitize($compact);
-
-        if (preg_match('/^62\d+$/', $compact) === 1) {
-            return '+'.$compact;
-        }
-
-        if (preg_match('/^8\d+$/', $compact) === 1) {
-            return '0'.$compact; // numeric cell lost its leading zero
-        }
+        $compact = PhoneNumber::normalize(self::sanitize($compact));
 
         return $compact === '' ? null : $compact;
     }

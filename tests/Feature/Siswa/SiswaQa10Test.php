@@ -79,6 +79,7 @@ it('shows "Ikut tim" on a lomba Kesiswaan closed before its deadline, and the an
 
     Livewire::actingAs(F::user($this->dimas))->test(KonfirmasiTim::class, ['registration' => $registration])
         ->assertSee('Ikut tim ini?')
+        ->set('phone', '081234567891')
         ->call('ikut')
         ->assertHasNoErrors()
         ->assertRedirect(route('siswa.undangan.show', $registration));
@@ -185,7 +186,8 @@ it('shows the refusal when the chosen guru pembimbing is no longer active (QA10)
     qa10RegSiswaBoot($this);
     $lomba = F::openCompetition(['default_mentor_id' => $this->guru->id]);
     $component = Livewire::actingAs(F::user($this->nadia))->test(Form::class, ['competitionId' => $lomba->getKey()])
-        ->set('setuju', true);
+        ->set('setuju', true)
+        ->set('phone', '081234567890');
 
     $this->guru->forceFill(['status' => UserStatus::Disabled])->save();
 

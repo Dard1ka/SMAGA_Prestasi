@@ -243,6 +243,7 @@ it('updates "N siswa SMAGA sudah mendaftar" on Detail lomba right after register
     Livewire::actingAs(F::user($this->nadia))->test(Form::class, ['competitionId' => $lomba->getKey()])
         ->set('mentorId', $this->guru->id)
         ->set('setuju', true)
+        ->set('phone', '081234567890')
         ->call('kirim')
         ->assertHasNoErrors()
         ->assertDispatched('pendaftaran-berubah')
