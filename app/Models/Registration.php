@@ -163,6 +163,23 @@ class Registration extends Model
         $query->whereIn('status', RegistrationStatus::nonFinal());
     }
 
+    /**
+     * D-148: registrations the guru pembimbing was ever told about (Siswa binaan, Guru › Lomba, detail binaan). One that
+     * still waits for its lomba (`menunggu_lomba`), or was cancelled while it waited (by its leader, or with the
+     * rejected lomba: audit `registration.cancelled` from `menunggu_lomba`), only its submitter ever heard of.
+     *
+     * @param  Builder<Registration>  $query
+     */
+    public function scopeKnownToMentor(Builder $query): void
+    {
+        $query->where('status', '!=', RegistrationStatus::MenungguLomba->value)
+            ->where(fn (Builder $q) => $q
+                ->where('status', '!=', RegistrationStatus::Dibatalkan->value)
+                ->orWhereDoesntHave('activitiesAsSubject', fn (Builder $audit) => $audit
+                    ->where('event', 'registration.cancelled')
+                    ->where('properties->from', RegistrationStatus::MenungguLomba->value)));
+    }
+
     /** Registrations where the student is a member (ketua or anggota). @param Builder<Registration> $query */
     public function scopeForStudent(Builder $query, Student|string $student): void
     {
@@ -202,5 +219,42 @@ class Registration extends Model
         }
 
         return $until->greaterThan($closes) ? $until : $closes;
+    }
+
+    /**
+     * "15 Okt 2026, 09.00": until when the anggota of a team resumed late may answer (the grace, D-148), for the screens
+     * and the invitation; null for every other registration, whose answers close with "Pendaftaran ditutup".
+     */
+    public function graceText(): ?string
+    {
+        if ($this->answer_until === null) {
+            return null;
+        }
+
+        return $this->answersCloseAt()?->locale('id')->translatedFormat('j M Y, H.i');
+    }
+
+    /** D-148: cancelled because Kesiswaan rejected its lomba (ResumeWaitingRegistrations), not by its leader. */
+    public function cancelledWithLomba(): bool
+    {
+        return $this->status === RegistrationStatus::Dibatalkan
+            && $this->activitiesAsSubject()
+                ->where('event', 'registration.cancelled')
+                ->where('properties->reason', 'competition_rejected')
+                ->exists();
+    }
+
+    /** One registration of scopeKnownToMentor() (D-148). */
+    public function isKnownToMentor(): bool
+    {
+        if ($this->status === RegistrationStatus::MenungguLomba) {
+            return false;
+        }
+
+        return $this->status !== RegistrationStatus::Dibatalkan
+            || ! $this->activitiesAsSubject()
+                ->where('event', 'registration.cancelled')
+                ->where('properties->from', RegistrationStatus::MenungguLomba->value)
+                ->exists();
     }
 }

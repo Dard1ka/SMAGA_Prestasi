@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Livewire\Siswa;
 
-use App\Actions\Registrations\ResumeWaitingRegistrations;
 use App\Domain\Deadlines\ReportDeadline;
 use App\Domain\Points\PointFormatter;
 use App\Enums\MemberRole;
@@ -90,7 +89,7 @@ class Beranda extends Component
         foreach ($invites as $invite) {
             $competition = $invite->registration->competition;
             // D-148: a team resumed late answers until its own moment, not the registration deadline.
-            $grace = ResumeWaitingRegistrations::graceText($invite->registration);
+            $grace = $invite->registration->graceText();
             $actions[] = [
                 'key' => 'invite-'.$invite->getKey(),
                 'icon' => 'users',

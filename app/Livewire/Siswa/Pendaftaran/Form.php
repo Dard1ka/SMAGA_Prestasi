@@ -10,7 +10,6 @@ use App\Actions\Registrations\CreateRegistration;
 use App\Actions\Registrations\ExpirePendingInvitations;
 use App\Actions\Registrations\InviteMembers;
 use App\Actions\Registrations\MentorChoice;
-use App\Actions\Registrations\ResumeWaitingRegistrations;
 use App\Actions\Registrations\WithdrawInvitation;
 use App\Domain\Accounts\PhoneNumber;
 use App\Enums\CompetitionStatus;
@@ -406,6 +405,7 @@ class Form extends Component
         return view('livewire.siswa.pendaftaran.form', [
             'competition' => $competition,
             'window' => LombaPresenter::window($competition),
+            'waitingNotice' => $this->waitingNotice($competition),
             'closesShort' => $competition->registration_closes_at?->locale('id')->translatedFormat('j M'),
             'me' => $me,
             'current' => $current,
@@ -422,6 +422,28 @@ class Form extends Component
             'mentors' => $this->mentorOptions(),
             'peserta' => $this->peserta($me),
         ]);
+    }
+
+    /**
+     * The alert in place of the form on a lomba Kesiswaan has not verified yet (window `menunggu`, QA10). Only its
+     * submitter sees such a lomba, and since D-148 may register for it within its dates
+     * (Competition::isOpenForRegistrationBy()): when the form is missing there, the dates are the reason, and the
+     * verification does not change them. Only a lomba without a deadline still waits for the verification.
+     *
+     * @return array{tone: string, title: string, text: string}
+     */
+    private function waitingNotice(Competition $competition): array
+    {
+        $now = now();
+        $own = $competition->isAwaitingVerificationFor(auth()->user());
+        $opens = $competition->registration_opens_at;
+        $closes = $competition->registration_closes_at;
+
+        return match (true) {
+            $own && $closes !== null && $closes < $now => ['tone' => 'warning', 'title' => 'Pendaftaran ditutup', 'text' => 'Pendaftaran lomba ini sudah ditutup.'],
+            $own && $opens !== null && $opens > $now => ['tone' => 'info', 'title' => 'Belum dibuka', 'text' => 'Pendaftaran dibuka '.LombaPresenter::date($opens).'.'],
+            default => ['tone' => 'info', 'title' => 'Belum dibuka', 'text' => 'Pendaftaran dibuka setelah Kesiswaan memverifikasi lomba ini.'],
+        };
     }
 
     /** The account's own No HP for the field, '' when none (or one that cannot be decrypted any more). */
@@ -607,23 +629,23 @@ class Form extends Component
             : (Route::has('siswa.lomba-saya.index') ? route('siswa.lomba-saya.index') : null);
 
         $waitingLomba = $registration->status === RegistrationStatus::MenungguLomba;
+        // D-148: a team resumed late answers until its own moment, not the registration deadline.
+        $grace = $registration->graceText();
 
         return [
             'isLeader' => $mine?->role === MemberRole::Ketua,
             'pendingInvite' => $mine !== null && $mine->role === MemberRole::Anggota && $mine->confirmed_at === null && $registration->status === RegistrationStatus::MenungguKonfirmasi,
-            // D-148: a team resumed late answers until its own moment, not the registration deadline.
-            'answerNote' => ($grace = ResumeWaitingRegistrations::graceText($registration)) !== null
-                ? 'Konfirmasi sebelum '.$grace.'.'
-                : 'Konfirmasi sebelum batas pendaftaran.',
+            'answerNote' => $grace !== null ? 'Konfirmasi sebelum '.$grace.'.' : 'Konfirmasi sebelum batas pendaftaran.',
+            // The ketua invites and withdraws in the same window the anggota answer in (RegistrationPolicy::teamWindowOpen()).
+            'inviteHint' => 'Undangan berlaku sampai '.($grace ?? 'batas pendaftaran')
+                .'. Siswa yang belum aktivasi akun baru melihatnya setelah aktivasi.',
             'isTeam' => $registration->isTeam(),
             'label' => $registration->status->label(),
             'tone' => $registration->status->tone(),
             'waitingMembers' => $waitingLomba || $registration->status === RegistrationStatus::MenungguKonfirmasi,
             // D-148: nothing goes out before Kesiswaan decides the lomba, so no confirmation count yet.
             'membersText' => $anggota->count() === 0 || $waitingLomba ? null : "{$confirmed} dari {$anggota->count()} anggota sudah konfirmasi",
-            'waitingText' => $waitingLomba
-                ? 'Pendaftaran diteruskan setelah Kesiswaan memverifikasi lomba ini.'.($registration->isTeam() ? ' Undangan tim dikirim saat itu.' : '')
-                : null,
+            'waitingText' => $waitingLomba ? LombaPresenter::waitingForLomba($registration) : null,
             'cancelNote' => $waitingLomba
                 ? 'Pendaftaran ini belum diteruskan, jadi tidak ada yang diberi tahu.'
                 : 'Anggota tim akan diberi tahu. Kamu bisa mendaftar lagi selama pendaftaran masih dibuka.',

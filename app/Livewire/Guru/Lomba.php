@@ -154,9 +154,11 @@ final class Lomba extends Component
         $binaan = RegistrationMember::query()
             ->whereNotNull('confirmed_at')
             ->whereNull('declined_at')
+            // D-148: not a registration the guru was never told about (cancelled while its lomba waited).
             ->whereHas('registration', fn (Builder $r) => $r
                 ->where('competition_id', $competition->getKey())
-                ->where('mentor_id', $this->user()->getKey()))
+                ->where('mentor_id', $this->user()->getKey())
+                ->knownToMentor())
             ->with(['student:id,user_id,classroom_id', 'student.user:id,name', 'student.classroom:id,name', 'registration:id'])
             ->get()
             ->map(fn (RegistrationMember $m): array => [

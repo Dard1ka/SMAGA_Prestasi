@@ -8,6 +8,7 @@ use App\Enums\CompetitionStatus;
 use App\Enums\Participation;
 use App\Enums\RegistrationStatus;
 use App\Models\Competition;
+use App\Models\Registration;
 use App\Models\RegistrationMember;
 use App\Support\Sampul;
 use Carbon\CarbonImmutable;
@@ -21,6 +22,18 @@ use Illuminate\Support\Collection;
  */
 final class LombaPresenter
 {
+    /** D-148: a registration for the own lomba that Kesiswaan has not verified yet goes nowhere before that. */
+    public const WAITING_FOR_LOMBA = 'Pendaftaran diteruskan setelah Kesiswaan memverifikasi lomba ini.';
+
+    /**
+     * The sentence under a `menunggu_lomba` registration (Pendaftaran lomba panel, Lomba saya); a team also hears when its
+     * invitations go out.
+     */
+    public static function waitingForLomba(Registration $registration): string
+    {
+        return self::WAITING_FOR_LOMBA.($registration->isTeam() ? ' Undangan tim dikirim saat itu.' : '');
+    }
+
     /**
      * Status of the registration window: [label, tone, key] with key dibuka|segera|ditutup|ditolak|menunggu.
      * QA10: the lomba's status comes first. Only a published lomba has a window from its dates; the proposer of a lomba

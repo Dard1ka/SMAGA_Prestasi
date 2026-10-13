@@ -181,13 +181,15 @@ class RegistrationPolicy
 
     /**
      * One registration in the guru area: only its own guru pembimbing (SECURITY §3c "R binaan"). Staff with
-     * registration.view_all use their own screens; this ability deliberately ignores that permission.
+     * registration.view_all use their own screens; this ability deliberately ignores that permission. D-148: not a
+     * registration the guru was never told about (Registration::isKnownToMentor(), the rule of Siswa binaan).
      */
     public function viewAsMentor(User $user, Registration $registration): bool
     {
         return $this->viewBinaan($user)
             && $registration->mentor_id !== null
-            && (int) $registration->mentor_id === (int) $user->getKey();
+            && (int) $registration->mentor_id === (int) $user->getKey()
+            && $registration->isKnownToMentor();
     }
 
     // --- end B4 ---

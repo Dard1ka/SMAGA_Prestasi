@@ -8,7 +8,6 @@ use App\Actions\Accounts\UpdateStudentPhone;
 use App\Actions\Registrations\ConfirmMembership;
 use App\Actions\Registrations\DeclineMembership;
 use App\Actions\Registrations\ExpirePendingInvitations;
-use App\Actions\Registrations\ResumeWaitingRegistrations;
 use App\Domain\Accounts\PhoneNumber;
 use App\Enums\MemberRole;
 use App\Enums\RegistrationStatus;
@@ -166,7 +165,7 @@ class KonfirmasiTim extends Component
             'facts' => [
                 ['icon' => 'clock', 'label' => 'Batas daftar', 'value' => LombaPresenter::date($competition->registration_closes_at)],
                 // D-148: a team resumed after (or shortly before) the deadline answers until its own moment.
-                ...($canRespond && ($grace = ResumeWaitingRegistrations::graceText($registration)) !== null
+                ...($canRespond && ($grace = $registration->graceText()) !== null
                     ? [['icon' => 'clock', 'label' => 'Batas jawab', 'value' => $grace]]
                     : []),
                 ['icon' => 'calendar', 'label' => 'Tanggal lomba', 'value' => LombaPresenter::tanggal($competition)],
@@ -213,13 +212,17 @@ class KonfirmasiTim extends Component
             ->exists();
     }
 
-    /** Students only reach this page for registrations they are part of (staff use their own screens). */
+    /**
+     * Students only reach this page for registrations they are part of (staff use their own screens). Not before the
+     * invitation went out: an anggota of a team whose lomba still waits for Kesiswaan has no `invited_at` yet (D-148),
+     * as on Lomba saya and Beranda.
+     */
     private function isMember(Registration $registration): bool
     {
         $student = auth()->user()?->loadMissing('student')->getRelation('student');
 
         return $student !== null
             && Gate::allows('view', $registration)
-            && $registration->members()->where('student_id', $student->getKey())->exists();
+            && $registration->members()->where('student_id', $student->getKey())->whereNotNull('invited_at')->exists();
     }
 }

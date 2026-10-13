@@ -12,6 +12,7 @@ use App\Enums\RegistrationType;
 use App\Enums\RoleName;
 use App\Livewire\Siswa\Pendaftaran\Form;
 use App\Models\Registration;
+use Carbon\CarbonImmutable;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
@@ -134,4 +135,42 @@ it('keeps a waiting team out of the anggota\'s Lomba saya until the invitation g
     $this->actingAs($rizkyUser)->get(route('siswa.lomba-saya.index'))->assertOk()->assertDontSee('ISPO 2027');
     $this->actingAs($rizkyUser)->get(route('siswa.lomba-saya.show', $r))->assertNotFound();
     $this->actingAs($rizkyUser)->get(route('siswa.beranda'))->assertOk()->assertDontSee('ISPO 2027');
+    // Nor Undangan tim: the team, its guru and the unverified lomba stay hidden until the invitation goes out.
+    $this->actingAs($rizkyUser)->get(route('siswa.undangan.show', $r))->assertNotFound();
+});
+
+it('tells the submitter why the form is missing on the own waiting lomba: its dates, not the verification', function (string $case): void {
+    $this->travelTo(CarbonImmutable::parse('2026-10-13 09:00:00'));
+
+    [$attributes, $title, $text] = match ($case) {
+        // The deadline passed before Kesiswaan decided (never registered, or the waiting registration was cancelled).
+        'deadline passed' => [['registration_closes_at' => now()->subDay()->endOfDay()], 'Pendaftaran ditutup', 'Pendaftaran lomba ini sudah ditutup.'],
+        // Registration opens on its own date, published or not.
+        'not open yet' => [['registration_opens_at' => CarbonImmutable::parse('2026-10-18 00:00:00')], 'Belum dibuka', 'Pendaftaran dibuka 18 Okt 2026.'],
+        // No deadline: the only case that still waits for the verification.
+        'no deadline' => [['registration_closes_at' => null], 'Belum dibuka', 'Pendaftaran dibuka setelah Kesiswaan memverifikasi lomba ini.'],
+    };
+    $lomba = F::pendingCompetition($this->nadiaUser, F::usulanAttributes($attributes));
+
+    $panel = Livewire::actingAs($this->nadiaUser)->test(Form::class, ['competitionId' => $lomba->getKey()])
+        ->assertViewHas('canCreate', false)
+        ->assertDontSee('Kirim pendaftaran')
+        ->assertSee($title)
+        ->assertSee($text);
+
+    if ($case !== 'no deadline') {
+        $panel->assertDontSee('Pendaftaran dibuka setelah Kesiswaan memverifikasi lomba ini.');
+    }
+})->with(['deadline passed', 'not open yet', 'no deadline']);
+
+it('says the deadline passed after the submitter cancelled the waiting registration too late to register again', function (): void {
+    $r = mlTeam($this);
+    $this->travelTo(now()->addDays(21));
+
+    app(CancelRegistration::class)->handle($this->nadiaUser, $r);
+
+    Livewire::actingAs($this->nadiaUser)->test(Form::class, ['competitionId' => $r->competition_id])
+        ->assertDontSee('Kirim pendaftaran')
+        ->assertSee('Pendaftaran lomba ini sudah ditutup.')
+        ->assertDontSee('Pendaftaran dibuka setelah Kesiswaan memverifikasi lomba ini.');
 });

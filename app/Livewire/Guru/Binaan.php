@@ -100,13 +100,14 @@ final class Binaan extends Component
     /** @return array<string, int> */
     private function counts(): array
     {
-        $mine = fn (): Builder => Registration::query()->where('mentor_id', $this->user()->getKey());
+        // D-148: never a registration the guru was not told about (waiting for its lomba, or cancelled while it waited).
+        $mine = fn (): Builder => Registration::query()->where('mentor_id', $this->user()->getKey())->knownToMentor();
 
         // Only students in the team: an invitation nobody answered yet is not a binaan (QA10).
         $students = RegistrationMember::query()
             ->whereNotNull('confirmed_at')
             ->whereNull('declined_at')
-            ->whereHas('registration', fn (Builder $r) => $r->where('mentor_id', $this->user()->getKey()))
+            ->whereHas('registration', fn (Builder $r) => $r->where('mentor_id', $this->user()->getKey())->knownToMentor())
             ->pluck('student_id')
             ->merge(TalentApplication::query()->where('mentor_id', $this->user()->getKey())->pluck('student_id'))
             ->unique();
@@ -137,6 +138,7 @@ final class Binaan extends Component
 
         return Registration::query()
             ->where('mentor_id', $this->user()->getKey())
+            ->knownToMentor()
             ->when($finished,
                 fn (Builder $q) => $q->whereNotIn('status', RegistrationStatus::nonFinal()),
                 fn (Builder $q) => $q->whereIn('status', RegistrationStatus::nonFinal()))

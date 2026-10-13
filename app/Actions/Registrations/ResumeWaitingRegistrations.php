@@ -21,7 +21,6 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use LogicException;
-use Spatie\Activitylog\Models\Activity;
 
 /**
  * D-148: Kesiswaan decided a lomba, so its registrations that waited for it (`menunggu_lomba`, only the submitter can
@@ -33,7 +32,8 @@ use Spatie\Activitylog\Models\Activity;
  * - rejected → `dibatalkan` + cancelled_at. Nobody but the submitter hears of it, through the one rejection notice
  *   (VerifyCompetition): the anggota were never invited and the guru never told (the D-134 reasoning).
  * One audit row per registration (`registration.resumed` / `registration.cancelled`), causer = the verifier. A
- * registration the leader cancelled while it waited is not touched. Notices: notify(), after the commit.
+ * registration the leader cancelled while it waited is not touched. Notices: notify(), after the commit. The screens
+ * read the answer window and the reason of a cancel from Registration (graceText(), cancelledWithLomba()).
  */
 final class ResumeWaitingRegistrations
 {
@@ -68,7 +68,6 @@ final class ResumeWaitingRegistrations
         $now = CarbonImmutable::now();
         $invited = [];
         $toApprovers = [];
-        $cancelled = 0;
         $submitterNow = null;
 
         foreach ($waiting as $registration) {
@@ -81,7 +80,6 @@ final class ResumeWaitingRegistrations
 
             if ($to === RegistrationStatus::Dibatalkan) {
                 $registration->forceFill(['status' => $to, 'cancelled_at' => $now])->save();
-                $cancelled++;
                 $this->audit($actor, $registration, 'registration.cancelled', [
                     'from' => RegistrationStatus::MenungguLomba->value,
                     'reason' => 'competition_rejected',
@@ -107,32 +105,7 @@ final class ResumeWaitingRegistrations
             }
         }
 
-        return new WaitingOutcome($invited, $toApprovers, $cancelled, $submitterNow);
-    }
-
-    /**
-     * "15 Okt 2026, 09.00": until when the anggota of a team resumed late may answer (the grace, D-148), for the screens
-     * and the invitation; null for every other registration, whose answers close with "Pendaftaran ditutup".
-     */
-    public static function graceText(Registration $registration): ?string
-    {
-        if ($registration->answer_until === null) {
-            return null;
-        }
-
-        return $registration->answersCloseAt()?->locale('id')->translatedFormat('j M Y, H.i');
-    }
-
-    /** Was this registration cancelled because Kesiswaan rejected its lomba (not by its leader)? Read from the audit. */
-    public static function cancelledWithLomba(Registration $registration): bool
-    {
-        return $registration->status === RegistrationStatus::Dibatalkan
-            && Activity::query()
-                ->where('event', 'registration.cancelled')
-                ->where('subject_type', $registration->getMorphClass())
-                ->where('subject_id', $registration->getKey())
-                ->where('properties->reason', 'competition_rejected')
-                ->exists();
+        return new WaitingOutcome($invited, $toApprovers, $submitterNow);
     }
 
     /** After the commit: the team invitations and the approvers' notice; never to the verifier. */

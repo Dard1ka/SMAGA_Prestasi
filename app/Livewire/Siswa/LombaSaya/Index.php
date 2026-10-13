@@ -6,13 +6,13 @@ namespace App\Livewire\Siswa\LombaSaya;
 
 use App\Actions\Registrations\ApproveRegistration;
 use App\Actions\Registrations\CancelRegistration;
-use App\Actions\Registrations\ResumeWaitingRegistrations;
 use App\Actions\Reports\SubmitReport;
 use App\Enums\LetterType;
 use App\Enums\RegistrationStatus;
 use App\Enums\RegistrationType;
 use App\Enums\ReportFileKind;
 use App\Enums\ReportStatus;
+use App\Livewire\Siswa\Lomba\LombaPresenter;
 use App\Livewire\Siswa\LombaSaya\Concerns\ReportHelpers;
 use App\Models\Achievement;
 use App\Models\Letter;
@@ -301,11 +301,9 @@ final class Index extends Component
             'decidedOn' => self::longDate($registration->principal_decided_at),
             'registeredOn' => self::longDate($registration->created_at),
             // D-148: the lomba itself still waits for Kesiswaan; nothing has gone out yet.
-            'waitingText' => $status === RegistrationStatus::MenungguLomba
-                ? 'Pendaftaran diteruskan setelah Kesiswaan memverifikasi lomba ini.'.($registration->isTeam() ? ' Undangan tim dikirim saat itu.' : '')
-                : null,
+            'waitingText' => $status === RegistrationStatus::MenungguLomba ? LombaPresenter::waitingForLomba($registration) : null,
             // D-148: cancelled together with the rejected lomba; registering again is not possible then.
-            'cancelledText' => $status === RegistrationStatus::Dibatalkan && ResumeWaitingRegistrations::cancelledWithLomba($registration)
+            'cancelledText' => $status === RegistrationStatus::Dibatalkan && $registration->cancelledWithLomba()
                 ? 'Usulan lomba ini ditolak Kesiswaan, jadi pendaftarannya ikut dibatalkan.'
                 : 'Kamu bisa mendaftar lagi selama pendaftaran lomba masih dibuka.',
             'allConfirmed' => $registration->members->every(fn (RegistrationMember $m): bool => $m->confirmed_at !== null),

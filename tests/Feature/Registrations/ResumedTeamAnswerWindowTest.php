@@ -94,6 +94,11 @@ it('gives a team resumed after the deadline three days to answer', function (): 
         ->assertSee('Ikut tim')->assertSee('Batas jawab')->assertSee($grace);
     Livewire::actingAs($this->rizkyUser)->test(PendaftaranForm::class, ['competitionId' => $r->competition_id])
         ->assertSee('Konfirmasi sebelum '.$grace.'.');
+    // The ketua may invite a replacement in the same three days; the hint names them, not the passed deadline.
+    Livewire::actingAs($this->nadiaUser)->test(PendaftaranForm::class, ['competitionId' => $r->competition_id])
+        ->assertSee('Undang anggota pengganti')
+        ->assertSee('Undangan berlaku sampai '.$grace.'.')
+        ->assertDontSee('Undangan berlaku sampai batas pendaftaran.');
     $this->actingAs($this->rizkyUser)->get(route('siswa.beranda'))->assertOk()->assertSee('jawab sebelum '.$grace);
 
     // A minute after the three days: closed, and the expiry run declines the open invitation as usual.
@@ -137,6 +142,8 @@ it('leaves answer_until empty when the deadline is more than three days away', f
     expect($r->fresh()->answer_until)->toBeNull()
         ->and($r->fresh()->answersCloseAt()?->toDateTimeString())->toBe($closes->toDateTimeString());
     Livewire::actingAs($this->rizkyUser)->test(KonfirmasiTim::class, ['registration' => $r])->assertDontSee('Batas jawab');
+    Livewire::actingAs($this->nadiaUser)->test(PendaftaranForm::class, ['competitionId' => $r->competition_id])
+        ->assertSee('Undangan berlaku sampai batas pendaftaran.');
 });
 
 it('never extends a normal team registration', function (): void {

@@ -103,7 +103,7 @@
                     @else
                         <x-sth.input wire:model.live.debounce.500ms="q" id="undang-anggota" type="search" label="Undang anggota pengganti" icon="search"
                                      placeholder="Cari nama atau NISN" autocomplete="off" maxlength="60"
-                                     hint="Undangan berlaku sampai batas pendaftaran. Siswa yang belum aktivasi akun baru melihatnya setelah aktivasi." />
+                                     :hint="$status['inviteHint']" />
                         @if ($hasil !== [])
                             <ul aria-label="Akun siswa yang cocok" class="m-0 flex list-none flex-col gap-1.5 p-0">
                                 @foreach ($hasil as $row)
@@ -173,8 +173,8 @@
             @if ($window['key'] === 'segera')
                 <x-sth.alert title="Belum dibuka">{{ $window['note'] }}.</x-sth.alert>
             @elseif ($window['key'] === 'menunggu')
-                {{-- QA10: a proposal Kesiswaan has not checked yet is not "ditutup". --}}
-                <x-sth.alert title="Belum dibuka">Pendaftaran dibuka setelah Kesiswaan memverifikasi lomba ini.</x-sth.alert>
+                {{-- QA10: a proposal Kesiswaan has not checked yet is not "ditutup" by itself; D-148: for its submitter the dates decide (Form::waitingNotice()). --}}
+                <x-sth.alert :tone="$waitingNotice['tone']" :title="$waitingNotice['title']">{{ $waitingNotice['text'] }}</x-sth.alert>
             @elseif ($window['key'] === 'ditolak')
                 <x-sth.alert tone="warning" title="Tidak dibuka">Usulan lomba ini ditolak Kesiswaan, jadi tidak menerima pendaftaran.</x-sth.alert>
             @elseif ($window['key'] === 'ditutup' || ! $competition->isPublished())
@@ -284,7 +284,7 @@
                     @elseif (! $setuju)
                         Centang pernyataan di atas untuk mengirim.
                     @elseif ($lombaWaits)
-                        Pendaftaran diteruskan setelah Kesiswaan memverifikasi lomba ini.
+                        {{ \App\Livewire\Siswa\Lomba\LombaPresenter::WAITING_FOR_LOMBA }}
                     @elseif ($type === 'tim')
                         Anggota konfirmasi dulu, lalu Kepala Sekolah menyetujui.
                     @else
