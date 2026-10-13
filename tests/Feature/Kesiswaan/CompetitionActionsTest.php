@@ -13,6 +13,7 @@ use App\Enums\RoleName;
 use App\Models\Competition;
 use App\Notifications\Competitions\CompetitionPublished;
 use App\Notifications\Competitions\CompetitionRejected;
+use App\Notifications\Competitions\CompetitionSubmitted;
 use App\Rules\ExternalUrl;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -33,13 +34,15 @@ beforeEach(function (): void {
     Notification::fake();
 
     $this->kesiswaan = F::staff(RoleName::Kesiswaan);
+    // Only siswa and Admin add a lomba (D-145): the full form is the Admin's.
+    $this->admin = F::staff(RoleName::Admin, 'Operator STH');
 });
 
 it('creates a full catalog entry that still waits in the verification queue (D-27)', function (): void {
-    $competition = app(CreateCompetition::class)->handle($this->kesiswaan, F::form(), F::pdf());
+    $competition = app(CreateCompetition::class)->handle($this->admin, F::form(), F::pdf());
 
     expect($competition->status)->toBe(CompetitionStatus::MenungguVerifikasi)
-        ->and($competition->submitted_by)->toBe($this->kesiswaan->getKey())
+        ->and($competition->submitted_by)->toBe($this->admin->getKey())
         ->and($competition->verified_by)->toBeNull()
         ->and($competition->level)->toBe(Level::Nasional)
         ->and($competition->max_team_size)->toBe(3)
@@ -49,14 +52,13 @@ it('creates a full catalog entry that still waits in the verification queue (D-2
         ->and(Competition::query()->pendingVerification()->count())->toBe(1);
 
     Storage::disk('local')->assertExists($competition->juknisFile->path);
-    expect(Activity::query()->where('event', 'competition.created')->where('causer_id', $this->kesiswaan->getKey())->exists())->toBeTrue();
+    expect(Activity::query()->where('event', 'competition.created')->where('causer_id', $this->admin->getKey())->exists())->toBeTrue();
 });
 
-it('lets Admin use the full form too, but not guru, siswa or humas', function (): void {
-    $admin = F::staff(RoleName::Admin, 'Operator STH');
-    expect(app(CreateCompetition::class)->handle($admin, F::form())->status)->toBe(CompetitionStatus::MenungguVerifikasi);
+it('lets only Admin use the full form, not kesiswaan, guru, siswa or humas', function (): void {
+    expect(app(CreateCompetition::class)->handle($this->admin, F::form())->status)->toBe(CompetitionStatus::MenungguVerifikasi);
 
-    foreach ([F::staff(RoleName::Guru, 'Pak Hendra Kusuma'), F::staff(RoleName::Humas, 'Mas Galih'), F::student()->user] as $user) {
+    foreach ([$this->kesiswaan, F::staff(RoleName::Guru, 'Pak Hendra Kusuma'), F::staff(RoleName::Humas, 'Mas Galih'), F::student()->user] as $user) {
         expect(fn () => app(CreateCompetition::class)->handle($user, F::form()))->toThrow(AuthorizationException::class);
     }
 });
@@ -64,22 +66,22 @@ it('lets Admin use the full form too, but not guru, siswa or humas', function ()
 it('validates https links, dates and the default mentor', function (): void {
     $create = app(CreateCompetition::class);
 
-    expect(fn () => $create->handle($this->kesiswaan, F::form(['website_url' => 'http://example.org'])))->toThrow(ValidationException::class)
-        ->and(fn () => $create->handle($this->kesiswaan, F::form(['registration_url' => 'javascript:alert(1)'])))->toThrow(ValidationException::class)
-        ->and(fn () => $create->handle($this->kesiswaan, F::form(['registration_closes_at' => '2026-09-01'])))->toThrow(ValidationException::class)
-        ->and(fn () => $create->handle($this->kesiswaan, F::form(['final_on' => '2026-11-01'])))->toThrow(ValidationException::class)
-        ->and(fn () => $create->handle($this->kesiswaan, F::form(['default_mentor_id' => $this->kesiswaan->getKey()])))->toThrow(ValidationException::class)
-        ->and(fn () => $create->handle($this->kesiswaan, F::form(['level' => 'kecamatan'])))->toThrow(ValidationException::class);
+    expect(fn () => $create->handle($this->admin, F::form(['website_url' => 'http://example.org'])))->toThrow(ValidationException::class)
+        ->and(fn () => $create->handle($this->admin, F::form(['registration_url' => 'javascript:alert(1)'])))->toThrow(ValidationException::class)
+        ->and(fn () => $create->handle($this->admin, F::form(['registration_closes_at' => '2026-09-01'])))->toThrow(ValidationException::class)
+        ->and(fn () => $create->handle($this->admin, F::form(['final_on' => '2026-11-01'])))->toThrow(ValidationException::class)
+        ->and(fn () => $create->handle($this->admin, F::form(['default_mentor_id' => $this->kesiswaan->getKey()])))->toThrow(ValidationException::class)
+        ->and(fn () => $create->handle($this->admin, F::form(['level' => 'kecamatan'])))->toThrow(ValidationException::class);
 
     $guru = F::staff(RoleName::Guru, 'Pak Hendra Kusuma');
-    expect($create->handle($this->kesiswaan, F::form(['default_mentor_id' => $guru->getKey()]))->default_mentor_id)->toBe($guru->getKey());
+    expect($create->handle($this->admin, F::form(['default_mentor_id' => $guru->getKey()]))->default_mentor_id)->toBe($guru->getKey());
 });
 
 it('validates website and registration links with ExternalUrl on create and update (SECURITY §3m-1)', function (string $field, string $url, string $sentence): void {
     $create = app(CreateCompetition::class);
 
     try {
-        $create->handle($this->kesiswaan, F::form([$field => $url]));
+        $create->handle($this->admin, F::form([$field => $url]));
         $this->fail('Expected a validation error.');
     } catch (ValidationException $e) {
         // One sentence per reason since the lead's mail test of 2026-10-09 (before: one sentence for all of them).
@@ -87,7 +89,7 @@ it('validates website and registration links with ExternalUrl on create and upda
             ->and(ExternalUrl::problem($url))->toBe($sentence);
     }
 
-    $competition = $create->handle($this->kesiswaan, F::form());
+    $competition = $create->handle($this->admin, F::form());
 
     try {
         app(UpdateCompetition::class)->handle($this->kesiswaan, $competition, F::form([$field => $url]));
@@ -112,7 +114,7 @@ it('validates website and registration links with ExternalUrl on create and upda
 ]);
 
 it('cleans both link fields at both ends before the check, on create and on update', function (): void {
-    $competition = app(CreateCompetition::class)->handle($this->kesiswaan, F::form([
+    $competition = app(CreateCompetition::class)->handle($this->admin, F::form([
         'website_url' => "  https://example.org/nsif \n",
         'registration_url' => "\u{00A0}https://example.org/nsif/daftar\u{200B}",
     ]));
@@ -134,10 +136,10 @@ it('accepts a link of exactly 500 characters and refuses a link field that is no
     $create = app(CreateCompetition::class);
 
     expect(strlen($long))->toBe(ExternalUrl::MAX_LENGTH)
-        ->and($create->handle($this->kesiswaan, F::form(['website_url' => $long]))->fresh()->website_url)->toBe($long);
+        ->and($create->handle($this->admin, F::form(['website_url' => $long]))->fresh()->website_url)->toBe($long);
 
     try {
-        $create->handle($this->kesiswaan, F::form(['name' => 'Lomba Esai Fiktif 2026', 'registration_url' => ['https://example.org/nsif']]));
+        $create->handle($this->admin, F::form(['name' => 'Lomba Esai Fiktif 2026', 'registration_url' => ['https://example.org/nsif']]));
         $this->fail('Expected a validation error.');
     } catch (ValidationException $e) {
         expect($e->errors())->toHaveKey('registration_url');
@@ -173,13 +175,16 @@ it('refuses to publish a usulan until the weight and date fields are complete', 
     expect(Activity::query()->where('event', 'competition.published')->exists())->toBeTrue();
 });
 
-it('publishes Kesiswaan own entry only through the queue and does not notify the verifier', function (): void {
-    $competition = app(CreateCompetition::class)->handle($this->kesiswaan, F::form());
+it("publishes the Admin's own entry only through the queue and does not notify the publishing Admin", function (): void {
+    $competition = app(CreateCompetition::class)->handle($this->admin, F::form());
 
-    app(VerifyCompetition::class)->handle($this->kesiswaan, $competition, CompetitionStatus::Dipublikasikan);
+    expect($competition->fresh()->status)->toBe(CompetitionStatus::MenungguVerifikasi);
+
+    app(VerifyCompetition::class)->handle($this->admin, $competition, CompetitionStatus::Dipublikasikan);
 
     expect($competition->fresh()->status)->toBe(CompetitionStatus::Dipublikasikan);
-    Notification::assertNothingSent();
+    Notification::assertNotSentTo($this->admin, CompetitionPublished::class);
+    Notification::assertNotSentTo($this->admin, CompetitionSubmitted::class);
 });
 
 it('rejects with an optional note and notifies the submitter', function (): void {
@@ -246,7 +251,7 @@ it('closes a published lomba and refuses to close a queued one', function (): vo
 });
 
 it('never lets the form change status or verifier fields', function (): void {
-    $competition = app(CreateCompetition::class)->handle($this->kesiswaan, F::form([
+    $competition = app(CreateCompetition::class)->handle($this->admin, F::form([
         'status' => 'dipublikasikan',
         'verified_by' => $this->kesiswaan->getKey(),
         'submitted_by' => 999,
@@ -254,5 +259,5 @@ it('never lets the form change status or verifier fields', function (): void {
 
     expect($competition->fresh()->status)->toBe(CompetitionStatus::MenungguVerifikasi)
         ->and($competition->fresh()->verified_by)->toBeNull()
-        ->and($competition->fresh()->submitted_by)->toBe($this->kesiswaan->getKey());
+        ->and($competition->fresh()->submitted_by)->toBe($this->admin->getKey());
 });

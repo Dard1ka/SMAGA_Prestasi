@@ -35,6 +35,8 @@ beforeEach(function (): void {
     $this->withoutVite();
 
     $this->kesiswaan = F::staff(RoleName::Kesiswaan);
+    // Only siswa and Admin add a lomba (D-145).
+    $this->admin = F::staff(RoleName::Admin, 'Operator STH');
 });
 
 /** A complete queued lomba with the given dates (Y-m-d; the deadline is stored at 23:59:59 like the form does). */
@@ -67,7 +69,7 @@ it('refuses a lomba that starts before its registration deadline when it is crea
     $create = app(CreateCompetition::class);
 
     try {
-        $create->handle($this->kesiswaan, F::form(['registration_closes_at' => '2026-10-20', 'starts_on' => '2026-10-19', 'final_on' => '2026-10-25']));
+        $create->handle($this->admin, F::form(['registration_closes_at' => '2026-10-20', 'starts_on' => '2026-10-19', 'final_on' => '2026-10-25']));
         $this->fail('Expected a validation error.');
     } catch (ValidationException $e) {
         expect($e->errors())->toHaveKey('starts_on')
@@ -77,14 +79,14 @@ it('refuses a lomba that starts before its registration deadline when it is crea
     expect(Competition::query()->count())->toBe(0);
 
     // The same day is fine (registration closes at 23:59, the lomba runs that day), and so are the old rules.
-    expect($create->handle($this->kesiswaan, F::form(['registration_closes_at' => '2026-10-20', 'starts_on' => '2026-10-20', 'final_on' => '2026-10-20']))->exists)->toBeTrue()
-        ->and(fn () => $create->handle($this->kesiswaan, F::form(['final_on' => '2026-11-01'])))->toThrow(ValidationException::class, 'Tanggal selesai tidak boleh sebelum tanggal mulai.')
-        ->and(fn () => $create->handle($this->kesiswaan, F::form(['registration_closes_at' => '2026-09-01'])))->toThrow(ValidationException::class, 'Batas daftar tidak boleh sebelum tanggal dibuka.');
+    expect($create->handle($this->admin, F::form(['registration_closes_at' => '2026-10-20', 'starts_on' => '2026-10-20', 'final_on' => '2026-10-20']))->exists)->toBeTrue()
+        ->and(fn () => $create->handle($this->admin, F::form(['final_on' => '2026-11-01'])))->toThrow(ValidationException::class, 'Tanggal selesai tidak boleh sebelum tanggal mulai.')
+        ->and(fn () => $create->handle($this->admin, F::form(['registration_closes_at' => '2026-09-01'])))->toThrow(ValidationException::class, 'Batas daftar tidak boleh sebelum tanggal dibuka.');
 });
 
 it('reports the date order together with the other field errors', function (): void {
     try {
-        app(CreateCompetition::class)->handle($this->kesiswaan, F::form(['website_url' => 'http://tidak-aman.test', 'starts_on' => '2026-10-01']));
+        app(CreateCompetition::class)->handle($this->admin, F::form(['website_url' => 'http://tidak-aman.test', 'starts_on' => '2026-10-01']));
         $this->fail('Expected a validation error.');
     } catch (ValidationException $e) {
         expect($e->errors())->toHaveKeys(['website_url', 'starts_on']);
@@ -92,7 +94,7 @@ it('reports the date order together with the other field errors', function (): v
 });
 
 it('accepts dates in the past when a lomba is created or saved: old lomba are entered for the record', function (): void {
-    $competition = app(CreateCompetition::class)->handle($this->kesiswaan, F::form([
+    $competition = app(CreateCompetition::class)->handle($this->admin, F::form([
         'registration_opens_at' => '2026-06-01', 'registration_closes_at' => '2026-08-01', 'starts_on' => '2026-08-10', 'final_on' => '2026-08-11',
     ]));
 
@@ -334,7 +336,7 @@ it('shows the tick only for past dates and never asks it for "Simpan"', function
 });
 
 it('marks "Tanggal mulai" in the drawer when it lies before "Batas daftar"', function (): void {
-    Livewire::actingAs($this->kesiswaan)->test(Form::class)
+    Livewire::actingAs($this->admin)->test(Form::class)
         ->call('open')
         ->assertSee('Tidak boleh sebelum batas daftar.')
         ->set('form', F::form(['registration_closes_at' => '2026-10-20', 'starts_on' => '2026-10-01', 'final_on' => '2026-10-25']))

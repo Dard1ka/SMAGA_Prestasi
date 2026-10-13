@@ -96,6 +96,8 @@ class Form extends Component
         $this->reset(['juknis', 'cover', 'removeCover', 'confirmPast']);
 
         if ($id === null) {
+            // "Tambah lomba" is Admin only (D-145): Kesiswaan checks and corrects, it never adds a lomba.
+            $this->authorize('create', Competition::class);
             $this->competitionId = null;
             $this->formMode = 'create';
             $this->form = self::blank();

@@ -39,7 +39,8 @@ enum RoleName: string
 
     /**
      * Seeded permission set (RoleSeeder). Admin gets everything except approving registrations,
-     * which stays with the Kepala Sekolah (D-01, CLAUDE.md §8).
+     * which stays with the Kepala Sekolah (D-01, CLAUDE.md §8). Only siswa (usulan) and Admin add a lomba
+     * (D-145); Kesiswaan checks, corrects and decides it.
      *
      * @return list<Permission>
      */
@@ -53,11 +54,9 @@ enum RoleName: string
                 Permission::TalentApply,
             ],
             self::Guru => [
-                Permission::CompetitionCreate,
                 Permission::TalentAssess,
             ],
             self::Kesiswaan => [
-                Permission::CompetitionCreate,
                 Permission::CompetitionVerify,
                 Permission::CompetitionUpdate,
                 Permission::CompetitionClose,
@@ -75,7 +74,6 @@ enum RoleName: string
                 Permission::DashboardView,
             ],
             self::KepalaSekolah => [
-                Permission::CompetitionCreate,
                 Permission::RegistrationApprove,
                 Permission::RegistrationViewAll,
                 Permission::LetterView,
@@ -85,7 +83,6 @@ enum RoleName: string
                 Permission::DashboardView,
             ],
             self::TataUsaha => [
-                Permission::CompetitionCreate,
                 Permission::RegistrationViewAll,
                 Permission::LetterGenerate,
                 Permission::LetterSend,
@@ -93,7 +90,6 @@ enum RoleName: string
                 Permission::StudentView,
             ],
             self::Humas => [
-                Permission::CompetitionCreate,
                 Permission::AchievementViewAll,
                 Permission::PublicationManage,
                 Permission::AppreciationManage,

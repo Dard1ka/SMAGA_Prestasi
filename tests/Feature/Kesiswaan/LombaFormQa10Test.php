@@ -40,6 +40,8 @@ beforeEach(function (): void {
     $this->withoutVite();
 
     $this->kesiswaan = F::staff(RoleName::Kesiswaan);
+    // Only siswa and Admin add a lomba (D-145).
+    $this->admin = F::staff(RoleName::Admin, 'Operator STH');
 });
 
 /** A published, complete lomba (team of at most 5) whose registration deadline has passed. */
@@ -124,7 +126,7 @@ it('accepts a cleared "Tanggal mulai" next to a final date in the past (QA10)', 
 });
 
 it('accepts a new lomba for the record with "Daftar dibuka" left empty (QA10)', function (): void {
-    $competition = app(CreateCompetition::class)->handle($this->kesiswaan, F::form([
+    $competition = app(CreateCompetition::class)->handle($this->admin, F::form([
         'registration_opens_at' => '', 'registration_closes_at' => '2026-08-01', 'starts_on' => '2026-08-10', 'final_on' => '2026-08-10',
     ]));
 
@@ -173,7 +175,7 @@ it('still refuses to pick a guru who is no longer active (QA10)', function (): v
     expect(fn () => app(UpdateCompetition::class)->handle($this->kesiswaan, $competition, qa10LombaInput($competition, ['default_mentor_id' => $other->getKey()])))
         ->toThrow(ValidationException::class, 'Pilih guru pembimbing dari daftar.');
 
-    expect(fn () => app(CreateCompetition::class)->handle($this->kesiswaan, F::form(['default_mentor_id' => $kept->getKey()])))
+    expect(fn () => app(CreateCompetition::class)->handle($this->admin, F::form(['default_mentor_id' => $kept->getKey()])))
         ->toThrow(ValidationException::class, 'Pilih guru pembimbing dari daftar.');
 });
 
@@ -283,7 +285,7 @@ it('discards the uploaded files when creating the lomba fails (QA10)', function 
         throw new RuntimeException('Simulated database failure.');
     });
 
-    expect(fn () => app(CreateCompetition::class)->handle($this->kesiswaan, F::form(), F::pdf(), UploadedFile::fake()->image('poster.png', 300, 400)))
+    expect(fn () => app(CreateCompetition::class)->handle($this->admin, F::form(), F::pdf(), UploadedFile::fake()->image('poster.png', 300, 400)))
         ->toThrow(RuntimeException::class);
 
     expect(File::query()->count())->toBe(0)

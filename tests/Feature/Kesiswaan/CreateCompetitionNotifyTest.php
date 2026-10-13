@@ -9,6 +9,7 @@ use App\Models\TalentApplication;
 use App\Models\TalentBranch;
 use App\Models\TalentType;
 use App\Notifications\Competitions\CompetitionSubmitted;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
 use Tests\Feature\Kesiswaan\KesiswaanFixtures as F;
@@ -30,11 +31,11 @@ it('tells Kesiswaan when the Admin adds a lomba to the verification queue', func
     Notification::assertNotSentTo($this->admin, CompetitionSubmitted::class);
 });
 
-it('tells the Admin when Kesiswaan adds a lomba, never the actor', function (): void {
-    app(CreateCompetition::class)->handle($this->kesiswaan, F::form());
+it('never lets Kesiswaan add a lomba (D-145)', function (): void {
+    expect(fn () => app(CreateCompetition::class)->handle($this->kesiswaan, F::form(), F::pdf()))
+        ->toThrow(AuthorizationException::class);
 
-    Notification::assertSentTo($this->admin, CompetitionSubmitted::class);
-    Notification::assertNotSentTo($this->kesiswaan, CompetitionSubmitted::class);
+    Notification::assertNothingSent();
 });
 
 it('does not tell roles that cannot verify a lomba', function (): void {

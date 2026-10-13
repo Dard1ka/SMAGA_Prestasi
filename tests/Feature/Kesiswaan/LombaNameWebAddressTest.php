@@ -25,6 +25,8 @@ beforeEach(function (): void {
     Notification::fake();
 
     $this->kesiswaan = F::staff(RoleName::Kesiswaan);
+    // Only siswa and Admin add a lomba (D-145).
+    $this->admin = F::staff(RoleName::Admin, 'Operator STH');
 });
 
 it('finds a web address in a name', function (string $name): void {
@@ -84,13 +86,13 @@ it('refuses the same on the full form, on create and on update', function (): vo
     $create = app(CreateCompetition::class);
 
     try {
-        $create->handle($this->kesiswaan, F::form(['name' => 'Lomba resmi www.situs-palsu.com']));
+        $create->handle($this->admin, F::form(['name' => 'Lomba resmi www.situs-palsu.com']));
         $this->fail('Expected a validation error.');
     } catch (ValidationException $e) {
         expect($e->errors()['name'][0] ?? null)->toBe(NoWebAddress::MESSAGE);
     }
 
-    $competition = $create->handle($this->kesiswaan, F::form());
+    $competition = $create->handle($this->admin, F::form());
 
     expect(fn () => app(UpdateCompetition::class)->handle($this->kesiswaan, $competition, F::form(['name' => 'Daftar di bit.ly/lomba'])))
         ->toThrow(ValidationException::class)

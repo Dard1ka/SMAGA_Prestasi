@@ -53,12 +53,13 @@ it('stores a student proposal as menunggu_verifikasi and tells the verifiers (D-
     expect(Activity::query()->where('event', 'competition.submitted')->exists())->toBeTrue();
 });
 
-it('lets a guru submit a lomba too, still waiting for Kesiswaan', function (): void {
+it('refuses a guru usulan (D-145)', function (): void {
     $guru = F::staff(RoleName::Guru);
 
-    $competition = app(SubmitCompetition::class)->handle($guru, ['name' => 'Lomba Debat Kota 2027']);
+    expect(fn () => app(SubmitCompetition::class)->handle($guru, ['name' => 'Lomba Debat Kota 2027']))
+        ->toThrow(AuthorizationException::class);
 
-    expect($competition->fresh()->status)->toBe(CompetitionStatus::MenungguVerifikasi);
+    expect(Competition::query()->count())->toBe(0);
 });
 
 it('denies users without competition.create or who cannot log in', function (): void {
@@ -336,7 +337,7 @@ it('stores a link trimmed when the Action is called with spaces around it, and n
 });
 
 it('keeps the sheet and the Action closed to an account that may not send a lomba', function (): void {
-    // Every role holds competition.create (D-27: any role may send, Kesiswaan verifies). Closed: no role, cannot log in.
+    // Only siswa and Admin hold competition.create (D-145). Closed: no role, cannot log in.
     $noRole = User::factory()->create()->fresh();
     $disabled = F::user(F::student('Siswa Nonaktif', 'X-1', ['status' => UserStatus::Disabled]));
     $archived = F::user(F::student('Siswa Alumni', 'XII-1', ['status' => UserStatus::Archived]));

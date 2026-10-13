@@ -269,7 +269,8 @@ it('shows no hint for a new lomba, a lomba in the queue or a lomba nobody is reg
     $empty = C::lomba();
     $closed = lcnScreenTeam()['competition'];
 
-    Livewire::actingAs($this->kesiswaan)->test(Form::class)
+    // "Tambah lomba" is Admin only (D-145).
+    Livewire::actingAs(F::staff(RoleName::Admin, 'Operator STH'))->test(Form::class)
         ->assertDontSee('sedang terdaftar di lomba ini')
         ->call('open')
         ->assertSet('formMode', 'create')

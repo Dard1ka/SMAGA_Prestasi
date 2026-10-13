@@ -415,8 +415,9 @@ it('stops showing a replaced or removed cover to students, and shows the new one
     KesiswaanFixtures::boot();
     $student = F::user($this->nadia);
 
+    // Only siswa and Admin add a lomba (D-145); Kesiswaan replaces the cover below.
     $competition = app(CreateCompetition::class)->handle(
-        $this->kesiswaan,
+        F::staff(RoleName::Admin, 'Operator STH'),
         KesiswaanFixtures::form(),
         null,
         UploadedFile::fake()->image('poster-nsif-2026.jpg', 1200, 1500),

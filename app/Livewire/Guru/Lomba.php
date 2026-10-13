@@ -18,28 +18,23 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Layout;
-use Livewire\Attributes\On;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
 use Livewire\Component;
 
 /**
- * Guru · Lomba (UI-MAP §4e `guru.lomba.index`, backlog #3, owner B4). Tab "Katalog": published lomba
- * (read-only, detail drawer via `?lihat=<ulid>`); tab "Upload saya": lomba info this guru uploaded with
- * W2-A1's Lomba\UsulanForm → SubmitCompetition → menunggu_verifikasi until Kesiswaan publishes or rejects
- * it (D-27). Only the guru's own uploads are listed; a lomba the guru may not view (CompetitionPolicy) → 404.
+ * Guru · Lomba (UI-MAP §4e `guru.lomba.index`, backlog #3, owner B4): the published catalog, read-only, with a
+ * detail drawer via `?lihat=<ulid>`. Since D-145 a guru no longer uploads lomba info (only siswa and Admin add a
+ * lomba), so the tab "Upload saya" and its button are gone; an old upload stays in the database and still opens in
+ * the drawer for the guru who sent it (CompetitionPolicy::view). A lomba the guru may not view → 404. An old
+ * `?tab=unggahan` link is ignored (no such property any more).
  */
 #[Title('Lomba')]
 // One search box per screen (D-90, backlog #60): this page has its own, so the top bar shows none.
-#[Layout('layouts::app', ['subtitle' => 'Katalog lomba sekolah dan info lomba yang di-upload.', 'search' => false])]
+#[Layout('layouts::app', ['subtitle' => 'Katalog lomba sekolah.', 'search' => false])]
 final class Lomba extends Component
 {
     public const STEP = 12;
-
-    private const TABS = ['katalog', 'unggahan'];
-
-    #[Url(as: 'tab', except: 'katalog')]
-    public string $tab = 'katalog';
 
     #[Url(as: 'q', except: '')]
     public string $q = '';
@@ -62,17 +57,10 @@ final class Lomba extends Component
 
     public function updated(string $property): void
     {
-        if (in_array($property, ['tab', 'q', 'bidang'], true)) {
+        if (in_array($property, ['q', 'bidang'], true)) {
             $this->limit = self::STEP;
         }
 
-        $this->normalize();
-    }
-
-    public function setTab(string $tab): void
-    {
-        $this->tab = $tab;
-        $this->limit = self::STEP;
         $this->normalize();
     }
 
@@ -81,40 +69,22 @@ final class Lomba extends Component
         $this->limit += self::STEP;
     }
 
-    /** Lomba\UsulanForm sent an upload: show it in "Upload saya". */
-    #[On('usulan-terkirim')]
-    public function afterUpload(): void
-    {
-        $this->setTab('unggahan');
-    }
-
     public function render(): View
     {
         Gate::authorize('viewAny', Competition::class);
         $this->normalize();
 
-        $counts = [
-            'katalog' => Competition::query()->published()->count(),
-            'unggahan' => $this->uploadsQuery()->count(),
-            'menunggu' => $this->uploadsQuery()->where('status', CompetitionStatus::MenungguVerifikasi)->count(),
-        ];
-
-        $isCatalog = $this->tab === 'katalog';
-        $query = $isCatalog ? $this->catalogQuery() : $this->uploadsQuery()->latest('created_at')->orderBy('id');
+        $query = $this->catalogQuery();
         $total = (clone $query)->count();
         $items = $query->limit($this->limit)->get();
 
         return view('livewire.guru.lomba', [
-            'counts' => $counts,
-            'isCatalog' => $isCatalog,
             'total' => $total,
             'hasMore' => $total > $this->limit,
-            'cards' => $isCatalog ? $this->cards($items) : [],
-            'uploads' => $isCatalog ? [] : $items->map(fn (Competition $c): array => $this->uploadRow($c))->all(),
-            'canUpload' => Gate::allows('create', Competition::class),
+            'cards' => $this->cards($items),
             'bidangOptions' => Bidang::options(),
             'detail' => $this->lihat !== '' ? $this->detail($this->viewable($this->lihat)) : null,
-            'closeUrl' => route('guru.lomba.index', array_filter(['tab' => $this->tab !== 'katalog' ? $this->tab : null])),
+            'closeUrl' => route('guru.lomba.index', array_filter(['q' => $this->q ?: null, 'bidang' => $this->bidang ?: null])),
         ]);
     }
 
@@ -136,16 +106,6 @@ final class Lomba extends Component
             ->orderBy('id');
     }
 
-    /** @return Builder<Competition> this guru's own uploads (D-27 queue states incl. ditolak) */
-    private function uploadsQuery(): Builder
-    {
-        $term = trim($this->q);
-
-        return Competition::query()
-            ->where('submitted_by', $this->user()->getKey())
-            ->when($term !== '', fn (Builder $q) => $q->where('name', 'like', $this->like($term)));
-    }
-
     /**
      * @param  EloquentCollection<int, Competition>  $competitions
      * @return list<array<string, mixed>>
@@ -159,24 +119,6 @@ final class Lomba extends Component
             $registrants,
             route('guru.lomba.index', array_filter(['q' => $this->q ?: null, 'bidang' => $this->bidang ?: null, 'lihat' => $c->getKey()])),
         ))->values()->all();
-    }
-
-    /** @return array<string, mixed> */
-    private function uploadRow(Competition $competition): array
-    {
-        $status = $competition->status;
-
-        return [
-            'id' => (string) $competition->getKey(),
-            'name' => $competition->name,
-            'organizer' => $competition->organizer_name,
-            'sent' => self::date($competition->created_at),
-            'status' => $status->label(),
-            'tone' => $status->tone(),
-            'checked' => $competition->verified_at !== null ? self::date($competition->verified_at) : null,
-            'note' => $status === CompetitionStatus::Ditolak ? $competition->verification_note : null,
-            'href' => route('guru.lomba.index', ['tab' => 'unggahan', 'lihat' => $competition->getKey()]),
-        ];
     }
 
     /**
@@ -265,7 +207,6 @@ final class Lomba extends Component
 
     private function normalize(): void
     {
-        $this->tab = in_array($this->tab, self::TABS, true) ? $this->tab : 'katalog';
         $this->q = mb_substr(trim($this->q), 0, 100);
         $this->bidang = Bidang::tryFrom($this->bidang) !== null ? $this->bidang : '';
         $this->limit = max(self::STEP, min(240, $this->limit));

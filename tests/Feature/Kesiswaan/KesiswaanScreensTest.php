@@ -140,7 +140,8 @@ it('publishes a complete queued lomba and rejects one with or without a reason',
 });
 
 it('creates a lomba from the drawer form into the queue and shows field errors', function (): void {
-    Livewire::actingAs($this->kesiswaan)->test(Form::class)
+    // Only Admin adds a lomba from the drawer (D-145).
+    Livewire::actingAs($this->admin)->test(Form::class)
         ->call('open')
         ->assertDispatched('sth-modal-open')
         ->set('form', F::form(['website_url' => 'http://tidak-aman.test']))
@@ -497,7 +498,7 @@ it('rejects a non-spreadsheet upload on the import screen', function (): void {
 // QA7: explore round after UI3 (2026-10-08) ---------------------------------------------------------
 
 it('names every picture type the cover field takes when the file is refused (QA7)', function (): void {
-    $component = Livewire::actingAs($this->kesiswaan)->test(Form::class)
+    $component = Livewire::actingAs($this->admin)->test(Form::class)
         ->call('open')
         ->set('form', F::form())
         ->set('cover', UploadedFile::fake()->image('poster.gif'))
