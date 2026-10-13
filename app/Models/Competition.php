@@ -28,7 +28,9 @@ use Spatie\Activitylog\Support\LogOptions;
 
 /**
  * Lomba (catalog entry or student proposal). Every create starts at menunggu_verifikasi (D-27).
- * Not mass-assignable: status, submitted_by, verified_by, verified_at, verification_note (set in Actions).
+ * Not mass-assignable: status, submitted_by, verified_by, verified_at, verification_note and the weights
+ * weight_category + event_status (set in Actions with forceFill(); D-146: a student's lomba takes them from
+ * OrganizerWeight, never from its input).
  */
 class Competition extends Model
 {
@@ -43,8 +45,6 @@ class Competition extends Model
         'organizer_name',
         'organizer_type',
         'organizer_type_other',
-        'weight_category',
-        'event_status',
         'level',
         'mode',
         'registration_opens_at',

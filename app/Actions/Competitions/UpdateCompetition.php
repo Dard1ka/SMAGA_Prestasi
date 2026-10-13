@@ -13,6 +13,7 @@ use App\Models\User;
 use App\Notifications\Competitions\BinaanCompetitionChanged;
 use App\Notifications\Competitions\CompetitionChanged;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -93,7 +94,9 @@ final class UpdateCompetition
 
             self::assertTeamsStillFit($locked, $data);
 
-            $locked->fill($data);
+            // The weights are not mass-assignable (CLAUDE §3.6): Kesiswaan and Admin set them here on purpose.
+            $locked->fill(Arr::except($data, CreateCompetition::WEIGHT_FIELDS))
+                ->forceFill(Arr::only($data, CreateCompetition::WEIGHT_FIELDS));
 
             // "Tanggal mulai" before "Batas daftar" is refused (Q1-04). A lomba that is already in the catalog
             // keeps whatever order it has while those two dates are left alone, so editing its other fields

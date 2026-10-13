@@ -25,6 +25,7 @@ use App\Rules\ExternalUrl;
 use App\Rules\NoWebAddress;
 use Closure;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Notification;
@@ -51,6 +52,12 @@ final class CreateCompetition
     private const LINK_FIELDS = ['website_url', 'registration_url'];
 
     /**
+     * Kategori bobot + status ajang: not mass-assignable (CLAUDE §3.6). The Actions split them out of the validated data
+     * and set them with forceFill(); SubmitCompetition never takes them from the input (D-146).
+     */
+    public const WEIGHT_FIELDS = ['weight_category', 'event_status'];
+
+    /**
      * @param  array<string, mixed>  $input  form fields (see rules())
      */
     public function handle(User $actor, array $input, ?UploadedFile $juknis = null, ?UploadedFile $cover = null): Competition
@@ -67,12 +74,13 @@ final class CreateCompetition
 
         $competition = self::discardOnFailure($files, fn (): Competition => DB::transaction(function () use ($actor, $data, $files): Competition {
             $competition = new Competition([
-                ...$data,
+                ...Arr::except($data, self::WEIGHT_FIELDS),
                 'juknis_file_id' => $files['juknis']?->getKey(),
                 'cover_file_id' => $files['cover']?->getKey(),
             ]);
 
             $competition->forceFill([
+                ...Arr::only($data, self::WEIGHT_FIELDS),
                 'status' => CompetitionStatus::MenungguVerifikasi,
                 'submitted_by' => $actor->getKey(),
             ])->save();
