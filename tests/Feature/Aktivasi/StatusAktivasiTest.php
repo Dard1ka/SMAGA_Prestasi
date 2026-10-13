@@ -114,6 +114,13 @@ it('shows the NISN in full and the email masked (D-137), and filters by class, s
         ->assertDontSee('Raka Pratama');
 });
 
+it('tells Kesiswaan how to open the CSV without losing the leading zeros of the NISN', function (): void {
+    $this->actingAs($this->kesiswaan);
+
+    Livewire::test(StatusAktivasi::class)
+        ->assertSee('Buka di Excel lewat Data › Dari Teks/CSV dan atur kolom NISN sebagai Teks agar angka 0 di depan tetap ada.');
+});
+
 // --- M1-E: "Lihat" opens the class in a dialog (lead 2026-10-04, item 16) -------------------------------
 
 it('opens the students of a class in a dialog instead of filtering the list at the bottom', function (): void {

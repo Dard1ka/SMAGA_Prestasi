@@ -61,6 +61,7 @@
                         <x-sth.button variant="quiet" size="sm" icon="download" wire:click="export" wire:loading.attr="disabled" wire:target="export">Download CSV</x-sth.button>
                     </x-slot:actions>
                 </x-sth.page-header>
+                <p class="m-0 text-xs text-muted">Buka di Excel lewat Data › Dari Teks/CSV dan atur kolom NISN sebagai Teks agar angka 0 di depan tetap ada.</p>
 
                 <x-sth.card padding="none" class="flex min-w-0 flex-col">
                     <div class="flex flex-col gap-3 border-b border-line p-4">

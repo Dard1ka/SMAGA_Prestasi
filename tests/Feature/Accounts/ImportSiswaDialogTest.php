@@ -216,6 +216,8 @@ it('lists the NISN, not the NIS, in the preview and in "baris perlu dicek" (D-13
 
     $path = tempnam(sys_get_temp_dir(), 'sth').'.xlsx';
     file_put_contents($path, base64_decode((string) $component->call('downloadInvalid')->effects['download']['content']));
-    expect(SimpleExcelReader::create($path)->getHeaders())->toBe(['Baris', 'Nama lengkap', 'NISN', 'Kelas', 'Status', 'Keterangan']);
+    $reader = SimpleExcelReader::create($path);
+    expect($reader->getHeaders())->toBe(['Baris', 'Nama lengkap', 'NISN', 'Kelas', 'Status', 'Keterangan'])
+        ->and((string) $reader->getRows()->first()['NISN'])->toBe('0101234557');
     @unlink($path);
 });

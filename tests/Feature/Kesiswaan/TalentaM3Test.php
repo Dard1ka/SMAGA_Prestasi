@@ -7,6 +7,7 @@ use App\Enums\RoleName;
 use App\Enums\TalentStatus;
 use App\Enums\UserStatus;
 use App\Livewire\Kesiswaan\Talenta;
+use App\Models\Student;
 use App\Models\TalentApplication;
 use App\Models\TalentProfile;
 use App\Notifications\Talent\TalentApplicationRejected;
@@ -418,6 +419,8 @@ it('opens a dialog for "Download data (Excel)" with the statuses of the open tab
 
 it('puts only the ticked statuses into the file and says so in its "Filter:" line', function (): void {
     m3aPipeline();
+    $hana = Student::query()->whereHas('user', fn ($u) => $u->where('name', 'Hana Safira'))->sole();
+    $hana->forceFill(['nisn' => '0098765441'])->save();
     session()->put('auth.password_confirmed_at', time());
 
     $component = Livewire::actingAs($this->kesiswaan)->test(Talenta::class)
@@ -440,7 +443,8 @@ it('puts only the ticked statuses into the file and says so in its "Filter:" lin
         ->and($rows[3][0])->toBe('Nama')
         ->and($rows[3][1])->toBe('NISN')
         ->and($rows[3][5])->toBe('Tahap')
-        ->and(m3aExportedStudents($rows))->toBe(['Citra Ayu Lestari | Tidak lolos', 'Hana Safira | Terdaftar']);
+        ->and(m3aExportedStudents($rows))->toBe(['Citra Ayu Lestari | Tidak lolos', 'Hana Safira | Terdaftar'])
+        ->and((string) collect($rows)->slice(4)->first(fn (array $r): bool => $r[0] === 'Hana Safira')[1])->toBe('0098765441');
 
     $log = Activity::query()->where('event', 'talent.exported')->sole();
     expect($log->properties['filters'])->toBe(['tahap' => 'terdaftar,tidak_lolos'])

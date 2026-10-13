@@ -307,7 +307,7 @@ class ImportSiswa extends Component
     }
 
     /**
-     * "Download baris yang perlu dicek": the refused rows and the rows with a note: row number, name, NIS, class,
+     * "Download baris yang perlu dicek": the refused rows and the rows with a note: row number, name, NISN, class,
      * what happens to the row and why (formula-safe). Never a birth date, a phone number or a password.
      */
     public function downloadInvalid(): ?BinaryFileResponse

@@ -375,7 +375,7 @@ final class Navigation
                 ],
             ],
             'admin' => [
-                'search' => ['placeholder' => 'Cari nama, NIS, atau NISN', 'route' => ['admin.pengguna.index', 'admin.pengguna']],
+                'search' => ['placeholder' => 'Cari nama atau NISN', 'route' => ['admin.pengguna.index', 'admin.pengguna']],
                 'sections' => [
                     ['label' => 'Menu', 'items' => [
                         ['key' => 'dashboard', 'label' => 'Dashboard', 'icon' => 'bars', 'route' => ['admin.beranda', 'admin.dashboard']],

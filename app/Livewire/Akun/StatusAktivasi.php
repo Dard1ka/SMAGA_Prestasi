@@ -32,7 +32,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 /**
  * Status aktivasi (`kesiswaan.aktivasi.index`, `admin.aktivasi.index`; docs/UI-MAP.md §4a/§5, SECURITY K9/K2,
  * B1): per-class activation report (counts, activation time, last login, NISN in full since D-137, masked email,
- * automatic flags), filters (kelas, status, nama/NIS), formula-safe CSV export (password confirmed in the last 15
+ * automatic flags), filters (kelas, status, nama/NISN), formula-safe CSV export (password confirmed in the last 15
  * min, audited; it carries the NISN in full too),
  * K2 "Buka ulang aktivasi" (72 h, reason, Kesiswaan + Admin), Admin "Buka pembekuan" and the K1 window length
  * (Admin), K7 alerts. Every action re-authorizes; the target id is #[Locked] and set only by open*().

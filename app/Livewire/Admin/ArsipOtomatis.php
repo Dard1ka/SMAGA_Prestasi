@@ -291,7 +291,7 @@ final class ArsipOtomatis extends Component
 
         // Exact NISN only (no prefix search, SECURITY §3m-3); otherwise the name.
         if (preg_match('/^\d{10}$/', $term) === 1) {
-            return $query->where(fn (Builder $w) => $w->where('nisn', $term));
+            return $query->where('nisn', $term);
         }
 
         return $query->whereHas('user', fn (Builder $u) => $u->where('name', 'like', '%'.addcslashes($term, '%_\\').'%'));

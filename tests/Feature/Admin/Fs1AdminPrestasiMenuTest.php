@@ -17,6 +17,12 @@ beforeEach(function (): void {
     $this->admin = F::staff(RoleName::Admin, 'Operator STH');
 });
 
+it('words the Admin top bar search as name or NISN (D-137)', function (): void {
+    $nav = Navigation::for(['name' => 'X', 'roles' => ['admin']], null, [], 'admin.beranda');
+
+    expect($nav['search']['placeholder'])->toBe('Cari nama atau NISN');
+});
+
 it('gives Admin a "Database prestasi" item in Data that names the page it opens (D-119)', function (): void {
     $nav = Navigation::for(['name' => 'X', 'roles' => ['admin']], null, [], 'kesiswaan.prestasi.index');
     $data = collect($nav['sections'])->firstWhere('label', 'Data')['items'];

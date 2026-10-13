@@ -791,7 +791,7 @@ class Talenta extends Component
     }
 
     /**
-     * Excel download of the list (full NIS, names, notes): password from the last 15 minutes, at most
+     * Excel download of the list (full NISN, names, notes): password from the last 15 minutes, at most
      * EXPORT_MAX_ROWS, audited with its filters, Admins alerted above LargeExportNotice::LIMIT rows
      * (SECURITY §3i, §3m-9; same gates as Database prestasi).
      *
