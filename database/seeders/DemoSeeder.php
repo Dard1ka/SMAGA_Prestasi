@@ -885,37 +885,43 @@ final class DemoSeeder extends Seeder
         $types = TalentType::query()->get()->keyBy(fn (TalentType $type) => $type->code->value);
         $branches = TalentBranch::query()->get()->groupBy('talent_type_id');
 
-        // [student, type, branch, status, mentor, assessment on, evidence file, submitted on] — mockup-v2-notes/T2.md
+        // [student, type, branch, guru pembina, evidence file, submitted on, "Lainnya" text] — mockup-v2-notes/T2.md.
+        // D-142: no stages any more; every row is Terdaftar and the guru pembina is optional. D-143: Keisha's own talent.
+        // Every kelas X student of the demo (Aurelia, Hana, Galang) has a choice, so the D-144 gate lets them through.
         $applications = [
-            ['nadia', 'riset', 'OPSI', TalentStatus::Pembinaan, 'retno', null, 'sertifikat-opsi-2026.pdf', '2026-09-16'],
-            ['nadia', 'osn', 'Kimia', TalentStatus::Terdaftar, null, null, null, '2026-09-29'],
-            ['hana', 'osn', 'Biologi', TalentStatus::Pemetaan, 'hendra', '2026-10-07', 'sertifikat-osn-smp-biologi-2025.pdf', '2026-09-17'],
-            ['rizky', 'osn', 'Kimia', TalentStatus::Seleksi, 'hendra', '2026-10-05', 'sertifikat-okn-undip-2026.pdf', '2026-09-16'],
-            ['salsabila', 'fls3n', 'Baca Puisi', TalentStatus::Pembinaan, 'maya', null, 'sertifikat-fls3n-prov-2026.pdf', '2026-09-16'],
-            ['citra', 'fls3n', 'Tari Kreasi', TalentStatus::Pemetaan, 'maya', '2026-10-09', 'sertifikat-festival-tari-2026.pdf', '2026-09-21'],
-            ['fajar', 'o2sn', 'Pencak Silat', TalentStatus::Pembinaan, 'agus', null, 'piagam-o2sn-prov-2026.pdf', '2026-09-16'],
-            ['aurelia', 'debat', 'Debat Bahasa Indonesia (LDBI)', TalentStatus::Seleksi, 'maya', '2026-10-06', null, '2026-09-18'],
-            ['galang', 'olpain', null, TalentStatus::Terdaftar, null, null, 'sertifikat-olimpiade-pai-smp-2025.pdf', '2026-09-28'],
-            ['bima', 'riset', 'FIKSI', TalentStatus::Seleksi, 'retno', '2026-10-08', 'sertifikat-robotik-nasional-2025.pdf', '2026-09-17'],
+            ['nadia', 'riset', 'OPSI', 'retno', 'sertifikat-opsi-2026.pdf', '2026-09-16', null],
+            ['nadia', 'osn', 'Kimia', null, null, '2026-09-29', null],
+            ['hana', 'osn', 'Biologi', 'hendra', 'sertifikat-osn-smp-biologi-2025.pdf', '2026-09-17', null],
+            ['rizky', 'osn', 'Kimia', 'hendra', 'sertifikat-okn-undip-2026.pdf', '2026-09-16', null],
+            ['salsabila', 'fls3n', 'Baca Puisi', 'maya', 'sertifikat-fls3n-prov-2026.pdf', '2026-09-16', null],
+            ['citra', 'fls3n', 'Tari Kreasi', 'maya', 'sertifikat-festival-tari-2026.pdf', '2026-09-21', null],
+            ['fajar', 'o2sn', 'Pencak Silat', 'agus', 'piagam-o2sn-prov-2026.pdf', '2026-09-16', null],
+            ['aurelia', 'debat', 'Debat Bahasa Indonesia (LDBI)', 'maya', null, '2026-09-18', null],
+            ['galang', 'olpain', null, null, 'sertifikat-olimpiade-pai-smp-2025.pdf', '2026-09-28', null],
+            ['bima', 'riset', 'FIKSI', 'retno', 'sertifikat-robotik-nasional-2025.pdf', '2026-09-17', null],
+            ['keisha', 'lainnya', null, null, null, '2026-09-30', 'Kaligrafi'],
         ];
 
-        foreach ($applications as [$studentKey, $code, $branchName, $status, $mentor, $assessmentOn, $evidence, $submittedOn]) {
+        foreach ($applications as [$studentKey, $code, $branchName, $mentor, $evidence, $submittedOn, $otherText]) {
             $type = $types[TalentTypeCode::from($code)->value];
             $branch = $branchName === null ? null : $branches[$type->getKey()]->firstWhere('name', $branchName)
                 ?? throw new RuntimeException("Cabang talenta tidak ditemukan: {$code} / {$branchName}");
             $student = $this->students[$studentKey];
 
-            TalentApplication::query()->create([
+            // `other_text`, `status` and `mentor_id` are not mass-assignable (app/Actions/Talent only).
+            $application = new TalentApplication([
                 'student_id' => $student->getKey(),
                 'talent_type_id' => $type->getKey(),
                 'talent_branch_id' => $branch?->getKey(),
                 'evidence_file_id' => $evidence === null ? null : DemoFiles::pdf($evidence, FilePurpose::TalentEvidence, $student->user_id)->getKey(),
-                'status' => $status,
+            ]);
+            $application->forceFill([
+                'status' => TalentStatus::Terdaftar,
                 'mentor_id' => $mentor === null ? null : $this->staff[$mentor]->getKey(),
-                'assessment_on' => $assessmentOn,
+                'other_text' => $otherText,
                 'created_at' => $submittedOn.' 18:00:00',
                 'updated_at' => $submittedOn.' 18:00:00',
-            ]);
+            ])->save();
         }
 
         // Riwayat talenta: [interests, skills, organizations, junior-high achievements]
