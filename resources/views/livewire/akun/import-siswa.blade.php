@@ -124,7 +124,7 @@
                     <x-sth.table caption="Preview {{ count($list) }} dari {{ $listTotal }} baris" caption-visible :card="false">
                         <x-slot:head>
                             <th scope="col" class="w-14">Baris</th>
-                            <th scope="col">Nama</th>
+                            <th scope="col" class="min-w-48">Nama</th>
                             <th scope="col">NISN</th>
                             <th scope="col">Kelas</th>
                             <th scope="col">Angkatan</th>
@@ -161,7 +161,7 @@
 
                 <div class="flex flex-col gap-1 text-xs text-muted">
                     <span>Arsip otomatis = {{ $archiveMonths }} bulan setelah awal kelas XII. Akun yang diarsipkan tidak bisa masuk.</span>
-                    <span>Kata sandi awal hanya dibuat untuk siswa baru, otomatis sesuai pola sekolah. Kata sandi siswa lama tidak berubah.</span>
+                    <span>Kata sandi awal hanya dibuat untuk siswa baru, sama untuk semua siswa baru dan wajib diganti saat aktivasi. Kata sandi siswa lama tidak berubah.</span>
                 </div>
 
                 @error('file')<x-sth.alert tone="error">{{ $message }}</x-sth.alert>@enderror

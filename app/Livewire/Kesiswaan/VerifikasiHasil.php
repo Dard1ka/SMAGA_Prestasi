@@ -283,7 +283,7 @@ class VerifikasiHasil extends Component
             'tingkat' => $competition?->level?->shortLabel() ?? '–',
             'kategori' => $competition?->weight_category?->value ?? '–',
             'organizer' => $competition?->organizer_name,
-            'status' => [$report->status->tone(), $report->status === ReportStatus::Dikirim ? 'Laporan baru' : $report->status->label()],
+            'status' => [$report->status->tone(), self::statusLabel($report)],
             'members' => $members->map(fn ($m): array => [
                 'name' => $m->student?->user?->name ?? 'Siswa',
                 'class' => $m->student?->classroom?->name,
@@ -324,6 +324,19 @@ class VerifikasiHasil extends Component
             'canDecide' => $this->actor()->can('verify', $report),
             'ownMentee' => $registration?->mentor_id !== null && (int) $registration->mentor_id === (int) $this->actor()->getKey(),
         ];
+    }
+
+    /**
+     * Tag of the detail panel. A report waiting for a decision is "Laporan baru" the first time and "Laporan diperbaiki"
+     * once the ketua sent it again after "Minta revisi" (FS1 QA-05, RequestReportRevision::wasRevised()).
+     */
+    private static function statusLabel(Report $report): string
+    {
+        if ($report->status !== ReportStatus::Dikirim) {
+            return $report->status->label();
+        }
+
+        return RequestReportRevision::wasRevised($report) ? 'Laporan diperbaiki' : 'Laporan baru';
     }
 
     private function selectReport(Report $report): void

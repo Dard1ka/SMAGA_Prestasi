@@ -18,6 +18,7 @@ use App\Support\StaffRoleLabel;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
+use Spatie\Activitylog\Models\Activity;
 
 /**
  * Kesiswaan asks for a corrected report ("Minta revisi", note required): report → perlu_revisi,
@@ -26,6 +27,9 @@ use Illuminate\Validation\ValidationException;
  */
 final class RequestReportRevision
 {
+    /** Audit event of a revision request; wasRevised() reads it back. */
+    public const EVENT_REVISION_REQUESTED = 'report.revision_requested';
+
     public function __construct(private readonly RegistrationStateMachine $stateMachine) {}
 
     public function handle(User $actor, Report $report, string $note): Report
@@ -55,9 +59,9 @@ final class RequestReportRevision
             activity('report')
                 ->performedOn($locked)
                 ->causedBy($actor)
-                ->event('report.revision_requested')
+                ->event(self::EVENT_REVISION_REQUESTED)
                 ->withProperties(['registration_id' => $registration->getKey(), 'note' => $note])
-                ->log('report.revision_requested');
+                ->log(self::EVENT_REVISION_REQUESTED);
 
             return $locked;
         });
@@ -75,6 +79,21 @@ final class RequestReportRevision
         self::mentorUser($locked)?->notify(BinaanReportDecided::revision($locked, $competitionName, $note, $decider));
 
         return $locked;
+    }
+
+    /**
+     * Was this report sent back with "Minta revisi" at least once (FS1 QA-05)? Read from the audit row of that request,
+     * as ApproveRegistration::mentorWasReplaced() does. SubmitReport re-uses the row, so a `dikirim` report with such a
+     * row is the corrected one the ketua sent again: Verifikasi hasil tags it "Laporan diperbaiki", as the bell and
+     * the mail of ReportSubmitted already say "Laporan hasil diperbaiki".
+     */
+    public static function wasRevised(Report $report): bool
+    {
+        return Activity::query()
+            ->where('event', self::EVENT_REVISION_REQUESTED)
+            ->where('subject_type', $report->getMorphClass())
+            ->where('subject_id', $report->getKey())
+            ->exists();
     }
 
     public static function requiredNote(string $note, string $message): string

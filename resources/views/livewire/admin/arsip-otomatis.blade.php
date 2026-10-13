@@ -21,7 +21,7 @@
         @if ($tab !== 'riwayat')
             <div class="flex flex-wrap items-end gap-3">
                 <x-sth.input type="search" wire:model.live.debounce.400ms="q" label="Cari siswa" hide-label icon="search"
-                             placeholder="Nama, atau NISN lengkap" class="w-full sm:w-80" />
+                             placeholder="Nama atau NISN lengkap" class="w-full sm:w-80" />
                 @if ($tab === 'segera')
                     <x-sth.select wire:model.live="hari" label="Rentang" hide-label size="sm" :options="$windowOptions" class="w-36" />
                 @endif
