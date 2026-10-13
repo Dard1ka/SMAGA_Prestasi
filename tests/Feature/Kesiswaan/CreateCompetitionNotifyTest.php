@@ -3,11 +3,7 @@
 declare(strict_types=1);
 
 use App\Actions\Competitions\CreateCompetition;
-use App\Actions\Talent\MoveTalentStage;
 use App\Enums\RoleName;
-use App\Models\TalentApplication;
-use App\Models\TalentBranch;
-use App\Models\TalentType;
 use App\Notifications\Competitions\CompetitionSubmitted;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
@@ -44,18 +40,4 @@ it('does not tell roles that cannot verify a lomba', function (): void {
     app(CreateCompetition::class)->handle($this->admin, F::form());
 
     Notification::assertNotSentTo([$guru, $humas], CompetitionSubmitted::class);
-});
-
-it('does not repeat the talent type in the notification label', function (): void {
-    $type = TalentType::factory()->create(['name' => 'Debat']);
-    $branch = TalentBranch::factory()->create(['talent_type_id' => $type->getKey(), 'name' => 'Debat Bahasa Indonesia (LDBI)']);
-    $other = TalentBranch::factory()->create(['talent_type_id' => $type->getKey(), 'name' => 'Biologi']);
-
-    $debat = TalentApplication::factory()->create(['talent_type_id' => $type->getKey(), 'talent_branch_id' => $branch->getKey()]);
-    $biologi = TalentApplication::factory()->create(['talent_type_id' => $type->getKey(), 'talent_branch_id' => $other->getKey()]);
-
-    $typeLabel = $type->code?->label() ?? $type->name;
-
-    expect(MoveTalentStage::talentLabel($debat))->not->toContain('Debat Debat')
-        ->and(MoveTalentStage::talentLabel($biologi))->toBe(trim($typeLabel.' Biologi'));
 });

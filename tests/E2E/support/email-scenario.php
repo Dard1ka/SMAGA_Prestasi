@@ -77,9 +77,9 @@ use App\Actions\Roles\RequestRoleChange;
 use App\Actions\Settings\PublishWeightVersion;
 use App\Actions\Settings\ReplaceSignatureImage;
 use App\Actions\Talent\ApplyTalent;
-use App\Actions\Talent\MoveTalentStage;
-use App\Actions\Talent\RejectTalentApplication;
+use App\Actions\Talent\CancelTalentApplication;
 use App\Actions\Talent\SaveTalentProfile;
+use App\Actions\Talent\UpdateTalentAssessment;
 use App\Actions\Templates\LetterTemplate;
 use App\Actions\Templates\UpdateLetterTemplate;
 use App\Actions\Users\CreateStaffAccount;
@@ -91,7 +91,6 @@ use App\Enums\PublicationStatus;
 use App\Enums\RegistrationType;
 use App\Enums\ResultType;
 use App\Enums\RoleName;
-use App\Enums\TalentStatus;
 use App\Enums\TalentTypeCode;
 use App\Jobs\RemindDuePublications;
 use App\Models\Achievement;
@@ -1478,17 +1477,18 @@ $scenario->step('9a', 'Bayu fills in his talent profile and picks two talents (S
     $scenario->note('applied: '.$debatBranch->name.' and FLS3N '.$fls3nBranch->name.' (the Actions send no notification to Kesiswaan)');
 });
 
-$scenario->step('9b', 'Kesiswaan moves the first choice to the next stage (MoveTalentStage: terdaftar → pemetaan)', function () use ($state, $staff, $today): void {
-    app(MoveTalentStage::class)->handle($staff('kesiswaan'), TalentApplication::query()->findOrFail($state['talent_a']), TalentStatus::Pemetaan, [
+$scenario->step('9b', 'Kesiswaan sets a guru pembina for the first choice (UpdateTalentAssessment), nobody is mailed', function () use ($state, $staff): void {
+    app(UpdateTalentAssessment::class)->handle($staff('kesiswaan'), TalentApplication::query()->findOrFail($state['talent_a']), [
         'mentor_id' => $staff('maya.a')->getKey(),
-        'assessment_on' => $today->addDays(7)->format('Y-m-d'),
         'note' => null,
     ]);
-}, [[$mail('bayu'), 'Tahap talenta berubah: Debat Bahasa Indonesia (LDBI)']]); // the type is not repeated ("Debat Debat …")
+}, []); // D-142: no stages, no notice about a talent
 
-$scenario->step('9c', 'Kesiswaan marks the second choice "tidak lolos" (RejectTalentApplication)', function () use ($state, $staff): void {
-    app(RejectTalentApplication::class)->handle($staff('kesiswaan'), TalentApplication::query()->findOrFail($state['talent_b']), 'Kuota pembinaan cabang ini sudah penuh. Coba lagi semester depan.');
-}, [[$mail('bayu'), 'Hasil seleksi talenta: FLS3N Baca Puisi']]);
+$scenario->step('9c', 'Bayu adds a Lainnya talent and deletes FLS3N (ApplyTalent with other text + CancelTalentApplication), nobody is mailed', function () use ($state, $siswa): void {
+    $lainnya = TalentType::query()->get()->firstOrFail(fn (TalentType $t): bool => $t->code === TalentTypeCode::Lainnya);
+    app(ApplyTalent::class)->handle($siswa('bayu'), $lainnya, null, null, 'Kaligrafi');
+    app(CancelTalentApplication::class)->handle($siswa('bayu'), TalentApplication::query()->findOrFail($state['talent_b']));
+}, []);
 
 // =================================================================================================================
 // 10. Account + Admin events

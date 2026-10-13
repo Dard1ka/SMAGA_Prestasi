@@ -57,18 +57,21 @@ it('TalentApplicationPolicy: staff never apply; Kesiswaan and pembina may view',
         ->and(F::staff(RoleName::Humas)->can('view', $this->application))->toBeFalse();
 });
 
-it('TalentApplicationPolicy: only talent.manage restores a rejected choice, never the student or the pembina', function (): void {
+it('TalentApplicationPolicy: only talent.manage updates a choice, never the student or the pembina', function (): void {
     $pembina = F::staff(RoleName::Guru, 'Retno Wulandari, S.Pd.');
     $this->application->forceFill(['status' => TalentStatus::TidakLolos, 'mentor_id' => $pembina->getKey()])->save();
-    $rejected = $this->application->fresh();
+    $row = $this->application->fresh();
 
-    expect(F::staff(RoleName::Kesiswaan)->can('restore', $rejected))->toBeTrue()
-        ->and(F::staff(RoleName::Admin, 'Operator STH')->can('restore', $rejected))->toBeTrue()
-        ->and($this->nadia->user->can('restore', $rejected))->toBeFalse()
-        ->and($pembina->can('restore', $rejected))->toBeFalse()
-        ->and(F::staff(RoleName::Humas)->can('restore', $rejected))->toBeFalse()
-        ->and(F::staff(RoleName::KepalaSekolah, 'Kepala Sekolah')->can('restore', $rejected))->toBeFalse()
-        ->and(F::staff(RoleName::TataUsaha, 'Staf TU')->can('restore', $rejected))->toBeFalse();
+    expect(F::staff(RoleName::Kesiswaan)->can('update', $row))->toBeTrue()
+        ->and(F::staff(RoleName::Admin, 'Operator STH')->can('update', $row))->toBeTrue()
+        ->and($this->nadia->user->can('update', $row))->toBeFalse()
+        ->and($pembina->can('update', $row))->toBeFalse()
+        ->and(F::staff(RoleName::Humas)->can('update', $row))->toBeFalse()
+        ->and(F::staff(RoleName::KepalaSekolah, 'Kepala Sekolah')->can('update', $row))->toBeFalse()
+        ->and(F::staff(RoleName::TataUsaha, 'Staf TU')->can('update', $row))->toBeFalse();
+
+    $row->delete();
+    expect(F::staff(RoleName::Kesiswaan, 'Staf Kesiswaan')->can('update', $row->fresh()))->toBeFalse();
 });
 
 it('TalentProfilePolicy: own profile only; Kesiswaan and guru pembina may read it', function (): void {
