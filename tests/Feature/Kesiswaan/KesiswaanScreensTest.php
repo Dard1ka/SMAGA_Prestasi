@@ -528,8 +528,7 @@ it('tells a second tab that a report was already decided instead of showing an e
 
     expect($report->fresh()->status)->toBe(ReportStatus::Diverifikasi)
         ->and(Achievement::query()->count())->toBe(1);
-    // D-128: "Tolak" is askReject() now (it opens the confirm dialog); reject() alone does nothing (VerifikasiHasilTolakTest).
-})->with(['verify', 'requestRevision', 'askReject']);
+})->with(['verify', 'requestRevision']);
 
 it('counts only the members still in the team on a queue card (QA8)', function (): void {
     $leader = F::student('Nadia Putri Anindya', 'XI-4');

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Livewire\Kesiswaan;
 
-use App\Actions\Reports\RejectReport;
 use App\Actions\Reports\RequestReportRevision;
 use App\Actions\Reports\VerifyReport;
 use App\Domain\Points\PointCalculator;
@@ -33,24 +32,20 @@ use Livewire\Component;
 /**
  * Verifikasi hasil (UI-MAP #17, board Kesiswaan-Verifikasi-Hasil). Kesiswaan, Admin (kesiswaan.verifikasi.*) and Humas
  * (humas.verifikasi.*, D-139); `$area` decides links and badge keys. Queue of `dikirim` reports on the left,
- * detail with evidence, capaian decision, live point formula, 4-item checklist and the three decisions on
- * the right. Rules live in VerifyReport / RequestReportRevision / RejectReport; the policy denies a verifier
+ * detail with evidence, capaian decision, live point formula, 4-item checklist and the decisions on
+ * the right. Rules live in VerifyReport / RequestReportRevision; the policy denies a verifier
  * who is the registration's guru pembimbing (§3c-10). "Buka" on an evidence file shows it in the preview
  * popup (M3-C, `data-sth-preview`); nothing is downloaded until "Download" is pressed there.
  *
- * "Tolak" asks first (D-128, lead 2026-10-10): a rejected report ends the registration without points and nothing
- * takes it back. askReject() checks the reason, then opens REJECT_DIALOG (lomba, who, the reason shown back, who is
- * told); reject() is the confirm step and does nothing without that question. The result banners of "Tolak" and
- * "Minta revisi" name only the people who were told (D-109, RequestReportRevision::audience()).
+ * Two decisions only (D-140): verify or ask for a revision. The rejection Action stays for old data and has no caller
+ * on a screen. The result banners of "Minta revisi" name only the people who were told (D-109,
+ * RequestReportRevision::audience()).
  */
 #[Title('Verifikasi hasil')]
 #[Layout('layouts::app', ['subtitle' => 'Periksa bukti, tetapkan capaian, lalu beri poin.'])]
 class VerifikasiHasil extends Component
 {
     use WithKesiswaanBadges;
-
-    /** id of the "Tolak laporan ini?" confirm dialog (<x-sth.modal>). */
-    public const REJECT_DIALOG = 'tolak-laporan';
 
     /** D-109: nobody of the team can log in and no guru pembimbing hears about it. */
     public const NO_NOTICE = 'Akun siswa tidak aktif, jadi tidak ada notifikasi.';
@@ -61,10 +56,6 @@ class VerifikasiHasil extends Component
 
     #[Locked]
     public ?string $selectedId = null;
-
-    /** The report the open "Tolak" dialog asks about; set only by askReject(). */
-    #[Locked]
-    public ?string $rejectingId = null;
 
     public string $finalResult = '';
 
@@ -160,69 +151,6 @@ class VerifikasiHasil extends Component
             .($canResend ? ($audience['of'] > 1 ? ' Ketua bisa mengirim ulang laporan.' : ' Siswa bisa mengirim ulang laporan.') : ''));
     }
 
-    /**
-     * "Tolak": checks the reason, then opens the dialog. Nothing changes and nobody is told before reject().
-     */
-    public function askReject(): void
-    {
-        $this->resetErrorBag();
-        $this->rejectingId = null;
-        $report = $this->selected();
-
-        if ($this->decidedElsewhere($report)) {
-            return;
-        }
-
-        $this->authorize('verify', $report);
-
-        try {
-            // The same check the rejection runs, so the dialog never opens over a field error.
-            RejectReport::reason($this->note);
-        } catch (ValidationException $e) {
-            $this->showErrors($e);
-
-            return;
-        }
-
-        $this->rejectingId = $report->getKey();
-        $this->dispatch('sth-modal-open', id: self::REJECT_DIALOG);
-    }
-
-    /**
-     * "Tolak laporan" in the dialog. Without a dialog opened by askReject() for the report on screen there is nothing
-     * to confirm: it returns without a word (never a 404), so a second click that arrives after the rejection went
-     * through does not put an error page over it.
-     */
-    public function reject(RejectReport $action): void
-    {
-        $asked = $this->rejectingId !== null && $this->rejectingId === $this->selectedId;
-        $this->closeRejectDialog();
-
-        if (! $asked) {
-            return;
-        }
-
-        $this->resetErrorBag();
-        $report = $this->selected();
-
-        if ($this->decidedElsewhere($report)) {
-            return;
-        }
-
-        // Read before the Action: who is told is what the banner may claim (D-109).
-        $audience = RequestReportRevision::audience($report);
-
-        try {
-            $action->handle($this->actor(), $report, $this->note);
-        } catch (ValidationException $e) {
-            $this->showErrors($e);
-
-            return;
-        }
-
-        $this->afterDecision('red', 'Laporan ditolak', self::decisionText($audience, 'menerima alasan penolakan'));
-    }
-
     public function render(PointCalculator $calculator, PointFormatter $formatter): View
     {
         $weights = WeightVersion::active()?->toWeightTable() ?? WeightTable::defaults();
@@ -237,7 +165,6 @@ class VerifikasiHasil extends Component
             ])->all(),
             'checkLabels' => VerifyReport::CHECKS,
             'checkCount' => count(array_filter($this->checks)),
-            'rejecting' => $this->rejecting($report),
         ])->layoutData(['badges' => $this->verificationBadges()]);
     }
 
@@ -257,34 +184,6 @@ class VerifikasiHasil extends Component
         $this->dispatch('sth-badges', badges: $badges);
 
         return $badges;
-    }
-
-    /**
-     * Texts of the "Tolak laporan ini?" dialog, or null while nothing is asked about the report on screen.
-     *
-     * @return array{name: string, who: string, team: bool, note: string, notice: string}|null
-     */
-    private function rejecting(?Report $report): ?array
-    {
-        if ($report === null || $this->rejectingId === null || $report->getKey() !== $this->rejectingId) {
-            return null;
-        }
-
-        $registration = $report->registration;
-        $members = $registration?->members ?? collect();
-        $names = $members->map(fn ($m): string => (string) ($m->student?->user?->name ?? 'Siswa'));
-        $first = $members->first();
-
-        return [
-            'name' => (string) ($registration?->competition?->name ?? 'Lomba'),
-            'who' => $members->count() > 1
-                ? 'Tim '.$members->count().' siswa: '.$names->implode(', ')
-                : trim(($names->first() ?? 'Siswa').($first?->student?->classroom ? ' · '.$first->student->classroom->name : '')),
-            'team' => $members->count() > 1,
-            // What the student will read: the text in the field right now (the Action checks it again).
-            'note' => trim($this->note),
-            'notice' => self::rejectNotice(RequestReportRevision::audience($report)),
-        ];
     }
 
     /**
@@ -309,23 +208,7 @@ class VerifikasiHasil extends Component
     }
 
     /**
-     * The line under the title of the "Tolak" dialog: who is told when it is confirmed.
-     *
-     * @param  array{told: int, of: int, mentor: bool}  $audience
-     */
-    private static function rejectNotice(array $audience): string
-    {
-        $subject = self::audienceSubject($audience);
-
-        return match (true) {
-            $subject === null => self::NO_NOTICE,
-            $audience['told'] === 0 => 'Akun siswa tidak aktif. Hanya guru pembimbing yang diberi tahu.',
-            default => $subject.' langsung diberi tahu.',
-        };
-    }
-
-    /**
-     * The sentence of a result banner, e.g. "Siswa dan guru pembimbing menerima alasan penolakan."
+     * The sentence of a result banner, e.g. "Siswa dan guru pembimbing menerima catatan revisi."
      *
      * @param  array{told: int, of: int, mentor: bool}  $audience
      */
@@ -334,12 +217,6 @@ class VerifikasiHasil extends Component
         $subject = self::audienceSubject($audience);
 
         return $subject === null ? self::NO_NOTICE : $subject.' '.$verb.'.';
-    }
-
-    private function closeRejectDialog(): void
-    {
-        $this->rejectingId = null;
-        $this->dispatch('sth-modal-close', id: self::REJECT_DIALOG);
     }
 
     /** @return Builder<Report> */
@@ -451,8 +328,6 @@ class VerifikasiHasil extends Component
 
     private function selectReport(Report $report): void
     {
-        // A "Tolak" question about the report that was on screen is void once another one is shown.
-        $this->rejectingId = null;
         $this->selectedId = $report->getKey();
         $this->finalResult = ($report->final_result ?? $report->claimed_result)->value;
         $this->checks = array_fill_keys(array_keys(VerifyReport::CHECKS), false);
@@ -486,7 +361,6 @@ class VerifikasiHasil extends Component
             return false;
         }
 
-        $this->closeRejectDialog();
         $this->dispatch('sth-toast', message: 'Laporan ini sudah diputuskan. Antrean sudah diperbarui.', tone: 'warning');
         $next = $this->queueQuery()->first();
 
