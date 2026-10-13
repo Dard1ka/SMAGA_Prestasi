@@ -15,7 +15,8 @@
             <span class="flex size-11 shrink-0 items-center justify-center rounded-tile bg-gray-bg text-gray" aria-hidden="true"><x-sth.icon name="clock" /></span>
             <div class="flex min-w-0 flex-1 flex-col gap-1">
                 <div class="flex flex-wrap items-center gap-2">
-                    <h3 id="setuju-judul" class="title-card">Persetujuan</h3>
+                    {{-- D-148: a registration whose lomba Kesiswaan has not verified yet does not wait for the approval yet. --}}
+                    <h3 id="setuju-judul" class="title-card">{{ $status === S::MenungguLomba ? 'Verifikasi lomba' : 'Persetujuan' }}</h3>
                     <x-sth.chip icon="clock">{{ $status->label() }}</x-sth.chip>
                 </div>
                 <p class="muted m-0 text-sm">

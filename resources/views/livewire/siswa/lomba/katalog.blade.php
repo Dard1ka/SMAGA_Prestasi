@@ -46,7 +46,7 @@
                                 <span class="font-bold">{{ $row['name'] }}</span>
                                 <span class="text-xs text-muted">{{ $row['organizer'] ?: 'Penyelenggara belum diisi' }}<span class="sm:hidden"> · Dikirim {{ $row['sent'] }}</span></span>
                                 @if ($row['note'])
-                                    <span class="text-xs text-red">Catatan Kesiswaan: {{ $row['note'] }}</span>
+                                    <span class="text-xs text-red">{{ $row['noteLabel'] }} {{ $row['note'] }}</span>
                                 @endif
                             </div>
                         </td>

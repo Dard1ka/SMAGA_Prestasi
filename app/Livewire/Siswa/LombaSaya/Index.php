@@ -157,7 +157,7 @@ final class Index extends Component
         $registration = $this->baseQuery()
             ->whereKey($this->selectedId)
             ->with([
-                'competition',
+                'competition.verifier.roles',
                 'mentor.staffProfile',
                 'members' => fn ($q) => $q->whereNull('declined_at')->orderByRaw("case when role = 'ketua' then 0 else 1 end")->orderBy('invited_at'),
                 'members.student.user',
@@ -309,9 +309,10 @@ final class Index extends Component
             'registeredOn' => self::longDate($registration->created_at),
             // D-148: the lomba itself still waits for Kesiswaan; nothing has gone out yet.
             'waitingText' => $status === RegistrationStatus::MenungguLomba ? LombaPresenter::waitingForLomba($registration) : null,
-            // D-148: cancelled together with the rejected lomba; registering again is not possible then.
+            // D-148: cancelled together with the rejected lomba; registering again is not possible then. The role that
+            // rejected it is named as in the other decisions (StaffRoleLabel; Kesiswaan or Admin).
             'cancelledText' => $status === RegistrationStatus::Dibatalkan && $registration->cancelledWithLomba()
-                ? 'Usulan lomba ini ditolak Kesiswaan, jadi pendaftarannya ikut dibatalkan.'
+                ? 'Usulan lomba ini ditolak '.StaffRoleLabel::forDecision($competition->verifier).', jadi pendaftarannya ikut dibatalkan.'
                 : 'Kamu bisa mendaftar lagi selama pendaftaran lomba masih dibuka.',
             'allConfirmed' => $registration->members->every(fn (RegistrationMember $m): bool => $m->confirmed_at !== null),
         ];

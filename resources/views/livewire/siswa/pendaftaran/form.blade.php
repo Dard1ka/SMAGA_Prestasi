@@ -34,11 +34,20 @@
                 </div>
             @endif
 
+            {{-- D-148: a registration for the own lomba that Kesiswaan has not verified yet stands before the approval:
+                 its first step is the verification, and the later steps are not current yet (`$status['first']` = the
+                 number of the first step after it). --}}
             <ol class="m-0 flex list-none flex-col gap-3 p-0">
+                @if ($status['waitingLomba'])
+                    <li class="flex items-start gap-3">
+                        <span class="inline-flex size-7 shrink-0 items-center justify-center rounded-full bg-primary-tint text-sm font-bold text-primary"><span class="num">1</span></span>
+                        <span class="font-semibold">Kesiswaan memverifikasi lomba</span>
+                    </li>
+                @endif
                 @if ($status['isTeam'])
                     <li class="flex items-start gap-3">
-                        <span @class(['inline-flex size-7 shrink-0 items-center justify-center rounded-full text-sm font-bold', 'bg-green-bg text-green' => ! $status['waitingMembers'], 'bg-primary-tint text-primary' => $status['waitingMembers']])>
-                            @if ($status['waitingMembers'])<span class="num">1</span>@else<x-sth.icon name="check" :size="16" />@endif
+                        <span @class(['inline-flex size-7 shrink-0 items-center justify-center rounded-full text-sm font-bold', 'bg-green-bg text-green' => ! $status['waitingMembers'], 'bg-primary-tint text-primary' => $status['waitingMembers'] && ! $status['waitingLomba'], 'bg-subtle text-muted' => $status['waitingLomba']])>
+                            @if ($status['waitingMembers'])<span class="num">{{ $status['first'] }}</span>@else<x-sth.icon name="check" :size="16" />@endif
                         </span>
                         <div class="flex flex-col">
                             <span class="font-semibold">Anggota konfirmasi</span>
@@ -47,14 +56,14 @@
                     </li>
                 @endif
                 <li class="flex items-start gap-3">
-                    <span @class(['inline-flex size-7 shrink-0 items-center justify-center rounded-full text-sm font-bold', 'bg-green-bg text-green' => $status['phase'] > 2, 'bg-primary-tint text-primary' => $status['phase'] <= 2])>
-                        @if ($status['phase'] > 2)<x-sth.icon name="check" :size="16" />@else<span class="num">{{ $status['isTeam'] ? 2 : 1 }}</span>@endif
+                    <span @class(['inline-flex size-7 shrink-0 items-center justify-center rounded-full text-sm font-bold', 'bg-green-bg text-green' => $status['phase'] > 2, 'bg-primary-tint text-primary' => $status['phase'] <= 2 && ! $status['waitingLomba'], 'bg-subtle text-muted' => $status['waitingLomba']])>
+                        @if ($status['phase'] > 2)<x-sth.icon name="check" :size="16" />@else<span class="num">{{ $status['first'] + ($status['isTeam'] ? 1 : 0) }}</span>@endif
                     </span>
                     <span class="font-semibold">Sekolah menyetujui</span>
                 </li>
                 <li class="flex items-start gap-3">
                     <span @class(['inline-flex size-7 shrink-0 items-center justify-center rounded-full text-sm font-bold', 'bg-green-bg text-green' => $status['phase'] > 3, 'bg-subtle text-muted' => $status['phase'] <= 3])>
-                        @if ($status['phase'] > 3)<x-sth.icon name="check" :size="16" />@else<span class="num">{{ $status['isTeam'] ? 3 : 2 }}</span>@endif
+                        @if ($status['phase'] > 3)<x-sth.icon name="check" :size="16" />@else<span class="num">{{ $status['first'] + ($status['isTeam'] ? 2 : 1) }}</span>@endif
                     </span>
                     <span class="font-semibold">Tata Usaha membuat surat tugas</span>
                 </li>

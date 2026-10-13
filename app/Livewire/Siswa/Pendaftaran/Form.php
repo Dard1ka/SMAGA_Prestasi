@@ -646,6 +646,9 @@ class Form extends Component
             // D-148: nothing goes out before Kesiswaan decides the lomba, so no confirmation count yet.
             'membersText' => $anggota->count() === 0 || $waitingLomba ? null : "{$confirmed} dari {$anggota->count()} anggota sudah konfirmasi",
             'waitingText' => $waitingLomba ? LombaPresenter::waitingForLomba($registration) : null,
+            // D-148: the steps start with "Kesiswaan memverifikasi lomba" while the lomba waits, not with the approval.
+            'waitingLomba' => $waitingLomba,
+            'first' => $waitingLomba ? 2 : 1,
             'cancelNote' => $waitingLomba
                 ? 'Pendaftaran ini belum diteruskan, jadi tidak ada yang diberi tahu.'
                 : 'Anggota tim akan diberi tahu. Kamu bisa mendaftar lagi selama pendaftaran masih dibuka.',

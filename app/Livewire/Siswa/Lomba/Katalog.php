@@ -8,6 +8,7 @@ use App\Enums\Bidang;
 use App\Enums\CompetitionStatus;
 use App\Enums\Level;
 use App\Models\Competition;
+use App\Support\StaffRoleLabel;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
@@ -114,7 +115,8 @@ class Katalog extends Component
         $rows = [];
 
         if ($proposals) {
-            $rows = $page->getCollection()->map(fn (Competition $c): array => self::proposalRow($c))->all();
+            // The role that decided a rejected usulan is named next to its reason (StaffRoleLabel; Kesiswaan or Admin).
+            $rows = $page->getCollection()->load('verifier.roles')->map(fn (Competition $c): array => self::proposalRow($c))->all();
         } else {
             $registrants = LombaPresenter::registrants($page->getCollection());
             $cards = $page->getCollection()
@@ -172,7 +174,7 @@ class Katalog extends Component
             ->orderBy('id');
     }
 
-    /** @return array{id: string, name: string, organizer: ?string, status: string, tone: string, sent: string, note: ?string, href: string} */
+    /** @return array{id: string, name: string, organizer: ?string, status: string, tone: string, sent: string, note: ?string, noteLabel: string, href: string} */
     private static function proposalRow(Competition $competition): array
     {
         return [
@@ -184,6 +186,7 @@ class Katalog extends Component
             'sent' => CarbonImmutable::instance($competition->created_at)->locale('id')->translatedFormat('j M Y'),
             // A rejected usulan names Kesiswaan's reason when one was written (D-103).
             'note' => $competition->status === CompetitionStatus::Ditolak ? $competition->verification_note : null,
+            'noteLabel' => 'Catatan '.StaffRoleLabel::forDecision($competition->verifier).':',
             'href' => route('siswa.lomba.show', $competition),
         ];
     }

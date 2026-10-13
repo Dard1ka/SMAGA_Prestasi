@@ -157,8 +157,8 @@ final class VerifyCompetition
 
         if (self::notifiesSubmitter($submitter, $actor)) {
             $submitter->notify($decision === CompetitionStatus::Dipublikasikan
-                ? CompetitionPublished::for($result, $submitter->hasRole(RoleName::Siswa->value), $outcome->submitterNow)
-                : CompetitionRejected::for($result, $note, $outcome->submitterNow === RegistrationStatus::Dibatalkan));
+                ? CompetitionPublished::for($result, $submitter->hasRole(RoleName::Siswa->value), $outcome->submitterNow, $actor)
+                : CompetitionRejected::for($result, $note, $outcome->submitterNow === RegistrationStatus::Dibatalkan, $actor));
         }
 
         $this->resume->notify($outcome, $actor);
