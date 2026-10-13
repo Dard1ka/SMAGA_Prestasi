@@ -145,13 +145,17 @@
                             @endif
                             <div class="flex min-w-0 flex-col gap-1">
                                 <span class="flex flex-wrap items-center gap-2">
-                                    <span class="display text-md font-bold">{{ $talent['title'] }}</span>
+                                    {{-- D-143: the student's own "Lainnya" text may be one long word (QA7). --}}
+                                    <span class="display min-w-0 text-md font-bold [overflow-wrap:anywhere]">{{ $talent['title'] }}</span>
                                     @if ($talent['bidang'])
                                         <x-sth.chip :bidang="$talent['bidang']" size="sm" />
+                                    @else
+                                        <x-sth.chip size="sm">Lainnya</x-sth.chip>
                                     @endif
                                 </span>
-                                <span><x-sth.chip :tone="$talent['status']->tone()" size="sm">{{ $talent['status']->label() }}</x-sth.chip></span>
-                                <span class="muted text-xs">{{ $talent['info'] }}</span>
+                                @if ($talent['info'] !== '')
+                                    <span class="muted text-xs">{{ $talent['info'] }}</span>
+                                @endif
                             </div>
                         </li>
                     @endforeach

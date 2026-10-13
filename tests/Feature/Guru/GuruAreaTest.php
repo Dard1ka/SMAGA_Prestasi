@@ -2,8 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Actions\Talent\RejectTalentApplication;
-use App\Actions\Talent\RestoreTalentApplication;
+use App\Actions\Talent\UpdateTalentAssessment;
 use App\Enums\CompetitionStatus;
 use App\Enums\FilePurpose;
 use App\Enums\LetterType;
@@ -126,33 +125,24 @@ it('lists only the own binaan with status and stats', function (): void {
         ->assertViewHas('counts', fn (array $c): bool => $c['siswa'] === 3 && $c['aktif'] === 1 && $c['laporan'] === 1 && $c['talenta'] === 1)
         ->call('setTab', 'talenta')
         ->assertSee('Aurelia Maharani')
-        ->assertSee('Seleksi/asesmen')
+        ->assertDontSee('Seleksi/asesmen')
         ->assertDontSee('Fajar Ramadhan');
 });
 
-it('shows the note for the guru pembina in the Talenta tab, never the note for the student, and a restored choice in its stage', function (): void {
+it('shows the note for the guru pembina in the Talenta tab and never a stage', function (): void {
     $kesiswaan = KesiswaanFixtures::staff(RoleName::Kesiswaan, 'Ibu Dwi Rahayu');
     $application = GuruFixtures::talent($this->retno, GuruFixtures::student('Aurelia Maharani', 'X-3'));
+    $application->forceFill(['student_note' => 'Catatan lama untuk siswa.'])->save();
 
-    app(RejectTalentApplication::class)->handle($kesiswaan, $application, 'Catatan yang hanya untuk siswa.', ['note' => 'Dampingi latihan soal tiap Kamis.']);
+    app(UpdateTalentAssessment::class)->handle($kesiswaan, $application, ['mentor_id' => $this->retno->getKey(), 'note' => 'Dampingi latihan soal tiap Kamis.']);
 
     Livewire::actingAs($this->retno)->test(Binaan::class)
         ->call('setTab', 'talenta')
         ->assertSee('Aurelia Maharani')
-        ->assertSee('Tidak lolos')
         ->assertSee('Catatan untuk pembina:')
         ->assertSee('Dampingi latihan soal tiap Kamis.')
-        ->assertDontSee('Catatan yang hanya untuk siswa.');
-
-    app(RestoreTalentApplication::class)->handle($kesiswaan, $application->fresh(), 'Dibuka lagi untukmu.');
-
-    Livewire::actingAs($this->retno)->test(Binaan::class)
-        ->call('setTab', 'talenta')
-        ->assertSee('Aurelia Maharani')
-        ->assertSee('Seleksi/asesmen')
-        ->assertDontSee('Tidak lolos')
-        ->assertSee('Dampingi latihan soal tiap Kamis.')
-        ->assertDontSee('Dibuka lagi untukmu.')
+        ->assertDontSee('Catatan lama untuk siswa.')
+        ->assertDontSee('Tahap')
         ->assertViewHas('counts', fn (array $c): bool => $c['talenta'] === 1);
 
     // Still only the assigned pembina.

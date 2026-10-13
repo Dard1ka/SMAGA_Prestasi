@@ -10,7 +10,8 @@ use App\Models\TalentType;
 use Illuminate\Database\Seeder;
 
 /**
- * 6 talent types + branches from docs/TALENT-FORM.md; bidang mapping per D-22.
+ * 7 talent types + branches from docs/TALENT-FORM.md; bidang mapping per D-22. D-143: the seventh jenis "Lainnya"
+ * (no bidang, no cabang) and a cabang "Lainnya" last in every jenis that has cabang (not OLPAIN).
  * Idempotent (keyed by code / type+name): safe in production; Admin-added branches are kept.
  */
 class TalentSeeder extends Seeder
@@ -37,6 +38,7 @@ class TalentSeeder extends Seeder
         'debat' => [
             ['Debat Bahasa Indonesia (LDBI)'], ['Debat Bahasa Inggris (NSDC)'],
         ],
+        'lainnya' => [],
     ];
 
     public function run(): void
@@ -50,6 +52,10 @@ class TalentSeeder extends Seeder
                 ['code' => $enum->value],
                 ['name' => $enum->label(), 'bidang' => $enum->bidang(), 'sort_order' => ++$typeOrder],
             );
+
+            if ($branches !== []) {
+                $branches[] = [TalentBranch::OTHER];
+            }
 
             foreach ($branches as $order => $branch) {
                 TalentBranch::query()->updateOrCreate(

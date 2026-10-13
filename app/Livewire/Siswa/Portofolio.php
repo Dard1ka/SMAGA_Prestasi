@@ -8,7 +8,6 @@ use App\Domain\Points\PointFormatter;
 use App\Enums\RegistrationStatus;
 use App\Enums\ReportFileKind;
 use App\Enums\ReportStatus;
-use App\Enums\TalentStatus;
 use App\Http\Controllers\FileController;
 use App\Models\Achievement;
 use App\Models\Registration;
@@ -111,8 +110,8 @@ final class Portofolio extends Component
             'classroom' => $student->classroom?->name,
             'angkatan' => $student->grade12_start_date !== null ? $student->grade12_start_date->year - 2 : null,
             'activeUntil' => $student->archive_at?->locale('id')->translatedFormat('F Y'),
+            // D-142: every choice counts, whatever an old row says; "Lainnya" has no bidang (D-143) and drops out.
             'bidangMinat' => $talents
-                ->reject(fn (TalentApplication $t): bool => $t->status === TalentStatus::TidakLolos)
                 ->map(fn (TalentApplication $t) => $t->talentType?->bidang)
                 ->filter()
                 ->unique(fn ($b) => $b->value)
@@ -133,9 +132,8 @@ final class Portofolio extends Component
                 'href' => route('siswa.lomba-saya.show', $r),
             ])->all(),
             'talents' => $talents->map(fn (TalentApplication $t): array => [
-                'title' => $t->talentType?->code->label().($t->talentBranch ? ' · '.$t->talentBranch->name : ''),
+                'title' => $t->title(),
                 'bidang' => $t->talentType?->bidang,
-                'status' => $t->status,
                 'info' => $this->talentInfo($t),
             ])->all(),
             'talentUrl' => route('siswa.talenta'),
@@ -192,16 +190,18 @@ final class Portofolio extends Component
         return app(PersonalRank::class)->rank($student);
     }
 
+    /** The guru pembina when Kesiswaan named one, else nothing (D-142: no stage text). */
     private function talentInfo(TalentApplication $application): string
     {
-        return match ($application->status) {
-            TalentStatus::Terdaftar => 'Menunggu pemetaan Kesiswaan',
-            TalentStatus::Pembinaan => $application->mentor !== null
-                ? 'Pembina '.trim(($application->mentor->staffProfile?->honorific ? $application->mentor->staffProfile->honorific.' ' : '').$application->mentor->name)
-                : 'Peserta pembinaan',
-            TalentStatus::TidakLolos => 'Belum lolos tahun ini',
-            default => 'Tahap '.$application->status->step().' dari 4',
-        };
+        $mentor = $application->mentor;
+
+        if ($mentor === null) {
+            return '';
+        }
+
+        $honorific = $mentor->staffProfile?->honorific;
+
+        return 'Guru pembina '.trim(($honorific ? $honorific.' ' : '').$mentor->name);
     }
 
     private function dateRange(?\DateTimeInterface $start, ?\DateTimeInterface $end): string

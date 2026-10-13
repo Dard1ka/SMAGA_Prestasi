@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Livewire\Guru;
 
 use App\Enums\RegistrationStatus;
-use App\Enums\TalentStatus;
 use App\Livewire\Guru\Concerns\PresentsBinaan;
 use App\Livewire\Siswa\LombaSaya\Concerns\ReportHelpers;
 use App\Models\Registration;
@@ -24,7 +23,7 @@ use Livewire\Component;
 /**
  * Guru · Siswa binaan (UI-MAP §4e `guru.beranda`, backlog #3, owner B4). The guru's own binaan only:
  * registrations where `mentor_id` = the guru (status, compact Jejak Prestasi tracker, report state) and
- * talent applications where `mentor_id` = the guru (pembinaan stage). Read-only; one registration opens
+ * talent choices where `mentor_id` = the guru (D-142: plain data, no stage). Read-only; one registration opens
  * in Guru\BinaanDetail (`guru.binaan.show`, 404 for anyone else's). Topbar search posts `?q=` here.
  */
 #[Title('Siswa binaan')]
@@ -117,14 +116,12 @@ final class Binaan extends Component
             'selesai' => $mine()->whereNotIn('status', RegistrationStatus::nonFinal())->count(),
             'laporan' => $mine()->where('status', RegistrationStatus::MenungguLaporan)->count(),
             'verifikasi' => $mine()->where('status', RegistrationStatus::LaporanDikirim)->count(),
-            // The Talenta tab lists every choice the guru is pembina of, "Tidak lolos" included: it counts rows.
+            // The Talenta tab lists every choice the guru is pembina of: it counts rows.
             'talenta' => TalentApplication::query()->where('mentor_id', $this->user()->getKey())->count(),
-            // QA9: the tile "Pembinaan talenta · siswa yang dibina" counts students, once each, whose choice with this
-            // guru is still open (Terdaftar … Peserta pembinaan). Kesiswaan names the pembina during the selection and a
-            // restore keeps him (D-104), so every open stage is coached; a "Tidak lolos" choice is not.
+            // QA9: the tile "Pembinaan talenta · siswa yang dibina" counts students, once each. D-142: talents have no
+            // stages any more, so every student with a choice of this guru pembina is coached, whatever an old row says.
             'dibina' => TalentApplication::query()
                 ->where('mentor_id', $this->user()->getKey())
-                ->where('status', '!=', TalentStatus::TidakLolos->value)
                 ->distinct()
                 ->count('student_id'),
         ];
@@ -193,20 +190,15 @@ final class Binaan extends Component
     /** @return array<string, mixed> */
     private function talentRow(TalentApplication $application): array
     {
-        $status = $application->status;
-
         return [
             'id' => (string) $application->getKey(),
             'name' => $application->student?->user?->name ?? 'Siswa',
-            'kelas' => $application->student?->classroom?->name ?? '–',
+            'class' => $application->student?->classroom?->name ?? '–',
             'type' => $application->talentType?->code?->label() ?? 'Talenta',
-            'branch' => $application->talentBranch?->name,
+            // "Kimia", "Lainnya (Robotika)", the text of the jenis "Lainnya"; nothing for OLPAIN (D-143).
+            'branch' => $application->talent_branch_id !== null || $application->other_text !== null ? $application->branchLabel() : null,
             'bidang' => $application->talentType?->bidang,
-            'status' => $status->label(),
-            'tone' => $status->tone(),
-            'step' => $status === TalentStatus::TidakLolos ? null : $status->step(),
-            'assessment' => $application->assessment_on !== null ? self::longDate($application->assessment_on) : null,
-            // Kesiswaan's "catatan untuk guru pembina" (internal). The note for the student is not shown here.
+            // Kesiswaan's "catatan untuk guru pembina" (internal). No stage and no note for the student (D-142).
             'note' => $application->note !== null ? Str::limit($application->note, 300) : null,
         ];
     }

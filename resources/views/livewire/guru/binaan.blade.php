@@ -4,7 +4,7 @@
         <x-sth.stat-tile icon="users" tone="blue" label="Siswa binaan" :value="(string) $counts['siswa']" note="lomba dan talenta" />
         <x-sth.stat-tile icon="trophy" tone="blue" label="Lomba berjalan" :value="(string) $counts['aktif']" note="belum selesai" />
         <x-sth.stat-tile icon="clock" tone="orange" label="Menunggu laporan" :value="(string) $counts['laporan']" :note="$counts['verifikasi'].' menunggu verifikasi'" />
-        {{-- QA9: students, once each, with an open choice (not "Tidak lolos"); the tab below counts its rows. --}}
+        {{-- QA9: students, once each (D-142: every choice, no stage); the tab below counts its rows. --}}
         <x-sth.stat-tile icon="award" tone="green" label="Pembinaan talenta" :value="(string) $counts['dibina']" note="siswa yang dibina" />
     </section>
 
@@ -26,7 +26,7 @@
                 @if ($q !== '')
                     Coba kata kunci lain.
                 @elseif ($isTalent)
-                    Kesiswaan menunjuk guru pembina saat seleksi talenta.
+                    Siswa tampil di sini setelah Kesiswaan menunjuk guru pembina talenta.
                 @else
                     Siswa memilih guru pembimbing saat mendaftar lomba.
                 @endif
@@ -35,12 +35,10 @@
                 </x-slot:actions>
             </x-sth.empty-state>
         @elseif ($isTalent)
-            <x-sth.table caption="Pembinaan talenta, {{ $talentStudents }} siswa" fixed table-class="min-w-[560px]">
+            <x-sth.table caption="Pembinaan talenta, {{ $talentStudents }} siswa" fixed table-class="min-w-[480px]">
                 <x-slot:head>
                     <th scope="col">Siswa</th>
-                    <th scope="col" class="w-44">Talenta</th>
-                    <th scope="col" class="w-40">Tahap</th>
-                    <th scope="col" class="hidden w-36 md:table-cell">Asesmen</th>
+                    <th scope="col" class="w-56 md:w-72">Talenta</th>
                 </x-slot:head>
                 @foreach ($talents as $row)
                     <tr wire:key="tal-{{ $row['id'] }}">
@@ -49,7 +47,7 @@
                                 <x-sth.avatar :name="$row['name']" size="sm" />
                                 <div class="flex min-w-0 flex-col">
                                     <span class="ellip font-bold">{{ $row['name'] }}</span>
-                                    <span class="text-xs text-muted">{{ $row['kelas'] }}</span>
+                                    <span class="text-xs text-muted">{{ $row['class'] }}</span>
                                 </div>
                             </div>
                             @if ($row['note'])
@@ -57,18 +55,12 @@
                             @endif
                         </td>
                         <td>
-                            <div class="flex flex-col">
+                            {{-- D-143: the student's own "Lainnya" text may be one long word (QA7). --}}
+                            <div class="flex min-w-0 flex-col [overflow-wrap:anywhere]">
                                 <span class="font-bold">{{ $row['type'] }}@if ($row['branch'])<span class="font-medium"> · {{ $row['branch'] }}</span>@endif</span>
-                                <span class="text-xs text-muted">{{ $row['bidang']?->label() }}</span>
+                                <span class="text-xs text-muted">{{ $row['bidang']?->label() ?? 'Lainnya' }}</span>
                             </div>
                         </td>
-                        <td>
-                            <div class="flex flex-col items-start gap-1">
-                                <x-sth.chip :tone="$row['tone']" size="sm">{{ $row['status'] }}</x-sth.chip>
-                                @if ($row['step'])<span class="num text-xs text-muted">Tahap {{ $row['step'] }} dari 4</span>@endif
-                            </div>
-                        </td>
-                        <td class="hidden text-sm md:table-cell">{{ $row['assessment'] ?? '–' }}</td>
                     </tr>
                 @endforeach
             </x-sth.table>
