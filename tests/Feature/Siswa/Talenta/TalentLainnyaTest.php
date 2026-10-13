@@ -2,8 +2,12 @@
 
 declare(strict_types=1);
 
+use App\Actions\Talent\ApplyTalent;
+use App\Actions\Talent\CancelTalentApplication;
+use App\Actions\Talent\TalentOtherText;
 use App\Enums\Bidang;
 use App\Enums\RoleName;
+use App\Enums\TalentStatus;
 use App\Enums\TalentTypeCode;
 use App\Livewire\Guru\Binaan;
 use App\Models\TalentApplication;
@@ -12,7 +16,9 @@ use App\Models\TalentType;
 use Database\Seeders\TalentSeeder;
 use Illuminate\Database\Eloquent\MassAssignmentException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
+use Spatie\Activitylog\Models\Activity;
 use Tests\Feature\Siswa\Hasil\HasilFixtures as F;
 
 uses(RefreshDatabase::class);
@@ -112,4 +118,95 @@ it('shows "Lainnya" instead of a bidang on every talent screen', function (): vo
         ->assertOk()->assertSee('Lainnya');
 
     Livewire::actingAs($guru)->test(Binaan::class)->call('setTab', 'talenta')->assertSee('Lainnya');
+});
+
+// ApplyTalent with "Sebutkan" (Task 2) ------------------------------------------------------------------------------
+
+it('requires 3 to 60 characters of Sebutkan for a Lainnya cabang and for jenis Lainnya', function (?string $text, string $message): void {
+    $apply = app(ApplyTalent::class);
+    $osnOther = $this->osn->branches()->where('name', TalentBranch::OTHER)->sole();
+
+    foreach ([[$this->osn, $osnOther], [$this->lainnya, null]] as [$type, $branch]) {
+        try {
+            $apply->handle($this->nadia->user, $type, $branch, null, $text);
+            $this->fail('A Lainnya choice without a valid Sebutkan text was accepted.');
+        } catch (ValidationException $e) {
+            expect($e->errors())->toBe(['lainnya' => [$message]]);
+        }
+    }
+
+    expect(TalentApplication::withTrashed()->count())->toBe(0);
+})->with([
+    'nothing' => [null, 'Tulis talentamu di kolom Sebutkan.'],
+    'only spaces' => ["   \n ", 'Tulis talentamu di kolom Sebutkan.'],
+    'too short' => ['ab', 'Tulis 3 sampai 60 karakter.'],
+    'too long' => [str_repeat('a', 61), 'Tulis 3 sampai 60 karakter.'],
+]);
+
+it('stores the text tidied and ignores a text sent with an ordinary cabang', function (): void {
+    $apply = app(ApplyTalent::class);
+    $kimia = $this->osn->branches()->where('name', 'Kimia')->sole();
+
+    $kaligrafi = $apply->handle($this->nadia->user, $this->lainnya, null, null, "  Kaligrafi \n Arab  ");
+    $plain = $apply->handle($this->nadia->user, $this->osn, $kimia, null, 'Robotika');
+    $long = $apply->handle($this->nadia->user, $this->lainnya, null, null, ' '.str_repeat('b', 60).' ');
+
+    expect($kaligrafi->other_text)->toBe('Kaligrafi Arab')
+        ->and($kaligrafi->status)->toBe(TalentStatus::Terdaftar)
+        ->and($kaligrafi->title())->toBe('Lainnya (Kaligrafi Arab)')
+        ->and($plain->other_text)->toBeNull()
+        ->and($long->other_text)->toBe(str_repeat('b', 60))
+        ->and(TalentOtherText::clean("  a \t b  "))->toBe('a b')
+        ->and(TalentOtherText::clean('   '))->toBeNull()
+        ->and(TalentOtherText::key('  KaLI   grafi '))->toBe('kali grafi');
+
+    $audit = fn (TalentApplication $a): Activity => Activity::query()->where('event', 'talent.applied')
+        ->where('subject_id', $a->getKey())->sole();
+
+    expect($audit($kaligrafi)->properties['other_text'])->toBeTrue()
+        ->and($audit($plain)->properties['other_text'])->toBeFalse()
+        // The student's own text never reaches the sealed log (D-63, QA9).
+        ->and(Activity::query()->get()->map(fn (Activity $a) => json_encode($a->properties))->implode(' '))->not->toContain('Kaligrafi');
+});
+
+it('refuses a Lainnya text the student already chose, ignoring case and spaces', function (): void {
+    $apply = app(ApplyTalent::class);
+    $osnOther = $this->osn->branches()->where('name', TalentBranch::OTHER)->sole();
+
+    $apply->handle($this->nadia->user, $this->lainnya, null, null, 'Kaligrafi');
+
+    try {
+        $apply->handle($this->nadia->user, $this->lainnya, null, null, '  kaLIgrafi ');
+        $this->fail('The same Lainnya text was accepted twice.');
+    } catch (ValidationException $e) {
+        expect($e->errors())->toBe(['lainnya' => [ApplyTalent::DUPLICATE_OTHER_MESSAGE]])
+            ->and(ApplyTalent::DUPLICATE_OTHER_MESSAGE)->toBe('Talenta ini sudah kamu pilih.');
+    }
+
+    // Another text on the same jenis, the same text on another cabang, two texts on one cabang: all allowed.
+    $apply->handle($this->nadia->user, $this->lainnya, null, null, 'Fotografi alam');
+    $apply->handle($this->nadia->user, $this->osn, $osnOther, null, 'Kaligrafi');
+    $apply->handle($this->nadia->user, $this->osn, $osnOther, null, 'Robotika');
+
+    expect(fn () => $apply->handle($this->nadia->user, $this->osn, $osnOther, null, 'ROBOTIKA'))
+        ->toThrow(ValidationException::class, 'Talenta ini sudah kamu pilih.');
+
+    expect(TalentApplication::query()->where('student_id', $this->nadia->getKey())->count())->toBe(4);
+});
+
+it('restores a deleted Lainnya row with the same text instead of adding one', function (): void {
+    $apply = app(ApplyTalent::class);
+
+    $first = $apply->handle($this->nadia->user, $this->lainnya, null, null, 'Kaligrafi');
+    $other = $apply->handle($this->nadia->user, $this->lainnya, null, null, 'Fotografi');
+    app(CancelTalentApplication::class)->handle($this->nadia->user, $first);
+    app(CancelTalentApplication::class)->handle($this->nadia->user, $other);
+
+    $again = $apply->handle($this->nadia->user, $this->lainnya, null, null, 'KALIGRAFI');
+
+    expect($again->getKey())->toBe($first->getKey())
+        ->and($again->trashed())->toBeFalse()
+        ->and($again->other_text)->toBe('KALIGRAFI')
+        ->and($other->fresh()->trashed())->toBeTrue()
+        ->and(TalentApplication::withTrashed()->where('student_id', $this->nadia->getKey())->count())->toBe(2);
 });

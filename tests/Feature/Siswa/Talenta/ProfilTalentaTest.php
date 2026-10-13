@@ -322,23 +322,6 @@ it('limits how many review requests one student sends per hour', function (): vo
     RateLimiter::clear('talenta-tinjau:'.$this->nadia->user->getKey());
 });
 
-it('points a rejected student to "Minta ditinjau ulang" instead of a second application', function (): void {
-    TalentApplication::factory()->rejected()->create([
-        'student_id' => $this->nadia->getKey(), 'talent_type_id' => $this->osn->getKey(), 'talent_branch_id' => $this->kimia->getKey(),
-    ]);
-
-    Livewire::actingAs($this->nadia->user)
-        ->test(ProfilTalenta::class)
-        ->call('pilihJenis', $this->osn->getKey())
-        ->call('pilihCabang', $this->kimia->getKey())
-        ->assertSee('Pilihan ini belum lolos. Pakai "Minta ditinjau ulang" di daftar talenta pilihanmu.')
-        ->assertDontSee('Sudah dipilih. Pilih cabang lain.')
-        ->call('daftar')
-        ->assertHasErrors('cabang');
-
-    expect(TalentApplication::withTrashed()->where('student_id', $this->nadia->getKey())->count())->toBe(1);
-});
-
 it('saves the Riwayat talenta form', function (): void {
     Livewire::actingAs($this->nadia->user)
         ->test(ProfilTalenta::class)

@@ -65,7 +65,7 @@ it('allows several jenis and cabang (D-23) but never the same one twice', functi
     expect(TalentApplication::query()->where('student_id', $this->nadia->getKey())->count())->toBe(3);
 });
 
-it('never opens a second row for a rejected choice: the student is sent to "Minta ditinjau ulang"', function (): void {
+it('refuses an old tidak lolos choice as an ordinary duplicate', function (): void {
     $olpain = w2a2TalentType(TalentTypeCode::Olpain);
     $kimia = $this->apply->handle($this->nadia->user, w2a2TalentType(TalentTypeCode::Osn), w2a2TalentBranch(TalentTypeCode::Osn, 'Kimia'));
     $noBranch = $this->apply->handle($this->nadia->user, $olpain, null);
@@ -74,10 +74,11 @@ it('never opens a second row for a rejected choice: the student is sent to "Mint
         $application->forceFill(['status' => TalentStatus::TidakLolos, 'rejected_from' => TalentStatus::Seleksi, 'student_note' => 'Belum lolos.'])->save();
     }
 
+    // D-142: no stages any more; an old "tidak lolos" row is an ordinary choice the student already has.
     expect(fn () => $this->apply->handle($this->nadia->user, w2a2TalentType(TalentTypeCode::Osn), w2a2TalentBranch(TalentTypeCode::Osn, 'Kimia'), F::pdf()))
-        ->toThrow(ValidationException::class, ApplyTalent::REJECTED_MESSAGE)
+        ->toThrow(ValidationException::class, ApplyTalent::DUPLICATE_MESSAGE)
         ->and(fn () => $this->apply->handle($this->nadia->user, $olpain, null))
-        ->toThrow(ValidationException::class, ApplyTalent::REJECTED_MESSAGE);
+        ->toThrow(ValidationException::class, ApplyTalent::DUPLICATE_MESSAGE);
 
     // Nothing changed: same rows, still rejected, no stored file left behind.
     expect(TalentApplication::withTrashed()->where('student_id', $this->nadia->getKey())->count())->toBe(2)
