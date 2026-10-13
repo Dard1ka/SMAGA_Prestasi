@@ -6,6 +6,7 @@ use App\Enums\RoleName;
 use App\Enums\TalentStatus;
 use App\Enums\TalentTypeCode;
 use App\Enums\UserStatus;
+use App\Livewire\Kesiswaan\Beranda as KesiswaanBeranda;
 use App\Livewire\Kesiswaan\Talenta;
 use App\Models\Classroom;
 use App\Models\TalentApplication;
@@ -284,4 +285,22 @@ it('wraps one long word of the student in the detail panel instead of widening t
         // A grid column of 1fr grows to its longest word; minmax(0,1fr) plus a break inside the word keeps it in the card.
         ->assertSeeHtml('grid-cols-[110px_minmax(0,1fr)]')
         ->assertSeeHtml('<dd class="m-0 [overflow-wrap:anywhere]">'.$word.'</dd>');
+});
+
+it('names the Kesiswaan beranda tile "Talenta tercatat" and counts every talent', function (): void {
+    F::application(F::student('Hana Safira', 'X-8'), TalentStatus::Terdaftar);
+    F::application(F::student('Aurelia Maharani', 'X-3'), TalentStatus::Seleksi, 'Kimia');
+    F::application(F::student('Citra Ayu Lestari', 'XI-2'), TalentStatus::TidakLolos, 'Fisika');
+    F::application(F::student('Bima Satria Wicaksono', 'XII-7'), TalentStatus::Pembinaan, 'Matematika')->delete();
+
+    $this->actingAs($this->kesiswaan)->get(route('kesiswaan.beranda'))->assertOk()
+        ->assertSee('Talenta tercatat')
+        ->assertSee('pilihan siswa')
+        ->assertDontSee('Talenta terdaftar')
+        ->assertDontSee('belum dipetakan')
+        ->assertDontSee('tahap=terdaftar', false);
+
+    Livewire::actingAs($this->kesiswaan)->test(KesiswaanBeranda::class)
+        ->assertViewHas('stats', fn (array $stats): bool => collect($stats)->firstWhere('label', 'Talenta tercatat')['value'] === '3'
+            && collect($stats)->firstWhere('label', 'Talenta tercatat')['href'] === route('kesiswaan.talenta.index'));
 });

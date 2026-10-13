@@ -6,7 +6,6 @@ namespace App\Models;
 
 use App\Enums\TalentStatus;
 use Database\Factories\TalentApplicationFactory;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -16,22 +15,17 @@ use Spatie\Activitylog\Models\Concerns\LogsActivity;
 use Spatie\Activitylog\Support\LogOptions;
 
 /**
- * Pilihan talenta of a student (a student may have several, D-23). No unique index since D-143: `ApplyTalent`
- * refuses a duplicate (jenis + cabang + normalised `other_text`) under the student lock.
+ * Pilihan talenta of a student (a student may have several, D-23). D-142: a plain record, no stages and no
+ * verification; Kesiswaan only records an optional guru pembina (`mentor_id`) and the note for him (`note`: internal,
+ * read by the guru pembina and Kesiswaan, never by the student). The student adds and deletes choices at any time.
  *
- * `other_text` = the student's own text ("Sebutkan", 3–60 characters) for the jenis "Lainnya" or a cabang "Lainnya"
- * (D-143); null for every other choice. Plain text: escaped on screens, formula-escaped in Excel, kept out of the
- * activity log like `review_message`.
+ * No unique index since D-143: `ApplyTalent` refuses a duplicate (jenis + cabang + normalised `other_text`) under the
+ * student lock. `other_text` = the student's own text ("Sebutkan", 3–60 characters) for the jenis "Lainnya" or a cabang
+ * "Lainnya"; null for every other choice. Plain text: escaped on screens, formula-escaped in Excel, kept out of the
+ * activity log.
  *
- * Two notes with different readers (lead, 2026-10-04):
- * - `note` = catatan untuk guru pembina: internal, read by the guru pembina and Kesiswaan, never by the student.
- * - `student_note` = catatan untuk siswa: belongs to the latest decision (lolos, tidak lolos, dipulihkan); it is
- *   sent with that notification and shown on Profil talenta. A new decision replaces it (null = no note).
- * - `student_note_draft` = what Kesiswaan typed for the student and kept with "Simpan" (M2-B). Staff only:
- *   never shown or sent to the student. The next decision sends it as `student_note` and clears it.
- *
- * "Tidak lolos" can be undone: `rejected_from` keeps the stage before the rejection, `review_requested_at` +
- * `review_message` are the student's open "Minta ditinjau ulang" (one per rejection).
+ * Kept for old rows only (D-142, no destructive migration): `status` (always Terdaftar for new rows), `assessment_on`,
+ * `student_note`, `student_note_draft`, `rejected_from`, `review_requested_at`, `review_message`. No screen shows them.
  *
  * Not mass-assignable: status, mentor_id, assessment_on, note, student_note, student_note_draft,
  * rejected_from, review_requested_at, review_message, other_text (app/Actions/Talent only).
@@ -63,24 +57,6 @@ class TalentApplication extends Model
             'rejected_from' => TalentStatus::class,
             'review_requested_at' => 'immutable_datetime',
         ];
-    }
-
-    /**
-     * Default stage a "tidak lolos" row goes back to when Kesiswaan restores it without choosing another one
-     * (D-104: the restore dialog offers Terdaftar, Pemetaan, Seleksi and Peserta pembinaan): the stage it had before the
-     * rejection, or Terdaftar when that is unknown (rows rejected before `rejected_from` existed).
-     */
-    public function restoreTarget(): TalentStatus
-    {
-        $from = $this->rejected_from;
-
-        return $from instanceof TalentStatus && ! $from->isFinal() ? $from : TalentStatus::Terdaftar;
-    }
-
-    /** The student asked for a second look and Kesiswaan has not restored the row yet. */
-    public function hasOpenReviewRequest(): bool
-    {
-        return $this->status === TalentStatus::TidakLolos && $this->review_requested_at !== null;
     }
 
     public function getActivitylogOptions(): LogOptions
@@ -162,17 +138,5 @@ class TalentApplication extends Model
     public function mentor(): BelongsTo
     {
         return $this->belongsTo(User::class, 'mentor_id');
-    }
-
-    /** @param Builder<TalentApplication> $query */
-    public function scopeInStatus(Builder $query, TalentStatus ...$statuses): void
-    {
-        $query->whereIn('status', $statuses);
-    }
-
-    /** Rejected rows whose student asked for a second look ("Minta ditinjau ulang"). @param Builder<TalentApplication> $query */
-    public function scopeReviewRequested(Builder $query): void
-    {
-        $query->where('status', TalentStatus::TidakLolos)->whereNotNull('review_requested_at');
     }
 }

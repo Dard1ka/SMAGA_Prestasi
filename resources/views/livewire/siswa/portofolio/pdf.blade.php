@@ -75,13 +75,12 @@
     @else
         <table class="list">
             <thead>
-                <tr><th>Talenta</th><th>Status</th><th>Keterangan</th></tr>
+                <tr><th>Talenta</th><th>Keterangan</th></tr>
             </thead>
             <tbody>
                 @foreach ($talents as $talent)
                     <tr>
                         <td>{{ $talent['title'] }}</td>
-                        <td>{{ $talent['status']->label() }}</td>
                         <td>{{ $talent['info'] }}</td>
                     </tr>
                 @endforeach

@@ -125,7 +125,7 @@ it('lists only the own binaan with status and stats', function (): void {
         ->assertViewHas('counts', fn (array $c): bool => $c['siswa'] === 3 && $c['aktif'] === 1 && $c['laporan'] === 1 && $c['talenta'] === 1)
         ->call('setTab', 'talenta')
         ->assertSee('Aurelia Maharani')
-        ->assertSee('Seleksi/asesmen')
+        ->assertDontSee('Seleksi/asesmen')
         ->assertDontSee('Fajar Ramadhan');
 });
 
@@ -142,6 +142,7 @@ it('shows the note for the guru pembina in the Talenta tab and never a stage', f
         ->assertSee('Catatan untuk pembina:')
         ->assertSee('Dampingi latihan soal tiap Kamis.')
         ->assertDontSee('Catatan lama untuk siswa.')
+        ->assertDontSee('Tahap')
         ->assertViewHas('counts', fn (array $c): bool => $c['talenta'] === 1);
 
     // Still only the assigned pembina.
