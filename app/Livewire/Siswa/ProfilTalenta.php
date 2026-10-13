@@ -10,6 +10,7 @@ use App\Actions\Talent\SaveTalentProfile;
 use App\Actions\Talent\TalentOtherText;
 use App\Enums\RegistrationStatus;
 use App\Http\Controllers\FileController;
+use App\Http\Middleware\EnsureTalentChosen;
 use App\Models\Registration;
 use App\Models\Student;
 use App\Models\TalentApplication;
@@ -393,6 +394,8 @@ final class ProfilTalenta extends Component
                 ])->values()->all(),
             'slotsLeft' => $this->certificateSlotsLeft(),
             'portfolioUrl' => route('siswa.portofolio'),
+            // D-144: a kelas X student without a talent is held here (EnsureTalentChosen) and reads why.
+            'gate' => EnsureTalentChosen::applies($this->user()),
         ]);
     }
 

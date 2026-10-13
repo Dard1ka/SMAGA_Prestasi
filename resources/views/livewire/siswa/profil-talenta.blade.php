@@ -1,5 +1,9 @@
 {{-- Profil talenta (UI-MAP #15, board Profil-Talenta). Data from App\Livewire\Siswa\ProfilTalenta::render(). --}}
 <div class="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_420px]">
+    {{-- D-144: a kelas X student without a talent comes here from every other page until one is chosen. --}}
+    @if ($gate)
+        <x-sth.alert tone="warning" icon="alert" class="xl:col-span-2">{{ \App\Http\Middleware\EnsureTalentChosen::ALERT }}</x-sth.alert>
+    @endif
     <div class="flex min-w-0 flex-col gap-5">
         {{-- Talenta pilihanmu --}}
         <x-sth.card as="section" aria-labelledby="h-pilihan" class="flex flex-col gap-4">
