@@ -14,6 +14,8 @@ enum RegistrationStatus: string
 {
     use HasOptions;
 
+    /** D-148: the submitter registered for the own lomba while Kesiswaan has not decided it; nobody is told yet. */
+    case MenungguLomba = 'menunggu_lomba';
     case MenungguKonfirmasi = 'menunggu_konfirmasi';
     case MenungguKepsek = 'menunggu_kepsek';
     case Disetujui = 'disetujui';
@@ -28,6 +30,7 @@ enum RegistrationStatus: string
     public function label(): string
     {
         return match ($this) {
+            self::MenungguLomba => 'Menunggu verifikasi lomba',
             self::MenungguKonfirmasi => 'Menunggu konfirmasi anggota',
             self::MenungguKepsek => 'Menunggu Kepala Sekolah',
             self::Disetujui => 'Disetujui',
@@ -48,7 +51,7 @@ enum RegistrationStatus: string
     public function phase(): int
     {
         return match ($this) {
-            self::MenungguKonfirmasi, self::Dibatalkan => 1,
+            self::MenungguLomba, self::MenungguKonfirmasi, self::Dibatalkan => 1,
             self::MenungguKepsek, self::Ditolak => 2,
             self::Disetujui, self::SuratTerbit => 3,
             self::Berlangsung => 4,
@@ -80,7 +83,7 @@ enum RegistrationStatus: string
     public function tone(): string
     {
         return match ($this) {
-            self::MenungguKonfirmasi, self::MenungguKepsek => 'gray',
+            self::MenungguLomba, self::MenungguKonfirmasi, self::MenungguKepsek => 'gray',
             self::Disetujui, self::SuratTerbit, self::Berlangsung, self::LaporanDikirim => 'blue',
             self::MenungguLaporan => 'orange',
             self::Selesai => 'green',

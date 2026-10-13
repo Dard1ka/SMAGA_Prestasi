@@ -137,7 +137,8 @@ class Beranda extends Component
 
         return Registration::query()
             ->nonFinal()
-            ->whereHas('members', fn (Builder $m) => $m->where('student_id', $student->getKey())->whereNull('declined_at'))
+            // Not before the invitation went out (D-148: an anggota of a team whose lomba still waits was not invited yet).
+            ->whereHas('members', fn (Builder $m) => $m->where('student_id', $student->getKey())->whereNull('declined_at')->whereNotNull('invited_at'))
             ->with('competition')
             ->withCount(['members as team_size' => fn (Builder $m) => $m->whereNull('declined_at')])
             ->latest('updated_at')

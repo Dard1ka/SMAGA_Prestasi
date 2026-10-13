@@ -28,6 +28,9 @@
                     <span class="inline-flex size-12 items-center justify-center rounded-full bg-green-bg text-green" aria-hidden="true"><x-sth.icon name="check" :size="26" /></span>
                     <h3 class="title-card m-0">{{ $status['isLeader'] ? 'Pendaftaran terkirim' : 'Kamu sudah terdaftar' }}</h3>
                     <x-sth.chip :tone="$status['tone']">{{ $status['label'] }}</x-sth.chip>
+                    @if ($status['waitingText'])
+                        <p class="m-0 text-sm text-ink-2">{{ $status['waitingText'] }}</p>
+                    @endif
                 </div>
             @endif
 
@@ -156,7 +159,7 @@
             </div>
 
             @if ($status['canCancel'])
-                <x-sth.modal id="batal-daftar" title="Batalkan pendaftaran?" description="Anggota tim akan diberi tahu. Kamu bisa mendaftar lagi selama pendaftaran masih dibuka." size="sm">
+                <x-sth.modal id="batal-daftar" title="Batalkan pendaftaran?" :description="$status['cancelNote']" size="sm">
                     <p class="m-0">Pendaftaran {{ $competition->name }} akan dibatalkan.</p>
                     <x-slot:footer>
                         <x-sth.button variant="quiet" data-sth-close>Kembali</x-sth.button>
@@ -267,6 +270,8 @@
                         Tambahkan minimal 1 anggota tim.
                     @elseif (! $setuju)
                         Centang pernyataan di atas untuk mengirim.
+                    @elseif ($lombaWaits)
+                        Pendaftaran diteruskan setelah Kesiswaan memverifikasi lomba ini.
                     @elseif ($type === 'tim')
                         Anggota konfirmasi dulu, lalu Kepala Sekolah menyetujui.
                     @else

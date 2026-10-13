@@ -52,6 +52,7 @@ const LCN_PRE_LOMBA = ['menunggu_konfirmasi', 'menunggu_kepsek', 'disetujui', 's
 const LCN_NAMES = [
     'Raka Pradipta', 'Nadia Putri Anindya', 'Hana Safira', 'Rizky Maulana', 'Dimas Arya Saputra',
     'Salsabila Azzahra', 'Bagas Wicaksono', 'Citra Lestari', 'Fajar Nugroho', 'Intan Permatasari',
+    'Sekar Ayu Lestari',
 ];
 
 /** The one notice of that class the user got (fails on none or several: one notice per save per person). */

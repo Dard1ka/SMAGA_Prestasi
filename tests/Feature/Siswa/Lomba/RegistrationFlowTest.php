@@ -102,8 +102,8 @@ it('refuses a lomba whose registration window is closed or not yet open', functi
     'not yet open' => [['registration_opens_at' => now()->addDays(3)]],
 ]);
 
-it('refuses an unpublished lomba', function (): void {
-    $lomba = F::pendingCompetition(F::user($this->nadia));
+it('refuses an unpublished lomba of another submitter', function (): void {
+    $lomba = F::pendingCompetition(F::user($this->dimas), F::usulanAttributes());
 
     expect(fn () => w2a1Register($this, $this->nadia, $lomba, RegistrationType::Individu))->toThrow(AuthorizationException::class);
 });

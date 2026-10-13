@@ -45,6 +45,8 @@ class RegistrationPolicy
     /**
      * Siswa may register while the lomba is published and open and they are not in another
      * non-final registration of it. CreateRegistration re-checks everything inside its transaction.
+     * D-148: the submitter may also register for the own lomba while Kesiswaan has not decided it (same date window);
+     * that registration waits as `menunggu_lomba` (Competition::isOpenForRegistrationBy()).
      */
     public function create(User $user, Competition $competition): bool
     {
@@ -54,7 +56,7 @@ class RegistrationPolicy
             return false;
         }
 
-        if (! $competition->isOpenForRegistration()) {
+        if (! $competition->isOpenForRegistrationBy($user)) {
             return false;
         }
 
@@ -98,7 +100,10 @@ class RegistrationPolicy
         return $closes === null || $closes >= ($now ?? now());
     }
 
-    /** Leader cancels before the Kepala Sekolah decides (ARCHITECTURE §6, lead 2026-10-01). */
+    /**
+     * Leader cancels before the Kepala Sekolah decides (ARCHITECTURE §6, lead 2026-10-01), and while the registration
+     * waits for its lomba to be verified (`menunggu_lomba`, D-148 widens D-33).
+     */
     public function cancel(User $user, Registration $registration): bool
     {
         if (! $user->canLogIn()) {
@@ -109,7 +114,7 @@ class RegistrationPolicy
 
         return $student !== null
             && $registration->leader_student_id === $student->getKey()
-            && in_array($registration->status, [RegistrationStatus::MenungguKonfirmasi, RegistrationStatus::MenungguKepsek], true);
+            && in_array($registration->status, [RegistrationStatus::MenungguLomba, RegistrationStatus::MenungguKonfirmasi, RegistrationStatus::MenungguKepsek], true);
     }
 
     // --- W2-C: decide (Kepala Sekolah only) and other areas' methods below ---

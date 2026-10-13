@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Actions\Registrations;
 
+use App\Enums\CompetitionStatus;
 use App\Enums\MemberRole;
 use App\Enums\Permission;
 use App\Enums\RegistrationStatus;
@@ -25,6 +26,9 @@ use Illuminate\Validation\ValidationException;
  * - individu → `menunggu_kepsek` right away + Kepala Sekolah notified;
  * - tim → `menunggu_konfirmasi`, the actor is ketua (confirmed), each anggota is invited and must
  *   confirm personally (ConfirmMembership / DeclineMembership); all confirmed → `menunggu_kepsek`.
+ * - D-148: the submitter's own lomba that still waits for Kesiswaan → `menunggu_lomba`, individu and tim alike. Nobody
+ *   is told: the anggota rows carry `invited_at` = null (not invited yet) and no approver hears of it.
+ *   ResumeWaitingRegistrations continues or cancels it when Kesiswaan decides the lomba.
  * Checked inside the transaction (competition + students locked): registration window, participation
  * type, team size (2 … max_team_size), active students only, nobody already in a non-final registration
  * of the same lomba, mentor is an active guru.
@@ -56,7 +60,7 @@ final class CreateRegistration
             /** @var Competition $locked */
             $locked = Competition::query()->whereKey($competition->getKey())->lockForUpdate()->firstOrFail();
 
-            $this->assertCompetitionAccepts($locked, $type, count($memberIds));
+            $this->assertCompetitionAccepts($actor, $locked, $type, count($memberIds));
 
             // Serialise concurrent registrations of the same students (consistent lock order).
             Student::query()->whereKey([$leader->getKey(), ...$memberIds])->orderBy('id')->lockForUpdate()->get();
@@ -64,6 +68,7 @@ final class CreateRegistration
             $this->assertMembersAvailable($locked, $leader, $memberIds);
             $mentor = $this->mentor($mentorId);
             $now = now();
+            $waiting = $locked->status === CompetitionStatus::MenungguVerifikasi;
 
             $registration = new Registration([
                 'competition_id' => $locked->getKey(),
@@ -72,9 +77,11 @@ final class CreateRegistration
                 'mentor_id' => $mentor->getKey(),
             ]);
             $registration->forceFill([
-                'status' => $type === RegistrationType::Individu
-                    ? RegistrationStatus::MenungguKepsek
-                    : RegistrationStatus::MenungguKonfirmasi,
+                'status' => match (true) {
+                    $waiting => RegistrationStatus::MenungguLomba,
+                    $type === RegistrationType::Individu => RegistrationStatus::MenungguKepsek,
+                    default => RegistrationStatus::MenungguKonfirmasi,
+                },
             ])->save();
 
             $registration->members()->make(['student_id' => $leader->getKey(), 'invited_at' => $now])
@@ -82,7 +89,8 @@ final class CreateRegistration
                 ->save();
 
             foreach ($memberIds as $studentId) {
-                $registration->members()->make(['student_id' => $studentId, 'invited_at' => $now])
+                // Not invited while the lomba waits (D-148): ResumeWaitingRegistrations sets the time it sends the invitation.
+                $registration->members()->make(['student_id' => $studentId, 'invited_at' => $waiting ? null : $now])
                     ->forceFill(['role' => MemberRole::Anggota])
                     ->save();
             }
@@ -102,6 +110,10 @@ final class CreateRegistration
             return $registration;
         });
 
+        if ($registration->status === RegistrationStatus::MenungguLomba) {
+            return $registration;
+        }
+
         if ($type === RegistrationType::Tim) {
             $invitees = User::query()->canLogIn()
                 ->whereHas('student', fn ($q) => $q->whereKey($memberIds))
@@ -120,9 +132,9 @@ final class CreateRegistration
         return User::query()->canLogIn()->permission(Permission::RegistrationApprove->value)->get();
     }
 
-    private function assertCompetitionAccepts(Competition $competition, RegistrationType $type, int $invited): void
+    private function assertCompetitionAccepts(User $actor, Competition $competition, RegistrationType $type, int $invited): void
     {
-        if (! $competition->isOpenForRegistration()) {
+        if (! $competition->isOpenForRegistrationBy($actor)) {
             throw ValidationException::withMessages(['competition' => 'Pendaftaran lomba ini sudah ditutup.']);
         }
 

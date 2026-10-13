@@ -10,6 +10,7 @@ use App\Actions\Registrations\ExpirePendingInvitations;
 use App\Actions\Registrations\InviteMembers;
 use App\Actions\Registrations\MentorChoice;
 use App\Actions\Registrations\WithdrawInvitation;
+use App\Enums\CompetitionStatus;
 use App\Enums\MemberRole;
 use App\Enums\Participation;
 use App\Enums\RegistrationStatus;
@@ -328,7 +329,7 @@ class Form extends Component
         );
 
         if (Gate::denies('create', [Registration::class, $competition])) {
-            $this->addError('competition', $competition->isOpenForRegistration()
+            $this->addError('competition', $competition->isOpenForRegistrationBy(auth()->user())
                 ? 'Kamu sudah terdaftar di lomba ini.'
                 : 'Pendaftaran lomba ini sudah ditutup.');
 
@@ -387,6 +388,8 @@ class Form extends Component
             'status' => $current !== null ? $this->statusView($current, $me) : null,
             'withdrawing' => $this->withdrawing($current),
             'canCreate' => $current === null && Gate::allows('create', [Registration::class, $competition]),
+            // D-148: the student's own lomba still waits for Kesiswaan; a registration sent now waits with it.
+            'lombaWaits' => $competition->status === CompetitionStatus::MenungguVerifikasi,
             'teamAllowed' => $competition->allowsRegistrationType(RegistrationType::Tim),
             'individuAllowed' => $competition->allowsRegistrationType(RegistrationType::Individu),
             'maxTeam' => $competition->max_team_size,
@@ -555,14 +558,23 @@ class Form extends Component
             ? route('siswa.lomba-saya.show', $registration)
             : (Route::has('siswa.lomba-saya.index') ? route('siswa.lomba-saya.index') : null);
 
+        $waitingLomba = $registration->status === RegistrationStatus::MenungguLomba;
+
         return [
             'isLeader' => $mine?->role === MemberRole::Ketua,
             'pendingInvite' => $mine !== null && $mine->role === MemberRole::Anggota && $mine->confirmed_at === null && $registration->status === RegistrationStatus::MenungguKonfirmasi,
             'isTeam' => $registration->isTeam(),
             'label' => $registration->status->label(),
             'tone' => $registration->status->tone(),
-            'waitingMembers' => $registration->status === RegistrationStatus::MenungguKonfirmasi,
-            'membersText' => $anggota->count() === 0 ? null : "{$confirmed} dari {$anggota->count()} anggota sudah konfirmasi",
+            'waitingMembers' => $waitingLomba || $registration->status === RegistrationStatus::MenungguKonfirmasi,
+            // D-148: nothing goes out before Kesiswaan decides the lomba, so no confirmation count yet.
+            'membersText' => $anggota->count() === 0 || $waitingLomba ? null : "{$confirmed} dari {$anggota->count()} anggota sudah konfirmasi",
+            'waitingText' => $waitingLomba
+                ? 'Pendaftaran diteruskan setelah Kesiswaan memverifikasi lomba ini.'.($registration->isTeam() ? ' Undangan tim dikirim saat itu.' : '')
+                : null,
+            'cancelNote' => $waitingLomba
+                ? 'Pendaftaran ini belum diteruskan, jadi tidak ada yang diberi tahu.'
+                : 'Anggota tim akan diberi tahu. Kamu bisa mendaftar lagi selama pendaftaran masih dibuka.',
             'mentor' => $mentor === null ? '–' : trim(($mentor->staffProfile?->honorific ? $mentor->staffProfile->honorific.' ' : '').$mentor->name),
             'leaderName' => (string) $members->firstWhere('role', MemberRole::Ketua)?->student?->user?->name,
             'canCancel' => Gate::allows('cancel', $registration),

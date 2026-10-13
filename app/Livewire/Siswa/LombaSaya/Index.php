@@ -299,6 +299,10 @@ final class Index extends Component
             'mentorByPrincipal' => $registration->mentor !== null && ApproveRegistration::mentorWasReplaced($registration),
             'decidedOn' => self::longDate($registration->principal_decided_at),
             'registeredOn' => self::longDate($registration->created_at),
+            // D-148: the lomba itself still waits for Kesiswaan; nothing has gone out yet.
+            'waitingText' => $status === RegistrationStatus::MenungguLomba
+                ? 'Pendaftaran diteruskan setelah Kesiswaan memverifikasi lomba ini.'.($registration->isTeam() ? ' Undangan tim dikirim saat itu.' : '')
+                : null,
             'allConfirmed' => $registration->members->every(fn (RegistrationMember $m): bool => $m->confirmed_at !== null),
         ];
     }
@@ -383,14 +387,19 @@ final class Index extends Component
 
     // Queries ---------------------------------------------------------------------------------
 
-    /** Registrations of this student (member who did not decline). @return Builder<Registration> */
+    /**
+     * Registrations of this student (member who did not decline). An anggota row without `invited_at` belongs to a
+     * team whose lomba still waits for Kesiswaan (D-148): that student was not invited yet and does not see it.
+     *
+     * @return Builder<Registration>
+     */
     private function baseQuery(): Builder
     {
         $studentId = $this->student()?->getKey();
 
         return Registration::query()->whereHas(
             'members',
-            fn (Builder $m) => $m->where('student_id', $studentId)->whereNull('declined_at'),
+            fn (Builder $m) => $m->where('student_id', $studentId)->whereNull('declined_at')->whereNotNull('invited_at'),
         );
     }
 
@@ -424,7 +433,7 @@ final class Index extends Component
 
     private function isVisibleTo(Registration $registration, Student $student): bool
     {
-        return $registration->members()->where('student_id', $student->getKey())->whereNull('declined_at')->exists();
+        return $registration->members()->where('student_id', $student->getKey())->whereNull('declined_at')->whereNotNull('invited_at')->exists();
     }
 
     /**
