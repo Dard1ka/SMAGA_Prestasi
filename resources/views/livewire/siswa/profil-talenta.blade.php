@@ -34,6 +34,8 @@
                                     <h3 class="display m-0 text-base font-bold">{{ $row['title'] }}</h3>
                                     @if ($row['bidang'])
                                         <x-sth.chip :bidang="$row['bidang']" size="sm" />
+                                    @else
+                                        <x-sth.chip size="sm">Lainnya</x-sth.chip>
                                     @endif
                                     <x-sth.chip :tone="$row['status']->tone()" :icon="$row['status'] === \App\Enums\TalentStatus::Pembinaan ? 'check' : 'clock'" size="sm">{{ $row['status']->label() }}</x-sth.chip>
                                 </div>
@@ -100,10 +102,19 @@
                         <button type="button" wire:key="jenis-{{ $type->id }}" wire:click="pilihJenis('{{ $type->id }}')"
                             aria-pressed="{{ $jenis === $type->id ? 'true' : 'false' }}"
                             @class(['pick flex min-h-14 min-w-0 items-center justify-start gap-3 px-3 text-left', 'pick-on' => $jenis === $type->id])>
-                            <x-sth.bidang-tile :bidang="$type->bidang" size="sm" class="@max-[309px]:hidden" />
+                            {{-- D-143: the jenis "Lainnya" has no bidang: a gray tile and the student writes the talent. --}}
+                            @if ($type->bidang)
+                                <x-sth.bidang-tile :bidang="$type->bidang" size="sm" class="@max-[309px]:hidden" />
+                            @else
+                                <span class="inline-flex size-10 shrink-0 items-center justify-center rounded-control bg-gray-bg text-gray @max-[309px]:hidden" aria-hidden="true"><x-sth.icon name="edit" /></span>
+                            @endif
                             <span class="flex min-w-0 flex-col items-start gap-1">
                                 <span class="font-bold">{{ $type->code->label() }}</span>
-                                <x-sth.chip :bidang="$type->bidang" size="sm" />
+                                @if ($type->bidang)
+                                    <x-sth.chip :bidang="$type->bidang" size="sm" />
+                                @else
+                                    <x-sth.chip size="sm">Tulis sendiri</x-sth.chip>
+                                @endif
                             </span>
                         </button>
                     @endforeach

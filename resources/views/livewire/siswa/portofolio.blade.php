@@ -148,6 +148,8 @@
                                     <span class="display text-md font-bold">{{ $talent['title'] }}</span>
                                     @if ($talent['bidang'])
                                         <x-sth.chip :bidang="$talent['bidang']" size="sm" />
+                                    @else
+                                        <x-sth.chip size="sm">Lainnya</x-sth.chip>
                                     @endif
                                 </span>
                                 <span><x-sth.chip :tone="$talent['status']->tone()" size="sm">{{ $talent['status']->label() }}</x-sth.chip></span>

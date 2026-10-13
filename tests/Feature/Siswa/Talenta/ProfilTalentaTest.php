@@ -30,12 +30,12 @@ beforeEach(function (): void {
     $this->kimia = $this->osn->branches()->where('name', 'Kimia')->firstOrFail();
 });
 
-it('renders the six jenis from the DB with bidang, and the account data', function (): void {
+it('renders the seven jenis from the DB with bidang, and the account data', function (): void {
     $this->actingAs($this->nadia->user)
         ->get(route('siswa.talenta'))
         ->assertOk()
         ->assertSee('<title>Profil talenta · SMAGA Talent Hub</title>', false)
-        ->assertSeeInOrder(['OSN', 'Riset', 'FLS3N', 'O2SN', 'OLPAIN', 'Debat'])
+        ->assertSeeInOrder(['OSN', 'Riset', 'FLS3N', 'O2SN', 'OLPAIN', 'Debat', 'Lainnya'])
         ->assertSee('Seni Budaya')
         ->assertSee('Nadia Putri Anindya')
         ->assertSee('NISN '.$this->nadia->nisn)

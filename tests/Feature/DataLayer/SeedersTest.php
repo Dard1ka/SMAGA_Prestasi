@@ -38,8 +38,8 @@ it('seeds reference data idempotently and without demo data outside local', func
     $this->seed(DatabaseSeeder::class);
 
     expect(Classroom::query()->count())->toBe(36)
-        ->and(TalentType::query()->count())->toBe(6)
-        ->and(TalentBranch::query()->count())->toBe(35)
+        ->and(TalentType::query()->count())->toBe(7)
+        ->and(TalentBranch::query()->count())->toBe(40)
         ->and(WeightVersion::query()->count())->toBe(1)
         ->and(WeightValue::query()->count())->toBe(20)
         ->and(Role::query()->count())->toBe(7)
@@ -82,6 +82,7 @@ it('maps talent types to bidang (D-22)', function () {
         ->and($bidang[TalentTypeCode::Fls3n->value])->toBe(Bidang::SeniBudaya)
         ->and($bidang[TalentTypeCode::Debat->value])->toBe(Bidang::SeniBudaya)
         ->and($bidang[TalentTypeCode::O2sn->value])->toBe(Bidang::Olahraga)
+        ->and($bidang[TalentTypeCode::Lainnya->value])->toBeNull()
         ->and(TalentBranch::query()->where('name', 'Kreativitas Musik Tradisional')->value('team_size'))->toBe(5);
 });
 

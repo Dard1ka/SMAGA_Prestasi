@@ -16,8 +16,12 @@ use Spatie\Activitylog\Models\Concerns\LogsActivity;
 use Spatie\Activitylog\Support\LogOptions;
 
 /**
- * Pilihan talenta of a student (a student may have several, D-23). Unique (student, type, branch);
- * for OLPAIN (branch NULL) the Action must check duplicates itself.
+ * Pilihan talenta of a student (a student may have several, D-23). No unique index since D-143: `ApplyTalent`
+ * refuses a duplicate (jenis + cabang + normalised `other_text`) under the student lock.
+ *
+ * `other_text` = the student's own text ("Sebutkan", 3–60 characters) for the jenis "Lainnya" or a cabang "Lainnya"
+ * (D-143); null for every other choice. Plain text: escaped on screens, formula-escaped in Excel, kept out of the
+ * activity log like `review_message`.
  *
  * Two notes with different readers (lead, 2026-10-04):
  * - `note` = catatan untuk guru pembina: internal, read by the guru pembina and Kesiswaan, never by the student.
@@ -30,7 +34,7 @@ use Spatie\Activitylog\Support\LogOptions;
  * `review_message` are the student's open "Minta ditinjau ulang" (one per rejection).
  *
  * Not mass-assignable: status, mentor_id, assessment_on, note, student_note, student_note_draft,
- * rejected_from, review_requested_at, review_message (app/Actions/Talent only).
+ * rejected_from, review_requested_at, review_message, other_text (app/Actions/Talent only).
  */
 class TalentApplication extends Model
 {
@@ -84,11 +88,50 @@ class TalentApplication extends Model
         return LogOptions::defaults()
             ->useLogName('talent')
             ->logAll()
-            // `review_message` is the student's own text: the sealed log keeps only that there was one
-            // (RequestTalentReview, D-63), never the text, neither when it is sent nor when a restore clears it (QA9).
-            ->logExcept(['created_at', 'updated_at', 'review_message'])
+            // `review_message` and `other_text` are the student's own text: the sealed log keeps only that there was
+            // one (the audit row of the Action, D-63), never the text (QA9, D-143).
+            ->logExcept(['created_at', 'updated_at', 'review_message', 'other_text'])
             ->logOnlyDirty()
             ->dontLogEmptyChanges();
+    }
+
+    /**
+     * Name of the choice on every screen, list and export: "OSN · Kimia", "OLPAIN", "OSN · Lainnya (Robotika)",
+     * "Lainnya (Kaligrafi)" (D-143).
+     */
+    public function title(): string
+    {
+        $this->loadMissing(['talentType', 'talentBranch']);
+        $type = $this->talentType?->code?->label() ?? 'Talenta';
+
+        if ($this->talentBranch !== null) {
+            return $type.' · '.$this->branchLabel();
+        }
+
+        return $this->otherText() !== null ? $type.' ('.$this->otherText().')' : $type;
+    }
+
+    /**
+     * The cabang part alone (the "Cabang" column): "Kimia", "Lainnya (Robotika)", the text of a jenis "Lainnya"
+     * ("Kaligrafi"), or "Tanpa cabang" (OLPAIN).
+     */
+    public function branchLabel(): string
+    {
+        $this->loadMissing(['talentType', 'talentBranch']);
+        $text = $this->otherText();
+
+        if ($this->talentBranch !== null) {
+            return $this->talentBranch->name.($text !== null ? ' ('.$text.')' : '');
+        }
+
+        return $text ?? 'Tanpa cabang';
+    }
+
+    private function otherText(): ?string
+    {
+        $text = $this->other_text;
+
+        return is_string($text) && $text !== '' ? $text : null;
     }
 
     /** @return BelongsTo<Student, $this> */

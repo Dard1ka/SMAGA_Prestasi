@@ -12,11 +12,17 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-/** Cabang talenta (e.g. OSN › Kimia, FLS3N › Tari Kreasi with team_size 2). Admin/Kesiswaan may add more. */
+/**
+ * Cabang talenta (e.g. OSN › Kimia, FLS3N › Tari Kreasi with team_size 2). Admin/Kesiswaan may add more. Every jenis
+ * with cabang ends with the cabang "Lainnya" (D-143): choosing it asks the student to name the talent ("Sebutkan").
+ */
 class TalentBranch extends Model
 {
     /** @use HasFactory<TalentBranchFactory> */
     use HasFactory, HasUlids;
+
+    /** Name of the cabang whose choice needs the student's own text (D-143, `TalentSeeder`). */
+    public const OTHER = 'Lainnya';
 
     /** @var list<string> */
     protected $fillable = [
@@ -53,6 +59,12 @@ class TalentBranch extends Model
     public function scopeActive(Builder $query): void
     {
         $query->where('active', true);
+    }
+
+    /** The cabang "Lainnya" of its jenis (D-143). */
+    public function isOther(): bool
+    {
+        return $this->name === self::OTHER;
     }
 
     public function isTeam(): bool

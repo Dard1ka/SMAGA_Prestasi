@@ -59,7 +59,7 @@
                         <td>
                             <div class="flex flex-col">
                                 <span class="font-bold">{{ $row['type'] }}@if ($row['branch'])<span class="font-medium"> · {{ $row['branch'] }}</span>@endif</span>
-                                <span class="text-xs text-muted">{{ $row['bidang']?->label() }}</span>
+                                <span class="text-xs text-muted">{{ $row['bidang']?->label() ?? 'Lainnya' }}</span>
                             </div>
                         </td>
                         <td>

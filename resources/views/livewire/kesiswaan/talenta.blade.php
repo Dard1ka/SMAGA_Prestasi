@@ -29,7 +29,7 @@
                     <button type="button" class="fchip h-9 px-3.5 text-sm" wire:click="setJenis('')" aria-pressed="{{ $jenis === '' ? 'true' : 'false' }}">Semua</button>
                     @foreach ($types as $type)
                         <button type="button" class="fchip h-9 px-3.5 text-sm" wire:click="setJenis('{{ $type->code->value }}')" aria-pressed="{{ $jenis === $type->code->value ? 'true' : 'false' }}">
-                            {{ $type->code->label() }}<span class="sr-only">, {{ $type->bidang->label() }}</span>
+                            {{ $type->code->label() }}@if ($type->bidang)<span class="sr-only">, {{ $type->bidang->label() }}</span>@endif
                         </button>
                     @endforeach
                 </div>
@@ -83,7 +83,7 @@
                             <td>
                                 <div class="flex flex-col">
                                     <span class="font-bold">{{ $row['type'] }} <span class="font-medium">· {{ $row['branch'] }}</span></span>
-                                    <span class="text-xs text-muted">{{ $row['bidang']?->label() }}{{ $row['hasEvidence'] ? ' · ada bukti' : '' }}</span>
+                                    <span class="text-xs text-muted">{{ $row['bidang']?->label() ?? 'Lainnya' }}{{ $row['hasEvidence'] ? ' · ada bukti' : '' }}</span>
                                 </div>
                             </td>
                             <td class="num whitespace-nowrap text-sm">{{ $row['points'] !== null ? $row['points'].' · '.$row['prestasi'] : '–' }}</td>
