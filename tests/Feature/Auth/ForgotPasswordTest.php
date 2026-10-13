@@ -68,7 +68,7 @@ it('answers the same way for unknown or unusable identifiers and sends nothing',
 
     Mail::assertNothingQueued();
 })->with([
-    'unknown NIS' => ['123456789'],
+    'unknown number' => ['123456789'],
     'account without email' => [H::NISN],
 ]);
 
@@ -105,7 +105,7 @@ it('does not reset archived accounts', function (): void {
 
 // M1-B (lead, 2026-10-04): the student's own email is accepted here as well, same neutral answer.
 
-it('resets a student password when the bound email is typed instead of the NIS', function (): void {
+it('resets a student password when the bound email is typed instead of the NISN', function (): void {
     $user = H::activeStudent()->user;
 
     $component = w1cRequestCode(' Nadia.Anindya@example.test')->assertSee(RequestPasswordResetCode::GENERIC_STATUS);
@@ -138,7 +138,7 @@ it('gives the neutral answer and sends nothing for a student email before the ac
     Mail::assertNothingQueued();
 });
 
-it('closes a half-finished activation when the password is reset with the NIS', function (): void {
+it('closes a half-finished activation when the password is reset with the NISN', function (): void {
     // The student bound the email, left before the password step and then used "Lupa kata sandi".
     $student = H::pendingStudent();
     $user = $student->user;

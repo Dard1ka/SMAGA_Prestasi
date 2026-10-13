@@ -22,7 +22,7 @@ use Tests\Feature\Auth\AuthTestHelpers as H;
 
 /*
 | QA10 item 2: the reset code could be guessed without end. The screen limits were keyed on the TYPED identifier, so
-| NIS, NISN and email of one student (and, on MySQL, accent variants of an address) each had their own counter, and
+| NISN and email of one student (and, on MySQL, accent variants of an address) each had their own counter, and
 | an account could get any number of codes. Now the screen limits are keyed on the account the identifier resolves
 | to and the client address (an unknown identifier keeps its own stable bucket), a reset code belongs to the browser
 | that asked for it, and SECURITY §3b holds per browser (reset) or per account (email codes): at most 5 codes an hour
@@ -73,7 +73,7 @@ function qa10AuthTryCode(Testable $component, string $code): Testable
         ->call('resetPassword');
 }
 
-it('shares the code request limit between NIS, NISN and email of one account (QA10)', function (): void {
+it('shares the code request limit between NISN and email of one account (QA10)', function (): void {
     H::activeStudent();
 
     qa10AuthForgotFor(H::NISN);
@@ -101,7 +101,7 @@ it('keeps a separate, stable request limit for an identifier without an account 
     qa10AuthForgotFor(H::NISN);
 });
 
-it('shares the code check limit between NIS, NISN and email of one account (QA10)', function (): void {
+it('shares the code check limit between NISN and email of one account (QA10)', function (): void {
     H::activeStudent();
 
     $first = qa10AuthForgotFor(H::NISN);
@@ -158,7 +158,7 @@ it('stops email codes once a signed-in account had 5 in an hour or 10 in a day (
     expect($send())->toBeTrue();
 });
 
-// Review of QA10: one code budget per account let anyone who knows a NIS switch "Lupa kata sandi" off for a day (ten
+// Review of QA10: one code budget per account let anyone who knows a NISN switch "Lupa kata sandi" off for a day (ten
 // wrong codes, or the day's codes, or a new code that cancelled the owner's). Now a reset code belongs to the browser
 // that asked for it: only that browser can use it, only its own new code cancels it, and wrong codes count against
 // that browser. The account keeps a looser daily cap of reset codes (IssueOtpCode::ACCOUNT_RESET_CODES_PER_DAY).

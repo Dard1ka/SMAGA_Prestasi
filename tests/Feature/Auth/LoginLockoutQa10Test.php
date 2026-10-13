@@ -18,7 +18,7 @@ use Livewire\Livewire;
 use Tests\Feature\Auth\AuthTestHelpers as H;
 
 /*
-| QA10 item 1 (SECURITY K3: an active account is never locked on purpose by a classmate). Whoever knew a student's NIS
+| QA10 item 1 (SECURITY K3: an active account is never locked on purpose by a classmate). Whoever knew a student's NISN
 | could keep the account locked: the hourly limit per account counted every request, correct passwords included, and
 | the progressive lock was per account, so one wrong try an hour from anywhere kept the owner out. Now the blocking
 | limits are per account AND address and count failed passwords only; the per-account total only feeds the alerts.
@@ -121,7 +121,7 @@ it('counts only failed passwords: correct logins never fill the hourly limit of 
     $student = H::activeStudent();
 
     foreach (range(1, 25) as $i) {
-        qa10AuthLogin(QA10_AUTH_OWNER_IP, $i % 2 === 0 ? H::NISN : H::NISN)->assertRedirect(route('home'));
+        qa10AuthLogin(QA10_AUTH_OWNER_IP, $i % 2 === 0 ? H::NISN : QA10_AUTH_EMAIL)->assertRedirect(route('home'));
         $this->assertAuthenticatedAs($student->user);
 
         Auth::guard('web')->logout();

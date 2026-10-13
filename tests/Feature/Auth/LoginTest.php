@@ -172,7 +172,7 @@ it('locks the account progressively for failures by email at their address, also
         $this->travel(13)->seconds();
     }
 
-    // The lock holds for the NIS as well: one account, one bucket.
+    // The lock holds for the NISN as well: one account, one bucket.
     $this->withServerVariables(['REMOTE_ADDR' => '10.0.0.1'])
         ->from('/login')->post('/login', ['identifier' => H::NISN, 'password' => H::PASSWORD])
         ->assertSessionHasErrors('identifier');
@@ -205,7 +205,7 @@ it('limits an email that resolves to nobody like any unknown identifier', functi
     w1cLogin('nadia.anindya@example.test')->assertSessionHasErrors('identifier');
     expect(session('errors')->first('identifier'))->toStartWith('Terlalu banyak percobaan');
 
-    // The account's own bucket is untouched: the owner still gets in with the NIS.
+    // The account's own bucket is untouched: the owner still gets in with the NISN.
     w1cLogin(H::NISN)->assertRedirect(route('aktivasi'));
     $this->assertAuthenticatedAs($student->user);
 });
@@ -273,7 +273,7 @@ it('keeps a typed NIS out of the account bucket', function (): void {
     foreach (range(1, 5) as $i) {
         w1cLogin(H::NIS, 'salah-sekali-123')->assertSessionHasErrors(['identifier' => AuthenticateUser::GENERIC_ERROR]);
     }
-    // The NIS resolves to nobody, so five NIS failures leave the account's own bucket alone.
+    // The NIS resolves to nobody (D-137), so five NIS failures leave the account's own bucket alone.
     w1cLogin(H::NISN)->assertRedirect(route('aktivasi'));
 });
 
