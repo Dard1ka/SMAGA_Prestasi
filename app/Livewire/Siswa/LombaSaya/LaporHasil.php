@@ -6,6 +6,7 @@ namespace App\Livewire\Siswa\LombaSaya;
 
 use App\Actions\Reports\SubmitReport;
 use App\Actions\Reports\SubmitReportData;
+use App\Domain\Deadlines\ReportFollowUp;
 use App\Domain\Points\PointBreakdown;
 use App\Enums\Bidang;
 use App\Enums\RegistrationType;
@@ -31,7 +32,7 @@ use Livewire\WithFileUploads;
  * Laporkan hasil (UI-MAP #13, boards Lapor-Hasil-Mobile + the inline form of Lomba-Saya). One responsive
  * component: full page `siswa.lapor` (layouts::mobile) and embedded in Siswa\LombaSaya\Index (inline).
  * Live point preview from the active weight version ("final setelah diverifikasi"); SubmitReport does
- * every real check (ReportPolicy::create, deadline flag, StoreUpload). After sending → Lomba saya detail.
+ * every real check (ReportPolicy::create, StoreUpload). No deadline since D-151. After sending → Lomba saya detail.
  */
 final class LaporHasil extends Component
 {
@@ -249,8 +250,8 @@ final class LaporHasil extends Component
             'competition' => $competition,
             'isRiset' => $this->isRiset(),
             'isTeam' => $registration->type === RegistrationType::Tim,
-            'deadline' => $this->deadlineInfo($competition),
-            'marksLate' => SubmitReport::marksLate($competition, $report),
+            // D-151: no deadline; the page only asks to report now.
+            'prompt' => ReportFollowUp::PROMPT,
             'revision' => $report?->status === ReportStatus::PerluRevisi ? $report : null,
             'existing' => $this->existingFiles(),
             'resultOptions' => collect(ResultType::cases())->mapWithKeys(fn (ResultType $r): array => [$r->value => $r->label()])->all(),

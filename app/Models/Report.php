@@ -44,7 +44,7 @@ class Report extends Model
             'status' => ReportStatus::class,
             'submitted_at' => 'immutable_datetime',
             'verified_at' => 'immutable_datetime',
-            'late' => 'boolean', // W2-A2: sent after the D-25 deadline; set by SubmitReport only
+            'late' => 'boolean', // W2-A2 (D-25); since D-151 no deadline: SubmitReport always writes false, old rows keep theirs
         ];
     }
 

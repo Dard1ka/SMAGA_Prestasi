@@ -47,7 +47,8 @@ it('moves surat_terbit to berlangsung on starts_on and berlangsung to menunggu_l
     $this->artisan('sth:registrations:advance')->assertSuccessful();
     expect($registration->fresh()->status)->toBe(RegistrationStatus::MenungguLaporan);
 
-    Notification::assertSentTo($this->nadia->user, ReportWindowOpened::class, fn (ReportWindowOpened $n): bool => $n->dueOn === '8 Nov 2026');
+    // D-151: no due date in the notice any more.
+    Notification::assertSentTo($this->nadia->user, ReportWindowOpened::class, fn (ReportWindowOpened $n): bool => $n->registrationId === $registration->getKey());
 
     $events = Activity::query()->where('subject_id', $registration->getKey())->whereIn('event', ['registration.berlangsung', 'registration.menunggu_laporan'])->orderBy('id')->pluck('event')->all();
     expect($events)->toBe(['registration.berlangsung', 'registration.menunggu_laporan']);

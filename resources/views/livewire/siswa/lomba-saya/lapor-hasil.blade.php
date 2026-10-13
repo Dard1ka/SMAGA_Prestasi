@@ -5,16 +5,11 @@
 @php($formId = $inline ? 'lapor-form-inline' : 'lapor-form')
 @php($h = $inline ? 'h4' : 'h2')
 <div class="flex flex-col gap-4">
-    @if (! $inline && $deadline)
-        <p @class(['m-0 inline-flex items-center gap-2 text-sm font-semibold', 'text-orange' => ! ($deadline['overdue'] && $marksLate), 'text-red' => $deadline['overdue'] && $marksLate])>
+    @if (! $inline)
+        {{-- D-151: no deadline, only the request. --}}
+        <p class="m-0 inline-flex items-center gap-2 text-sm font-semibold text-orange">
             <x-sth.icon name="clock" :size="18" />
-            @if (! $deadline['overdue'])
-                {{ 'Batas '.$deadline['dueText'].' ('.$deadline['days'].' hari setelah final).' }}
-            @elseif ($marksLate)
-                {{ 'Batas '.$deadline['dueText'].' sudah lewat. Laporan tetap diterima, tetapi ditandai terlambat.' }}
-            @else
-                {{ 'Batas '.$deadline['dueText'].' sudah lewat, tetapi laporan pertama dikirim tepat waktu, jadi revisi ini tidak ditandai terlambat.' }}
-            @endif
+            {{ $prompt }}
         </p>
     @endif
 

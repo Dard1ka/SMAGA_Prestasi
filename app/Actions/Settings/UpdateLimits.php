@@ -14,17 +14,14 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Admin › Pengaturan › Batas & arsip: `report_deadline_days` (default 45 after the final, D-25) and
- * `archive_months_after_grade12` (default 18, D-13). Changing the archive months recalculates `archive_at`
- * (= grade12_start_date + N months) for every student who is not archived yet, so the daily job follows the
- * new rule; archived accounts are never touched. Audited (`settings.limits_updated`, from/to + count).
+ * Admin › Pengaturan › Batas & arsip: `archive_months_after_grade12` (default 18, D-13). Changing it recalculates
+ * `archive_at` (= grade12_start_date + N months) for every student who is not archived yet, so the daily job follows
+ * the new rule; archived accounts are never touched. Audited (`settings.limits_updated`, from/to + count).
+ * D-151: a laporan hasil has no deadline any more; `report_deadline_days` stays in the settings but is no longer
+ * edited here.
  */
 final class UpdateLimits
 {
-    public const MIN_DAYS = 1;
-
-    public const MAX_DAYS = 365;
-
     public const MIN_MONTHS = 1;
 
     public const MAX_MONTHS = GraduationCalculator::MAX_ARCHIVE_MONTHS;
@@ -34,54 +31,37 @@ final class UpdateLimits
      *
      * @throws ValidationException
      */
-    public function handle(User $actor, int $reportDeadlineDays, int $archiveMonths): array
+    public function handle(User $actor, int $archiveMonths): array
     {
         Gate::forUser($actor)->authorize('update', Setting::class);
 
-        $errors = [];
-
-        if ($reportDeadlineDays < self::MIN_DAYS || $reportDeadlineDays > self::MAX_DAYS) {
-            $errors['reportDeadlineDays'] = 'Isi 1–365 hari.';
-        }
-
         if ($archiveMonths < self::MIN_MONTHS || $archiveMonths > self::MAX_MONTHS) {
-            $errors['archiveMonths'] = 'Isi 1–120 bulan.';
+            throw ValidationException::withMessages(['archiveMonths' => 'Isi 1–120 bulan.']);
         }
 
-        if ($errors !== []) {
-            throw ValidationException::withMessages($errors);
-        }
-
-        return DB::transaction(function () use ($actor, $reportDeadlineDays, $archiveMonths): array {
+        return DB::transaction(function () use ($actor, $archiveMonths): array {
             Setting::query()
-                ->whereIn('key', [SettingKey::ReportDeadlineDays->value, SettingKey::ArchiveMonthsAfterGrade12->value])
+                ->where('key', SettingKey::ArchiveMonthsAfterGrade12->value)
                 ->lockForUpdate()
                 ->get();
 
-            $fromDays = Setting::int(SettingKey::ReportDeadlineDays);
             $fromMonths = Setting::int(SettingKey::ArchiveMonthsAfterGrade12);
-            $recalculated = 0;
 
-            if ($fromDays !== $reportDeadlineDays) {
-                Setting::put(SettingKey::ReportDeadlineDays, $reportDeadlineDays);
+            if ($fromMonths === $archiveMonths) {
+                return ['recalculated' => 0];
             }
 
-            if ($fromMonths !== $archiveMonths) {
-                Setting::put(SettingKey::ArchiveMonthsAfterGrade12, $archiveMonths);
-                $recalculated = $this->recalculateArchiveDates(new GraduationCalculator($archiveMonths));
-            }
+            Setting::put(SettingKey::ArchiveMonthsAfterGrade12, $archiveMonths);
+            $recalculated = $this->recalculateArchiveDates(new GraduationCalculator($archiveMonths));
 
-            if ($fromDays !== $reportDeadlineDays || $fromMonths !== $archiveMonths) {
-                activity('setting')
-                    ->causedBy($actor)
-                    ->event('settings.limits_updated')
-                    ->withProperties([
-                        'report_deadline_days' => ['from' => $fromDays, 'to' => $reportDeadlineDays],
-                        'archive_months_after_grade12' => ['from' => $fromMonths, 'to' => $archiveMonths],
-                        'archive_dates_recalculated' => $recalculated,
-                    ])
-                    ->log('settings.limits_updated');
-            }
+            activity('setting')
+                ->causedBy($actor)
+                ->event('settings.limits_updated')
+                ->withProperties([
+                    'archive_months_after_grade12' => ['from' => $fromMonths, 'to' => $archiveMonths],
+                    'archive_dates_recalculated' => $recalculated,
+                ])
+                ->log('settings.limits_updated');
 
             return ['recalculated' => $recalculated];
         });

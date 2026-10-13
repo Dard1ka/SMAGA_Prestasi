@@ -1,12 +1,11 @@
 {{-- Siswa · Bantuan (UI-MAP sidebar "Bantuan"; static text from docs/PANDUAN-PENGGUNA.md §2, content owner I). Re-opens the menu tour (siswa.tour). --}}
-@php($days = (int) \App\Models\Setting::get(\App\Enums\SettingKey::ReportDeadlineDays))
 <x-layouts::app title="Bantuan" subtitle="Cara singkat memakai SMAGA Talent Hub.">
     <div class="grid grid-cols-1 items-start gap-[18px] lg:grid-cols-[minmax(0,1fr)_340px]">
         <div class="flex min-w-0 flex-col gap-[18px]">
             @foreach ([
                 ['icon' => 'search', 'title' => 'Pendaftaran lomba', 'text' => 'Buka Cari lomba, pilih lomba, lalu isi panel Pendaftaran lomba. Pilih guru pembimbing. Untuk tim, undang anggota; setiap anggota konfirmasi dari akunnya sendiri.'],
                 ['icon' => 'check-circle', 'title' => 'Persetujuan dan surat tugas', 'text' => 'Kepala Sekolah atau Tata Usaha menyetujui pendaftaranmu, lalu Tata Usaha mengirim surat tugas. Download suratnya di Lomba saya.'],
-                ['icon' => 'upload', 'title' => 'Laporkan hasil', 'text' => "Ketua tim melapor paling lambat {$days} hari setelah tanggal final, lengkap dengan sertifikat atau foto. Setelah sekolah memverifikasi, setiap anggota mendapat poin penuh."],
+                ['icon' => 'upload', 'title' => 'Laporkan hasil', 'text' => 'Ketua tim melapor segera setelah lomba selesai, lengkap dengan sertifikat atau foto. Setelah sekolah memverifikasi, setiap anggota mendapat poin penuh.'],
                 ['icon' => 'plus', 'title' => 'Usulkan lomba', 'text' => 'Lomba belum ada di katalog? Klik Usulkan lomba di Cari lomba. Lomba tampil setelah Kesiswaan memeriksanya.'],
                 ['icon' => 'user', 'title' => 'Masuk ke akun', 'text' => 'Masuk pakai NISN atau email yang kamu hubungkan saat aktivasi. Lupa kata sandi? Klik Lupa kata sandi di halaman masuk, kodenya dikirim ke emailmu.'],
                 ['icon' => 'lock', 'title' => 'Jaga akunmu', 'text' => 'Jangan bagikan kata sandi atau kode email. Masih pakai kata sandi dari sekolah? Ganti di menu avatar, Keamanan akun. Dapat email aneh? Klik Bukan saya? lalu hubungi Kesiswaan.'],

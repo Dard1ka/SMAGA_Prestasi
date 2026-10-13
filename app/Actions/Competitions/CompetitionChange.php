@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Actions\Competitions;
 
-use App\Domain\Deadlines\ReportDeadline;
 use App\Enums\CompetitionStatus;
 use App\Enums\Participation;
 use App\Enums\RegistrationStatus;
@@ -136,7 +135,7 @@ final class CompetitionChange
 
     /**
      * The sentence of one changed fact, with the value as it is now. `$status` = the registration of the reader:
-     * one that waits for its report hears the final date and the report deadline that follows from it.
+     * one that waits for its report hears the new end date (no report deadline since D-151).
      */
     public static function line(string $fact, Competition $competition, ?RegistrationStatus $status = null): string
     {
@@ -144,8 +143,7 @@ final class CompetitionChange
             'deadline' => 'Batas daftar sekarang '.self::day($competition->registration_closes_at)
                 .'. Undangan tim yang belum dijawab tidak berlaku lagi setelah tanggal itu.',
             'dates' => $status === RegistrationStatus::MenungguLaporan && $competition->final_on !== null
-                ? 'Tanggal final sekarang '.self::day($competition->final_on).', batas laporan hasil '
-                    .self::day(app(ReportDeadline::class)->dueDate($competition->final_on)).'.'
+                ? 'Tanggal selesai sekarang '.self::day($competition->final_on).'.'
                 : 'Tanggal lomba sekarang '.self::dayRange($competition->starts_on, $competition->final_on).'.',
             'mode' => 'Pelaksanaan sekarang '.($competition->mode?->label() ?? 'belum diisi').'.',
             'location' => self::place($competition->location),

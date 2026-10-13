@@ -29,7 +29,6 @@ class ReportSubmitted extends Notification implements ShouldQueue
         public readonly string $competitionName,
         public readonly string $leaderName,
         public readonly string $resultLabel,
-        public readonly bool $late,
         public readonly bool $resubmitted,
     ) {}
 
@@ -40,7 +39,6 @@ class ReportSubmitted extends Notification implements ShouldQueue
             $competitionName,
             $leaderName,
             $report->claimed_result->label(),
-            (bool) $report->late,
             $resubmitted,
         );
     }
@@ -88,9 +86,8 @@ class ReportSubmitted extends Notification implements ShouldQueue
 
     private function body(): string
     {
-        return $this->leaderName.' melaporkan '.$this->resultLabel.'.'
-            .($this->late ? ' Laporan dikirim setelah batas waktu.' : '')
-            .' Mohon diverifikasi.';
+        // D-151: no deadline, so no "dikirim setelah batas waktu".
+        return $this->leaderName.' melaporkan '.$this->resultLabel.'. Mohon diverifikasi.';
     }
 
     private function url(object $notifiable): ?string

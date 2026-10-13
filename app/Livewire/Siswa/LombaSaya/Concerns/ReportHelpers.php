@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Livewire\Siswa\LombaSaya\Concerns;
 
-use App\Domain\Deadlines\ReportDeadline;
 use App\Domain\Points\PointBreakdown;
 use App\Domain\Points\PointCalculator;
 use App\Domain\Points\WeightTable;
@@ -21,11 +20,6 @@ use DateTimeInterface;
 trait ReportHelpers
 {
     private ?WeightTable $weightTableCache = null;
-
-    protected function reportDeadline(): ReportDeadline
-    {
-        return app(ReportDeadline::class);
-    }
 
     /** Estimated points for one member, or null when the lomba lacks a weight field. */
     protected function previewBreakdown(Competition $competition, ResultType|string|null $result): ?PointBreakdown
@@ -47,34 +41,13 @@ trait ReportHelpers
     }
 
     /**
-     * Deadline facts for a lomba: due date, days left and the chip text/tone used on cards.
+     * The chip of a registration that waits for its report (D-151): no due date and no days left, only the request.
      *
-     * @return array{due: CarbonImmutable, days: int, dueText: string, daysLeft: int, overdue: bool, chip: string, tone: string}|null
+     * @return array{chip: string, tone: string}
      */
-    protected function deadlineInfo(Competition $competition): ?array
+    protected function reportChip(): array
     {
-        if ($competition->final_on === null) {
-            return null;
-        }
-
-        $deadline = $this->reportDeadline();
-        $due = $deadline->dueDate($competition->final_on);
-        $daysLeft = $deadline->daysLeft($competition->final_on, CarbonImmutable::today());
-        $dueText = self::shortDate($due);
-
-        return [
-            'due' => $due,
-            'days' => $deadline->days(),
-            'dueText' => self::longDate($due),
-            'daysLeft' => $daysLeft,
-            'overdue' => $daysLeft < 0,
-            'chip' => match (true) {
-                $daysLeft < 0 => 'Lewat batas '.$dueText,
-                $daysLeft === 0 => 'Batas hari ini',
-                default => 'Batas '.$dueText.' · '.$daysLeft.' hari lagi',
-            },
-            'tone' => $daysLeft < 0 ? 'red' : 'orange',
-        ];
+        return ['chip' => 'Segera laporkan', 'tone' => 'orange'];
     }
 
     protected static function shortDate(?DateTimeInterface $date): string

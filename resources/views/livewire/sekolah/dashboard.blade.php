@@ -20,7 +20,8 @@
         <x-sth.stat-tile icon="award" tone="gold" label="Prestasi terverifikasi" :value="number_format($kpi['prestasi'], 0, ',', '.')" :note="$kpi['prestasiNote']" />
         <x-sth.stat-tile icon="users" tone="blue" label="Siswa berprestasi" :value="number_format($kpi['siswa'], 0, ',', '.')" note="Minimal 1 prestasi terverifikasi" />
         <x-sth.stat-tile icon="check-circle" tone="orange" label="Menunggu persetujuan" :value="$kpi['menunggu']" :note="$approvalUrl ? 'Tinjau pendaftaran' : 'Pendaftaran siswa'" :href="$approvalUrl" />
-        <x-sth.stat-tile icon="clock" tone="red" label="Laporan lewat batas" :value="$kpi['lewat']" :note="'Lewat '.$kpi['deadlineDays'].' hari setelah final'" />
+        {{-- D-151: no report deadline; counts reports still missing more than 14 days after the lomba. --}}
+        <x-sth.stat-tile icon="clock" tone="red" label="Belum lapor > 14 hari" :value="$kpi['lewat']" note="Lomba selesai lebih dari 14 hari lalu" />
     </div>
 
     <div class="grid gap-[22px] xl:grid-cols-3">

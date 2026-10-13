@@ -45,7 +45,7 @@
                 <x-sth.input type="date" wire:model="form.registration_opens_at" label="Daftar dibuka" />
                 <x-sth.input type="date" wire:model="form.registration_closes_at" label="Batas daftar" />
                 <x-sth.input type="date" wire:model="form.starts_on" label="Tanggal mulai" hint="Tidak boleh sebelum batas daftar." />
-                <x-sth.input type="date" wire:model="form.final_on" label="Tanggal final" hint="Dasar batas laporan hasil." />
+                <x-sth.input type="date" wire:model="form.final_on" label="Tanggal final" hint="Laporan hasil dibuka setelah tanggal ini." />
             </div>
 
             {{-- Q1-04: old lomba may be published for the record, but only with this tick (VerifyCompetition asks for it). --}}
