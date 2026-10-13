@@ -1,8 +1,8 @@
-{{-- Local preview of layouts::mobile (/_dev/components/mobile), modelled on Lapor-Hasil-Mobile. Deadline per D-25. --}}
+{{-- Local preview of layouts::mobile (/_dev/components/mobile), modelled on Lapor-Hasil-Mobile. No report deadline (D-151), only the request. --}}
 <x-layouts::mobile title="Laporkan hasil" subtitle="WICE 2026 · Riset · Tim 3 orang" :back="route('dev.components')" back-label="Kembali ke komponen" :tabbar="\App\Support\Navigation::tabbar(active: 'lombaku', preview: true)">
     <p class="m-0 flex items-start gap-2.5 rounded-card border border-orange-line bg-orange-bg px-3.5 py-3 text-md leading-[22px] font-semibold text-orange">
         <x-sth.icon name="clock" :size="20" class="mt-px" />
-        Batas 8 Nov 2026 (45 hari setelah lomba).
+        Segera laporkan hasil lombamu.
     </p>
 
     <x-sth.card as="section" padding="sm" aria-labelledby="hasil-judul" class="flex flex-col gap-3.5">

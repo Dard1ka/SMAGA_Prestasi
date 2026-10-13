@@ -317,7 +317,7 @@ Not drawn in the mockup. Details: `docs/dev-notes/RV1.md`. One new dialog, built
 | Status aktivasi (Kesiswaan, Admin) | the NIS in full in the list, in the class popup and in the CSV; the sentence under the filters now reads "Email ditampilkan tersamar." (D-131). *(D-137: the NISN instead of the NIS, plus a hint line next to "Download CSV".)* |
 | Kesiswaan › Talenta (#18), Database prestasi | the NIS in full in the table (and in the detail of Database prestasi), as their Excel files already had it (D-131). *(D-137: the NISN instead of the NIS; search by name or NISN.)* |
 | Tata Usaha › Surat tugas, PDF surat tugas siswa | the student letter stands in the middle of the page (equal left and right margins); the on-screen preview already did. Letters issued before keep their file (D-133) |
-| Admin › Log audit | label "Guru pembimbing diganti Kepala Sekolah" (`registration.mentor_changed`) |
+| Admin › Log audit | label "Guru pembimbing diganti Kepala Sekolah" (`registration.mentor_changed`). *(FS1, D-150: "Guru pembimbing diganti saat persetujuan", since Tata Usaha may approve too.)* |
 
 ## 6h. Screen changes of FS1 Paket A (D-135, D-136, the school's feedback of 2026-10-12)
 Not drawn in the mockup. Details: `docs/dev-notes/FS1.md`. Only labels, one menu item, one Excel column, one sort order and one

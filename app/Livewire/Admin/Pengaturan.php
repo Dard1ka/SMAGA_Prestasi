@@ -21,7 +21,7 @@ use Livewire\Component;
  */
 #[Title('Pengaturan')]
 // One search box per screen (D-90, backlog #60): this page has its own, so the top bar shows none.
-#[Layout('layouts::app', ['subtitle' => 'Aturan poin, batas waktu, surat, dan akun.', 'search' => false])]
+#[Layout('layouts::app', ['subtitle' => 'Aturan poin, arsip, surat, dan akun.', 'search' => false])]
 final class Pengaturan extends Component
 {
     public const TABS = [

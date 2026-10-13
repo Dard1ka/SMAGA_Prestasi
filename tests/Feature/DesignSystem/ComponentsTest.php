@@ -64,13 +64,13 @@ it('renders status and bidang chips with text, accepting the Bidang enum', funct
 });
 
 it('renders the full tracker with done, action and upcoming phases', function (): void {
-    $view = $this->blade('<x-sth.tracker :phase="5" state="action" :dates="[5 => \'Batas 8 Nov\']" />');
+    $view = $this->blade('<x-sth.tracker :phase="5" state="action" :dates="[4 => \'21–24 Sep\']" />');
 
     $view->assertSee('class="trk-step s-done"', false)
         ->assertSee('class="trk-step s-act"', false)
         ->assertSee('aria-current="step"', false)
         ->assertSee('class="trk-step s-up"', false)
-        ->assertSee('Batas 8 Nov')
+        ->assertSee('21–24 Sep')
         ->assertSee('tahap saat ini, perlu tindakan')
         ->assertSeeInOrder(['Daftar', 'Persetujuan', 'Surat tugas', 'Lomba', 'Laporan hasil', 'Poin &amp; apresiasi'], false);
 });
@@ -218,6 +218,17 @@ it('serves the local showcase pages without inline styles or inline handlers (CS
     'auth simple' => ['/_dev/components/auth?variant=simple', 'Ganti kata sandi'],
     'mobile' => ['/_dev/components/mobile', 'Laporkan hasil'],
 ]);
+
+it('shows no report deadline in the local showcase, only the request to report (D-151)', function (string $uri): void {
+    Route::middleware('web')->group(base_path('routes/dev.php'));
+    Route::getRoutes()->refreshNameLookups();
+
+    $this->get($uri)->assertOk()
+        ->assertSee('Segera laporkan')
+        ->assertDontSee('Batas laporan')
+        ->assertDontSee('atas 8 Nov')
+        ->assertDontSee('hari setelah lomba');
+})->with(['app shell' => '/_dev/components', 'mobile' => '/_dev/components/mobile']);
 
 it('shows flashed toasts from the session', function (): void {
     Route::middleware('web')->group(base_path('routes/dev.php'));

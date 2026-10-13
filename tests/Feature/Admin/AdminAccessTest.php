@@ -76,7 +76,15 @@ it('shows blockers on the status page when nothing is configured', function (): 
         ->get(route('admin.ringkasan'))
         ->assertOk()
         ->assertSee('Belum ada tanda tangan + stempel')
-        ->assertSee('Belum ada akun Kepala Sekolah');
+        ->assertSee('Belum ada akun Kepala Sekolah atau Tata Usaha yang aktif.');
+});
+
+it('describes Pengaturan without a report deadline (D-151)', function (): void {
+    $this->actingAs(A::admin())->withSession(A::passwordConfirmed())
+        ->get(route('admin.pengaturan'))
+        ->assertOk()
+        ->assertSee('Aturan poin, arsip, surat, dan akun.')
+        ->assertDontSee('Aturan poin, batas waktu, surat, dan akun.');
 });
 
 it('shows the backlog audit events on the status page with the Log audit labels (W4)', function (): void {

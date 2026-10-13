@@ -16,16 +16,31 @@ use Illuminate\Support\Facades\Route;
 /**
  * To the ketua: the laporan hasil is still missing (sth:reports:remind, 3 and 14 days after final_on, D-151). There
  * is no deadline any more, so the reminder only asks to report now.
+ *
+ * A reminder queued before D-151 carries `dueOn` + `daysLeft` instead of `daysAfterFinal`: the day count is a plain
+ * property with a default and the two old ones stay declared (never read), so such a payload still unserializes and
+ * is sent with today's wording (the RegistrationApproved pattern).
  */
 class ReportReminder extends Notification implements ShouldQueue
 {
     use Queueable;
 
+    /** Days between final_on and this reminder (ReportFollowUp::REMINDER_DAYS); 0 on a reminder queued before D-151. */
+    public int $daysAfterFinal = 0;
+
+    /** Only on a reminder queued before D-151 (the old deadline wording); never read. */
+    public ?string $dueOn = null;
+
+    /** Only on a reminder queued before D-151 (the old deadline wording); never read. */
+    public ?int $daysLeft = null;
+
     public function __construct(
         public readonly string $registrationId,
         public readonly string $competitionName,
-        public readonly int $daysAfterFinal,
-    ) {}
+        int $daysAfterFinal,
+    ) {
+        $this->daysAfterFinal = $daysAfterFinal;
+    }
 
     /** @return list<string> */
     public function via(object $notifiable): array

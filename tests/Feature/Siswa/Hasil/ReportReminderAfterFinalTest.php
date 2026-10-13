@@ -107,3 +107,34 @@ it('words the reminder without any deadline', function (): void {
             'registration_id' => '01jreg',
         ]);
 });
+
+/**
+ * A reminder as the queue holds it when it was queued before D-151: `dueOn` + `daysLeft` instead of `daysAfterFinal`
+ * (built from today's public properties, so Queueable's own properties stay as the queue writes them).
+ */
+function fs1ReminderQueuedBeforeD151(): string
+{
+    $properties = get_object_vars(new ReportReminder('01jreg', 'OPSI 2026', 3));
+    unset($properties['daysAfterFinal'], $properties['dueOn'], $properties['daysLeft']);
+    $properties += ['dueOn' => '2026-11-08', 'daysLeft' => 14];
+
+    $body = '';
+    foreach ($properties as $name => $value) {
+        $body .= serialize($name).serialize($value);
+    }
+
+    return 'O:'.strlen(ReportReminder::class).':"'.ReportReminder::class.'":'.count($properties).':{'.$body.'}';
+}
+
+it('still sends a reminder that was queued before D-151 (FS1 B3 review)', function (): void {
+    $old = unserialize(fs1ReminderQueuedBeforeD151());
+
+    expect($old)->toBeInstanceOf(ReportReminder::class)
+        ->and($old->daysAfterFinal)->toBe(0)
+        ->and($old->toArray($this->nadia->user))->toMatchArray([
+            'title' => 'Laporan OPSI 2026 ditunggu',
+            'registration_id' => '01jreg',
+            'days_after_final' => 0,
+        ])
+        ->and($old->toMail($this->nadia->user)->subject)->toBe('Laporan OPSI 2026 ditunggu');
+});

@@ -160,7 +160,7 @@
         <x-sth.card class="flex flex-col gap-4">
             <div class="flex flex-wrap items-center gap-2">
                 <x-sth.chip tone="green" icon="check">Disetujui</x-sth.chip>
-                <x-sth.chip tone="orange" icon="clock">Menunggu laporan · batas 8 Nov</x-sth.chip>
+                <x-sth.chip tone="orange" icon="clock">Segera laporkan</x-sth.chip>
                 <x-sth.chip tone="red" icon="x">Ditolak</x-sth.chip>
                 <x-sth.chip tone="gray" icon="clock">Menunggu persetujuan</x-sth.chip>
                 <x-sth.chip tone="blue" icon="info">Nomor surat diproses</x-sth.chip>
@@ -239,7 +239,7 @@
                     <x-sth.bidang-tile bidang="riset" />
                     <div class="flex min-w-0 flex-col items-start gap-1">
                         <h3 class="title-card"><a class="ttl-link" href="#kartu">WICE 2026</a> <span class="font-sans text-xs font-medium text-muted">· Internasional · Tim 3</span></h3>
-                        <x-sth.chip tone="orange" icon="clock" size="sm">Menunggu laporan · batas 8 Nov</x-sth.chip>
+                        <x-sth.chip tone="orange" icon="clock" size="sm">Segera laporkan</x-sth.chip>
                     </div>
                 </div>
                 <x-sth.tracker :phase="5" state="action" compact />
@@ -259,7 +259,7 @@
                 <div class="flex min-w-0 flex-1 flex-col gap-0.5">
                     <x-sth.chip tone="orange" size="sm" class="self-start">Perlu tindakan</x-sth.chip>
                     <p class="m-0 text-base leading-tight font-bold">WICE 2026 · laporan hasil</p>
-                    <p class="num m-0 text-sm font-semibold text-orange">Batas 8 Nov 2026 · 39 hari lagi</p>
+                    <p class="m-0 text-sm font-semibold text-orange">Segera laporkan hasil lombamu.</p>
                 </div>
             </x-sth.card>
         </div>
@@ -407,7 +407,7 @@
         <x-sth.card class="flex flex-col gap-6">
             <div class="flex flex-col gap-3">
                 <span class="label">WICE 2026 · tahap 5, perlu tindakan</span>
-                <x-sth.tracker :phase="5" state="action" :dates="['2 Sep', '5 Sep', '8 Sep', '21–24 Sep', 'Batas 8 Nov', '']" />
+                <x-sth.tracker :phase="5" state="action" :dates="['2 Sep', '5 Sep', '8 Sep', '21–24 Sep', '', '']" />
             </div>
             <div class="flex flex-col gap-3">
                 <span class="label">LPB 2026 · tahap 2</span>
@@ -508,7 +508,7 @@
             <div class="flex flex-col items-start gap-2.5">
                 <x-sth.toast>Lomba dipublikasikan.</x-sth.toast>
                 <x-sth.toast tone="info">Nomor surat 400.3.8/312/MRD/IX/2026 tersimpan.</x-sth.toast>
-                <x-sth.toast tone="warning">Batas laporan WICE 2026 tinggal 7 hari.</x-sth.toast>
+                <x-sth.toast tone="warning">Laporan WICE 2026 ditunggu. Segera laporkan hasil lombamu.</x-sth.toast>
                 <x-sth.toast tone="error">Nomor surat sudah dipakai.</x-sth.toast>
             </div>
         </x-sth.card>

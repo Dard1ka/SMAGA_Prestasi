@@ -196,3 +196,14 @@ it('never prints an event key twice when a row has no label', function (): void 
         ->assertSee('Berkas di-download')
         ->assertDontSee('file.downloaded file.downloaded');
 });
+
+it('labels a guru change at an approval without naming one deciding role (D-150, FS1 B3 review)', function (): void {
+    $kepsek = A::staff(RoleName::KepalaSekolah, ['name' => 'Drs. Bambang Hartono, M.Pd.']);
+    activity('registration')->causedBy($kepsek)->event('registration.mentor_changed')
+        ->withProperties(['from' => 11, 'to' => 12])->log('registration.mentor_changed');
+
+    $this->actingAs($this->admin)->get(route('admin.audit.index'))
+        ->assertOk()
+        ->assertSee('Guru pembimbing diganti saat persetujuan')
+        ->assertDontSee('Guru pembimbing diganti Kepala Sekolah');
+});
