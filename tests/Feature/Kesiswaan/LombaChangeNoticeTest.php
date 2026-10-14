@@ -192,6 +192,23 @@ it('lists every changed fact in one notice per person', function (): void {
     ])->and(C::auditRows())->toBe([['changed' => ['deadline', 'mode', 'location', 'participants'], 'students' => 1, 'mentors' => 1, 'mail' => true]]);
 });
 
+it('names the answer window of a team resumed late instead of the new deadline (FS1 fix wave, D-148)', function (): void {
+    $resumed = F::student('Raka Pradipta', 'XII-2');
+    $shortGrace = F::student('Nadia Putri Anindya', 'XI-4');
+    $plain = F::student('Hana Safira', 'XI-3');
+    $competition = C::lomba();
+    C::registration($competition, RegistrationStatus::MenungguKonfirmasi, $resumed)->forceFill(['answer_until' => '2026-10-12 09:00:00'])->save();
+    C::registration($competition, RegistrationStatus::MenungguKonfirmasi, $shortGrace)->forceFill(['answer_until' => '2026-10-08 09:00:00'])->save();
+    C::registration($competition, RegistrationStatus::MenungguKonfirmasi, $plain);
+
+    app(UpdateCompetition::class)->handle($this->kesiswaan, $competition, C::input($competition, ['registration_closes_at' => '2026-10-09']));
+
+    // The 3-day window of the resumed team ends after the new deadline: its invitations stay valid until then.
+    expect(lcnNotice($resumed->user)->lines)->toBe(['Batas daftar sekarang 9 Okt 2026. Undangan tim yang belum dijawab berlaku sampai 12 Okt 2026, 09.00.'])
+        ->and(lcnNotice($shortGrace->user)->lines)->toBe(['Batas daftar sekarang 9 Okt 2026. Undangan tim yang belum dijawab tidak berlaku lagi setelah tanggal itu.'])
+        ->and(lcnNotice($plain->user)->lines)->toBe(['Batas daftar sekarang 9 Okt 2026. Undangan tim yang belum dijawab tidak berlaku lagi setelah tanggal itu.']);
+});
+
 // What is not a fact ---------------------------------------------------------------------------------------------
 
 it('sends nothing and writes no facts row when no fact changed', function (array $change): void {

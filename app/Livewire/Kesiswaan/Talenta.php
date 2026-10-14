@@ -71,6 +71,9 @@ class Talenta extends Component
 
     public const EXPORT_NOTHING = 'Tidak ada data talenta dengan filter ini. Tidak ada yang di-download.';
 
+    /** FS1 fix wave: "Belum mengisi (kelas X)" has no download (the button is hidden there); a crafted call gets this. */
+    public const EXPORT_WRONG_TAB = 'Download data hanya dari tab Semua.';
+
     public const SAVED_MESSAGE = 'Data talenta tersimpan.';
 
     private const PAGE = 30;
@@ -190,6 +193,13 @@ class Talenta extends Component
     public function export(AdminRecipients $recipients): ?BinaryFileResponse
     {
         $this->authorize('manage', TalentApplication::class);
+
+        // The file holds the choices of the "Semua" tab: never hand it out from a tab that lists other rows.
+        if ($this->tab !== 'semua') {
+            $this->dispatch('sth-toast', message: self::EXPORT_WRONG_TAB, tone: 'error');
+
+            return null;
+        }
 
         if (! $this->passwordRecentlyConfirmed('export')) {
             return null;

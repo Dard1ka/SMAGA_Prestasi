@@ -231,6 +231,20 @@ it('hides the download button in "Belum mengisi (kelas X)"', function (): void {
         ->assertSee('Hana Safira');
 });
 
+it('downloads nothing from "Belum mengisi (kelas X)", even for a crafted call (FS1 fix wave)', function (): void {
+    session()->put('auth.password_confirmed_at', time());
+    F::application(F::student('Aurelia Maharani', 'X-3'));
+    F::student('Hana Safira', 'X-8');
+
+    Livewire::actingAs($this->kesiswaan)->test(Talenta::class)
+        ->call('setTab', 'belum')
+        ->call('export')
+        ->assertNoFileDownloaded()
+        ->assertDispatched('sth-toast', message: Talenta::EXPORT_WRONG_TAB, tone: 'error');
+
+    expect(Activity::query()->where('event', 'talent.exported')->exists())->toBeFalse();
+});
+
 it('keeps every other role away from the screen', function (): void {
     $row = F::application(F::student('Citra Ayu Lestari', 'XI-2'), TalentStatus::TidakLolos, 'Fisika');
 

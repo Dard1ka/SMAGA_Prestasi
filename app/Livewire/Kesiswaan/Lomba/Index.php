@@ -490,8 +490,20 @@ class Index extends Component
     }
 
     /**
+     * A member row a student knows about (FS1 fix wave): not an anggota of a team that waits for its lomba
+     * (`menunggu_lomba`, D-148) and was not invited yet (`invited_at` null), as every student screen hides them.
+     *
+     * @param  Builder<RegistrationMember>  $query  joined with `registrations`
+     */
+    private static function knownMember(Builder $query): void
+    {
+        $query->whereNotNull('registration_members.invited_at')
+            ->orWhere('registrations.status', '!=', RegistrationStatus::MenungguLomba->value);
+    }
+
+    /**
      * @param  list<string>  $competitionIds
-     * @return array<string, int> competition id → distinct students in live registrations
+     * @return array<string, int> competition id → distinct students in live registrations (knownMember())
      */
     private function studentCounts(array $competitionIds): array
     {
@@ -505,6 +517,7 @@ class Index extends Component
             ->whereNull('registrations.deleted_at')
             ->whereNotIn('registrations.status', [RegistrationStatus::Dibatalkan->value, RegistrationStatus::Ditolak->value])
             ->whereNull('registration_members.declined_at')
+            ->where(self::knownMember(...))
             ->groupBy('registrations.competition_id')
             ->selectRaw('registrations.competition_id as competition_id, count(distinct registration_members.student_id) as n')
             ->pluck('n', 'competition_id')
@@ -522,6 +535,7 @@ class Index extends Component
             ->whereNull('registrations.deleted_at')
             ->whereNotIn('registrations.status', [RegistrationStatus::Dibatalkan->value])
             ->whereNull('registration_members.declined_at')
+            ->where(self::knownMember(...))
             ->where('registrations.created_at', '>=', $now->subDays(30)->startOfDay()->toDateTimeString());
         $students = (clone $monthRegistrations)->distinct()->count('registration_members.student_id');
         $competitions = (clone $monthRegistrations)->distinct()->count('registrations.competition_id');

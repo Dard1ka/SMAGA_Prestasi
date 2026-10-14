@@ -83,6 +83,8 @@ final class AuditLog extends Component
         'registration.mentor_changed' => 'Guru pembimbing diganti saat persetujuan',
         'registration.rejected' => 'Pendaftaran ditolak',
         'registration.cancelled' => 'Pendaftaran dibatalkan',
+        // D-148: a registration that waited for its lomba goes on once the lomba is published.
+        'registration.resumed' => 'Pendaftaran dilanjutkan setelah lomba dipublikasikan',
         'report.submitted' => 'Laporan hasil dikirim',
         'report.verified' => 'Laporan hasil diverifikasi',
         'report.revision_requested' => 'Laporan perlu revisi',
@@ -135,7 +137,7 @@ final class AuditLog extends Component
         'security.reset_volume' => 'Banyak reset akun dalam satu jam',
         'setting.activation_window' => 'Masa aktivasi diubah',
         'talent.applied' => 'Siswa mendaftar talenta',
-        'talent.cancelled' => 'Pilihan talenta dibatalkan siswa',
+        'talent.cancelled' => 'Pilihan talenta dihapus siswa',
         'talent.stage_changed' => 'Tahap talenta diubah',
         'talent.rejected' => 'Pilihan talenta tidak lolos',
         'talent.assessment_updated' => 'Guru pembina atau catatan talenta diubah',
