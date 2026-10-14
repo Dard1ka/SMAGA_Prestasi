@@ -164,7 +164,7 @@
     </section>
 
     <x-sth.modal :id="\App\Livewire\Kepsek\Persetujuan::BULK_DIALOG" :title="'Setujui '.$checkedCount.' pendaftaran?'"
-                 description="Tata Usaha langsung bisa membuat surat tugasnya. Persetujuan tidak bisa dibatalkan dari layar ini." size="sm">
+                 :description="$bulkNote" size="sm">
         <ul class="m-0 flex list-none flex-col gap-2 p-0">
             @foreach ($selectedRows as $row)
                 <li wire:key="setujui-{{ $row->id }}" class="flex flex-col gap-0.5 rounded-tile border border-line p-3">

@@ -13,6 +13,7 @@ use App\Models\Competition;
 use App\Models\Registration;
 use App\Models\RegistrationMember;
 use App\Models\User;
+use App\Support\ApprovalQueue;
 use App\Support\StaffRoleLabel;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -91,6 +92,20 @@ class Persetujuan extends Component
     /** @var array<string, string> registration ULID → name of the guru replaced during this visit ('' = there was none) */
     #[Locked]
     public array $replaced = [];
+
+    /**
+     * The line under the title and the first sentence of the "Setujui terpilih" dialog name who acts after the approval.
+     * A staff screen never speaks of its own reader in the third person (D-119): the Kepala Sekolah reads that Tata
+     * Usaha makes the surat tugas, Tata Usaha (who approves too, D-150) reads the same step without its own name and
+     * without a pronoun. The reader is the account, as for its address (ApprovalQueue::routeName()).
+     */
+    public const SUBTITLE = 'Setujui pendaftaran agar Tata Usaha bisa membuat surat tugas.';
+
+    public const SUBTITLE_TU = 'Setujui pendaftaran, lalu buat surat tugasnya.';
+
+    public const LETTERS_NEXT = 'Tata Usaha langsung bisa membuat surat tugasnya.';
+
+    public const LETTERS_NEXT_TU = 'Surat tugasnya langsung bisa dibuat.';
 
     /** Rows on screen (clamped to STEP…MAX in visibleQuery()). */
     public int $limit = self::STEP;
@@ -366,6 +381,7 @@ class Persetujuan extends Component
 
         // The sidebar is rendered once per page load: tell it the queue size after every approve/reject (app.js).
         $this->dispatch('sth-badges', badges: ['kepsek.persetujuan' => $waiting]);
+        $readerIsTu = ApprovalQueue::routeName($this->user()) === ApprovalQueue::TU;
 
         return view('livewire.kepsek.persetujuan', [
             'rows' => $rows,
@@ -380,8 +396,9 @@ class Persetujuan extends Component
             'mentorDialog' => $this->mentorDialog($rows),
             // Rows decided during this visit were decided by this account: "Ditetapkan <peran>" (D-150).
             'deciderRole' => StaffRoleLabel::forDecision($this->user()),
+            'bulkNote' => ($readerIsTu ? self::LETTERS_NEXT_TU : self::LETTERS_NEXT).' Persetujuan tidak bisa dibatalkan dari layar ini.',
         ])->layoutData([
-            'subtitle' => 'Setujui pendaftaran agar Tata Usaha bisa membuat surat tugas.',
+            'subtitle' => $readerIsTu ? self::SUBTITLE_TU : self::SUBTITLE,
             'badges' => ['kepsek.persetujuan' => $waiting],
         ]);
     }

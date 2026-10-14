@@ -103,8 +103,10 @@
                                         <span class="text-xs text-muted">{{ $row['meta'] }}</span>
                                     </div>
                                     <div class="flex shrink-0 items-center gap-2">
+                                        {{-- The words of the Lomba saya team card ("Konfirmasi" alone read like a button in this
+                                             read-only list); "Tidak menjawab" and "Menolak" as on Undangan tim. --}}
                                         @if ($row['state'] === 'confirmed')
-                                            <x-sth.chip tone="green" size="sm" icon="check">Konfirmasi</x-sth.chip>
+                                            <x-sth.chip tone="green" size="sm" icon="check">Sudah konfirmasi</x-sth.chip>
                                         @elseif ($row['state'] === 'expired')
                                             {{-- QA10: expired at the deadline, the student never answered. --}}
                                             <x-sth.chip tone="gray" size="sm">Tidak menjawab</x-sth.chip>
@@ -114,7 +116,7 @@
                                             {{-- D-148: nobody is invited before Kesiswaan verified the lomba (the words of Lomba saya). --}}
                                             <x-sth.chip icon="clock" size="sm" class="chip-wrap">Diundang setelah lomba diverifikasi</x-sth.chip>
                                         @else
-                                            <x-sth.chip size="sm" icon="clock">Menunggu</x-sth.chip>
+                                            <x-sth.chip size="sm" icon="clock">Menunggu konfirmasi</x-sth.chip>
                                             {{-- QA6 (#66): an unanswered invitation no longer holds the place until the deadline.
                                                  D-128: the × opens the dialog below; nothing is withdrawn before the answer there. --}}
                                             <x-sth.icon-button icon="x" size="sm" :label="'Batalkan undangan '.$row['name']" aria-haspopup="dialog"
