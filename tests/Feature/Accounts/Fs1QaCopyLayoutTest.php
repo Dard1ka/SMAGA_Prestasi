@@ -56,5 +56,8 @@ it('explains the initial password of new students without the pattern and keeps 
         ->assertSee('Kata sandi awal hanya dibuat untuk siswa baru, sama untuk semua siswa baru dan wajib diganti saat aktivasi.')
         ->assertSee('Kata sandi siswa lama tidak berubah.')
         ->assertDontSee('pola sekolah')
-        ->assertSeeHtml('<th scope="col" class="min-w-48">Nama</th>');
+        ->assertSeeHtml('<th scope="col" class="min-w-48">Nama</th>')
+        // At 390 px the three row filters ("Semua baris", "Ditolak · n", "Ada catatan · n") are wider than the card:
+        // they wrap, as on Status aktivasi, instead of pushing the page sideways.
+        ->assertSeeHtml('<div class="seg flex-wrap self-start" role="group" aria-label="Tampilkan baris">');
 });

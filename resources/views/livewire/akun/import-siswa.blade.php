@@ -112,7 +112,7 @@
                     <p class="m-0 text-xs text-muted">{{ $sanitizedCount }} baris berisi sel yang diawali = + - @. Karakter itu dibuang (tanda "Sel dibersihkan"); periksa datanya sebelum mengimpor.</p>
                 @endif
 
-                <div class="seg self-start" role="group" aria-label="Tampilkan baris">
+                <div class="seg flex-wrap self-start" role="group" aria-label="Tampilkan baris">
                     <button type="button" class="seg-btn" wire:click="$set('filter', 'all')" aria-pressed="{{ $filter === 'all' ? 'true' : 'false' }}">Semua baris</button>
                     <button type="button" class="seg-btn" wire:click="$set('filter', 'bad')" aria-pressed="{{ $filter === 'bad' ? 'true' : 'false' }}">Ditolak · {{ $invalidCount }}</button>
                     <button type="button" class="seg-btn" wire:click="$set('filter', 'notes')" aria-pressed="{{ $filter === 'notes' ? 'true' : 'false' }}">Ada catatan · {{ $notedCount }}</button>
