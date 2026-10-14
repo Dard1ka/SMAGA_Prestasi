@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Livewire\Siswa;
 
+use App\Actions\Accounts\UpdateStudentPhone;
 use App\Actions\Registrations\ConfirmMembership;
 use App\Actions\Registrations\DeclineMembership;
 use App\Actions\Registrations\ExpirePendingInvitations;
+use App\Domain\Accounts\PhoneNumber;
 use App\Enums\MemberRole;
 use App\Enums\RegistrationStatus;
 use App\Livewire\Siswa\Lomba\LombaPresenter;
@@ -45,6 +47,9 @@ class KonfirmasiTim extends Component
     #[Locked]
     public bool $withdrawn = false;
 
+    /** D-149: the anggota's own No HP, pre-filled from the account; ikut() saves a changed one (UpdateStudentPhone). */
+    public string $phone = '';
+
     public function mount(Registration $registration): void
     {
         if (! $this->isMember($registration)) {
@@ -54,9 +59,10 @@ class KonfirmasiTim extends Component
         }
 
         $this->registrationId = $registration->getKey();
+        $this->phone = (string) rescue(fn () => auth()->user()->loadMissing('student')->student?->phone, null, false);
     }
 
-    public function ikut(ConfirmMembership $confirm): void
+    public function ikut(ConfirmMembership $confirm, UpdateStudentPhone $phones): void
     {
         $registration = $this->registration();
 
@@ -72,6 +78,14 @@ class KonfirmasiTim extends Component
             return;
         }
 
+        $this->phone = PhoneNumber::normalize($this->phone);
+        $this->validate(
+            ['phone' => ['required', 'regex:'.PhoneNumber::PATTERN]],
+            ['phone.required' => UpdateStudentPhone::EMPTY, 'phone.regex' => PhoneNumber::INVALID],
+        );
+
+        // The own number first (D-149); a refusal of the confirmation below still leaves it saved: it is the student's own.
+        $phones->handle(auth()->user(), auth()->user()->loadMissing('student')->student, $this->phone);
         $confirm->handle(auth()->user(), $registration);
 
         session()->flash('toast', 'Kamu ikut tim '.$registration->competition->name.'.');
@@ -128,7 +142,9 @@ class KonfirmasiTim extends Component
             // Expired by the job, or still unanswered after the deadline (before the job ran).
             'expired' => $mine !== null && ! $canRespond && (in_array((string) $mine->getKey(), $expiredIds, true)
                 || ($unanswered && $registration->status === RegistrationStatus::MenungguKonfirmasi
-                    && ! RegistrationPolicy::teamWindowOpen($competition))),
+                    && ! RegistrationPolicy::teamWindowOpen($registration))),
+            // D-148: a team resumed late had its own three days to answer, not the registration deadline.
+            'expiredBy' => $registration->answer_until !== null ? 'batas jawab' : 'batas pendaftaran',
             'notifiesLeader' => ConfirmMembership::notifiesLeader($registration),
             'members' => $registration->members
                 ->sortBy(fn (RegistrationMember $m): string => ($m->role === MemberRole::Ketua ? '0' : '1').$m->student?->user?->name)
@@ -149,6 +165,10 @@ class KonfirmasiTim extends Component
             'facts' => [
                 // D-147: the same three periods as Detail lomba (no report deadline, D-151).
                 ['icon' => 'clock', 'label' => 'Pendaftaran', 'value' => LombaPresenter::pendaftaran($competition) ?? 'Menyusul'],
+                // D-148: a team resumed after (or shortly before) the deadline answers until its own moment.
+                ...($canRespond && ($grace = $registration->graceText()) !== null
+                    ? [['icon' => 'clock', 'label' => 'Batas jawab', 'value' => $grace]]
+                    : []),
                 ['icon' => 'calendar', 'label' => 'Pelaksanaan', 'value' => LombaPresenter::tanggal($competition)],
                 ['icon' => 'upload', 'label' => 'Laporan hasil', 'value' => LombaPresenter::REPORT_LINE],
                 ['icon' => 'trophy', 'label' => 'Tingkat', 'value' => LombaPresenter::tingkat($competition)],
@@ -194,13 +214,17 @@ class KonfirmasiTim extends Component
             ->exists();
     }
 
-    /** Students only reach this page for registrations they are part of (staff use their own screens). */
+    /**
+     * Students only reach this page for registrations they are part of (staff use their own screens). Not before the
+     * invitation went out: an anggota of a team whose lomba still waits for Kesiswaan has no `invited_at` yet (D-148),
+     * as on Lomba saya and Beranda.
+     */
     private function isMember(Registration $registration): bool
     {
         $student = auth()->user()?->loadMissing('student')->getRelation('student');
 
         return $student !== null
             && Gate::allows('view', $registration)
-            && $registration->members()->where('student_id', $student->getKey())->exists();
+            && $registration->members()->where('student_id', $student->getKey())->whereNotNull('invited_at')->exists();
     }
 }

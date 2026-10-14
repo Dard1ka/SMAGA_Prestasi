@@ -6,6 +6,7 @@ use App\Livewire\Siswa\Beranda;
 use App\Livewire\Siswa\KonfirmasiTim;
 use App\Livewire\Siswa\Lomba\Detail as LombaDetail;
 use App\Livewire\Siswa\Lomba\Katalog as LombaKatalog;
+use App\Livewire\Siswa\Lomba\Usulkan as LombaUsulkan;
 use App\Livewire\Siswa\LombaSaya\Index as LombaSayaIndex;
 use App\Livewire\Siswa\LombaSaya\LaporHasil;
 use App\Livewire\Siswa\Peringkat as SiswaPeringkat;
@@ -23,6 +24,8 @@ Route::middleware('area.siswa')->prefix('siswa')->name('siswa.')->group(function
     // --- W2-A1: beranda, katalog + usulan, detail + daftar, konfirmasi tim, bantuan ---
     Route::livewire('/', Beranda::class)->name('beranda');
     Route::livewire('/lomba', LombaKatalog::class)->name('lomba.index');
+    // Before /lomba/{competition}: "usulkan" is no lomba id (D-145, the whole lomba on one page).
+    Route::livewire('/lomba/usulkan', LombaUsulkan::class)->name('lomba.usulkan');
     Route::livewire('/lomba/{competition}', LombaDetail::class)->name('lomba.show');
     Route::livewire('/undangan/{registration}', KonfirmasiTim::class)->name('undangan.show');
     Route::view('/bantuan', 'siswa.bantuan')->name('bantuan');

@@ -1,26 +1,27 @@
 {{-- Profil talenta (UI-MAP #15, board Profil-Talenta). Data from App\Livewire\Siswa\ProfilTalenta::render(). --}}
 <div class="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_420px]">
+    {{-- D-144: a kelas X student without a talent comes here from every other page until one is chosen. --}}
+    @if ($gate)
+        <x-sth.alert tone="warning" icon="alert" class="xl:col-span-2">{{ \App\Http\Middleware\EnsureTalentChosen::ALERT }}</x-sth.alert>
+    @endif
     <div class="flex min-w-0 flex-col gap-5">
         {{-- Talenta pilihanmu --}}
         <x-sth.card as="section" aria-labelledby="h-pilihan" class="flex flex-col gap-4">
-            <div class="flex flex-col gap-1">
-                <div class="flex items-center gap-2">
-                    <h2 id="h-pilihan" class="title-card">Talenta pilihanmu</h2>
-                    <x-sth.chip class="num">{{ count($rows) }}</x-sth.chip>
-                </div>
-                <p class="muted m-0 text-xs"><span class="sr-only">Tahapan: </span>Terdaftar › Pemetaan › Seleksi/asesmen › Peserta pembinaan</p>
+            <div class="flex items-center gap-2">
+                <h2 id="h-pilihan" class="title-card">Talenta pilihanmu</h2>
+                <x-sth.chip class="num">{{ count($rows) }}</x-sth.chip>
             </div>
 
             @if ($undo)
                 <div role="status" class="flex flex-wrap items-center justify-between gap-2 rounded-tile bg-gray-bg px-3.5 py-2.5 text-sm">
-                    <span>{{ $undo['title'] }} dibatalkan.</span>
+                    <span class="min-w-0 [overflow-wrap:anywhere]">{{ $undo['title'] }} dihapus.</span>
                     <x-sth.button variant="quiet" size="sm" wire:click="urungkan" wire:loading.attr="disabled">Urungkan</x-sth.button>
                 </div>
             @endif
 
             @if ($rows === [])
                 <x-sth.empty-state icon="user" title="Belum ada talenta" :card="false">
-                    Pilih jenis talenta di bawah untuk ikut penjaringan.
+                    Pilih jenis talenta di bawah.
                 </x-sth.empty-state>
             @else
                 <ul class="m-0 flex list-none flex-col gap-3 p-0">
@@ -31,26 +32,16 @@
                             @endif
                             <div class="flex min-w-0 flex-1 flex-col gap-1.5">
                                 <div class="flex flex-wrap items-center gap-2">
-                                    <h3 class="display m-0 text-base font-bold">{{ $row['title'] }}</h3>
+                                    {{-- D-143: the student's own text may be one long word (QA7). --}}
+                                    <h3 class="display m-0 min-w-0 text-base font-bold [overflow-wrap:anywhere]">{{ $row['title'] }}</h3>
                                     @if ($row['bidang'])
                                         <x-sth.chip :bidang="$row['bidang']" size="sm" />
+                                    @else
+                                        <x-sth.chip size="sm">Lainnya</x-sth.chip>
                                     @endif
-                                    <x-sth.chip :tone="$row['status']->tone()" :icon="$row['status'] === \App\Enums\TalentStatus::Pembinaan ? 'check' : 'clock'" size="sm">{{ $row['status']->label() }}</x-sth.chip>
                                 </div>
                                 <span class="text-sm text-ink-2">{{ $row['info'] }}</span>
-                                @if ($row['note'])
-                                    <p class="m-0 rounded-control bg-subtle px-3 py-2 text-sm whitespace-pre-line break-words"><span class="font-bold">Catatan dari Kesiswaan:</span> {{ $row['note'] }}</p>
-                                @endif
                                 <div class="muted flex flex-wrap items-center gap-2 text-xs">
-                                    @if ($row['step'] !== null)
-                                        <span class="sg-row w-24" aria-hidden="true">
-                                            @for ($i = 1; $i <= 4; $i++)
-                                                <span @class(['sg', 'sg-done' => $i < $row['step'], 'sg-cur' => $i === $row['step']])></span>
-                                            @endfor
-                                        </span>
-                                        <span class="num">Tahap {{ $row['step'] }} dari 4</span>
-                                        <span aria-hidden="true">·</span>
-                                    @endif
                                     @if ($row['evidence'])
                                         @if ($row['evidenceUrl'])
                                             <a href="{{ $row['evidenceUrl'] }}" class="lnk ellip min-h-0 max-w-56" aria-haspopup="dialog"
@@ -65,13 +56,7 @@
                             </div>
                             @if ($row['canCancel'])
                                 <x-sth.button variant="quiet" size="sm" wire:click="batalkan('{{ $row['id'] }}')" wire:loading.attr="disabled"
-                                    aria-label="Batalkan {{ $row['title'] }}">Batalkan</x-sth.button>
-                            @endif
-                            @if ($row['canRequestReview'])
-                                <x-sth.button variant="quiet" size="sm" wire:click="mintaTinjau('{{ $row['id'] }}')" wire:loading.attr="disabled"
-                                    aria-haspopup="dialog" aria-label="Minta ditinjau ulang {{ $row['title'] }}">Minta ditinjau ulang</x-sth.button>
-                            @elseif ($row['reviewRequested'])
-                                <x-sth.chip tone="orange" icon="clock" size="sm" class="self-start">Menunggu tinjauan ulang</x-sth.chip>
+                                    aria-label="Hapus {{ $row['title'] }}">Hapus</x-sth.button>
                             @endif
                         </li>
                     @endforeach
@@ -100,10 +85,19 @@
                         <button type="button" wire:key="jenis-{{ $type->id }}" wire:click="pilihJenis('{{ $type->id }}')"
                             aria-pressed="{{ $jenis === $type->id ? 'true' : 'false' }}"
                             @class(['pick flex min-h-14 min-w-0 items-center justify-start gap-3 px-3 text-left', 'pick-on' => $jenis === $type->id])>
-                            <x-sth.bidang-tile :bidang="$type->bidang" size="sm" class="@max-[309px]:hidden" />
+                            {{-- D-143: the jenis "Lainnya" has no bidang: a gray tile and the student writes the talent. --}}
+                            @if ($type->bidang)
+                                <x-sth.bidang-tile :bidang="$type->bidang" size="sm" class="@max-[309px]:hidden" />
+                            @else
+                                <span class="inline-flex size-10 shrink-0 items-center justify-center rounded-control bg-gray-bg text-gray @max-[309px]:hidden" aria-hidden="true"><x-sth.icon name="edit" /></span>
+                            @endif
                             <span class="flex min-w-0 flex-col items-start gap-1">
                                 <span class="font-bold">{{ $type->code->label() }}</span>
-                                <x-sth.chip :bidang="$type->bidang" size="sm" />
+                                @if ($type->bidang)
+                                    <x-sth.chip :bidang="$type->bidang" size="sm" />
+                                @else
+                                    <x-sth.chip size="sm">Tulis sendiri</x-sth.chip>
+                                @endif
                             </span>
                         </button>
                     @endforeach
@@ -133,12 +127,17 @@
                                 @class(['fchip gap-2', 'fchip-on' => $cabang === $branch['id']])>
                                 {{ $branch['name'] }}
                                 @if ($branch['team'])<span class="chip chip-sm c-gray">{{ $branch['team'] }}</span>@endif
-                                @if ($branch['rejected'])<span class="chip chip-sm c-red">Tidak lolos</span>@elseif ($branch['taken'])<span class="chip chip-sm c-green">Sudah dipilih</span>@endif
+                                @if ($branch['taken'])<span class="chip chip-sm c-green">Sudah dipilih</span>@endif
                             </button>
                         @endforeach
                     </div>
                 @endif
                 @error('cabang')<p class="field-error m-0"><x-sth.icon name="alert" :size="16" />{{ $message }}</p>@enderror
+                {{-- D-143: the jenis "Lainnya" or a cabang "Lainnya": the student names the talent. --}}
+                @if ($needsOther)
+                    <x-sth.input wire:model="lainnya" id="talenta-lainnya" label="Sebutkan" maxlength="{{ $otherMax }}" hint="3–{{ $otherMax }} karakter."
+                        autocomplete="off" class="max-w-md" />
+                @endif
             </div>
 
             <div class="flex flex-col gap-2.5">
@@ -158,7 +157,7 @@
                     </div>
                     <div class="flex flex-col gap-1.5 sm:items-end">
                         <x-sth.button icon="plus" wire:click="daftar" wire:loading.attr="disabled" wire:target="daftar,bukti"
-                            :disabled="$helper !== null" :aria-describedby="$helper ? 'daftar-help' : null">Daftar penjaringan</x-sth.button>
+                            :disabled="$blocked" :aria-describedby="$helper ? 'daftar-help' : null">Daftar penjaringan</x-sth.button>
                         @if ($helper)
                             <span id="daftar-help" class="muted text-xs">{{ $helper }}</span>
                         @endif
@@ -181,7 +180,7 @@
         <x-sth.card as="section" aria-labelledby="h-riwayat" class="flex flex-col gap-4">
             <div class="flex flex-wrap items-baseline justify-between gap-2">
                 <h2 id="h-riwayat" class="title-card">Riwayat talenta</h2>
-                <span class="muted text-xs">Dipakai saat pemetaan</span>
+                <span class="muted text-xs">Dibaca Kesiswaan</span>
             </div>
 
             <form wire:submit="simpan" class="flex flex-col gap-4" novalidate>
@@ -252,21 +251,4 @@
             </form>
         </x-sth.card>
     </div>
-
-    {{-- "Minta ditinjau ulang": a rejected choice, one open request per rejection. Kesiswaan decides. --}}
-    @if ($hasRejected)
-        <x-sth.modal :id="\App\Livewire\Siswa\ProfilTalenta::REVIEW_DIALOG" title="Minta ditinjau ulang?" description="Kesiswaan akan membaca permintaanmu. Statusmu baru berubah kalau Kesiswaan membuka kembali pilihan ini." size="sm">
-            <form id="tinjau-ulang-form" wire:submit="kirimTinjau" class="flex flex-col gap-4" novalidate>
-                @if ($reviewing)
-                    <p class="m-0 text-sm font-bold">{{ $reviewing }}</p>
-                @endif
-                <x-sth.textarea wire:model="pesanTinjau" label="Pesan untuk Kesiswaan" optional rows="3" maxlength="{{ $reviewMax }}"
-                    hint="Maks. {{ $reviewMax }} karakter. Contoh: alasan atau bukti baru yang kamu punya." />
-            </form>
-            <x-slot:footer>
-                <x-sth.button variant="quiet" data-sth-close>Batal</x-sth.button>
-                <x-sth.button type="submit" form="tinjau-ulang-form" icon="send" wire:loading.attr="disabled" wire:target="kirimTinjau">Kirim permintaan</x-sth.button>
-            </x-slot:footer>
-        </x-sth.modal>
-    @endif
 </div>

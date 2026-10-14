@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Policies;
 
 use App\Enums\Permission;
-use App\Enums\TalentStatus;
 use App\Models\TalentApplication;
 use App\Models\User;
 
@@ -17,7 +16,7 @@ use App\Models\User;
  */
 class TalentApplicationPolicy
 {
-    /** Siswa: own list on Profil talenta. Staff: pipeline screens. */
+    /** Siswa: own list on Profil talenta. Staff: Database talenta siswa and Guru › Siswa binaan. */
     public function viewAny(User $user): bool
     {
         return $this->isStudentApplicant($user)
@@ -44,25 +43,15 @@ class TalentApplicationPolicy
         return $this->owns($user, $application);
     }
 
-    /** The student withdraws a choice only while it is still "Terdaftar" (before Kesiswaan maps it). */
+    /**
+     * The student deletes an own choice at any time, whatever its old status (D-142, "Hapus" on Profil talenta). A
+     * deleted row is not deleted twice.
+     */
     public function cancel(User $user, TalentApplication $application): bool
     {
         return $this->isStudentApplicant($user)
             && $this->owns($user, $application)
-            && $application->status === TalentStatus::Terdaftar;
-    }
-
-    /**
-     * "Minta ditinjau ulang" (lead, 2026-10-04): the student's own rejected choice, one open request per
-     * rejection. The request never changes the status; Kesiswaan decides (restore).
-     */
-    public function requestReview(User $user, TalentApplication $application): bool
-    {
-        return $this->isStudentApplicant($user)
-            && $this->owns($user, $application)
-            && ! $application->trashed()
-            && $application->status === TalentStatus::TidakLolos
-            && $application->review_requested_at === null;
+            && ! $application->trashed();
     }
 
     private function isStudentApplicant(User $user): bool
@@ -81,24 +70,18 @@ class TalentApplicationPolicy
 
     // --- W2-B: Kesiswaan / pembina abilities below this line ---
 
-    /** Kesiswaan/Admin pipeline screen (UI-MAP #18, `talent.manage`). */
+    /** Kesiswaan/Admin screen Database talenta siswa (UI-MAP #18, `talent.manage`). */
     public function manage(User $user): bool
     {
         return $user->canLogIn() && $user->can(Permission::TalentManage->value);
     }
 
-    /** Move a stage, mark tidak lolos, set pembina / assessment date / note. */
-    public function move(User $user, TalentApplication $application): bool
+    /**
+     * Record the guru pembina (optional) and the note for him (UpdateTalentAssessment, D-142). A choice the student
+     * deleted is not changed.
+     */
+    public function update(User $user, TalentApplication $application): bool
     {
         return $this->manage($user) && ! $application->trashed();
-    }
-
-    /**
-     * "Pulihkan" a tidak-lolos choice back into the pipeline (not the soft-delete restore: that is the
-     * student's "Urungkan" through ApplyTalent). The status is checked under the lock in RestoreTalentApplication.
-     */
-    public function restore(User $user, TalentApplication $application): bool
-    {
-        return $this->move($user, $application);
     }
 }

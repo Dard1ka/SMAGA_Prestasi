@@ -8,18 +8,24 @@
 @endphp
 
 @switch($status)
+    @case(S::MenungguLomba)
     @case(S::MenungguKonfirmasi)
     @case(S::MenungguKepsek)
         <x-sth.card as="section" aria-labelledby="setuju-judul" class="flex flex-col gap-3 sm:flex-row sm:items-center">
             <span class="flex size-11 shrink-0 items-center justify-center rounded-tile bg-gray-bg text-gray" aria-hidden="true"><x-sth.icon name="clock" /></span>
             <div class="flex min-w-0 flex-1 flex-col gap-1">
                 <div class="flex flex-wrap items-center gap-2">
-                    <h3 id="setuju-judul" class="title-card">Persetujuan</h3>
+                    {{-- D-148: a registration whose lomba Kesiswaan has not verified yet does not wait for the approval yet. --}}
+                    <h3 id="setuju-judul" class="title-card">{{ $status === S::MenungguLomba ? 'Verifikasi lomba' : 'Persetujuan' }}</h3>
                     <x-sth.chip icon="clock">{{ $status->label() }}</x-sth.chip>
                 </div>
                 <p class="muted m-0 text-sm">
                     Didaftarkan {{ $d['registeredOn'] }}.
-                    {{ $d['allConfirmed'] ? ($d['isTeam'] ? 'Semua anggota sudah konfirmasi.' : 'Menunggu persetujuan sekolah.') : 'Menunggu konfirmasi anggota tim.' }}
+                    @if ($d['waitingText'])
+                        {{ $d['waitingText'] }}
+                    @else
+                        {{ $d['allConfirmed'] ? ($d['isTeam'] ? 'Semua anggota sudah konfirmasi.' : 'Menunggu persetujuan sekolah.') : 'Menunggu konfirmasi anggota tim.' }}
+                    @endif
                 </p>
             </div>
             @if ($d['canCancel'])
@@ -61,7 +67,7 @@
             <span class="flex size-11 shrink-0 items-center justify-center rounded-tile bg-gray-bg text-gray" aria-hidden="true"><x-sth.icon name="x" /></span>
             <div class="flex min-w-0 flex-col gap-1">
                 <h3 id="setuju-judul" class="title-card">Pendaftaran dibatalkan</h3>
-                <p class="muted m-0 text-sm">Kamu bisa mendaftar lagi selama pendaftaran lomba masih dibuka.</p>
+                <p class="muted m-0 text-sm">{{ $d['cancelledText'] }}</p>
             </div>
         </x-sth.card>
         @break

@@ -9,12 +9,9 @@ use App\Livewire\Siswa\ProfilTalenta;
 use App\Models\TalentApplication;
 use App\Models\TalentProfile;
 use App\Models\TalentType;
-use App\Notifications\Talent\TalentReviewRequested;
 use Database\Seeders\TalentSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
-use Illuminate\Support\Facades\RateLimiter;
-use Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException;
 use Livewire\Livewire;
 use Tests\Feature\Siswa\Hasil\HasilFixtures as F;
 
@@ -30,12 +27,12 @@ beforeEach(function (): void {
     $this->kimia = $this->osn->branches()->where('name', 'Kimia')->firstOrFail();
 });
 
-it('renders the six jenis from the DB with bidang, and the account data', function (): void {
+it('renders the seven jenis from the DB with bidang, and the account data', function (): void {
     $this->actingAs($this->nadia->user)
         ->get(route('siswa.talenta'))
         ->assertOk()
         ->assertSee('<title>Profil talenta · SMAGA Talent Hub</title>', false)
-        ->assertSeeInOrder(['OSN', 'Riset', 'FLS3N', 'O2SN', 'OLPAIN', 'Debat'])
+        ->assertSeeInOrder(['OSN', 'Riset', 'FLS3N', 'O2SN', 'OLPAIN', 'Debat', 'Lainnya'])
         ->assertSee('Seni Budaya')
         ->assertSee('Nadia Putri Anindya')
         ->assertSee('NISN '.$this->nadia->nisn)
@@ -53,11 +50,11 @@ it('registers a choice through jenis → cabang → Daftar penjaringan', functio
         ->set('bukti', F::pdf('sertifikat-osn.pdf'))
         ->call('daftar')
         ->assertHasNoErrors()
-        ->assertDispatched('sth-toast', message: 'Terdaftar di penjaringan OSN · Kimia.', tone: 'success')
+        ->assertDispatched('sth-toast', message: 'OSN · Kimia ditambahkan.', tone: 'success')
         ->assertSet('jenis', '')
         ->assertSee('OSN · Kimia')
-        ->assertSee('Menunggu pemetaan Kesiswaan')
-        ->assertSee('Tahap 1 dari 4');
+        ->assertSee('Ditambahkan '.now()->locale('id')->translatedFormat('j M Y'))
+        ->assertDontSee('Tahap');
 
     $application = TalentApplication::query()->where('student_id', $this->nadia->getKey())->firstOrFail();
     expect($application->talent_branch_id)->toBe($this->kimia->getKey())
@@ -103,240 +100,122 @@ it('ignores a cabang of another jenis sent by the browser', function (): void {
     expect(TalentApplication::query()->count())->toBe(0);
 });
 
-it('cancels a terdaftar choice and restores it with Urungkan', function (): void {
+it('deletes a choice and brings it back with Urungkan, guru pembina included', function (): void {
+    $pembina = F::staff(RoleName::Guru, 'Retno Wulandari');
     $application = TalentApplication::factory()->create([
         'student_id' => $this->nadia->getKey(), 'talent_type_id' => $this->osn->getKey(), 'talent_branch_id' => $this->kimia->getKey(),
+        'mentor_id' => $pembina->getKey(), 'note' => 'Latihan soal tiap Kamis.',
     ]);
 
     $component = Livewire::actingAs($this->nadia->user)
         ->test(ProfilTalenta::class)
-        ->assertSee('Batalkan OSN · Kimia')
+        ->assertSee('Hapus OSN · Kimia')
+        ->assertSee('Guru pembina Retno Wulandari')
         ->call('batalkan', $application->getKey())
-        ->assertSee('OSN · Kimia dibatalkan.')
+        ->assertDispatched('sth-toast', message: 'OSN · Kimia dihapus.', tone: 'info')
+        ->assertSee('OSN · Kimia dihapus.')
         ->assertSee('Urungkan');
 
     expect($application->fresh()->trashed())->toBeTrue();
 
-    $component->call('urungkan')->assertSet('undo', null);
-    expect($application->fresh()->trashed())->toBeFalse();
+    $component->call('urungkan')->assertSet('undo', null)
+        ->assertDispatched('sth-toast', message: 'OSN · Kimia dipulihkan.', tone: 'success');
+
+    // Urungkan is an undo: the row comes back as Kesiswaan left it (D-142).
+    expect($application->fresh()->trashed())->toBeFalse()
+        ->and($application->fresh()->mentor_id)->toBe($pembina->getKey())
+        ->and($application->fresh()->note)->toBe('Latihan soal tiap Kamis.');
 });
 
-it('does not offer or allow cancelling a choice Kesiswaan already moved, nor someone else\'s', function (): void {
-    $mapped = TalentApplication::factory()->status(TalentStatus::Pemetaan)->create([
+it('asks "Sebutkan" for a Lainnya cabang and registers the typed talent', function (): void {
+    $lainnya = $this->osn->branches()->where('name', 'Lainnya')->firstOrFail();
+
+    Livewire::actingAs($this->nadia->user)->test(ProfilTalenta::class)
+        ->call('pilihJenis', $this->osn->getKey())
+        ->assertDontSee('Sebutkan')
+        ->call('pilihCabang', $lainnya->getKey())
+        ->assertSee('Sebutkan')
+        ->assertSee('Tulis talentamu di kolom Sebutkan.')
+        ->call('daftar')->assertHasErrors(['lainnya'])
+        ->set('lainnya', 'Robotika')->call('daftar')->assertHasNoErrors()
+        ->assertDispatched('sth-toast', message: 'OSN · Lainnya (Robotika) ditambahkan.', tone: 'success')
+        ->assertSet('lainnya', '')
+        ->assertSee('OSN · Lainnya (Robotika)')
+        // A second text on the same cabang is a new talent: the cabang is never marked as taken.
+        ->call('pilihJenis', $this->osn->getKey())->call('pilihCabang', $lainnya->getKey())
+        ->assertDontSee('Sudah dipilih')
+        ->set('lainnya', '  robotika ')->call('daftar')
+        ->assertHasErrors(['lainnya' => 'Talenta ini sudah kamu pilih.'])
+        ->set('lainnya', 'Desain grafis')->call('daftar')->assertHasNoErrors()
+        ->assertSee('OSN · Lainnya (Desain grafis)');
+
+    expect(TalentApplication::query()->where('talent_branch_id', $lainnya->getKey())->pluck('other_text')->sort()->values()->all())
+        ->toBe(['Desain grafis', 'Robotika']);
+});
+
+it('asks "Sebutkan" for the jenis Lainnya without a cabang and clears the text with another jenis', function (): void {
+    $jenis = TalentType::query()->where('code', TalentTypeCode::Lainnya)->sole();
+
+    Livewire::actingAs($this->nadia->user)->test(ProfilTalenta::class)
+        ->call('pilihJenis', $jenis->getKey())
+        ->assertSee('Tidak perlu memilih cabang.')
+        ->assertSee('Sebutkan')
+        ->set('lainnya', 'Kaligrafi')
+        ->call('pilihJenis', $this->osn->getKey())
+        ->assertSet('lainnya', '')
+        ->call('pilihJenis', $jenis->getKey())
+        ->set('lainnya', str_repeat('Kaligrafi', 7))->call('daftar')
+        ->assertHasErrors(['lainnya' => 'Tulis 3 sampai 60 karakter.'])
+        ->set('lainnya', 'Kaligrafi')->call('daftar')->assertHasNoErrors()
+        ->assertDispatched('sth-toast', message: 'Lainnya (Kaligrafi) ditambahkan.', tone: 'success')
+        ->assertSee('Lainnya (Kaligrafi)');
+});
+
+it('lets the student delete any own choice, also one Kesiswaan handled, and tells nobody', function (TalentStatus $status): void {
+    Notification::fake();
+    $pembina = F::staff(RoleName::Guru, 'Retno Wulandari');
+    $application = TalentApplication::factory()->status($status)->create([
         'student_id' => $this->nadia->getKey(), 'talent_type_id' => $this->osn->getKey(), 'talent_branch_id' => $this->kimia->getKey(),
+        'mentor_id' => $pembina->getKey(),
     ]);
-    $theirs = TalentApplication::factory()->create([
+    $theirs = TalentApplication::factory()->status($status)->create([
         'student_id' => F::student('Dimas Arya Nugroho')->getKey(),
         'talent_type_id' => $this->osn->getKey(),
         'talent_branch_id' => $this->osn->branches()->where('name', 'Fisika')->value('id'),
     ]);
 
-    Livewire::actingAs($this->nadia->user)
-        ->test(ProfilTalenta::class)
-        ->assertDontSee('Batalkan OSN · Kimia')
-        ->call('batalkan', $mapped->getKey())
-        // QA9: the own choice of a stale tab (or a forged call) gets a toast, not a 403 page; nothing is cancelled.
-        ->assertDispatched('sth-toast', message: 'Talenta ini sudah diproses Kesiswaan dan tidak bisa dibatalkan.', tone: 'warning');
+    Livewire::actingAs($this->nadia->user)->test(ProfilTalenta::class)
+        ->assertSee('Hapus OSN · Kimia')
+        ->call('batalkan', $application->getKey())
+        ->assertDispatched('sth-toast', message: 'OSN · Kimia dihapus.', tone: 'info')
+        ->assertDontSee('Hapus OSN · Kimia');
 
-    Livewire::actingAs($this->nadia->user)
-        ->test(ProfilTalenta::class)
+    expect($application->fresh()->trashed())->toBeTrue();
+    Notification::assertNothingSent();
+
+    Livewire::actingAs($this->nadia->user)->test(ProfilTalenta::class)
         ->call('batalkan', $theirs->getKey())
         ->assertNotFound();
 
-    expect($mapped->fresh()->trashed())->toBeFalse()
-        ->and($theirs->fresh()->trashed())->toBeFalse();
-});
+    expect($theirs->fresh()->trashed())->toBeFalse();
+})->with([TalentStatus::Terdaftar, TalentStatus::Seleksi, TalentStatus::Pembinaan, TalentStatus::TidakLolos]);
 
-// Catatan untuk siswa + Minta ditinjau ulang (lead, 2026-10-04) ----------------------------------
-
-it('shows the note for the student next to the choice, never the note for the guru pembina', function (): void {
-    TalentApplication::factory()->status(TalentStatus::Pemetaan)->create([
+it('shows no stage, no review button and no old decision note', function (): void {
+    TalentApplication::factory()->rejected(TalentStatus::Seleksi, 'Catatan lama.')->create([
         'student_id' => $this->nadia->getKey(), 'talent_type_id' => $this->osn->getKey(), 'talent_branch_id' => $this->kimia->getKey(),
-        'note' => 'Internal: tanya wali kelas dulu.',
-        'student_note' => 'Siapkan rapor semester 1.',
+        'review_requested_at' => now(), 'note' => 'Catatan untuk pembina.',
     ]);
 
-    Livewire::actingAs($this->nadia->user)
-        ->test(ProfilTalenta::class)
-        ->assertSee('Catatan dari Kesiswaan:')
-        ->assertSee('Siapkan rapor semester 1.')
-        ->assertDontSee('tanya wali kelas')
-        ->assertDontSee('Minta ditinjau ulang');
-});
+    $this->actingAs($this->nadia->user)->get(route('siswa.talenta'))->assertOk()
+        ->assertSee('OSN · Kimia')
+        ->assertSee('Hapus')
+        ->assertDontSee(['Tahap', 'Minta ditinjau ulang', 'Belum lolos', 'Catatan lama.', 'Tidak lolos', 'Catatan untuk pembina.', 'Pemetaan', 'Menunggu tinjauan ulang']);
 
-// M2-B (QA Q2-14): a note Kesiswaan only saved with "Simpan" is a draft. The student reads the sent note only.
-it('never shows the student a note that is still a draft', function (): void {
-    TalentApplication::factory()->status(TalentStatus::Pemetaan)->create([
-        'student_id' => $this->nadia->getKey(), 'talent_type_id' => $this->osn->getKey(), 'talent_branch_id' => $this->kimia->getKey(),
-        'student_note' => 'Siapkan rapor semester 1.',
-        'student_note_draft' => 'Draf: nilai asesmen belum cukup.',
-    ]);
-    TalentApplication::factory()->status(TalentStatus::Terdaftar)->create([
-        'student_id' => $this->nadia->getKey(), 'talent_type_id' => $this->osn->getKey(),
-        'talent_branch_id' => $this->osn->branches()->where('name', '!=', 'Kimia')->firstOrFail()->getKey(),
-        'student_note_draft' => 'Draf kedua yang belum terkirim.',
-    ]);
-
-    Livewire::actingAs($this->nadia->user)
-        ->test(ProfilTalenta::class)
-        ->assertSee('Siapkan rapor semester 1.')
-        ->assertDontSee('nilai asesmen belum cukup')
-        ->assertDontSee('Draf kedua');
-
-    $this->actingAs($this->nadia->user)
-        ->get(route('siswa.talenta'))
-        ->assertOk()
-        ->assertDontSee('nilai asesmen belum cukup')
-        ->assertDontSee('Draf kedua');
-});
-
-it('asks for a second look at a rejected choice, once per rejection', function (): void {
-    Notification::fake();
-    $kesiswaan = F::staff(RoleName::Kesiswaan, 'Ibu Dwi Rahayu');
-    $application = TalentApplication::factory()->rejected(TalentStatus::Seleksi, 'Nilai asesmen kurang.')->create([
-        'student_id' => $this->nadia->getKey(), 'talent_type_id' => $this->osn->getKey(), 'talent_branch_id' => $this->kimia->getKey(),
-    ]);
-
-    $component = Livewire::actingAs($this->nadia->user)
-        ->test(ProfilTalenta::class)
-        ->assertSee('Belum lolos tahun ini')
-        ->assertSee('Nilai asesmen kurang.')
-        ->assertSeeHtml('aria-label="Minta ditinjau ulang OSN · Kimia"')
-        ->call('mintaTinjau', $application->getKey())
-        ->assertSet('tinjauId', $application->getKey())
-        ->assertDispatched('sth-modal-open', id: 'tinjau-ulang')
-        ->set('pesanTinjau', str_repeat('a', 501))
-        ->call('kirimTinjau')
-        ->assertHasErrors('pesanTinjau');
-
-    expect($application->fresh()->review_requested_at)->toBeNull();
-
-    $component->set('pesanTinjau', 'Saya sakit saat asesmen, mohon dijadwalkan ulang.')
-        ->call('kirimTinjau')
-        ->assertHasNoErrors()
-        ->assertSet('tinjauId', null)
-        ->assertDispatched('sth-modal-close', id: 'tinjau-ulang')
-        ->assertDispatched('sth-toast', message: 'Permintaan tinjau ulang OSN · Kimia terkirim ke Kesiswaan.', tone: 'success')
-        ->assertSee('Menunggu tinjauan ulang')
-        ->assertSee('permintaan tinjau ulang terkirim')
-        ->assertDontSeeHtml('aria-label="Minta ditinjau ulang OSN · Kimia"');
-
-    $fresh = $application->fresh();
-    expect($fresh->status)->toBe(TalentStatus::TidakLolos)
-        ->and($fresh->review_requested_at)->not->toBeNull()
-        ->and($fresh->review_message)->toBe('Saya sakit saat asesmen, mohon dijadwalkan ulang.');
-    Notification::assertSentTo($kesiswaan, TalentReviewRequested::class);
-
-    // A second request for the same rejection is refused (no button; a stale or forged call gets a toast, QA9).
-    Livewire::actingAs($this->nadia->user)
-        ->test(ProfilTalenta::class)
-        ->call('mintaTinjau', $application->getKey())
-        ->assertDispatched('sth-toast', message: 'Permintaanmu sudah terkirim. Tunggu kabar dari Kesiswaan.', tone: 'warning')
-        ->assertNotDispatched('sth-modal-open')
-        ->assertSet('tinjauId', null);
-
-    Notification::assertSentToTimes($kesiswaan, TalentReviewRequested::class, 1);
-});
-
-it('sends a review request without a message', function (): void {
-    Notification::fake();
-    $application = TalentApplication::factory()->rejected()->create([
-        'student_id' => $this->nadia->getKey(), 'talent_type_id' => $this->osn->getKey(), 'talent_branch_id' => $this->kimia->getKey(),
-    ]);
-
-    Livewire::actingAs($this->nadia->user)
-        ->test(ProfilTalenta::class)
-        ->call('mintaTinjau', $application->getKey())
-        ->call('kirimTinjau')
-        ->assertHasNoErrors();
-
-    expect($application->fresh()->review_requested_at)->not->toBeNull()
-        ->and($application->fresh()->review_message)->toBeNull();
-});
-
-it('refuses a review request for someone else\'s choice (404) and for a choice that is not rejected (toast, QA9)', function (): void {
-    Notification::fake();
-    $mine = TalentApplication::factory()->status(TalentStatus::Seleksi)->create([
-        'student_id' => $this->nadia->getKey(), 'talent_type_id' => $this->osn->getKey(), 'talent_branch_id' => $this->kimia->getKey(),
-    ]);
-    $theirs = TalentApplication::factory()->rejected()->create([
-        'student_id' => F::student('Dimas Arya Nugroho')->getKey(),
-        'talent_type_id' => $this->osn->getKey(),
-        'talent_branch_id' => $this->osn->branches()->where('name', 'Fisika')->value('id'),
-    ]);
-
+    // The cabang of an old "tidak lolos" row is simply taken.
     Livewire::actingAs($this->nadia->user)->test(ProfilTalenta::class)
-        ->assertDontSee('Minta ditinjau ulang')
-        ->call('mintaTinjau', $mine->getKey())
-        ->assertDispatched('sth-toast', message: 'Pilihan ini sudah dibuka kembali.', tone: 'warning')
-        ->assertNotDispatched('sth-modal-open')
-        ->assertSet('tinjauId', null);
-
-    Livewire::actingAs($this->nadia->user)->test(ProfilTalenta::class)
-        ->call('mintaTinjau', $theirs->getKey())
-        ->assertNotFound();
-
-    // The id in the dialog is locked: the browser cannot swap in another student's choice.
-    expect(fn () => Livewire::actingAs($this->nadia->user)->test(ProfilTalenta::class)->set('tinjauId', $theirs->getKey()))
-        ->toThrow(CannotUpdateLockedPropertyException::class);
-
-    expect($theirs->fresh()->review_requested_at)->toBeNull()
-        ->and($mine->fresh()->review_requested_at)->toBeNull();
-    Notification::assertNothingSent();
-});
-
-it('says so when the choice was restored while the dialog was open', function (): void {
-    Notification::fake();
-    $application = TalentApplication::factory()->rejected(TalentStatus::Pemetaan)->create([
-        'student_id' => $this->nadia->getKey(), 'talent_type_id' => $this->osn->getKey(), 'talent_branch_id' => $this->kimia->getKey(),
-    ]);
-
-    $component = Livewire::actingAs($this->nadia->user)->test(ProfilTalenta::class)->call('mintaTinjau', $application->getKey());
-
-    $application->forceFill(['status' => TalentStatus::Pemetaan, 'rejected_from' => null])->save();
-
-    $component->call('kirimTinjau')
-        ->assertDispatched('sth-toast', message: 'Permintaan sudah terkirim atau pilihan ini sudah dibuka kembali.', tone: 'error')
-        ->assertSee('Sedang dipetakan Kesiswaan');
-
-    expect($application->fresh()->review_requested_at)->toBeNull();
-    Notification::assertNothingSent();
-});
-
-it('limits how many review requests one student sends per hour', function (): void {
-    Notification::fake();
-    $application = TalentApplication::factory()->rejected()->create([
-        'student_id' => $this->nadia->getKey(), 'talent_type_id' => $this->osn->getKey(), 'talent_branch_id' => $this->kimia->getKey(),
-    ]);
-
-    foreach (range(1, ProfilTalenta::REVIEWS_PER_HOUR) as $i) {
-        RateLimiter::hit('talenta-tinjau:'.$this->nadia->user->getKey(), 3600);
-    }
-
-    Livewire::actingAs($this->nadia->user)->test(ProfilTalenta::class)
-        ->call('mintaTinjau', $application->getKey())
-        ->call('kirimTinjau')
-        ->assertHasErrors('pesanTinjau');
-
-    expect($application->fresh()->review_requested_at)->toBeNull();
-    RateLimiter::clear('talenta-tinjau:'.$this->nadia->user->getKey());
-});
-
-it('points a rejected student to "Minta ditinjau ulang" instead of a second application', function (): void {
-    TalentApplication::factory()->rejected()->create([
-        'student_id' => $this->nadia->getKey(), 'talent_type_id' => $this->osn->getKey(), 'talent_branch_id' => $this->kimia->getKey(),
-    ]);
-
-    Livewire::actingAs($this->nadia->user)
-        ->test(ProfilTalenta::class)
-        ->call('pilihJenis', $this->osn->getKey())
-        ->call('pilihCabang', $this->kimia->getKey())
-        ->assertSee('Pilihan ini belum lolos. Pakai "Minta ditinjau ulang" di daftar talenta pilihanmu.')
-        ->assertDontSee('Sudah dipilih. Pilih cabang lain.')
-        ->call('daftar')
-        ->assertHasErrors('cabang');
-
-    expect(TalentApplication::withTrashed()->where('student_id', $this->nadia->getKey())->count())->toBe(1);
+        ->call('pilihJenis', $this->osn->getKey())->call('pilihCabang', $this->kimia->getKey())
+        ->assertSee('Sudah dipilih. Pilih cabang lain.')
+        ->assertDontSee('Tidak lolos');
 });
 
 it('saves the Riwayat talenta form', function (): void {

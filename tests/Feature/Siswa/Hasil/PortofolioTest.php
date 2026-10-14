@@ -86,7 +86,7 @@ it('shows the profile header, the verified achievements with rumus and the own c
         ->assertSee('40 × 1,00 × 0,80')
         ->assertSee(route('files.show', $this->certificate), false)
         ->assertSee('OSN · Kimia')
-        ->assertSee('Menunggu pemetaan Kesiswaan')
+        ->assertDontSee('Menunggu pemetaan Kesiswaan')
         ->assertSee(route('siswa.talenta'), false)
         ->assertDontSee('OSN Provinsi 2025');
 });
@@ -115,7 +115,7 @@ it('is only for signed-in students', function (): void {
     }
 });
 
-it('shows a talent that did not pass with its status', function (): void {
+it('shows an old tidak lolos talent as a plain talent', function (): void {
     $debat = TalentType::factory()->code(TalentTypeCode::Debat)->create();
     TalentApplication::factory()->status(TalentStatus::TidakLolos)->create([
         'student_id' => $this->nadia->getKey(),
@@ -127,7 +127,26 @@ it('shows a talent that did not pass with its status', function (): void {
         ->get(route('siswa.portofolio'))
         ->assertOk()
         ->assertSee('Debat · Debat Bahasa Inggris (NSDC)')
-        ->assertSee('Tidak lolos');
+        ->assertDontSee('Tidak lolos')
+        ->assertDontSee('Belum lolos')
+        ->assertDontSee('Tahap');
+
+    $component = Livewire::actingAs($this->nadia->user)->test(Portofolio::class)
+        // Its bidang counts as a bidang of interest like any other choice (D-142).
+        ->assertViewHas('bidangMinat', fn (array $bidang): bool => count($bidang) === 1);
+
+    $component->call('download')->assertFileDownloaded('portofolio-nadia-putri-anindya.pdf', contentType: 'application/pdf');
+
+    // The PDF is drawn from the same data: no status column.
+    $data = (function (): array {
+        return $this->data();
+    })->call($component->instance());
+    $html = view('livewire.siswa.portofolio.pdf', [...$data, 'generatedOn' => '13 Oktober 2026'])->render();
+
+    expect($html)->toContain('Debat · Debat Bahasa Inggris (NSDC)')
+        ->and($html)->toContain('<th>Talenta</th><th>Keterangan</th>')
+        ->and($html)->not->toContain('<th>Status</th>')
+        ->and($html)->not->toContain('Tidak lolos');
 });
 
 // QA7: explore round after UI3 (2026-10-08) ---------------------------------------------------------

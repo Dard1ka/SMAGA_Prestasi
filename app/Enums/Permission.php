@@ -12,7 +12,7 @@ namespace App\Enums;
 enum Permission: string
 {
     // Competition catalog (D-02, D-04, D-27)
-    case CompetitionCreate = 'competition.create';          // any role; always lands in menunggu_verifikasi
+    case CompetitionCreate = 'competition.create';          // siswa (usulan) + Admin only (D-145); always lands in menunggu_verifikasi
     case CompetitionVerify = 'competition.verify';          // publish / reject queue items
     case CompetitionUpdate = 'competition.update';          // edit catalog incl. tingkat/kategori/status ajang
     case CompetitionClose = 'competition.close';

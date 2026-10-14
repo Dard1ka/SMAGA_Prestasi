@@ -39,8 +39,8 @@ enum Bidang: string
         };
     }
 
-    /** Talent type code (osn, riset, fls3n, o2sn, olpain, debat) → bidang (D-22). */
-    public static function forTalentCode(TalentTypeCode|string $code): self
+    /** Talent type code (osn, riset, fls3n, o2sn, olpain, debat) → bidang (D-22); "lainnya" → null (D-143). */
+    public static function forTalentCode(TalentTypeCode|string $code): ?self
     {
         $code = $code instanceof TalentTypeCode ? $code : TalentTypeCode::from($code);
 

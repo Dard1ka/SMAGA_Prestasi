@@ -138,7 +138,7 @@ final class AuditLog extends Component
         'talent.cancelled' => 'Pilihan talenta dibatalkan siswa',
         'talent.stage_changed' => 'Tahap talenta diubah',
         'talent.rejected' => 'Pilihan talenta tidak lolos',
-        'talent.assessment_updated' => 'Jadwal asesmen talenta diubah',
+        'talent.assessment_updated' => 'Guru pembina atau catatan talenta diubah',
         'talent_profile.saved' => 'Profil talenta disimpan',
         'weight.recompute_skipped' => 'Hitung ulang poin dilewati',
         'created' => 'Data dibuat',

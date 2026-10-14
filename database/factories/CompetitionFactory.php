@@ -8,11 +8,13 @@ use App\Enums\Bidang;
 use App\Enums\CompetitionStatus;
 use App\Enums\EventMode;
 use App\Enums\EventStatus;
+use App\Enums\FilePurpose;
 use App\Enums\Level;
 use App\Enums\OrganizerType;
 use App\Enums\Participation;
 use App\Enums\WeightCategory;
 use App\Models\Competition;
+use App\Models\File;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -59,6 +61,8 @@ class CompetitionFactory extends Factory
             'default_mentor_id' => null,
             'website_url' => 'https://example.test/lomba/'.$faker->slug(2),
             'registration_url' => null,
+            // Every lomba carries its juknis, brosur or undangan (D-147); a test about an old lomba passes null.
+            'juknis_file_id' => File::factory()->purpose(FilePurpose::Juknis)->state(['original_name' => 'juknis-lomba.pdf']),
             'status' => CompetitionStatus::MenungguVerifikasi,
             'submitted_by' => User::factory(),
         ];
@@ -101,7 +105,7 @@ class CompetitionFactory extends Factory
         ]);
     }
 
-    /** Student proposal (usulan, D-04): only name, organizer and link are known. */
+    /** Student proposal from before D-145 (usulan, D-04): only name, organizer, link and the juknis are known. */
     public function proposal(): static
     {
         return $this->state(fn (array $attributes) => [
