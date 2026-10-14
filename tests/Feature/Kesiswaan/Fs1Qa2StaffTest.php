@@ -62,7 +62,7 @@ it('names BUMD under category B in the drawer legend (BUG-LOMBA-12)', function (
     $lomba = L::pendingCompetition(L::user(L::student()), L::usulanAttributes(['name' => 'Usulan BUMD Fiktif']));
 
     Livewire::actingAs($this->kesiswaan)->test(Form::class)->call('open', $lomba->getKey())
-        ->assertSee('A Puspresnas · B Pemerintah/BUMN/BUMD · C Federasi/PT · D Swasta · E Lainnya')
+        ->assertSee('A Puspresnas · B Pemerintah pusat/daerah, BUMN/BUMD · C Federasi, perguruan tinggi, organisasi profesi · D Swasta, yayasan, lembaga · E Lainnya/umum')
         ->assertDontSee('B Pemerintah/BUMN ·');
 });
 

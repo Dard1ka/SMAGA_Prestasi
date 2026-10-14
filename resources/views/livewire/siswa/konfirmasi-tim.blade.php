@@ -31,16 +31,21 @@
         </div>
         <ul class="m-0 flex list-none flex-col gap-2 p-0">
             @foreach ($members as $member)
+                {{-- FS1 QA round 3 (BUG-N5): on a 390 px phone the name was cut to "Qa…" beside the two chips. The name
+                     wraps now, "Kamu" follows it or takes the next line, and the status chip moves under the name
+                     when the row is too narrow for both (12rem for the name first). --}}
                 <li wire:key="m-{{ $member['id'] }}" class="flex items-center gap-3 rounded-tile border border-line p-2.5">
                     <x-sth.avatar :name="$member['name']" size="sm" />
-                    <div class="flex min-w-0 flex-1 flex-col">
-                        <span class="flex items-center gap-2 font-semibold">
-                            <span class="ellip">{{ $member['name'] }}</span>
-                            @if ($member['me'])<x-sth.chip tone="blue" size="sm">Kamu</x-sth.chip>@endif
-                        </span>
-                        <span class="text-xs text-muted">{{ $member['role'] }} · {{ $member['kelas'] }}</span>
+                    <div class="flex min-w-0 flex-1 flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
+                        <div class="flex min-w-0 grow basis-48 flex-col">
+                            <span class="flex flex-wrap items-center gap-x-2 gap-y-1 font-semibold">
+                                <span class="min-w-0 [overflow-wrap:anywhere]">{{ $member['name'] }}</span>
+                                @if ($member['me'])<x-sth.chip tone="blue" size="sm">Kamu</x-sth.chip>@endif
+                            </span>
+                            <span class="text-xs text-muted">{{ $member['role'] }} · {{ $member['kelas'] }}</span>
+                        </div>
+                        <x-sth.chip :tone="$member['state'][1]" size="sm">{{ $member['state'][0] }}</x-sth.chip>
                     </div>
-                    <x-sth.chip :tone="$member['state'][1]" size="sm">{{ $member['state'][0] }}</x-sth.chip>
                 </li>
             @endforeach
         </ul>

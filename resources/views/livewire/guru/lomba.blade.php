@@ -66,7 +66,7 @@
                             <x-sth.button variant="quiet" icon="download" :href="$detail['juknis']['href']">Download juknis · {{ $detail['juknis']['size'] }}</x-sth.button>
                         @endif
                         @if ($detail['website'])
-                            <span class="text-sm"><x-sth.link :href="$detail['website']" external icon-right="external">Website resmi</x-sth.link> <span class="text-muted">({{ $detail['websiteHost'] }})</span></span>
+                            <span class="text-sm"><x-sth.link :href="$detail['website']" external icon-right="external">Link resmi</x-sth.link> <span class="text-muted">({{ $detail['websiteHost'] }})</span></span>
                         @endif
                     </div>
                 @endif

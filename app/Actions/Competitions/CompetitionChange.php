@@ -149,7 +149,7 @@ final class CompetitionChange
             'location' => self::place($competition->location),
             'participants' => 'Peserta sekarang '.self::participants($competition).'.',
             'registration_url' => self::blankToNull($competition->registration_url) === null ? 'Link registrasi dihapus.' : 'Link registrasi diganti.',
-            'website_url' => self::blankToNull($competition->website_url) === null ? 'Website resmi dihapus.' : 'Website resmi diganti.',
+            'website_url' => self::blankToNull($competition->website_url) === null ? 'Link resmi dihapus.' : 'Link resmi diganti.',
             'juknis' => 'Juknis/brosur diganti.',
             default => '',
         };

@@ -179,7 +179,7 @@ class Detail extends Component
 
         return array_values(array_filter([
             $safe($competition->registration_url) ? ['label' => 'Link registrasi resmi', 'note' => 'Daftar juga di situs penyelenggara bila juknis memintanya.', 'url' => $competition->registration_url, 'host' => ExternalUrl::host($competition->registration_url)] : null,
-            $safe($competition->website_url) ? ['label' => 'Website resmi', 'note' => 'Info terbaru dari penyelenggara.', 'url' => $competition->website_url, 'host' => ExternalUrl::host($competition->website_url)] : null,
+            $safe($competition->website_url) ? ['label' => 'Link resmi', 'note' => 'Info terbaru dari penyelenggara.', 'url' => $competition->website_url, 'host' => ExternalUrl::host($competition->website_url)] : null,
         ]));
     }
 

@@ -1,7 +1,7 @@
 {{-- Every field of a lomba (App\Livewire\Forms\CompetitionFields, D-145…D-147), drawn the same way on Siswa › Usulkan lomba
      ($staff = false) and in the Kelola lomba drawer ($staff = true). Binds only `form.*`, which both components have; the
      drawer keeps its own controls (the tick for past dates) in its own view. Needs $options, $weightLine, $mapped,
-     $overridden and $rumus (CompetitionFields::presentation()); the drawer also passes $competition, $juknisUrl and
+     $weightLegend, $overridden and $rumus (CompetitionFields::presentation()); the drawer also passes $competition, $juknisUrl and
      $mentorHint. --}}
 <div class="flex flex-col gap-6">
     <section aria-labelledby="h-lf-lomba" class="flex flex-col gap-4">
@@ -31,8 +31,9 @@
             @if ($mapped)
                 <p class="m-0 text-sm">Hasil peta: <span class="font-semibold">{{ $mapped }}</span></p>
             @endif
+            {{-- The legend is WeightCategory::legend(), the hints of Pengaturan › Bobot poin (FS1 QA round 3). --}}
             <x-sth.radio-pick wire:model.live="form.weight_category" label="Kategori bobot" :columns="5" :options="$options['weight_category']"
-                hint="A Puspresnas · B Pemerintah/BUMN/BUMD · C Federasi/PT · D Swasta · E Lainnya" />
+                :hint="$weightLegend" />
             <x-sth.select wire:model.live="form.event_status" label="Status ajang" placeholder="Pilih status" :options="$options['event_status']" />
             @if ($overridden)
                 <p class="muted m-0 text-sm">Diubah dari hasil peta.</p>

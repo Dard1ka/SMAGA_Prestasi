@@ -300,7 +300,7 @@ it('delivers a bell row and a mail with one sentence per line, and never the new
         'Tanggal lomba sekarang 8–10 Nov 2026.',
         'Tempat sekarang Aula SMA Negeri 3 Semarang.',
         'Link registrasi diganti.',
-        'Website resmi dihapus.',
+        'Link resmi dihapus.',
     ];
 
     // The bell: one row per person, kind + title + one paragraph + the link to the own registration / binaan page

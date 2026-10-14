@@ -142,8 +142,8 @@ it('tells the ketua and, for what a guru relies on, the guru pembimbing when one
     'peserta jadi tim' => [['participation' => 'tim'], 'participants', 'Peserta sekarang Tim, maks 3.', false],
     'link registrasi diganti' => [['registration_url' => 'https://example.org/nsif/daftar-baru'], 'registration_url', 'Link registrasi diganti.', true],
     'link registrasi dihapus' => [['registration_url' => ''], 'registration_url', 'Link registrasi dihapus.', true],
-    'website diganti' => [['website_url' => 'https://example.org/nsif-2026'], 'website_url', 'Website resmi diganti.', true],
-    'website dihapus' => [['website_url' => null], 'website_url', 'Website resmi dihapus.', true],
+    'website diganti' => [['website_url' => 'https://example.org/nsif-2026'], 'website_url', 'Link resmi diganti.', true],
+    'website dihapus' => [['website_url' => null], 'website_url', 'Link resmi dihapus.', true],
 ]);
 
 it('tells about a new juknis, and never about a new cover', function (): void {

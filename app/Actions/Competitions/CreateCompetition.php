@@ -49,7 +49,7 @@ final class CreateCompetition
     /** Longest "Jenis penyelenggara lainnya" (`competitions.organizer_type_other`, D-125). */
     public const ORGANIZER_TYPE_OTHER_MAX = 60;
 
-    /** "Website resmi" and "Link registrasi": cleaned in prepare(), checked by ExternalUrl. */
+    /** "Link resmi" (`website_url`) and "Link registrasi": cleaned in prepare(), checked by ExternalUrl. */
     private const LINK_FIELDS = ['website_url', 'registration_url'];
 
     /**

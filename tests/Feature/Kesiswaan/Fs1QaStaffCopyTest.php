@@ -50,7 +50,7 @@ it('names BUMN/BUMD under category B in Pengaturan and in the drawer legend (LOM
     $lomba = L::pendingCompetition(L::user(L::student()), L::usulanAttributes(['name' => 'Usulan BUMN Fiktif']));
 
     Livewire::actingAs($this->kesiswaan)->test(Form::class)->call('open', $lomba->getKey())
-        ->assertSee('A Puspresnas · B Pemerintah/BUMN/BUMD · C Federasi/PT · D Swasta · E Lainnya');
+        ->assertSee('A Puspresnas · B Pemerintah pusat/daerah, BUMN/BUMD · C Federasi, perguruan tinggi, organisasi profesi · D Swasta, yayasan, lembaga · E Lainnya/umum');
 });
 
 it('names the settings tab after what is left in it, the archive (LOMBA-11)', function (): void {

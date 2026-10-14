@@ -53,7 +53,7 @@
                         @forelse ($paragraphs as $paragraph)
                             <p class="m-0 leading-relaxed">{{ $paragraph }}</p>
                         @empty
-                            <p class="m-0 text-muted">Deskripsi belum ada. Lihat juknis atau website resmi di tab Dokumen.</p>
+                            <p class="m-0 text-muted">Deskripsi belum ada. Lihat juknis atau link resmi di tab Dokumen.</p>
                         @endforelse
                         <div class="flex flex-wrap gap-2">
                             @if ($competition->isPublished())

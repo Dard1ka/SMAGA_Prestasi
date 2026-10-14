@@ -303,10 +303,10 @@ final class CompetitionFields extends Form
     }
 
     /**
-     * Everything the shared partial draws besides the fields: options of the selects, the weight line, the map and
-     * the rumus, from the active weight version.
+     * Everything the shared partial draws besides the fields: options of the selects, the weight line, the map, the
+     * legend under "Kategori bobot" and the rumus, from the active weight version.
      *
-     * @return array{options: array<string, array<int|string, mixed>>, weightLine: ?string, mapped: ?string, overridden: bool, rumus: array{tingkat: ?string, capaian: string, penyelenggara: ?string, total: ?string}}
+     * @return array{options: array<string, array<int|string, mixed>>, weightLine: ?string, mapped: ?string, weightLegend: string, overridden: bool, rumus: array{tingkat: ?string, capaian: string, penyelenggara: ?string, total: ?string}}
      */
     public function presentation(PointCalculator $calculator, PointFormatter $formatter): array
     {
@@ -330,6 +330,8 @@ final class CompetitionFields extends Form
             'weightLine' => $weightLine,
             // "Kategori C · bobot 0,60 · Non-pemerintah": the staff line "Hasil peta".
             'mapped' => $mapped !== null ? $weightLine.' · '.$mapped->eventStatus->label() : null,
+            // Which jenis penyelenggara lands in which category (D-146), the same words as Pengaturan › Bobot poin.
+            'weightLegend' => WeightCategory::legend(),
             'overridden' => $this->isOverride(),
             'rumus' => $this->rumus($weights, $calculator, $formatter),
         ];
