@@ -67,10 +67,8 @@
 
         {{-- Tambah talenta --}}
         <x-sth.card as="section" aria-labelledby="h-tambah" class="flex flex-col gap-5">
-            <div class="flex flex-wrap items-baseline justify-between gap-2">
-                <h2 id="h-tambah" class="title-card">Tambah talenta</h2>
-                <span class="muted text-xs">Penjaringan pembinaan talenta {{ $year }}</span>
-            </div>
+            {{-- D-142: talent is a record now, no scouting round: no "Penjaringan … {tahun}" line next to the title. --}}
+            <h2 id="h-tambah" class="title-card">Tambah talenta</h2>
 
             {{-- The tiles follow the width of this card (container query): three per row from 540px, else two, so
                  "Seni Budaya" stays inside its tile next to the side column of a 1280px laptop; on a phone
@@ -157,7 +155,7 @@
                     </div>
                     <div class="flex flex-col gap-1.5 sm:items-end">
                         <x-sth.button icon="plus" wire:click="daftar" wire:loading.attr="disabled" wire:target="daftar,bukti"
-                            :disabled="$blocked" :aria-describedby="$helper ? 'daftar-help' : null">Daftar penjaringan</x-sth.button>
+                            :disabled="$blocked" :aria-describedby="$helper ? 'daftar-help' : null">Tambah talenta</x-sth.button>
                         @if ($helper)
                             <span id="daftar-help" class="muted text-xs">{{ $helper }}</span>
                         @endif

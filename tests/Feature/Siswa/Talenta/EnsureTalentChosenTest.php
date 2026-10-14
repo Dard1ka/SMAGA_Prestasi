@@ -13,6 +13,7 @@ use App\Models\TalentApplication;
 use App\Models\TalentType;
 use Database\Seeders\TalentSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Request;
 use Livewire\Livewire;
 use Tests\Feature\Siswa\Hasil\HasilFixtures as F;
 use Tests\Support\TalentGate;
@@ -147,4 +148,46 @@ it('never locks the student inside the tour', function (): void {
         ->assertOk()
         ->assertSee('id="tur-menu"', false);
     $this->actingAs($this->hana->user)->get(route('siswa.talenta'))->assertOk()->assertDontSee(EnsureTalentChosen::ALERT);
+});
+
+it('leads back to the page the gate held once the first talent is chosen (FS1 fix wave)', function (): void {
+    $lainnya = TalentType::query()->where('code', TalentTypeCode::Lainnya)->sole();
+    $held = route('siswa.lomba.index', ['q' => 'olimpiade']);
+
+    $this->actingAs($this->hana->user)->get($held)->assertRedirect(route('siswa.talenta'));
+    $this->actingAs($this->hana->user)->getJson(route('siswa.portofolio'))->assertForbidden();
+    expect(session(EnsureTalentChosen::INTENDED))->toBe('/siswa/lomba?q=olimpiade');
+
+    Livewire::actingAs($this->hana->user)->test(ProfilTalenta::class)
+        ->call('pilihJenis', $lainnya->getKey())->set('lainnya', 'Kaligrafi')->call('daftar')
+        ->assertHasNoErrors()
+        ->assertRedirect($held);
+
+    expect(session(EnsureTalentChosen::INTENDED))->toBeNull()
+        ->and(session('toast'))->toBe('Lainnya (Kaligrafi) ditambahkan.');
+
+    // A second talent, with the gate already lifted, stays on Profil talenta.
+    $osn = TalentType::query()->where('code', TalentTypeCode::Osn)->sole();
+    Livewire::actingAs($this->hana->user)->test(ProfilTalenta::class)
+        ->call('pilihJenis', $osn->getKey())->call('pilihCabang', $osn->branches()->where('name', 'Kimia')->value('id'))->call('daftar')
+        ->assertHasNoErrors()
+        ->assertNoRedirect();
+});
+
+it('lets a Livewire update through by its route name and holds a page route (FS1 fix wave)', function (): void {
+    $routes = app('router')->getRoutes();
+    $update = collect($routes->getRoutes())->first(fn ($route): bool => str_ends_with((string) $route->getName(), 'livewire.update'));
+    expect($update)->not->toBeNull();
+
+    $handle = function ($route, string $method) {
+        $request = Request::create('/'.ltrim($route->uri(), '/'), $method);
+        $request->setRouteResolver(fn () => $route);
+        $request->setUserResolver(fn () => $this->hana->user);
+        $request->setLaravelSession(app('session')->driver());
+
+        return (new EnsureTalentChosen)->handle($request, fn () => response('lewat'));
+    };
+
+    expect($handle($update, 'POST')->getContent())->toBe('lewat')
+        ->and($handle($routes->getByName('siswa.beranda'), 'GET')->isRedirect(route('siswa.talenta')))->toBeTrue();
 });

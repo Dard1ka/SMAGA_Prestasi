@@ -40,9 +40,12 @@ final class PrintAppreciationList
         ];
     }
 
+    /** "daftar-apresiasi-<event slug, at most 60 characters>.pdf"; "acara" for a name without letters or digits. */
     public static function fileName(AppreciationEvent $event): string
     {
-        return 'daftar-apresiasi-'.Str::limit(Str::slug($event->name), 60, '').'.pdf';
+        $slug = rtrim(Str::limit(Str::slug($event->name), 60, ''), '-');
+
+        return 'daftar-apresiasi-'.($slug !== '' ? $slug : 'acara').'.pdf';
     }
 
     public function handle(User $actor, AppreciationEvent $event): PdfDocument

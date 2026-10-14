@@ -18,7 +18,6 @@ use App\Models\TalentBranch;
 use App\Models\TalentProfile;
 use App\Models\TalentType;
 use App\Models\User;
-use Carbon\CarbonImmutable;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
@@ -164,10 +163,22 @@ final class ProfilTalenta extends Component
             ? TalentBranch::query()->whereKey($this->cabang)->where('talent_type_id', $type->getKey())->first()
             : null;
 
+        $gated = EnsureTalentChosen::applies($this->user());
         $application = $apply->handle($this->user(), $type, $branch, $this->bukti, $this->lainnya);
 
         $this->reset(['jenis', 'cabang', 'lainnya', 'bukti', 'undo']);
         unset($this->applications);
+
+        // FS1 fix wave: the first talent lifts the gate (D-144); go back to the page it held, if any (a team invitation
+        // link from a mail, a lomba). Only a path of this app, as the middleware stored it.
+        $back = $gated ? session()->pull(EnsureTalentChosen::INTENDED) : null;
+
+        if (is_string($back) && str_starts_with($back, '/') && ! str_starts_with($back, '//')) {
+            session()->flash('toast', $application->title().' ditambahkan.');
+            $this->redirect(url($back), navigate: true);
+
+            return;
+        }
 
         $this->dispatch('sth-toast', message: $application->title().' ditambahkan.', tone: 'success');
     }
@@ -378,7 +389,6 @@ final class ProfilTalenta extends Component
             'otherMax' => TalentOtherText::MAX,
             'helper' => $helper,
             'blocked' => $blocked !== null,
-            'year' => CarbonImmutable::now()->year,
             // QA10: joined (confirmed) registrations only, like Portofolio "Lomba diikuti"; an open invitation is not one.
             'lombaCount' => Registration::query()
                 ->whereHas('members', fn (Builder $m) => $m->where('student_id', $student->getKey())->whereNotNull('confirmed_at')->whereNull('declined_at'))

@@ -28,6 +28,9 @@ final class EnsureTalentChosen
 {
     public const ALERT = 'Pilih minimal satu talenta untuk melanjutkan. Belum punya? Pilih Lainnya lalu tulis minatmu.';
 
+    /** Session key: path + query of the last page the gate held (read once by ProfilTalenta::daftar()). */
+    public const INTENDED = 'sth.talent_gate_intended';
+
     /** @var list<string> */
     public const EXEMPT_ROUTES = ['siswa.talenta', 'siswa.bantuan', 'akun.keamanan', 'notifikasi.index', 'notifikasi.jumlah', 'logout', 'logout.get'];
 
@@ -61,6 +64,12 @@ final class EnsureTalentChosen
 
         if ($request->expectsJson()) {
             abort(403, self::ALERT);
+        }
+
+        // FS1 fix wave: remember the page that was held (an invitation link from a mail, a lomba), so the first talent
+        // chosen on Profil talenta leads back there (ProfilTalenta::daftar()). Path and query only, never a host.
+        if ($request->isMethod('GET') && $request->hasSession()) {
+            $request->session()->put(self::INTENDED, $request->getRequestUri());
         }
 
         return redirect()->route('siswa.talenta');

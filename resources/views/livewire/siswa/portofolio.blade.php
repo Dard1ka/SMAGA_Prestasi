@@ -135,7 +135,7 @@
                 <x-sth.chip class="num">{{ count($talents) }} talenta</x-sth.chip>
             </div>
             @if ($talents === [])
-                <p class="muted m-0 text-sm">Belum ada talenta. Daftar penjaringan talenta di Profil talenta.</p>
+                <p class="muted m-0 text-sm">Belum ada talenta. Tambah talenta di Profil talenta.</p>
             @else
                 <ul class="m-0 flex list-none flex-col gap-3 p-0" aria-label="Talenta pilihanmu">
                     @foreach ($talents as $talent)

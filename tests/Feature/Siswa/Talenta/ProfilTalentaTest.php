@@ -37,10 +37,11 @@ it('renders the seven jenis from the DB with bidang, and the account data', func
         ->assertSee('Nadia Putri Anindya')
         ->assertSee('NISN '.$this->nadia->nisn)
         ->assertSee('Pilih jenis talenta dulu.')
-        ->assertSee('Penjaringan pembinaan talenta');
+        ->assertSee('Tambah talenta')
+        ->assertDontSee('penjaringan');
 });
 
-it('registers a choice through jenis → cabang → Daftar penjaringan', function (): void {
+it('registers a choice through jenis → cabang → Tambah talenta', function (): void {
     Livewire::actingAs($this->nadia->user)
         ->test(ProfilTalenta::class)
         ->call('pilihJenis', $this->osn->getKey())

@@ -137,7 +137,9 @@
 
                     @if ($detail['canDecide'])
                         <div class="flex flex-wrap items-center gap-2">
-                            <x-sth.button icon="check" wire:click="verify" wire:loading.attr="disabled" :disabled="$checkCount < 4">Verifikasi dan beri poin</x-sth.button>
+                            {{-- Never disabled by the ticks (the QA-04 pattern): a click right after the fourth tick carries it;
+                                 VerifyReport answers missing checks under the fieldset. --}}
+                            <x-sth.button icon="check" wire:click="verify" wire:loading.attr="disabled">Verifikasi dan beri poin</x-sth.button>
                             <x-sth.button variant="quiet" wire:click="requestRevision" wire:loading.attr="disabled">Minta revisi</x-sth.button>
                         </div>
                         <p class="m-0 text-xs text-muted">{{ $checkCount < 4 ? 'Lengkapi 4 pemeriksaan untuk memberi poin. ' : '' }}Prestasi terverifikasi otomatis masuk antrean Humas dan peringkat.</p>

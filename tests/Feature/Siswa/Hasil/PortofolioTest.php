@@ -91,6 +91,14 @@ it('shows the profile header, the verified achievements with rumus and the own c
         ->assertDontSee('OSN Provinsi 2025');
 });
 
+it('points a student without a talent to "Tambah talenta" (D-142 wording, FS1 fix wave)', function (): void {
+    $this->actingAs($this->raka->user)
+        ->get(route('siswa.portofolio'))
+        ->assertOk()
+        ->assertSee('Belum ada talenta. Tambah talenta di Profil talenta.')
+        ->assertDontSee('penjaringan');
+});
+
 it('ranks among active students only', function (): void {
     $this->actingAs($this->raka->user)
         ->get(route('siswa.portofolio'))

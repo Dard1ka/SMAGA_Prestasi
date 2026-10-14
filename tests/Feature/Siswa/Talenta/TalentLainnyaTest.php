@@ -16,6 +16,7 @@ use App\Models\TalentType;
 use Database\Seeders\TalentSeeder;
 use Illuminate\Database\Eloquent\MassAssignmentException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
 use Spatie\Activitylog\Models\Activity;
@@ -111,13 +112,22 @@ it('shows "Lainnya" instead of a bidang on every talent screen', function (): vo
     $guru = F::staff(RoleName::Guru, 'Retno Wulandari');
     talentLainnyaRow($this->lainnya, null, 'Kaligrafi', ['mentor_id' => $guru->getKey()]);
 
-    $this->actingAs($this->nadia->user)->get(route('siswa.talenta'))->assertOk()->assertSee('Lainnya');
-    $this->actingAs($this->nadia->user)->get(route('siswa.portofolio'))->assertOk()->assertSee('Lainnya');
+    // FS1 fix wave (E review): assert the row itself, not a word the page always shows (the jenis tile, a filter). The
+    // student screens draw no bidang tile for that row (bidang-tile falls back to "sains" for null), the staff screens
+    // print "Lainnya" where the bidang line stands.
+    $profil = (string) $this->actingAs($this->nadia->user)->get(route('siswa.talenta'))->assertOk()->getContent();
+    $chosen = Str::between($profil, 'id="h-pilihan"', 'id="h-tambah"');
+    expect($chosen)->toContain('Lainnya (Kaligrafi)')->and($chosen)->not->toContain('cover-');
+
+    $portofolio = (string) $this->actingAs($this->nadia->user)->get(route('siswa.portofolio'))->assertOk()->getContent();
+    $talents = Str::between($portofolio, 'id="talenta-judul"', 'Kelola profil talenta');
+    expect($talents)->toContain('Lainnya (Kaligrafi)')->and($talents)->not->toContain('cover-');
 
     $this->actingAs(F::staff(RoleName::Kesiswaan, 'Dwi Rahayu'))->get(route('kesiswaan.talenta.index'))
-        ->assertOk()->assertSee('Lainnya');
+        ->assertOk()->assertSeeHtml('<span class="text-xs text-muted">Lainnya</span>');
 
-    Livewire::actingAs($guru)->test(Binaan::class)->call('setTab', 'talenta')->assertSee('Lainnya');
+    Livewire::actingAs($guru)->test(Binaan::class)->call('setTab', 'talenta')
+        ->assertSeeHtml('<span class="text-xs text-muted">Lainnya</span>');
 });
 
 // ApplyTalent with "Sebutkan" (Task 2) ------------------------------------------------------------------------------

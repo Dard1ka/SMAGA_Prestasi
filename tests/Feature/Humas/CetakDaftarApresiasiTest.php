@@ -115,3 +115,39 @@ it('shows "Cetak daftar" on every event card with prestasi, on both Apresiasi ro
             ->not->toContain(route('apresiasi.cetak', $empty));
     }
 });
+
+// FS1 fix wave (C7 review) --------------------------------------------------------------------------------------------
+
+it('leaves out a student whose record or account was deleted after scheduling', function (): void {
+    $nadia = H::achievement();
+    $fajar = H::teammate($nadia, 'Fajar Ramadhan', 'XI-4');
+    $raka = H::teammate($nadia, 'Raka Pradipta', 'X-2');
+    $event = H::event(heldTime: '07:00');
+    app(RecordAppreciations::class)->handle($this->humas, $event, [$nadia, $fajar, $raka]);
+
+    $fajar->student->delete();
+    $raka->student->user->delete();
+
+    $list = AppreciationList::for($event->fresh());
+
+    expect(array_column($list['rows'], 'name'))->toBe(['Nadia Putri Anindya'])
+        ->and($list['omitted'])->toBe(2);
+});
+
+it('shows "Cetak daftar" to the Admin on the Kesiswaan Apresiasi route', function (): void {
+    $event = H::event(heldTime: '07:00');
+    app(RecordAppreciations::class)->handle($this->humas, $event, [H::achievement()]);
+
+    $this->actingAs(K::staff(RoleName::Admin, 'Operator STH'))->get(route('kesiswaan.apresiasi.index'))->assertOk()
+        ->assertSee('Cetak daftar')->assertSee('href="'.route('apresiasi.cetak', $event).'"', false);
+});
+
+it('names the file after the event without a trailing dash, and "acara" without a usable name', function (): void {
+    $long = H::event('Penyerahan Apresiasi Prestasi Siswa Kelas Sepuluh Sampai 12 Semester Ganjil'); // the 60th slug character is a dash
+    $symbols = H::event('“★★★”');
+
+    expect(PrintAppreciationList::fileName($long))->toEndWith('.pdf')->not->toContain('-.pdf')
+        ->and(strlen(PrintAppreciationList::fileName($long)))->toBeLessThanOrEqual(strlen('daftar-apresiasi-.pdf') + 60)
+        ->and(PrintAppreciationList::fileName($symbols))->toBe('daftar-apresiasi-acara.pdf')
+        ->and(PrintAppreciationList::fileName(H::event()))->toBe('daftar-apresiasi-upacara-senin-5-oktober-2026.pdf');
+});
