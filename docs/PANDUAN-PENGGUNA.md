@@ -2,7 +2,9 @@
 
 Alamat: **https://prestasi.sman3-smg.sch.id** · Buka di browser HP atau laptop (Chrome, Edge, Firefox, Safari terbaru).
 Nama layar di panduan ini sama dengan judul layar dan menu di aplikasi (rujukan teknis: `docs/UI-MAP.md`).
-Semua contoh nama di panduan ini fiktif. Diperbarui 14 Oktober 2026 (FS1 Paket C: Humas ikut memverifikasi laporan hasil, Verifikasi hasil tanpa **Tolak**, **Cetak daftar** di Apresiasi, §D15, D-139…D-141; sebelumnya FS1 Paket A dan D: penamaan dan tampilan dari feedback sekolah, login NISN, kata sandi awal, D-135…D-138; sebelumnya EM2: perbaikan setelah uji email dan notifikasi
+Semua contoh nama di panduan ini fiktif. Diperbarui 14 Oktober 2026 (FS1 Paket E dan B: talenta tanpa tahap dan
+pilihan **Lainnya**, siswa kelas X wajib memilih talenta, lomba diusulkan siswa dengan formulir lengkap lalu langsung
+didaftarkan, Kepala Sekolah **atau** Tata Usaha menyetujui, laporan hasil tanpa batas waktu, D-142…D-151; sebelumnya FS1 Paket C: Humas ikut memverifikasi laporan hasil, Verifikasi hasil tanpa **Tolak**, **Cetak daftar** di Apresiasi, §D15, D-139…D-141; sebelumnya FS1 Paket A dan D: penamaan dan tampilan dari feedback sekolah, login NISN, kata sandi awal, D-135…D-138; sebelumnya EM2: perbaikan setelah uji email dan notifikasi
 lead 9 Oktober 2026, `docs/DECISIONS.md` §D13, D-122…D-129; sebelumnya enam permintaan lead 6 Oktober 2026, §D8, perbaikan
 setelah uji 5 Oktober 2026, §D7, dan perubahan setelah uji manual lead, §D6).
 
@@ -83,10 +85,10 @@ Hapus isinya, daftar kembali penuh. Dari halaman lain, ketik lalu tekan Enter un
 satu kalimat penjelasan, dan tombol **Kembali ke beranda** (kadang juga **Kembali**). Arti kodenya ada di §9. Bila
 setelah masuk kamu diarahkan ke halaman yang bukan untuk akunmu, aplikasi langsung membawamu ke berandamu.
 
-**Angka di menu samping** (Tata Usaha, Kepala Sekolah, Kesiswaan, Humas): jumlah yang menunggu, mis. **Antrean surat**
-atau **Persetujuan**. Angkanya tampil di semua halaman dan berubah sendiri setelah aksi, tanpa memuat ulang. Sejak
-10 Oktober 2026 angka itu juga mengikuti pekerjaan orang lain: pendaftaran baru yang masuk ke Kepala Sekolah, misalnya,
-menaikkan angka **Persetujuan** dalam waktu sekitar satu menit selama halaman terbuka.
+**Angka di menu samping** (Tata Usaha, Kepala Sekolah, Kesiswaan, Humas): jumlah yang menunggu, mis. **Antrean surat**,
+**Persetujuan** (Kepala Sekolah), atau **Persetujuan lomba** (Tata Usaha). Angkanya tampil di semua halaman dan berubah sendiri setelah aksi, tanpa memuat ulang. Sejak
+10 Oktober 2026 angka itu juga mengikuti pekerjaan orang lain: pendaftaran baru yang menunggu persetujuan, misalnya,
+menaikkan angka **Persetujuan** dan **Persetujuan lomba** dalam waktu sekitar satu menit selama halaman terbuka.
 
 **Tombol yang bertanya dulu**: beberapa aksi yang tidak bisa ditarik lagi, atau yang langsung memberi tahu orang lain,
 membuka jendela kecil lebih dulu (mis. "Tandai sudah terbit?", "Tutup lomba ini?", "Batalkan undangan?"). Jendela itu
@@ -111,28 +113,45 @@ Jangan pernah membagikan kata sandi atau kode email kepada siapa pun, termasuk g
 
 ## 2. Siswa
 
+**Siswa kelas X: pilih talenta dulu** (sejak 12 Oktober 2026). Selama kamu belum punya satu pun pilihan talenta, setiap
+menu membawamu ke **Profil talenta** dengan pesan "Pilih minimal satu talenta untuk melanjutkan. Belum punya? Pilih
+Lainnya lalu tulis minatmu." Pilih satu talenta (lihat **Profil talenta** di bawah), lalu menu lain terbuka lagi. Bantuan,
+Notifikasi, Keamanan akun, dan Keluar tetap bisa dibuka. Link dari email (mis. undangan tim) yang tadi tertahan: buka
+lagi setelah memilih talenta.
+
 **Pendaftaran lomba**
 1. **Cari lomba** → ketik nama lomba di kotak cari (daftar langsung tersaring; hapus ketikan untuk melihat semua lagi)
-   → pilih lomba → baca detail, juknis, dan tanggal penting.
-2. Isi panel **Pendaftaran lomba**: pilih **individu** atau **tim**, lalu pilih **guru pembimbing** (wajib).
+   → pilih lomba → baca detail, juknis, dan tanggal penting. Di **Detail lomba** tertulis **Pendaftaran** (mis.
+   "12–30 Okt 2026"), **Pelaksanaan** (mis. "8 Nov 2026" atau "8–10 Nov 2026"), **Tempat**, dan di tab Jadwal
+   "Laporan hasil: Segera laporkan setelah lomba selesai".
+2. Isi panel **Pendaftaran lomba**:
+   - **Data peserta**: nama, kelas, NISN, dan tanggal lahirmu diambil dari akun dan tidak bisa diubah di sini. Data
+     salah? Hubungi Kesiswaan.
+   - **No HP** (wajib): sudah terisi nomor dari sekolah bila ada; ubah bila sudah ganti nomor, mis. `081234567890`.
+     Nomor baru ikut tersimpan di akunmu. Pesan "No HP tidak valid (contoh 0812…)." berarti formatnya salah.
+   - Pilih **individu** atau **tim**, lalu pilih **guru pembimbing** (wajib).
 3. Tim: cari anggota dengan nama atau NISN, lalu kirim undangan. Pendaftaran baru maju setelah **semua anggota
    konfirmasi** lewat akun masing-masing.
 4. Pantau di **Lomba saya**: jalur 6 fase *Daftar → Persetujuan → Surat tugas → Lomba → Laporan hasil → Poin & apresiasi*.
+   Statusnya "Menunggu persetujuan": yang menyetujui adalah Kepala Sekolah **atau** Tata Usaha.
 
-**Undangan tim**: buka dari **Beranda** atau notifikasi → **Lihat undangan** → **Ikut tim** atau **Tolak undangan**.
-Bila anggota menolak, ketua bisa **Undang anggota pengganti**.
+**Undangan tim**: buka dari **Beranda** atau notifikasi → **Lihat undangan** → periksa **No HP**-mu (wajib, bisa diubah)
+→ **Ikut tim** atau **Tolak undangan**. Bila anggota menolak, ketua bisa **Undang anggota pengganti**.
+- Tim yang baru diteruskan setelah lomba usulan ketuanya diverifikasi (lihat **Usulkan lomba**) bisa saja melewati batas
+  pendaftaran. Undangannya tetap berlaku **3 hari** sejak lomba itu dipublikasikan: tanggal dan jamnya tertulis di
+  undangan, di Beranda ("jawab sebelum …"), dan di halaman undangan ("Batas jawab").
 
 **Batalkan undangan** (ketua): undangan yang belum dijawab bisa ditarik dengan ikon × di samping nama temanmu →
 jendela "Batalkan undangan?" → **Batalkan undangan**. Belum ada yang berubah sebelum tombol itu ditekan; **Kembali**
 untuk tidak jadi.
 - Bila temanmu diberi tahu, jendelanya menyebutkannya. Kamu bisa mengundangnya lagi selama tim masih menunggu
   konfirmasi.
-- Kalau anggota lain sudah konfirmasi semua, jendelanya menulis bahwa pendaftaran **langsung diteruskan ke Kepala
-  Sekolah** dan anggota tidak bisa ditambah lagi. Baca dulu sebelum menekan.
+- Kalau anggota lain sudah konfirmasi semua, jendelanya menulis bahwa pendaftaran **langsung diteruskan untuk
+  persetujuan** dan anggota tidak bisa ditambah lagi. Baca dulu sebelum menekan.
 - Pesan sesudahnya: "Undangan untuk … dibatalkan." Kalau pembatalan itu membuat tim lengkap (misalnya anggota lain
-  konfirmasi saat jendela masih terbuka), pesannya ditambah "Pendaftaran diteruskan ke Kepala Sekolah."
-- Kalau tim sudah lebih dulu diteruskan ke Kepala Sekolah, undangan tidak bisa ditarik lagi dan muncul pesan
-  "Undangan tidak bisa dibatalkan lagi: tim sudah lengkap dan diteruskan ke Kepala Sekolah."
+  konfirmasi saat jendela masih terbuka), pesannya ditambah "Pendaftaran diteruskan untuk persetujuan."
+- Kalau tim sudah lebih dulu diteruskan, undangan tidak bisa ditarik lagi dan muncul pesan "Undangan tidak bisa
+  dibatalkan lagi: tim sudah lengkap dan diteruskan untuk persetujuan."
 
 **Info lomba berubah**: kalau Kesiswaan mengubah batas daftar, tanggal, tempat, pelaksanaan (daring/luring), peserta,
 link, atau juknis lomba yang sedang kamu ikuti, kamu mendapat notifikasi "Info lomba berubah" yang menyebut data
@@ -140,17 +159,20 @@ barunya, mis. "Tanggal lomba sekarang 8–10 Nov 2026." Tombolnya membuka pendaf
 tidak ditulis di notifikasi; lihat di halaman lombanya. Tempat yang berisi alamat web juga hanya ditulis "Tempat
 diganti."
 
-**Batalkan pendaftaran**: hanya ketua, selama belum diputuskan Kepala Sekolah (**Lomba saya** → **Batalkan
-pendaftaran**). Anggota lain dan guru pembimbing diberi tahu; Kepala Sekolah juga, bila pendaftaran itu sudah menunggu
-persetujuannya.
+**Batalkan pendaftaran**: hanya ketua, selama belum diputuskan (**Lomba saya** → **Batalkan pendaftaran**). Anggota lain
+dan guru pembimbing diberi tahu; Kepala Sekolah dan Tata Usaha juga, bila pendaftaran itu sudah menunggu persetujuan.
+Pendaftaran yang masih **Menunggu verifikasi lomba** juga bisa dibatalkan; karena belum diteruskan, tidak ada yang diberi
+tahu.
 
-**Pendaftaran disetujui**: notifikasinya menyebut **guru pembimbingmu**. Kepala Sekolah boleh menetapkan guru lain
-dari yang kamu pilih; kalau begitu, notifikasinya menulis guru yang baru dan guru yang digantikan, dan di **Lomba
-saya** tertulis "Ditetapkan Kepala Sekolah" di bawah nama gurumu.
+**Pendaftaran disetujui**: notifikasinya menyebut siapa yang menyetujui, mis. "Pendaftaranmu di … disetujui oleh … (Tata
+Usaha).", dan **guru pembimbingmu**. Kepala Sekolah atau Tata Usaha boleh menetapkan guru lain dari yang kamu pilih;
+kalau begitu, notifikasinya menulis guru yang baru dan guru yang digantikan, dan di **Lomba saya** tertulis "Ditetapkan
+Kepala Sekolah" atau "Ditetapkan Tata Usaha" di bawah nama gurumu.
 
-**Pendaftaran tidak disetujui**: kamu dan guru pembimbing menerima notifikasi berisi alasan Kepala Sekolah.
+**Pendaftaran tidak disetujui**: kamu dan guru pembimbing menerima notifikasi berisi alasannya; kalimatnya menyebut
+Kepala Sekolah atau Tata Usaha.
 
-**Surat tugas**: setelah Kepala Sekolah menyetujui, Tata Usaha mengirim surat tugas. Buka **Lomba saya**, lalu
+**Surat tugas**: setelah pendaftaran disetujui, Tata Usaha mengirim surat tugas. Buka **Lomba saya**, lalu
 download surat tugasnya (PDF). Bila Tata Usaha mengoreksi surat, kamu mendapat notifikasi dan surat barunya.
 - Kartu **Surat tugas** hanya memuat surat yang **sudah dikirim** Tata Usaha. Sebelum itu tertulis "Tata Usaha sedang
   menyiapkan surat tugas."
@@ -158,18 +180,40 @@ download surat tugasnya (PDF). Bila Tata Usaha mengoreksi surat, kamu mendapat n
   terbit"), tanpa tombol download. File-nya untuk guru; kamu cukup men-download surat siswa.
 
 **Laporkan hasil** (ketua tim)
-1. Setelah tanggal final, buka **Lomba saya** → **Laporkan hasil**.
+1. Setelah lomba selesai, buka **Lomba saya** → **Laporkan hasil**.
 2. Pilih capaian, upload sertifikat dan foto (PDF/JPG/PNG/WEBP, maks. 5 MB per file; laporan atau artikel
    penelitian PDF maks. 10 MB) → **Kirim laporan**.
-3. Batas: **45 hari setelah tanggal final** (bisa diubah sekolah; lihat **Bantuan**). Lewat batas tetap bisa dikirim,
-   tetapi ditandai terlambat.
+3. **Tidak ada batas waktu** (sejak 12 Oktober 2026), tetapi laporkan secepatnya: di **Lomba saya** tertulis **Segera
+   laporkan** dan "Segera laporkan hasil lombamu.". Ketua yang belum melapor diingatkan lewat notifikasi dan email
+   **3 hari** dan **14 hari** setelah lomba selesai. Tidak ada lagi tanda "Terlambat".
 4. Sekolah memeriksa: Kesiswaan atau Humas. **Perlu revisi** = perbaiki lalu kirim lagi. Catatannya menyebut siapa
    yang meminta, mis. "Catatan Humas". Setelah diverifikasi, poin masuk ke portofolio **setiap anggota tim** (poin
    penuh), dan di **Lomba saya** tertulis "Diverifikasi Kesiswaan" atau "Diverifikasi Humas" beserta tanggalnya.
 
-**Usulkan lomba**: lomba belum ada di katalog? **Cari lomba** → **Usulkan lomba** → isi nama, penyelenggara, **Link
-resmi** (`https://`), brosur → **Kirim usulan**. Lomba tampil di katalog setelah Kesiswaan memeriksanya. Nama lomba
-tidak boleh berisi alamat web; tulis alamatnya di kolom link resmi.
+**Usulkan lomba** (sejak 12 Oktober 2026 hanya siswa yang mengusulkan lomba; guru dan Kesiswaan tidak lagi memasukkan
+lomba): lomba belum ada di katalog? **Cari lomba** → **Usulkan lomba**. Halaman **Usulkan lomba** berisi isian lomba
+yang sama dengan yang diperiksa Kesiswaan; isi sesuai juknis.
+1. **Lomba**: nama lomba, bidang, tingkat. **Penyelenggara**: nama, jenis penyelenggara (pilih **Lainnya** bila tidak
+   ada yang cocok, lalu tulis jenisnya), dan centang **Ajang Puspresnas** bila termasuk. Begitu jenis penyelenggara
+   dipilih, tampil kategorinya, mis. "Kategori B · bobot 0,80" (dihitung otomatis; Kesiswaan memeriksanya), dan setelah
+   tingkat dipilih tampil **Perkiraan poin jika Juara I**.
+2. **Pendaftaran**: **Pendaftaran dibuka** (boleh kosong) dan **Pendaftaran ditutup**. **Pelaksanaan**: cara
+   pelaksanaan, tempat, lalu **Durasi lomba**: **1 hari** (isi **Tanggal lomba**) atau **Lebih dari 1 hari** (isi
+   **Tanggal mulai** dan **Tanggal selesai**). Lomba tidak boleh dimulai sebelum pendaftaran ditutup.
+3. **Peserta** (individu, tim, atau keduanya; untuk tim isi maks anggota), **Link resmi** (`https://`, wajib) dan link
+   registrasi, **Juknis / brosur / undangan** (wajib; PDF, JPG, PNG, atau WEBP, maks. 5 MB), poster (boleh kosong),
+   dan catatan.
+4. **Simpan** → "Usulan lomba tersimpan dan menunggu verifikasi Kesiswaan." Di halaman yang sama langsung muncul panel
+   **Pendaftaran lomba** untuk lomba itu: daftar sekarang, atau tekan **Nanti saja** untuk ke **Detail lomba**.
+   Paling banyak 5 usulan per hari.
+5. Pendaftaranmu untuk usulan sendiri berstatus **Menunggu verifikasi lomba**: belum ada yang diberi tahu, undangan tim
+   belum dikirim. Begitu Kesiswaan **mempublikasikan** lomba itu, pendaftaranmu lanjut sendiri (individu: menunggu
+   persetujuan; tim: undangan dikirim ke anggota) dan kamu diberi tahu. Bila lomba itu **ditolak**, pendaftaranmu ikut
+   dibatalkan; satu notifikasi menyebut keduanya.
+6. Pantau usulanmu di **Cari lomba** → tab **Usulan saya** (terlama di atas, dengan statusnya dan alasan penolakan
+   bila ada).
+
+Nama lomba tidak boleh berisi alamat web; tulis alamatnya di kolom link resmi.
 - **Link resmi**: salin dari kolom alamat browser. Spasi atau baris kosong yang ikut tersalin dibuang sendiri.
 - Kalau link ditolak, pesan di bawah isian menyebut apa yang salah, mis. "Link harus diawali https://, bukan
   http://.", "Link tidak boleh berisi spasi.", atau "Pakai nama situs, bukan alamat IP atau localhost." Betulkan
@@ -182,14 +226,18 @@ tidak boleh berisi alamat web; tulis alamatnya di kolom link resmi.
 - **Peringkat**: peringkat kumulatif siswa aktif; barismu ditandai "Kamu". Peringkat alumni ada di halaman publik
   (pilih **Alumni** atau **Semua**).
 
-**Profil talenta**: pilih jenis talenta (boleh lebih dari satu) → **Daftar penjaringan**. Isi juga minat dan
-keterampilanmu. Status: terdaftar → pemetaan → seleksi → pembinaan.
-- **Catatan dari Kesiswaan**: bila Kesiswaan menulis catatan untukmu saat memutuskan (lolos, tidak lolos, atau dibuka
-  kembali), catatannya tampil di pilihan itu dan di notifikasi.
-- **Tidak lolos?** Kamu tidak bisa mendaftar lagi untuk pilihan yang sama. Tekan **Minta ditinjau ulang**, tulis pesan
-  kalau perlu (boleh kosong, maks. 500 karakter) → **Kirim permintaan**. Statusmu baru berubah kalau Kesiswaan
-  membuka kembali pilihan itu; kamu akan diberi tahu, dan notifikasinya menyebut kamu sekarang di tahap mana
-  (bisa Terdaftar, Pemetaan, Seleksi/asesmen, atau langsung Peserta pembinaan).
+**Profil talenta** (sejak 12 Oktober 2026 tanpa tahap dan tanpa seleksi: Kesiswaan hanya mencatat pilihanmu)
+- **Tambah talenta**: pilih jenis talenta (boleh lebih dari satu) → pilih cabang → **Daftar penjaringan**. Bukti dukung
+  boleh dilampirkan.
+- **Lainnya**: tidak ada yang cocok? Pilih jenis **Lainnya**, atau cabang **Lainnya** di sebuah jenis, lalu tulis
+  talentamu di kolom **Sebutkan** (3–60 karakter), mis. "Kaligrafi". Nama pilihannya menjadi mis. "Lainnya (Kaligrafi)"
+  atau "OSN · Lainnya (Robotika)". Talenta yang sama tidak bisa dipilih dua kali ("Talenta ini sudah kamu pilih.");
+  huruf besar/kecil dan spasi tidak membedakannya.
+- **Hapus** di setiap pilihan, kapan saja. Salah hapus? Tekan **Urungkan**. Tidak ada yang diberi tahu.
+- Pilihan yang sudah diberi guru pembina oleh Kesiswaan menulis "Guru pembina …"; selain itu tanggal ditambahkan.
+  Tidak ada lagi status, tahap, "Minta ditinjau ulang", atau catatan dari Kesiswaan.
+- Siswa kelas X wajib punya minimal satu pilihan talenta (lihat awal §2).
+- Isi juga **Riwayat talenta** (minat, keterampilan, organisasi, prestasi SMP) → **Simpan**.
 - **Bukti dukung**: klik nama file bukti di pilihanmu untuk melihatnya di jendela preview (lihat §1).
 
 **Apresiasi dan publikasi**
@@ -210,18 +258,23 @@ sendiri, tanpa memuat ulang halaman.
   (sertifikat, foto): tekan **Buka** untuk melihatnya di jendela preview tanpa men-download (lihat §1).
   Di daftar anggota tim, **Tidak menjawab** berarti undangan siswa itu habis di batas pendaftaran; **Menolak** berarti
   siswa itu sendiri yang menolak.
-- Tab **Talenta**: siswa yang Anda bina. **Catatan untuk pembina** dari Kesiswaan tampil di sini; catatan ini tidak
-  dilihat siswa.
-- **Lomba**: lihat katalog. Punya info lomba baru? **Upload info lomba** → masuk antrean verifikasi Kesiswaan dulu.
-  Nama lomba tidak boleh berisi alamat web; tulis alamatnya di kolom link resmi. Bila upload Anda ditolak, Anda
-  diberi tahu. Alasannya tampil bila Kesiswaan menulisnya; kalau tidak, tertulis "Kesiswaan tidak menulis alasan."
-  dan Anda bisa menanyakannya ke Kesiswaan. **Link resmi** disalin dari kolom alamat browser; link yang ditolak
-  disertai pesan yang menyebut apa yang salah (daftar pesannya di §9).
-- **Notifikasi untuk pembimbing**: pendaftaran binaan **disetujui**, **tidak disetujui** (dengan alasan Kepala
-  Sekolah), atau **dibatalkan** ketuanya; surat perintah tugas **terbit** atau **diperbarui**. Tombol di email membuka
-  pendaftaran itu.
-  - **Ditetapkan sebagai guru pembimbing**: saat menyetujui, Kepala Sekolah boleh menetapkan guru lain dari yang
-    dipilih siswa. Guru yang ditetapkan menerima notifikasi ini dan pendaftarannya muncul di **Siswa binaan**.
+  - Pendaftaran untuk lomba usulan siswa yang **masih diperiksa Kesiswaan** belum tampil di sini; pendaftaran itu
+    muncul setelah lombanya dipublikasikan. Bila lombanya ditolak atau ketuanya membatalkan sebelum itu, pendaftaran
+    itu tidak pernah tampil.
+  - Laporan hasil tidak punya batas waktu lagi (sejak 12 Oktober 2026): tertulis "Laporan hasil belum dikirim" dan
+    "Menunggu laporan", tanpa tanggal dan tanpa "Terlambat".
+- Tab **Talenta**: siswa yang dibina (Kesiswaan yang menetapkan guru pembinanya). **Catatan untuk pembina** dari
+  Kesiswaan tampil di sini; catatan ini tidak dilihat siswa. Sejak 12 Oktober 2026 talenta tidak punya tahap atau
+  jadwal asesmen lagi; talenta "Lainnya" tampil dengan teks yang ditulis siswa. Guru pembina tidak diberi tahu bila
+  siswa menghapus pilihannya.
+- **Lomba**: katalog lomba sekolah (hanya lihat). Tombol **Upload info lomba** dan tab **Upload saya** sudah tidak ada
+  (sejak 12 Oktober 2026 lomba baru diusulkan siswa lewat **Usulkan lomba** atau ditambahkan Admin). Info lomba di
+  rincian: Pendaftaran, Pelaksanaan, Laporan hasil, Tempat.
+- **Notifikasi untuk pembimbing**: pendaftaran binaan **disetujui**, **tidak disetujui** (dengan alasan; kalimatnya
+  menyebut Kepala Sekolah atau Tata Usaha), atau **dibatalkan** ketuanya; surat perintah tugas **terbit** atau
+  **diperbarui**. Tombol di email membuka pendaftaran itu.
+  - **Ditetapkan sebagai guru pembimbing**: saat menyetujui, Kepala Sekolah atau Tata Usaha boleh menetapkan guru lain
+    dari yang dipilih siswa. Guru yang ditetapkan menerima notifikasi ini dan pendaftarannya muncul di **Siswa binaan**.
     Guru yang dipilih siswa tetapi diganti **tidak** menerima notifikasi (ia juga tidak diberi tahu saat dipilih):
     pendaftaran itu hanya hilang dari **Siswa binaan**-nya.
   - **Info lomba binaan berubah**: perubahan tanggal, tempat, pelaksanaan, link, atau juknis lomba yang diikuti
@@ -238,10 +291,22 @@ sendiri, tanpa memuat ulang halaman.
 Angka di menu samping (**Verifikasi usulan lomba**, **Verifikasi hasil**) berwarna merah: ada yang menunggu. Angka itu berubah sendiri setelah Anda memeriksa; tidak perlu
 memuat ulang halaman. Angka itu tampil di semua halaman, juga di **Status aktivasi**, Notifikasi, dan Keamanan akun.
 
-**Kelola lomba**
-1. **Kelola lomba** → **Tambah lomba**: isi nama, bidang, penyelenggara, jenis penyelenggara, kategori A–E, tingkat,
-   tanggal, batas pendaftaran, individu/tim, guru pembimbing default, juknis, link resmi. **Tanggal mulai tidak boleh
-   sebelum batas daftar**; kalau terbalik, form menolak dengan pesan itu.
+**Kelola lomba** (sejak 12 Oktober 2026 Kesiswaan **memeriksa dan mengoreksi**, tidak lagi menambah lomba: lomba baru
+datang dari usulan siswa, §2, atau dari Admin lewat **Tambah lomba**, §8; tombol **Tambah lomba** tidak ada di menu
+Kesiswaan.)
+1. **Verifikasi usulan lomba** → **Periksa & lengkapi**: semua isian lomba bisa dikoreksi. Susunannya sama dengan
+   halaman usulan siswa:
+   - **Penyelenggara**: begitu jenis penyelenggara dipilih atau **Ajang Puspresnas** dicentang, **Kategori bobot** dan
+     **Status ajang** terisi sendiri, dan di atasnya tertulis **Hasil peta**, mis. "Kategori C · bobot 0,60 ·
+     Non-pemerintah" (Puspresnas → A; pemerintah pusat/daerah, BUMN/BUMD → B; PTN, PTS, organisasi profesi, federasi
+     olahraga → C; yayasan/lembaga, perusahaan swasta → D; lainnya → E). Bila perlu, pilih kategori atau status lain:
+     tertulis "Diubah dari hasil peta." dan pilihan itu tercatat di log audit saat lomba diputuskan.
+   - **Pendaftaran**: **Pendaftaran dibuka**, **Pendaftaran ditutup**. **Pelaksanaan**: **Durasi lomba** **1 hari**
+     (**Tanggal lomba**) atau **Lebih dari 1 hari** (**Tanggal mulai** wajib + **Tanggal selesai**); "Laporan hasil dibuka
+     setelah tanggal ini." **Lomba tidak boleh dimulai sebelum pendaftaran ditutup**; kalau terbalik, form menolak
+     dengan pesan itu.
+   - **Juknis / brosur / undangan wajib** (PDF, JPG, PNG, atau WEBP, maks. 5 MB). Lomba lama tanpa juknis tetap tampil
+     di katalog, tetapi baru bisa disimpan lagi setelah juknisnya di-upload.
    - **Jenis penyelenggara: Lainnya**: bila tidak ada jenis yang cocok, pilih **Lainnya**. Di bawahnya muncul isian
      **Jenis penyelenggara lainnya** (maks. 60 karakter, mis. komunitas, sanggar seni, media). Isian ini boleh kosong
      selama lomba masih di **Verifikasi usulan lomba**, tetapi **wajib diisi sebelum dipublikasikan**: kartu usulan menulis
@@ -249,25 +314,33 @@ memuat ulang halaman. Angka itu tampil di semua halaman, juga di **Status aktiva
      tidak terpengaruh; poin tetap mengikuti kategori bobot.
    - **Website resmi** dan **Link registrasi**: diawali `https://`. Spasi yang ikut tersalin dibuang sendiri; link
      yang ditolak disertai pesan yang menyebut apa yang salah (daftar pesannya di §9).
-2. Semua lomba baru (juga buatan Kesiswaan sendiri, guru, dan usulan siswa) masuk **Verifikasi usulan lomba**. Verifikator lain
-   (Kesiswaan dan Admin) mendapat email saat ada lomba baru, juga bila yang menambahkan adalah Admin.
+2. Semua lomba baru (usulan siswa dan lomba yang ditambahkan Admin; lomba lama dari guru atau Kesiswaan tetap ada)
+   masuk **Verifikasi usulan lomba**. Verifikator (Kesiswaan dan Admin) mendapat email saat ada lomba baru, juga bila
+   yang menambahkan adalah Admin.
 3. **Verifikasi usulan lomba** → **Periksa & lengkapi** → **Publikasikan**, atau **Tolak** → **Kirim penolakan**.
+   - **Pendaftaran yang menunggu**: siswa pengusul boleh mendaftar ke lombanya sendiri sebelum diperiksa (statusnya
+     "Menunggu verifikasi lomba"). **Publikasikan** meneruskan pendaftaran itu sendiri (individu ke persetujuan, tim:
+     undangan dikirim ke anggota; tim yang batas pendaftarannya sudah lewat atau tinggal kurang dari 3 hari mendapat 3
+     hari untuk menjawab). **Tolak** ikut membatalkannya; pengusul menerima satu notifikasi yang menyebut keduanya.
+     Form tidak menyebut lebih dulu apakah ada pendaftaran yang menunggu.
    - **Alasan penolakan boleh dikosongkan** dan tidak ada panjang minimal (maksimal 1.000 karakter). Kalau diisi,
      alasan itu dikirim ke pengirim. Kalau kosong, pengirim tetap diberi tahu bahwa lombanya tidak dipublikasikan,
-     dengan kalimat "Kesiswaan tidak menulis alasan. Tanyakan ke Kesiswaan bila perlu."
+     dengan kalimat "Kesiswaan tidak menulis alasan. Tanyakan ke Kesiswaan bila perlu." Bila Admin yang menolak,
+     kalimatnya menyebut Admin, mis. "Alasan Admin: …".
    - Klik nama file juknis di kartu usulan untuk melihatnya di jendela preview tanpa men-download (lihat §1).
-   - **Tanggal sudah lewat?** Bila batas daftar atau tanggal final lomba sudah lewat, kartunya menulis "Tanggal sudah
+   - **Tanggal sudah lewat?** Bila tanggal pendaftaran ditutup atau tanggal selesai lomba sudah lewat, kartunya menulis "Tanggal sudah
      lewat: …" dan **Publikasikan** bertanya dulu: "Tetap publikasikan?". Di form **Periksa lomba**, centang "Tanggal
      lomba ini sudah lewat. Tetap publikasikan." sebelum **Simpan & publikasikan**. Ini untuk lomba lama yang dicatat
      belakangan; menyimpan tanpa mempublikasikan tidak ditanya.
    - Kartu bertulisan "Perlu diperbaiki: …" belum bisa dipublikasikan: buka **Periksa & lengkapi** dan betulkan
-     tanggalnya dulu.
+     tanggalnya dulu. Lomba tanpa juknis juga belum bisa dipublikasikan: kartunya menulis "Perlu dilengkapi: …
+     Juknis / brosur / undangan".
 4. Nama lomba tidak boleh berisi alamat web. Link pengusul yang tidak lolos pemeriksaan tampil sebagai
    "Link tidak valid", dan alamat yang mirip-asli tampil dalam bentuk aslinya (punycode).
 5. Daftar menampilkan paling banyak 250 lomba; persempit dengan filter atau pencarian untuk melihat lainnya.
 6. **Mengubah lomba yang sudah dipublikasikan** (**Ubah**): bila ada siswa yang sedang terdaftar, di atas form tertulis
    "N siswa sedang terdaftar di lomba ini. …".
-   - Perubahan **batas daftar, tanggal, tempat, pelaksanaan, peserta, link, atau juknis** diberitahukan ke siswa yang
+   - Perubahan **batas daftar (Pendaftaran ditutup), tanggal, tempat, pelaksanaan, peserta, link, atau juknis** diberitahukan ke siswa yang
      sedang terdaftar dan guru pembimbingnya (notifikasi dan email), satu pemberitahuan per orang setiap kali
      disimpan. Batas daftar dan peserta hanya ke tim yang masih menunggu konfirmasi anggota, tanpa guru.
    - Perbaikan nama, deskripsi, penyelenggara, bidang, atau sampul **tidak** mengirim apa pun. Lomba yang masih di
@@ -312,48 +385,29 @@ memuat ulang halaman. Angka itu tampil di semua halaman, juga di **Status aktiva
      mengirim ulang laporan.") hanya tertulis bila akun ketua bisa masuk, karena hanya ketua yang bisa mengirim ulang
      laporan. Kalau kalimat itu tidak ada, laporan belum bisa dikirim ulang.
 
-**Database talenta siswa**: saring per tahap/jenis/kelas, lalu klik ikon mata untuk membuka satu pilihan. NISN siswa tampil
-lengkap di tabel, di panel, dan di file Excel-nya; cari dengan nama atau NISN.
-- Ada **dua catatan**, keduanya boleh kosong:
-  - **Catatan untuk guru pembina**: hanya dibaca guru pembina dan Kesiswaan. Tersimpan dengan **Simpan**.
-  - **Catatan untuk siswa**: dibaca siswa di notifikasi dan Profil talenta. Terkirim saat Anda menekan **Lolos ke …**
-    atau **Tidak lolos**. Keputusan berikutnya mengganti catatan yang lama.
-  - **Simpan** menyimpan catatan untuk siswa sebagai **draf**: di bawah kolomnya tertulis "Draf tersimpan, belum
-    terkirim." dan teksnya tetap ada saat halaman dibuka lagi. Siswa belum melihatnya. Draf terkirim, lalu kosong lagi,
-    saat Anda memutuskan.
-- **Lolos ke …** memindahkan ke tahap berikutnya; **Tidak lolos** tidak lagi wajib bercatatan. Beberapa baris
-  sekaligus: centang → **Pindahkan ke …** atau **Tidak lolos**.
-- **Pindahkan ke …** untuk beberapa baris bertanya dulu ("Pindahkan N pilihan ke tahap berikutnya?"). Jendelanya
-  menyebut berapa pilihan yang naik satu tahap, berapa yang dilewati karena sudah final (Peserta pembinaan atau Tidak
-  lolos) atau sudah dipindahkan orang lain, berapa draf catatan yang ikut terkirim, dan siapa yang diberi tahu →
-  **Pindahkan**. Tahap tidak bisa dimundurkan. Mengubah centang, filter, atau tab membatalkan pertanyaan itu: tekan
-  **Pindahkan ke …** lagi. Ikon centang di tiap baris tetap satu klik.
-- **Tidak lolos** selalu bertanya dulu ("Tandai tidak lolos?"), karena siswa langsung diberi tahu. Dialognya
-  menampilkan catatan yang akan terkirim; untuk beberapa baris sekaligus, catatannya diisi di dialog itu.
-- **Hati-hati dengan draf**: ikon centang di baris dan **Pindahkan ke …** tidak punya kolom catatan, jadi draf yang
-  tersimpan **ikut terkirim** ke siswa (jendela **Pindahkan** menyebut jumlahnya sebelum dikonfirmasi; untuk ikon
-  centang, pesan di layar menyebutkannya sesudahnya). **Tidak lolos** untuk beberapa baris dengan
-  kolom catatan kosong juga mengirim draf masing-masing; dialognya menyebut berapa pilihan yang punya draf.
-- **Berubah pikiran?** Buka tahap **Tidak lolos** (atau tab **Semua**) → klik ikon daur ulang (**Pulihkan**) di
-  baris itu, atau tombol **Pulihkan** di panelnya. Jendela kecil menanyakan **Kembalikan ke tahap** mana:
-  **Terdaftar**, **Pemetaan**, **Seleksi/asesmen**, atau **Peserta pembinaan**. Tahap sebelum tidak lolos sudah
-  terpilih dan bertanda "Tahap sebelumnya"; pilih tahap lain kalau perlu. Tulis catatan untuk siswa kalau perlu →
-  **Pulihkan**. Siswa diberi tahu dan notifikasinya menyebut tahapnya; permintaan "Minta ditinjau ulang" yang masih
-  terbuka ikut ditutup. Guru pembina dan tanggal asesmen tidak ditanyakan di jendela ini: isi di panel sesudahnya.
-- Tab **Semua** memuat semua pilihan, juga yang **Tidak lolos**, masing-masing dengan statusnya. Baris tidak lolos
-  ada di urutan paling bawah (kalau daftarnya panjang, tekan **Tampilkan lebih banyak**) dan punya ikon **Pulihkan**
-  sebagai ganti ikon centang.
-- **Minta ditinjau ulang**: siswa yang tidak lolos bisa meminta ditinjau lagi. Anda mendapat notifikasi, barisnya
-  bertanda "Minta ditinjau ulang" dan tampil paling atas di tahapnya; pesan siswa ada di panel. Setuju → **Pulihkan**.
-  Tidak setuju → biarkan.
-- **Bukti dukung** siswa di panel: tekan **Buka** untuk melihatnya di jendela preview (lihat §1).
+**Database talenta siswa** (sejak 12 Oktober 2026 tanpa tahap dan tanpa verifikasi: Kesiswaan hanya mencatat pilihan
+siswa; tidak ada lagi **Lolos ke …**, **Tidak lolos**, **Pindahkan ke …**, **Pulihkan**, "Minta ditinjau ulang",
+catatan untuk siswa, atau jadwal asesmen). NISN siswa tampil lengkap di tabel, di panel, dan di file Excel-nya; cari
+dengan nama atau NISN.
+- Dua tab:
+  - **Semua**: setiap pilihan talenta, terbaru di atas, juga baris lama yang dulu berstatus apa pun (tampil sebagai
+    data biasa). Saring per jenis (tombol di atas tabel), cabang, dan kelas.
+  - **Belum mengisi (kelas X)**: siswa kelas X yang belum memilih satu pun talenta (nama, kelas, NISN). Siswa ini
+    ditahan di Profil talenta sampai memilih (§2). Saring per kelas atau cari nama/NISN.
+- Klik ikon mata di tab **Semua** untuk membuka panel: data siswa, semua pilihannya, bukti dukung (tekan **Buka** untuk
+  preview, lihat §1), minat, organisasi, dan prestasi SMP. Di panel:
+  - **Guru pembina** (boleh kosong, "Tanpa guru pembina") dan **Catatan untuk guru pembina** (boleh kosong; hanya dibaca
+    guru pembina dan Kesiswaan) → **Simpan**. Tidak ada notifikasi yang dikirim: guru pembina melihat siswanya di tab
+    **Talenta** di Siswa binaan.
+  - Bila siswa menghapus pilihan itu sementara panel terbuka, muncul pesan "Siswa sudah menghapus pilihan ini."
+- Talenta **Lainnya**: nama pilihannya memuat teks yang ditulis siswa, mis. "Lainnya (Kaligrafi)" atau "OSN · Lainnya
+  (Robotika)".
 - Daftar menampilkan paling banyak 300 baris (persempit filter).
-- **Download data (Excel)** lebih dulu menanyakan **status mana yang masuk ke file**: Terdaftar, Pemetaan,
-  Seleksi/asesmen, Peserta pembinaan, Tidak lolos (tiap pilihan menampilkan jumlah barisnya). Status tab yang sedang
-  dibuka sudah tercentang; di tab **Semua** kelimanya tercentang. Centang yang lain, atau tekan **Pilih semua
-  status**, lalu **Download**. Filter jenis, cabang, kelas, dan pencarian tetap berlaku, dan baris "Filter:" di dalam
-  file menyebut pilihannya. Download meminta kata sandi Anda lagi; setelah kata sandi diisi, download berjalan
-  sendiri dengan pilihan yang sama. Dibatasi 10.000 baris dan tercatat di log audit.
+- **Download data (Excel)** (hanya di tab **Semua**): file berisi baris yang cocok dengan filter di layar (jenis,
+  cabang, kelas, pencarian), dengan kolom Nama, NISN, Kelas, Jenis, Cabang, Keterangan lainnya (teks "Lainnya" dari
+  siswa), Guru pembina, dan Didaftarkan. Tidak ada lagi pertanyaan status. Bila tidak ada yang cocok, tidak ada file
+  kosong: muncul pesan "Tidak ada data talenta dengan filter ini. Tidak ada yang di-download." Download meminta kata
+  sandi lagi; setelah kata sandi diisi, download berjalan sendiri. Dibatasi 10.000 baris dan tercatat di log audit.
 
 **Database prestasi**: semua prestasi terverifikasi dengan filter → **Download Excel** (tercatat di log audit). Klik
 nama sertifikat di rincian sebuah prestasi untuk melihatnya di jendela preview (lihat §1). Jenis penyelenggara yang
@@ -402,10 +456,18 @@ file Excel-nya; cari dengan nama atau NISN. File Excel tidak memuat kolom Katego
 
 ## 5. Kepala Sekolah
 
-- **Persetujuan**: daftar pendaftaran yang menunggu, 20 per langkah (**Tampilkan lebih banyak**). **Setujui** (bisa
-  beberapa sekaligus; **Pilih semua** hanya memilih yang sedang tampil) atau **Tolak** dengan alasan (wajib). Setelah
-  disetujui, Tata Usaha membuat surat tugas. Bila ditolak, siswa dan guru pembimbingnya menerima alasannya. Angka di
-  menu **Persetujuan** langsung berkurang, tanpa memuat ulang halaman.
+- **Persetujuan**: daftar pendaftaran yang menunggu (status "Menunggu persetujuan"), 20 per langkah (**Tampilkan lebih
+  banyak**). **Setujui** (bisa beberapa sekaligus; **Pilih semua** hanya memilih yang sedang tampil) atau **Tolak**
+  dengan alasan (wajib). Setelah disetujui, Tata Usaha membuat surat tugas. Bila ditolak, siswa dan guru pembimbingnya
+  menerima alasannya. Angka di menu **Persetujuan** langsung berkurang, tanpa memuat ulang halaman.
+  - **Kepala Sekolah atau Tata Usaha** (sejak 12 Oktober 2026): Tata Usaha memakai daftar yang sama dari menunya
+    sendiri (**Persetujuan lomba**, §6). Keputusan yang lebih dulu disimpan yang berlaku: bila Tata Usaha sudah
+    memutuskan pendaftaran yang sedang terbuka di layar, muncul pesan "Pendaftaran ini sudah diputuskan. Daftar sudah
+    diperbarui." Siswa membaca siapa yang memutuskan, mis. "disetujui oleh … (Tata Usaha)".
+  - Tata Usaha yang menyetujui juga yang membuat surat tugas bertanda tangan Kepala Sekolah; semua surat itu tetap
+    tercantum di **Surat atas nama saya**.
+  - Pendaftaran untuk lomba usulan siswa yang masih diperiksa Kesiswaan belum masuk daftar ini; pendaftaran itu baru
+    masuk setelah lombanya dipublikasikan.
 - **Ganti guru** (di bawah nama pembimbing tiap pendaftaran yang menunggu): untuk menyetujui pendaftaran dengan guru
   pembimbing **lain** dari yang dipilih siswa. Pilih guru pengganti, lalu **Setujui dengan guru ini**. Pendaftaran
   langsung disetujui dengan guru itu; tidak ada langkah simpan terpisah, dan setelah disetujui guru tidak bisa
@@ -416,7 +478,9 @@ file Excel-nya; cari dengan nama atau NISN. File Excel tidak memuat kolom Katego
     sebelum tombol ditekan.
 - Bila ketua membatalkan pendaftaran yang sedang menunggu keputusan Anda, Anda diberi tahu ("Pendaftaran lomba
   dibatalkan") dan pendaftaran itu hilang dari daftar.
-- **Dashboard**: ringkasan prestasi per tahun.
+- **Dashboard**: ringkasan prestasi per tahun. Kotak **Belum lapor > 14 hari** (sejak 12 Oktober 2026, menggantikan
+  "Laporan lewat batas") menghitung pendaftaran yang lombanya selesai lebih dari 14 hari lalu dan belum mengirim laporan
+  hasil; laporan hasil tidak lagi punya batas waktu.
 - **Prestasi per bidang**: rincian per bidang, siswa (20 per langkah), dan lomba.
 - **Surat atas nama saya**: semua surat tugas yang terbit atas nama Kepala Sekolah, termasuk yang dicabut (chip "Dicabut");
   **Download** untuk menyimpan PDF-nya. Setiap koreksi surat oleh Tata Usaha juga dikirim ke **Notifikasi** Anda.
@@ -424,12 +488,27 @@ file Excel-nya; cari dengan nama atau NISN. File Excel tidak memuat kolom Katego
 
 ## 6. Tata Usaha
 
+**Persetujuan lomba** (sejak 12 Oktober 2026; menu sendiri, angka merah = pendaftaran yang menunggu persetujuan): Tata
+Usaha ikut menyetujui pendaftaran lomba, bersama Kepala Sekolah. Caranya sama dengan §5 (**Persetujuan**): **Setujui**,
+**Setujui terpilih**, **Tolak** dengan alasan, dan **Ganti guru** untuk menyetujui dengan guru pembimbing lain.
+- Keputusan yang lebih dulu disimpan yang berlaku (Kepala Sekolah atau Tata Usaha); layar yang tertinggal menulis
+  "Pendaftaran ini sudah diputuskan. Daftar sudah diperbarui."
+- Siswa membaca "disetujui oleh <nama> (Tata Usaha)"; guru pembimbing membaca "disetujui Tata Usaha", rekan Tata Usaha
+  membaca nama dan perannya. Akun Tata Usaha yang menyetujui tidak menerima notifikasi untuk keputusannya sendiri; pendaftarannya
+  langsung masuk **Antrean surat** dengan tulisan "Disetujui Tata Usaha · <tanggal>".
+- Email "Pendaftaran lomba menunggu persetujuan" dikirim ke Kepala Sekolah dan setiap akun Tata Usaha; tombolnya
+  membuka **Persetujuan lomba**.
+- Tata Usaha kini bisa menyetujui sebuah pendaftaran lalu membuat dan mengirim surat tugasnya sendiri. Setiap keputusan
+  tercatat di log audit dengan nama yang memutuskan, dan semua surat tetap tercantum di **Surat atas nama saya** milik
+  Kepala Sekolah.
+
 **Surat tugas**: tiap pendaftaran punya **dua surat** (surat siswa dan surat guru pendamping). Masing-masing punya tab,
 nomor, dan isian sendiri. Bila pendaftaran belum punya guru pembimbing, hanya surat siswa yang dibuat. Guru di surat
-adalah guru pembimbing saat pendaftaran disetujui (bisa guru yang ditetapkan Kepala Sekolah, bukan pilihan siswa).
+adalah guru pembimbing saat pendaftaran disetujui (bisa guru yang ditetapkan Kepala Sekolah atau Tata Usaha, bukan
+pilihan siswa).
 PDF surat siswa dicetak di tengah halaman (margin kiri dan kanan sama); surat yang dibuat sebelum 11 Okt 2026 tetap
 seperti saat dibuat, dan **Koreksi** membuat surat baru dengan tata letak sekarang.
-1. **Antrean surat** → buka pendaftaran yang sudah disetujui.
+1. **Antrean surat** → buka pendaftaran yang sudah disetujui ("Disetujui Kepala Sekolah" atau "Disetujui Tata Usaha").
 2. Pilih tab **Surat siswa**. Isi:
    - **Nomor surat**: ketik **nomor lengkap** sesuai buku agenda, mis. `400.3.8/313/MRD/X/2026`. Di bawah kolom ada
      "Terakhir dipakai" dan satu contoh. Nomor yang sudah pernah dipakai untuk surat sejenis ditolak.
@@ -570,8 +649,13 @@ Menu Admin: **Dashboard**, **Kelola lomba** · Data: **Database prestasi**, **Im
 
 **Database prestasi** di menu Admin membuka halaman yang sama dengan yang dipakai Kesiswaan (lihat §4).
 
-Mulai dari **Status sistem**: daftar hal yang belum siap (mis. belum ada Kepala Sekolah atau tanda tangan) dan
-aktivitas Admin terbaru.
+**Kelola lomba**: sama seperti Kesiswaan (§4), ditambah **Tambah lomba** (sejak 12 Oktober 2026 hanya Admin; Kesiswaan
+tidak lagi menambah lomba). Isiannya sama dengan halaman usulan siswa, termasuk **Juknis / brosur / undangan** yang
+wajib; kategori bobot dan status ajang terisi dari jenis penyelenggara ("Hasil peta") dan boleh diubah. Lomba yang ditambahkan tetap masuk **Verifikasi usulan lomba** dulu, dan verifikator lain mendapat email.
+Admin tidak menyetujui pendaftaran lomba (itu Kepala Sekolah atau Tata Usaha).
+
+Mulai dari **Status sistem**: daftar hal yang belum siap (mis. belum ada akun Kepala Sekolah atau Tata Usaha yang aktif,
+sehingga pendaftaran lomba tidak bisa disetujui, atau belum ada tanda tangan) dan aktivitas Admin terbaru.
 
 **Pengguna & peran** (beberapa aksi meminta kata sandi Anda lagi)
 - **Tambah pengguna** → isi nama, username, email, peran, kata sandi sementara → **Buat akun**. Berikan kata sandi
@@ -607,7 +691,7 @@ aktivitas Admin terbaru.
   tampil.
 - **Persetujuan publikasi** siswa: centang izin foto/publikasi sesuai formulir orang tua → **Simpan persetujuan**.
   Bila izin publikasi **dicabut**: nama siswa hilang dari halaman publik, dan Humas tidak lagi melihat namanya
-  maupun data publikasinya. Minta Humas menurunkan postingan dan flyer siswa itu dari kanal sekolah.
+  maupun data publikasinya (kecuali di layar Verifikasi hasil, D-139). Minta Humas menurunkan postingan dan flyer siswa itu dari kanal sekolah.
   Catatan: sejak 6 Oktober 2026 aplikasi ini tidak membuat flyer (Humas membuatnya sendiri di luar aplikasi). File
   flyer yang dulu dibuat aplikasi **tidak terhapus otomatis** dan masih tersimpan, tetapi tidak ada lagi layar yang
   menampilkan link-nya.
@@ -627,12 +711,14 @@ atau tanggal → **Download CSV** (meminta kata sandi, tercatat). Dua peristiwa 
 "Pengingat publikasi dikirim ke Humas (otomatis)" (dicatat sistem saat jadwal publikasi tiba) dan "Info lomba diubah"
 (data lomba yang sudah dipublikasikan diubah; berisi data apa yang berubah dan **jumlah** siswa dan guru yang diberi
 tahu, tanpa nama). Sejak 12 Oktober 2026 juga "Daftar apresiasi dicetak" (**Cetak daftar** di Apresiasi; berisi acara
-dan jumlah baris, tanpa nama).
+dan jumlah baris, tanpa nama), "Guru pembimbing diganti saat persetujuan" (dulu "… diganti Kepala Sekolah", karena Tata
+Usaha juga bisa menyetujui), dan "Guru pembina atau catatan talenta diubah" (dulu "Jadwal asesmen talenta diubah").
+Peristiwa pendaftaran yang diteruskan setelah lombanya dipublikasikan masih tampil dengan kode `registration.resumed`.
 
 **Pengaturan**
 - **Bobot poin**: ubah nilai → **Simpan bobot** (membuat versi baru, poin dihitung ulang, Kepala Sekolah diberi tahu).
-- **Batas & arsip**: batas laporan (bawaan 45 hari setelah final) dan arsip otomatis (bawaan 18 bulan setelah mulai
-  kelas XII).
+- **Batas & arsip**: arsip otomatis (bawaan 18 bulan setelah mulai kelas XII). Pengaturan batas laporan sudah tidak
+  ada (sejak 12 Oktober 2026 laporan hasil tidak punya batas waktu; siswa diingatkan 3 dan 14 hari setelah lomba).
 - **Surat & tanda tangan**: **Upload tanda tangan** (gambar tanda tangan + stempel, PNG), data penandatangan, dan
   **Contoh nomor surat** → **Simpan contoh**. Contoh ini hanya tampil di bawah kolom nomor Tata Usaha; nomor surat
   tetap diketik lengkap oleh Tata Usaha.
@@ -648,7 +734,18 @@ dan jumlah baris, tanpa nama).
 | "Akun dibekukan" | Hubungi Kesiswaan atau Admin (bawa kartu pelajar/identitas). Selama dibekukan, akun tidak menerima email dan "Lupa kata sandi" tidak mengirim kode. |
 | Lomba tidak ada di katalog | Mungkin belum diverifikasi atau pendaftarannya sudah tutup. Pakai **Usulkan lomba**. |
 | Anggota tim belum bisa diundang | Anggota harus punya akun aktif dan belum terdaftar di lomba yang sama. |
-| Laporan hasil tidak bisa dikirim | Hanya ketua tim, dan hanya setelah tanggal final lomba. |
+| Laporan hasil tidak bisa dikirim | Hanya ketua tim, dan hanya setelah lomba selesai. Tidak ada batas waktu (sejak 12 Oktober 2026). |
+| Siswa kelas X: setiap menu kembali ke Profil talenta | Kamu belum punya pilihan talenta. Pilih satu (boleh **Lainnya** dengan teks sendiri), lalu menu lain terbuka. |
+| "Tulis talentamu di kolom Sebutkan." / "Tulis 3 sampai 60 karakter." | Jenis atau cabang **Lainnya** butuh isian **Sebutkan** sepanjang 3–60 karakter. |
+| "Talenta ini sudah kamu pilih." / "Sudah dipilih. Pilih cabang lain." | Pilihan itu sudah ada di daftarmu (huruf besar/kecil dan spasi tidak membedakan). Pilih yang lain. |
+| Usulkan lomba: "Upload juknis, brosur, atau undangan." | Juknis, brosur, atau undangan lomba wajib di-upload (PDF, JPG, PNG, atau WEBP, maks. 5 MB). |
+| Usulkan lomba: "Wajib diisi." di **Tanggal mulai** | **Durasi lomba** "Lebih dari 1 hari" butuh tanggal mulai. Lomba satu hari: pilih **1 hari** dan isi **Tanggal lomba**. |
+| "Lomba tidak boleh dimulai sebelum pendaftaran ditutup." | Betulkan tanggal mulai (atau tanggal lomba) atau tanggal pendaftaran ditutup. |
+| "Sudah 5 kali mengirim hari ini. Coba lagi besok." | Batas usulan lomba 5 per hari per akun. |
+| "Isi No HP." / "No HP tidak valid (contoh 0812…)." | No HP wajib saat mendaftar dan saat ikut tim; tulis nomor HP yang diawali 08 atau +628, mis. 081234567890. |
+| Pendaftaran berstatus "Menunggu verifikasi lomba" | Lombanya usulanmu sendiri dan belum diperiksa Kesiswaan. Pendaftaran lanjut sendiri saat lomba dipublikasikan, dan ikut batal bila lomba ditolak. |
+| Guru: tombol **Upload info lomba** tidak ada / Kesiswaan: tombol **Tambah lomba** tidak ada | Memang sudah dihapus (12 Oktober 2026): lomba baru diusulkan siswa lewat **Usulkan lomba** atau ditambahkan Admin. |
+| Kepala Sekolah atau Tata Usaha: "Pendaftaran ini sudah diputuskan. Daftar sudah diperbarui." | Pemutus lain (Kepala Sekolah atau Tata Usaha) lebih dulu memutuskan pendaftaran itu. Tidak ada yang perlu diulang. |
 | Upload file ditolak | Hanya PDF, JPG, PNG, WEBP, maksimal 5 MB (laporan atau artikel penelitian PDF: 10 MB). |
 | "PDF berisi skrip atau lampiran tersembunyi" | Buka PDF itu, pilih **Cetak** → **Simpan sebagai PDF**, lalu upload hasilnya. |
 | "Nama lomba tidak boleh berisi alamat web" | Hapus alamat dari nama, lalu tulis di kolom link resmi/situs web. |
@@ -659,7 +756,7 @@ dan jumlah baris, tanpa nama).
 | "Link berisi karakter yang tidak bisa dipakai." / "Link terlalu panjang, maksimal 500 karakter." | Salin ulang link dari kolom alamat browser; untuk link yang sangat panjang, pakai alamat halaman utamanya. |
 | Kesiswaan: lomba belum bisa dipublikasikan, "Perlu dilengkapi: … Jenis penyelenggara lainnya" | Jenis penyelenggaranya "Lainnya" tetapi jenisnya belum ditulis. Buka **Periksa & lengkapi**, isi **Jenis penyelenggara lainnya**, atau pilih jenis yang cocok. |
 | Angka di lonceng atau di menu samping tidak berubah | Angka diperbarui paling lambat sekitar satu menit selama halaman dipakai. Tab yang lama tidak disentuh berhenti memeriksa: klik di halaman itu, atau muat ulang. |
-| Talenta: "Pilihan ini belum lolos" saat mendaftar lagi | Pilihan yang tidak lolos tidak bisa didaftarkan ulang. Pakai **Minta ditinjau ulang** di daftar talenta pilihanmu. |
+| Talenta: tidak ada lagi "Tidak lolos" atau "Minta ditinjau ulang" | Sejak 12 Oktober 2026 talenta tidak punya tahap; pilihan lama yang dulu tidak lolos tampil sebagai pilihan biasa dan bisa dihapus. |
 | TU: "Nomor ini sudah dipakai surat lain" | Nomor itu pernah dipakai untuk surat sejenis (juga surat yang sudah dicabut). Ketik nomor yang belum dipakai. |
 | TU: surat belum bisa dikirim | Buat dulu PDF surat yang belum ada (surat siswa atau surat guru pendamping). |
 | Humas: acara tidak bisa ditandai sudah dilaksanakan | Tanggal acara belum tiba, atau acaranya belum berisi prestasi. Acara kosong hanya bisa dihapus. |
@@ -675,8 +772,8 @@ dan jumlah baris, tanpa nama).
 | Humas: tombol **Download PNG** atau pilihan template flyer tidak ada | Memang sudah dihapus: aplikasi ini tidak membuat flyer. Pakai **Data untuk flyer** → **Salin data**, lalu buat flyernya di aplikasi desain. |
 | Jendela preview hanya berisi satu kalimat, PDF-nya tidak tampil | Browser di perangkat itu (banyak HP) tidak bisa menampilkan PDF di dalam halaman. Tekan **Download** di jendela itu, lalu buka file-nya. |
 | Jendela preview: "File tidak bisa ditampilkan, coba download atau muat ulang halaman." | Bisa karena sudah terlalu lama tidak aktif, atau terlalu banyak file dibuka dalam satu menit. Muat ulang halaman, tunggu sebentar, lalu coba lagi. |
-| Kesiswaan: "Pilih minimal satu status." saat Download data talenta | Centang paling sedikit satu status, atau tekan **Pilih semua status**. |
-| Kesiswaan: "Tanggal mulai tidak boleh sebelum batas daftar." | Betulkan tanggal mulai atau batas daftar lomba itu. |
+| Kesiswaan: "Tidak ada data talenta dengan filter ini. Tidak ada yang di-download." | Tidak ada baris yang cocok dengan filter di layar; ubah filter atau pencarian. (Pertanyaan status sebelum download sudah tidak ada.) |
+| Kesiswaan: lomba lama tidak bisa disimpan, "Upload juknis, brosur, atau undangan." | Lomba yang dibuat sebelum 12 Oktober 2026 tanpa juknis: upload file-nya bersama perubahan itu. |
 | Kesiswaan: "Batas aktivasi siswa ini masih sampai … Belum perlu dibuka ulang." | Waktu siswa itu masih lebih dari 72 jam, jadi tidak ada yang perlu dibuka. |
 | "Kata sandi ini terlalu mudah ditebak." | Jangan memakai kata umum seperti password, admin, atau qwerty, dan urutan seperti 12345. Lihat aturan kata sandi di §1. |
 | "Jangan memakai nama pengguna." / "Jangan memakai email sendiri." | Kata sandi tidak boleh berisi username atau bagian depan emailmu. |
