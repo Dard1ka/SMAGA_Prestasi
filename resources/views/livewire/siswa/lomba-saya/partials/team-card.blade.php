@@ -16,6 +16,9 @@
                     @if ($d['isTeam'])
                         @if ($member['confirmed'])
                             <x-sth.chip tone="green" icon="check" size="sm">Sudah konfirmasi</x-sth.chip>
+                        @elseif ($member['invitedLater'] ?? false)
+                            {{-- D-148: the invitation goes out once Kesiswaan verified the lomba (FS1 QA round 2). --}}
+                            <x-sth.chip icon="clock" size="sm" class="chip-wrap">Diundang setelah lomba diverifikasi</x-sth.chip>
                         @else
                             <x-sth.chip icon="clock" size="sm">Menunggu konfirmasi</x-sth.chip>
                         @endif

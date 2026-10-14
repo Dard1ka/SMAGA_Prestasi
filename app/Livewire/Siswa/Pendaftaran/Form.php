@@ -412,7 +412,12 @@ class Form extends Component
             'waitingNotice' => $this->waitingNotice($competition),
             // The role that rejected the usulan, by the one lomba rule (StaffRoleLabel::forLomba()); null otherwise.
             'rejectedBy' => $competition->status === CompetitionStatus::Ditolak ? StaffRoleLabel::forLomba($competition->verifier) : null,
-            'closesShort' => $competition->registration_closes_at?->locale('id')->translatedFormat('j M'),
+            // The registration deadline matters while the student may still register or the team still answers (phase 1).
+            // Once the registration is past that step, a "Batas …" chip above the report stage reads like a report
+            // deadline, which no screen shows (D-151; FS1 QA round 2).
+            'closesShort' => $current === null || $current->status->phase() <= 1
+                ? $competition->registration_closes_at?->locale('id')->translatedFormat('j M')
+                : null,
             'me' => $me,
             'current' => $current,
             'status' => $current !== null ? $this->statusView($current, $me) : null,
@@ -426,7 +431,7 @@ class Form extends Component
             'teamFull' => $this->teamFull(),
             'memberRows' => $this->memberRows(),
             'mentors' => $this->mentorOptions(),
-            'peserta' => $this->peserta($me),
+            'peserta' => self::pesertaRows(auth()->user(), $me),
         ]);
     }
 
@@ -460,14 +465,15 @@ class Form extends Component
 
     /**
      * "Data peserta" (D-149): read-only, from the account (D-03), shown to its owner only (this panel is the student's
-     * own form). Nama, Kelas, NISN, Tanggal lahir.
+     * own form; Undangan tim shows the invitee the same rows of the own account, FS1 QA round 2). Nama, Kelas, NISN,
+     * Tanggal lahir.
      *
      * @return list<array{label: string, value: string}>
      */
-    private function peserta(?Student $me): array
+    public static function pesertaRows(?User $user, ?Student $me): array
     {
         return [
-            ['label' => 'Nama', 'value' => (string) auth()->user()?->name],
+            ['label' => 'Nama', 'value' => (string) $user?->name],
             ['label' => 'Kelas', 'value' => $me?->classroom?->name ?? '–'],
             ['label' => 'NISN', 'value' => $me?->nisn ?? '–'],
             ['label' => 'Tanggal lahir', 'value' => $me?->birth_date?->locale('id')->translatedFormat('j F Y') ?? '–'],

@@ -564,10 +564,17 @@ class Talenta extends Component
         return TalentBranch::query()->where('talent_type_id', $type->getKey())->orderBy('sort_order')->pluck('name', 'id')->all();
     }
 
-    /** @return array<string, array<string, string>> */
+    /**
+     * The Kelas filter, grouped by level. "Belum mengisi (kelas X)" lists kelas X students only, so that tab offers only
+     * the kelas X classes: another class could never match there (FS1 QA round 2, the rule of BUG-04).
+     *
+     * @return array<string, array<string, string>>
+     */
     private function classOptions(): array
     {
-        return Classroom::query()->active()->ordered()->get()
+        return Classroom::query()->active()->ordered()
+            ->when($this->tab === 'belum', fn (Builder $q) => $q->where('level', 10))
+            ->get()
             ->groupBy(fn (Classroom $c): string => 'Kelas '.match ($c->level) {
                 10 => 'X', 11 => 'XI', 12 => 'XII', default => (string) $c->level
             })
@@ -590,7 +597,10 @@ class Talenta extends Component
             $this->cabang = '';
         }
 
-        if ($this->kelas !== '' && ! Classroom::query()->whereKey($this->kelas)->exists()) {
+        // A class the open tab does not offer is dropped: on "Belum mengisi (kelas X)" an XI or XII class would only show
+        // an empty list that reads as "everyone chose" (FS1 QA round 2).
+        if ($this->kelas !== '' && ! Classroom::query()->whereKey($this->kelas)
+            ->when($this->tab === 'belum', fn (Builder $q) => $q->where('level', 10))->exists()) {
             $this->kelas = '';
         }
     }

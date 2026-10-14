@@ -95,7 +95,9 @@
                         <th scope="col" class="hidden w-44 md:table-cell 2xl:w-52">Talenta</th>
                         <th scope="col" class="hidden w-20 md:table-cell">Prestasi</th>
                         <th scope="col" class="hidden w-36 md:table-cell 2xl:w-44">Guru pembina</th>
-                        <th scope="col" class="w-14"><span class="sr-only">Aksi</span></th>
+                        {{-- FS1 QA round 2: 12px + the 44px touch button + 18px = 74px, so the button stays inside its cell (and
+                             18px inside the card) on a phone; it was a 56px column the button overflowed. --}}
+                        <th scope="col" class="w-20"><span class="sr-only">Aksi</span></th>
                     </x-slot:head>
                     @foreach ($rows as $row)
                         <tr wire:key="t-{{ $row['id'] }}" @class(['bg-primary-wash' => $row['selected']])>
@@ -119,7 +121,7 @@
                             </td>
                             <td class="num hidden text-sm whitespace-nowrap md:table-cell">{{ $row['points'] !== null ? $row['points'].' · '.$row['prestasi'] : '–' }}</td>
                             <td class="hidden text-sm [overflow-wrap:anywhere] md:table-cell">{{ $row['mentorName'] ?? '–' }}</td>
-                            <td>
+                            <td class="text-right">
                                 {{-- The name alone repeats on every row of one student: the label names the talent too (FS1 QA). --}}
                                 <x-sth.icon-button icon="eye" size="sm" :label="'Lihat '.$row['name'].' – '.$row['title']" wire:click="showPanel('{{ $row['id'] }}')" aria-pressed="{{ $row['selected'] ? 'true' : 'false' }}" />
                             </td>

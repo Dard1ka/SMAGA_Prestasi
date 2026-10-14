@@ -232,12 +232,15 @@ final class Navigation
         }
 
         // D-144 (FS1 QA): while a kelas X student must pick a talent, the tab that holds Profil talenta leads there and
-        // the other tabs are locked (see for()).
+        // the other tabs are locked (see for()). FS1 QA round 2: it then carries the name and icon of the menu item it
+        // opens, "Profil talenta" (one name per menu, D-119), because the menu drawer shows Portofolio locked meanwhile.
         if ($gated) {
             foreach ($items as $i => $item) {
                 if ($item['key'] === 'profil' && Route::has('siswa.talenta')) {
                     $items[$i]['href'] = route('siswa.talenta');
                     $items[$i]['route'] = 'siswa.talenta';
+                    $items[$i]['label'] = 'Profil talenta';
+                    $items[$i]['icon'] = 'user';
                 } else {
                     $items[$i]['locked'] = self::heldByTalentGate($item['route']);
                 }

@@ -312,7 +312,7 @@ Kesiswaan.)
      selama lomba masih di **Verifikasi usulan lomba**, tetapi **wajib diisi sebelum dipublikasikan**: kartu usulan menulis
      "Perlu dilengkapi: … Jenis penyelenggara lainnya". Memilih jenis lain menghapus isian itu saat disimpan. Poin
      tidak terpengaruh; poin tetap mengikuti kategori bobot.
-   - **Website resmi** dan **Link registrasi**: diawali `https://`. Spasi yang ikut tersalin dibuang sendiri; link
+   - **Link resmi** dan **Link registrasi**: diawali `https://`. Spasi yang ikut tersalin dibuang sendiri; link
      yang ditolak disertai pesan yang menyebut apa yang salah (daftar pesannya di §9).
 2. Semua lomba baru (usulan siswa dan lomba yang ditambahkan Admin; lomba lama dari guru atau Kesiswaan tetap ada)
    masuk **Verifikasi usulan lomba**. Verifikator (Kesiswaan dan Admin) mendapat email saat ada lomba baru, juga bila

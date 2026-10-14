@@ -1336,6 +1336,19 @@
         border-radius: var(--radius-control);
     }
 
+    /* FS1 QA round 2: below sm the four Detail lomba tabs (359 px with 28px gaps) did not fit a 317 px card at 390 px and
+       "Dokumen" was cut off. Smaller gaps and no side padding make the row about 295 px; a narrower phone still scrolls
+       the row inside its card, never the page. */
+    @media (max-width: 39.99rem) {
+        .stabs {
+            gap: 12px;
+        }
+
+        .stab {
+            padding: 0;
+        }
+    }
+
     /* Button tabs (Kelola lomba: Katalog | Usulan siswa). */
     .tabp {
         display: inline-flex;

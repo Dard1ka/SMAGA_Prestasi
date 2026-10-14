@@ -95,10 +95,12 @@ final class BinaanDetail extends Component
             ])),
             'organizer' => collect([$competition?->organizer_name, $competition?->weight_category?->label()])->filter()->implode(' · '),
             'trackerDates' => $this->trackerDates($registration, $studentLetter),
+            // FS1 QA round 2 (QA-DC-03): an individu registration has no team, so its one student carries neither the
+            // role "Ketua" nor a team confirmation chip.
             'members' => $registration->members->map(fn (RegistrationMember $m): array => [
                 'name' => $m->student?->user?->name ?? 'Siswa',
-                'meta' => trim(($m->student?->classroom?->name ?? '').' · '.$m->role?->label(), ' ·'),
-                'state' => match (true) {
+                'meta' => self::memberMeta($m, $registration->isTeam()),
+                'state' => ! $registration->isTeam() ? null : match (true) {
                     in_array((string) $m->getKey(), $expired, true) => ['Tidak menjawab', 'gray'],
                     $m->declined_at !== null => ['Menolak', 'red'],
                     $m->confirmed_at !== null => ['Terkonfirmasi', 'green'],
@@ -141,7 +143,9 @@ final class BinaanDetail extends Component
     }
 
     /**
-     * Tracker dates per phase (same texts as the student's Lomba saya; phase 5 never shows a due date, D-151).
+     * Tracker dates per phase (same texts as the student's Lomba saya; phase 5 never shows a due date, D-151). Phase 6
+     * is dated only by a verification: `verified_at` also stamps a revision request (RequestReportRevision), and that
+     * day must not stand on "Poin & apresiasi" while it has not started (FS1 QA round 2, QA-DC-04).
      *
      * @return array<int, string>
      */
@@ -156,7 +160,7 @@ final class BinaanDetail extends Component
             3 => self::shortDate($studentLetter?->issued_on),
             4 => self::dateRange($competition?->starts_on, $competition?->final_on, false),
             5 => self::shortDate($report?->submitted_at),
-            6 => self::shortDate($report?->verified_at),
+            6 => self::shortDate($report?->status === ReportStatus::Diverifikasi ? $report->verified_at : null),
         ], fn (string $text): bool => $text !== '');
     }
 

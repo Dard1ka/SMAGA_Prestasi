@@ -29,10 +29,12 @@ beforeEach(function (): void {
     Notification::fake();
     $this->guru = F::staff(RoleName::Guru);
     $this->nadia = F::student();
-    $this->nadia->forceFill(['phone' => '081211112222'])->save();
+    $this->nadia->forceFill(['phone' => '081211112222', 'birth_date' => '2010-03-14'])->save();
     $this->nadia = $this->nadia->fresh(['user', 'classroom']);
     $this->nadiaUser = F::user($this->nadia);
     $this->rizky = F::student('Rizky Maulana', 'XI-1');
+    // Two different birth dates: Undangan tim shows the invitee's own (FS1 QA round 2), never the ketua's.
+    $this->rizky->forceFill(['birth_date' => '2010-11-02'])->save();
     $this->rizkyUser = F::user($this->rizky);
 });
 

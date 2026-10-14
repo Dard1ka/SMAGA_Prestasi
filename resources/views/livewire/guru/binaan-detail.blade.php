@@ -111,7 +111,9 @@
                                 <span class="ellip font-bold">{{ $member['name'] }}</span>
                                 <span class="text-xs text-muted">{{ $member['meta'] }}</span>
                             </span>
-                            <x-sth.chip :tone="$member['state'][1]" size="sm">{{ $member['state'][0] }}</x-sth.chip>
+                            @if ($member['state'])
+                                <x-sth.chip :tone="$member['state'][1]" size="sm">{{ $member['state'][0] }}</x-sth.chip>
+                            @endif
                         </li>
                     @endforeach
                 </ul>

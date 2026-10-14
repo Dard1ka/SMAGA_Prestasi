@@ -12,6 +12,7 @@ use App\Domain\Accounts\PhoneNumber;
 use App\Enums\MemberRole;
 use App\Enums\RegistrationStatus;
 use App\Livewire\Siswa\Lomba\LombaPresenter;
+use App\Livewire\Siswa\Pendaftaran\Form as PendaftaranForm;
 use App\Models\Registration;
 use App\Models\RegistrationMember;
 use App\Policies\RegistrationPolicy;
@@ -124,7 +125,7 @@ class KonfirmasiTim extends Component
             return view('livewire.siswa.konfirmasi-tim', ['withdrawn' => true]);
         }
 
-        $me = auth()->user()->loadMissing('student')->getRelation('student');
+        $me = auth()->user()->loadMissing('student.classroom')->getRelation('student');
         $mine = $registration->members->firstWhere('student_id', $me?->getKey());
         $competition = $registration->competition;
         $mentor = $registration->mentor;
@@ -146,6 +147,9 @@ class KonfirmasiTim extends Component
             // D-148: a team resumed late had its own three days to answer, not the registration deadline.
             'expiredBy' => $registration->answer_until !== null ? 'batas jawab' : 'batas pendaftaran',
             'notifiesLeader' => ConfirmMembership::notifiesLeader($registration),
+            // D-149 (FS1 QA round 2, BUG-07): before "Ikut tim" the invitee checks the own data, read-only, like the ketua
+            // in the Pendaftaran lomba panel. Only the viewer's own account: never another member's birth date or NISN.
+            'peserta' => PendaftaranForm::pesertaRows(auth()->user(), $me),
             'members' => $registration->members
                 ->sortBy(fn (RegistrationMember $m): string => ($m->role === MemberRole::Ketua ? '0' : '1').$m->student?->user?->name)
                 ->map(fn (RegistrationMember $m): array => [

@@ -75,6 +75,13 @@ final class Pengguna extends Component
 
     public string $studentQuery = '';
 
+    /**
+     * FS1 QA round 2 (QA-DC-05): the full NISN the top bar search ("Cari nama atau NISN") brought here. Its result stands
+     * in "Bantuan akun siswa" at the bottom of the page, so a note above the staff table says so and links there.
+     */
+    #[Locked]
+    public ?string $nisnFromSearch = null;
+
     #[Locked]
     public ?int $studentUserId = null;
 
@@ -107,6 +114,7 @@ final class Pengguna extends Component
 
         if (preg_match('/^\d{10}$/', trim($this->search)) === 1) {
             $this->studentQuery = trim($this->search);
+            $this->nisnFromSearch = $this->studentQuery;
             $this->search = '';
             $this->findStudent();
         }
@@ -519,6 +527,7 @@ final class Pengguna extends Component
         $staff = $term === '' ? $all : $all->filter(fn (User $u): bool => str_contains(mb_strtolower((string) $u->name), $term)
             || str_contains(mb_strtolower((string) $u->username), $term))->values();
         $target = $this->targetId !== null ? $all->firstWhere('id', $this->targetId) : null;
+        $studentAccount = $this->studentUserId !== null ? $this->studentSummary() : null;
 
         return view('livewire.admin.pengaturan.pengguna', [
             'staff' => $staff,
@@ -535,7 +544,11 @@ final class Pengguna extends Component
             // W4: user id => label of the privileged role still waiting (new accounts have no role until then).
             'pendingRoles' => RoleChangeRequest::query()->pending()->get(['id', 'user_id', 'to_role'])
                 ->mapWithKeys(fn (RoleChangeRequest $r) => [(int) $r->user_id => $r->to_role->label()])->all(),
-            'studentAccount' => $this->studentUserId !== null ? $this->studentSummary() : null,
+            'studentAccount' => $studentAccount,
+            // The note of a top bar NISN search, while "Bantuan akun siswa" still shows that NISN's answer.
+            'nisnNotice' => $this->nisnFromSearch !== null && trim($this->studentQuery) === $this->nisnFromSearch
+                ? ['nisn' => $this->nisnFromSearch, 'name' => $studentAccount['name'] ?? null]
+                : null,
             'canCreate' => Gate::allows('create', User::class),
             'canReplace' => Gate::allows('create', PrincipalReplacement::class),
         ]);

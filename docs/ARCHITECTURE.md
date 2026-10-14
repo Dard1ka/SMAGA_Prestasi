@@ -478,7 +478,7 @@ are per table). No new permission. Details: `docs/dev-notes/EM2.md`.
   (`MESSAGE`, `NO_HTTPS`, `HTTP`, `SPACE`, `HOST`, `IP`, `PORT`, `CREDENTIALS`, `CHARACTERS`, `TOO_LONG` = 500);
   `passes()` = no problem. The gates that decide are the old ones in the old order, so the accepted set is unchanged;
   the top-level domain is not judged. All four link fields use it (usulan "Link resmi" of siswa and guru:
-  `SubmitCompetition`; Kelola lomba "Website resmi" and "Link registrasi": `CreateCompetition::prepare()` /
+  `SubmitCompetition`; Kelola lomba "Link resmi" ("Website resmi" until FS1 QA round 2) and "Link registrasi": `CreateCompetition::prepare()` /
   `UpdateCompetition`). `Lomba\UsulanForm::kirim()` trims its text fields first, checks the name with `NoWebAddress`
   together with the other fields, and errors raised by the Action also dispatch `sth-form-invalid`. *(Since D-145 the sheet is gone and the guru proposes nothing: the page `Siswa\Lomba\Usulkan::simpan()` cleans the text fields (`CompetitionFields::cleanText()`) and dispatches `sth-form-invalid` the same way, §8k.)*
 - **"Jenis penyelenggara: Lainnya"** (D-125; final, but "required to publish" and the format "Lainnya (…)" are

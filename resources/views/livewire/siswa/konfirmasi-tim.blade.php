@@ -55,8 +55,19 @@
         <x-sth.card as="section" tone="warn" aria-labelledby="h-jawab" class="flex flex-col gap-3">
             <h2 id="h-jawab" class="title-card m-0">Ikut tim ini?</h2>
             <p class="m-0 text-sm text-ink-2">Setelah semua anggota konfirmasi, pendaftaran diteruskan untuk persetujuan. Hanya kamu yang bisa menjawab undangan ini.</p>
-            {{-- D-149: the anggota checks the own No HP before joining. --}}
-            <x-sth.input wire:model="phone" id="no-hp" type="tel" inputmode="tel" autocomplete="tel" label="No HP" hint="Contoh 081234567890." />
+            {{-- D-149 (FS1 QA round 2): the anggota checks the own data (read-only, from the own account, like the ketua's
+                 Pendaftaran lomba panel) and the own No HP before joining. --}}
+            <section aria-labelledby="h-peserta" class="flex flex-col gap-3 rounded-tile border border-line bg-surface p-4">
+                <h3 id="h-peserta" class="title-card m-0">Data peserta</h3>
+                <dl class="m-0 grid grid-cols-[104px_minmax(0,1fr)] gap-x-3 gap-y-1.5 text-sm">
+                    @foreach ($peserta as $row)
+                        <dt class="text-muted">{{ $row['label'] }}</dt>
+                        <dd class="m-0 font-semibold [overflow-wrap:anywhere]">{{ $row['value'] }}</dd>
+                    @endforeach
+                </dl>
+                <p class="m-0 text-xs text-muted">Data salah? Hubungi Kesiswaan.</p>
+                <x-sth.input wire:model="phone" id="no-hp" type="tel" inputmode="tel" autocomplete="tel" label="No HP" hint="Contoh 081234567890." />
+            </section>
             <div class="flex flex-wrap gap-2">
                 <x-sth.button icon="check" wire:click="ikut" wire:loading.attr="disabled">Ikut tim</x-sth.button>
                 <x-sth.button variant="quiet" data-sth-open="tolak-undangan" aria-haspopup="dialog">Tolak</x-sth.button>

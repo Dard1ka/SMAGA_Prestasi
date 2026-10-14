@@ -9,6 +9,7 @@ use App\Domain\Points\PointCalculator;
 use App\Domain\Points\WeightTable;
 use App\Enums\ResultType;
 use App\Models\Competition;
+use App\Models\RegistrationMember;
 use App\Models\WeightVersion;
 use Carbon\CarbonImmutable;
 use DateTimeInterface;
@@ -38,6 +39,15 @@ trait ReportHelpers
             $result,
             $competition->weight_category,
         );
+    }
+
+    /**
+     * The line under a participant's name: "XI-2 · Ketua" in a team, the class alone on an individu registration, which
+     * has no team roles (FS1 QA round 2, LOMBA-07: the sole participant is not a "Ketua"). Needs `student.classroom`.
+     */
+    protected static function memberMeta(RegistrationMember $member, bool $team): string
+    {
+        return trim(($member->student?->classroom?->name ?? '').($team ? ' · '.$member->role?->label() : ''), ' ·');
     }
 
     /**

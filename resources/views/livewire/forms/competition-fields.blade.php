@@ -32,7 +32,7 @@
                 <p class="m-0 text-sm">Hasil peta: <span class="font-semibold">{{ $mapped }}</span></p>
             @endif
             <x-sth.radio-pick wire:model.live="form.weight_category" label="Kategori bobot" :columns="5" :options="$options['weight_category']"
-                hint="A Puspresnas · B Pemerintah/BUMN · C Federasi/PT · D Swasta · E Lainnya" />
+                hint="A Puspresnas · B Pemerintah/BUMN/BUMD · C Federasi/PT · D Swasta · E Lainnya" />
             <x-sth.select wire:model.live="form.event_status" label="Status ajang" placeholder="Pilih status" :options="$options['event_status']" />
             @if ($overridden)
                 <p class="muted m-0 text-sm">Diubah dari hasil peta.</p>
@@ -88,7 +88,9 @@
         <h3 id="h-lf-link" class="title-card m-0">Link</h3>
         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
             @if ($staff)
-                <x-sth.input type="url" wire:model="form.website_url" label="Website resmi" placeholder="https://" icon="link" hint="Diawali https://."
+                {{-- The same name as on Usulkan lomba (FS1 QA round 2). Optional here: Kesiswaan may correct or clear any
+                     field (D-145) and publishing does not need it (VerifyCompetition::REQUIRED_TO_PUBLISH). --}}
+                <x-sth.input type="url" wire:model="form.website_url" label="Link resmi" placeholder="https://" icon="link" hint="Diawali https://."
                     maxlength="500" autocomplete="off" autocapitalize="off" spellcheck="false" optional />
             @else
                 {{-- Checked on "Simpan" only (ExternalUrl says what is wrong); the server strips spaces around a pasted link. --}}

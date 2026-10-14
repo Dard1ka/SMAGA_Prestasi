@@ -293,8 +293,11 @@ final class Index extends Component
             'lettersIssuedOn' => $studentLetter?->issued_on !== null ? self::shortDate($studentLetter->issued_on) : null,
             'members' => $registration->members->map(fn (RegistrationMember $m): array => [
                 'name' => $m->student?->user?->name ?? 'Siswa',
-                'meta' => trim(($m->student?->classroom?->name ?? '').' · '.$m->role?->label(), ' ·'),
+                'meta' => self::memberMeta($m, $registration->type === RegistrationType::Tim),
                 'confirmed' => $m->confirmed_at !== null,
+                // D-148: while the lomba waits for Kesiswaan nobody has been invited yet (`invited_at` is null), so the
+                // member is not "waiting for a confirmation" but invited once the lomba is verified (FS1 QA round 2).
+                'invitedLater' => $m->confirmed_at === null && $m->invited_at === null && $status === RegistrationStatus::MenungguLomba,
                 'me' => $m->student_id === $student?->getKey(),
             ])->all(),
             'mentor' => $registration->mentor !== null ? $this->mentorName($registration->mentor) : null,

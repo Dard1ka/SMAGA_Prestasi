@@ -16,6 +16,19 @@
         @endif
     </x-sth.page-header>
 
+    {{-- FS1 QA round 2 (QA-DC-05): a full NISN from the top bar search is answered in "Bantuan akun siswa" at the bottom
+         of the page; this note on the first screen says what was found and links there. --}}
+    @if ($nisnNotice)
+        @if ($nisnNotice['name'] !== null)
+            <x-sth.alert :title="'Hasil NISN '.$nisnNotice['nisn']">
+                Akun siswa {{ $nisnNotice['name'] }} ada di Bantuan akun siswa.
+                <span class="mt-1 block"><x-sth.link href="#h-bantuan-siswa" :navigate="false" icon-right="chevron-down">Lihat akun siswa</x-sth.link></span>
+            </x-sth.alert>
+        @else
+            <x-sth.alert tone="warning" :title="'Hasil NISN '.$nisnNotice['nisn']">Tidak ada siswa dengan NISN {{ $nisnNotice['nisn'] }}.</x-sth.alert>
+        @endif
+    @endif
+
     @if ($pending)
         <x-sth.alert tone="warning" title="Penggantian Kepala Sekolah dijadwalkan">
             Peran Kepala Sekolah pindah dari {{ $pending->fromUser?->name ?? '–' }} ke {{ $pending->toUser?->name }}

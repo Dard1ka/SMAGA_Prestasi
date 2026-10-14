@@ -17,7 +17,7 @@ use Tests\Feature\Siswa\Lomba\LombaFixtures as F;
 
 /*
 | The link fields of the app answer one address the same way (the lead's mail test of 2026-10-09: "kadang bisa,
-| kadang engga"): Siswa › Usulkan lomba › Link resmi and Kelola lomba › Website resmi and Link registrasi. One rule
+| kadang engga"): Siswa › Usulkan lomba › Link resmi and Kelola lomba › Link resmi and Link registrasi. One rule
 | (App\Rules\ExternalUrl), the same cleaning, the same sentence. Guru › Upload info lomba is gone and only Admin adds
 | a lomba in Kelola lomba (D-145).
 */
@@ -79,7 +79,7 @@ function linkThroughKelolaLomba(User $user, string $field, string $typed): array
 it('answers one address the same way on every link field', function (string $typed, ?string $stored, ?string $sentence): void {
     $answers = [
         'siswa, Link resmi' => linkThroughUsulan($this->siswa, $typed),
-        'admin, Website resmi' => linkThroughKelolaLomba($this->admin, 'website_url', $typed),
+        'admin, Link resmi' => linkThroughKelolaLomba($this->admin, 'website_url', $typed),
         'admin, Link registrasi' => linkThroughKelolaLomba($this->admin, 'registration_url', $typed),
     ];
 
@@ -89,7 +89,7 @@ it('answers one address the same way on every link field', function (string $typ
     }
 
     // The drawer brings its error into view like the sheet does.
-    expect($answers['admin, Website resmi']['invalid'])->toBe($sentence !== null)
+    expect($answers['admin, Link resmi']['invalid'])->toBe($sentence !== null)
         ->and($answers['admin, Link registrasi']['invalid'])->toBe($sentence !== null);
 })->with([
     // Accepted as typed (the three addresses of the lead's test guide first).
@@ -134,7 +134,7 @@ it('accepts the addresses of the test guide for a student', function (): void {
 
 it('shows the same hint and input settings under both link fields of Kelola lomba', function (): void {
     Livewire::actingAs($this->kesiswaan)->test(KelolaLombaForm::class)
-        ->assertSee('Website resmi')
+        ->assertSee('Link resmi')
         ->assertSee('Link registrasi')
         ->assertSee('Diawali https://.')
         ->assertSeeHtml('maxlength="500"')
