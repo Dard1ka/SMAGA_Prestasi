@@ -80,7 +80,7 @@
                                                   aria-expanded="{{ $rejecting === $row->id ? 'true' : 'false' }}" aria-controls="tolak-{{ $row->id }}">Tolak</x-sth.button>
                                 </div>
                             @elseif ($state === 'ok')
-                                <x-sth.chip tone="green" icon="check" class="chip-wrap shrink-0">Disetujui · masuk antrean TU</x-sth.chip>
+                                <x-sth.chip tone="green" icon="check" class="chip-wrap shrink-0">{{ $queuedChip }}</x-sth.chip>
                             @elseif ($state === 'tolak')
                                 <x-sth.chip tone="red" icon="x" class="chip-wrap shrink-0">{{ in_array($row->id, $untold, true) ? 'Ditolak · tanpa notifikasi' : 'Ditolak · siswa diberi tahu' }}</x-sth.chip>
                             @endif
@@ -184,7 +184,7 @@
     {{-- D-132: approve one row with another guru pembimbing. One decision: nothing is saved and nobody is told before
          "Setujui dengan guru ini" (D-128); the sentences promise a notice only to the people who get one (D-109). --}}
     <x-sth.modal :id="\App\Livewire\Kepsek\Persetujuan::MENTOR_DIALOG" title="Setujui dengan guru pembimbing lain?"
-                 description="Pendaftaran langsung disetujui dan masuk antrean TU. Persetujuan tidak bisa dibatalkan dari layar ini." size="sm">
+                 :description="$mentorNote" size="sm">
         <form id="ganti-pembimbing-form" wire:submit="approveWithMentor" class="flex flex-col gap-3" novalidate>
             @if ($mentorDialog)
                 <div class="rounded-tile bg-subtle px-3 py-2.5">

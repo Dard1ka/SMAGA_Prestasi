@@ -107,6 +107,23 @@ class Persetujuan extends Component
 
     public const LETTERS_NEXT_TU = 'Surat tugasnya langsung bisa dibuat.';
 
+    /**
+     * Where an approved row goes, by the same reader rule (FS1): the Kepala Sekolah reads "antrean TU", Tata Usaha reads
+     * its own queue, the surat tugas, never "TU" in the third person. QUEUED ends both approval toasts, QUEUED_CHIP is the
+     * chip of a row decided during this visit, MENTOR_NOTE is the first sentence of the "Ganti guru" dialog.
+     */
+    public const QUEUED = 'Masuk antrean TU.';
+
+    public const QUEUED_TU = 'Masuk antrean surat tugas.';
+
+    public const QUEUED_CHIP = 'Disetujui · masuk antrean TU';
+
+    public const QUEUED_CHIP_TU = 'Disetujui · masuk antrean surat';
+
+    public const MENTOR_NOTE = 'Pendaftaran langsung disetujui dan masuk antrean TU.';
+
+    public const MENTOR_NOTE_TU = 'Pendaftaran langsung disetujui dan masuk antrean surat tugas.';
+
     /** Rows on screen (clamped to STEP…MAX in visibleQuery()). */
     public int $limit = self::STEP;
 
@@ -162,7 +179,7 @@ class Persetujuan extends Component
         $this->recent[$registration->getKey()] = 'ok';
         $this->selected = array_values(array_diff($this->selected, [$registration->getKey()]));
         $this->closeReject();
-        $this->dispatch('sth-toast', message: 'Pendaftaran disetujui. Masuk antrean TU.', tone: 'success');
+        $this->dispatch('sth-toast', message: 'Pendaftaran disetujui. '.($this->readerIsTu() ? self::QUEUED_TU : self::QUEUED), tone: 'success');
     }
 
     /**
@@ -247,9 +264,19 @@ class Persetujuan extends Component
             $this->replaced[$id] = (string) $former;
         }
 
+        $queued = $this->readerIsTu() ? self::QUEUED_TU : self::QUEUED;
         $this->dispatch('sth-toast', message: $appointed !== null
-            ? 'Pendaftaran disetujui dengan guru pembimbing '.MentorChoice::closing($appointed).' Masuk antrean TU.'
-            : 'Pendaftaran disetujui. Masuk antrean TU.', tone: 'success');
+            ? 'Pendaftaran disetujui dengan guru pembimbing '.MentorChoice::closing($appointed).' '.$queued
+            : 'Pendaftaran disetujui. '.$queued, tone: 'success');
+    }
+
+    /**
+     * Tata Usaha reads this screen (D-150), so its lines speak of the surat tugas, not of "Tata Usaha" (D-119). The
+     * reader is the account, as for its address: an account that is Kepala Sekolah too reads the Kepala Sekolah's lines.
+     */
+    private function readerIsTu(): bool
+    {
+        return ApprovalQueue::routeName($this->user()) === ApprovalQueue::TU;
     }
 
     private function closeMentorDialog(): void
@@ -381,7 +408,7 @@ class Persetujuan extends Component
 
         // The sidebar is rendered once per page load: tell it the queue size after every approve/reject (app.js).
         $this->dispatch('sth-badges', badges: ['kepsek.persetujuan' => $waiting]);
-        $readerIsTu = ApprovalQueue::routeName($this->user()) === ApprovalQueue::TU;
+        $readerIsTu = $this->readerIsTu();
 
         return view('livewire.kepsek.persetujuan', [
             'rows' => $rows,
@@ -397,6 +424,8 @@ class Persetujuan extends Component
             // Rows decided during this visit were decided by this account: "Ditetapkan <peran>" (D-150).
             'deciderRole' => StaffRoleLabel::forDecision($this->user()),
             'bulkNote' => ($readerIsTu ? self::LETTERS_NEXT_TU : self::LETTERS_NEXT).' Persetujuan tidak bisa dibatalkan dari layar ini.',
+            'mentorNote' => ($readerIsTu ? self::MENTOR_NOTE_TU : self::MENTOR_NOTE).' Persetujuan tidak bisa dibatalkan dari layar ini.',
+            'queuedChip' => $readerIsTu ? self::QUEUED_CHIP_TU : self::QUEUED_CHIP,
         ])->layoutData([
             'subtitle' => $readerIsTu ? self::SUBTITLE_TU : self::SUBTITLE,
             'badges' => ['kepsek.persetujuan' => $waiting],

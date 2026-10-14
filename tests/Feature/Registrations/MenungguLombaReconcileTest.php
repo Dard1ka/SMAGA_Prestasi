@@ -143,7 +143,7 @@ it('lets Tata Usaha approve a registration resumed from menunggu_lomba, with a l
 
     Livewire::actingAs($this->tu)->test(Persetujuan::class)
         ->call('approve', $r->getKey())
-        ->assertDispatched('sth-toast', message: 'Pendaftaran disetujui. Masuk antrean TU.');
+        ->assertDispatched('sth-toast', message: 'Pendaftaran disetujui. Masuk antrean surat tugas.');
 
     $r->refresh();
     expect($r->status)->toBe(RegistrationStatus::Disetujui)
