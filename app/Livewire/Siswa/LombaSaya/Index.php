@@ -159,7 +159,8 @@ final class Index extends Component
             ->with([
                 'competition.verifier.roles',
                 'mentor.staffProfile',
-                'members' => fn ($q) => $q->whereNull('declined_at')->orderByRaw("case when role = 'ketua' then 0 else 1 end")->orderBy('invited_at'),
+                // Sorted below in PHP (RegistrationMember::inTeamOrder()), never in SQL: the same order as every other team list.
+                'members' => fn ($q) => $q->whereNull('declined_at'),
                 'members.student.user',
                 'members.student.classroom',
                 'letters',
@@ -169,6 +170,8 @@ final class Index extends Component
                 'principalDecider.roles',
             ])
             ->first();
+
+        $registration?->setRelation('members', RegistrationMember::inTeamOrder($registration->members));
 
         return $registration !== null && Gate::allows('view', $registration) ? $registration : null;
     }

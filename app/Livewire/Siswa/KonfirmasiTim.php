@@ -9,7 +9,6 @@ use App\Actions\Registrations\ConfirmMembership;
 use App\Actions\Registrations\DeclineMembership;
 use App\Actions\Registrations\ExpirePendingInvitations;
 use App\Domain\Accounts\PhoneNumber;
-use App\Enums\MemberRole;
 use App\Enums\RegistrationStatus;
 use App\Livewire\Siswa\Lomba\LombaPresenter;
 use App\Livewire\Siswa\Pendaftaran\Form as PendaftaranForm;
@@ -150,8 +149,8 @@ class KonfirmasiTim extends Component
             // D-149 (FS1 QA round 2, BUG-07): before "Ikut tim" the invitee checks the own data, read-only, like the ketua
             // in the Pendaftaran lomba panel. Only the viewer's own account: never another member's birth date or NISN.
             'peserta' => PendaftaranForm::pesertaRows(auth()->user(), $me),
-            'members' => $registration->members
-                ->sortBy(fn (RegistrationMember $m): string => ($m->role === MemberRole::Ketua ? '0' : '1').$m->student?->user?->name)
+            // FS1: the one order of every team list (RegistrationMember::inTeamOrder()).
+            'members' => RegistrationMember::inTeamOrder($registration->members)
                 ->map(fn (RegistrationMember $m): array => [
                     'id' => $m->getKey(),
                     'name' => (string) $m->student?->user?->name,

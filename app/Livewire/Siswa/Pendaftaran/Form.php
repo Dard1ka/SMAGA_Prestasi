@@ -678,8 +678,8 @@ class Form extends Component
             'undangan' => route('siswa.undangan.show', $registration),
             'canInvite' => $canInvite,
             'slotsLeft' => $max !== null && $max > 0 ? max(0, $max - $active) : null,
-            'team' => ! $showTeam ? [] : $members
-                ->sort(fn (RegistrationMember $a, RegistrationMember $b): int => self::teamOrder($a) <=> self::teamOrder($b))
+            // FS1: the one order of every team list (RegistrationMember::inTeamOrder()), the same as on Lomba saya.
+            'team' => ! $showTeam ? [] : RegistrationMember::inTeamOrder($members)
                 ->map(fn (RegistrationMember $m): array => [
                     'id' => (string) $m->getKey(),
                     'studentId' => (string) $m->student_id,
@@ -696,23 +696,6 @@ class Form extends Component
                 ])
                 ->values()
                 ->all(),
-        ];
-    }
-
-    /**
-     * Sort keys of a team row, the order of Lomba saya: the ketua first, then by invitation time (none yet = last), then
-     * by name. Separate keys, never one concatenated string: a member still waiting for the lomba (D-148) has no
-     * `invited_at`, and the string "1" compared as a number below the ketua's "0<YmdHis>", which put the ketua last.
-     *
-     * @return array{int, int, int, string}
-     */
-    private static function teamOrder(RegistrationMember $member): array
-    {
-        return [
-            $member->role === MemberRole::Ketua ? 0 : 1,
-            $member->invited_at === null ? 1 : 0,
-            $member->invited_at?->getTimestamp() ?? 0,
-            (string) $member->student?->user?->name,
         ];
     }
 

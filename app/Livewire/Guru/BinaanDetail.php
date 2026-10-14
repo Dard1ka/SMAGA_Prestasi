@@ -54,7 +54,6 @@ final class BinaanDetail extends Component
                 'competition',
                 'report.files.file',
                 'report.verifier.roles',
-                'members' => fn ($m) => $m->orderByRaw("CASE WHEN role = 'ketua' THEN 0 ELSE 1 END")->orderBy('created_at'),
                 'members.student:id,user_id,classroom_id',
                 'members.student.user:id,name',
                 'members.student.classroom:id,name',
@@ -64,6 +63,8 @@ final class BinaanDetail extends Component
 
         abort_unless($registration !== null && Gate::allows('viewAsMentor', $registration), 404);
 
+        // FS1: the one order of every team list (RegistrationMember::inTeamOrder()), the order the students see.
+        $registration->setRelation('members', RegistrationMember::inTeamOrder($registration->members));
         $competition = $registration->competition;
         $report = $registration->report;
         [$chip, $tone] = $this->binaanChip($registration);
