@@ -16,6 +16,7 @@ Decisions referenced as D-xx live in `docs/DECISIONS.md`; security controls (K1�
 `siswa`, `guru` (guru pembimbing/pembina), `kesiswaan`, `kepala_sekolah`, `tata_usaha`, `humas`, `admin`.
 Admin can do everything and manage all accounts incl. replacing the Kepala Sekolah account (D-01) — every Admin action is audited.
 Permissions are named `<area>.<action>` (e.g. `competition.verify`, `registration.approve`, `letter.generate`, `student.import`). Policies are the source of truth; UI hides what policies deny.
+`report.verify` (Verifikasi hasil: verify and give points, ask for a revision): Kesiswaan, Humas (D-139, 2026-10-12) and Admin. Privileged roles (`App\Actions\Roles\PrivilegedRoles`: a grant needs a second Admin, or applies 24 h later when there is only one Admin; Kepala Sekolah only through the replacement, D-40): Admin, Kepala Sekolah, Tata Usaha, Kesiswaan, Humas (since D-139). TOTP 2FA is required for every staff role (`staff.2fa`, §8).
 Student import: Kesiswaan + Admin (D-26). Competition upload: any logged-in role (siswa, guru, staff); publication only after Kesiswaan/Admin verification (D-27).
 
 ## 3. Folder conventions
@@ -62,7 +63,7 @@ docker/                    # Dockerfiles, nginx.conf (inside container), php.ini
 - **files**: id, disk, path, original_name, mime, size, sha256, purpose (`FilePurpose`), owner_user_id. All uploads go through `App\Domain\Files\StoreUpload`: extension + sniffed-MIME allowlist (pdf, jpg, jpeg, png, webp), max 10 MB, images re-encoded with EXIF stripped, random path under `storage/app/private`; `original_name` ends in the extension of the sniffed content (`UploadRules::nameForContent()`: a PNG uploaded as "brosur.pdf" is stored as "brosur.png") [QA8]; per user max 30 uploads/hour and 200 MB per student (`UploadLimits`) [B2].
 - **otp_codes**: id, user_id, purpose (verify_email, reset_password), email, code_hash, expires_at, attempts, used_at. Rows older than 24 h are deleted by a scheduled job [B2].
 - **principal_replacements** [W2-D]: id, from_user_id (nullable when there is no Kepala Sekolah yet), to_user_id, requested_by, reason, effective_at (+24 h, D-40), applied_at, cancelled_at, cancelled_by, cancel_reason.
-- **role_change_requests** [B5]: id, user_id, from_roles (json), to_role, requested_by, reason, effective_at (nullable; +24 h when there is only one Admin), approved_at, approved_by (a second Admin), applied_at, cancelled_at, cancelled_by, cancel_reason. Granting Admin, Kesiswaan or Tata Usaha goes through this table via `RequestRoleChange` (D-46; Kepala Sekolah only through `principal_replacements`, `PrivilegedRoles`); downgrades apply at once. Due delayed requests are applied by the scheduled `sth:peran-tertunda` (every 5 min) [W4]. A **new staff account** with role admin, tata_usaha or kesiswaan (`CreateStaffAccount`) is created **without a role** plus a pending request in the same transaction (`RequestRoleChange::open()`, reason `CreateStaffAccount::NEW_ACCOUNT_REASON`; if the request is refused, e.g. by the 3-Admin limit, the account is rolled back); guru and humas get the role at once; kepala_sekolah only through `principal_replacements` (D-61) [W4]. Audit event `account.staff_created` properties: `role` (role given at once; null for a privileged role), `requested_role` (the privileged role requested; null otherwise), `username`.
+- **role_change_requests** [B5]: id, user_id, from_roles (json), to_role, requested_by, reason, effective_at (nullable; +24 h when there is only one Admin), approved_at, approved_by (a second Admin), applied_at, cancelled_at, cancelled_by, cancel_reason. Granting Admin, Kesiswaan or Tata Usaha goes through this table via `RequestRoleChange` (D-46; Kepala Sekolah only through `principal_replacements`, `PrivilegedRoles`); downgrades apply at once. Due delayed requests are applied by the scheduled `sth:peran-tertunda` (every 5 min) [W4]. A **new staff account** with role admin, tata_usaha or kesiswaan (`CreateStaffAccount`) is created **without a role** plus a pending request in the same transaction (`RequestRoleChange::open()`, reason `CreateStaffAccount::NEW_ACCOUNT_REASON`; if the request is refused, e.g. by the 3-Admin limit, the account is rolled back); guru and humas get the role at once; kepala_sekolah only through `principal_replacements` (D-61) [W4]. Audit event `account.staff_created` properties: `role` (role given at once; null for a privileged role), `requested_role` (the privileged role requested; null otherwise), `username`. *(2026-10-12, D-139: Humas is privileged too, so granting it goes through this table and a new Humas account starts without a role; only guru gets its role at once. Accounts that hold Humas already keep it.)*
 - **email_notices** [B1]: id, user_id, kind (e.g. activation, email change), sent_to_masked, expires_at, used_at — single-use "Bukan saya?" (K8) tokens; using one freezes the account.
 - **student_imports** [B2]: id, user_id, file_id (nullable), status, extension, school_year, file_name, file_sha256, total_rows, valid_rows, invalid_rows, sanitized_rows (cells that started with `=`, `+`, `-`, `@`, D-48), processed_rows, created_count, updated_count (registered students the run moved to another class, default 0, D-81) [M1-C], error, started_at, finished_at — queued import runs (> 50 valid rows, slices of 100, D-55); the stored spreadsheet is deleted when the job ends (done or failed), `file_sha256` stays (D-64).
 - **audit_seals** [B2]: id (bigint), activity_id (unique), prev_hash, hash (sha256 hash chain over `activity_log`, written once, INSERT only). **audit_chain_heads** [B2]: id (tinyint, single row), last_seal_id, last_hash. Seals are written after the business commit in their own short transaction (D-63); verified by `sth:audit:verify` (SECURITY §3m-9).
@@ -90,8 +91,8 @@ docker/                    # Dockerfiles, nginx.conf (inside container), php.ini
 | surat_terbit | 3 → 4 | TU issued every required letter (its own full number, form and PDF per letter, D-82/D-83), then sent them | berlangsung (scheduler on starts_on) |
 | berlangsung | 4 Lomba | today ≥ starts_on | menunggu_laporan (scheduler after final_on) |
 | menunggu_laporan | 5 Laporan hasil | today > final_on; deadline = final_on + `report_deadline_days` (45) | laporan_dikirim |
-| laporan_dikirim | 5 | leader submits the report | selesai (verified) · menunggu_laporan (perlu revisi) |
-| selesai | 6 Poin & apresiasi | Kesiswaan verified → achievements + points, Humas notified | — |
+| laporan_dikirim | 5 | leader submits the report (mail to Kesiswaan and Humas, D-139) | selesai (verified) · menunggu_laporan (perlu revisi) |
+| selesai | 6 Poin & apresiasi | Kesiswaan or Humas verified (D-139; the first decision wins) → achievements + points, Humas notified. A report rejected before D-140 also ended here, without points | — |
 | dibatalkan | end | leader cancels before the principal decides | — |
 Transitions happen only in `app/Actions/Registrations/*`, which assert the source status inside a DB transaction with `lockForUpdate()`, write the activity log, and dispatch queued notifications (mail + database). The time-driven transitions (surat_terbit → berlangsung → menunggu_laporan) are Actions too (`StartCompetition`, `AwaitReport`), called by the scheduler command `sth:registrations:advance` [B3].
 
@@ -165,8 +166,8 @@ expects (details and the run with real OTP codes: TEST-RESULTS in `docs/dev-note
 | Registration cancelled (`CancelRegistration`) | the other members, the guru pembimbing; the Kepala Sekolah only if it had reached `menunggu_kepsek` |
 | Letters sent / revised (`SendLetters`, `RevokeLetter`) | members (siswa letter), guru pembimbing (guru letter); a revocation also goes to the Kepala Sekolah |
 | Report window opened, reminders 14 and 3 days before the deadline | the ketua |
-| Report submitted / resubmitted (`SubmitReport`) | every Kesiswaan |
-| Report verified / revision requested / rejected | all confirmed members; the guru pembimbing of the registration (`BinaanReportDecided`, "Yth. …", link to the binaan page; only an active guru account, D-110); on verification also every Humas ("ready for publication") |
+| Report submitted / resubmitted (`SubmitReport`) | every account that can log in and holds Kesiswaan **or** Humas (D-139; before: Kesiswaan only), once each (`App\Actions\Reports\ReportVerifiers::recipients()`; Admin is not mailed). `ReportSubmitted` builds its link per recipient: a Humas account gets `humas.verifikasi.index`, any other (Kesiswaan, also one that is Humas too) `kesiswaan.verifikasi.index` (`VerificationArea::forUser()`), so nobody is sent to an address that answers 403 |
+| Report verified / revision requested / rejected | all confirmed members; the guru pembimbing of the registration (`BinaanReportDecided`, "Yth. …", link to the binaan page; only an active guru account, D-110); on verification also every Humas ("ready for publication"; since D-139 this includes the Humas who decided). Since D-139 the sentences name the role that decided (`StaffRoleLabel::forDecision($actor)`: "Capaian … sudah diverifikasi Humas.", "Catatan Humas: …"; "sekolah" for no staff role). "Rejected" comes only from `RejectReport`, which no screen calls since D-140 |
 | Publication marked as published (`PublishPublication`, "Tandai dipublikasikan"; the only moment since D-122) | the student of the achievement, when the account can log in (`PublishPublication::notifiesStudent()`); nobody else |
 | Scheduled publication whose time arrived (`RemindDuePublication`, job `RemindDuePublications` every 5 minutes; D-122) | every active Humas account, **once per schedule** (`PublicationDue`, "Waktunya upload publikasi": upload it to the channels now, then press "Tandai dipublikasikan"; it points to the caption and the data for the flyer on the publication page). **The student is not told at that time.** A re-schedule gives the new time its own reminder. No reminder for a student who may not be named (`NamedStudent`: no publish consent, disabled or deleted; an alumnus with consent is still reminded about); a row without a channel is reminded too. The reminder says "siswa baru diberi tahu saat itu" only when the button will really tell the student (`PublicationDue::$notifiesStudent`, set from `PublishPublication::notifiesStudent()` when the reminder is sent); for an alumnus it says "… supaya statusnya menjadi Dipublikasikan." (D-109) |
 | Appreciation scheduled (`RecordAppreciations`, one "Masukkan"; `RecordAppreciation` = the same with one achievement) | each student who can log in, one notice per achievement (`AppreciationScheduled`); each guru pembimbing **one** notice per call that names every binaan of that call (`BinaanAppreciationNotice::scheduledMany()`, kind `appreciation.binaan_scheduled`, D-110 / D-124), so a team added with one click is one guru notice and two separate clicks are two. Every appreciation notice prints the event's day and start time (`EventWhen::sentence()`, "… pada Senin, 12 Oktober 2026 pukul 07.00 WIB"; the date alone for an event without a time, D-123) |
@@ -539,7 +540,7 @@ are per table). No new permission. Details: `docs/dev-notes/EM2.md`.
 
   | screen · button | dialog id (constant) | ask → confirm · locked state |
   |---|---|---|
-  | Kesiswaan › Verifikasi hasil · "Tolak" | `tolak-laporan` (`VerifikasiHasil::REJECT_DIALOG`) | `askReject()` → `reject()` · `$rejectingId` |
+  | Kesiswaan › Verifikasi hasil · "Tolak" (**removed by D-140**, 2026-10-12: button, dialog, constant, methods and property are gone; §8j) | `tolak-laporan` (`VerifikasiHasil::REJECT_DIALOG`) | `askReject()` → `reject()` · `$rejectingId` |
   | Siswa › Daftar lomba · × "Batalkan undangan" | `batal-undangan` (`Siswa\Pendaftaran\Form::WITHDRAW_DIALOG`) | `askBatalkanUndangan($studentId)` → `batalkanUndangan()` · `$withdrawingId` |
   | Kesiswaan › Talenta · bulk "Pindahkan ke …" | `pindahkan-talenta` (`Talenta::ADVANCE_DIALOG`) | `askBulkAdvance()` → `bulkAdvance()` · `$advanceAsk` (which rows move, and from which stage) |
   | Kesiswaan › Kelola lomba · "Tutup" | `tutup-lomba` (`Lomba\Index::CLOSE_DIALOG`) | `askClose($id)` → `close()` · `$closingId` |
@@ -547,9 +548,9 @@ are per table). No new permission. Details: `docs/dev-notes/EM2.md`.
   | Humas › Publikasi · "Tandai dipublikasikan" | `tandai-terbit` (`Publikasi::PUBLISH_DIALOG`) | `askPublish()` → `publish()` · `$publishingId` |
 
   `RejectReport::reason(string $note): string` is the one check of the rejection reason (required, at most 1.000
-  characters, `NOTE_REQUIRED`); `RequestReportRevision::audience(Report): array{told: int, of: int, mentor: bool}`
+  characters, `NOTE_REQUIRED`; since D-140 only the Action uses it); `RequestReportRevision::audience(Report): array{told: int, of: int, mentor: bool}`
   says who hears about a decision, and the dialogs and result banners of "Tolak" and "Minta revisi" name only those
-  people (D-109). `RequestReportRevision::leaderCanResend(Report): bool` = the ketua's account can log in; the
+  people (D-109; since D-140 only the "Minta revisi" banner is left). `RequestReportRevision::leaderCanResend(Report): bool` = the ketua's account can log in; the
   revision banner adds "Ketua / Siswa bisa mengirim ulang laporan." only then (`ReportPolicy::create` lets only the
   ketua send a report again). "Batalkan undangan": the line under the dialog title is "<Nama> langsung diberi tahu."
   when the invitee is told, else the neutral "Undangan ini belum dijawab." (a student screen never states another
@@ -645,6 +646,48 @@ No migration, no new permission, no new route. Details: `docs/dev-notes/RV1.md`.
   root at that moment (`BellChannel::relative()`); an address of any other site is stored as it came and stays
   refused by the screen. `toArray()` of a notification keeps passing `route()`; `internalTarget()` and its host
   check are unchanged. Nothing may read a stored `data['url']` as an absolute address.
+
+### 8j. Rules added by FS1 Paket C (D-139…D-141, the school's feedback of 2026-10-12)
+No migration. One new permission grant (`report.verify` for `humas`: re-run `RoleSeeder` on deploy), three new routes.
+Details: `docs/dev-notes/FS1.md` ("Paket C").
+- **Humas verifies results** (D-139). `Kesiswaan\VerifikasiHasil` serves two route families: `kesiswaan.verifikasi.index|show`
+  (`role:kesiswaan|admin`) and `humas.verifikasi.index|show` (`/humas/verifikasi-hasil[/{report}]`, `role:humas`,
+  `whereUlid`). `App\Support\VerificationArea` (`KESISWAAN` / `HUMAS`; `resolve(?string $routeName, User)` by the route
+  prefix, else `forUser()`: Kesiswaan or Admin → `KESISWAAN`, otherwise `HUMAS`; `indexUrl()` / `showUrl()` refuse any
+  other area) fills `#[Locked] public string $area` once in `mount()`, after `authorize('viewQueue', Report::class)`. The
+  area chooses the `sth-address` URL after a change of the selected report, the address after a decision or a stale
+  decision (`decidedElsewhere()`), the badge payload (`verificationBadges()`: the Kesiswaan keys, or
+  `['humas.verifikasi' => n]` dispatched as `sth-badges`) and one sentence (`catalogGap`: Humas reads "… Kesiswaan
+  melengkapinya di Kelola lomba."); it never grants anything. Sidebar key `humas.verifikasi` (in `Navigation::BADGES`,
+  counted by `NavigationServiceProvider::count()` with `viewQueue` and `Report::awaitingVerification()`, also set by
+  `HumasQueries::badges()`). Own binaan stays refused for every verifier (`ReportPolicy::verify`, warning "Laporan
+  binaan sendiri diverifikasi petugas lain."). The first decision wins (`decidedElsewhere()`, QA8).
+- **Two decisions only** (D-140): `verify` and `requestRevision` are the screen's only decisions; `askReject()`,
+  `reject()`, `REJECT_DIALOG`, `$rejectingId` and the dialog `tolak-laporan` are deleted, and the component file does not
+  mention `RejectReport` (a test reads it). `RejectReport`, `ReportStatus::Ditolak`, `ReportRejected` and
+  `BinaanReportDecided::rejected()` stay for reports rejected before 2026-10-12.
+- **Who is told about a new report**: `App\Actions\Reports\ReportVerifiers::recipients()` (`ROLES` = Kesiswaan, Humas;
+  `canLogIn()`; one row per account), called by `SubmitReport::notifyVerifiers()`; the link of `ReportSubmitted` is per
+  recipient (§8b).
+- **The deciding role in texts**: `App\Support\StaffRoleLabel` (pure, static): `of(User): string` = the label of the
+  highest role by `PRIORITY` (`kepala_sekolah`, `tata_usaha`, `kesiswaan`, `humas`, `admin`, `guru`; '' without a staff
+  role), `forDecision(?User): string` = `of()` or `FALLBACK` "sekolah". `VerifyReport` and `RequestReportRevision` pass
+  `forDecision($actor)` to `ReportVerified::for(Achievement, string $decider)`, `ReportRevisionRequested::for(Report,
+  string, string, string $decider)` and `BinaanReportDecided::revision(…, string $decider)`; the screens read
+  `forDecision($report->verifier)` (Lomba saya: key `decider`, eager load `report.verifier.roles`; Guru › detail binaan:
+  the report array's `decider`). Sentences before any decision say "sekolah". Paket B reuses the helper for approvals.
+- **Privileged Humas**: `PrivilegedRoles::all()` gains `RoleName::Humas`; see §2 and `role_change_requests` in §4.
+- **"Cetak daftar"** (D-141): `GET /apresiasi/{event}/cetak` → `apresiasi.cetak` (`whereUlid`, `area.staff` +
+  `role:humas|kesiswaan|admin`) → `AppreciationListPrintController::show()` → `PrintAppreciationList::handle(User,
+  AppreciationEvent): PdfDocument` (`Gate::authorize('printList')` = `AppreciationEventPolicy::viewAny`, i.e.
+  `appreciation.manage`; renders `pdf::daftar-apresiasi` through `PdfRenderer`; audit `appreciation.list_printed` with
+  `event_id`, `rows`, `omitted`). Rows from `AppreciationList::for(AppreciationEvent)`: every appreciation with an
+  achievement (scheduled and given), kept only when `NamedStudent::allows()` at print time (else counted in
+  `omitted`), `name` / `result` / `competition` / `level` from `AchievementFacts`, `class` = "Alumni" for an archived
+  account, "–" without a class; sorted by real class (`strnatcasecmp`), then "Alumni", then "–", then name; never NIS,
+  NISN, points or mentor. Headers as `StreamLetter` (inline, `no-store, private`, `nosniff`, `frame-ancestors 'none'`);
+  file name `PrintAppreciationList::fileName()` (`daftar-apresiasi-<slug, 60>.pdf`). `Humas\Apresiasi::event()` adds
+  `canPrint` (the event holds prestasi and `printList` allows) and `printUrl`; the button opens a new tab.
 
 ## 9. Environments
 - Dev: `docker compose up` → app (php-fpm 8.4 + nginx on 127.0.0.1:8080), mysql 8.4 (127.0.0.1:3307), mailpit (127.0.0.1:8025), vite, scheduler, queue worker. Because the repo is bind-mounted from a Windows drive, the dev php-fpm workers read a cached config and keep compiled views in the container's own filesystem (`docker/php/fpm.dev.conf`, `docker/php/dev-cache.sh`; pool env only, never the command line), so after editing PHP, Blade, `config/` or `.env` run `reload.bat`; the test suite refuses to run on a cached config (D-91).

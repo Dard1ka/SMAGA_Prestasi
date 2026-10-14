@@ -1,8 +1,8 @@
-# FS1 — feedback sekolah of 2026-10-12  ·  status: Paket A and Paket D built (not pushed)
+# FS1 — feedback sekolah of 2026-10-12  ·  status: Paket A, Paket D and Paket C built (not pushed)
 
 Two lists of feedback from SMAGA, pasted by the lead on 2026-10-12, are applied as one wave (FS1) in five packages. The design
 is `2026-10-12-feedback-sekolah-fs1-design.md` (outside the repo, in the lead's workspace `specs/` folder); the decisions are
-in `docs/DECISIONS.md` §D15 (D-135, D-136 for package A; D-137, D-138 for package D). Order of the packages: **A → D → C → E → B**; each one gets its own plan and its
+in `docs/DECISIONS.md` §D15 (D-135, D-136 for package A; D-137, D-138 for package D; D-139…D-141 for package C). Order of the packages: **A → D → C → E → B**; each one gets its own plan and its
 own `## Paket X` section in this file. Branch `feat/fs1-feedback-sekolah` (from `fix/em2-uji-email` = EM2 + RV1, merged with
 `origin/main`), not pushed. Fictional data only.
 
@@ -172,3 +172,139 @@ bumps a rate-limit counter).
 Not browser-checked (covered by feature tests): the student screens (activation step 3 copy and header "NISN ... . kelas", the Profil talenta NISN line,
 Paket A's Pendaftaran lomba panel and Bantuan), the Excel and CSV files as downloaded files, the import dialog with a one-row file, a 9-digit NIS in the login field
 (covered by `LoginTest`), and the phone width.
+
+## Paket C — verifikasi hasil (D-139, D-140, D-141)
+
+Humas verifies laporan hasil next to Kesiswaan on the same screen under its own addresses and becomes a privileged role; the
+screen offers only "Verifikasi dan beri poin" and "Minta revisi"; new reports are mailed to Kesiswaan and Humas and the texts name
+the role that decided; every appreciation event gets "Cetak daftar". Plan: `2026-10-12-fs1-c-verifikasi-hasil-plan.md` (lead's
+workspace `plans/`), design §4. No migration. One permission grant (`report.verify` for `humas`), three routes
+(`humas.verifikasi.index`, `humas.verifikasi.show`, `apresiasi.cetak`), one sidebar key (`humas.verifikasi`), one dialog removed
+(`tolak-laporan`). Commits (branch `feat/fs1-feedback-sekolah`, not pushed; each task reviewed by a fresh reviewer, all clean):
+Task 1 `e8b2748`, 2 `771935d`, 3 `578ccf2`, 4 `e639113`, 5 `398560f`, 6 `8a23afa`, 7 `f13835a`, docs = the commit that adds this
+section.
+
+### Built
+1. **`App\Support\StaffRoleLabel`** (Task 1): `of(User)` = the label of the highest staff role by `PRIORITY` (`kepala_sekolah`,
+   `tata_usaha`, `kesiswaan`, `humas`, `admin`, `guru`; '' without one), `forDecision(?User)` = that label or `FALLBACK` "sekolah".
+   Pure and static; Paket B reuses it. Test `StaffRoleLabelTest`.
+2. **Humas holds `report.verify` and is privileged** (Task 2): `RoleName::defaultPermissions()` (humas), `PrivilegedRoles::all()`
+   appends Humas (docblock: an account that is Humas already keeps role and access); the Admin hints in Pengguna & peran (create
+   form, "Ubah peran") and Perubahan peran name Humas. As a consequence `ReportPolicy::viewQueue/view/verify`,
+   `FilePolicy::viaReport` (evidence files) and `HumasQueries::badges()` answer for Humas. New cases in `SeedersTest` and
+   `RoleChangeRequestTest` (a second Admin before an account becomes Humas, taken away at once; an existing Humas account needs no
+   new approval and keeps `report.verify`); changed cases in `RoleChangeRequestTest`, `PrivilegedStaffAccountTest`,
+   `UsersActionsTest` (the non-privileged example is now Guru), `ReportVerificationTest`, `ReportPoliciesTest`,
+   `VerifikasiHasilTolakTest`, `HumasScreensTest`, `PublikasiScreenTest`.
+3. **Humas verification area** (Task 3): `App\Support\VerificationArea` (`KESISWAAN` / `HUMAS`, `forUser()`, `resolve()`,
+   `indexUrl()`, `showUrl()`); routes `humas.verifikasi.index|show` in the Humas group; menu item "Verifikasi hasil" (icon `shield`,
+   after "Antrean publikasi") with the count `humas.verifikasi` (`Navigation::BADGES`, `NavigationServiceProvider::count()`,
+   `HumasQueries::badges()`); `VerifikasiHasil` gets `#[Locked] public string $area` (set in `mount()` from the route name), which
+   picks the `sth-address` URLs, the badge payload (`verificationBadges()`) and the catalog-gap sentence (Humas: "… Kesiswaan
+   melengkapinya di Kelola lomba."). View: "Penetapan sekolah", own binaan "Laporan binaan sendiri diverifikasi petugas lain.". New
+   `HumasVerifikasiTest` (role × route matrix for both families, a Humas user kept inside `humas.*` on the screen, after a decision
+   and after a colleague decided, own binaan refused with a forged call → 403, counts in the menu / other pages / live counts / after
+   a decision, 2FA before the screen); changed `HumasRoutesTest`, `NavigationBadgesTest`, `HumasScreensTest`,
+   `PublikasiScreenTest`, `VerifikasiHasilTolakTest`.
+4. **No "Tolak"** (Task 4): `askReject()`, `reject()`, `REJECT_DIALOG`, `$rejectingId`, `rejecting()`, `rejectNotice()`,
+   `closeRejectDialog()` and the dialog are gone; hint "Wajib untuk minta revisi."; the component no longer imports `RejectReport`
+   (its docblock says "The rejection Action stays for old data and has no caller on a screen", because a test forbids the class
+   name in that file). `VerifikasiHasilTolakTest` rewritten (two buttons only; `RejectReport` still closes a report for old data:
+   `ditolak`, `selesai` without points, team and guru told); `KesiswaanScreensTest` (`verify`, `requestRevision`).
+5. **Mails** (Task 5): `App\Actions\Reports\ReportVerifiers::recipients()` (Kesiswaan or Humas, `canLogIn()`, one row per
+   account); `SubmitReport::notifyVerifiers()`; `ReportSubmitted` builds its link per recipient (`VerificationArea::forUser()`;
+   button "Buka verifikasi hasil"); `ReportVerified::for(…, $decider)`, `ReportRevisionRequested::for(…, $decider)`,
+   `BinaanReportDecided::revision(…, $decider)`, filled from `StaffRoleLabel::forDecision($actor)` in `VerifyReport` and
+   `RequestReportRevision`. Email scenario: step 0a now creates the second Humas account `fitri.h` through a role request that is
+   applied at once (the only demo Admin puts it in delay mode; the scenario moves `effective_at` back and runs `ApplyRoleChange`),
+   and steps 7a, 7c, 7e expect the report mails for both Humas accounts too. Tests: `SubmitReportTest` (Kesiswaan, Humas, an account
+   with both roles once, a disabled Humas and a guru not told, link per area), `ReportVerificationTest` (decider text for
+   Kesiswaan, Humas, Admin), `MailInjectionTest`.
+6. **Screen texts** (Task 6): Lomba saya status card ("Catatan <peran>", "Diverifikasi <peran> <tanggal>.", "Laporan sudah
+   diverifikasi <peran>.", "Sekolah akan memverifikasi laporanmu."; key `decider`, eager load `report.verifier.roles`), Laporkan
+   hasil (fallback "Sekolah meminta kamu memperbaiki laporan.", toast), Portofolio, Bantuan, Guru › detail binaan ("Catatan <peran>
+   ada di Laporan hasil."), the empty state of Humas › Antrean publikasi. New `DeciderTextTest`.
+7. **Cetak daftar** (Task 7): `AppreciationEventPolicy::printList` (= `viewAny`, `appreciation.manage`),
+   `App\Actions\Publications\AppreciationList::for()` (rows that pass `NamedStudent` at print time, `omitted` count, "Alumni" / "–",
+   sort class → "Alumni" → "–" → name), `PrintAppreciationList` (`viewData()`, `fileName()`, `handle()`: authorize, render through
+   `PdfRenderer`, audit `appreciation.list_printed` with `event_id`, `rows`, `omitted`), `AppreciationListPrintController` (inline PDF,
+   `no-store, private`, `nosniff`, `frame-ancestors 'none'`), route `apresiasi.cetak` (`area.staff`, `role:humas|kesiswaan|admin`),
+   template `resources/pdf/daftar-apresiasi.blade.php`, `Humas\Apresiasi::event()` (`canPrint`, `printUrl`), the button "Cetak
+   daftar" (quiet, icon `external`, new tab, after "Hapus acara"), Log audit label "Daftar apresiasi dicetak". New
+   `CetakDaftarApresiasiTest` (who may be named, order, no NIS/NISN/points/inline style; headers and audit for Humas, Kesiswaan,
+   Admin; other roles, guests and unknown events refused; the button on both Apresiasi routes).
+8. **Docs** (this commit): DECISIONS D-139…D-141 (+ dated notes on D-07, D-34, D-61, D-110, D-128), SECURITY (banner, §3a, §3c,
+   §3m-7, §3m-9, checklist §4), ARCHITECTURE (§2, §4 `role_change_requests`, §6, §8b, §8h, new §8j), CLAUDE (§1, §2, §5, §7, §8,
+   §9, §10), UI-MAP (#17, §4d, Apresiasi rows, §6f, new §6i), PANDUAN-PENGGUNA (§1, §2, §3, §4, §7, §8, §9), this section.
+
+Later on the same screen, not part of Paket C: the FS1 QA pass of 2026-10-13 (`ec743ac`, QA-05) tags a report the ketua sent again
+after "Minta revisi" as "Laporan diperbaiki" (`RequestReportRevision::wasRevised()`, test `VerifikasiHasilRevisedChipTest`).
+
+### Interpretations (coordinator choices to confirm with the lead)
+- **Kesiswaan keeps verifying.** The feedback had both "verifikasi hasil dipindah ke humas" and "verifikasi hasil ada di humas dan
+  kesiswaan"; design §4.1 and the §8 matrix keep Kesiswaan and Admin on `kesiswaan.verifikasi.*` and add Humas on its own
+  addresses. Nothing moved away from Kesiswaan. An account that is Kesiswaan and Humas opens both families; its mails and the
+  links built without a route use the Kesiswaan area (`VerificationArea::forUser()`).
+- **Admin may print.** Design §8 names Humas and Kesiswaan for "Cetak daftar"; the policy is `appreciation.manage`, which Admin
+  holds, so Admin may print too (tested). Admin has no Apresiasi menu item; it reaches `/kesiswaan/apresiasi` by address only.
+- **PDF stylesheet.** Design §4.4 says the PDF uses "stylesheet layout PDF yang ada". The template has its own `<style>` block in
+  the pattern of `resources/pdf/laporan-prestasi.blade.php` (DejaVu Sans 10 pt, kop lines from the letter template, page counter);
+  the letter layout (`resources/pdf/layout.blade.php`) holds the letters' fixed measures and was not reused. No `style=""`.
+- **The deciding Humas is told too.** `VerifyReport` still sends "Prestasi baru siap dipublikasikan" to every Humas who can log in,
+  including the Humas who just verified the report.
+- **Role order and wording.** One label per account by the order Kepala Sekolah, Tata Usaha, Kesiswaan, Humas, Admin, Guru (a
+  Kepala Sekolah who is also guru reads as "Kepala Sekolah"); "sekolah" without a decider or a staff role; "Penetapan sekolah" on
+  the verification screen; the own-binaan warning without a role ("petugas lain").
+- **Recipients.** `ReportVerifiers` keeps the `canLogIn()` scope the old Kesiswaan query had (an account still in activation is
+  included; D-68 decides whether its mail goes out). Admin is not mailed.
+- **Unchanged on purpose:** the chip "Diverifikasi Kesiswaan" on Siswa › Detail lomba (about the lomba); the Bantuan lines that
+  send students to Kesiswaan for lomba proposals; `BinaanReportDecided::verified()` (it names no role); the old `ditolak` texts.
+
+### Deploy notes
+1. Re-run the role seeder after the code is in place: `php artisan db:seed --class=RoleSeeder --force` (idempotent, syncs the
+   permissions of every role and clears the permission cache). Without it Humas has no `report.verify`: no count, and its new screen
+   answers 403.
+2. Existing Humas accounts keep their role and access: `PrivilegedRoles::needsApproval()` is false for a role the account already
+   holds, so no request is created and nothing is taken away. Tell the school that a **new** Humas account (or a staff account
+   that should become Humas) now waits for a second Admin, or 24 h when there is only one Admin.
+3. 2FA: `staff.2fa` already applied to Humas; in production every Humas account has TOTP before it can open any staff page, so
+   nothing new locks anyone out. Check that each Humas account has 2FA set up before the school starts using the new screen.
+4. Drain the queue before the deploy (stop accepting work, let `queue:work` empty the `mail` and `default` queues). The
+   notification classes kept their properties, so an old payload still unserializes, but a notice queued before the deploy keeps
+   the old wording ("Kesiswaan") and a report sent just before it reaches Kesiswaan only. After the deploy restart `queue` and
+   `scheduler` so the workers load the new classes.
+5. No migration, no asset build needed for this package (no CSS or JS changed).
+
+### Checks run
+- Per task (SDD ledger, focused filters only, Pint clean on touched files each time): Task 1 13 passed; Tasks 1-2 the brief's
+  filter 145 passed; Task 3 195 passed, then `HumasVerifikasiTest|PageWiringTest|ViewWiringTest` 15 passed; Task 4 83 passed (with
+  `PageWiringTest|ViewWiringTest|LivewireRootTest|NoNativeConfirmTest`); Task 5 148 passed; Task 6 235 passed (incl.
+  `PageWiringTest`, `ViewWiringTest`, mail tests); Task 7 19 passed + 162 passed (incl. `PageWiringTest`, `SecurityHeadersTest`).
+- Browser QA of Paket A, D and C by the coordinator on 2026-10-13, items C1-C7 of the checklist in the lead's workspace
+  (`notes/2026-10-13-fs1-browser-qa-checklist.md`: Humas menu and count, verify and revision as Humas, 403 on the Kesiswaan
+  address, no "Tolak", mails to Kesiswaan and Humas with the right link, "Diverifikasi Humas" / "Catatan Humas", "Cetak daftar",
+  Humas among the second-Admin roles). The coordinator's follow-up note (`notes/2026-10-13-fs1-fix-wave.md`) records every item of
+  that pass as passed, with five findings (QA-01…QA-05); the one on this screen (QA-05, the tag of a resent report) was fixed in
+  `ec743ac`. This docs pass did not repeat the browser check.
+- TEST-RESULTS of this docs pass (2026-10-14, on `ec0925e` = Paket C + the merged Paket B tracks + the FS1 QA fixes, run from
+  the container filesystem, one process): `--filter="StaffRoleLabelTest|HumasVerifikasiTest|VerifikasiHasilTolakTest|
+  VerifikasiHasilRevisedChipTest|CetakDaftarApresiasiTest|DeciderTextTest|SubmitReportTest|ReportVerificationTest|
+  RoleChangeRequestTest|PrivilegedStaffAccountTest|SeedersTest|HumasRoutesTest|HumasScreensTest|NavigationBadgesTest|
+  ReportPoliciesTest|MailInjectionTest|KesiswaanScreensTest"` → **283 passed (1704 assertions)**, 37.5 s, exit 0.
+- Not run in this pass: the full suite (the last full run was on `d076688`, before Paket C: 3487 passed, 1 skipped; one full
+  run is planned after the remaining FS1 packages are merged), `pint --test` (docs only), `npm run build` (no CSS or JS in
+  Paket C), the email scenario (steps 0a, 7a, 7c, 7e were edited in Task 5; neither the Paket C tasks nor this pass ran it), the Playwright smoke, `composer
+  audit`, and a new browser check.
+
+### Follow-ups (minor, deferred by the task reviews; nothing blocks)
+- Tests not written: the area per route for an account that holds both Kesiswaan and Humas, and the `InvalidArgumentException`
+  of `VerificationArea`; a render of a report rejected before D-140 on the deep link and the guru screens; a decided report
+  whose `verified_by` is null on the screens (the helper itself is tested); "Cetak daftar" with a soft-deleted student or
+  account (`NamedStudent` excludes both), and the Admin button on `kesiswaan.apresiasi.index` (the route test covers Admin).
+- Docblocks that still say "Kesiswaan" for the decider: `RequestReportRevision` (class) and `VerifyReport` (class); the
+  `PrivilegedRoles` docblock calls the five roles "2FA-mandatory", while `staff.2fa` covers every staff role.
+- `AppreciationList` eager-loads every `AchievementFacts::RELATIONS` path, including the mentor the PDF never prints (batched,
+  not an N+1). `PrintAppreciationList::fileName()` can end in "-" before ".pdf" for a long name and is
+  `daftar-apresiasi-.pdf` for a name without ASCII letters or digits (only the file name).
+- Run the email scenario once for the edited steps (0a, 7a, 7c, 7e) together with the other FS1 packages.
+- Questions for the lead: the *sementara* points under "Interpretations" (also CLAUDE §9).
