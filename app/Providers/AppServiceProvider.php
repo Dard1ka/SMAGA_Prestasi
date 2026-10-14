@@ -48,9 +48,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        // D-138: the one initial password of every new student comes from config. bind(), not singleton: a changed
-        // config value is read on the next resolve.
-        $this->app->bind(InitialPassword::class, fn (): InitialPassword => new InitialPassword((string) config('sth.initial_student_password')));
+        // D-138: the one initial password of every new student comes from config, trimmed, the default for a blank
+        // value (InitialPassword::normalize()). bind(), not singleton: a changed config value is read on the next resolve.
+        $this->app->bind(InitialPassword::class, fn (): InitialPassword => InitialPassword::fromConfig());
 
         // Lead decision (SECURITY K5): new passwords need at least 10 characters; the initial password is refused (D-138).
         $this->app->bind(PasswordPolicy::class, fn (): PasswordPolicy => new PasswordPolicy(

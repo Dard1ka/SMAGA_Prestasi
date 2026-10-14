@@ -127,9 +127,25 @@ function fs1ReminderQueuedBeforeD151(): string
 }
 
 it('still sends a reminder that was queued before D-151 (FS1 B3 review)', function (): void {
-    $old = unserialize(fs1ReminderQueuedBeforeD151());
+    // SerializesModels::__unserialize() sets only the properties the class declares and skips the old keys: no error
+    // and no dynamic-property deprecation, so the old `dueOn` / `daysLeft` need no declaration (FS1 fix wave).
+    $problems = [];
+    set_error_handler(function (int $level, string $message) use (&$problems): bool {
+        $problems[] = $message;
 
-    expect($old)->toBeInstanceOf(ReportReminder::class)
+        return true;
+    });
+
+    try {
+        $old = unserialize(fs1ReminderQueuedBeforeD151());
+    } finally {
+        restore_error_handler();
+    }
+
+    expect($problems)->toBe([])
+        ->and(property_exists(ReportReminder::class, 'dueOn'))->toBeFalse()
+        ->and(property_exists(ReportReminder::class, 'daysLeft'))->toBeFalse()
+        ->and($old)->toBeInstanceOf(ReportReminder::class)
         ->and($old->daysAfterFinal)->toBe(0)
         ->and($old->toArray($this->nadia->user))->toMatchArray([
             'title' => 'Laporan OPSI 2026 ditunggu',

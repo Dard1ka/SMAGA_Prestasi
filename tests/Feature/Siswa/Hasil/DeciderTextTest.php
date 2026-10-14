@@ -55,6 +55,15 @@ it('names Humas as the decider on Lomba saya and on the guru binaan page (D-139)
         ->assertSee('Diverifikasi Humas')->assertDontSee('Diverifikasi Kesiswaan');
 });
 
+it('speaks of "sekolah" for a verified report whose verifier account was deleted (FS1 fix wave)', function (): void {
+    $opsi = F::registration($this->nadia, RegistrationStatus::LaporanDikirim, F::competition(['name' => 'OPSI 2026']));
+    app(VerifyReport::class)->handle($this->humas, fs1cSentReport($opsi, $this->nadia), ResultType::Juara2, array_keys(VerifyReport::CHECKS));
+    $this->humas->delete();
+
+    $this->actingAs($this->nadia->user)->get(route('siswa.lomba-saya.show', $opsi))->assertOk()
+        ->assertSee('Diverifikasi sekolah')->assertDontSee('Diverifikasi Humas')->assertDontSee('Diverifikasi Kesiswaan');
+});
+
 it('speaks of "sekolah" before anybody decided (D-139)', function (): void {
     $wice = F::registration($this->nadia, RegistrationStatus::LaporanDikirim);
     fs1cSentReport($wice, $this->nadia);

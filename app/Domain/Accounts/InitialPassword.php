@@ -23,11 +23,38 @@ final class InitialPassword
     /** Prefix of the pattern used before D-138 (K7 still has to recognise it). */
     public const LEGACY_PREFIX = 'sm4g4_';
 
-    public function __construct(private readonly string $value)
+    /** The value when config/env gives none, or only spaces (config `sth.initial_student_password`). */
+    public const DEFAULT = '12345';
+
+    private readonly string $value;
+
+    /** Spaces around the value are not part of it (FS1 fix wave); a value of spaces only is refused. */
+    public function __construct(string $value)
     {
-        if (trim($value) === '') {
+        $value = trim($value);
+
+        if ($value === '') {
             throw new InvalidArgumentException('Kata sandi awal siswa belum diatur.');
         }
+
+        $this->value = $value;
+    }
+
+    /**
+     * The configured value as the app uses it: trimmed, DEFAULT when it is empty, blank or not a string. Used by
+     * config/sth.php and the container binding, so a blank STH_INITIAL_STUDENT_PASSWORD (or a blank value set at
+     * runtime) never makes a login throw, and every comparison (K7, the security log) sees the same value.
+     */
+    public static function normalize(mixed $value): string
+    {
+        $value = is_string($value) ? trim($value) : '';
+
+        return $value === '' ? self::DEFAULT : $value;
+    }
+
+    public static function fromConfig(): self
+    {
+        return new self(self::normalize(config('sth.initial_student_password')));
     }
 
     /** Only for hashing at import (and the local DemoSeeder). */

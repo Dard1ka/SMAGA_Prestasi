@@ -51,10 +51,6 @@ class Activation extends Component
     #[Locked]
     public ?string $sentTo = null;
 
-    /** Done screen only: a new password was stored (false = the student kept the current one). */
-    #[Locked]
-    public bool $passwordChanged = false;
-
     public string $email = '';
 
     public string $code = '';
@@ -203,7 +199,6 @@ class Activation extends Component
         }
 
         // No password step left (the password was chosen before the email, in the old order).
-        $this->passwordChanged = true;
         $this->step = self::STEP_DONE;
     }
 
@@ -230,7 +225,6 @@ class Activation extends Component
         session()->regenerate(true);
 
         $this->reset('password', 'password_confirmation');
-        $this->passwordChanged = true;
         $this->step = self::STEP_DONE;
     }
 

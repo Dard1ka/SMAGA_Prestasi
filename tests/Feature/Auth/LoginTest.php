@@ -320,6 +320,15 @@ it('flags the initial password tried on an already activated account (K7), new v
     'old D-24 pattern (birth date 2010-03-02)' => ['sm4g4_020310'],
 ]);
 
+it('keeps the login working when the configured initial password is only spaces (FS1 fix wave)', function (): void {
+    config(['sth.initial_student_password' => '   ']);
+    $student = H::pendingStudent();
+
+    w1cLogin(H::NISN)->assertRedirect(route('aktivasi'));
+
+    $this->assertAuthenticatedAs($student->user);
+});
+
 it('sends staff with confirmed 2FA to the TOTP challenge', function (): void {
     $staff = H::staff(RoleName::Kesiswaan);
     $staff->forceFill([

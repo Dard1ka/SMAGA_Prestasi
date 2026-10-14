@@ -160,7 +160,6 @@ it('lets a student choose a new password at step 3', function (): void {
         ->call('savePassword')
         ->assertHasNoErrors()
         ->assertSet('step', Activation::STEP_DONE)
-        ->assertSet('passwordChanged', true)
         ->assertSet('password', '')
         ->assertSee('Kata sandi baru tersimpan')
         ->call('start')
@@ -493,7 +492,7 @@ it('makes a student replace the temporary password of an Admin reset: same order
         ->call('savePassword')
         ->assertHasNoErrors()
         ->assertSet('step', Activation::STEP_DONE)
-        ->assertSet('passwordChanged', true);
+        ->assertSee('Kata sandi baru tersimpan');
 
     $user->refresh();
     expect($user->status)->toBe(UserStatus::Active)
@@ -598,7 +597,7 @@ it('finishes after the code for an account that had already chosen its password 
         ->call('verifyCode')
         ->assertHasNoErrors()
         ->assertSet('step', Activation::STEP_DONE)
-        ->assertSet('passwordChanged', true);
+        ->assertSee('Kata sandi baru tersimpan');
 
     expect($user->fresh()->status)->toBe(UserStatus::Active)
         ->and(m1bEvent(CompleteActivation::EVENT_ACTIVATED)->properties['password_changed'])->toBeTrue();
@@ -777,4 +776,9 @@ it('refuses the initial password from school as the new password, also a long on
         ->assertSet('step', Activation::STEP_PASSWORD);
 
     expect($component->errors()->get('password'))->toBe([PasswordPolicy::MSG_INITIAL_PATTERN]);
+});
+
+it('ends every activation with "Kata sandi baru tersimpan": no kept-password ending since D-138 (FS1 fix wave)', function (): void {
+    expect(property_exists(Activation::class, 'passwordChanged'))->toBeFalse()
+        ->and((string) file_get_contents(resource_path('views/livewire/auth/activation.blade.php')))->not->toContain('Kata sandi tetap');
 });

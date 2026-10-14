@@ -129,14 +129,8 @@
 
         <ul class="flex flex-col gap-2">
             <li class="flex items-center gap-2"><x-sth.icon name="check-circle" :size="18" /> Email {{ $sentTo }} terhubung</li>
-            <li class="flex items-center gap-2">
-                <x-sth.icon name="check-circle" :size="18" />
-                @if ($passwordChanged)
-                    Kata sandi baru tersimpan
-                @else
-                    Kata sandi tetap, tidak diganti
-                @endif
-            </li>
+            {{-- D-138: every activation ends with a new password (no "Lewati"), so there is no kept-password line. --}}
+            <li class="flex items-center gap-2"><x-sth.icon name="check-circle" :size="18" /> Kata sandi baru tersimpan</li>
         </ul>
 
         @if ($isStudent)
