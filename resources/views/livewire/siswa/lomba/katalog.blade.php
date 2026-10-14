@@ -32,26 +32,29 @@
                 Lomba yang kamu usulkan tampil di sini, juga selama Kesiswaan memeriksanya.
             </x-sth.empty-state>
         @else
-            <x-sth.table caption="Usulan lomba kamu, {{ $page->total() }} lomba" fixed table-class="min-w-[520px]">
+            {{-- FS1 QA: on a phone the status moves under the name and only "Lihat" keeps a column, so nothing hides in a
+                 sideways scroll; from sm up the four columns (and their floor) come back. --}}
+            <x-sth.table caption="Usulan lomba kamu, {{ $page->total() }} lomba" fixed table-class="sm:min-w-[520px]">
                 <x-slot:head>
                     <th scope="col">Lomba</th>
                     <th scope="col" class="hidden w-32 sm:table-cell">Dikirim</th>
-                    <th scope="col" class="w-44">Status</th>
-                    <th scope="col" class="w-24"><span class="sr-only">Aksi</span></th>
+                    <th scope="col" class="hidden w-44 sm:table-cell">Status</th>
+                    <th scope="col" class="w-20 sm:w-24"><span class="sr-only">Aksi</span></th>
                 </x-slot:head>
                 @foreach ($rows as $row)
                     <tr wire:key="usulan-{{ $row['id'] }}">
                         <td>
-                            <div class="flex min-w-0 flex-col [overflow-wrap:anywhere]">
+                            <div class="flex min-w-0 flex-col items-start [overflow-wrap:anywhere]">
                                 <span class="font-bold">{{ $row['name'] }}</span>
                                 <span class="text-xs text-muted">{{ $row['organizer'] ?: 'Penyelenggara belum diisi' }}<span class="sm:hidden"> · Dikirim {{ $row['sent'] }}</span></span>
+                                <x-sth.chip :tone="$row['tone']" size="sm" class="chip-wrap mt-1 sm:hidden">{{ $row['status'] }}</x-sth.chip>
                                 @if ($row['note'])
                                     <span class="text-xs text-red">{{ $row['noteLabel'] }} {{ $row['note'] }}</span>
                                 @endif
                             </div>
                         </td>
                         <td class="num hidden text-sm sm:table-cell">{{ $row['sent'] }}</td>
-                        <td><x-sth.chip :tone="$row['tone']" size="sm">{{ $row['status'] }}</x-sth.chip></td>
+                        <td class="hidden sm:table-cell"><x-sth.chip :tone="$row['tone']" size="sm">{{ $row['status'] }}</x-sth.chip></td>
                         <td class="text-right"><x-sth.link :href="$row['href']">Lihat<span class="sr-only"> {{ $row['name'] }}</span></x-sth.link></td>
                     </tr>
                 @endforeach

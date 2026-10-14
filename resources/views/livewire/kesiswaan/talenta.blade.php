@@ -25,17 +25,22 @@
     <div @class(['grid grid-cols-1 items-start gap-[22px]', 'xl:grid-cols-[minmax(0,1fr)_300px] 2xl:grid-cols-[minmax(0,1fr)_392px]' => ! $missingTab])>
         <x-sth.card padding="none" class="flex min-w-0 flex-col">
             <div class="flex flex-col gap-3 border-b border-line p-4">
-                {{-- The jenis and cabang filters belong to the choices; the tab "Belum mengisi" lists students without one. --}}
-                <div class="flex flex-wrap gap-2" role="group" aria-label="Jenis talenta">
-                    <button type="button" class="fchip h-9 px-3.5 text-sm" wire:click="setJenis('')" aria-pressed="{{ $jenis === '' ? 'true' : 'false' }}" @disabled($missingTab)>Semua</button>
-                    @foreach ($types as $type)
-                        <button type="button" class="fchip h-9 px-3.5 text-sm" wire:click="setJenis('{{ $type->code->value }}')" aria-pressed="{{ $jenis === $type->code->value ? 'true' : 'false' }}" @disabled($missingTab)>
-                            {{ $type->code->label() }}@if ($type->bidang)<span class="sr-only">, {{ $type->bidang->label() }}</span>@endif
-                        </button>
-                    @endforeach
-                </div>
-                <div class="grid grid-cols-1 gap-3 md:grid-cols-3">
-                    <x-sth.select wire:model.live="cabang" label="Cabang talenta" size="sm" :placeholder="$branches === [] ? 'Pilih jenis dulu' : 'Semua cabang'" :options="$branches" :disabled="$branches === [] || $missingTab" />
+                {{-- The jenis and cabang filters belong to the choices; the tab "Belum mengisi" lists students without one, so
+                     they are left out there (FS1 QA: disabled chips looked like active ones and did nothing). --}}
+                @unless ($missingTab)
+                    <div class="flex flex-wrap gap-2" role="group" aria-label="Jenis talenta">
+                        <button type="button" class="fchip h-9 px-3.5 text-sm" wire:click="setJenis('')" aria-pressed="{{ $jenis === '' ? 'true' : 'false' }}">Semua</button>
+                        @foreach ($types as $type)
+                            <button type="button" class="fchip h-9 px-3.5 text-sm" wire:click="setJenis('{{ $type->code->value }}')" aria-pressed="{{ $jenis === $type->code->value ? 'true' : 'false' }}">
+                                {{ $type->code->label() }}@if ($type->bidang)<span class="sr-only">, {{ $type->bidang->label() }}</span>@endif
+                            </button>
+                        @endforeach
+                    </div>
+                @endunless
+                <div @class(['grid grid-cols-1 gap-3', 'md:grid-cols-3' => ! $missingTab, 'md:grid-cols-2' => $missingTab])>
+                    @unless ($missingTab)
+                        <x-sth.select wire:model.live="cabang" label="Cabang talenta" size="sm" :placeholder="$branches === [] ? 'Pilih jenis dulu' : 'Semua cabang'" :options="$branches" :disabled="$branches === []" />
+                    @endunless
                     <x-sth.select wire:model.live="kelas" label="Kelas" size="sm" placeholder="Semua kelas" :options="$classes" />
                     <x-sth.input type="search" wire:model.live.debounce.400ms="q" label="Cari" icon="search" placeholder="Nama atau NISN" />
                 </div>
@@ -51,22 +56,27 @@
                         <x-sth.empty-state icon="check-circle" title="Tidak ada siswa di sini" :card="false">Semua siswa kelas X yang cocok dengan filter sudah memilih talenta.</x-sth.empty-state>
                     </div>
                 @else
-                    <x-sth.table caption="Siswa kelas X yang belum memilih talenta" :card="false" fixed table-class="min-w-[560px]">
+                    {{-- FS1 QA: on a phone Kelas and NISN (what Kesiswaan chases students with) go under the name, so nothing
+                         sits in a sideways scroll; from sm up they are columns again. --}}
+                    <x-sth.table caption="Siswa kelas X yang belum memilih talenta" :card="false" fixed table-class="sm:min-w-[560px]">
                         <x-slot:head>
                             <th scope="col">Siswa</th>
-                            <th scope="col" class="w-36">Kelas</th>
-                            <th scope="col" class="w-40">NISN</th>
+                            <th scope="col" class="hidden w-36 sm:table-cell">Kelas</th>
+                            <th scope="col" class="hidden w-40 sm:table-cell">NISN</th>
                         </x-slot:head>
                         @foreach ($missing as $student)
                             <tr wire:key="b-{{ $student['id'] }}">
                                 <td>
                                     <div class="flex min-w-0 items-center gap-2.5">
                                         <x-sth.avatar :name="$student['name']" size="sm" />
-                                        <span class="ellip font-bold">{{ $student['name'] }}</span>
+                                        <div class="flex min-w-0 flex-col">
+                                            <span class="font-bold [overflow-wrap:anywhere]">{{ $student['name'] }}</span>
+                                            <span class="text-xs text-muted sm:hidden">{{ $student['class'] ?? '–' }} · NISN <span class="num">{{ $student['nisn'] }}</span></span>
+                                        </div>
                                     </div>
                                 </td>
-                                <td class="text-sm">{{ $student['class'] ?? '–' }}</td>
-                                <td class="num text-sm">{{ $student['nisn'] }}</td>
+                                <td class="hidden text-sm sm:table-cell">{{ $student['class'] ?? '–' }}</td>
+                                <td class="num hidden text-sm sm:table-cell">{{ $student['nisn'] }}</td>
                             </tr>
                         @endforeach
                     </x-sth.table>
@@ -76,12 +86,15 @@
                     <x-sth.empty-state icon="search" title="Tidak ada pilihan talenta" :card="false">Ubah filter atau kata kunci.</x-sth.empty-state>
                 </div>
             @else
-                <x-sth.table caption="Daftar pilihan talenta" :card="false" fixed table-class="min-w-[720px]">
+                {{-- FS1 QA: the floor fits the card beside the 300px panel at 1366 px (it was 720 in a 692 px card, the eye
+                     button half hidden); below md the talent goes under the name and Prestasi / Guru pembina are left to
+                     the panel, so the eye button stays on a phone screen. --}}
+                <x-sth.table caption="Daftar pilihan talenta" :card="false" fixed table-class="md:min-w-[600px]">
                     <x-slot:head>
                         <th scope="col">Siswa</th>
-                        <th scope="col" class="w-44 2xl:w-52">Talenta</th>
-                        <th scope="col" class="w-20">Prestasi</th>
-                        <th scope="col" class="w-36 2xl:w-44">Guru pembina</th>
+                        <th scope="col" class="hidden w-44 md:table-cell 2xl:w-52">Talenta</th>
+                        <th scope="col" class="hidden w-20 md:table-cell">Prestasi</th>
+                        <th scope="col" class="hidden w-36 md:table-cell 2xl:w-44">Guru pembina</th>
                         <th scope="col" class="w-14"><span class="sr-only">Aksi</span></th>
                     </x-slot:head>
                     @foreach ($rows as $row)
@@ -92,20 +105,23 @@
                                     <div class="flex min-w-0 flex-col">
                                         <span class="ellip font-bold">{{ $row['name'] }}</span>
                                         <span class="text-xs text-muted">{{ $row['class'] }} · <span class="num">{{ $row['nisn'] }}</span></span>
+                                        <span class="text-sm font-semibold [overflow-wrap:anywhere] md:hidden">{{ $row['title'] }}</span>
                                     </div>
                                 </div>
                             </td>
-                            <td>
-                                {{-- D-143: the student's own "Lainnya" text may be one long word (QA7). --}}
+                            <td class="hidden md:table-cell">
+                                {{-- D-143: the student's own "Lainnya" text may be one long word (QA7). One label for a talent
+                                     everywhere (TalentApplication::title(), FS1 QA): "Lainnya (…)", "OSN · Lainnya (…)". --}}
                                 <div class="flex min-w-0 flex-col [overflow-wrap:anywhere]">
-                                    <span class="font-bold">{{ $row['type'] }} <span class="font-medium">· {{ $row['branch'] }}</span></span>
+                                    <span class="font-bold">{{ $row['title'] }}</span>
                                     <span class="text-xs text-muted">{{ $row['bidang']?->label() ?? 'Lainnya' }}{{ $row['hasEvidence'] ? ' · ada bukti' : '' }}</span>
                                 </div>
                             </td>
-                            <td class="num whitespace-nowrap text-sm">{{ $row['points'] !== null ? $row['points'].' · '.$row['prestasi'] : '–' }}</td>
-                            <td class="text-sm [overflow-wrap:anywhere]">{{ $row['mentorName'] ?? '–' }}</td>
+                            <td class="num hidden text-sm whitespace-nowrap md:table-cell">{{ $row['points'] !== null ? $row['points'].' · '.$row['prestasi'] : '–' }}</td>
+                            <td class="hidden text-sm [overflow-wrap:anywhere] md:table-cell">{{ $row['mentorName'] ?? '–' }}</td>
                             <td>
-                                <x-sth.icon-button icon="eye" size="sm" :label="'Lihat '.$row['name']" wire:click="showPanel('{{ $row['id'] }}')" aria-pressed="{{ $row['selected'] ? 'true' : 'false' }}" />
+                                {{-- The name alone repeats on every row of one student: the label names the talent too (FS1 QA). --}}
+                                <x-sth.icon-button icon="eye" size="sm" :label="'Lihat '.$row['name'].' – '.$row['title']" wire:click="showPanel('{{ $row['id'] }}')" aria-pressed="{{ $row['selected'] ? 'true' : 'false' }}" />
                             </td>
                         </tr>
                     @endforeach
@@ -121,7 +137,8 @@
         </x-sth.card>
 
         @unless ($missingTab)
-            <x-sth.card as="aside" aria-label="Detail talenta" class="flex flex-col gap-4">
+            {{-- `sth-reveal` (app.js) brings it into view after a row button when it stands below the list (phones, FS1 QA). --}}
+            <x-sth.card as="aside" :id="\App\Livewire\Kesiswaan\Talenta::PANEL_ID" tabindex="-1" aria-label="Detail talenta" class="flex flex-col gap-4 outline-none">
                 @if ($panel === null)
                     <p class="m-0 text-sm text-muted">Pilih baris untuk melihat detail.</p>
                 @else

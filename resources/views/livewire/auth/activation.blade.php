@@ -119,7 +119,10 @@
         <div class="flex flex-col gap-2">
             <h1 class="title-page">Akun sudah aktif</h1>
             <p class="muted">
-                @if ($isStudent)
+                @if ($talentFirst)
+                    {{-- D-144: a kelas X student without a talent goes to Profil talenta first (FS1 QA). --}}
+                    Pilih minimal satu talenta dulu di Profil talenta. Setelah itu kamu bisa daftar lomba dan pantau prestasimu.
+                @elseif ($isStudent)
                     Sekarang kamu bisa daftar lomba dan pantau prestasimu.
                 @else
                     Aktivasi selesai. Lanjut ke halaman kerja.

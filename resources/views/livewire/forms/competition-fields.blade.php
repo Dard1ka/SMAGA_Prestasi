@@ -32,7 +32,7 @@
                 <p class="m-0 text-sm">Hasil peta: <span class="font-semibold">{{ $mapped }}</span></p>
             @endif
             <x-sth.radio-pick wire:model.live="form.weight_category" label="Kategori bobot" :columns="5" :options="$options['weight_category']"
-                hint="A Puspresnas · B Pemerintah · C Federasi/PT · D Swasta · E Lainnya" />
+                hint="A Puspresnas · B Pemerintah/BUMN · C Federasi/PT · D Swasta · E Lainnya" />
             <x-sth.select wire:model.live="form.event_status" label="Status ajang" placeholder="Pilih status" :options="$options['event_status']" />
             @if ($overridden)
                 <p class="muted m-0 text-sm">Diubah dari hasil peta.</p>

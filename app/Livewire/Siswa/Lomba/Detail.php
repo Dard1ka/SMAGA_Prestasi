@@ -60,6 +60,8 @@ class Detail extends Component
             'syarat' => $this->syarat($competition),
             'jadwal' => $this->jadwal($competition),
             'rumus' => $this->rumus($competition),
+            // "(tiap anggota tim dapat poin penuh)" only where a team may register (FS1 QA: not on an individu lomba).
+            'teamLomba' => $competition->participation !== null && $competition->participation !== Participation::Individu,
             'links' => $this->links($competition),
             'penyelenggara' => LombaPresenter::penyelenggara($competition),
             'paragraphs' => $this->paragraphs($competition->description),
@@ -152,7 +154,7 @@ class Detail extends Component
         ];
     }
 
-    /** Points if the team wins Juara I, from the active weight version (display only, D-08). */
+    /** Points for Juara I, from the active weight version (display only, D-08). */
     private function rumus(Competition $competition): ?array
     {
         if ($competition->level === null || $competition->weight_category === null) {

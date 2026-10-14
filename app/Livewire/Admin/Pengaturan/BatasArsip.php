@@ -19,8 +19,9 @@ use Livewire\Component;
 use Throwable;
 
 /**
- * Tab "Batas & arsip": automatic archive (months after the start of kelas XII, default 18 — D-13). Shows a live
- * example, the archive preview for the next 30 days and the latest archived accounts (alumni cannot log in, D-29).
+ * Tab "Arsip akun" (key `batas`, "Batas & arsip" until FS1 QA): automatic archive (months after the start of kelas
+ * XII, default 18 — D-13). Shows a live example, the archive preview for the next 30 days and the latest archived
+ * accounts (alumni cannot log in, D-29).
  * D-151: a laporan hasil has no deadline any more, so the report card is gone (the setting key stays in code).
  */
 final class BatasArsip extends Component

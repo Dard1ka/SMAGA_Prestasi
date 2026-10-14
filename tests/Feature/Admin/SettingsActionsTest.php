@@ -51,7 +51,7 @@ function sthPngUpload(string $name = 'ttd.png', int $width = 64, int $height = 3
     return UploadedFile::fake()->createWithContent($name, $bytes);
 }
 
-// Batas & arsip -------------------------------------------------------------------------------------
+// Arsip akun (tab key `batas`) ------------------------------------------------------------------------------
 
 it('updates the archive months and recalculates archive dates', function (): void {
     $class = Classroom::factory()->level(12)->create(['name' => 'XII-2']);
@@ -80,7 +80,7 @@ it('rejects out-of-range limits and non-admins', function (): void {
         ->and(Setting::int(SettingKey::ArchiveMonthsAfterGrade12))->toBe(18);
 });
 
-it('saves limits from the Batas & arsip tab', function (): void {
+it('saves limits from the Arsip akun tab', function (): void {
     $this->actingAs($this->admin);
     session(A::passwordConfirmed());
 

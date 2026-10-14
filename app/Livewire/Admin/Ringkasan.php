@@ -53,7 +53,7 @@ final class Ringkasan extends Component
         'principal.applied' => 'Kepala Sekolah diganti',
         'weight.published' => 'Bobot poin diubah',
         'weight.recomputed' => 'Poin dihitung ulang',
-        'settings.limits_updated' => 'Batas & arsip diubah',
+        'settings.limits_updated' => 'Arsip akun diubah',
         'settings.signer_updated' => 'Penandatangan diubah',
         'settings.letter_formats_updated' => 'Format nomor surat diubah',
         'settings.public_updated' => 'Halaman publik diubah',

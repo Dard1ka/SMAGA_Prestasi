@@ -148,10 +148,20 @@ final class LombaPresenter
         return self::range($competition->starts_on, $competition->final_on) ?? 'Tanggal menyusul';
     }
 
-    /** "Pendaftaran" (registration opens – closes, D-147); null when neither date is set. */
+    /**
+     * "Pendaftaran" (registration opens – closes, D-147); null when neither date is set. With one date only it says which
+     * end that is ("Sampai 25 Okt 2026", "Mulai 12 Okt 2026"): a bare date read as a registration of that one day (FS1 QA).
+     */
     public static function pendaftaran(Competition $competition): ?string
     {
-        return self::range($competition->registration_opens_at, $competition->registration_closes_at);
+        $opens = $competition->registration_opens_at;
+        $closes = $competition->registration_closes_at;
+
+        return match (true) {
+            $opens === null && $closes !== null => 'Sampai '.self::date($closes),
+            $opens !== null && $closes === null => 'Mulai '.self::date($opens),
+            default => self::range($opens, $closes),
+        };
     }
 
     /**

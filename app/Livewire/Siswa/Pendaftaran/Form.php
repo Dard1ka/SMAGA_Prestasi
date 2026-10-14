@@ -12,16 +12,19 @@ use App\Actions\Registrations\InviteMembers;
 use App\Actions\Registrations\MentorChoice;
 use App\Actions\Registrations\WithdrawInvitation;
 use App\Domain\Accounts\PhoneNumber;
+use App\Domain\Deadlines\ReportFollowUp;
 use App\Enums\CompetitionStatus;
 use App\Enums\MemberRole;
 use App\Enums\Participation;
 use App\Enums\RegistrationStatus;
 use App\Enums\RegistrationType;
+use App\Enums\ReportStatus;
 use App\Enums\UserStatus;
 use App\Livewire\Siswa\Lomba\LombaPresenter;
 use App\Models\Competition;
 use App\Models\Registration;
 use App\Models\RegistrationMember;
+use App\Models\Report;
 use App\Models\Student;
 use App\Models\User;
 use App\Support\Navigation;
@@ -571,7 +574,7 @@ class Form extends Component
             ->where('competition_id', $this->competitionId)
             ->nonFinal()
             ->whereHas('members', fn (Builder $m) => $m->where('student_id', $me->getKey())->whereNull('declined_at'))
-            ->with(['competition', 'members.student.user:id,name', 'members.student.classroom:id,name', 'mentor.staffProfile'])
+            ->with(['competition', 'report', 'members.student.user:id,name', 'members.student.classroom:id,name', 'mentor.staffProfile'])
             ->latest()
             ->first();
     }
@@ -659,6 +662,9 @@ class Form extends Component
             'leaderName' => (string) $members->firstWhere('role', MemberRole::Ketua)?->student?->user?->name,
             'canCancel' => Gate::allows('cancel', $registration),
             'phase' => $registration->status->phase(),
+            // FS1 QA: `surat_terbit` shares phase 3 with `disetujui`, but its letters exist: that step is done too.
+            'lettersDone' => $registration->status === RegistrationStatus::SuratTerbit || $registration->status->phase() > 3,
+            'stage' => $this->stage($registration, $mine?->role === MemberRole::Ketua),
             'lombaSaya' => $lombaSaya,
             'undangan' => route('siswa.undangan.show', $registration),
             'canInvite' => $canInvite,
@@ -680,5 +686,43 @@ class Form extends Component
                 ->values()
                 ->all(),
         ];
+    }
+
+    /**
+     * What happens now once the steps of the panel (approval, surat tugas) are behind the registration (FS1 QA: a
+     * registration waiting for its report showed only those steps and "Lihat di Lomba saya"). Null before the lomba runs.
+     * Only the ketua reports (ReportPolicy::create), so only the ketua gets the button; no deadline (D-151).
+     *
+     * @return array{title: string, text: string, action: ?array{label: string, href: string}}|null
+     */
+    private function stage(Registration $registration, bool $isLeader): ?array
+    {
+        $team = $registration->isTeam();
+        $revising = $registration->report?->status === ReportStatus::PerluRevisi;
+
+        return match ($registration->status) {
+            RegistrationStatus::Berlangsung => [
+                'title' => 'Lomba berlangsung',
+                'text' => $isLeader ? 'Setelah lomba selesai, laporkan hasilnya di Lomba saya.' : 'Setelah lomba selesai, ketua tim melaporkan hasilnya.',
+                'action' => null,
+            ],
+            RegistrationStatus::MenungguLaporan => [
+                'title' => $revising ? 'Laporan hasil perlu diperbaiki' : 'Laporkan hasil',
+                'text' => match (true) {
+                    ! $isLeader => $revising ? 'Ketua tim memperbaiki laporan dari akunnya.' : 'Ketua tim melaporkan hasil lomba dari akunnya.',
+                    $revising => 'Catatan perbaikannya ada di Lomba saya.',
+                    default => ReportFollowUp::PROMPT.($team ? ' Setiap anggota tim mendapat poin penuh setelah diverifikasi.' : ''),
+                },
+                'action' => $isLeader && Gate::allows('create', [Report::class, $registration]) && Route::has('siswa.lapor')
+                    ? ['label' => $revising ? 'Perbaiki laporan' : 'Laporkan hasil', 'href' => route('siswa.lapor', $registration)]
+                    : null,
+            ],
+            RegistrationStatus::LaporanDikirim => [
+                'title' => 'Laporan hasil terkirim',
+                'text' => 'Sekolah memeriksa laporan hasil. Poin tampil setelah diverifikasi.',
+                'action' => null,
+            ],
+            default => null,
+        };
     }
 }

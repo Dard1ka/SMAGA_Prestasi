@@ -242,10 +242,13 @@ class Beranda extends Component
 
         $registrants = LombaPresenter::registrants($picked);
 
+        // FS1 QA: a list in plain Indonesian ("Sains dan Olahraga", "Sains, Seni Budaya, dan Olahraga"), not "A & B & C".
+        $labels = $interests->map(fn ($b) => $b->label());
+
         return [
             'subtitle' => $interests->isEmpty()
                 ? 'Pendaftaran yang sedang dibuka'
-                : 'Sesuai bidang minatmu: '.$interests->map(fn ($b) => $b->label())->implode(' & '),
+                : 'Sesuai bidang minatmu: '.($labels->count() > 2 ? $labels->join(', ', ', dan ') : $labels->join(' dan ')),
             'cards' => $picked->map(fn (Competition $c): array => LombaPresenter::card($c, $registrants, route('siswa.lomba.show', $c)))->all(),
         ];
     }

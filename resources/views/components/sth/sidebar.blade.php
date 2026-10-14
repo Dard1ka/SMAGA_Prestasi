@@ -7,7 +7,8 @@
     <x-sth.sidebar :nav="$nav" class="hidden lg:flex" />   desktop column (264px, sticky)
     <x-sth.sidebar :nav="$nav" drawer />                     inside the mobile menu <dialog>
 
-    Items whose route does not exist yet render as disabled (aria-disabled, no href).
+    Items whose route does not exist yet render as disabled (aria-disabled, no href). Items `locked` by the kelas X
+    talent gate (D-144) render the same way with a lock icon.
 --}}
 @props(['nav', 'drawer' => false])
 @php
@@ -30,13 +31,19 @@
             <div role="group" aria-labelledby="{{ $prefix }}-sec-{{ $loop->index }}" class="flex flex-col gap-1">
                 <div id="{{ $prefix }}-sec-{{ $loop->index }}" @class(['nav-sec', 'mt-2.5' => ! $loop->first])>{{ $section['label'] }}</div>
                 @foreach ($section['items'] as $item)
+                    @php($locked = $item['locked'] ?? false)
                     <a
                         @class(['nav', 'nav-on' => $item['current']])
-                        @if ($item['disabled']) role="link" aria-disabled="true" @else href="{{ $item['href'] }}" @if ($navAttr = \App\Support\Links::navigateAttribute($item['href'])) {{ $navAttr }} @endif @endif
+                        @if ($item['disabled'] || $locked) role="link" aria-disabled="true" @else href="{{ $item['href'] }}" @if ($navAttr = \App\Support\Links::navigateAttribute($item['href'])) {{ $navAttr }} @endif @endif
                         @if ($item['current']) aria-current="page" @endif
                     >
                         <x-sth.icon :name="$item['icon']" />
                         <span class="min-w-0 flex-1 leading-snug">{{ $item['label'] }}</span>
+                        {{-- D-144 (FS1 QA): a kelas X student opens these after choosing a talent. --}}
+                        @if ($locked)
+                            <x-sth.icon name="lock" :size="16" />
+                            <span class="sr-only">(pilih talenta dulu)</span>
+                        @endif
                         {{-- Always printed for items with a badge key, so the browser event `sth-badges` (app.js) can
                              change or hide the count after a Livewire action without a page reload. --}}
                         @if ($item['badgeKey'] ?? null)

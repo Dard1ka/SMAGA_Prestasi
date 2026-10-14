@@ -26,7 +26,8 @@ final class Pengaturan extends Component
 {
     public const TABS = [
         'bobot' => ['label' => 'Bobot poin', 'icon' => 'award'],
-        'batas' => ['label' => 'Batas & arsip', 'icon' => 'clock'],
+        // FS1 QA: only the archive is left here since D-151 (the key stays, so old links still open the tab).
+        'batas' => ['label' => 'Arsip akun', 'icon' => 'archive'],
         'surat' => ['label' => 'Surat & tanda tangan', 'icon' => 'file'],
         'pengguna' => ['label' => 'Pengguna & peran', 'icon' => 'users'],
         'email' => ['label' => 'Email', 'icon' => 'mail'],

@@ -1291,13 +1291,23 @@
     }
 
     /* ---------- Tabs ---------- */
+    /* The row of underline tabs. Its line is drawn inside the box, so the 3px mark of the current tab covers it without
+       reaching below the box: a tab 1px lower than its row made the row (overflow-x: auto) scroll 1px up and down, with
+       a small scrollbar at its right end (FS1 QA, Detail lomba at 1366 px). */
+    .stabs {
+        display: flex;
+        gap: 28px;
+        overflow-x: auto;
+        overflow-y: hidden;
+        box-shadow: inset 0 -1px 0 var(--color-line);
+    }
+
     /* Underline section tabs (Detail lomba). */
     .stab {
         display: inline-flex;
         align-items: center;
         gap: 8px;
         height: 52px;
-        margin-bottom: -1px;
         padding: 0 2px;
         border: 0;
         border-bottom: 3px solid transparent;

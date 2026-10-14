@@ -31,7 +31,9 @@
     </div>
 
     @if ($staff->isEmpty())
-        <x-sth.empty-state icon="users" title="Tidak ada akun yang cocok">Ganti kata pencarian.</x-sth.empty-state>
+        {{-- FS1 QA: the top bar search ("Cari nama atau NISN") lands here, and a name only finds staff; a student is found by
+             the full NISN in "Bantuan akun siswa" (SECURITY §3m-3), so the empty list says where to look. --}}
+        <x-sth.empty-state icon="users" title="Tidak ada akun yang cocok">Ganti kata pencarian. Nama hanya mencari akun staf; akun siswa dicari dengan NISN lengkap di Bantuan akun siswa di bawah.</x-sth.empty-state>
     @else
         <x-sth.table caption="Akun staf per peran, {{ $staff->count() }} akun" caption-visible>
             <x-slot:head>

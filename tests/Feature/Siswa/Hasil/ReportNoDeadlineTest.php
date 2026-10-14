@@ -161,7 +161,7 @@ it('counts "Belum lapor > 14 hari" on the school dashboard', function (): void {
     expect(Livewire::actingAs($kepsek)->test(Dashboard::class)->viewData('kpi')['lewat'])->toBe(0);
 });
 
-it('leaves the report deadline off the Batas & arsip tab', function (): void {
+it('leaves the report deadline off the Arsip akun tab', function (): void {
     $admin = F::staff(RoleName::Admin, 'Operator Sekolah');
 
     Livewire::actingAs($admin)->test(BatasArsip::class)

@@ -35,10 +35,11 @@
                 </x-slot:actions>
             </x-sth.empty-state>
         @elseif ($isTalent)
-            <x-sth.table caption="Pembinaan talenta, {{ $talentStudents }} siswa" fixed table-class="min-w-[480px]">
+            {{-- FS1 QA: on a phone the talent goes under the name (one column), so it is never cut in a sideways scroll. --}}
+            <x-sth.table caption="Pembinaan talenta, {{ $talentStudents }} siswa" fixed table-class="sm:min-w-[480px]">
                 <x-slot:head>
                     <th scope="col">Siswa</th>
-                    <th scope="col" class="w-56 md:w-72">Talenta</th>
+                    <th scope="col" class="hidden w-56 sm:table-cell md:w-72">Talenta</th>
                 </x-slot:head>
                 @foreach ($talents as $row)
                     <tr wire:key="tal-{{ $row['id'] }}">
@@ -48,16 +49,18 @@
                                 <div class="flex min-w-0 flex-col">
                                     <span class="ellip font-bold">{{ $row['name'] }}</span>
                                     <span class="text-xs text-muted">{{ $row['class'] }}</span>
+                                    <span class="text-sm font-semibold [overflow-wrap:anywhere] sm:hidden">{{ $row['title'] }} <span class="text-xs font-normal text-muted">· {{ $row['bidang']?->label() ?? 'Lainnya' }}</span></span>
                                 </div>
                             </div>
                             @if ($row['note'])
                                 <p class="m-0 mt-1.5 text-xs break-words text-ink-2"><span class="font-bold">Catatan untuk pembina:</span> {{ $row['note'] }}</p>
                             @endif
                         </td>
-                        <td>
-                            {{-- D-143: the student's own "Lainnya" text may be one long word (QA7). --}}
+                        <td class="hidden sm:table-cell">
+                            {{-- D-143: the student's own "Lainnya" text may be one long word (QA7). One label for a talent
+                                 everywhere (TalentApplication::title(), FS1 QA). --}}
                             <div class="flex min-w-0 flex-col [overflow-wrap:anywhere]">
-                                <span class="font-bold">{{ $row['type'] }}@if ($row['branch'])<span class="font-medium"> · {{ $row['branch'] }}</span>@endif</span>
+                                <span class="font-bold">{{ $row['title'] }}</span>
                                 <span class="text-xs text-muted">{{ $row['bidang']?->label() ?? 'Lainnya' }}</span>
                             </div>
                         </td>

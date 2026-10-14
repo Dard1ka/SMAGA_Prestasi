@@ -15,11 +15,11 @@
         {{-- D-151: no report deadline, so no date and no "Terlambat". --}}
         @if ($awaitingReport && $revising)
             <x-sth.alert tone="warning" title="Laporan perlu direvisi">
-                Ketua tim memperbaiki laporan dari akunnya. Catatan {{ $report['decider'] }} ada di Laporan hasil.
+                {{ $reporter }} memperbaiki laporan dari akunnya. Catatan {{ $report['decider'] }} ada di Laporan hasil.
             </x-sth.alert>
         @elseif ($awaitingReport)
             <x-sth.alert tone="warning" title="Laporan hasil belum dikirim">
-                Ketua tim mengirim laporan dari akunnya.
+                {{ $reporter }} mengirim laporan dari akunnya.
             </x-sth.alert>
         @endif
     </x-sth.card>

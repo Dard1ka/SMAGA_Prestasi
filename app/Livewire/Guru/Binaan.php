@@ -196,9 +196,9 @@ final class Binaan extends Component
             'id' => (string) $application->getKey(),
             'name' => $application->student?->user?->name ?? 'Siswa',
             'class' => $application->student?->classroom?->name ?? '–',
-            'type' => $application->talentType?->code?->label() ?? 'Talenta',
-            // "Kimia", "Lainnya (Robotika)", the text of the jenis "Lainnya"; nothing for OLPAIN (D-143).
-            'branch' => $application->talent_branch_id !== null || $application->other_text !== null ? $application->branchLabel() : null,
+            // One label for a talent on every screen (FS1 QA): "OSN · Kimia", "OSN · Lainnya (Robotika)", "Lainnya
+            // (Kaligrafi)", "OLPAIN" (D-143).
+            'title' => $application->title(),
             'bidang' => $application->talentType?->bidang,
             // Kesiswaan's "catatan untuk guru pembina" (internal). No stage and no note for the student (D-142).
             'note' => $application->note !== null ? Str::limit($application->note, 300) : null,

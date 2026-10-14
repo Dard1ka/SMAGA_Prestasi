@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Notifications\Verification;
 
 use App\Domain\Points\PointFormatter;
+use App\Enums\RegistrationType;
 use App\Models\Achievement;
+use App\Models\Registration;
 use App\Models\Report;
 use App\Notifications\Support\MailGreeting;
 use App\Notifications\Support\PlainMailMessage;
@@ -40,8 +42,11 @@ final class BinaanReportDecided extends Notice
 
     public static function revision(Report $report, string $competitionName, string $note, string $decider): self
     {
+        // FS1 QA: an individu registration has no ketua tim; its one student fixes the report.
+        $team = Registration::query()->whereKey($report->registration_id)->value('type') === RegistrationType::Tim;
+
         return self::make($report, $competitionName, 'report.binaan_revision', 'Laporan binaan perlu revisi: ',
-            'Catatan '.$decider.': '.self::sentence($note).' Ketua tim memperbaiki laporan dari akunnya.');
+            'Catatan '.$decider.': '.self::sentence($note).($team ? ' Ketua tim memperbaiki laporan dari akunnya.' : ' Siswa memperbaiki laporan dari akunnya.'));
     }
 
     public static function rejected(Report $report, string $competitionName, string $note): self

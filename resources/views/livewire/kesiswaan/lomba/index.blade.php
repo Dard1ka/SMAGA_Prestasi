@@ -85,7 +85,8 @@
             @endif
         @endif
     @else
-        <x-sth.alert>Semua upload lomba, termasuk dari Kesiswaan sendiri, diperiksa di sini sebelum tampil di katalog.</x-sth.alert>
+        {{-- D-145: only students propose a lomba and Admin adds one; Kesiswaan checks every new one here. --}}
+        <x-sth.alert>Setiap lomba baru, dari usulan siswa atau dari Admin, diperiksa di sini sebelum tampil di katalog.</x-sth.alert>
 
         @if ($queue->isEmpty())
             <x-sth.empty-state icon="inbox" title="Antrean kosong">Tidak ada lomba yang menunggu verifikasi.</x-sth.empty-state>

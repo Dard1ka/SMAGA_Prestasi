@@ -365,6 +365,36 @@ window.addEventListener('sth-form-invalid', (event) => {
     window.setTimeout(() => revealFirstError(scope), 50);
 });
 
+/* ---------------------------------------------------------------- reveal a panel */
+
+/*
+ | A list with a detail panel beside it on a wide screen puts the panel below the list on a phone: a row's button then
+ | filled a panel far below the fold and nothing seemed to happen (FS1 QA, Database talenta siswa). A screen dispatches
+ | `sth-reveal {id}` after such a button; when the top of that element is not in the upper part of the window it is
+ | scrolled to the top and gets focus (it carries tabindex="-1"), so a screen reader starts reading there too. Beside
+ | the list and in view (a desktop), nothing moves.
+ */
+function revealPanel(id) {
+    const target = id ? document.getElementById(id) : null;
+    if (!target) return false;
+
+    const top = target.getBoundingClientRect().top;
+    if (top >= 0 && top <= window.innerHeight * 0.6) return true;
+
+    // 'instant' for the same reason as revealFirstError(): a smooth scroll does nothing in a tab that is not drawing.
+    target.scrollIntoView({ block: 'start', behavior: 'instant' });
+    target.focus({ preventScroll: true });
+
+    return true;
+}
+
+window.addEventListener('sth-reveal', (event) => {
+    const id = event.detail?.id;
+
+    // As with sth-form-invalid: Livewire has morphed the panel in by now; one more turn only if it has not.
+    if (!revealPanel(id)) window.setTimeout(() => revealPanel(id), 50);
+});
+
 /* ---------------------------------------------------------------- sidebar badges and the bell */
 
 /*

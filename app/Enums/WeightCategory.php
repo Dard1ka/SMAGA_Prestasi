@@ -27,7 +27,7 @@ enum WeightCategory: string
     {
         return match ($this) {
             self::A => 'Puspresnas',
-            self::B => 'Pemerintah pusat/daerah',
+            self::B => 'Pemerintah pusat/daerah, BUMN/BUMD',
             self::C => 'Federasi, perguruan tinggi, organisasi profesi',
             self::D => 'Swasta, yayasan, lembaga',
             self::E => 'Lainnya/umum',

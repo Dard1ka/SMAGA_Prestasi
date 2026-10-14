@@ -21,10 +21,19 @@ class ReportWindowOpened extends Notification implements ShouldQueue
 {
     use Queueable;
 
+    /**
+     * A team registration: only then the mail says every member gets full points (FS1 QA). A declared default, not a
+     * promoted one, so a notice queued before this property existed still reads as before.
+     */
+    public bool $team = true;
+
     public function __construct(
         public readonly string $registrationId,
         public readonly string $competitionName,
-    ) {}
+        bool $team = true,
+    ) {
+        $this->team = $team;
+    }
 
     /** @return list<string> */
     public function via(object $notifiable): array
@@ -69,7 +78,9 @@ class ReportWindowOpened extends Notification implements ShouldQueue
 
     private function body(): string
     {
-        return ReportFollowUp::PROMPT.' Setiap anggota tim mendapat poin penuh setelah diverifikasi.';
+        return ReportFollowUp::PROMPT.($this->team
+            ? ' Setiap anggota tim mendapat poin penuh setelah diverifikasi.'
+            : ' Poin diberikan setelah diverifikasi.');
     }
 
     private function url(): ?string

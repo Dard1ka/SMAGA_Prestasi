@@ -77,7 +77,8 @@ it('shows old rows of every status without a stage and counts every coached stud
         ->assertSee('Kaligrafi')
         ->assertSee('Pembinaan talenta, 2 siswa')
         ->assertDontSee(['Tahap', 'Tidak lolos', 'Seleksi/asesmen', 'Asesmen', 'Raka Pradipta'])
-        ->assertViewHas('talents', fn (array $rows): bool => collect($rows)->pluck('branch')->contains('Kaligrafi')
+        // One label for a talent on every screen (FS1 QA): the jenis Lainnya reads "Lainnya (Kaligrafi)".
+        ->assertViewHas('talents', fn (array $rows): bool => collect($rows)->pluck('title')->contains('Lainnya (Kaligrafi)')
             && collect($rows)->every(fn (array $row): bool => ! array_key_exists('status', $row) && ! array_key_exists('step', $row)));
 });
 

@@ -26,9 +26,15 @@
             <aside aria-labelledby="h-daftar" class="card flex flex-col gap-4 p-5">
                 <livewire:siswa.pendaftaran.form :competition-id="$competitionId" :key="'daftar-'.$competitionId" />
             </aside>
+            {{-- Once the registration is sent, "Nanti saja" no longer fits; the lomba stays one link away (FS1 QA). --}}
             <div class="flex flex-col items-start gap-2">
-                <p class="m-0 text-sm text-muted">Belum mau mendaftar sekarang? Lomba ini tetap bisa dibuka dari Detail lomba.</p>
-                <a class="lnk" href="{{ route('siswa.lomba.show', $competitionId) }}">Nanti saja</a>
+                @if ($registered)
+                    <p class="m-0 text-sm text-muted">Lomba ini juga bisa dibuka dari Detail lomba.</p>
+                    <a class="lnk" href="{{ route('siswa.lomba.show', $competitionId) }}">Buka Detail lomba</a>
+                @else
+                    <p class="m-0 text-sm text-muted">Belum mau mendaftar sekarang? Lomba ini tetap bisa dibuka dari Detail lomba.</p>
+                    <a class="lnk" href="{{ route('siswa.lomba.show', $competitionId) }}">Nanti saja</a>
+                @endif
             </div>
         </div>
     @endif

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Support;
 
+use App\Http\Middleware\EnsureTalentChosen;
+use App\Models\User;
 use Closure;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
@@ -170,15 +172,33 @@ final class Navigation
             $sections[$best[0]]['items'][$best[1]]['current'] = true;
         }
 
+        // D-144 (FS1 QA): a kelas X student without a talent is held on Profil talenta. The menus that would only bring
+        // that student back there are shown locked, so a tap no longer seems to do nothing.
+        $gated = $role === 'siswa' && $user instanceof User && EnsureTalentChosen::applies($user);
+
+        if ($gated) {
+            foreach ($sections as $s => $section) {
+                foreach ($section['items'] as $i => $item) {
+                    $sections[$s]['items'][$i]['locked'] = self::heldByTalentGate($item['route']);
+                }
+            }
+        }
+
         return [
             'role' => $role,
             'roleLabel' => self::roleLabel($role),
             'homeUrl' => self::homeUrl($role),
             'search' => self::search($definition['search']),
             'sections' => $sections,
-            'tabbar' => $role === 'siswa' ? self::tabbar($currentRoute, $active, $preview) : [],
+            'tabbar' => $role === 'siswa' ? self::tabbar($currentRoute, $active, $preview, $gated) : [],
             'user' => self::userCard($user, $role),
         ];
+    }
+
+    /** Does the kelas X talent gate (EnsureTalentChosen) send this menu route back to Profil talenta? */
+    private static function heldByTalentGate(?string $route): bool
+    {
+        return $route !== null && ! in_array($route, EnsureTalentChosen::EXEMPT_ROUTES, true);
     }
 
     /**
@@ -186,7 +206,7 @@ final class Navigation
      *
      * @return list<array<string, mixed>>
      */
-    public static function tabbar(?string $currentRoute = null, ?string $active = null, bool $preview = false): array
+    public static function tabbar(?string $currentRoute = null, ?string $active = null, bool $preview = false, bool $gated = false): array
     {
         $currentRoute ??= Route::currentRouteName();
         $defs = [
@@ -209,6 +229,19 @@ final class Navigation
 
         if ($max > 0) {
             $items[array_search($max, $scores, true)]['current'] = true;
+        }
+
+        // D-144 (FS1 QA): while a kelas X student must pick a talent, the tab that holds Profil talenta leads there and
+        // the other tabs are locked (see for()).
+        if ($gated) {
+            foreach ($items as $i => $item) {
+                if ($item['key'] === 'profil' && Route::has('siswa.talenta')) {
+                    $items[$i]['href'] = route('siswa.talenta');
+                    $items[$i]['route'] = 'siswa.talenta';
+                } else {
+                    $items[$i]['locked'] = self::heldByTalentGate($item['route']);
+                }
+            }
         }
 
         return $items;
@@ -486,6 +519,8 @@ final class Navigation
             'href' => $url ?? '#',
             'current' => false,
             'disabled' => $url === null && ! $preview,
+            // Held by the kelas X talent gate (D-144); set by for() / tabbar() for such a student only.
+            'locked' => false,
             'badge' => $badge !== null && (int) $badge > 0 ? (int) $badge : null,
             // The sidebar prints this as data-sth-badge so the browser event `sth-badges` can update the count in place.
             'badgeKey' => isset($def['badge']) ? (string) $def['badge'] : null,

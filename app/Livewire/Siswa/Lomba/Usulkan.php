@@ -8,15 +8,19 @@ use App\Actions\Competitions\SubmitCompetition;
 use App\Domain\Points\PointCalculator;
 use App\Domain\Points\PointFormatter;
 use App\Livewire\Forms\CompetitionFields;
+use App\Livewire\Siswa\Pendaftaran\Form as PendaftaranForm;
 use App\Models\Competition;
+use App\Models\Registration;
 use App\Models\User;
 use Illuminate\Contracts\View\View;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
+use Livewire\Attributes\On;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 use Livewire\WithFileUploads;
@@ -115,13 +119,37 @@ final class Usulkan extends Component
         $this->dispatch('sth-toast', message: 'Usulan lomba tersimpan dan menunggu verifikasi Kesiswaan.', tone: 'success');
     }
 
+    /** The registration panel sent, cancelled or changed the registration: render again so the side note fits (FS1 QA). */
+    #[On(PendaftaranForm::CHANGED)]
+    public function registrationChanged(): void {}
+
     public function render(PointCalculator $calculator, PointFormatter $formatter): View
     {
         return view('livewire.siswa.lomba.usulkan', [
             ...$this->form->presentation($calculator, $formatter),
             'staff' => false,
             'competition' => null,
+            'registered' => $this->registered(),
         ]);
+    }
+
+    /**
+     * Is the student in a running registration of the saved lomba? Then "Belum mau mendaftar sekarang? … Nanti saja"
+     * no longer fits beside the panel (FS1 QA); the panel itself says what happens next.
+     */
+    private function registered(): bool
+    {
+        if ($this->competitionId === null) {
+            return false;
+        }
+
+        $studentId = $this->actor()->student()->value('id');
+
+        return $studentId !== null && Registration::query()
+            ->where('competition_id', $this->competitionId)
+            ->nonFinal()
+            ->whereHas('members', fn (Builder $m) => $m->where('student_id', $studentId)->whereNull('declined_at'))
+            ->exists();
     }
 
     /** The page is long and the button sits at its end: app.js brings the first marked field into view. */

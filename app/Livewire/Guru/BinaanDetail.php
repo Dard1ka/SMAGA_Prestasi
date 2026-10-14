@@ -85,6 +85,8 @@ final class BinaanDetail extends Component
             'awaitingReport' => $awaitingReport,
             // A report sent back for a revision also waits in menunggu_laporan: it was sent, not missing (QA5).
             'revising' => $report?->status === ReportStatus::PerluRevisi,
+            // FS1 QA: "Ketua tim …" only for a team; an individu student reports from the own account.
+            'reporter' => $registration->isTeam() ? 'Ketua tim' : 'Siswa',
             'facts' => array_values(array_filter([
                 ['icon' => 'trophy', 'label' => 'Tingkat', 'value' => $competition?->level?->label() ?? '–'],
                 ['icon' => 'calendar', 'label' => 'Pelaksanaan', 'value' => self::dateRange($competition?->starts_on, $competition?->final_on) ?: '–'],

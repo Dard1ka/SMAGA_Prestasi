@@ -60,12 +60,13 @@
                                 <x-sth.chip tone="green" icon="check">Diverifikasi Kesiswaan</x-sth.chip>
                             @endif
                             @if ($competition->weight_category)
-                                <x-sth.chip tone="gray">Kategori penyelenggara {{ $competition->weight_category->value }}@if ($competition->event_status) · {{ $competition->event_status->label() }}@endif</x-sth.chip>
+                                {{-- "… B · Pemerintah (non-Puspresnas)" is wider than a 390px phone: the tag takes two lines there (FS1 QA). --}}
+                                <x-sth.chip tone="gray" class="chip-wrap">Kategori penyelenggara {{ $competition->weight_category->value }}@if ($competition->event_status) · {{ $competition->event_status->label() }}@endif</x-sth.chip>
                             @endif
                         </div>
                         @if ($rumus)
                             <div class="flex flex-col gap-2.5 border-t border-line pt-4">
-                                <p class="m-0 text-sm font-bold">Perkiraan poin jika Juara I <span class="font-medium text-muted">(tiap anggota tim dapat poin penuh)</span></p>
+                                <p class="m-0 text-sm font-bold">Perkiraan poin jika Juara I @if ($teamLomba)<span class="font-medium text-muted">(tiap anggota tim dapat poin penuh)</span>@endif</p>
                                 <x-sth.rumus-poin :tingkat="$rumus['tingkat']" :capaian="$rumus['capaian']" :penyelenggara="$rumus['penyelenggara']" :total="$rumus['total']" label="Perkiraan poin jika Juara I" />
                             </div>
                         @endif

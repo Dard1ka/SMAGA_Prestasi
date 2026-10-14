@@ -92,19 +92,17 @@ it('shows a Lainnya choice with its text and the guru pembina on the row', funct
     fs1eTalent(TalentTypeCode::Lainnya, null, ['student_id' => $hana->getKey(), 'other_text' => 'Kaligrafi', 'mentor_id' => $guru->getKey()]);
     fs1eTalent(TalentTypeCode::Osn, 'Lainnya', ['student_id' => $hana->getKey(), 'other_text' => 'Robotika']);
 
+    // FS1 QA: the rows use the same label as the panel, Profil talenta and Portofolio (TalentApplication::title()).
     Livewire::actingAs($this->kesiswaan)->test(Talenta::class)
-        ->assertSee('· Kaligrafi')
-        ->assertSee('· Lainnya (Robotika)')
-        ->assertViewHas('rows', fn ($rows) => $rows->firstWhere('branch', 'Kaligrafi')['mentorName'] === 'Pak Hendra Kusuma'
-            && $rows->firstWhere('branch', 'Kaligrafi')['type'] === 'Lainnya'
-            && $rows->firstWhere('branch', 'Kaligrafi')['bidang'] === null)
-        // The panel lists every choice of the student by its title.
         ->assertSee('Lainnya (Kaligrafi)')
         ->assertSee('OSN · Lainnya (Robotika)')
+        ->assertDontSee('Lainnya · Kaligrafi')
+        ->assertViewHas('rows', fn ($rows) => $rows->firstWhere('title', 'Lainnya (Kaligrafi)')['mentorName'] === 'Pak Hendra Kusuma'
+            && $rows->firstWhere('title', 'Lainnya (Kaligrafi)')['bidang'] === null)
         ->call('setJenis', 'lainnya')
         ->assertSet('cabang', '')
         ->assertViewHas('branches', [])
-        ->assertViewHas('rows', fn ($rows) => $rows->pluck('branch')->all() === ['Kaligrafi']);
+        ->assertViewHas('rows', fn ($rows) => $rows->pluck('title')->all() === ['Lainnya (Kaligrafi)']);
 });
 
 it('lists active kelas X students without a talent in "Belum mengisi (kelas X)"', function (): void {

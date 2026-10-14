@@ -113,8 +113,8 @@ Jangan pernah membagikan kata sandi atau kode email kepada siapa pun, termasuk g
 
 ## 2. Siswa
 
-**Siswa kelas X: pilih talenta dulu** (sejak 12 Oktober 2026). Selama kamu belum punya satu pun pilihan talenta, setiap
-menu membawamu ke **Profil talenta** dengan pesan "Pilih minimal satu talenta untuk melanjutkan. Belum punya? Pilih
+**Siswa kelas X: pilih talenta dulu** (sejak 12 Oktober 2026). Selama kamu belum punya satu pun pilihan talenta, menu lain
+terkunci (ikon gembok) dan setiap halaman lain membawamu ke **Profil talenta** dengan pesan "Pilih minimal satu talenta untuk melanjutkan. Belum punya? Pilih
 Lainnya lalu tulis minatmu." Pilih satu talenta (lihat **Profil talenta** di bawah), lalu menu lain terbuka lagi. Bantuan,
 Notifikasi, Keamanan akun, dan Keluar tetap bisa dibuka. Link dari email (mis. undangan tim) yang tadi tertahan: buka
 lagi setelah memilih talenta.
@@ -717,7 +717,7 @@ Peristiwa pendaftaran yang diteruskan setelah lombanya dipublikasikan masih tamp
 
 **Pengaturan**
 - **Bobot poin**: ubah nilai → **Simpan bobot** (membuat versi baru, poin dihitung ulang, Kepala Sekolah diberi tahu).
-- **Batas & arsip**: arsip otomatis (bawaan 18 bulan setelah mulai kelas XII). Pengaturan batas laporan sudah tidak
+- **Arsip akun**: arsip otomatis (bawaan 18 bulan setelah mulai kelas XII). Pengaturan batas laporan sudah tidak
   ada (sejak 12 Oktober 2026 laporan hasil tidak punya batas waktu; siswa diingatkan 3 dan 14 hari setelah lomba).
 - **Surat & tanda tangan**: **Upload tanda tangan** (gambar tanda tangan + stempel, PNG), data penandatangan, dan
   **Contoh nomor surat** → **Simpan contoh**. Contoh ini hanya tampil di bawah kolom nomor Tata Usaha; nomor surat

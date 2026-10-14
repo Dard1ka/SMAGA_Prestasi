@@ -76,6 +76,9 @@ class Talenta extends Component
 
     public const SAVED_MESSAGE = 'Data talenta tersimpan.';
 
+    /** id of the detail panel, which the browser event `sth-reveal` brings into view after a row button (FS1 QA). */
+    public const PANEL_ID = 'panel-talenta';
+
     private const PAGE = 30;
 
     /** Upper bound of `$limit` (a public property the browser can set): beyond it the user narrows the filter. */
@@ -160,6 +163,8 @@ class Talenta extends Component
 
         if ($application !== null) {
             $this->openPanel($application);
+            // FS1 QA: below xl the panel stands under the list, so on a phone the click seemed to do nothing.
+            $this->dispatch('sth-reveal', id: self::PANEL_ID);
         }
     }
 
@@ -430,9 +435,9 @@ class Talenta extends Component
             'name' => $student?->user?->name ?? 'Siswa',
             'class' => $student?->classroom?->name,
             'nisn' => (string) $student?->nisn,
-            'type' => $a->talentType?->code?->label() ?? $a->talentType?->name,
+            // One label for a talent on every screen (FS1 QA): "OSN · Kimia", "OSN · Lainnya (…)", "Lainnya (…)", "OLPAIN".
+            'title' => $a->title(),
             'bidang' => $a->talentType?->bidang,
-            'branch' => $a->branchLabel(),
             'mentorName' => $a->mentor?->name,
             'hasEvidence' => $a->evidence_file_id !== null,
             'points' => $p !== null ? $formatter->format($p['points']) : null,

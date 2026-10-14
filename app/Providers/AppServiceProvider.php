@@ -58,7 +58,7 @@ class AppServiceProvider extends ServiceProvider
             $this->app->make(InitialPassword::class)->make(),
         ));
 
-        // Admin-editable settings (D-25, Admin › Pengaturan › Batas & arsip). bind(), not singleton: a long-running
+        // Admin-editable settings (D-25, Admin › Pengaturan › Arsip akun). bind(), not singleton: a long-running
         // queue worker or scheduler must see a changed value on the next resolve.
         $this->app->bind(ReportDeadline::class, fn (): ReportDeadline => new ReportDeadline(
             self::settingInt(SettingKey::ReportDeadlineDays, ReportDeadline::DEFAULT_DAYS, ReportDeadline::MAX_DAYS),

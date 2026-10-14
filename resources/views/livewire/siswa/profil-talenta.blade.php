@@ -92,9 +92,10 @@
                             <span class="flex min-w-0 flex-col items-start gap-1">
                                 <span class="font-bold">{{ $type->code->label() }}</span>
                                 @if ($type->bidang)
-                                    <x-sth.chip :bidang="$type->bidang" size="sm" />
+                                    {{-- FS1 QA: at 390 px "Seni Budaya" and "Tulis sendiri" are wider than the text column beside the icon tile: the tag takes two lines instead of running into the tile border. --}}
+                                    <x-sth.chip :bidang="$type->bidang" size="sm" class="chip-wrap" />
                                 @else
-                                    <x-sth.chip size="sm">Tulis sendiri</x-sth.chip>
+                                    <x-sth.chip size="sm" class="chip-wrap">Tulis sendiri</x-sth.chip>
                                 @endif
                             </span>
                         </button>

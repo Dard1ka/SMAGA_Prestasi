@@ -555,7 +555,7 @@ logs in through `POST /login` and expects a 403/404 on the next GET would see th
   asks `CompetitionPolicy::view` first. An intended address under `/berkas/sampul/` is dropped at login (`FortifyServiceProvider`).
 - **Settings**: `Setting::get(SettingKey::…)` / `Setting::put()` (defaults in `SettingKey::defaultValue()`,
   seeded by `SettingSeeder`), exactly these keys: `report_deadline_days` (45; since D-151 not on any screen and not
-  used for display, Admin › Pengaturan › Batas & arsip only sets the archive months), `archive_months_after_grade12` (18),
+  used for display, Admin › Pengaturan › Arsip akun (tab key `batas`) only sets the archive months), `archive_months_after_grade12` (18),
   `signature_file_id`, `signer_name` / `signer_rank` / `signer_nip`, `letter_format_siswa` / `letter_format_guru`
   (since D-82 only the example shown under the number field, "Contoh nomor surat" in Admin › Pengaturan),
   `public_indexing` / `public_certificates` (both false, D-38/D-39), `activation_window_days` (14, 1–30, D-54),

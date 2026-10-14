@@ -12,6 +12,7 @@ use App\Actions\Accounts\VerifyOtpCode;
 use App\Actions\Fortify\LoginIdentifier;
 use App\Domain\Accounts\PasswordPolicy;
 use App\Enums\RoleName;
+use App\Http\Middleware\EnsureTalentChosen;
 use App\Models\User;
 use App\Providers\AppServiceProvider;
 use Illuminate\Support\Facades\Auth;
@@ -250,6 +251,8 @@ class Activation extends Component
             'passwordHint' => $setPassword->hint($user),
             'isStudent' => LoginIdentifier::isStudentAccount($user),
             'temporaryPassword' => CompleteActivation::hasTemporaryPassword($user),
+            // FS1 QA (D-144): a kelas X student without a talent is held on Profil talenta next, so the done screen says so.
+            'talentFirst' => $this->step === self::STEP_DONE && EnsureTalentChosen::applies($user),
         ]);
     }
 

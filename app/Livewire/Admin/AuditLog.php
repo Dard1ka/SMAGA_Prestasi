@@ -95,7 +95,7 @@ final class AuditLog extends Component
         'role.change_requested' => 'Perubahan peran diminta',
         'role.change_approved' => 'Perubahan peran disetujui',
         'role.change_cancelled' => 'Perubahan peran dibatalkan',
-        'settings.limits_updated' => 'Batas & arsip diubah',
+        'settings.limits_updated' => 'Arsip akun diubah',
         'settings.signer_updated' => 'Penandatangan diubah',
         'settings.letter_formats_updated' => 'Format nomor surat diubah',
         'settings.public_updated' => 'Halaman publik diubah',

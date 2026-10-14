@@ -227,7 +227,7 @@ final class ArsipOtomatis extends Component
 
     /**
      * The day each archived student's account was archived, for the column "Diarsipkan" here and in Admin ›
-     * Pengaturan › Batas & arsip (QA9): the date of its latest `account.archived` audit row. A manual archive (D-30)
+     * Pengaturan › Arsip akun (QA9): the date of its latest `account.archived` audit row. A manual archive (D-30)
      * keeps the planned `archive_at`, which may still lie in the future; that date itself stays as it is (the nightly
      * job and UnarchiveStudent read it). Without an audit row (older data) the archive date stands in.
      *

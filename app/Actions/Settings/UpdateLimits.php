@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Admin › Pengaturan › Batas & arsip: `archive_months_after_grade12` (default 18, D-13). Changing it recalculates
+ * Admin › Pengaturan › Arsip akun: `archive_months_after_grade12` (default 18, D-13). Changing it recalculates
  * `archive_at` (= grade12_start_date + N months) for every student who is not archived yet, so the daily job follows
  * the new rule; archived accounts are never touched. Audited (`settings.limits_updated`, from/to + count).
  * D-151: a laporan hasil has no deadline any more; `report_deadline_days` stays in the settings but is no longer

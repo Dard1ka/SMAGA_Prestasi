@@ -23,7 +23,7 @@
     $tabClass = $variant === 'pill' ? 'tabp' : 'stab';
     $isLinks = ! $panels && collect($items)->contains(fn ($item) => isset($item['href']));
     $id ??= 'tabs-'.\Illuminate\Support\Str::lower(\Illuminate\Support\Str::random(6));
-    $wrapper = $variant === 'pill' ? 'flex flex-wrap gap-1.5' : 'flex gap-7 overflow-x-auto border-b border-line';
+    $wrapper = $variant === 'pill' ? 'flex flex-wrap gap-1.5' : 'stabs';
 @endphp
 @if ($isLinks)
     <nav @if ($label) aria-label="{{ $label }}" @endif {{ $attributes->class($wrapper) }}>

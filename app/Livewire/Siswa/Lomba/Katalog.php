@@ -29,7 +29,8 @@ use Livewire\WithPagination;
  * its Detail lomba (CompetitionPolicy::view lets the submitter in). The catalog filters do not apply there; the name
  * search (?q=, the top bar search) does, so typing in the top bar never leaves the list unchanged.
  */
-#[Layout('layouts::app', ['subtitle' => 'Semua lomba sudah diperiksa Kesiswaan.'])]
+// FS1 QA: the subtitle stands above both tabs, and "Usulan saya" lists lomba Kesiswaan has not checked yet.
+#[Layout('layouts::app', ['subtitle' => 'Lomba di katalog sudah diperiksa Kesiswaan.'])]
 #[Title('Cari lomba')]
 class Katalog extends Component
 {

@@ -26,7 +26,7 @@
             @else
                 <div class="flex flex-col items-start gap-2">
                     <span class="inline-flex size-12 items-center justify-center rounded-full bg-green-bg text-green" aria-hidden="true"><x-sth.icon name="check" :size="26" /></span>
-                    <h3 class="title-card m-0">{{ $status['isLeader'] ? 'Pendaftaran terkirim' : 'Kamu sudah terdaftar' }}</h3>
+                    <h3 class="title-card m-0">{{ $status['isLeader'] ? ($status['phase'] > 2 ? 'Pendaftaran disetujui' : 'Pendaftaran terkirim') : 'Kamu sudah terdaftar' }}</h3>
                     <x-sth.chip :tone="$status['tone']">{{ $status['label'] }}</x-sth.chip>
                     @if ($status['waitingText'])
                         <p class="m-0 text-sm text-ink-2">{{ $status['waitingText'] }}</p>
@@ -62,12 +62,23 @@
                     <span class="font-semibold">Sekolah menyetujui</span>
                 </li>
                 <li class="flex items-start gap-3">
-                    <span @class(['inline-flex size-7 shrink-0 items-center justify-center rounded-full text-sm font-bold', 'bg-green-bg text-green' => $status['phase'] > 3, 'bg-subtle text-muted' => $status['phase'] <= 3])>
-                        @if ($status['phase'] > 3)<x-sth.icon name="check" :size="16" />@else<span class="num">{{ $status['first'] + ($status['isTeam'] ? 2 : 1) }}</span>@endif
+                    <span @class(['inline-flex size-7 shrink-0 items-center justify-center rounded-full text-sm font-bold', 'bg-green-bg text-green' => $status['lettersDone'], 'bg-subtle text-muted' => ! $status['lettersDone']])>
+                        @if ($status['lettersDone'])<x-sth.icon name="check" :size="16" />@else<span class="num">{{ $status['first'] + ($status['isTeam'] ? 2 : 1) }}</span>@endif
                     </span>
                     <span class="font-semibold">Tata Usaha membuat surat tugas</span>
                 </li>
             </ol>
+
+            {{-- FS1 QA: once the lomba runs, the steps above are done; this says what comes now (Laporkan hasil for the ketua). --}}
+            @if ($status['stage'])
+                <div class="flex flex-col items-start gap-2 rounded-tile bg-primary-tint p-4">
+                    <p class="m-0 font-bold">{{ $status['stage']['title'] }}</p>
+                    <p class="m-0 text-sm text-ink-2">{{ $status['stage']['text'] }}</p>
+                    @if ($status['stage']['action'])
+                        <x-sth.button size="sm" icon="upload" :href="$status['stage']['action']['href']">{{ $status['stage']['action']['label'] }}</x-sth.button>
+                    @endif
+                </div>
+            @endif
 
             @if ($status['canInvite'])
                 {{-- B3 (#9): ketua sees the team and invites a replacement while members still confirm. --}}
@@ -236,7 +247,8 @@
                                 <x-sth.avatar :name="$row['name']" size="sm" />
                                 <div class="flex min-w-0 flex-1 flex-col">
                                     <span class="ellip font-semibold">{{ $row['name'] }}</span>
-                                    <span class="text-xs text-muted">{{ $row['kelas'] }} · diundang setelah kamu kirim</span>
+                                    {{-- D-148: for the own queued lomba the invitation waits for Kesiswaan, not for "Kirim". --}}
+                                    <span class="text-xs text-muted">{{ $row['kelas'] }} · {{ $lombaWaits ? 'diundang setelah Kesiswaan memverifikasi lomba' : 'diundang setelah kamu kirim' }}</span>
                                 </div>
                                 <x-sth.icon-button icon="x" size="sm" ghost :label="'Hapus '.$row['name']" wire:click="hapus('{{ $row['id'] }}')" />
                             </li>

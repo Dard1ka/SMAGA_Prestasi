@@ -50,6 +50,7 @@ final class AwaitReport extends TimelineTransition
         $user->notify(new ReportWindowOpened(
             (string) $registration->getKey(),
             (string) $registration->competition->name,
+            $registration->isTeam(),
         ));
     }
 }

@@ -1,6 +1,6 @@
-{{-- Tab "Batas & arsip" (Admin-Pengaturan.dc.html). D-151: a laporan hasil has no deadline, so the tab only sets the archive. --}}
+{{-- Tab "Arsip akun" (key `batas`; "Batas & arsip" until FS1 QA). D-151: a laporan hasil has no deadline, so the tab only sets the archive. --}}
 <section aria-labelledby="h-batas" class="flex flex-col gap-5">
-    <x-sth.page-header id="h-batas" title="Batas & arsip" subtitle="Kapan akun siswa diarsipkan." />
+    <x-sth.page-header id="h-batas" title="Arsip akun" subtitle="Kapan akun siswa diarsipkan." />
 
     <form wire:submit="save" class="grid gap-4 md:grid-cols-2" novalidate>
         <x-sth.card as="section" aria-labelledby="h-batas-arsip" class="flex flex-col gap-3">
@@ -13,7 +13,7 @@
         </x-sth.card>
 
         <div class="flex justify-end md:col-span-2">
-            <x-sth.button type="submit" wire:loading.attr="disabled" wire:target="save">Simpan batas</x-sth.button>
+            <x-sth.button type="submit" wire:loading.attr="disabled" wire:target="save">Simpan</x-sth.button>
         </div>
     </form>
 
