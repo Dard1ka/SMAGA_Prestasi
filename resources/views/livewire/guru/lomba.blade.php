@@ -44,7 +44,7 @@
                 </div>
 
                 @if ($detail['note'])
-                    <x-sth.alert tone="error" title="Ditolak Kesiswaan">{{ $detail['note'] }}</x-sth.alert>
+                    <x-sth.alert tone="error" :title="'Ditolak '.$detail['rejectedBy']">{{ $detail['note'] }}</x-sth.alert>
                 @endif
 
                 <dl class="m-0 grid grid-cols-1 gap-3 sm:grid-cols-2">

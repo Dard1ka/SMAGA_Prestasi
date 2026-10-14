@@ -12,6 +12,7 @@ use App\Models\File;
 use App\Models\RegistrationMember;
 use App\Models\User;
 use App\Rules\ExternalUrl;
+use App\Support\StaffRoleLabel;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
@@ -149,6 +150,8 @@ final class Lomba extends Component
         $window = LombaPresenter::window($competition);
         $website = is_string($competition->website_url) && ExternalUrl::passes($competition->website_url) ? $competition->website_url : null;
         $juknis = $competition->juknisFile;
+        $rejected = $competition->status === CompetitionStatus::Ditolak && (int) $competition->submitted_by === (int) $this->user()->getKey();
+        $decider = $rejected ? StaffRoleLabel::forLomba($competition->verifier) : null;
 
         // Only students in the team: an invitation nobody answered yet is not a binaan (QA10).
         $binaan = RegistrationMember::query()
@@ -193,9 +196,10 @@ final class Lomba extends Component
                 ? ['href' => route('files.show', $juknis), 'name' => $juknis->original_name, 'size' => LombaPresenter::fileSize((int) $juknis->size)]
                 : null,
             'binaan' => $binaan,
-            'note' => $competition->status === CompetitionStatus::Ditolak && (int) $competition->submitted_by === (int) $this->user()->getKey()
-                ? ($competition->verification_note ?? 'Kesiswaan tidak menulis alasan.')
-                : null,
+            // The guru's own rejected lomba (sent before D-145) with the reason; the role that decided comes from the one
+            // lomba rule (StaffRoleLabel::forLomba()).
+            'rejectedBy' => $rejected ? $decider : null,
+            'note' => $rejected ? ($competition->verification_note ?? $decider.' tidak menulis alasan.') : null,
         ];
     }
 

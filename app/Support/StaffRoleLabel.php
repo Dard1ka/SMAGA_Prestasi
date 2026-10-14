@@ -42,11 +42,27 @@ final class StaffRoleLabel
         return '';
     }
 
+    /** Who decides a lomba when no account is known: the role that verifies lomba (D-27). */
+    public const LOMBA_FALLBACK = 'Kesiswaan';
+
     /** `of($decider)`, or FALLBACK for null and for an account without a staff role. */
     public static function forDecision(?User $decider): string
     {
         $label = $decider === null ? '' : self::of($decider);
 
         return $label === '' ? self::FALLBACK : $label;
+    }
+
+    /**
+     * The one rule for who published or rejected a lomba (FS1 fix wave): the staff role of its verifier (an Admin may
+     * decide too), LOMBA_FALLBACK without one (no verifier, a deleted account, an account without a staff role). Every
+     * text about that decision uses it: CompetitionPublished, CompetitionRejected, Cari lomba › Usulan saya, Lomba
+     * saya, Detail lomba and its Pendaftaran lomba panel, the Guru drawer.
+     */
+    public static function forLomba(?User $verifier): string
+    {
+        $label = $verifier === null ? '' : self::of($verifier);
+
+        return $label === '' ? self::LOMBA_FALLBACK : $label;
     }
 }

@@ -11,6 +11,7 @@ use App\Models\Competition;
 use App\Models\Registration;
 use App\Models\RegistrationMember;
 use App\Support\Sampul;
+use App\Support\StaffRoleLabel;
 use Carbon\CarbonImmutable;
 use DateTimeInterface;
 use Illuminate\Support\Collection;
@@ -87,7 +88,8 @@ final class LombaPresenter
 
     /**
      * The notice on Detail lomba for a lomba that is not in the catalog (only its proposer sees it there), one text per
-     * status (QA10: "Lomba ini masih ditutup" / "masih ditolak" read wrong). Null for a published lomba.
+     * status (QA10: "Lomba ini masih ditutup" / "masih ditolak" read wrong). Null for a published lomba. A rejection
+     * names the role that decided by the one lomba rule (StaffRoleLabel::forLomba()).
      *
      * @return array{title: string, text: string}|null
      */
@@ -100,7 +102,7 @@ final class LombaPresenter
             ],
             CompetitionStatus::Ditolak => [
                 'title' => 'Usulan ditolak',
-                'text' => 'Kesiswaan menolak usulan lomba ini, jadi lomba ini tidak tampil di katalog dan tidak menerima pendaftaran.',
+                'text' => StaffRoleLabel::forLomba($competition->verifier).' menolak usulan lomba ini, jadi lomba ini tidak tampil di katalog dan tidak menerima pendaftaran.',
             ],
             CompetitionStatus::MenungguVerifikasi => [
                 'title' => 'Belum tampil di katalog',

@@ -25,6 +25,7 @@ use App\Models\RegistrationMember;
 use App\Models\Student;
 use App\Models\User;
 use App\Support\Navigation;
+use App\Support\StaffRoleLabel;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Gate;
@@ -406,6 +407,8 @@ class Form extends Component
             'competition' => $competition,
             'window' => LombaPresenter::window($competition),
             'waitingNotice' => $this->waitingNotice($competition),
+            // The role that rejected the usulan, by the one lomba rule (StaffRoleLabel::forLomba()); null otherwise.
+            'rejectedBy' => $competition->status === CompetitionStatus::Ditolak ? StaffRoleLabel::forLomba($competition->verifier) : null,
             'closesShort' => $competition->registration_closes_at?->locale('id')->translatedFormat('j M'),
             'me' => $me,
             'current' => $current,

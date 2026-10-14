@@ -310,9 +310,9 @@ final class Index extends Component
             // D-148: the lomba itself still waits for Kesiswaan; nothing has gone out yet.
             'waitingText' => $status === RegistrationStatus::MenungguLomba ? LombaPresenter::waitingForLomba($registration) : null,
             // D-148: cancelled together with the rejected lomba; registering again is not possible then. The role that
-            // rejected it is named as in the other decisions (StaffRoleLabel; Kesiswaan or Admin).
+            // rejected it is named by the one lomba rule (StaffRoleLabel::forLomba(): Kesiswaan or Admin, Kesiswaan without one).
             'cancelledText' => $status === RegistrationStatus::Dibatalkan && $registration->cancelledWithLomba()
-                ? 'Usulan lomba ini ditolak '.StaffRoleLabel::forDecision($competition->verifier).', jadi pendaftarannya ikut dibatalkan.'
+                ? 'Usulan lomba ini ditolak '.StaffRoleLabel::forLomba($competition->verifier).', jadi pendaftarannya ikut dibatalkan.'
                 : 'Kamu bisa mendaftar lagi selama pendaftaran lomba masih dibuka.',
             'allConfirmed' => $registration->members->every(fn (RegistrationMember $m): bool => $m->confirmed_at !== null),
         ];

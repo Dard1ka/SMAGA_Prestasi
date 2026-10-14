@@ -115,7 +115,7 @@ class Katalog extends Component
         $rows = [];
 
         if ($proposals) {
-            // The role that decided a rejected usulan is named next to its reason (StaffRoleLabel; Kesiswaan or Admin).
+            // The role that decided a rejected usulan is named next to its reason (StaffRoleLabel::forLomba(): Kesiswaan or Admin).
             $rows = $page->getCollection()->load('verifier.roles')->map(fn (Competition $c): array => self::proposalRow($c))->all();
         } else {
             $registrants = LombaPresenter::registrants($page->getCollection());
@@ -184,9 +184,9 @@ class Katalog extends Component
             'status' => $competition->status->label(),
             'tone' => $competition->status->tone(),
             'sent' => CarbonImmutable::instance($competition->created_at)->locale('id')->translatedFormat('j M Y'),
-            // A rejected usulan names Kesiswaan's reason when one was written (D-103).
+            // A rejected usulan names the reason of the role that decided when one was written (D-103).
             'note' => $competition->status === CompetitionStatus::Ditolak ? $competition->verification_note : null,
-            'noteLabel' => 'Catatan '.StaffRoleLabel::forDecision($competition->verifier).':',
+            'noteLabel' => 'Catatan '.StaffRoleLabel::forLomba($competition->verifier).':',
             'href' => route('siswa.lomba.show', $competition),
         ];
     }

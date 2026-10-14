@@ -185,7 +185,7 @@
                 {{-- QA10: a proposal Kesiswaan has not checked yet is not "ditutup" by itself; D-148: for its submitter the dates decide (Form::waitingNotice()). --}}
                 <x-sth.alert :tone="$waitingNotice['tone']" :title="$waitingNotice['title']">{{ $waitingNotice['text'] }}</x-sth.alert>
             @elseif ($window['key'] === 'ditolak')
-                <x-sth.alert tone="warning" title="Tidak dibuka">Usulan lomba ini ditolak Kesiswaan, jadi tidak menerima pendaftaran.</x-sth.alert>
+                <x-sth.alert tone="warning" title="Tidak dibuka">Usulan lomba ini ditolak {{ $rejectedBy }}, jadi tidak menerima pendaftaran.</x-sth.alert>
             @elseif ($window['key'] === 'ditutup' || ! $competition->isPublished())
                 <x-sth.alert tone="warning" title="Pendaftaran ditutup">Lomba ini tidak menerima pendaftaran lagi.</x-sth.alert>
             @else
@@ -283,10 +283,13 @@
 
             <x-sth.select wire:model="mentorId" id="guru" label="Guru pembimbing" placeholder="Pilih guru pembimbing" :options="$mentors" />
 
+            {{-- QA-04: the button is never disabled by the form state. A click right after the tick used to land on a
+                 button still disabled until the tick's round trip came back; now the click carries the tick, and
+                 kirim() answers a missing tick or an empty team under its field. --}}
             <div class="flex flex-col gap-3 border-t border-line pt-4">
                 <x-sth.checkbox wire:model.live="setuju" id="setuju">Data yang saya isi benar.</x-sth.checkbox>
                 <x-sth.button type="submit" icon="send" block wire:loading.attr="disabled" wire:target="kirim"
-                              :disabled="! $setuju || ($type === 'tim' && $memberRows === [])" aria-describedby="kirim-help">Kirim pendaftaran</x-sth.button>
+                              aria-describedby="kirim-help">Kirim pendaftaran</x-sth.button>
                 <p id="kirim-help" class="m-0 text-xs text-muted">
                     @if ($type === 'tim' && $memberRows === [])
                         Tambahkan minimal 1 anggota tim.
