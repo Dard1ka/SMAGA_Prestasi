@@ -47,7 +47,7 @@ class CompetitionSubmitted extends Notification implements ShouldQueue
     public function toMail(object $notifiable): MailMessage
     {
         return (new PlainMailMessage)
-            ->subject('Verifikasi usulan lomba: '.$this->competition->name)
+            ->subject($this->title())
             ->greeting(MailGreeting::for($notifiable))
             ->line($this->message())
             ->line('Periksa penyelenggara dan link-nya sebelum dipublikasikan.')
@@ -60,10 +60,16 @@ class CompetitionSubmitted extends Notification implements ShouldQueue
         return [
             'type' => 'competition.submitted',
             'competition_id' => $this->competition->getKey(),
-            'title' => 'Usulan lomba baru',
+            // FS1 QA round 4 (BUG-LOMBA-08): the bell entry reads like the mail (D-135), the body stays.
+            'title' => $this->title(),
             'message' => $this->message(),
             'url' => $this->url(),
         ];
+    }
+
+    private function title(): string
+    {
+        return 'Verifikasi usulan lomba: '.$this->competition->name;
     }
 
     private function message(): string

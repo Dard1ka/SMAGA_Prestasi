@@ -40,6 +40,8 @@ No migration, no new permission, no new route. Route names, URLs, menu keys and 
 - A long sidebar label wraps to two lines instead of being cut off (the `truncate` is gone); an item is 44 px high as before
   while it fits one line.
 - The bell title "Usulan lomba baru" (the notification itself) is kept: it names the event, not the queue.
+  *(2026-10-14, browser QA, BUG-LOMBA-08: the bell title now follows the mail, "Verifikasi usulan lomba: <nama lomba>";
+  the body "<nama> mengusulkan <nama lomba>." stays.)*
 
 ### Not changed on purpose
 - The tracker phase "Daftar" (`RegistrationStatus::phaseLabel(1)`) and the tab-list `aria-label="Daftar lomba"` of the catalog
@@ -591,3 +593,10 @@ utility classes in their views).
   Tata Usaha approval, a resumed team; one run on the merged tree.
 - Lead's choices: CLAUDE.md §9, "Questions for the lead from FS1-E and FS1-B" (and the FS1-A/D/C ones before them).
 - Item 14 (letter template): waits for the school.
+- Browser QA of 2026-10-14, BUG-N5b (Pendaftaran lomba panel at 390 px): the names in the member rows and the member
+  search wrap now, like Undangan tim (BUG-N5). The NISN next to the class in the member search, asked for in the same
+  finding to tell two classmates with the same first words apart, was **not** added: SECURITY §3m-3 says the search answers
+  name and class only, never NIS or NISN, and does not show a searched number back. With D-138 (one initial password for
+  every student) a search that shows the NISN beside "belum aktivasi akun" would list login names of accounts that can
+  still be taken over. The whole name now shows; adding the NISN (or a part of it) is a decision for the lead, with
+  §3m-3 and the test `returns only name and class from the member search` changed together.

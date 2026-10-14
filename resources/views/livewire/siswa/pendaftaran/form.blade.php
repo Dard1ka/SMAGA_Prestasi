@@ -91,26 +91,33 @@
                     </div>
                     <ul aria-labelledby="lbl-tim-kamu" class="m-0 flex list-none flex-col gap-2 p-0">
                         @foreach ($status['team'] as $row)
+                            {{-- FS1 QA round 4 (BUG-N5b, as BUG-N5 on Undangan tim): at 390 px the name was cut to "Qa Talen…"
+                                 beside the chip and the ×. The name wraps now, and the chip and the × move under it when the
+                                 row is too narrow for all three (12rem for the name first). --}}
                             <li wire:key="tim-{{ $row['id'] }}" class="flex items-center gap-3 rounded-tile border border-line p-2.5">
                                 <x-sth.avatar :name="$row['name']" size="sm" />
-                                <div class="flex min-w-0 flex-1 flex-col">
-                                    <span class="ellip font-semibold">{{ $row['name'] }}</span>
-                                    <span class="text-xs text-muted">{{ $row['meta'] }}</span>
+                                <div class="flex min-w-0 flex-1 flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
+                                    <div class="flex min-w-0 grow basis-48 flex-col">
+                                        <span class="min-w-0 font-semibold [overflow-wrap:anywhere]">{{ $row['name'] }}</span>
+                                        <span class="text-xs text-muted">{{ $row['meta'] }}</span>
+                                    </div>
+                                    <div class="flex shrink-0 items-center gap-2">
+                                        @if ($row['state'] === 'confirmed')
+                                            <x-sth.chip tone="green" size="sm" icon="check">Konfirmasi</x-sth.chip>
+                                        @elseif ($row['state'] === 'expired')
+                                            {{-- QA10: expired at the deadline, the student never answered. --}}
+                                            <x-sth.chip tone="gray" size="sm">Tidak menjawab</x-sth.chip>
+                                        @elseif ($row['state'] === 'declined')
+                                            <x-sth.chip tone="red" size="sm">Menolak</x-sth.chip>
+                                        @else
+                                            <x-sth.chip size="sm" icon="clock">Menunggu</x-sth.chip>
+                                            {{-- QA6 (#66): an unanswered invitation no longer holds the place until the deadline.
+                                                 D-128: the × opens the dialog below; nothing is withdrawn before the answer there. --}}
+                                            <x-sth.icon-button icon="x" size="sm" :label="'Batalkan undangan '.$row['name']" aria-haspopup="dialog"
+                                                wire:click="askBatalkanUndangan('{{ $row['studentId'] }}')" wire:loading.attr="disabled" wire:target="askBatalkanUndangan" />
+                                        @endif
+                                    </div>
                                 </div>
-                                @if ($row['state'] === 'confirmed')
-                                    <x-sth.chip tone="green" size="sm" icon="check">Konfirmasi</x-sth.chip>
-                                @elseif ($row['state'] === 'expired')
-                                    {{-- QA10: expired at the deadline, the student never answered. --}}
-                                    <x-sth.chip tone="gray" size="sm">Tidak menjawab</x-sth.chip>
-                                @elseif ($row['state'] === 'declined')
-                                    <x-sth.chip tone="red" size="sm">Menolak</x-sth.chip>
-                                @else
-                                    <x-sth.chip size="sm" icon="clock">Menunggu</x-sth.chip>
-                                    {{-- QA6 (#66): an unanswered invitation no longer holds the place until the deadline.
-                                         D-128: the × opens the dialog below; nothing is withdrawn before the answer there. --}}
-                                    <x-sth.icon-button icon="x" size="sm" :label="'Batalkan undangan '.$row['name']" aria-haspopup="dialog"
-                                        wire:click="askBatalkanUndangan('{{ $row['studentId'] }}')" wire:loading.attr="disabled" wire:target="askBatalkanUndangan" />
-                                @endif
                             </li>
                         @endforeach
                     </ul>
@@ -127,19 +134,23 @@
                         @if ($hasil !== [])
                             <ul aria-label="Akun siswa yang cocok" class="m-0 flex list-none flex-col gap-1.5 p-0">
                                 @foreach ($hasil as $row)
+                                    {{-- BUG-N5b: the whole name tells two classmates with the same first words apart; the chip or
+                                         the button moves under the name when the row is too narrow for both. --}}
                                     <li wire:key="undang-{{ $row['id'] }}" class="flex items-center gap-3 rounded-tile p-2 hover:bg-hover">
                                         <x-sth.avatar :name="$row['name']" size="sm" />
-                                        <div class="flex min-w-0 flex-1 flex-col">
-                                            <span class="ellip font-semibold">{{ $row['name'] }}</span>
-                                            <span class="text-xs text-muted">{{ $row['kelas'] }}{{ ($row['pending'] ?? false) ? ' · belum aktivasi akun' : '' }}</span>
+                                        <div class="flex min-w-0 flex-1 flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
+                                            <div class="flex min-w-0 grow basis-48 flex-col">
+                                                <span class="min-w-0 font-semibold [overflow-wrap:anywhere]">{{ $row['name'] }}</span>
+                                                <span class="text-xs text-muted">{{ $row['kelas'] }}{{ ($row['pending'] ?? false) ? ' · belum aktivasi akun' : '' }}</span>
+                                            </div>
+                                            @if ($row['declined'] ?? false)
+                                                <x-sth.chip tone="gray" size="sm">Sudah menolak</x-sth.chip>
+                                            @elseif ($row['busy'])
+                                                <x-sth.chip tone="gray" size="sm">Sudah terdaftar</x-sth.chip>
+                                            @else
+                                                <x-sth.button variant="soft" size="sm" icon="send" wire:click="undang('{{ $row['id'] }}')" wire:loading.attr="disabled" wire:target="undang" :aria-label="'Undang '.$row['name']">Undang</x-sth.button>
+                                            @endif
                                         </div>
-                                        @if ($row['declined'] ?? false)
-                                            <x-sth.chip tone="gray" size="sm">Sudah menolak</x-sth.chip>
-                                        @elseif ($row['busy'])
-                                            <x-sth.chip tone="gray" size="sm">Sudah terdaftar</x-sth.chip>
-                                        @else
-                                            <x-sth.button variant="soft" size="sm" icon="send" wire:click="undang('{{ $row['id'] }}')" wire:loading.attr="disabled" wire:target="undang" :aria-label="'Undang '.$row['name']">Undang</x-sth.button>
-                                        @endif
                                     </li>
                                 @endforeach
                             </ul>
@@ -234,11 +245,12 @@
                         <span class="label" id="lbl-anggota">Anggota tim @if ($maxTeam)(maks {{ $maxTeam }})@endif</span>
                         <span class="num text-xs text-muted">{{ count($memberRows) + 1 }} orang</span>
                     </div>
+                    {{-- BUG-N5b: every name wraps at 390 px; "Kamu" follows the ketua's name or takes the next line. --}}
                     <ul aria-labelledby="lbl-anggota" class="m-0 flex list-none flex-col gap-2 p-0">
                         <li class="flex items-center gap-3 rounded-tile bg-page p-2.5">
                             <x-sth.avatar :name="auth()->user()->name" size="sm" />
                             <div class="flex min-w-0 flex-1 flex-col">
-                                <span class="flex items-center gap-2 font-semibold"><span class="ellip">{{ auth()->user()->name }}</span><x-sth.chip tone="blue" size="sm">Kamu</x-sth.chip></span>
+                                <span class="flex flex-wrap items-center gap-x-2 gap-y-1 font-semibold"><span class="min-w-0 [overflow-wrap:anywhere]">{{ auth()->user()->name }}</span><x-sth.chip tone="blue" size="sm">Kamu</x-sth.chip></span>
                                 <span class="text-xs text-muted">Ketua · {{ $me?->classroom?->name }}</span>
                             </div>
                         </li>
@@ -246,7 +258,7 @@
                             <li wire:key="anggota-{{ $row['id'] }}" class="flex items-center gap-3 rounded-tile border border-line p-2.5">
                                 <x-sth.avatar :name="$row['name']" size="sm" />
                                 <div class="flex min-w-0 flex-1 flex-col">
-                                    <span class="ellip font-semibold">{{ $row['name'] }}</span>
+                                    <span class="min-w-0 font-semibold [overflow-wrap:anywhere]">{{ $row['name'] }}</span>
                                     {{-- D-148: for the own queued lomba the invitation waits for Kesiswaan, not for "Kirim". --}}
                                     <span class="text-xs text-muted">{{ $row['kelas'] }} · {{ $lombaWaits ? 'diundang setelah Kesiswaan memverifikasi lomba' : 'diundang setelah kamu kirim' }}</span>
                                 </div>
@@ -267,19 +279,23 @@
                         @if ($hasil !== [])
                             <ul aria-label="Akun siswa yang cocok" class="m-0 flex list-none flex-col gap-1.5 p-0">
                                 @foreach ($hasil as $row)
+                                    {{-- BUG-N5b: the whole name tells two classmates with the same first words apart; the chip or
+                                         the button moves under the name when the row is too narrow for both. --}}
                                     <li wire:key="hasil-{{ $row['id'] }}" class="flex items-center gap-3 rounded-tile p-2 hover:bg-hover">
                                         <x-sth.avatar :name="$row['name']" size="sm" />
-                                        <div class="flex min-w-0 flex-1 flex-col">
-                                            <span class="ellip font-semibold">{{ $row['name'] }}</span>
-                                            <span class="text-xs text-muted">{{ $row['kelas'] }}{{ ($row['pending'] ?? false) ? ' · belum aktivasi akun' : '' }}</span>
+                                        <div class="flex min-w-0 flex-1 flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
+                                            <div class="flex min-w-0 grow basis-48 flex-col">
+                                                <span class="min-w-0 font-semibold [overflow-wrap:anywhere]">{{ $row['name'] }}</span>
+                                                <span class="text-xs text-muted">{{ $row['kelas'] }}{{ ($row['pending'] ?? false) ? ' · belum aktivasi akun' : '' }}</span>
+                                            </div>
+                                            @if ($row['busy'])
+                                                <x-sth.chip tone="gray" size="sm">Sudah terdaftar</x-sth.chip>
+                                            @elseif (in_array($row['id'], $members, true))
+                                                <x-sth.chip tone="blue" size="sm">Ditambahkan</x-sth.chip>
+                                            @else
+                                                <x-sth.button variant="soft" size="sm" icon="plus" wire:click="tambah('{{ $row['id'] }}')" :aria-label="'Tambah '.$row['name']">Tambah</x-sth.button>
+                                            @endif
                                         </div>
-                                        @if ($row['busy'])
-                                            <x-sth.chip tone="gray" size="sm">Sudah terdaftar</x-sth.chip>
-                                        @elseif (in_array($row['id'], $members, true))
-                                            <x-sth.chip tone="blue" size="sm">Ditambahkan</x-sth.chip>
-                                        @else
-                                            <x-sth.button variant="soft" size="sm" icon="plus" wire:click="tambah('{{ $row['id'] }}')" :aria-label="'Tambah '.$row['name']">Tambah</x-sth.button>
-                                        @endif
                                     </li>
                                 @endforeach
                             </ul>

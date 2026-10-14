@@ -41,14 +41,14 @@ it('names the Beranda tile and card "Verifikasi usulan lomba"', function (): voi
         ->assertDontSee('Upload lomba');
 });
 
-it('sends the verifier mail as "Verifikasi usulan lomba" and keeps the bell title', function (): void {
+it('sends the verifier mail and the bell entry as "Verifikasi usulan lomba" (BUG-LOMBA-08)', function (): void {
     $competition = L::pendingCompetition(L::user(L::student()), ['name' => 'OSN Kota 2026']);
     $notice = new CompetitionSubmitted($competition, 'Nadia Putri Anindya');
     $mail = $notice->toMail($this->kesiswaan);
 
     expect($mail->subject)->toBe('Verifikasi usulan lomba: OSN Kota 2026')
         ->and($mail->actionText)->toBe('Verifikasi usulan lomba')
-        ->and($notice->toArray($this->kesiswaan)['title'])->toBe('Usulan lomba baru');
+        ->and($notice->toArray($this->kesiswaan)['title'])->toBe('Verifikasi usulan lomba: OSN Kota 2026');
 });
 
 it('lets a long menu name wrap instead of cutting it', function (): void {
