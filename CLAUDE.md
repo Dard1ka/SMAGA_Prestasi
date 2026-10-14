@@ -5,10 +5,12 @@ files in §2. Keep §10 Status current. Non-Claude agents: `AGENTS.md` points he
 
 ## 1. What STH is
 STH is the web app of **SMA Negeri 3 Semarang (SMAGA)** for talent scouting (*penjaringan talenta*) and
-the whole competition flow: the school publishes a verified **lomba** catalog → students register
-(*individu/tim*) → **Kepala Sekolah** approves → **Tata Usaha** issues the *surat tugas* PDFs → students
-report results (*laporan hasil*) → **Kesiswaan** or **Humas** verifies (D-139) → points, cumulative ranking, portfolio,
-**Humas** publication, public achievement pages.
+the whole competition flow: students propose a **lomba** with the full form (*usulan*; Admin may add one too) and
+Kesiswaan verifies and corrects it into the catalog (D-145) → students register (*individu/tim*; for an own proposal
+the registration waits as `menunggu_lomba` until Kesiswaan decides, D-148) → **Kepala Sekolah or Tata Usaha** approves
+(D-150) → **Tata Usaha** issues the *surat tugas* PDFs → students report results (*laporan hasil*, no deadline, D-151)
+→ **Kesiswaan** or **Humas** verifies (D-139) → points, cumulative ranking, portfolio, **Humas** publication, public
+achievement pages.
 Production: `https://prestasi.sman3-smg.sch.id`, Docker behind the school's Apache 2.4.29 on Ubuntu 18.04
 (no OS upgrade possible, main school site on the same host). Stack: Laravel 13 · PHP 8.4 · MySQL 8.4.
 
@@ -16,13 +18,13 @@ Roles (spatie/laravel-permission, guard `web`). Kepala Sekolah and Admin are sep
 
 | role key | who | main jobs |
 |---|---|---|
-| `siswa` | student | catalog, *usulan lomba*, register, confirm team invites, report results, portfolio, talent profile |
-| `guru` | guru pembimbing / pembina | sees own *binaan*, uploads lomba info |
-| `kesiswaan` | student affairs | manage + verify lomba uploads, verify results (with Humas, D-139), talent pipeline, student import |
-| `kepala_sekolah` | principal | approve/reject every registration, dashboard |
-| `tata_usaha` | school admin office (TU) | type each letter's full number, generate, print and send the surat tugas PDFs |
+| `siswa` | student | catalog, *usulan lomba* with the full lomba form ("Usulkan lomba", "Usulan saya", D-145), register (with the own phone number, D-149), confirm team invites, report results, portfolio, talent profile (kelas X must pick one first, D-144) |
+| `guru` | guru pembimbing / pembina | sees own *binaan* (registrations and talent choices); no lomba upload since D-145 |
+| `kesiswaan` | student affairs | verify and correct lomba (no "Tambah lomba", D-145), verify results (with Humas, D-139), Database talenta siswa (records only, no stages, D-142), student import |
+| `kepala_sekolah` | principal | approve/reject every registration (or Tata Usaha, D-150), dashboard |
+| `tata_usaha` | school admin office (TU) | approve/reject registrations ("Persetujuan lomba", D-150); type each letter's full number, generate, print and send the surat tugas PDFs |
 | `humas` | public relations | verifies results next to Kesiswaan in its own area `humas.verifikasi.*` (D-139; a privileged role since then), publication queue with the data for the flyer Humas designs itself (D-107), *apresiasi* with "Cetak daftar" (D-141) |
-| `admin` | operator | everything: users, import, settings, signature image, replace the Kepsek account (all audited) |
+| `admin` | operator | everything: users, import, settings, signature image, replace the Kepsek account, "Tambah lomba" (all audited); never approves a registration (D-01) |
 
 Students log in with their NISN and, once their activation is finished, also with the email they bound
 (D-78, D-137); the NIS is stored only (import matching, the student letter); staff with `username` or email. Public pages (no login): prestasi overview, per-*bidang*
@@ -32,7 +34,7 @@ consent flags (D-16, SECURITY §3m-7).
 ## 2. Sources of truth (read before changing behaviour)
 | file | content |
 |---|---|
-| `docs/DECISIONS.md` | decision log D-01…D-141 (D-135…D-141 = §D15, the school's feedback of 2026-10-12 (FS1): package A = D-135…D-136: three new names, the Admin menu item Database prestasi, the Excel without Kategori, oldest-first pending lomba, red count badges; package D = D-137…D-138: students log in with the NISN only and see the NISN instead of the NIS, one initial password for every student from config, replaced at the first login, no "Lewati"; package C = D-139…D-141: Humas verifies results next to Kesiswaan in its own area and is a privileged role, new reports are mailed to Kesiswaan and Humas, decision texts name the deciding role, Verifikasi hasil without "Tolak", "Cetak daftar" of an appreciation event; D-130…D-134 = §D14, the demo and the joint review of 2026-10-11 (RV1): open mode of the local mail allowlist, NIS in full for Kesiswaan and Admin, the Kepala Sekolah may replace the guru pembimbing with the approval and the approval notice names the guru, student letter centred, the replaced guru is told nothing; D-122…D-129 = §D13, the lead's mail and notification test of 2026-10-09 (EM2): publication schedule = reminder only, appreciation start time and picker, "Lainnya" field, lomba change notice, live bell and counts, confirm dialogs, mail templates; §D13 also carries a dated addendum of Brevo facts for D-121; D-121 = §D12, real mail from a local stack: Brevo + allowlist, *sementara*; D-45…D-61 = backlog wave + W4 product choices, *sementara*; D-62…D-65 = security hardening, *final*; D-66…D-77 = Q1 security/performance pass and the lead's follow-up choices; D-78…D-91 = §D6, the lead's choices after the hand test of 2026-10-04; D-92…D-102 = §D7, the rules changed by the fixes after the QA pass of 2026-10-05; D-103…D-108 = §D8, the lead's six requests of 2026-10-06 (wave M3) and the schema change of QA4; D-109…D-112 = §D9, the lead's answers after the retest of M3 on 2026-10-07 (QA5); D-113…D-116 = §D10, the explore round after PR 14 (QA6); D-117…D-120 = §D11, the visual direction v3 "Tinta dan Sampul", lomba covers, the staff copy rule and the school crest as the brand mark (UI3)), U-01…U-06, open questions §F. **Wins over everything.** |
+| `docs/DECISIONS.md` | decision log D-01…D-151 (D-135…D-151 = §D15, the school's feedback of 2026-10-12 (FS1); package E = D-142…D-144: talent choices without stages or verification (Kesiswaan records, optional guru pembina, tabs Semua / Belum mengisi (kelas X)), a seventh jenis and a cabang "Lainnya" with a typed text, kelas X students held on Profil talenta until they pick one; package B = D-145…D-151: only siswa (full "Usulkan lomba" page) and Admin add a lomba, Kesiswaan checks and corrects, weights computed from the jenis penyelenggara + Puspresnas, duration-based dates and a required juknis, a registration for an own queued lomba waits as `menunggu_lomba`, participant data and an editable phone, Kepala Sekolah **or** Tata Usaha approves, laporan hasil without a deadline (reminders H+3 / H+14); package A = D-135…D-136: three new names, the Admin menu item Database prestasi, the Excel without Kategori, oldest-first pending lomba, red count badges; package D = D-137…D-138: students log in with the NISN only and see the NISN instead of the NIS, one initial password for every student from config, replaced at the first login, no "Lewati"; package C = D-139…D-141: Humas verifies results next to Kesiswaan in its own area and is a privileged role, new reports are mailed to Kesiswaan and Humas, decision texts name the deciding role, Verifikasi hasil without "Tolak", "Cetak daftar" of an appreciation event; D-130…D-134 = §D14, the demo and the joint review of 2026-10-11 (RV1): open mode of the local mail allowlist, NIS in full for Kesiswaan and Admin, the Kepala Sekolah may replace the guru pembimbing with the approval and the approval notice names the guru, student letter centred, the replaced guru is told nothing; D-122…D-129 = §D13, the lead's mail and notification test of 2026-10-09 (EM2): publication schedule = reminder only, appreciation start time and picker, "Lainnya" field, lomba change notice, live bell and counts, confirm dialogs, mail templates; §D13 also carries a dated addendum of Brevo facts for D-121; D-121 = §D12, real mail from a local stack: Brevo + allowlist, *sementara*; D-45…D-61 = backlog wave + W4 product choices, *sementara*; D-62…D-65 = security hardening, *final*; D-66…D-77 = Q1 security/performance pass and the lead's follow-up choices; D-78…D-91 = §D6, the lead's choices after the hand test of 2026-10-04; D-92…D-102 = §D7, the rules changed by the fixes after the QA pass of 2026-10-05; D-103…D-108 = §D8, the lead's six requests of 2026-10-06 (wave M3) and the schema change of QA4; D-109…D-112 = §D9, the lead's answers after the retest of M3 on 2026-10-07 (QA5); D-113…D-116 = §D10, the explore round after PR 14 (QA6); D-117…D-120 = §D11, the visual direction v3 "Tinta dan Sampul", lomba covers, the staff copy rule and the school crest as the brand mark (UI3)), U-01…U-06, open questions §F. **Wins over everything.** |
 | `docs/ARCHITECTURE.md` | binding contract: data model, enums, state machine, domain rules |
 | `docs/SECURITY.md` | threat model, top-10 risks §1, controls §3a–§3m (K1–K12), pre-release checklist §4 |
 | `docs/TALENT-FORM.md` | talent types/branches (seed source for `talent_types`, `talent_branches`) |
@@ -208,9 +210,9 @@ docker/, scripts/deploy/, .github/workflows/ci.yml   dev + prod images, deploy/b
 ```
 Area route files are loaded in `bootstrap/app.php` (`withRouting(then: …)`) so teams don't edit the
 same file. Middleware (bootstrap/app.php): aliases `active` (disabled/archived users lose the session),
-`activated` (first-login activation done), `staff.2fa`, `role`, `permission`; groups
-**`area.siswa`** = auth, active, activated, role:siswa and **`area.staff`** = auth, active, activated,
-staff.2fa (add `role:…` per area). Every route also authorizes through a policy. `staff.2fa` is
+`activated` (first-login activation done), `staff.2fa`, `talent.chosen` (D-144, `EnsureTalentChosen`), `role`,
+`permission`; groups **`area.siswa`** = auth, active, activated, role:siswa, talent.chosen and **`area.staff`** = auth,
+active, activated, staff.2fa (add `role:…` per area). Every route also authorizes through a policy. `staff.2fa` is
 enforced everywhere except `APP_ENV=local` (`STH_REQUIRE_STAFF_2FA`, `config('fortify.sth.*')`).
 TOTP is staff only (D-66): `RestrictTwoFactorToStaff` (in the `web` group) answers 404 for a student account on
 every `two-factor.*` management route, and a student login never goes to `/two-factor-challenge`.
@@ -247,9 +249,30 @@ logs in through `POST /login` and expects a 403/404 on the next GET would see th
 - **Enums** (values exactly as ARCHITECTURE §5): `Bidang` sains/riset/seni_budaya/olahraga · `Level` ·
   `WeightCategory` A–E · `ResultType` · `UserStatus` pending_activation/active/disabled/archived ·
   `CompetitionStatus` · `RegistrationStatus` (`phase()`, `tone()`) · `ReportStatus` · `TalentStatus` · …
-- **Competition**: every create, by any role (siswa *usulan*, guru, staff, even Kesiswaan), starts at
-  `menunggu_verifikasi`; only Kesiswaan/Admin publish it, verifier + time audited (D-27). Has
-  `registration_url` (D-28). URLs (`website_url`, `registration_url`; the usulan sheets and the Kesiswaan drawer use
+- **Competition**: `competition.create` is held by **siswa and Admin only** (D-145): a student proposes through the
+  full page Siswa › Usulkan lomba (`siswa.lomba.usulkan`, `Siswa\Lomba\Usulkan` → `SubmitCompetition::handle(User,
+  array $data, ?UploadedFile $juknis, ?UploadedFile $cover)`; `SubmitCompetition::REQUIRED` fields, 5 a day; after
+  "Simpan" the same page shows the Pendaftaran lomba panel of that lomba, "Nanti saja" → Detail lomba), Admin through
+  "Tambah lomba" (`CreateCompetition`, checks `create` and `manage`); guru, Kesiswaan, Kepala Sekolah, TU and Humas
+  cannot add one (no "Upload info lomba", no "Tambah lomba" for Kesiswaan). Every create starts at
+  `menunggu_verifikasi`; only Kesiswaan/Admin publish it, verifier + time audited (D-27); Kesiswaan may correct any
+  field before deciding (`UpdateCompetition`). "Usulan saya" on Cari lomba (`?tab=usulan`) lists the student's own lomba
+  of every status, oldest first. Both forms are one Livewire Form Object, `App\Livewire\Forms\CompetitionFields`, drawn
+  by `livewire/forms/competition-fields.blade.php` (`$staff`); the field rules stay in `CreateCompetition::rules()` /
+  `CompetitionDates`, the object validates only the duration, "Tanggal mulai" of a multi-day lomba and the two files.
+  **Weights** (D-146): `weight_category` and `event_status` are not fillable (`CreateCompetition::WEIGHT_FIELDS`,
+  `forceFill()`); `App\Domain\Competitions\OrganizerWeight::for(OrganizerType, bool $puspresnas)` maps Puspresnas → A ·
+  Puspresnas, Pemerintah pusat/daerah, BUMN/BUMD → B · Pemerintah (non-Puspresnas), PTN, PTS, Organisasi profesi,
+  Federasi olahraga → C · Non-pemerintah, Yayasan/lembaga, Perusahaan swasta → D · Non-pemerintah, Lainnya → E ·
+  Non-pemerintah; a student's lomba always takes the map (never its input), Kesiswaan may override in the drawer and
+  `VerifyCompetition` audits `weight_override` (`computed`, `chosen`) on `competition.published` / `.rejected`; old lomba
+  are not recomputed. **Dates** (D-147): "Pendaftaran dibuka" / "Pendaftaran ditutup"; "Durasi lomba" 1 hari ("Tanggal
+  lomba", `starts_on` = `final_on`) or Lebih dari 1 hari ("Tanggal mulai" required + "Tanggal selesai"); duration is
+  screen state only. Read screens say "Pendaftaran", "Pelaksanaan", "Tempat" and "Laporan hasil: Segera laporkan setelah
+  lomba selesai" (`LombaPresenter::range()`, `pendaftaran()`, `REPORT_LINE`). **Juknis / brosur / undangan is required**
+  (D-147) to create (`CreateCompetition::JUKNIS_MISSING`), to save again (an old lomba without one is refused until a
+  file comes with the save) and to publish (`REQUIRED_TO_PUBLISH`); PDF, JPG, PNG or WEBP, 5 MB. Has
+  `registration_url` (D-28). URLs (`website_url`, `registration_url`; the Usulkan page and the Kesiswaan drawer use
   the same rule): cleaned first (`ExternalUrl::normalize()`: whitespace of any kind at both ends, zero-width
   characters and text-direction marks anywhere; nothing is added, no scheme), then validated `https` with one
   sentence per refusal reason (`ExternalUrl::problem()`, `passes()` = no problem; the accepted set must not change,
@@ -283,17 +306,43 @@ logs in through `POST /login` and expects a 403/404 on the next GET would see th
   $expectsQueued)` (`save()` passes `formMode === 'verify'`, `saveAndPublish()` true, `open()` false) turns it into
   "Ubah lomba" with a warning toast, and the second click saves and notifies.
 - **Registration state machine** (`RegistrationStatus`, 6-phase tracker *Jejak Prestasi*):
-  `menunggu_konfirmasi` (1 Daftar) → `menunggu_kepsek` (2 Persetujuan) → `disetujui` | `ditolak`
+  `menunggu_lomba` (1 Daftar, D-148) → `menunggu_konfirmasi` (1 Daftar) → `menunggu_kepsek` (2 Persetujuan, label
+  "Menunggu persetujuan" since D-150; the value stays) → `disetujui` | `ditolak`
   (note required) → `surat_terbit` (3 Surat tugas) → `berlangsung` (4 Lomba, scheduler on `starts_on`)
   → `menunggu_laporan` (5, after `final_on`) → `laporan_dikirim` → `selesai` (6 Poin & apresiasi) or back
-  to `menunggu_laporan` on *perlu revisi*; `dibatalkan` = leader cancels from `menunggu_konfirmasi` or
-  `menunggu_kepsek` (lead, 2026-10-01). Transitions are defined once in
+  to `menunggu_laporan` on *perlu revisi*; `dibatalkan` = leader cancels from `menunggu_lomba`, `menunggu_konfirmasi` or
+  `menunggu_kepsek` (lead, 2026-10-01; D-148), or Kesiswaan rejects the lomba a registration waited for.
+  **`menunggu_lomba`** (D-148): only the submitter of a lomba still in `menunggu_verifikasi` may register for it, in the
+  same date window as a published lomba (`Competition::isOpenForRegistrationBy()`, `RegistrationPolicy::create`,
+  `CreateRegistration`); nobody is told (anggota rows carry `invited_at` = null and do not see the team; no approver, no
+  guru: `Registration::scopeKnownToMentor()` keeps it, and one cancelled while it waited, out of Siswa binaan, Guru ›
+  Lomba and `viewAsMentor`); the leader may cancel it and nobody is told. `VerifyCompetition` moves every waiting
+  registration in its own transaction (`App\Actions\Registrations\ResumeWaitingRegistrations::handle()`, notices after
+  the commit through `notify()`): published → individu `menunggu_kepsek` (approvers told), tim `menunggu_konfirmasi`
+  (anggota invited now), even when "Pendaftaran ditutup" already passed; rejected → `dibatalkan` and the submitter gets
+  ONE rejection notice with "Pendaftaranmu untuk lomba ini ikut dibatalkan." (`CompetitionRejected::for(…, bool
+  $registrationCancelled, ?User $decider)`; `CompetitionPublished::for(…, ?RegistrationStatus, ?User $decider)` adds where
+  the registration went); audit `registration.resumed` / `registration.cancelled` (`reason` `competition_rejected`).
+  A team resumed after, or less than `Registration::ANSWER_GRACE_DAYS` (3) days before, "Pendaftaran ditutup" may answer
+  until `registrations.answer_until` (= publish moment + 3 days, not fillable); `Registration::answersCloseAt()` (the
+  later of the deadline and `answer_until`) is the only source for `RegistrationPolicy::teamWindowOpen(Registration)`
+  (respond, invite, withdraw), `ConfirmMembership` and `ExpirePendingInvitations`; `graceText()` names it on the screens
+  and in `TeamInvitation`. **Data peserta** (D-149): the registration panel shows Nama, Kelas, NISN, Tanggal lahir
+  read-only to the account owner and asks a required **No HP** (pre-filled, editable; "Ikut tim" asks the anggota too),
+  saved through `App\Actions\Accounts\UpdateStudentPhone` (own record only, `StudentPolicy::updatePhone`, audit
+  `student.phone_updated` without the number) with the import's rule `App\Domain\Accounts\PhoneNumber`. Transitions are defined once in
   `App\Domain\Registrations\RegistrationStateMachine` (`assertTransition()`, `phaseFor()`). Team
   members pick from existing accounts, each confirms personally; roster locks after approval. The ketua may withdraw an
   invitation nobody answered while the team waits (`WithdrawInvitation`, D-115; on the screen behind the dialog
   `batal-undangan`, D-128); the member search marks a student who has not activated the account.
-  **Guru pembimbing** (D-35, D-132): the student must choose one, and with the approval the Kepala Sekolah may put
-  another in that place: `ApproveRegistration::handle(User, Registration, ?string $note = null, int|string|null
+  **Approvers** (D-150): `registration.approve` = Kepala Sekolah **and** Tata Usaha (Admin never, D-01); one screen,
+  `Kepsek\Persetujuan`, under `kepsek.persetujuan.index` and `tu.persetujuan.index` (TU menu "Persetujuan lomba", count
+  `kepsek.persetujuan`); notices to an approver link to its own address (`App\Support\ApprovalQueue`); the first decision
+  wins (stale toast "Pendaftaran ini sudah diputuskan. Daftar sudah diperbarui."); decision texts name the decider
+  (`StaffRoleLabel::forDecision()`: "Pendaftaranmu di … disetujui oleh <nama> (Tata Usaha).", "Ditetapkan <peran>"),
+  sentences before a decision say "sekolah" / "untuk persetujuan"; a TU account that approved is not sent its own
+  approval notice. **Guru pembimbing** (D-35, D-132): the student must choose one, and with the approval the Kepala
+  Sekolah (or Tata Usaha, D-150) may put another in that place: `ApproveRegistration::handle(User, Registration, ?string $note = null, int|string|null
   $mentorId = null)` (null, '' or the guru the registration has = the choice stays; `RegistrationPolicy::changeMentor`
   = `decide`; a choice that is not a guru who can log in → `ValidationException` key `mentor`, nothing decided; audit
   `registration.mentor_changed` with user ids only). It is one decision in one transaction: there is no way to change
@@ -301,8 +350,8 @@ logs in through `POST /login` and expects a 403/404 on the next GET would see th
   is one rule, `App\Actions\Registrations\MentorChoice` (`query()`, `find()`, `options()`, `name()`, `closing()`),
   shared by the student's form, `CreateRegistration` and the approval. Notices of an approval
   (`RegistrationApproved::for(Registration, audience, bool $mentorChanged = false, ?string $replacedMentorName =
-  null)`): the members always read their guru ("Guru pembimbing: …", `mentorLine()`), with "(ditetapkan Kepala
-  Sekolah, menggantikan …)" after a change; the guru the registration has NOW gets the notice (after a change worded
+  null, ?User $decider = null)`): the members always read their guru ("Guru pembimbing: …", `mentorLine()`), with
+  "(ditetapkan <peran>, menggantikan …)" after a change (D-150; "Kepala Sekolah" or "Tata Usaha"); the guru the registration has NOW gets the notice (after a change worded
   as an appointment); the guru who was replaced is told **nothing**, neither the approval notice nor a notice of the
   change (D-134: that account never heard that a student had chosen it, a new registration is told to the Kepala
   Sekolah and the team only; `MentorReplaced` and `replacedMentorToTell()` of the first version are gone); a
@@ -325,10 +374,17 @@ logs in through `POST /login` and expects a 403/404 on the next GET would see th
   "Alumni" where the class stands, never the last class; Kelas mode is for active students only. A
   student's own rank ("peringkatmu": Beranda, Portofolio, public student page) is among **active** students
   only, always via `App\Support\Leaderboard\PersonalRank` (D-37; demo Nadia = #14).
-- **Report deadline** (`App\Domain\Deadlines`): `final_on` + **45 days** (setting
-  `report_deadline_days`, Admin-editable, D-25). `reports.late` belongs to the first report: the answer to a revision
-  request keeps it (`SubmitReport::marksLate()`, QA8; a screen asks it before it says "ditandai terlambat"). Screens print
-  the days and months of the settings, never a fixed 45 / 18.
+- **Laporan hasil has no deadline** (D-151, replaces D-25): no screen or mail prints a due date, "N hari lagi",
+  "Terlambat" or "Lewat batas"; they ask "Segera laporkan hasil lombamu." (`App\Domain\Deadlines\ReportFollowUp::PROMPT`;
+  chip "Segera laporkan" on Lomba saya). `SubmitReport` always writes `reports.late` = false (`marksLate()` is deleted;
+  the column stays for old rows). Reminders: `sth:reports:remind` (daily) sends `ReportReminder(string $registrationId,
+  string $competitionName, int $daysAfterFinal)` to the ketua on **H+3 and H+14 after `final_on`**
+  (`ReportFollowUp::REMINDER_DAYS`), only for `menunggu_laporan` registrations **without any report**, once per threshold
+  (`registration_reminders` kind `report_after_3` / `report_after_14`, inserted before the send); a missed day is
+  caught up for `SendReportReminders::CATCH_UP_DAYS` (7) and only the latest due reminder goes out, so a deploy sends no
+  burst to old rows. The school dashboard counts "Belum lapor > 14 hari" (`NOT_REPORTED_DAYS`). `ReportDeadline`, its
+  binding and the key `report_deadline_days` stay in code, unused for display. Screens print the archive months of the
+  settings, never a fixed 18.
 - **Archive** (`App\Domain\Archive`): grade-12 start = 1 July of the year the student enters kelas XII;
   `archive_at` = +18 months (e.g. kelas X 2026/2027 → XII 2028-07-01 → archive 2030-01-01). Daily job
   01:00 Asia/Jakarta, idempotent; sessions revoked; **archived users cannot log in** (D-29); their
@@ -396,10 +452,30 @@ logs in through `POST /login` and expects a 403/404 on the next GET would see th
 - **Models & permissions**: status/verification/points columns are not in `$fillable`; Actions set them
   with `forceFill()`. Permissions = `App\Enums\Permission` (`competition.verify`, `registration.approve`,
   `letter.generate`, `report.verify`, `student.import`, `weight.manage`, …), matrix in
-  `RoleName::defaultPermissions()`; Admin has everything **except** `registration.approve`.
-- **Talent**: 6 types mapped to 4 bidang (OSN, OLPAIN → sains; Riset → riset; FLS3N, Debat →
-  seni_budaya; O2SN → olahraga, D-22); a student may pick several; all active classes incl. XII (D-23).
-  Two optional notes per application: `note` = for the guru pembina (internal), `student_note` = for the
+  `RoleName::defaultPermissions()`; Admin has everything **except** `registration.approve`. Since FS1:
+  `competition.create` = siswa + Admin (D-145), `registration.approve` = Kepala Sekolah + Tata Usaha (D-150),
+  `report.verify` = Kesiswaan + Humas + Admin (D-139); re-run `RoleSeeder` on every database after such a change.
+- **Talent** (since FS1-E, D-142…D-144): 7 types; six map to 4 bidang (OSN, OLPAIN → sains; Riset → riset; FLS3N,
+  Debat → seni_budaya; O2SN → olahraga, D-22) and the seventh, **Lainnya**, has no bidang and no cabang
+  (`TalentTypeCode::bidang()` = null; screens show "Lainnya" in its place; never a fifth bidang, D-11). Every jenis with
+  cabang ends with the cabang "Lainnya" (`TalentBranch::OTHER`, `TalentSeeder`). Choosing jenis or cabang Lainnya needs
+  the typed "Sebutkan" text, 3–60 characters (`talent_applications.other_text`, not fillable, kept out of the model's
+  activity log; `TalentOtherText`; `ApplyTalent::handle(User, TalentType, ?TalentBranch, ?UploadedFile = null, ?string
+  $otherText = null)`); duplicates are refused by jenis + cabang + normalised text under the student lock (no unique DB
+  index any more). **No stages and no verification** (D-142): new and restored rows are `terdaftar`, old rows of any
+  status are plain data and no screen shows a status; the student adds and deletes ("Hapus", `CancelTalentApplication`,
+  any status) at any time and nobody is told; "Urungkan" / choosing it again restores the same row with its guru
+  pembina and note (*sementara*). Kesiswaan only records: Database talenta siswa (tabs "Semua" and "Belum mengisi
+  (kelas X)"), an optional guru pembina + the note for him (`UpdateTalentAssessment::handle(User, TalentApplication,
+  array{mentor_id?, note?})`, policy `update`, nobody notified), "Download data (Excel)" with the columns of
+  `Talenta::EXPORT_HEADER` following the screen filters, never an empty file. `MoveTalentStage`,
+  `RejectTalentApplication`, `RestoreTalentApplication`, `RequestTalentReview` and the four talent notices are deleted;
+  the columns `status`, `rejected_from`, `review_*`, `student_note*`, `assessment_on` stay. **Kelas X gate** (D-144):
+  `App\Http\Middleware\EnsureTalentChosen` (`talent.chosen`, last in `area.siswa`) sends a kelas X student (classroom
+  level 10) who can log in and has no talent choice to `siswa.talenta` (JSON: 403) with `EnsureTalentChosen::ALERT`;
+  exempt: `EXEMPT_ROUTES` (Profil talenta, Bantuan, Akun › Keamanan, Notifikasi + its counter, logout) and every Livewire
+  update (not a persistent Livewire middleware); tests use `Tests\Support\TalentGate::pass()`.
+  *Historic (removed by D-142, kept for the old texts below):* two optional notes per application: `note` = for the guru pembina (internal), `student_note` = for the
   student, sent with the decision (D-85). "Simpan" keeps what was typed for the student as a draft
   (`student_note_draft`, staff only); a decision sends its note and clears the draft
   (`TalentNote::forDecision()`): a text the caller passed wins, an action without a note field (row icon, bulk
@@ -478,7 +554,8 @@ logs in through `POST /login` and expects a 403/404 on the next GET would see th
   and is **not audited**; everything else about files is unchanged. Views never call it directly: `App\Support\Sampul::poster()`
   asks `CompetitionPolicy::view` first. An intended address under `/berkas/sampul/` is dropped at login (`FortifyServiceProvider`).
 - **Settings**: `Setting::get(SettingKey::…)` / `Setting::put()` (defaults in `SettingKey::defaultValue()`,
-  seeded by `SettingSeeder`), exactly these keys: `report_deadline_days` (45), `archive_months_after_grade12` (18),
+  seeded by `SettingSeeder`), exactly these keys: `report_deadline_days` (45; since D-151 not on any screen and not
+  used for display, Admin › Pengaturan › Batas & arsip only sets the archive months), `archive_months_after_grade12` (18),
   `signature_file_id`, `signer_name` / `signer_rank` / `signer_nip`, `letter_format_siswa` / `letter_format_guru`
   (since D-82 only the example shown under the number field, "Contoh nomor surat" in Admin › Pengaturan),
   `public_indexing` / `public_certificates` (both false, D-38/D-39), `activation_window_days` (14, 1–30, D-54),
@@ -551,7 +628,8 @@ logs in through `POST /login` and expects a 403/404 on the next GET would see th
   meanwhile checks the state the screen SHOWED before it calls the policy or Action (a `#[Locked]` property filled in
   `render()`, the record's state, or the audit row of the change) and answers with a warning `sth-toast` + a refreshed
   list, never a full-screen 403/404; a record the user may never see still answers 403/404. Examples:
-  `Kesiswaan\VerifikasiHasil::decidedElsewhere()`, `Kesiswaan\Talenta` (`$shownStages`), `Kepsek\Persetujuan` (`$shown`).
+  `Kesiswaan\VerifikasiHasil::decidedElsewhere()`, `Kesiswaan\Talenta::cancelledByStudent()` (its `$shownStages` went
+  with the stages, D-142), `Kepsek\Persetujuan` (`$shown`).
   A toast claims a notice only when the Action says one went out (`notifiesStudent()`, D-109).
 - **A Livewire view starts with its root element** (RV1): no `@if` / `@foreach` around or before it. Livewire puts
   `wire:id` on the first tag that starts a line of the rendered view, and a directive before the root prints a marker
@@ -694,12 +772,12 @@ logs in through `POST /login` and expects a 403/404 on the next GET would see th
   langsung diberi tahu." or the neutral "Undangan ini belum dijawab."; the line must stay a non-empty sentence). A
   refusal the screen could not show under a field is also a warning toast (`Form::refuseWithdrawal()`), and a result
   message is read from what the Action wrote, not from what the dialog predicted (the toast after a withdrawal adds
-  "Pendaftaran diteruskan ke Kepala Sekolah."; `RequestReportRevision::leaderCanResend()` decides whether the revision
+  "Pendaftaran diteruskan untuk persetujuan." since D-150; `RequestReportRevision::leaderCanResend()` decides whether the revision
   banner may say "… bisa mengirim ulang laporan."). Built this way: ~~`tolak-laporan` (Verifikasi hasil)~~ (removed with the
-  "Tolak" button, D-140), `batal-undangan` (Pendaftaran lomba), `pindahkan-talenta`
-  (bulk move), `tutup-lomba` (Kelola lomba), `impor-siswa` (Import siswa; the password page comes before the dialog),
-  `tandai-terbit` (Humas). Older confirm steps (`Talenta::reject()`, `Lomba\Index::publishPast()`) still answer 404
-  without their ask.
+  "Tolak" button, D-140), `batal-undangan` (Pendaftaran lomba), ~~`pindahkan-talenta` (bulk move)~~ (removed with the
+  talent stages, D-142), `tutup-lomba` (Kelola lomba), `impor-siswa` (Import siswa; the password page comes before the dialog),
+  `tandai-terbit` (Humas). An older confirm step (`Lomba\Index::publishPast()`) still answers 404 without its ask
+  (`Talenta::reject()` is gone, D-142).
   **File preview popup** (M3, D-105): one dialog per page, `<x-sth.preview />` (`#sth-preview`), rendered once by
   `layouts::app` and `layouts::mobile` (not by `public` / `auth`: there a link simply downloads). Any link opens it
   with three attributes and keeps the download as its `href`: `data-sth-preview` (the inline address from
@@ -732,10 +810,13 @@ logs in through `POST /login` and expects a 403/404 on the next GET would see th
 ## 8. Decisions you must not undo
 Full log: `docs/DECISIONS.md` (append-only; a changed decision gets a new entry that "menggantikan D-xx").
 - Initial student password = the configured value (D-138, `sth.initial_student_password`), the same for every student and replaced at the first login; the birth-date pattern `sm4g4_DDMMYY` (D-24) only survives in accounts imported before 2026-10-12 and in K7 detection. Never shown in the UI.
-- Report deadline is **45 days after the final date** (D-25), not 30 days after the lomba.
-- **All** competition uploads, from any role, need Kesiswaan verification before they appear (D-27).
+- **Laporan hasil has no deadline** (D-151, replaces the 45 days of D-25 and the 30 days of D-07): "Segera laporkan",
+  reminders on H+3 and H+14 after the final date; no due date, "Terlambat" or report-deadline setting on any screen.
+- Only **siswa and Admin** add a lomba (D-145, D-148); every new lomba needs Kesiswaan verification before it appears
+  in the catalog (D-27); only its submitter may register before that (`menunggu_lomba`).
 - **Alumni (archived) cannot log in** (D-29); their achievements stay public/ranked.
-- **Admin is separate from Kepala Sekolah** (D-01); Admin does not approve registrations for the Kepsek.
+- **Admin is separate from Kepala Sekolah** (D-01); Admin does not approve registrations. The Kepala Sekolah **or**
+  Tata Usaha approves (D-150).
 - **Each team member gets full points**; Semifinalis and Penghargaan khusus are **0,30** (D-08).
 - No activation code (D-14); import by Kesiswaan + Admin (D-26); four bidang only (D-11); winners per
   lomba on public pages (D-31); talent via STH, not Google Form (D-21).
@@ -758,7 +839,7 @@ D-67 confirm-password limit + 2FA audit events; D-68 no mail and no reset code f
 gets account notices only; D-69 user text in mails is plain text (`PlainMailMessage`); D-70 `PdfScanner` refuses PDFs it
 cannot read completely; D-71 a withdrawn publish consent also hides the name and the flyer from Humas (flyer parts of
 D-71 and D-75: since D-107 only for flyer files made before 2026-10-06); D-72 long lists
-come in steps (*sementara*); D-73 "Tambah lomba" notifies the other verifiers (*sementara*); D-74 gzip for the
+come in steps (*sementara*); D-73 "Tambah lomba" notifies the other verifiers (*sementara*; replaced by D-145: only Admin uses the full form, and its notice to the other verifiers stays); D-74 gzip for the
 Livewire script in the prod nginx + daily prune of expired cache rows. Lead's choices of 2026-10-02, **final**: D-75 the
 flyer file stays after a withdrawn consent, Humas cannot download it, Admin (`student.view`) still can; D-76 a lomba
 name must not contain a web address (`App\Rules\NoWebAddress`); D-77 the guru pembimbing is told about a rejected or
@@ -773,7 +854,7 @@ types the complete letter number, unique per letter type, the Admin format is on
 "Buat PDF" per letter, one "Kirim"; D-84 letters look like the school's own files, the Pemprov and school emblems live
 in `resources/pdf/assets`, "Cetak" opens the PDF inline; D-85 two optional talent notes (guru pembina / student), a
 rejection needs no note; D-86 a rejected talent choice can be restored and the student can ask for a review, never a
-second application (restoring without a request is *sementara*); D-87 appreciation events are confirmed and deleted as
+second application (restoring without a request is *sementara*; D-85's note for the student and all of D-86 are replaced by D-142); D-87 appreciation events are confirmed and deleted as
 events, a confirmed one is locked; D-88 Status aktivasi "Lihat" opens a class popup; D-89 everyday words in UI copy
 (upload, download, link, preview); D-90 sidebar counts update without a reload, the top bar search filters while typing,
 one search box per screen on Cari lomba; D-91 dev-only php-fpm config/view cache, and the tests refuse to run on a
@@ -786,7 +867,7 @@ fields are emptied, and a renewed session destroys the old one, never on a refus
 the username, the email's local part and common passwords; D-95 "Buka ulang" never shortens a deadline, its reason and
 a lomba rejection need 10 characters (the lomba half was taken back by D-103); D-96 the talent note for the
 student is a draft until a decision and "Tidak lolos" asks first (quick actions and bulk moves also send a saved
-draft: *sementara*); D-97 one achievement on one
+draft: *sementara*; replaced by D-142); D-97 one achievement on one
 appreciation event, "Lepas dari acara"; D-98 a lomba cannot start before its registration deadline, and past dates
 need an explicit yes to publish; D-99 the student card lists only sent letters and the guru letter is text only
 (students may not open it: *sementara*); D-100 sidebar counts come from one resolver on every page; D-101 own error
@@ -802,7 +883,7 @@ D-95 and the old "note required"; "Buka ulang" keeps its 10 characters); D-104 "
 choice to the stage Kesiswaan chooses (Terdaftar, Pemetaan, Seleksi, Peserta pembinaan; the earlier stage is only
 the preselected one, which adjusts D-86), and "Download data" in Talenta asks which statuses go into the file
 (*sementara*: no pembina or date required for a restore into Peserta pembinaan, tidak-lolos rows last in "Semua", no
-bulk restore, "Status" in the dialog vs "Tahap" in the file); D-105 "Buka" shows an evidence file in a popup and the
+bulk restore, "Status" in the dialog vs "Tahap" in the file; replaced by D-142); D-105 "Buka" shows an evidence file in a popup and the
 download stays: only the inline PDF answer of `files.show` may be framed by this origin and has no `sandbox`,
 everything else keeps `DENY` / `sandbox` (*sementara*: letters do not use the popup yet, HEAD is not audited, public
 pages only download); D-106 the local demo files are realistic sample documents with fictional people, invented
@@ -816,14 +897,14 @@ demo files in local seeding, a `sandbox` on the inline PDF answer (the viewer st
 of the file headers than that one answer, a preview of an issued letter drawn from today's data.
 The lead's answers after the retest of M3 on 2026-10-07 (QA5), **D-109…D-112** (DECISIONS §D9,
 `docs/dev-notes/QA5.md`; where nobody asked, the client document "SMAGA TALENT HUB (STH)" decided), **final**: D-109 a
-restore into Peserta pembinaan needs a guru pembina (replaces that *sementara* point of D-104); D-110 the guru
+restore into Peserta pembinaan needs a guru pembina (replaces that *sementara* point of D-104; replaced by D-142); D-110 the guru
 pembimbing is told about every decision on a binaan's report and about the binaan's appreciation (scheduled,
 released, event deleted); D-111 the Talenta export follows the screen filters, empty statuses cannot be chosen, no
-empty file; D-112 the sent letters open in the preview popup on Guru › detail binaan. Do not bring back: a restore
+empty file (the status part is replaced by D-142, which has no status dialog); D-112 the sent letters open in the preview popup on Guru › detail binaan. Do not bring back: a restore
 into Peserta pembinaan without a guru pembina, an empty Talenta Excel, a reject toast that claims a notice nobody got.
 The explore round after PR 14 on 2026-10-07 (QA6), **D-113…D-116** (DECISIONS §D10, `docs/dev-notes/QA6.md`; the lead
 left the UX to us where the client document is silent): D-113 an issued letter verifies on the QR page before "Kirim"
-too (*sementara*); D-114 a new or changed assessment date may not lie before today; D-115 the ketua may withdraw an
+too (*sementara*); D-114 a new or changed assessment date may not lie before today (replaced by D-142: no assessment date any more); D-115 the ketua may withdraw an
 unanswered team invitation; D-116 a letter not issued yet takes the invitation and schedule fields of the other letter,
 never over a field TU typed for it (D-83 stays: two forms). Do not bring back: "Setujui terpilih" or TU "Kirim" without a
 confirmation, "Tidak ditemukan" for a letter TU could print, a past assessment date for a new schedule.
@@ -890,7 +971,7 @@ The demo and the joint review of 2026-10-11 (RV1), **D-130…D-134** (DECISIONS 
 the single entry `*` opens the local mail allowlist to every address that can exist, never to a fictional one
 (*sementara*, local only; adjusts D-121); D-131 the NIS is shown in full on the three screens only Kesiswaan and Admin
 open (Status aktivasi and its CSV, Talenta, Database prestasi), the email stays masked (**final**; whether the NISN or
-a full email should be added is not decided); D-132 with the approval the Kepala Sekolah may put another guru
+a full email should be added is not decided); D-132 with the approval the Kepala Sekolah (since D-150 also Tata Usaha) may put another guru
 pembimbing in the place of the student's choice, the students' approval notice always names their guru, the new guru
 is told as an appointment (**final** for the right and for the guru in the notice; *sementara*, chosen by the
 coordinator: only together with the approval, not for "Setujui terpilih"); D-133 the student letter stands in the
@@ -945,6 +1026,48 @@ to a `kesiswaan.*` address (a link, the address after a decision, a mail button)
 someone else decided, or a hard-coded role in a decision sentence instead of `StaffRoleLabel`; Humas given without the
 second-Admin rule; a mail about a new report to Kesiswaan only; a printed or published list with a student who may not be
 named (`NamedStudent`), NIS, NISN or points in that print, or a name in its audit row.
+Package E, **D-142…D-144** (talent; `docs/dev-notes/FS1.md` "Paket E"), **final** unless noted: D-142 talent choices have
+no stages and no verification: Kesiswaan only records (Database talenta siswa with the tabs "Semua" and "Belum mengisi
+(kelas X)", an optional guru pembina and the note for him, an Excel export with Nama · NISN · Kelas · Jenis · Cabang ·
+Keterangan lainnya · Guru pembina · Didaftarkan that follows the screen filters, never an empty file), the student adds
+and deletes a choice at any time, nobody is notified, old rows of any status are plain data, the old columns stay
+("Urungkan" keeps the guru pembina and his note: *sementara*); D-143 a seventh jenis "Lainnya" without bidang or cabang
+and a cabang "Lainnya" last in every jenis with cabang, both with the required "Sebutkan" text (3–60 characters, plain,
+formula-escaped, out of the activity log), duplicates by jenis + cabang + normalised text; D-144 a kelas X student with
+no talent choice is held on Profil talenta (`EnsureTalentChosen`, last in `area.siswa`; every Livewire update passes and
+the requested address is not kept: *sementara*). Do not bring back: talent stages (Pemetaan, Seleksi/asesmen, Peserta
+pembinaan, Tidak lolos) or a status chip on any talent screen or file, "Lolos ke …", "Tidak lolos", "Pulihkan",
+"Pindahkan ke …", "Minta ditinjau ulang", a note for the student or its draft, an assessment date, any notice about a
+talent choice (to the student, the guru pembina or Kesiswaan), the status dialog of the Talenta export, a required guru
+pembina, a fifth bidang for "Lainnya", a unique DB index on (student, jenis, cabang), a kelas X student reaching another
+siswa page with zero talents, the gate on Profil talenta, Bantuan, Akun › Keamanan, Notifikasi, logout or Livewire
+updates, the gate before `activated` or for staff.
+Package B, **D-145…D-151** (the lomba flow; `docs/dev-notes/FS1.md` "Paket B"), **final** unless noted: D-145 only siswa
+(the full page "Usulkan lomba", then straight to the Pendaftaran lomba panel; tab "Usulan saya", oldest first) and Admin
+("Tambah lomba") hold `competition.create`, Kesiswaan checks and corrects any field, the guru has no upload; D-146 kategori
+bobot and status ajang come from the jenis penyelenggara and the Puspresnas tick (`OrganizerWeight`), a student never sends
+them, a Kesiswaan override is audited as `weight_override`; D-147 "Pendaftaran dibuka / ditutup", "Durasi lomba" (1 hari
+→ "Tanggal lomba", more → "Tanggal mulai" + "Tanggal selesai"), "Pendaftaran · Pelaksanaan · Laporan hasil" on the read
+screens, and the juknis / brosur / undangan is required to create, save and publish; D-148 the submitter's registration
+for the own queued lomba waits as `menunggu_lomba` and nobody hears of it until Kesiswaan decides: published → on to the
+approvers or the team invitations (a team resumed late gets three days, `answer_until`; the ketua may also invite and
+withdraw in those days: *sementara*), rejected → cancelled with ONE combined notice; D-149 "Data peserta" (Nama, Kelas,
+NISN, Tanggal lahir from the account, read-only, owner only) and a required, editable No HP (also on "Ikut tim");
+D-150 the Kepala Sekolah **or** Tata Usaha approves and may "Ganti guru" (TU on its own address `tu.persetujuan.index`:
+*sementara*), the label is "Menunggu persetujuan", decisions name the decider ("disetujui oleh <nama> (Tata Usaha)"),
+and the accepted risk is that TU may approve and then issue letters in the Kepala Sekolah's name (SECURITY §3m-5);
+D-151 laporan hasil has no deadline ("Segera laporkan hasil lombamu."), reminders on H+3 and H+14 after the final date
+for registrations without a report, a 7-day catch-up, KPI "Belum lapor > 14 hari". Do not bring back: a guru, Kesiswaan,
+Kepala Sekolah, TU or Humas adding a lomba ("Upload info lomba", "Upload saya", Kesiswaan's "Tambah lomba"), the usulan
+sheet with name + organizer + link only, a weight typed by or taken from a student, `weight_category` / `event_status` in
+`$fillable`, an unaudited override, "Batas daftar" / "Tanggal final" as field labels of the lomba form, a lomba saved or
+published without its juknis, invitations sent or approvers told while the lomba still waits, a waiting registration in
+a guru's Siswa binaan, two notices for one rejected lomba, a team resumed after the deadline that cannot answer, the
+birth date shown to anybody but its owner, a phone number in an audit row, Admin approving, "Menunggu Kepala Sekolah"
+or "Kepala Sekolah menyetujui" written as a fact when Tata Usaha decided, a TU link to `kepsek.*`, a report deadline,
+"N hari lagi", "Terlambat" / "Lewat batas" or "dikirim setelah batas waktu" on any screen or mail, `reports.late` set to
+true, the "Batas laporan hasil" card in Admin › Pengaturan, reminders before the final date, a reminder after a report
+or a burst of reminders to old rows at deploy.
 
 Known stale text (do not "fix" code to match it): `docs/DEPLOY.md` §9 path A (Google Workspace relay) is not an option
 for the school (lead, 2026-10-08) and §9 has no Brevo path yet;
@@ -1001,6 +1124,20 @@ D-34, D-61, D-110 and D-128 in DECISIONS, each kept next to a dated 12 Okt 2026 
 Admin, Kepala Sekolah, TU and Kesiswaan only (§1 risk 6, §3a "SEBAIKNYA juga untuk Guru & Humas", §3m-9; the code
 enforces TOTP for every staff role) and U-03 in DECISIONS §E; notification rows and mails written before 2026-10-12 keep
 "Kesiswaan" as the decider.
+Stale since FS1-E/B (D-142…D-151): the mockup boards `Kesiswaan-Talenta` and `Profil-Talenta` (stages, "Tidak lolos",
+"Pulihkan"), `Katalog-Lomba` (the short usulan sheet), `Kesiswaan-Kelola-Lomba` ("Tambah lomba" for Kesiswaan, "Batas
+daftar", report deadline), `Detail-Lomba`, `Lomba-Saya`, `Beranda-Siswa`, `Beranda-Mobile` and the two `Tur-Menu`
+boards ("Menunggu Kepala Sekolah", report deadline and "hari lagi"), `Admin-Pengaturan` (the report deadline card;
+mockups are design history and are not edited); `DESIGN-SPEC-v2.md` §1 ("Kepala Sekolah approves", the 30-day
+deadline); the dev-notes that describe the talent pipeline (`W2-B.md`, `M1-D.md`, `M2-B.md`, `M3-A.md`, `QA5.md`,
+`QA6.md`, `QA9.md`), the usulan sheet `Lomba\UsulanForm` and the guru upload (`W2-A1.md`, `B4.md`, `EM2.md`), the report
+deadline and `reports.late` (`W2-A2.md`, `QA8.md`, `EM2.md`) or a Kepala-Sekolah-only approval (`W2-C.md`, `RV1.md`); the
+old texts of D-01, D-02, D-04, D-05, D-07, D-22, D-23, D-25, D-27, D-33, D-73, D-85, D-86, D-96, D-104, D-109, D-111,
+D-114 and D-132 in DECISIONS, each kept next to a dated 12 Okt 2026 note; in SECURITY the matrix rows "Katalog lomba",
+"Usulan lomba" and "Pendaftaran individu/tim" (§3c), "Hanya pendaftaran berstatus Disetujui Kepala Sekolah" (§3m-5) and
+"batas laporan 30 hari" (§3h), kept next to dated FS1 notes; talent notification rows and mails written before
+2026-10-12 (their classes are deleted; the bell rows still render from their stored data); `reports.late` = true on
+reports sent before D-151 (no screen reads it); approval notices written before 2026-10-12 say "Kepala Sekolah".
 Stale since EM2 (D-122…D-129): the mockup boards `Humas-Publikasi`, `Kesiswaan-Verifikasi-Hasil` and
 `Kesiswaan-Kelola-Lomba` know none of it (no "Lewat jadwal", no start time, no picker, no confirm dialog, no
 "Lainnya" field; mockups are design history and are not edited); D-47's sentence "mengubah status ke `dipublikasikan`
@@ -1098,6 +1235,22 @@ printed list share the letter layout (today its own style block, like the Kepala
 who verified a report still get "Prestasi baru siap dipublikasikan" for it (today every Humas does); the role shown for an
 account with several roles (order Kepala Sekolah, Tata Usaha, Kesiswaan, Humas, Admin, Guru) and the label "Penetapan
 sekolah"; should a report that is not valid ever be closed without points again (today only "Minta revisi", D-140).
+Questions for the lead from FS1-E and FS1-B (the *sementara* parts of D-142…D-151; `docs/dev-notes/FS1.md` "Paket E",
+"Paket B" and "FS1 overview"). Talent: "Urungkan" and choosing a deleted talent again bring back its guru pembina and
+note, also months later and also when that guru is no longer active (keep, or clear them unless it is the undo of the
+same visit?); the kelas X gate lets every Livewire update through and does not keep the requested address (register it
+as persistent Livewire middleware, and send the student back to an invitation link after the first talent?). Lomba
+flow: may the ketua invite and withdraw during the three days of a resumed team, or only answer (D-148); should the
+Kesiswaan drawer say that a queued lomba has a waiting registration before "Publikasikan" / "Tolak"; Detail lomba and the
+Pendaftaran lomba panel still say "Kesiswaan" rejected a usulan while the notices, "Usulan saya" and Lomba saya name the
+deciding role (Admin too): name the role everywhere, or "Kesiswaan" everywhere; should "Peserta" changed to "Tim" be
+refused while individu registrations run (today only a change to individu or a lower "Maks anggota" is refused, and
+Kesiswaan corrects queued lomba with waiting registrations); TU on its own address `tu.persetujuan.index` (the design
+opened one route for both roles); TU approving and then issuing the letters signed for the Kepala Sekolah is accepted in
+D-150: should the Kepala Sekolah sign that too, with the D-14 / D-138 risk form; keep or remove the unused
+`report_deadline_days` key and `ReportDeadline` (D-151 keeps them); the reminder days 3 / 14 and the 7-day catch-up;
+the old wording "Batas daftar" (Kelola lomba table, change notice) and "Juknis/brosur diganti." (D-147). Letters: the
+template fix (FS1 item 14) still waits for the school's template; the student letter keeps the NIS column until then.
 Public DNS check of 2026-10-01 (not yet confirmed with the school): the domain's DNS is on Cloudflare (`www`, `mail`,
 `webmail` proxied); the main website and the school mail are on Desnet shared hosting (SPF, DKIM and DMARC `p=none`
 exist), so apparently **not** on the Ubuntu server (§1 assumes the same host: confirm). No `prestasi` record exists
@@ -1106,7 +1259,7 @@ IPs, which breaks the per-IP login/OTP limits). The noreply mailbox would then b
 SMTP host must not be `mail.<domain>` (proxied) and its hourly send limit needs asking.
 
 ## 10. Status
-Last updated: 2026-10-14 (waves 1–2 done, W3-A integration pass, backlog wave B1–B6, W4 integration, D1 docs sync, CI green on GitHub, Q1 end-to-end/security/performance pass, PERF1 by S, M1 = the lead's 18 hand-test changes, M2 = fixes after the QA pass, QA4 by S, M3 = the lead's six requests of 2026-10-06, QA5 = fixes after the retest of M3, QA6 = explore round after PR 14, UI3 = visual direction v3 and the lead's review of it, QA7 = explore round after UI3, QA8 = explore round after PR 17, EM1 = real mail from a local stack, QA9 = explore round after EM1, QA10 = explore round after QA9, EM2 = fixes after the lead's mail and notification test of 2026-10-09, RV1 = the demo and the joint review of 2026-10-11, FS1-A = school feedback package A, FS1-D = school feedback package D, FS1-C = school feedback package C). Update this section whenever a milestone moves.
+Last updated: 2026-10-14 (waves 1–2 done, W3-A integration pass, backlog wave B1–B6, W4 integration, D1 docs sync, CI green on GitHub, Q1 end-to-end/security/performance pass, PERF1 by S, M1 = the lead's 18 hand-test changes, M2 = fixes after the QA pass, QA4 by S, M3 = the lead's six requests of 2026-10-06, QA5 = fixes after the retest of M3, QA6 = explore round after PR 14, UI3 = visual direction v3 and the lead's review of it, QA7 = explore round after UI3, QA8 = explore round after PR 17, EM1 = real mail from a local stack, QA9 = explore round after EM1, QA10 = explore round after QA9, EM2 = fixes after the lead's mail and notification test of 2026-10-09, RV1 = the demo and the joint review of 2026-10-11, FS1-A = school feedback package A, FS1-D = school feedback package D, FS1-C = school feedback package C, FS1-E = school feedback package E, FS1-B = school feedback package B). Update this section whenever a milestone moves.
 EM1 2026-10-08 (`docs/dev-notes/EM1.md`, D-121, commit `4766b56` on `feat/email-brevo-dev`; merged into `main` together with QA9 and QA10 by PR 19, merge commit `a2d21e1` of 2026-10-09): the lead chose Brevo for development with a temporary Gmail sender. Built: the mailer `allowlist` (listed addresses → the real provider, everything else → Mailpit, local only), two boot guards (no allowlist outside local; in local no default mailer that delivers every mail), `sth:mail-test` says which way an address goes, a commented block in `.env.example`. The lead's first real mail through Brevo arrived (sender shown as `…@<id>.brevosend.com`, Gmail shows "Berhenti berlangganan"). No migration, no notification changed yet. Suite numbers: TEST-RESULTS in `docs/dev-notes/EM1.md`. Open: backlog #78.
 M1 2026-10-05 (`docs/dev-notes/M1.md`, plain summary for the team in `catatan.md`; branch `feat/ui-uji-manual-m1`): full suite `--parallel --processes=4` → **1767 passed (8945 assertions)**, exit 0 (680 s); `pint --test` clean (610 files); `npm run build` OK; the four M1 migrations ran on the local MySQL. Dev page times after `reload.bat` + warm-up, all seven roles: 150–540 ms per menu, login 0.75–0.93 s (`catatan.md` §2). Not re-run after M1: the email scenario and the Playwright smoke (backlog).
 M2 2026-10-06 (`docs/dev-notes/M2.md` + `M2-A`…`M2-C`, D-92…D-101, plain summary in `catatan.md` §6; same branch): fixes for the 12 most important findings of the QA pass of 2026-10-05 (64 findings; the rest is backlog #57–#68) and the Trivy fix in `docker/Dockerfile.prod`; two migrations run on the local MySQL; suite numbers: TEST-RESULTS in `docs/dev-notes/M2.md`. PR 9 (M1 + M2) merged into `main` on 2026-10-06 (`b4b6f77`).
@@ -1223,6 +1376,9 @@ wraps instead of being cut. No migration. Full suite `--parallel --processes=4` 
 Not checked or not run: the Siswa screens (panel title, Bantuan), the menu-tour positions (`TurMenu`), the Playwright smoke and the composer audit.
 FS1-D 2026-10-12 (`docs/dev-notes/FS1.md`, D-137…D-138, branch `feat/fs1-feedback-sekolah`, not pushed): package D of the school's feedback (accounts). Built: students log in with the NISN only (or the bound email after activation; the NIS is stored only, a NIS gets the generic answer, now "NISN atau kata sandi salah."); the NISN replaces the NIS on Status aktivasi + CSV (with a hint line), Database talenta siswa, Database prestasi + Excel, Profil talenta and the import rows to check; searches take a name or a NISN; the import no longer cross-checks NIS against NISN; every student gets one initial password from config (`sth.initial_student_password`, env `STH_INITIAL_STUDENT_PASSWORD`), kept out of logs, refused as a new password, and replaced at the first login (activation has no "Lewati" any more). No migration. Full suite `--parallel --processes=4` → **3486 passed, 1 skipped, 1 failed (21371 assertions)**, 1832 s: the one failure was a test cleanup of this package (a constant from another test file), fixed in `9439eaf` and green alone; the suite was not run a second time. `pint --test` clean (765 files); `npm run build` OK. Browser check as Kesiswaan and Admin at the pane's own width (read from the page): login page, forgot-password page, the generic error, Status aktivasi, Database talenta siswa, Database prestasi, the Admin search placeholder. Not browser-checked (feature tests only): every student screen, a phone width, the downloaded Excel/CSV, the import dialog. Not run: the email scenario, the Playwright smoke, `composer audit`. Open: the lead confirms the new generic error text, the Kepala Sekolah signs the D-138 risk, no tool moves old accounts to the new initial password, a trim of `STH_INITIAL_STUDENT_PASSWORD` (FS1.md).
 FS1-C 2026-10-13/14 (`docs/dev-notes/FS1.md` "Paket C", D-139…D-141, branch `feat/fs1-feedback-sekolah`, not pushed; code `e8b2748`…`f13835a`, each task reviewed clean, docs 2026-10-14): package C of the school's feedback (verification of results). Built: Humas holds `report.verify` and verifies on the Kesiswaan screen under its own addresses (`humas.verifikasi.*`, menu item "Verifikasi hasil" with the count `humas.verifikasi`, `VerificationArea`), the first decision wins, no decision on an own binaan; Humas is a privileged role (second Admin or 24 h; existing Humas accounts keep the role); new and resent reports are mailed to Kesiswaan and Humas, each with the link of its own area (`ReportVerifiers`); decision texts name the deciding role (`StaffRoleLabel`), general sentences say "sekolah"; Verifikasi hasil without "Tolak" (`RejectReport` stays for old data); "Cetak daftar" per appreciation event (`apresiasi.cetak`, inline PDF of the students who may be named, audited without names). No migration; deploy: re-run `RoleSeeder`, drain the queue, restart `queue` + `scheduler` (FS1.md). Checks: focused filters per task (all green, Pint clean); the coordinator's browser QA of 2026-10-13 passed C1-C7 (one finding on this screen, the tag of a resent report, fixed in `ec743ac`); docs pass 2026-10-14: the Paket C test batch → **283 passed (1704 assertions)**. Not run for Paket C: the full suite (last full run `d076688`, before C: 3487 passed, 1 skipped), the email scenario (steps 0a, 7a, 7c, 7e edited), the Playwright smoke, `composer audit`. Open (§9): Admin may print, the PDF's own style block, the deciding Humas also told "Prestasi baru siap dipublikasikan", the role order and "Penetapan sekolah".
+FS1-E 2026-10-12/14 (`docs/dev-notes/FS1.md` "Paket E", D-142…D-144; branch `feat/fs1-e`, code `d1e4f14`…`97c3607`, merged `04074de`, then with Paket B through `feat/fs1-int` into `feat/fs1-feedback-sekolah` at `01b379b` with the reconcile `a72a6b5` + `c7360b8`; not pushed; docs 2026-10-14 on `feat/fs1-docs`): package E of the school's feedback (talent). Built: talent choices without stages or verification (Kesiswaan › Database talenta siswa with the tabs "Semua" and "Belum mengisi (kelas X)", an optional guru pembina + note, the new Excel columns following the screen filters; the student adds and deletes at any time; nobody is notified; four Actions and four notices deleted); the seventh jenis and a cabang "Lainnya" per jenis with "Sebutkan" (`talent_applications.other_text`, migration `2026_10_12_100000`, the unique index replaced by the Action's check); kelas X students without a talent held on Profil talenta (`EnsureTalentChosen`). Deploy: drain the queue first (deleted notice classes), migrate, `TalentSeeder`.
+FS1-B 2026-10-12/14 (`docs/dev-notes/FS1.md` "Paket B", D-145…D-151; branches `feat/fs1-b` (Tasks 1–11 + 10a, `e3f62ec`…`30fc316`, review fixes `8d15243`, `8ae9836`, merged `1d7ee01`) and `feat/fs1-b3` (Tasks 12–16, `1c3314c`…`2a1cc6d`, merged `c2dad71`, leftovers `5bf48c9`); not pushed): package B (the lomba flow). Built: only siswa (page "Usulkan lomba" → straight into the registration; tab "Usulan saya") and Admin add a lomba, Kesiswaan checks and corrects (shared `CompetitionFields`), the guru has no upload; weights from `OrganizerWeight` with an audited override; duration-based dates and a required juknis; `menunggu_lomba` with `ResumeWaitingRegistrations` and a three-day answer window (`registrations.answer_until`, migration `2026_10_12_100100`); "Data peserta" + an editable No HP (`UpdateStudentPhone`); Kepala Sekolah **or** Tata Usaha approves (`tu.persetujuan.index`, `ApprovalQueue`, "Menunggu persetujuan", the decider named); laporan hasil without a deadline, reminders H+3 / H+14, KPI "Belum lapor > 14 hari". Deploy: migrate, re-run `RoleSeeder`, drain the queue, restart `queue` + `scheduler`.
+Checks of FS1-E and FS1-B: focused filters per task in the implementers' ledgers (all green, Pint clean on touched files); after the merge the full suite on `01b379b` → **3588 passed, 1 skipped (21604 assertions)**, `--parallel --processes=8`, 139 s (this docs pass, run on `wt-fs1-docs` with `fs1-test.sh`). Not run in the docs pass: `pint --test` (docs only), `npm run build`, the email scenario on the merged tree (sections 2, 6, 9 and the D-150 steps were edited; the B1 branch ran it isolated: 134 mails, 0 missing), the Playwright smoke, `composer audit`, and a browser check of E and B (none of the E/B implementers had a browser; the browser QA items E1–E5 and B1–B9 of the coordinator's checklist are still open). The full FS1 picture (30 feedback items, decisions, one deploy checklist): `docs/dev-notes/FS1.md` "FS1 overview". Open: §9 "Questions for the lead from FS1-E and FS1-B", backlog #83.
 
 | area | owner | state (details in `docs/dev-notes/<ID>.md`) |
 |---|---|---|
@@ -1298,7 +1454,7 @@ M2 (2026-10-06): the "re-run" half of #46 is done (email scenario on 2026-10-05 
 (`hasil-uji/ringkasan-temuan.md` next to the repo; QA ids Q1-xx / Q2-xx; one line per finding in `docs/dev-notes/M2.md`).
 QA4 and M3 (2026-10-06) closed or changed parts of #39, #46, #55, #57, #63, #65, #66 and #67 (marked in the rows). Added by M3:
 #69–#74 = what the four M3 notes and QA4 leave open (`docs/dev-notes/M3.md`). QA5 (2026-10-07) closed or changed parts of
-#46, #56, #63, #67, #69 and #71; QA6 (same day, after PR 14) parts of #46, #61, #62, #65 and #66. QA8 (2026-10-08) closed the Q1-20 part of #62 and added #77. QA9 (2026-10-09) closed one part of #77 and added #79. QA10 (same day) added #80. EM2 (2026-10-10) closed or changed parts of #46, #63, #65, #75, #77 and #78 and added #81. RV1 (2026-10-11) changed #46 and #78 and added #82.
+#46, #56, #63, #67, #69 and #71; QA6 (same day, after PR 14) parts of #46, #61, #62, #65 and #66. QA8 (2026-10-08) closed the Q1-20 part of #62 and added #77. QA9 (2026-10-09) closed one part of #77 and added #79. QA10 (same day) added #80. EM2 (2026-10-10) closed or changed parts of #46, #63, #65, #75, #77 and #78 and added #81. RV1 (2026-10-11) changed #46 and #78 and added #82. FS1-E and FS1-B (2026-10-12…14) closed #40 and #47 by design (D-142), made the talent parts of #46, #56, #58, #71 and #79 moot, and added #83.
 
 | # | item | source | owner |
 |---|---|---|---|
@@ -1311,14 +1467,14 @@ QA4 and M3 (2026-10-06) closed or changed parts of #39, #46, #55, #57, #63, #65,
 | 36 | Status sistem: attention item "N perubahan peran menunggu" (today only the panel in Pengguna & peran shows pending role requests) | W4 | S + user |
 | 37 | Browser check of the W4 menus (Status aktivasi, Surat atas nama saya, Log audit, Arsip otomatis, avatar Notifikasi) and "Tambah pengguna" with a privileged role (render-tested only) | W4 | I |
 | 39 | After a withdrawn publish consent the flyer file, the old caption and scheduled appreciation rows stay on purpose (D-75: Humas blocked, Admin keeps the download); SECURITY §3i asks for removal within 3×24 h, which is still a manual task. Since D-107 the flyer part concerns only flyer files made before 2026-10-06: STH makes no new ones and no screen links the old ones (`FilePolicy` still serves them at `/berkas/{file}`); deleting them is a separate, destructive step the lead has to decide (#71) | Q1, M3-E | user + S |
-| 40 | A talent application (SaveTalentProfile / ApplyTalent) notifies nobody; Kesiswaan only sees it on the pipeline screen. (Reject/cancel notices for guru and Kepala Sekolah are done, D-77; #38 lomba names with a web address is done, D-76) | Q1 | user |
+| 40 | ~~A talent application (SaveTalentProfile / ApplyTalent) notifies nobody; Kesiswaan only sees it on the pipeline screen.~~ (closed by design, D-142: talent choices notify nobody; Kesiswaan reads them on Database talenta siswa) (Reject/cancel notices for guru and Kepala Sekolah are done, D-77; #38 lomba names with a web address is done, D-76) | Q1 | user |
 | 41 | Humas holds `achievement.view_all`; only the route middleware keeps Humas out of Database prestasi: tighten `AchievementPolicy::viewDatabase` or the Humas permission set. Unify the neutral-name rule (`PublicAchievements` + `AchievementFacts`) | Q1 | user |
 | 42 | Staff 2FA follow-ups: hourly ceiling for confirm-password (D-67 is 5 per minute), staff can still disable their own TOTP after confirming the password (audited; `staff.2fa` forces setup again) | Q1 | user |
 | 43 | `PdfScanner` (D-70): PDFs made on the lead's laptop with Word, Excel, PowerPoint, "Microsoft Print to PDF", Edge, Chrome and photo/scan images are accepted, hostile and oversized ones refused (19 files; results and a rerun script are in `uji-pdf/` next to the repo, not in git). Still to try: Canva downloads, the school's copier/scanner, phone scan apps, organizers' original certificates | Q1 | I |
 | 44 | A staff account reset by an Admin only gets account notices until its owner verifies the email again (D-68): add this to PANDUAN-PENGGUNA (Admin). Dev stack: after a Docker restart `queue`/`scheduler` come up before MySQL and fill `laravel.log` with connection errors until `start.bat` runs | Q1 | I |
 | 45 | *(12 Okt 2026, D-138: no new activation keeps the school password, so the flag only matters for accounts activated before; the risk-acceptance form also needs the D-138 risk.)* Counterweight for D-79: flag "masih pakai kata sandi dari sekolah" in Status aktivasi (active student with `password_changed_at` null, or the audit event `activation.password_kept`) + a reminder to change it; a pending row can now show a masked email (bound, password step open). Add the D-79 risk to the D-14 risk-acceptance form. Since D-92 `users.temporary_password_issued_at` tells an Admin's temporary password from the school password, so the flag can name only the kept school passwords | M1-B, M2-A | user |
-| 46 | ~~Re-run `tests/E2E/support/email-scenario.php` and the Playwright smoke after M1~~ (done 2026-10-05, see above; not re-run with the M2 code unless TEST-RESULTS in `docs/dev-notes/M2.md` says so). Still open: scenario steps 9d/9e: talent review request (mail to every Kesiswaan) and restore (mail to the student), a step that deletes an appreciation event (mail to the scheduled students), and a step for `ReleaseAppreciation` (mail "Jadwal apresiasi berubah" to the student, D-97); the restore step could pass a target stage (D-104); since QA5 also the guru pembimbing mails of D-110 (report decisions, appreciation; for the decisions and "Masukkan" see the EM2 sentences below); since QA6 the mail "Undangan tim dibatalkan" (D-115). Neither the scenario nor the smoke was re-run with the M3 code by the M3 agents. EM2 edited the scenario for its changes and ran it on 2026-10-10 (123 mails, 0 missing, 0 unexpected, 0 leaks, 0 failed jobs with `STH_OTP_TEST_MODE=true` on the isolated project; with a developer `.env` that has real OTP codes the two work mails of the unverified second Humas account are reported missing, so pin that flag on the E2E `app` service): 8b (`CreateAppreciationEvent` with a time), 8c (only the Humas reminder at the scheduled time), new 8d (the row is still `terjadwal`, then `PublishPublication` → the student's mail), 10j (greeting "Yth. …"), 11a (`RemindDuePublications`); its template check and leak scan depend on the new mail template. The review of EM2 added the four guru pembimbing mails the expected lists had been missing since D-110 (7b "Laporan binaan perlu revisi: …", 7d "Laporan binaan diverifikasi: …", 7f "Laporan binaan ditolak: …", 8b "Binaan masuk daftar apresiasi"), written by reading the notification classes and confirmed by that run. The guru mails for `ReleaseAppreciation` and `DeleteAppreciationEvent` still have no step. Still missing since EM2: a step that edits a published lomba with a running registration (D-126). When it is written: after 4c and before 6a; change the place only (a new batas daftar is told only to `menunggu_konfirmasi`); expect one "Info lomba berubah" per member of **every** registration on that lomba and one "Info lomba binaan berubah" to their guru, no lomba address in either; confirm the recipients with a real run. Since RV1 (D-132) also missing: a step that approves with another guru than the student chose (the mails are named in #82; seen once by hand on the isolated project on 2026-10-11) | M1, M1-D, M1-E, M2-B, M3-A, EM2, RV1 | I |
-| 47 | Optional sidebar badge on "Talenta siswa" for open review requests (`TalentApplication::query()->reviewRequested()->count()`): since D-100 a badge key in `Navigation` + one line in `NavigationServiceProvider::count()` | M1-D, M2-C | S |
+| 46 | ~~Re-run `tests/E2E/support/email-scenario.php` and the Playwright smoke after M1~~ (done 2026-10-05, see above; not re-run with the M2 code unless TEST-RESULTS in `docs/dev-notes/M2.md` says so). Still open: scenario steps 9d/9e: talent review request (mail to every Kesiswaan) and restore (mail to the student), a step that deletes an appreciation event (mail to the scheduled students), and a step for `ReleaseAppreciation` (mail "Jadwal apresiasi berubah" to the student, D-97); the restore step could pass a target stage (D-104); since QA5 also the guru pembimbing mails of D-110 (report decisions, appreciation; for the decisions and "Masukkan" see the EM2 sentences below); since QA6 the mail "Undangan tim dibatalkan" (D-115). Neither the scenario nor the smoke was re-run with the M3 code by the M3 agents. EM2 edited the scenario for its changes and ran it on 2026-10-10 (123 mails, 0 missing, 0 unexpected, 0 leaks, 0 failed jobs with `STH_OTP_TEST_MODE=true` on the isolated project; with a developer `.env` that has real OTP codes the two work mails of the unverified second Humas account are reported missing, so pin that flag on the E2E `app` service): 8b (`CreateAppreciationEvent` with a time), 8c (only the Humas reminder at the scheduled time), new 8d (the row is still `terjadwal`, then `PublishPublication` → the student's mail), 10j (greeting "Yth. …"), 11a (`RemindDuePublications`); its template check and leak scan depend on the new mail template. The review of EM2 added the four guru pembimbing mails the expected lists had been missing since D-110 (7b "Laporan binaan perlu revisi: …", 7d "Laporan binaan diverifikasi: …", 7f "Laporan binaan ditolak: …", 8b "Binaan masuk daftar apresiasi"), written by reading the notification classes and confirmed by that run. The guru mails for `ReleaseAppreciation` and `DeleteAppreciationEvent` still have no step. Still missing since EM2: a step that edits a published lomba with a running registration (D-126). When it is written: after 4c and before 6a; change the place only (a new batas daftar is told only to `menunggu_konfirmasi`); expect one "Info lomba berubah" per member of **every** registration on that lomba and one "Info lomba binaan berubah" to their guru, no lomba address in either; confirm the recipients with a real run. Since RV1 (D-132) also missing: a step that approves with another guru than the student chose (the mails are named in #82; seen once by hand on the isolated project on 2026-10-11). Since FS1: the talent steps 9d/9e (review request, restore) are moot (D-142); the scenario was edited for D-145/D-147 (section 2: students send the whole lomba with a juknis, a guru is refused; the B1 branch ran it isolated, 134 mails, 0 missing, 0 unexpected), D-142/D-143 (9b, 9c: nobody is mailed), D-150 (the approval mails also to Tata Usaha, 3k) and D-151 (6a–6c: reminders 3 and 14 days after the final), but not run on the merged tree; still missing: a step for a `menunggu_lomba` registration whose lomba is published and one whose lomba is rejected (one combined notice), a Tata Usaha approval, and a team resumed after the deadline | M1, M1-D, M1-E, M2-B, M3-A, EM2, RV1, FS1 | I |
+| 47 | ~~Optional sidebar badge on "Talenta siswa" for open review requests (`TalentApplication::query()->reviewRequested()->count()`): since D-100 a badge key in `Navigation` + one line in `NavigationServiceProvider::count()`~~ (moot since D-142: no review requests, the scope is deleted) | M1-D, M2-C | S |
 | 48 | `<x-sth.modal size="xl">` (≈ 960 px) so the Status aktivasi class popup can show the email as its own column (today `lg`, 760 px) | M1-E | S |
 | 49 | `student.class_changed` (about 750 rows per yearly import): should it be in `SecurityEventSubscriber::AUDITED_EVENT_PREFIXES`, and in the history of `Admin\ArsipOtomatis::EVENTS` (it can move an archive date)? | M1-C | user |
 | 50 | Confirm the *sementara* points of D-81 and D-86: the yearly file wins over a manual archive date; a registered student who is missing from the file is left alone (list or flag "siswa aktif yang tidak ada di file"?); Kesiswaan may restore a rejected talent choice without a student's request | M1-C, M1-D | user |
@@ -1354,6 +1510,7 @@ QA4 and M3 (2026-10-06) closed or changed parts of #39, #46, #55, #57, #63, #65,
 | 80 | Questions from QA10 (`docs/dev-notes/QA10.md`, "Requests for the lead"): re-invite a member whose invitation expired after the deadline was extended (D-50); a registration that reaches "menunggu laporan" late is late from day one; the Laporan PDF cap of 250 rows; refuse a lower "Maks anggota" only when a team is already bigger; login trade-offs (30-failure account lock reachable from one address in ~10 h for new devices, 20 reset codes a day can be used up from 2 addresses so only an Admin reset helps (longer codes / signed links), a shared PC stays a known device, a NAT flood makes everyone wait up to 60 s, alerts past 5 an hour only logged, code-to-browser link in the cache); a `number_key` column for letter numbers (migration); `final_on` moved later after "menunggu laporan"; `VerifyReport` reads the weight version outside its transaction; pending-activation gurus offered as pembimbing; Humas › Arsip and "Tambah prestasi" still use consent only; the named rule in three places | QA10 | user + S |
 | 81 | What EM2 leaves open (`docs/dev-notes/EM2.md`). **Browser checks** [I + S]. Seen by the coordinator on 2026-10-10 in the app's browser as the demo Kesiswaan account: the bell ("Tandai dibaca" lowers it at once, two checks after the action, a JSON answer, no console error), the dialogs "Tolak laporan ini?" and "Tutup lomba ini?", the field "Jenis penyelenggara lainnya" and the info alert of "Ubah lomba", Apresiasi (three validation messages at once, the time on the event card, the picker and a search with a tick kept), two sample mails in Mailpit. Still open: the rest of the live counts in a real browser (steps in the note: the request headers, "Tandai semua dibaca" without a page load, the Notifikasi list and another role's sidebar count rising by themselves, the background tick, no request from a hidden or unused tab, Back / Forward, Keluar, the switch at 0, a blocked address that comes back by itself and two 401 answers that still stop it); the new link hints; the toast of "Ubah lomba" and the two-click path of a stale "Periksa lomba" drawer; Humas: an overdue card and its panel, the dialog "Tandai sudah terbit?" at 360 / 390 px, the count on the menu item Jadwal; Apresiasi at 360 / 1280 / 1366 px: 31 ticks, a team added with one click, and typing "nadia ", a pause, then "putri" into "Cari prestasi"; the Talenta bulk dialog, the Import dialog and the student's "Batalkan undangan" dialog (with #75); every phone width; one real mail of each kind (with a button, without one, OTP) in Mailpit (HTML and Text tab) and in Gmail on a phone in dark mode, Outlook desktop. **E2E** [I]: the Playwright smoke passed in CI on PR 20 and the email scenario ran (#46). No bell test exists yet: a Playwright bell test must mock `**/notifikasi/jumlah` (the E2E stack has no queue worker), and a step that waits for network idle after a Livewire action now sees two more requests (2.5 s and 8 s later). **Dev stack**: done on the lead's stack on 2026-10-10 (the three migrations on the local MySQL, `npm run build`, `reload.bat`, restart of `queue` + `scheduler`); on any other checkout of this code the same four steps are needed (a worker that was not restarted still holds the deleted `AutoPublishPublications` class and the old mail config; a queued payload of that job fails once). **Product choices**: the EM2 list in §9. **Left by the review** (nits read in the code, not fixed; one line each in the note) [user + S]: the same trimmed write-back on a live search box in `Humas\Arsip::updatedQ`, `TataUsaha\ArsipSurat::updatedQ` and `Kesiswaan\Lomba\Index::updatedQ` (trim where the query is built, not in the hook) [S]; `Siswa\Pendaftaran\Form::undang()` puts its refusal on `members`, which the screen no longer draws once the team went to the Kepala Sekolah; a count check can still run beside the next page's request after a Livewire full-page redirect, and the ±10 s jitter also applies at the 30 s floor; the typed "Lainnya" kind is dropped only when the input carries `organizer_type`; `ExternalUrl::normalize()` also removes ZWNJ / ZWJ inside an IDN host; `LinkFieldsTest` would pass with the hint on one link field only; a first link or juknis is announced as "diganti"; `publishingId` survives a dismissed dialog; `publication.reminded` is audited also when no Humas account was told; a stale tick the screen no longer shows can stay in `$picked`; `AppreciationEvent::startsAt()` and `BinaanAppreciationNotice::scheduled()` have only tests as callers; `MailGreetingTest` expects "Halo Bambang," for the Kepala Sekolah on student-audience notices; the Jadwal count can run ahead of the open Jadwal / Publikasi page; `RecordAppreciation::blockedMessage()` prints the event date without its time. **Not built** [user + S]: "Ubah acara" for an appreciation event; a start time for Talenta "Jadwal asesmen"; an appreciation line on a student or guru screen; for a lomba change: a notice to TU once letters exist, a notice on close, a question before saving a past deadline, the individu → tim guard, catalog tags; the six-digit code fields still refuse a code pasted with spaces. **Small leftovers**: `Siswa\Pendaftaran\Form` repeats three refusal sentences of `WithdrawInvitation` and the "team is ready" rule of `ConfirmMembership` to word its dialog (a static helper on those Actions would be the one source) [user]; the demo event is still named "Upacara Senin, 5 Oktober 2026" (its notices repeat the date), and the event already in the lead's database has no start time; a closed demo lomba in the lead's database keeps a bare "Lainnya" (no backfill); optional `humas.jadwal` in the Humas preview badges of `resources/views/dev/components.blade.php`; the unused "Whoops!" line in `lang/id.json`; a paratest run prints no summary when a failure's stack points into a compiled view of a worker that already removed its folder (read the names with `--tmp-dir` and the per-worker JUnit files) | EM2 | user + S + I |
 | 82 | What RV1 leaves open (`docs/dev-notes/RV1.md`). **Commit**: RV1 was committed and pushed to `fix/em2-uji-email` on 2026-10-11 at the lead's request; PR 20 now carries EM2 and RV1, and the lead merges it himself after his retest [user]; its CI ran again for that push and was not waited for. **Product choices**: the RV1 list in §9. **Browser checks** [I + S]: done in the app's browser on 2026-10-11. On the isolated project: the approval dialog (opens, refuses an empty choice under the field, approves, toast, the row's "Ditetapkan Kepala Sekolah, menggantikan …", the menu count), the mails of that flow, "Ditetapkan Kepala Sekolah" and the bell row on the student's side, and the replaced guru's side (the registration gone from Siswa binaan, its old link 404; the bell row seen there belonged to the first version, that guru gets none since D-134, which was checked by tests only). On the lead's stack: "Ikut tim" after the fix, the three NIS screens as Kesiswaan, and the Persetujuan rows and the dialog measured at 360, 1024, 1280, 1366 and 1440 px. The Browser pane was hidden the whole time, so all of this was read from the page (text, positions, console, network), **not looked at**: nobody has seen a screenshot of the new button, the dialog or the centred letter on a screen yet (the letter was measured in the PDF and one page image was viewed). Still open: the new guru's bell row and binaan list (only the mail was read), 390 px, a printed student letter on paper (with #54). **Email scenario** [I]: `tests/E2E/support/email-scenario.php` has no step for an approval with another guru (expect "Ditetapkan sebagai guru pembimbing" to the new guru and **no** mail at all to the old one, D-134); its existing approval step still passes by subject but the students' mail has one more line (with #46). **Guards** [S + I]: `PageWiringTest` takes about two and a half minutes on the lead's laptop (one demo seed, about 190 requests): watch the CI time, and lower `rv1Crawl()`'s caps if it hurts; it follows links only, so a state reached by a click (a drawer, a tab kept in a property) is covered by `ViewWiringTest` reading the sources, not by a render; the demo data's fixed dates make it travel to 2026-10-06. **Demo data** [user]: its lomba deadlines pass one by one in real time (LPB closed on 10 Okt), so fewer flows can be shown each day. **Left by the review** [user]: a guru account that has not activated yet is offered as pembimbing (to students since W2, now also to the Kepala Sekolah) and gets the bell row but no mail, while the dialog says "Guru yang dipilih di sini diberi tahu." (with #80: offer such accounts at all, or mark them in the list). **Not built**: a change of guru apart from the approval; a notice to a guru at the moment a student chooses them (so a waiting registration stands in that guru's Siswa binaan list unannounced and, after a replacement, leaves it unannounced: D-134); NISN on the three screens. **Bell rows** [user]: rows written before `BellChannel` keep an absolute address on any database that was not repaired (the lead's local one was, by a scratch script); production has one host, so its old rows keep working. **Browser** [I]: the new dialog sentences were read in a render test, not looked at on a screen. **Local files** of the demo (`compose.demo.yaml`, `demo-start.bat`, `demo-stop.bat`, `SETUP-DEMO-MINIPC.md`) and of the copy for a second machine (`demo-ekspor.bat`, `demo-impor.bat`, `salinan-demo/`) are in `.git/info/exclude`, not in the repo; `SETUP-DEMO-MINIPC.md` still describes a fresh seed (`db:seed`), which must not be run on an imported copy | RV1 | user + S + I |
+| 83 | What FS1 leaves open (`docs/dev-notes/FS1.md` "FS1 overview" › Follow-ups; state of `01b379b`). **Deferred feedback**: the letter template (item 14) waits for the school's template [user]. **Browser checks** [I + S]: the coordinator's checklist items E1–E5 and B1–B9 (kelas X gate, Lainnya, Database talenta siswa tabs and export, Guru Binaan; Usulkan lomba, Usulan saya, Data peserta, `menunggu_lomba` publish / reject, the Kesiswaan drawer with the override, TU Persetujuan lomba, Detail lomba labels, reminders, Batas & arsip) at 1366 and 390 px; QA-04 of the A/D/C pass ("Kirim pendaftaran" needs a second click) is not fixed at `01b379b`. **Email scenario** [I]: see #46. **Review leftovers** (read in the code, not fixed at `01b379b`) [user + S]: Detail lomba and the Pendaftaran lomba panel still say "Kesiswaan" rejected a usulan (`LombaPresenter::unpublishedNotice()`, `form.blade.php`) and two null-decider fallbacks differ ("Kesiswaan" in `CompetitionRejected::role()`, "sekolah" in Katalog / Lomba saya); `Admin\AuditLog` has no label for `registration.resumed`; `Kesiswaan\Talenta::export()` ignores the open tab (a forged call on "Belum mengisi" downloads the Semua list); `UpdateCompetition::assertTeamsStillFit()` does not refuse a change to "Tim" while individu registrations run; the change notice "Batas daftar sekarang … Undangan tim … tidak berlaku lagi setelah tanggal itu." ignores a resumed team's `answer_until`; the Kelola lomba card counts anggota of a `menunggu_lomba` team who were never invited; the gate keeps no intended address; stale copy "Daftar penjaringan", "Penjaringan pembinaan talenta <tahun>", the Portofolio hint and the audit label "Pilihan talenta dibatalkan siswa"; `ReportReminder` declares the unused `dueOn` / `daysLeft` (`SerializesModels` would ignore unknown keys anyway). **Tests not written**: a real Livewire update through `EnsureTalentChosen`, the null-bidang fallback per row, the transaction guard of `ResumeWaitingRegistrations` (untestable under `RefreshDatabase`), the two JSON audit lookups on MySQL (`properties->from` / `->reason`, SQLite only). **Not built**: a notice in the Kesiswaan drawer that a queued lomba has waiting registrations | FS1 | user + S + I |
 
 ## 11. Team, ownership and agent protocol
 - **user** (lead, backend core, 40%): `app/{Enums,Models,Domain,Actions,Policies,Http,Providers,
