@@ -46,7 +46,9 @@
                     <h1 class="title-page max-sm:text-xl sm:truncate">{{ $title }}</h1>
                 @endif
                 @if ($subtitle)
-                    <p class="m-0 hidden text-md leading-[1.4] text-muted sm:block">{{ $subtitle }}</p>
+                    {{-- data-sth-subtitle: a screen whose tabs change without a page load sends the line of the open tab
+                         (window event sth-subtitle, resources/js/app.js), e.g. Cari lomba › Usulan saya. --}}
+                    <p class="m-0 hidden text-md leading-[1.4] text-muted sm:block" data-sth-subtitle>{{ $subtitle }}</p>
                 @endif
             @endisset
         </div>

@@ -14,6 +14,7 @@ use App\Models\Competition;
 use App\Models\WeightVersion;
 use App\Rules\ExternalUrl;
 use App\Support\Sampul;
+use App\Support\StaffRoleLabel;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Layout;
@@ -45,7 +46,8 @@ class Detail extends Component
 
     public function render(): View
     {
-        $competition = Competition::query()->with(['juknisFile', 'coverFile'])->findOrFail($this->competitionId);
+        // verifier.roles: the chip "Diverifikasi …" and a rejected usulan name the role that decided (StaffRoleLabel::forLomba()).
+        $competition = Competition::query()->with(['juknisFile', 'coverFile', 'verifier.roles'])->findOrFail($this->competitionId);
         abort_unless(Gate::inspect('view', $competition)->allowed(), 404);
 
         $registrants = LombaPresenter::registrants([$competition->getKey()])[$competition->getKey()] ?? [];
@@ -55,6 +57,8 @@ class Detail extends Component
             'competition' => $competition,
             'window' => $window,
             'notice' => LombaPresenter::unpublishedNotice($competition),
+            // The chip of a published lomba names who verified it: Kesiswaan or Admin, Kesiswaan when unknown.
+            'verifiedBy' => StaffRoleLabel::forLomba($competition->verifier),
             'registrants' => $registrants,
             'facts' => $this->facts($competition),
             'syarat' => $this->syarat($competition),

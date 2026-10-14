@@ -14,6 +14,8 @@
  |   window events: sth-modal-open / sth-modal-close {id} · sth-toast {message, tone, key?}
  |                  sth-toast-clear {key} — remove the toasts raised with that key (a failure that is over)
  |                  sth-form-invalid {form} — bring the first validation error into view
+ |                  sth-subtitle {text} — the line under the page title ([data-sth-subtitle], <x-sth.topbar>) of
+ |                      a screen whose tabs change without a page load (Cari lomba › Usulan saya)
  |                  sth-badges {badges: {key: count}} — update [data-sth-badge="key"]: the sidebar counts and the
  |                      bell of the top bar (key 'akun.notifikasi'). data-sth-badge-max="99" prints "99+" above it,
  |                      data-sth-count keeps the real number, and [data-sth-badge-label="key"] gets its aria-label
@@ -322,6 +324,16 @@ window.addEventListener('sth-toast-clear', (event) => {
     if (!region || !key) return;
     region.querySelectorAll('[data-sth-toast]').forEach((toast) => {
         if (toast.dataset.key === key) dismissToast(toast);
+    });
+});
+
+// The top bar belongs to the layout, which Livewire renders once per page load: a screen whose tabs change without a
+// page load sends the subtitle of the open tab (Siswa › Cari lomba: the catalog or "Usulan saya").
+window.addEventListener('sth-subtitle', (event) => {
+    const text = (event.detail || {}).text;
+    if (typeof text !== 'string' || text === '') return;
+    document.querySelectorAll('[data-sth-subtitle]').forEach((line) => {
+        line.textContent = text;
     });
 });
 

@@ -140,7 +140,8 @@ final class AuditLog extends Component
         'talent.cancelled' => 'Pilihan talenta dihapus siswa',
         'talent.stage_changed' => 'Tahap talenta diubah',
         'talent.rejected' => 'Pilihan talenta tidak lolos',
-        'talent.assessment_updated' => 'Guru pembina atau catatan talenta diubah',
+        // Rows before FS1 may hold an assessment date, rows since D-142 the guru pembina or the note: words true for both.
+        'talent.assessment_updated' => 'Data talenta diubah',
         'talent_profile.saved' => 'Profil talenta disimpan',
         'weight.recompute_skipped' => 'Hitung ulang poin dilewati',
         'created' => 'Data dibuat',

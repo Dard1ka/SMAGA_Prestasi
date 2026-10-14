@@ -600,3 +600,34 @@ utility classes in their views).
   every student) a search that shows the NISN beside "belum aktivasi akun" would list login names of accounts that can
   still be taken over. The whole name now shows; adding the NISN (or a part of it) is a decision for the lead, with
   §3m-3 and the test `returns only name and class from the member search` changed together.
+
+### Final polish (2026-10-14, tests `tests/Feature/Lomba/Fs1Qa5PolishTest.php`)
+- Kesiswaan › Kelola lomba, tab "Verifikasi usulan lomba": the hint already read "Setiap lomba baru, dari usulan siswa
+  atau dari Admin, diperiksa di sini sebelum tampil di katalog." since QA round 1 (`4d48fe4`, LOMBA-02). Kept: Admin's
+  "Tambah lomba" also starts at `menunggu_verifikasi` and lands in this queue (D-145), so "Semua usulan lomba …" would
+  call an Admin's lomba an usulan.
+- Kepala Sekolah / Admin › Dashboard: the empty chart says "Grafik muncul setelah sekolah memverifikasi laporan hasil."
+  (Kesiswaan or Humas verifies since D-139; spec §4.1: general sentences say "sekolah").
+- Siswa › Detail lomba: the chip of a published lomba names its verifier's role through `StaffRoleLabel::forLomba()`
+  ("Diverifikasi Kesiswaan" / "Diverifikasi Admin", Kesiswaan when the verifier is unknown); `verifier.roles` is eager-loaded.
+- Siswa › Cari lomba: the subtitle follows the tab (`Katalog::SUBTITLES`): the catalog keeps "Lomba di katalog sudah
+  diperiksa Kesiswaan.", "Usulan saya" reads "Usulan lombamu dan statusnya.". The layout draws it on a page load
+  (`layoutData`); a tab picked on the page sends the window event `sth-subtitle {text}`, and `resources/js/app.js` puts it
+  into `[data-sth-subtitle]` of `<x-sth.topbar>` (the top bar is rendered once per page load, as for `sth-badges`).
+- Kepala Sekolah menu: "Persetujuan" → "Persetujuan lomba", the name of the Tata Usaha item and of the page title (D-119);
+  route names, menu key `persetujuan` and count key `kepsek.persetujuan` unchanged.
+- Admin › Log audit: `talent.assessment_updated` = "Data talenta diubah". Rows written before FS1 under that key may hold a
+  changed assessment date, rows since D-142 the guru pembina or the note; Admin holds `talent.manage` too, so the label
+  names no role (the Pelaku column does). The user guide and UI-MAP also lost the stale line that `registration.resumed`
+  shows its key: it has had the label "Pendaftaran dilanjutkan setelah lomba dipublikasikan" since FS1-B.
+- OBS-STEP2-TEAM, Pendaftaran lomba panel (Detail lomba and step 2 of Usulkan lomba): after "Kirim pendaftaran" for a team
+  whose own lomba still waits (`menunggu_lomba`), the ketua sees "Anggota tim" with every member, read-only: the member
+  chip "Diundang setelah lomba diverifikasi" (the words of Lomba saya), no ×, no "sisa N tempat", no invite search; the
+  rows keep the wrapping name of `76e7553`. The withdraw dialog is drawn only where the ketua may invite.
+- `docker/php/dev-cache.sh` (reload.bat, start.bat with `--force`): step 5 runs `php artisan queue:restart`, so the
+  `queue` worker drops old notification, mail and job code after its current job (compose starts it again). On the
+  Windows drive `php artisan` takes about 20 s without CLI opcache, so in the `app` container it runs in the background
+  (log `/tmp/sth-cache/queue-restart.log`) and reload.bat stays at about 3 s; in a one-off `run` container it runs in
+  the foreground. Checked by hand: plain run (worker restarted, `Up 3 seconds`), `--force`, the `queue` service stopped
+  (the key is written, nothing else happens), the database unreachable (`-e DB_HOST=nohost.invalid`: the warning, exit
+  0) and a one-off `docker compose run --rm --no-deps app` (foreground, exit 0). CLAUDE.md §4 "Page speed" says so.

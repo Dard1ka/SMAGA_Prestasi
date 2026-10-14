@@ -380,7 +380,8 @@ final class Navigation
                 'sections' => [
                     ['label' => 'Menu', 'items' => [
                         ['key' => 'dashboard', 'label' => 'Dashboard', 'icon' => 'bars', 'route' => ['kepsek.beranda', 'kepsek.dashboard']],
-                        ['key' => 'persetujuan', 'label' => 'Persetujuan', 'icon' => 'check-circle', 'route' => ['kepsek.persetujuan.index', 'kepsek.persetujuan'], 'match' => ['kepsek.persetujuan*'], 'badge' => 'kepsek.persetujuan'],
+                        // D-119: one name for the screen in both approver menus and as its title (Tata Usaha: D-150).
+                        ['key' => 'persetujuan', 'label' => 'Persetujuan lomba', 'icon' => 'check-circle', 'route' => ['kepsek.persetujuan.index', 'kepsek.persetujuan'], 'match' => ['kepsek.persetujuan*'], 'badge' => 'kepsek.persetujuan'],
                         ['key' => 'prestasi', 'label' => 'Prestasi per bidang', 'icon' => 'chart-pie', 'route' => ['kepsek.prestasi', 'public.prestasi', 'prestasi']],
                         // B5 (SECURITY §3m-5): every letter generated in the principal's name, revocations included.
                         ['key' => 'surat', 'label' => 'Surat atas nama saya', 'icon' => 'mail', 'route' => ['kepsek.surat.index'], 'match' => ['kepsek.surat*']],

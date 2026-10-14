@@ -80,12 +80,13 @@
                 </div>
             @endif
 
-            @if ($status['canInvite'])
-                {{-- B3 (#9): ketua sees the team and invites a replacement while members still confirm. --}}
+            @if ($status['team'] !== [])
+                {{-- B3 (#9): ketua sees the team and invites a replacement while members still confirm. OBS-STEP2-TEAM: while
+                     the own lomba waits for Kesiswaan (D-148) the ketua sees the team too, read-only, as on Lomba saya. --}}
                 <div class="flex flex-col gap-2 border-t border-line pt-4">
                     <div class="flex items-center justify-between gap-2">
                         <span class="label" id="lbl-tim-kamu">Anggota tim</span>
-                        @if ($status['slotsLeft'] !== null)
+                        @if ($status['canInvite'] && $status['slotsLeft'] !== null)
                             <span class="num text-xs text-muted">sisa {{ $status['slotsLeft'] }} tempat</span>
                         @endif
                     </div>
@@ -109,6 +110,9 @@
                                             <x-sth.chip tone="gray" size="sm">Tidak menjawab</x-sth.chip>
                                         @elseif ($row['state'] === 'declined')
                                             <x-sth.chip tone="red" size="sm">Menolak</x-sth.chip>
+                                        @elseif ($row['state'] === 'later')
+                                            {{-- D-148: nobody is invited before Kesiswaan verified the lomba (the words of Lomba saya). --}}
+                                            <x-sth.chip icon="clock" size="sm" class="chip-wrap">Diundang setelah lomba diverifikasi</x-sth.chip>
                                         @else
                                             <x-sth.chip size="sm" icon="clock">Menunggu</x-sth.chip>
                                             {{-- QA6 (#66): an unanswered invitation no longer holds the place until the deadline.
@@ -121,61 +125,65 @@
                             </li>
                         @endforeach
                     </ul>
-                    @error('members')
-                        <p class="field-error m-0"><x-sth.icon name="alert" :size="16" />{{ $message }}</p>
-                    @enderror
+                    @if ($status['canInvite'])
+                        @error('members')
+                            <p class="field-error m-0"><x-sth.icon name="alert" :size="16" />{{ $message }}</p>
+                        @enderror
 
-                    @if ($status['slotsLeft'] === 0)
-                        <p class="m-0 text-xs text-muted">Tim sudah penuh.</p>
-                    @else
-                        <x-sth.input wire:model.live.debounce.500ms="q" id="undang-anggota" type="search" label="Undang anggota pengganti" icon="search"
-                                     placeholder="Cari nama atau NISN" autocomplete="off" maxlength="60"
-                                     :hint="$status['inviteHint']" />
-                        @if ($hasil !== [])
-                            <ul aria-label="Akun siswa yang cocok" class="m-0 flex list-none flex-col gap-1.5 p-0">
-                                @foreach ($hasil as $row)
-                                    {{-- BUG-N5b: the whole name tells two classmates with the same first words apart; the chip or
-                                         the button moves under the name when the row is too narrow for both. --}}
-                                    <li wire:key="undang-{{ $row['id'] }}" class="flex items-center gap-3 rounded-tile p-2 hover:bg-hover">
-                                        <x-sth.avatar :name="$row['name']" size="sm" />
-                                        <div class="flex min-w-0 flex-1 flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
-                                            <div class="flex min-w-0 grow basis-48 flex-col">
-                                                <span class="min-w-0 font-semibold [overflow-wrap:anywhere]">{{ $row['name'] }}</span>
-                                                <span class="text-xs text-muted">{{ $row['kelas'] }}{{ ($row['pending'] ?? false) ? ' · belum aktivasi akun' : '' }}</span>
+                        @if ($status['slotsLeft'] === 0)
+                            <p class="m-0 text-xs text-muted">Tim sudah penuh.</p>
+                        @else
+                            <x-sth.input wire:model.live.debounce.500ms="q" id="undang-anggota" type="search" label="Undang anggota pengganti" icon="search"
+                                         placeholder="Cari nama atau NISN" autocomplete="off" maxlength="60"
+                                         :hint="$status['inviteHint']" />
+                            @if ($hasil !== [])
+                                <ul aria-label="Akun siswa yang cocok" class="m-0 flex list-none flex-col gap-1.5 p-0">
+                                    @foreach ($hasil as $row)
+                                        {{-- BUG-N5b: the whole name tells two classmates with the same first words apart; the chip or
+                                             the button moves under the name when the row is too narrow for both. --}}
+                                        <li wire:key="undang-{{ $row['id'] }}" class="flex items-center gap-3 rounded-tile p-2 hover:bg-hover">
+                                            <x-sth.avatar :name="$row['name']" size="sm" />
+                                            <div class="flex min-w-0 flex-1 flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
+                                                <div class="flex min-w-0 grow basis-48 flex-col">
+                                                    <span class="min-w-0 font-semibold [overflow-wrap:anywhere]">{{ $row['name'] }}</span>
+                                                    <span class="text-xs text-muted">{{ $row['kelas'] }}{{ ($row['pending'] ?? false) ? ' · belum aktivasi akun' : '' }}</span>
+                                                </div>
+                                                @if ($row['declined'] ?? false)
+                                                    <x-sth.chip tone="gray" size="sm">Sudah menolak</x-sth.chip>
+                                                @elseif ($row['busy'])
+                                                    <x-sth.chip tone="gray" size="sm">Sudah terdaftar</x-sth.chip>
+                                                @else
+                                                    <x-sth.button variant="soft" size="sm" icon="send" wire:click="undang('{{ $row['id'] }}')" wire:loading.attr="disabled" wire:target="undang" :aria-label="'Undang '.$row['name']">Undang</x-sth.button>
+                                                @endif
                                             </div>
-                                            @if ($row['declined'] ?? false)
-                                                <x-sth.chip tone="gray" size="sm">Sudah menolak</x-sth.chip>
-                                            @elseif ($row['busy'])
-                                                <x-sth.chip tone="gray" size="sm">Sudah terdaftar</x-sth.chip>
-                                            @else
-                                                <x-sth.button variant="soft" size="sm" icon="send" wire:click="undang('{{ $row['id'] }}')" wire:loading.attr="disabled" wire:target="undang" :aria-label="'Undang '.$row['name']">Undang</x-sth.button>
-                                            @endif
-                                        </div>
-                                    </li>
-                                @endforeach
-                            </ul>
-                        @endif
-                        @if ($searchNote)
-                            <p class="m-0 text-xs text-muted" role="status">{{ $searchNote }}</p>
+                                        </li>
+                                    @endforeach
+                                </ul>
+                            @endif
+                            @if ($searchNote)
+                                <p class="m-0 text-xs text-muted" role="status">{{ $searchNote }}</p>
+                            @endif
                         @endif
                     @endif
                 </div>
 
-                {{-- D-128: "Batalkan undangan" asks first. The invitee is told, and a team whose other members all
-                     confirmed goes on to approval (Kepala Sekolah or Tata Usaha) with this step (no more members after that). --}}
-                <x-sth.modal :id="\App\Livewire\Siswa\Pendaftaran\Form::WITHDRAW_DIALOG" title="Batalkan undangan?" :description="$withdrawing['notice'] ?? 'Siswa yang diundang diberi tahu.'" size="sm">
-                    @if ($withdrawing)
-                        <p class="m-0 [overflow-wrap:anywhere]">Undangan untuk {{ $withdrawing['name'] }} dibatalkan. {{ $withdrawing['ready'] ? 'Anggota lain sudah konfirmasi, jadi pendaftaran langsung diteruskan untuk persetujuan dan anggota tidak bisa ditambah lagi.' : 'Kamu bisa mengundangnya lagi selama tim masih menunggu konfirmasi.' }}</p>
-                    @else
-                        <p class="m-0 text-muted">Tidak ada undangan yang dipilih. Tutup lalu coba lagi.</p>
-                    @endif
-                    <x-slot:footer>
-                        <x-sth.button variant="quiet" data-sth-close>Kembali</x-sth.button>
+                @if ($status['canInvite'])
+                    {{-- D-128: "Batalkan undangan" asks first. The invitee is told, and a team whose other members all
+                         confirmed goes on to approval (Kepala Sekolah or Tata Usaha) with this step (no more members after that). --}}
+                    <x-sth.modal :id="\App\Livewire\Siswa\Pendaftaran\Form::WITHDRAW_DIALOG" title="Batalkan undangan?" :description="$withdrawing['notice'] ?? 'Siswa yang diundang diberi tahu.'" size="sm">
                         @if ($withdrawing)
-                            <x-sth.button variant="danger" wire:click="batalkanUndangan" wire:loading.attr="disabled" wire:target="batalkanUndangan">Batalkan undangan</x-sth.button>
+                            <p class="m-0 [overflow-wrap:anywhere]">Undangan untuk {{ $withdrawing['name'] }} dibatalkan. {{ $withdrawing['ready'] ? 'Anggota lain sudah konfirmasi, jadi pendaftaran langsung diteruskan untuk persetujuan dan anggota tidak bisa ditambah lagi.' : 'Kamu bisa mengundangnya lagi selama tim masih menunggu konfirmasi.' }}</p>
+                        @else
+                            <p class="m-0 text-muted">Tidak ada undangan yang dipilih. Tutup lalu coba lagi.</p>
                         @endif
-                    </x-slot:footer>
-                </x-sth.modal>
+                        <x-slot:footer>
+                            <x-sth.button variant="quiet" data-sth-close>Kembali</x-sth.button>
+                            @if ($withdrawing)
+                                <x-sth.button variant="danger" wire:click="batalkanUndangan" wire:loading.attr="disabled" wire:target="batalkanUndangan">Batalkan undangan</x-sth.button>
+                            @endif
+                        </x-slot:footer>
+                    </x-sth.modal>
+                @endif
             @endif
 
             <p class="m-0 text-sm text-muted">Pembimbing: <span class="font-semibold text-ink">{{ $status['mentor'] }}</span></p>

@@ -57,7 +57,7 @@
                         @endforelse
                         <div class="flex flex-wrap gap-2">
                             @if ($competition->isPublished())
-                                <x-sth.chip tone="green" icon="check">Diverifikasi Kesiswaan</x-sth.chip>
+                                <x-sth.chip tone="green" icon="check">Diverifikasi {{ $verifiedBy }}</x-sth.chip>
                             @endif
                             @if ($competition->weight_category)
                                 {{-- "… B · Pemerintah (non-Puspresnas)" is wider than a 390px phone: the tag takes two lines there (FS1 QA). --}}

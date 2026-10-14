@@ -38,7 +38,7 @@
             </div>
 
             @if ($perYear['years'] === [])
-                <x-sth.empty-state icon="bars" :card="false" title="Belum ada prestasi terverifikasi">Grafik muncul setelah Kesiswaan memverifikasi laporan hasil.</x-sth.empty-state>
+                <x-sth.empty-state icon="bars" :card="false" title="Belum ada prestasi terverifikasi">Grafik muncul setelah sekolah memverifikasi laporan hasil.</x-sth.empty-state>
             @else
                 <ul class="m-0 flex list-none flex-wrap gap-x-4 gap-y-1 p-0 text-xs font-semibold" aria-label="Keterangan warna">
                     @foreach (\App\Livewire\Sekolah\Dashboard::CHART_ORDER as $bidang)

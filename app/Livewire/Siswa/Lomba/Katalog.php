@@ -29,8 +29,7 @@ use Livewire\WithPagination;
  * its Detail lomba (CompetitionPolicy::view lets the submitter in). The catalog filters do not apply there; the name
  * search (?q=, the top bar search) does, so typing in the top bar never leaves the list unchanged.
  */
-// FS1 QA: the subtitle stands above both tabs, and "Usulan saya" lists lomba Kesiswaan has not checked yet.
-#[Layout('layouts::app', ['subtitle' => 'Lomba di katalog sudah diperiksa Kesiswaan.'])]
+#[Layout('layouts::app')]
 #[Title('Cari lomba')]
 class Katalog extends Component
 {
@@ -42,6 +41,18 @@ class Katalog extends Component
 
     /** '' = the catalog, 'usulan' = the student's own proposals. */
     public const TABS = ['' => 'Katalog', 'usulan' => 'Usulan saya'];
+
+    /**
+     * The line under the page title per tab (FS1 final polish): "Usulan saya" lists lomba Kesiswaan has not checked
+     * yet, so the catalog sentence would not be true there. The layout draws it on a page load (render()); a tab
+     * picked on the page sends it to the top bar (event SUBTITLE_EVENT, resources/js/app.js).
+     */
+    public const SUBTITLES = [
+        '' => 'Lomba di katalog sudah diperiksa Kesiswaan.',
+        'usulan' => 'Usulan lombamu dan statusnya.',
+    ];
+
+    public const SUBTITLE_EVENT = 'sth-subtitle';
 
     #[Url(except: '')]
     public string $tab = '';
@@ -70,6 +81,10 @@ class Katalog extends Component
             $this->normalise();
             $this->resetPage();
         }
+
+        if ($property === 'tab') {
+            $this->sendSubtitle();
+        }
     }
 
     public function pilihTab(string $tab): void
@@ -77,6 +92,7 @@ class Katalog extends Component
         $this->tab = $tab;
         $this->normalise();
         $this->resetPage();
+        $this->sendSubtitle();
     }
 
     public function pilihBidang(string $bidang): void
@@ -137,7 +153,7 @@ class Katalog extends Component
             'tingkatOptions' => collect(Level::cases())->reverse()->mapWithKeys(fn (Level $l) => [$l->value => $l->shortLabel()])->all(),
             'statusOptions' => self::STATUSES,
             'filtered' => $this->bidang !== '' || $this->tingkat !== '' || $this->status !== '' || $this->q !== '',
-        ]);
+        ])->layoutData(['subtitle' => self::SUBTITLES[$this->tab]]);
     }
 
     /** @return Builder<Competition> */
@@ -190,6 +206,12 @@ class Katalog extends Component
             'noteLabel' => 'Catatan '.StaffRoleLabel::forLomba($competition->verifier).':',
             'href' => route('siswa.lomba.show', $competition),
         ];
+    }
+
+    /** The top bar is drawn once per page load: a tab picked on the page tells it its line (SUBTITLES). */
+    private function sendSubtitle(): void
+    {
+        $this->dispatch(self::SUBTITLE_EVENT, text: self::SUBTITLES[$this->tab]);
     }
 
     private function normalise(): void

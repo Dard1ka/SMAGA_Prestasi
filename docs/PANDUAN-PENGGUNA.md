@@ -86,9 +86,9 @@ satu kalimat penjelasan, dan tombol **Kembali ke beranda** (kadang juga **Kembal
 setelah masuk kamu diarahkan ke halaman yang bukan untuk akunmu, aplikasi langsung membawamu ke berandamu.
 
 **Angka di menu samping** (Tata Usaha, Kepala Sekolah, Kesiswaan, Humas): jumlah yang menunggu, mis. **Antrean surat**,
-**Persetujuan** (Kepala Sekolah), atau **Persetujuan lomba** (Tata Usaha). Angkanya tampil di semua halaman dan berubah sendiri setelah aksi, tanpa memuat ulang. Sejak
+**Persetujuan lomba** (Kepala Sekolah dan Tata Usaha). Angkanya tampil di semua halaman dan berubah sendiri setelah aksi, tanpa memuat ulang. Sejak
 10 Oktober 2026 angka itu juga mengikuti pekerjaan orang lain: pendaftaran baru yang menunggu persetujuan, misalnya,
-menaikkan angka **Persetujuan** dan **Persetujuan lomba** dalam waktu sekitar satu menit selama halaman terbuka.
+menaikkan angka **Persetujuan lomba** dalam waktu sekitar satu menit selama halaman terbuka.
 
 **Tombol yang bertanya dulu**: beberapa aksi yang tidak bisa ditarik lagi, atau yang langsung memberi tahu orang lain,
 membuka jendela kecil lebih dulu (mis. "Tandai sudah terbit?", "Tutup lomba ini?", "Batalkan undangan?"). Jendela itu
@@ -456,10 +456,11 @@ file Excel-nya; cari dengan nama atau NISN. File Excel tidak memuat kolom Katego
 
 ## 5. Kepala Sekolah
 
-- **Persetujuan**: daftar pendaftaran yang menunggu (status "Menunggu persetujuan"), 20 per langkah (**Tampilkan lebih
-  banyak**). **Setujui** (bisa beberapa sekaligus; **Pilih semua** hanya memilih yang sedang tampil) atau **Tolak**
-  dengan alasan (wajib). Setelah disetujui, Tata Usaha membuat surat tugas. Bila ditolak, siswa dan guru pembimbingnya
-  menerima alasannya. Angka di menu **Persetujuan** langsung berkurang, tanpa memuat ulang halaman.
+- **Persetujuan lomba** (sampai 14 Oktober 2026 namanya **Persetujuan** di menu Kepala Sekolah): daftar pendaftaran
+  yang menunggu (status "Menunggu persetujuan"), 20 per langkah (**Tampilkan lebih banyak**). **Setujui** (bisa beberapa
+  sekaligus; **Pilih semua** hanya memilih yang sedang tampil) atau **Tolak** dengan alasan (wajib). Setelah disetujui,
+  Tata Usaha membuat surat tugas. Bila ditolak, siswa dan guru pembimbingnya menerima alasannya. Angka di menu
+  **Persetujuan lomba** langsung berkurang, tanpa memuat ulang halaman.
   - **Kepala Sekolah atau Tata Usaha** (sejak 12 Oktober 2026): Tata Usaha memakai daftar yang sama dari menunya
     sendiri (**Persetujuan lomba**, §6). Keputusan yang lebih dulu disimpan yang berlaku: bila Tata Usaha sudah
     memutuskan pendaftaran yang sedang terbuka di layar, muncul pesan "Pendaftaran ini sudah diputuskan. Daftar sudah
@@ -489,7 +490,7 @@ file Excel-nya; cari dengan nama atau NISN. File Excel tidak memuat kolom Katego
 ## 6. Tata Usaha
 
 **Persetujuan lomba** (sejak 12 Oktober 2026; menu sendiri, angka merah = pendaftaran yang menunggu persetujuan): Tata
-Usaha ikut menyetujui pendaftaran lomba, bersama Kepala Sekolah. Caranya sama dengan §5 (**Persetujuan**): **Setujui**,
+Usaha ikut menyetujui pendaftaran lomba, bersama Kepala Sekolah. Caranya sama dengan §5 (**Persetujuan lomba**): **Setujui**,
 **Setujui terpilih**, **Tolak** dengan alasan, dan **Ganti guru** untuk menyetujui dengan guru pembimbing lain.
 - Keputusan yang lebih dulu disimpan yang berlaku (Kepala Sekolah atau Tata Usaha); layar yang tertinggal menulis
   "Pendaftaran ini sudah diputuskan. Daftar sudah diperbarui."
@@ -712,8 +713,9 @@ atau tanggal → **Download CSV** (meminta kata sandi, tercatat). Dua peristiwa 
 (data lomba yang sudah dipublikasikan diubah; berisi data apa yang berubah dan **jumlah** siswa dan guru yang diberi
 tahu, tanpa nama). Sejak 12 Oktober 2026 juga "Daftar apresiasi dicetak" (**Cetak daftar** di Apresiasi; berisi acara
 dan jumlah baris, tanpa nama), "Guru pembimbing diganti saat persetujuan" (dulu "… diganti Kepala Sekolah", karena Tata
-Usaha juga bisa menyetujui), dan "Guru pembina atau catatan talenta diubah" (dulu "Jadwal asesmen talenta diubah").
-Peristiwa pendaftaran yang diteruskan setelah lombanya dipublikasikan masih tampil dengan kode `registration.resumed`.
+Usaha juga bisa menyetujui), dan "Data talenta diubah" (guru pembina atau catatan untuknya; baris dari sebelum 12
+Oktober 2026 bisa berisi jadwal asesmen). Pendaftaran yang diteruskan setelah lombanya dipublikasikan tampil sebagai
+"Pendaftaran dilanjutkan setelah lomba dipublikasikan".
 
 **Pengaturan**
 - **Bobot poin**: ubah nilai → **Simpan bobot** (membuat versi baru, poin dihitung ulang, Kepala Sekolah diberi tahu).

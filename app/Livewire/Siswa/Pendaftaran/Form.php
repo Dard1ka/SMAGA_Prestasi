@@ -643,6 +643,9 @@ class Form extends Component
         $waitingLomba = $registration->status === RegistrationStatus::MenungguLomba;
         // D-148: a team resumed late answers until its own moment, not the registration deadline.
         $grace = $registration->graceText();
+        // OBS-STEP2-TEAM: while the lomba waits for Kesiswaan nobody is invited and the ketua cannot invite yet, but the
+        // panel lists the team as Lomba saya does (read-only, "Diundang setelah lomba diverifikasi").
+        $showTeam = $canInvite || ($waitingLomba && $registration->isTeam() && $mine?->role === MemberRole::Ketua);
 
         return [
             'isLeader' => $mine?->role === MemberRole::Ketua,
@@ -675,7 +678,7 @@ class Form extends Component
             'undangan' => route('siswa.undangan.show', $registration),
             'canInvite' => $canInvite,
             'slotsLeft' => $max !== null && $max > 0 ? max(0, $max - $active) : null,
-            'team' => ! $canInvite ? [] : $members
+            'team' => ! $showTeam ? [] : $members
                 ->sortBy(fn (RegistrationMember $m): string => ($m->role === MemberRole::Ketua ? '0' : '1').($m->invited_at?->format('YmdHis') ?? ''))
                 ->map(fn (RegistrationMember $m): array => [
                     'id' => (string) $m->getKey(),
@@ -686,6 +689,8 @@ class Form extends Component
                         in_array((string) $m->getKey(), $expired, true) => 'expired',
                         $m->declined_at !== null => 'declined',
                         $m->confirmed_at !== null => 'confirmed',
+                        // D-148: invited once Kesiswaan verified the lomba (Lomba saya's `invitedLater`).
+                        $waitingLomba && $m->invited_at === null => 'later',
                         default => 'pending',
                     },
                 ])

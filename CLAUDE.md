@@ -132,7 +132,9 @@ php-fpm workers read a cached config and keep compiled Blade views in the contai
 line, the tests, `queue` or `scheduler`). The price: **after editing a `.php`, `.blade.php` or
 `config/*.php` file or `.env`, run `reload.bat`** (= `docker compose exec -T app sh
 docker/php/dev-cache.sh`; `start.bat` runs it with `--force`). It empties the compiled views, rebuilds
-the config cache when `.env` or `config/` is newer, and reloads php-fpm. CSS and JS do not need it.
+the config cache when `.env` or `config/` is newer, reloads php-fpm, and asks the `queue` worker to restart after its
+current job (`queue:restart` in the background, about 20 s, so a changed mail or notification class is not sent with the
+old code). CSS and JS do not need it.
 
 | task | command |
 |---|---|
@@ -336,9 +338,10 @@ logs in through `POST /login` and expects a 403/404 on the next GET would see th
   invitation nobody answered while the team waits (`WithdrawInvitation`, D-115; on the screen behind the dialog
   `batal-undangan`, D-128); the member search marks a student who has not activated the account.
   **Approvers** (D-150): `registration.approve` = Kepala Sekolah **and** Tata Usaha (Admin never, D-01); one screen,
-  `Kepsek\Persetujuan`, under `kepsek.persetujuan.index` and `tu.persetujuan.index` (TU menu "Persetujuan lomba", count
-  `kepsek.persetujuan`); notices to an approver link to its own address (`App\Support\ApprovalQueue`); the first decision
-  wins (stale toast "Pendaftaran ini sudah diputuskan. Daftar sudah diperbarui."); decision texts name the decider
+  `Kepsek\Persetujuan`, under `kepsek.persetujuan.index` and `tu.persetujuan.index` (menu item and title "Persetujuan
+  lomba" for both roles, D-119; count `kepsek.persetujuan`); notices to an approver link to its own address
+  (`App\Support\ApprovalQueue`); the first decision wins (stale toast "Pendaftaran ini sudah diputuskan. Daftar sudah
+  diperbarui."); decision texts name the decider
   (`StaffRoleLabel::forDecision()`: "Pendaftaranmu di … disetujui oleh <nama> (Tata Usaha).", "Ditetapkan <peran>"),
   sentences before a decision say "sekolah" / "untuk persetujuan"; a TU account that approved is not sent its own
   approval notice. **Guru pembimbing** (D-35, D-132): the student must choose one, and with the approval the Kepala
@@ -790,7 +793,10 @@ logs in through `POST /login` and expects a 403/404 on the next GET would see th
   (toast "Data disalin."; without the Clipboard API the text is selected and the toast says "Tekan Ctrl+C untuk
   menyalin."), so the target holds only the text to copy. **Address hook** (QA8): `sth-address {url}` replaces the address
   (same origin, no new history entry) when a screen moves between items without a page load; Verifikasi hasil sends it
-  on every change of the selected report (Kesiswaan and Humas, each with the address of its own area, D-139). **Toasts** (QA4): `sth-toast` takes an optional `key`;
+  on every change of the selected report (Kesiswaan and Humas, each with the address of its own area, D-139).
+  **Subtitle hook** (FS1 final polish): `sth-subtitle {text}` replaces the line under the page title
+  (`[data-sth-subtitle]` in `<x-sth.topbar>`) when a screen's tabs change without a page load; Cari lomba sends it per tab
+  (`Siswa\Lomba\Katalog::SUBTITLES`) and gives the same line to the layout on a page load. **Toasts** (QA4): `sth-toast` takes an optional `key`;
   the event `sth-toast-clear {key}` removes the toasts raised with it, for an error toast whose cause is over
   (`TataUsaha\SuratTugas::clearFailure()`).
   **Error pages** (D-101): `resources/views/errors/{401,403,404,405,419,429,500,503,4xx,5xx}.blade.php`, each

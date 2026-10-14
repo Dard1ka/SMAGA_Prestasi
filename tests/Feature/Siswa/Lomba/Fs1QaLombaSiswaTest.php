@@ -113,9 +113,13 @@ it('names which end of the registration a single date is (LOMBA-13)', function (
 it('words the Cari lomba subtitle for both tabs (LOMBA-03)', function (): void {
     F::pendingCompetition($this->nadiaUser, ['name' => 'Usulan Menunggu Fiktif']);
 
+    // FS1 final polish: "Usulan saya" lists lomba Kesiswaan has not checked yet, so it has a subtitle of its own.
     $this->actingAs($this->nadiaUser)->get(route('siswa.lomba.index', ['tab' => 'usulan']))->assertOk()
-        ->assertSee('Lomba di katalog sudah diperiksa Kesiswaan.')
+        ->assertSee('Usulan lombamu dan statusnya.')
         ->assertDontSee('Semua lomba sudah diperiksa Kesiswaan.');
+
+    $this->actingAs($this->nadiaUser)->get(route('siswa.lomba.index'))->assertOk()
+        ->assertSee('Lomba di katalog sudah diperiksa Kesiswaan.');
 });
 
 it('shows status and "Lihat" of an own proposal without a sideways scroll on a phone (LOMBA-05)', function (): void {
