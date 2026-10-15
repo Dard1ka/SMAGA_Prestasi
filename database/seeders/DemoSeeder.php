@@ -211,6 +211,8 @@ final class DemoSeeder extends Seeder
         'popda26' => ['Popda Kota Semarang 2026', 'olahraga', 'kota', 'dispora', '2026-09-12', '2026-09-12', 'Kota Semarang'],
         'taripelajar26' => ['Festival Tari Pelajar Semarang 2026', 'seni_budaya', 'kota', 'sanggar', '2026-09-05', '2026-09-05', 'Kota Semarang'],
         'wice26' => ['WICE 2026', 'riset', 'internasional', 'iysa', '2026-09-21', '2026-09-24', 'SEGi University, Kuala Lumpur', 'luring', 'tim', 3],
+        // Nadia and Raka as a team: the lomba is over, only the laporan hasil is left.
+        'lctmipa26' => ['LCT MIPA Kota Semarang 2026', 'sains', 'kota', 'disdikkota', '2026-10-03', '2026-10-03', 'Kota Semarang', 'luring', 'tim', 3],
     ];
 
     /**
@@ -632,6 +634,15 @@ final class DemoSeeder extends Seeder
             'updated' => CarbonImmutable::parse('2026-09-25 01:00'),
         ]);
         $this->issueLetters($wice, 312, 1680, '2026-09-08', 'wice26');
+
+        // Nadia b: LCT MIPA 2026 with Raka — letters issued 4 Sep (numbers below WICE's, so the last numbers of the
+        // year stay 312 / 1680), the lomba was on 3 Oct: the ketua only has to report the result (not riset, so the
+        // report is the result and a certificate).
+        $lct = $this->registration('lctmipa26', ['nadia', 'raka'], 'hendra', RegistrationStatus::MenungguLaporan, CarbonImmutable::parse('2026-08-31 09:20'), [
+            'approved' => CarbonImmutable::parse('2026-09-02 10:00'),
+            'updated' => CarbonImmutable::parse('2026-10-04 01:00'),
+        ]);
+        $this->issueLetters($lct, 305, 1664, '2026-09-04', 'lctmipa26');
 
         // Kepala Sekolah queue (5), all registered 29 Sep.
         $this->registration('lpb26', ['nadia', 'dimas'], 'retno', RegistrationStatus::MenungguKepsek, CarbonImmutable::parse('2026-09-29 09:12'));

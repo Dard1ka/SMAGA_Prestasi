@@ -115,7 +115,7 @@ docker compose run --rm --no-deps node sh -c "npm ci && npm run build"
 One-off commands use **`docker compose run --rm --no-deps app <cmd>`**. `--no-deps` skips starting
 MySQL: fine for composer, Pint and the test suite. For DB commands start MySQL first
 (`docker compose up -d mysql`) or use `docker compose exec app <cmd>` while the stack runs.
-**Demo files (D-106):** a local demo seed (`APP_ENV=local`) now renders about 98 realistic sample PDFs and draws 7
+**Demo files (D-106):** a local demo seed (`APP_ENV=local`) now renders about 100 realistic sample PDFs and draws 7
 cover posters (D-118; `--lengkapi` also adds the posters to an already seeded database) for the demo files, about 30 s more on the lead's laptop; `STH_DEMO_FILES=placeholder` in the command's process env skips
 that and keeps the 1 kB placeholders. The test suite always keeps the placeholders.
 **Test safety:** compose does not inject `.env` as process env and every `<env>` in `phpunit.xml` has

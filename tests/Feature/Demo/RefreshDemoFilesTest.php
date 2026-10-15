@@ -95,8 +95,8 @@ it('keeps the tiny placeholder files when the demo data is seeded in the test su
 
     expect(DemoFiles::realistic())->toBeFalse()
         ->and(Env::get('APP_ENV'))->toBe('testing')
-        ->and($files)->toHaveCount(105) // 98 PDFs + the covers of 7 lomba (DemoCoversTest)
-        ->and($files->where('mime', 'application/pdf'))->toHaveCount(98)
+        ->and($files)->toHaveCount(107) // 100 PDFs + the covers of 7 lomba (DemoCoversTest)
+        ->and($files->where('mime', 'application/pdf'))->toHaveCount(100)
         ->and($files->max('size'))->toBeLessThan(2048)
         ->and($files->every(fn (File $f): bool => Storage::disk('local')->size($f->path) === $f->size))->toBeTrue();
 
@@ -153,8 +153,8 @@ it('works out the right document for every demo file from what it is attached to
         'piagam' => 19, // sports reports + the two files named piagam-…
         'poster' => 1,
         'sertifikat' => 60,
-        'surat_guru' => 4,
-        'surat_siswa' => 4,
+        'surat_guru' => 5,
+        'surat_siswa' => 5,
     ]);
 
     // A certificate a student uses twice (report evidence and talent evidence) is one document: one render, same bytes.
@@ -408,13 +408,13 @@ it('renders and scans every demo file of a full local seed (slow, STH_DEMO_FULL=
         $placeholder, $summary['total'], $realistic, $second, (int) round($summary['bytes'] / 1024), implode("\n", DemoFileRefresher::lines($summary)),
     ));
 
-    // 98 PDFs + the covers of 7 lomba.
-    expect($summary['total'])->toBe(105)
-        ->and(array_sum($summary['written']))->toBe(105)
+    // 100 PDFs + the covers of 7 lomba.
+    expect($summary['total'])->toBe(107)
+        ->and(array_sum($summary['written']))->toBe(107)
         ->and($summary['written'][DemoCoverArt::LABEL])->toBe(7)
         ->and($summary['skipped'])->toBe([])
         ->and($summary['general'])->toBe([])
-        ->and($again['unchanged'])->toBe(105)
+        ->and($again['unchanged'])->toBe(107)
         ->and($again['written'])->toBe([]);
 
     foreach (File::query()->where('path', 'like', 'demo/%')->get() as $file) {
