@@ -32,7 +32,7 @@ final class EnsureTalentChosen
     public const INTENDED = 'sth.talent_gate_intended';
 
     /** @var list<string> */
-    public const EXEMPT_ROUTES = ['siswa.talenta', 'siswa.bantuan', 'akun.keamanan', 'notifikasi.index', 'notifikasi.jumlah', 'logout', 'logout.get'];
+    public const EXEMPT_ROUTES = ['siswa.talenta', 'siswa.bantuan', 'akun.profil', 'akun.keamanan', 'notifikasi.index', 'notifikasi.jumlah', 'logout', 'logout.get'];
 
     /** Is $user a kelas X student who may log in and has no talent choice? One query. Also drives the alert. */
     public static function applies(User $user): bool

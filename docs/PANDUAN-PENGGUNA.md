@@ -20,11 +20,14 @@ Isi: [Semua pengguna](#1-semua-pengguna) · [Siswa](#2-siswa) · [Guru pembimbin
 - Lupa kata sandi: **Lupa kata sandi?** → isi akun → masukkan kode 6 angka dari email → buat kata sandi baru.
   Belum pernah menghubungkan email? Minta reset ke Admin.
 
-**Masuk pertama kali (siswa)** — layar aktivasi, tiga langkah:
+**Masuk pertama kali (siswa)** — layar aktivasi, empat langkah (sejak 15 Oktober 2026):
 1. **Hubungkan email**: isi email yang aktif (email pribadi, bukan email teman) → **Kirim kode**.
 2. **Kode verifikasi**: masukkan kode 6 angka yang dikirim ke email itu → **Verifikasi**. Kode belum datang? Tunggu
    sebentar lalu **Kirim ulang kode**. Salah ketik email? **Ganti email**.
-3. **Buat kata sandi baru**: wajib, kata sandi dari sekolah tidak bisa dipakai terus dan tidak diterima sebagai kata
+3. **Data diri**: periksa **tanggal lahir** (sudah diisi dari data sekolah, betulkan kalau salah) dan isi **No HP** yang
+   aktif (contoh 081234567890) → **Simpan data diri**. Keduanya wajib; aktivasi tidak bisa selesai tanpa langkah ini.
+   Nanti keduanya bisa diubah lagi di **Profil saya**.
+4. **Buat kata sandi baru**: wajib, kata sandi dari sekolah tidak bisa dipakai terus dan tidak diterima sebagai kata
    sandi baru. Ikuti aturan kata sandi di bawah. Hal yang sama berlaku bila akunmu baru direset Admin.
 
 Setelah muncul "Akun sudah aktif", tekan **Mulai**. Lain kali kamu bisa masuk pakai NISN atau email itu.
@@ -62,6 +65,10 @@ tampil di jendela kecil (preview) di halaman yang sama, tanpa di-download.
 Hapus isinya, daftar kembali penuh. Dari halaman lain, ketik lalu tekan Enter untuk membuka halaman daftarnya.
 
 **Menu akun** (klik avatar di kanan atas, semua peran; siswa juga lewat menu samping **Akun**):
+- **Profil saya** (sejak 15 Oktober 2026, di atas Notifikasi), dua tab:
+  - **Data diri**: nama, NISN, kelas, dan email (diubah oleh sekolah). Siswa mengubah **tanggal lahir** dan **No HP**
+    sendiri lalu **Simpan**. Guru dan staf melihat nama, peran, nama pengguna, dan email (nama dan peran diubah Admin).
+  - **Keamanan akun**: lihat butir di bawah.
 - **Notifikasi** (juga ikon lonceng; angkanya = belum dibaca, berwarna merah): kabar lomba, surat, dan akun. **Buka** untuk langsung
   ke layarnya, **Belum dibaca** untuk menyaring, **Tandai semua dibaca** untuk mengosongkan tanda baru.
   - **Lonceng berubah sendiri** (sejak 10 Oktober 2026): angka di lonceng naik saat ada notifikasi baru dan turun
@@ -71,7 +78,7 @@ Hapus isinya, daftar kembali penuh. Dari halaman lain, ketik lalu tekan Enter un
   - Di layar **Notifikasi**, baris baru muncul sendiri, dan **Tandai semua dibaca** tidak lagi memuat ulang halaman.
   - Tab yang lama tidak disentuh (lebih dari 5 menit) atau sedang tidak tampil berhenti memeriksa. Begitu tab itu
     dipakai lagi, angkanya diperbarui.
-- **Keamanan akun**:
+- **Keamanan akun** (tab kedua **Profil saya**):
   - **Ganti kata sandi**: isi kata sandi sekarang dan yang baru. Perangkat lain ikut dikeluarkan.
   - Ganti email: isi email baru dan kata sandi → **Kirim kode** → masukkan kode dari email itu → **Simpan email**.
     Email lama dan baru menerima pemberitahuan dengan link "Bukan saya?".
@@ -116,7 +123,7 @@ Jangan pernah membagikan kata sandi atau kode email kepada siapa pun, termasuk g
 **Siswa kelas X: pilih talenta dulu** (sejak 12 Oktober 2026). Selama kamu belum punya satu pun pilihan talenta, menu lain
 terkunci (ikon gembok) dan setiap halaman lain membawamu ke **Profil talenta** dengan pesan "Pilih minimal satu talenta untuk melanjutkan. Belum punya? Pilih
 Lainnya lalu tulis minatmu." Pilih satu talenta (lihat **Profil talenta** di bawah), lalu menu lain terbuka lagi. Bantuan,
-Notifikasi, Keamanan akun, dan Keluar tetap bisa dibuka. Link dari email (mis. undangan tim) yang tadi tertahan: buka
+Notifikasi, Profil saya, dan Keluar tetap bisa dibuka. Link dari email (mis. undangan tim) yang tadi tertahan: buka
 lagi setelah memilih talenta.
 
 **Pendaftaran lomba**
@@ -248,7 +255,7 @@ Nama lomba tidak boleh berisi alamat web; tulis alamatnya di kolom link resmi.
 
 **Bantuan**: ringkasan cara pakai dan **Buka tur** untuk melihat lagi penjelasan menu.
 
-**Notifikasi** dan **Keamanan akun**: di menu samping **Akun** atau lewat avatar (lihat §1). Angka di lonceng berubah
+**Profil saya** (Data diri dan Keamanan akun) dan **Notifikasi**: di menu samping **Akun** atau lewat avatar (lihat §1). Angka di lonceng berubah
 sendiri, tanpa memuat ulang halaman.
 
 ## 3. Guru pembimbing

@@ -41,7 +41,8 @@ it('renders the activation page for a first login: the email comes first', funct
     $this->actingAs(H::pendingStudent()->user)
         ->get(route('aktivasi'))
         ->assertOk()
-        ->assertSee('Langkah 1 dari 3')
+        // D-152: a student has four steps (Data diri before the password).
+        ->assertSee('Langkah 1 dari 4')
         ->assertSee('Hubungkan email')
         ->assertSee('NISN '.H::NISN)->assertDontSee(H::NIS)
         ->assertDontSee('Kata sandi baru')
@@ -50,13 +51,14 @@ it('renders the activation page for a first login: the email comes first', funct
 });
 
 it('renders the password step without a skip button for a student whose email is bound', function (): void {
-    $user = H::pendingStudent()->user;
+    // D-152: Data diri was saved already, so the password step is next (step 4 of 4).
+    $user = H::pendingStudent(['phone' => '081234567890', 'profile_confirmed_at' => now()])->user;
     $user->forceFill(['email' => 'nadia.anindya@example.test', 'email_verified_at' => now()])->save();
 
     $this->actingAs($user)
         ->get(route('aktivasi'))
         ->assertOk()
-        ->assertSee('Langkah 3 dari 3')
+        ->assertSee('Langkah 4 dari 4')
         ->assertSee('Buat kata sandi baru')
         ->assertSee('Ganti kata sandi dari sekolah dengan kata sandi milikmu sendiri.')
         ->assertDontSee('Lewati, pakai kata sandi sekarang')
@@ -76,7 +78,7 @@ it('shows the test mode banner only in local test mode', function (): void {
     $user = H::pendingStudent()->user;
     app(IssueOtpCode::class)->handle($user, 'verify_email', 'nadia.anindya@example.test');
 
-    $this->actingAs($user)->get(route('aktivasi'))->assertOk()->assertSee('Langkah 2 dari 3')->assertSee('Mode uji: kode apa pun diterima.');
+    $this->actingAs($user)->get(route('aktivasi'))->assertOk()->assertSee('Langkah 2 dari 4')->assertSee('Mode uji: kode apa pun diterima.');
 });
 
 it('forwards an activated student from /beranda and the tour link to the siswa landing', function (): void {

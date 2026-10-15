@@ -1,4 +1,7 @@
-{{-- Akun › Keamanan (no board; UI-MAP §2). Data and rules in App\Livewire\Akun\Keamanan + App\Actions\Accounts\*. --}}
+{{-- Akun › Keamanan (no board; UI-MAP §2). Data and rules in App\Livewire\Akun\Keamanan + App\Actions\Accounts\*.
+     D-152: the tab "Keamanan akun" of Profil saya (tabs from Akun\Profil::tabs()). --}}
+<div class="flex flex-col gap-[22px]">
+<x-sth.tabs label="Profil saya" :items="$tabs" active="keamanan" />
 <div class="grid grid-cols-1 items-start gap-[22px] xl:grid-cols-2">
     <div class="flex flex-col gap-[22px]">
         {{-- Kata sandi --}}
@@ -119,4 +122,5 @@
 
         <x-sth.alert title="Ada yang mencurigakan?">Jika ada perangkat atau perubahan yang tidak dikenal, ganti kata sandi lalu hubungi Admin atau Kesiswaan.</x-sth.alert>
     </div>
+</div>
 </div>

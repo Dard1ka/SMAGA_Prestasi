@@ -7,6 +7,7 @@ use App\Livewire\Siswa\TurMenu;
 use App\Support\Navigation;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Str;
 
 /*
 | App\Support\Navigation (W1-D): menus per role, current item, disabled items, role choice, initials.
@@ -36,7 +37,8 @@ it('builds the siswa menu from the spec with disabled items for missing routes',
     $items = sthNavItems($nav);
 
     expect(array_column($nav['sections'], 'label'))->toBe(['Menu', 'Akun'])
-        ->and(array_keys($items))->toBe(['beranda', 'cari-lomba', 'lomba-saya', 'portofolio', 'peringkat', 'profil-talenta', 'notifikasi', 'keamanan', 'bantuan'])
+        // D-152: Profil saya (tabs Data diri + Keamanan akun) above Notifikasi.
+        ->and(array_keys($items))->toBe(['beranda', 'cari-lomba', 'lomba-saya', 'portofolio', 'peringkat', 'profil-talenta', 'profil-saya', 'notifikasi', 'bantuan'])
         // Wave 2 created real routes: an item is disabled exactly while its route is missing.
         ->and($items['beranda']['disabled'])->toBe(! Route::has('siswa.beranda'))
         ->and($items['beranda']['href'])->toBe(Route::has('siswa.beranda') ? route('siswa.beranda') : '#')
@@ -129,7 +131,7 @@ it('links the backlog screens from the role menus (W4)', function (string $role,
             ->and($items[$key]['disabled'])->toBeFalse();
     }
 })->with([
-    'siswa' => ['siswa', ['peringkat' => 'siswa.peringkat', 'notifikasi' => 'notifikasi.index', 'keamanan' => 'akun.keamanan']],
+    'siswa' => ['siswa', ['peringkat' => 'siswa.peringkat', 'notifikasi' => 'notifikasi.index', 'profil-saya' => 'akun.profil']],
     'guru' => ['guru', ['binaan' => 'guru.beranda', 'lomba' => 'guru.lomba.index']],
     'kesiswaan' => ['kesiswaan', ['prestasi' => 'kesiswaan.prestasi.index', 'aktivasi' => 'kesiswaan.aktivasi.index']],
     'kepala sekolah' => ['kepala_sekolah', ['prestasi' => 'kepsek.prestasi', 'surat' => 'kepsek.surat.index', 'laporan' => 'kepsek.laporan']],
@@ -149,18 +151,24 @@ it('marks the backlog screens current on their own routes', function (string $ro
     ['admin', 'admin.arsip.index', 'arsip'],
     ['admin', 'admin.audit.index', 'audit'],
     ['kepala_sekolah', 'kepsek.surat.index', 'surat'],
-    ['siswa', 'akun.keamanan', 'keamanan'],
+    // D-152: both tabs of Profil saya mark the one menu item.
+    ['siswa', 'akun.profil', 'profil-saya'],
+    ['siswa', 'akun.keamanan', 'profil-saya'],
     ['siswa', 'notifikasi.index', 'notifikasi'],
 ]);
 
-it('puts Notifikasi and Keamanan akun in the avatar menu of every role', function (): void {
+it('puts Profil saya above Notifikasi in the avatar menu of every role, Keamanan akun only as its tab (D-152)', function (): void {
     $html = Blade::render('<x-sth.topbar :nav="$nav" title="Beranda" />', [
         'nav' => Navigation::for(['name' => 'Ibu Dwi Rahayu', 'roles' => ['kesiswaan']], 'kesiswaan', [], 'none'),
     ]);
+    $menu = Str::of($html)->after('id="sth-user-menu"')->before('Keluar')->toString();
 
-    expect($html)->toContain('href="'.route('notifikasi.index').'"')
-        ->and($html)->toContain('href="'.route('akun.keamanan').'"')
-        ->and($html)->toContain('Keamanan akun');
+    expect(strpos($menu, 'href="'.route('akun.profil').'"'))->toBeInt()
+        ->and(strpos($menu, 'href="'.route('notifikasi.index').'"'))->toBeInt()
+        ->and(strpos($menu, 'href="'.route('akun.profil').'"'))->toBeLessThan(strpos($menu, 'href="'.route('notifikasi.index').'"'))
+        ->and($menu)->toContain('Profil saya')
+        ->and($html)->not->toContain('href="'.route('akun.keamanan').'"')
+        ->and($html)->not->toContain('Keamanan akun');
 });
 
 it('leaves the phone search icon out when a tab already opens that page', function (): void {

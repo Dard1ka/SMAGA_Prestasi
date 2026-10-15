@@ -737,6 +737,9 @@ $finishActivation = function (string $key) use ($siswa, $mail, $scenario, $newPa
     $genuine = hash_equals((string) $otp->code_hash, VerifyOtpCode::hash($user->getKey(), CompleteActivation::PURPOSE, (string) $otp->email, $code));
     app(CompleteActivation::class)->bindEmail($user, $otp);
 
+    // D-152: a student confirms birth date + No HP before the password (fictional number; no mail is sent).
+    app(CompleteActivation::class)->confirmProfile($user, $user->student->birth_date->format('Y-m-d'), '081234567890');
+
     $password = $newPassword($user);
     app(CompleteActivation::class)->changePassword($user, $password, $password);
     $passwords[$key] = $password;

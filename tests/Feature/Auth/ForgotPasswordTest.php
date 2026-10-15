@@ -139,8 +139,9 @@ it('gives the neutral answer and sends nothing for a student email before the ac
 });
 
 it('closes a half-finished activation when the password is reset with the NISN', function (): void {
-    // The student bound the email, left before the password step and then used "Lupa kata sandi".
-    $student = H::pendingStudent();
+    // The student bound the email and saved Data diri (D-152), left before the password step and then used "Lupa
+    // kata sandi". With Data diri still open the account stays pending (ActivationProfileTest).
+    $student = H::pendingStudent(['phone' => '081234567890', 'profile_confirmed_at' => now()]);
     $user = $student->user;
     $user->forceFill([
         'email' => 'nadia.anindya@example.test',

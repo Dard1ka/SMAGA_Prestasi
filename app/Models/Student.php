@@ -56,6 +56,8 @@ class Student extends Model
             'grade12_start_date' => 'immutable_date',
             'archive_at' => 'immutable_date',
             'phone' => 'encrypted',
+            // D-152: set by CompleteActivation::confirmProfile() only, never mass-assigned.
+            'profile_confirmed_at' => 'immutable_datetime',
             'photo_consent' => 'boolean',
             'publish_consent' => 'boolean',
         ];

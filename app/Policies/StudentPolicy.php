@@ -35,4 +35,10 @@ final class StudentPolicy
             && (int) $student->user_id === (int) $actor->getKey()
             && $actor->hasRoleName(RoleName::Siswa);
     }
+
+    /** The student's own birth date + No HP on Profil saya (D-152, UpdateStudentProfile): the same owner rule. */
+    public function updateProfile(User $actor, Student $student): bool
+    {
+        return $this->updatePhone($actor, $student);
+    }
 }

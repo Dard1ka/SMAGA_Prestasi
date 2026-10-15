@@ -421,7 +421,11 @@ logs in through `POST /login` and expects a 403/404 on the next GET would see th
   email (`LoginIdentifier::resolveStudent()`, D-78, D-137); the NIS is only stored (import matching D-81, the
   student letter). A number that matches only a NIS resolves to nobody: the same answer as an unknown account
   (`AuthenticateUser::GENERIC_ERROR` "NISN atau kata sandi salah.", dummy hash, HMAC bucket). Staff by
-  `users.username` or email. First login (D-79): bind email → 6-digit OTP → a **new password, required for every
+  `users.username` or email. First login (D-79): bind email → 6-digit OTP → (students only: **Data diri**, the birth
+  date pre-filled from the import and the No HP, both required, D-152: `DetermineActivationStep::PROFILE`, asked only
+  while the account is `pending_activation` and `students.profile_confirmed_at` is empty, `CompleteActivation::confirmProfile()`,
+  rules in `App\Domain\Accounts\StudentProfileInput`, audit `activation.profile_confirmed` with two flags and no values;
+  `bindEmail()` and `whenPasswordAlreadyChosen()` never activate a student before it) → a **new password, required for every
   account** (D-138: `CompleteActivation::keepPassword()` / `mayKeepPassword()` and the "Lewati" button are deleted,
   not made always false; `users.temporary_password_issued_at` (D-92) still marks an Admin's temporary password for
   the wording of step 3 and is cleared by `SetNewPassword`; `activation.password_kept` exists only on rows from
@@ -452,6 +456,14 @@ logs in through `POST /login` and expects a 403/404 on the next GET would see th
   match) moves to the class in the file; only class, school year, archive dates and phone are written,
   never name, birth date, password, email, status or consent. Account Actions live in
   `app/Actions/Accounts` (activation, OTP, reset, disable, archive, import).
+- **Profil saya** (D-152): the account menu of every role is Profil saya (above Notifikasi), Notifikasi, Keluar; the
+  siswa sidebar › Akun is Profil talenta, Profil saya, Notifikasi, Bantuan (`Navigation` item `profil-saya`, current on
+  `akun.profil` and `akun.keamanan`). Two tabs (`Akun\Profil::tabs()`, drawn on both pages, both titled "Profil saya"):
+  **Data diri** (`/akun/profil`, `akun.profil`, `App\Livewire\Akun\Profil`) and **Keamanan akun** (`akun.keamanan`,
+  unchanged functions). A student edits the own birth date and No HP there (`App\Actions\Accounts\UpdateStudentProfile`,
+  `StudentPolicy::updateProfile` = the owner rule of `updatePhone`, the rules of `StudentProfileInput`, audit
+  `student.profile_updated` with the changed field names only, nobody told); name, NISN, class and email are read-only;
+  staff read name, role, username and email, no form (a forged `save()` → 403). `EnsureTalentChosen` lets `akun.profil` through.
 - **Models & permissions**: status/verification/points columns are not in `$fillable`; Actions set them
   with `forceFill()`. Permissions = `App\Enums\Permission` (`competition.verify`, `registration.approve`,
   `letter.generate`, `report.verify`, `student.import`, `weight.manage`, …), matrix in
@@ -1075,6 +1087,15 @@ or "Kepala Sekolah menyetujui" written as a fact when Tata Usaha decided, a TU l
 true, the "Batas laporan hasil" card in Admin › Pengaturan, reminders before the final date, a reminder after a report
 or a burst of reminders to old rows at deploy.
 
+Profil saya and the data step of the activation on 2026-10-15 (PS1), **D-152** (DECISIONS §D16, `docs/dev-notes/PS1.md`;
+the lead's request after checking the school's second list), **final** for the menu, the two tabs and the required step,
+*sementara* for the student correcting the birth date, the age window 10–30 years, active students without a No HP left
+alone and the talent gate staying kelas X only: the account menu item Profil saya above Notifikasi with the tabs Data
+diri and Keamanan akun, and a student activation of four steps (email → code → Data diri: birth date + No HP → new
+password). Do not bring back: "Keamanan akun" as its own item in the avatar menu or the siswa sidebar, a student
+activation that ends without the birth date and No HP confirmed, a password step before Data diri, an active student sent
+back to the activation for a missing No HP, a birth date or a phone number in an audit row, a profile form for staff.
+
 Known stale text (do not "fix" code to match it): `docs/DEPLOY.md` §9 path A (Google Workspace relay) is not an option
 for the school (lead, 2026-10-08) and §9 has no Brevo path yet;
 DESIGN-SPEC-v2 §1 and the Admin-Pengaturan mockup still show 30 days (and the mockup's WICE deadline
@@ -1385,6 +1406,13 @@ FS1-C 2026-10-13/14 (`docs/dev-notes/FS1.md` "Paket C", D-139…D-141, branch `f
 FS1-E 2026-10-12/14 (`docs/dev-notes/FS1.md` "Paket E", D-142…D-144; branch `feat/fs1-e`, code `d1e4f14`…`97c3607`, merged `04074de`, then with Paket B through `feat/fs1-int` into `feat/fs1-feedback-sekolah` at `01b379b` with the reconcile `a72a6b5` + `c7360b8`; not pushed; docs 2026-10-14 on `feat/fs1-docs`): package E of the school's feedback (talent). Built: talent choices without stages or verification (Kesiswaan › Database talenta siswa with the tabs "Semua" and "Belum mengisi (kelas X)", an optional guru pembina + note, the new Excel columns following the screen filters; the student adds and deletes at any time; nobody is notified; four Actions and four notices deleted); the seventh jenis and a cabang "Lainnya" per jenis with "Sebutkan" (`talent_applications.other_text`, migration `2026_10_12_100000`, the unique index replaced by the Action's check); kelas X students without a talent held on Profil talenta (`EnsureTalentChosen`). Deploy: drain the queue first (deleted notice classes), migrate, `TalentSeeder`.
 FS1-B 2026-10-12/14 (`docs/dev-notes/FS1.md` "Paket B", D-145…D-151; branches `feat/fs1-b` (Tasks 1–11 + 10a, `e3f62ec`…`30fc316`, review fixes `8d15243`, `8ae9836`, merged `1d7ee01`) and `feat/fs1-b3` (Tasks 12–16, `1c3314c`…`2a1cc6d`, merged `c2dad71`, leftovers `5bf48c9`); not pushed): package B (the lomba flow). Built: only siswa (page "Usulkan lomba" → straight into the registration; tab "Usulan saya") and Admin add a lomba, Kesiswaan checks and corrects (shared `CompetitionFields`), the guru has no upload; weights from `OrganizerWeight` with an audited override; duration-based dates and a required juknis; `menunggu_lomba` with `ResumeWaitingRegistrations` and a three-day answer window (`registrations.answer_until`, migration `2026_10_12_100100`); "Data peserta" + an editable No HP (`UpdateStudentPhone`); Kepala Sekolah **or** Tata Usaha approves (`tu.persetujuan.index`, `ApprovalQueue`, "Menunggu persetujuan", the decider named); laporan hasil without a deadline, reminders H+3 / H+14, KPI "Belum lapor > 14 hari". Deploy: migrate, re-run `RoleSeeder`, drain the queue, restart `queue` + `scheduler`.
 Checks of FS1-E and FS1-B: focused filters per task in the implementers' ledgers (all green, Pint clean on touched files); after the merge the full suite on `01b379b` → **3588 passed, 1 skipped (21604 assertions)**, `--parallel --processes=8`, 139 s (this docs pass, run on `wt-fs1-docs` with `fs1-test.sh`). Not run in the docs pass: `pint --test` (docs only), `npm run build`, the email scenario on the merged tree (sections 2, 6, 9 and the D-150 steps were edited; the B1 branch ran it isolated: 134 mails, 0 missing), the Playwright smoke, `composer audit`, and a browser check of E and B (none of the E/B implementers had a browser; the browser QA items E1–E5 and B1–B9 of the coordinator's checklist are still open). The full FS1 picture (30 feedback items, decisions, one deploy checklist): `docs/dev-notes/FS1.md` "FS1 overview". Open: §9 "Questions for the lead from FS1-E and FS1-B", backlog #83.
+
+PS1 2026-10-15 (`docs/dev-notes/PS1.md`, D-152; on the demo copy checkout of `feat/fs1-feedback-sekolah`, not committed):
+the lead's request after checking the school's lists: the account menu item Profil saya above Notifikasi (tabs Data diri,
+new `akun.profil`, and Keamanan akun) and a required "Data diri" step (birth date + No HP) in the student activation
+between the code and the new password. One migration (`students.profile_confirmed_at`, run on the local MySQL). Full suite
+→ 3749 passed, 1 skipped, 2 failed (both fixed and green alone); `pint --test` clean (825 files). Browser: staff views
+only; the student form and the activation step are render-tested only.
 
 | area | owner | state (details in `docs/dev-notes/<ID>.md`) |
 |---|---|---|

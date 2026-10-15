@@ -1,7 +1,7 @@
 {{--
     App top bar (DESIGN-SPEC-v3 §4): left = page title (h1, .title-page) + one-line subtitle, or the
     `lead` slot (breadcrumb); right = actions slot, search (GET ?q= to the role's list page), bell with
-    unread dot, avatar button with the account menu (Notifikasi, Keamanan akun, Keluar). Below lg a menu button
+    unread dot, avatar button with the account menu (Profil saya, Notifikasi, Keluar; D-152). Below lg a menu button
     opens the drawer <dialog id="sth-nav"> rendered by the app layout.
 
     Rendered by <x-layouts::app>; use directly only for custom shells.
@@ -25,7 +25,7 @@
     $count = max(0, (int) $notifications);
     $bellKey = \App\Support\Navigation::BELL;
     $notifUrl = \Illuminate\Support\Facades\Route::has('notifikasi.index') ? route('notifikasi.index') : null;
-    $securityUrl = \Illuminate\Support\Facades\Route::has('akun.keamanan') ? route('akun.keamanan') : null;
+    $profileUrl = \Illuminate\Support\Facades\Route::has('akun.profil') ? route('akun.profil') : null;
     $canLogout = \Illuminate\Support\Facades\Route::has('logout');
     $user = $nav['user'];
     $query = $search ? request()->query($search['name']) : null;
@@ -99,12 +99,13 @@
                     <p class="m-0 text-sm font-bold">{{ $user['name'] }}</p>
                     <p class="m-0 text-xs text-muted">{{ $user['meta'] }}</p>
                 </div>
-                {{-- W4: account items of every role (siswa also has them in the sidebar "Akun" section). --}}
+                {{-- W4: account items of every role (siswa also has them in the sidebar "Akun" section).
+                     D-152: Profil saya (tabs Data diri + Keamanan akun) above Notifikasi; Keamanan akun is its tab. --}}
+                @if ($profileUrl)
+                    <a class="menu-item" href="{{ $profileUrl }}" @if ($navAttr = \App\Support\Links::navigateAttribute($profileUrl)) {{ $navAttr }} @endif><x-sth.icon name="user" :size="18" />Profil saya</a>
+                @endif
                 @if ($notifUrl)
                     <a class="menu-item" href="{{ $notifUrl }}" @if ($navAttr = \App\Support\Links::navigateAttribute($notifUrl)) {{ $navAttr }} @endif><x-sth.icon name="bell" :size="18" />Notifikasi</a>
-                @endif
-                @if ($securityUrl)
-                    <a class="menu-item" href="{{ $securityUrl }}" @if ($navAttr = \App\Support\Links::navigateAttribute($securityUrl)) {{ $navAttr }} @endif><x-sth.icon name="lock" :size="18" />Keamanan akun</a>
                 @endif
                 @if ($canLogout)
                     <form method="POST" action="{{ route('logout') }}">

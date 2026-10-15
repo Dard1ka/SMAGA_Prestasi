@@ -323,7 +323,8 @@ final class Navigation
         $cariLomba = ['key' => 'cari-lomba', 'label' => 'Cari lomba', 'icon' => 'search', 'route' => ['siswa.lomba.index', 'siswa.katalog'], 'match' => ['siswa.lomba.*', 'siswa.katalog*']];
         $kelolaLomba = ['key' => 'kelola-lomba', 'label' => 'Kelola lomba', 'icon' => 'trophy', 'route' => ['kesiswaan.lomba.index', 'kesiswaan.lomba'], 'match' => ['kesiswaan.lomba.*']];
         $notifikasi = ['key' => 'notifikasi', 'label' => 'Notifikasi', 'icon' => 'bell', 'route' => ['notifikasi.index']];
-        $keamanan = ['key' => 'keamanan', 'label' => 'Keamanan akun', 'icon' => 'lock', 'route' => ['akun.keamanan']];
+        // D-152: Profil saya = the tabs Data diri (akun.profil) and Keamanan akun (akun.keamanan).
+        $profil = ['key' => 'profil-saya', 'label' => 'Profil saya', 'icon' => 'user', 'route' => ['akun.profil'], 'match' => ['akun.profil', 'akun.keamanan']];
 
         return [
             'siswa' => [
@@ -337,10 +338,11 @@ final class Navigation
                         ['key' => 'peringkat', 'label' => 'Peringkat', 'icon' => 'bars', 'route' => ['siswa.peringkat', 'peringkat', 'public.peringkat']],
                     ]],
                     ['label' => 'Akun', 'items' => [
-                        ['key' => 'profil-talenta', 'label' => 'Profil talenta', 'icon' => 'user', 'route' => ['siswa.talenta', 'siswa.profil-talenta']],
+                        // D-152: the bulb, so Profil saya keeps the person icon of the avatar menu.
+                        ['key' => 'profil-talenta', 'label' => 'Profil talenta', 'icon' => 'bulb', 'route' => ['siswa.talenta', 'siswa.profil-talenta']],
                         // B1/W4: account pages of every role (staff reach them from the avatar menu and the bell).
+                        $profil,
                         $notifikasi,
-                        $keamanan,
                         ['key' => 'bantuan', 'label' => 'Bantuan', 'icon' => 'help', 'route' => ['siswa.bantuan', 'bantuan']],
                     ]],
                 ],

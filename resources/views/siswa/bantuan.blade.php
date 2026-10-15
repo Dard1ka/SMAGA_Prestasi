@@ -11,7 +11,7 @@
                 ['icon' => 'upload', 'title' => 'Laporkan hasil', 'text' => 'Ketua tim melapor segera setelah lomba selesai, lengkap dengan sertifikat atau foto. Setelah sekolah memverifikasi, setiap anggota mendapat poin penuh.'],
                 ['icon' => 'plus', 'title' => 'Usulkan lomba', 'text' => 'Lomba belum ada di katalog? Klik Usulkan lomba di Cari lomba. Lomba tampil setelah Kesiswaan memeriksanya.'],
                 ['icon' => 'user', 'title' => 'Masuk ke akun', 'text' => 'Masuk pakai NISN atau email yang kamu hubungkan saat aktivasi. Lupa kata sandi? Klik Lupa kata sandi di halaman masuk, kodenya dikirim ke emailmu.'],
-                ['icon' => 'lock', 'title' => 'Jaga akunmu', 'text' => 'Jangan bagikan kata sandi atau kode email. Masih pakai kata sandi dari sekolah? Ganti di menu avatar, Keamanan akun. Dapat email aneh? Klik Bukan saya? lalu hubungi Kesiswaan.'],
+                ['icon' => 'lock', 'title' => 'Jaga akunmu', 'text' => 'Jangan bagikan kata sandi atau kode email. Masih pakai kata sandi dari sekolah? Ganti di menu avatar, Profil saya, tab Keamanan akun. Dapat email aneh? Klik Bukan saya? lalu hubungi Kesiswaan.'],
             ] as $item)
                 <x-sth.card as="section" class="flex items-start gap-3.5">
                     <span class="inline-flex size-11 shrink-0 items-center justify-center rounded-tile bg-primary-tint text-primary" aria-hidden="true"><x-sth.icon :name="$item['icon']" /></span>

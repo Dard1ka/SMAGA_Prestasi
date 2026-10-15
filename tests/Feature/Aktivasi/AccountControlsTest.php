@@ -154,6 +154,8 @@ it('ends the window once the student chose a new password at the last activation
         'initial_password_expires_at' => now()->addDay(),
     ])->saveQuietly();
 
+    // D-152: Data diri comes before the password step.
+    app(CompleteActivation::class)->confirmProfile($user, '2010-03-02', '081234567890');
     app(CompleteActivation::class)->changePassword($user, 'Pelangi-senja-2026', 'Pelangi-senja-2026');
 
     $this->travel(30)->days();
@@ -386,6 +388,8 @@ it('sends the bound address a notice with a single-use "Bukan saya?" link when t
         ->and(AccountControls::date($user, 'activated_at'))->toBeNull()
         ->and(DB::table('email_notices')->where('user_id', $user->getKey())->where('kind', 'bound')->count())->toBe(1);
 
+    // D-152: Data diri comes before the password step.
+    app(CompleteActivation::class)->confirmProfile($user, '2010-03-02', '081234567890');
     app(CompleteActivation::class)->changePassword($user, 'Pelangi-senja-2026', 'Pelangi-senja-2026');
 
     $user = b1User($student);

@@ -192,7 +192,8 @@ it('shows a held kelas X student the closed menus as locked (BUG-08)', function 
         ->and($items['profil-talenta']['locked'])->toBeFalse()
         ->and($items['bantuan']['locked'])->toBeFalse()
         ->and($items['notifikasi']['locked'])->toBeFalse()
-        ->and($items['keamanan']['locked'])->toBeFalse()
+        // D-152: Profil saya (tabs Data diri + Keamanan akun) stays open.
+        ->and($items['profil-saya']['locked'])->toBeFalse()
         ->and($tabs['beranda']['locked'])->toBeTrue()
         ->and($tabs['lomba']['locked'])->toBeTrue()
         // The tab that holds Profil talenta leads there while the gate holds.
@@ -257,6 +258,9 @@ it('says on the activation done screen that a kelas X student picks a talent fir
     });
 
     $component->set('code', (string) $code)->call('verifyCode')->assertHasNoErrors()
+        // D-152: Data diri before the password.
+        ->assertSet('step', Activation::STEP_PROFILE)
+        ->set('phone', '081234567890')->call('saveProfile')->assertHasNoErrors()
         ->set('password', 'Pelangi-senja-2026')->set('password_confirmation', 'Pelangi-senja-2026')
         ->call('savePassword')->assertHasNoErrors()
         ->assertSet('step', Activation::STEP_DONE)
