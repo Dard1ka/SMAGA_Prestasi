@@ -4,23 +4,31 @@ declare(strict_types=1);
 
 namespace App\Livewire\Siswa\Pendaftaran;
 
+use App\Actions\Accounts\UpdateStudentPhone;
 use App\Actions\Registrations\CancelRegistration;
 use App\Actions\Registrations\CreateRegistration;
 use App\Actions\Registrations\ExpirePendingInvitations;
 use App\Actions\Registrations\InviteMembers;
+use App\Actions\Registrations\MentorChoice;
 use App\Actions\Registrations\WithdrawInvitation;
+use App\Domain\Accounts\PhoneNumber;
+use App\Domain\Deadlines\ReportFollowUp;
+use App\Enums\CompetitionStatus;
 use App\Enums\MemberRole;
 use App\Enums\Participation;
 use App\Enums\RegistrationStatus;
 use App\Enums\RegistrationType;
+use App\Enums\ReportStatus;
 use App\Enums\UserStatus;
 use App\Livewire\Siswa\Lomba\LombaPresenter;
 use App\Models\Competition;
 use App\Models\Registration;
 use App\Models\RegistrationMember;
+use App\Models\Report;
 use App\Models\Student;
 use App\Models\User;
 use App\Support\Navigation;
+use App\Support\StaffRoleLabel;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Gate;
@@ -36,7 +44,7 @@ use Livewire\Component;
  * already in a registration of this lomba) it shows the status + next steps, and lets the leader
  * cancel while nobody has decided yet (CancelRegistration).
  *
- * Member search (SECURITY §3m-3): active students only, name ≥ 3 letters or an exact NIS/NISN,
+ * Member search (SECURITY §3m-3): active students only, name ≥ 3 letters or an exact NISN,
  * ≤ 10 results, only ULID + name + class reach the browser, 30/min and 300/day per user. A student who has not
  * activated the account is marked (QA6): the invitation waits until that student activates.
  *
@@ -79,6 +87,9 @@ class Form extends Component
 
     public bool $setuju = false;
 
+    /** D-149: the own No HP, pre-filled from the account; kirim() saves a changed one (UpdateStudentPhone). */
+    public string $phone = '';
+
     /** The invited student (ULID) the open "Batalkan undangan?" dialog asks about; set only by askBatalkanUndangan(). */
     #[Locked]
     public ?string $withdrawingId = null;
@@ -94,6 +105,7 @@ class Form extends Component
         // used to stay selected out of sight and CreateRegistration refused the form without a visible message.
         $default = $competition->default_mentor_id !== null ? (int) $competition->default_mentor_id : null;
         $this->mentorId = $default !== null && array_key_exists($default, $this->mentorOptions()) ? $default : null;
+        $this->phone = self::ownPhone($this->student());
     }
 
     public function updatedType(): void
@@ -122,7 +134,7 @@ class Form extends Component
         $digits = ctype_digit($term);
 
         if (! $digits && mb_strlen($term) < 3) {
-            $this->searchNote = 'Ketik minimal 3 huruf nama, atau NIS/NISN lengkap.';
+            $this->searchNote = 'Ketik minimal 3 huruf nama, atau NISN lengkap.';
 
             return;
         }
@@ -146,7 +158,7 @@ class Form extends Component
             ->active()
             ->whereKeyNot($me?->getKey())
             ->when($digits,
-                fn (Builder $q) => $q->where(fn (Builder $w) => $w->where('nis', $term)->orWhere('nisn', $term)),
+                fn (Builder $q) => $q->where('nisn', $term),
                 fn (Builder $q) => $q->whereHas('user', fn (Builder $u) => $u->where('name', 'like', '%'.addcslashes($term, '%_\\').'%')))
             ->with(['user:id,name,status', 'classroom:id,name'])
             ->limit(self::MAX_RESULTS)
@@ -304,11 +316,11 @@ class Form extends Component
         // The status WithdrawInvitation wrote under its lock (it copies the locked row back into $registration).
         $forwarded = $registration->status === RegistrationStatus::MenungguKepsek;
 
-        $this->dispatch('sth-toast', message: 'Undangan untuk '.$name.' dibatalkan.'.($forwarded ? ' Pendaftaran diteruskan ke Kepala Sekolah.' : ''), tone: 'success');
+        $this->dispatch('sth-toast', message: 'Undangan untuk '.$name.' dibatalkan.'.($forwarded ? ' Pendaftaran diteruskan untuk persetujuan.' : ''), tone: 'success');
         $this->dispatch(self::CHANGED);
     }
 
-    public function kirim(CreateRegistration $create): void
+    public function kirim(CreateRegistration $create, UpdateStudentPhone $phones): void
     {
         $competition = $this->competition();
 
@@ -321,20 +333,37 @@ class Form extends Component
             return;
         }
 
+        // D-149: the same rule as the import and UpdateStudentPhone, checked with the other fields so every error shows at once.
+        $this->phone = PhoneNumber::normalize($this->phone);
         $this->validate(
-            ['setuju' => ['accepted'], 'mentorId' => ['required', 'integer'], 'type' => ['required', 'in:individu,tim']],
-            ['setuju.accepted' => 'Centang dulu pernyataan data benar.', 'mentorId.required' => 'Pilih guru pembimbing.', 'mentorId.integer' => 'Pilih guru pembimbing.'],
+            [
+                'setuju' => ['accepted'],
+                'mentorId' => ['required', 'integer'],
+                'type' => ['required', 'in:individu,tim'],
+                'phone' => ['required', 'regex:'.PhoneNumber::PATTERN],
+            ],
+            [
+                'setuju.accepted' => 'Centang dulu pernyataan data benar.',
+                'mentorId.required' => 'Pilih guru pembimbing.',
+                'mentorId.integer' => 'Pilih guru pembimbing.',
+                'phone.required' => UpdateStudentPhone::EMPTY,
+                'phone.regex' => PhoneNumber::INVALID,
+            ],
         );
 
         if (Gate::denies('create', [Registration::class, $competition])) {
-            $this->addError('competition', $competition->isOpenForRegistration()
+            $this->addError('competition', $competition->isOpenForRegistrationBy(auth()->user())
                 ? 'Kamu sudah terdaftar di lomba ini.'
                 : 'Pendaftaran lomba ini sudah ditutup.');
 
             return;
         }
 
+        /** @var Student $me */
+        $me = $this->student();
+
         try {
+            $phones->handle(auth()->user(), $me, $this->phone);
             $create->handle(
                 auth()->user(),
                 $competition,
@@ -380,19 +409,75 @@ class Form extends Component
         return view('livewire.siswa.pendaftaran.form', [
             'competition' => $competition,
             'window' => LombaPresenter::window($competition),
-            'closesShort' => $competition->registration_closes_at?->locale('id')->translatedFormat('j M'),
+            'waitingNotice' => $this->waitingNotice($competition),
+            // The role that rejected the usulan, by the one lomba rule (StaffRoleLabel::forLomba()); null otherwise.
+            'rejectedBy' => $competition->status === CompetitionStatus::Ditolak ? StaffRoleLabel::forLomba($competition->verifier) : null,
+            // The registration deadline matters while the student may still register or the team still answers (phase 1).
+            // Once the registration is past that step, a "Batas …" chip above the report stage reads like a report
+            // deadline, which no screen shows (D-151; FS1 QA round 2).
+            'closesShort' => $current === null || $current->status->phase() <= 1
+                ? $competition->registration_closes_at?->locale('id')->translatedFormat('j M')
+                : null,
             'me' => $me,
             'current' => $current,
             'status' => $current !== null ? $this->statusView($current, $me) : null,
             'withdrawing' => $this->withdrawing($current),
             'canCreate' => $current === null && Gate::allows('create', [Registration::class, $competition]),
+            // D-148: the student's own lomba still waits for Kesiswaan; a registration sent now waits with it.
+            'lombaWaits' => $competition->status === CompetitionStatus::MenungguVerifikasi,
             'teamAllowed' => $competition->allowsRegistrationType(RegistrationType::Tim),
             'individuAllowed' => $competition->allowsRegistrationType(RegistrationType::Individu),
             'maxTeam' => $competition->max_team_size,
             'teamFull' => $this->teamFull(),
             'memberRows' => $this->memberRows(),
             'mentors' => $this->mentorOptions(),
+            'peserta' => self::pesertaRows(auth()->user(), $me),
         ]);
+    }
+
+    /**
+     * The alert in place of the form on a lomba Kesiswaan has not verified yet (window `menunggu`, QA10). Only its
+     * submitter sees such a lomba, and since D-148 may register for it within its dates
+     * (Competition::isOpenForRegistrationBy()): when the form is missing there, the dates are the reason, and the
+     * verification does not change them. Only a lomba without a deadline still waits for the verification.
+     *
+     * @return array{tone: string, title: string, text: string}
+     */
+    private function waitingNotice(Competition $competition): array
+    {
+        $now = now();
+        $own = $competition->isAwaitingVerificationFor(auth()->user());
+        $opens = $competition->registration_opens_at;
+        $closes = $competition->registration_closes_at;
+
+        return match (true) {
+            $own && $closes !== null && $closes < $now => ['tone' => 'warning', 'title' => 'Pendaftaran ditutup', 'text' => 'Pendaftaran lomba ini sudah ditutup.'],
+            $own && $opens !== null && $opens > $now => ['tone' => 'info', 'title' => 'Belum dibuka', 'text' => 'Pendaftaran dibuka '.LombaPresenter::date($opens).'.'],
+            default => ['tone' => 'info', 'title' => 'Belum dibuka', 'text' => 'Pendaftaran dibuka setelah Kesiswaan memverifikasi lomba ini.'],
+        };
+    }
+
+    /** The account's own No HP for the field, '' when none (or one that cannot be decrypted any more). */
+    private static function ownPhone(?Student $student): string
+    {
+        return (string) rescue(fn () => $student?->phone, null, false);
+    }
+
+    /**
+     * "Data peserta" (D-149): read-only, from the account (D-03), shown to its owner only (this panel is the student's
+     * own form; Undangan tim shows the invitee the same rows of the own account, FS1 QA round 2). Nama, Kelas, NISN,
+     * Tanggal lahir.
+     *
+     * @return list<array{label: string, value: string}>
+     */
+    public static function pesertaRows(?User $user, ?Student $me): array
+    {
+        return [
+            ['label' => 'Nama', 'value' => (string) $user?->name],
+            ['label' => 'Kelas', 'value' => $me?->classroom?->name ?? '–'],
+            ['label' => 'NISN', 'value' => $me?->nisn ?? '–'],
+            ['label' => 'Tanggal lahir', 'value' => $me?->birth_date?->locale('id')->translatedFormat('j F Y') ?? '–'],
+        ];
     }
 
     /**
@@ -403,7 +488,7 @@ class Form extends Component
     private function refuseWithdrawal(?Registration $registration): void
     {
         $message = $registration?->status === RegistrationStatus::MenungguKepsek
-            ? 'Undangan tidak bisa dibatalkan lagi: tim sudah lengkap dan diteruskan ke Kepala Sekolah.'
+            ? 'Undangan tidak bisa dibatalkan lagi: tim sudah lengkap dan diteruskan untuk persetujuan.'
             : 'Undangan tidak bisa dibatalkan lagi untuk pendaftaran ini.';
 
         $this->addError('members', $message);
@@ -457,6 +542,7 @@ class Form extends Component
         foreach ($e->errors() as $key => $messages) {
             $field = match (true) {
                 $key === 'mentor' => 'mentorId',
+                $key === 'phone' => 'phone',
                 $key === 'members' && $this->type === RegistrationType::Tim->value => 'members',
                 $key === 'registration' => 'registration',
                 default => 'competition',
@@ -494,7 +580,7 @@ class Form extends Component
             ->where('competition_id', $this->competitionId)
             ->nonFinal()
             ->whereHas('members', fn (Builder $m) => $m->where('student_id', $me->getKey())->whereNull('declined_at'))
-            ->with(['competition', 'members.student.user:id,name', 'members.student.classroom:id,name', 'mentor.staffProfile'])
+            ->with(['competition', 'report', 'members.student.user:id,name', 'members.student.classroom:id,name', 'mentor.staffProfile'])
             ->latest()
             ->first();
     }
@@ -530,9 +616,8 @@ class Form extends Component
     /** @return array<int, string> */
     private function mentorOptions(): array
     {
-        return User::query()->gurus()->canLogIn()->with('staffProfile:id,user_id,honorific')->orderBy('name')->get(['id', 'name'])
-            ->mapWithKeys(fn (User $u): array => [$u->id => trim(($u->staffProfile?->honorific ? $u->staffProfile->honorific.' ' : '').$u->name)])
-            ->all();
+        // The same list the Kepala Sekolah picks from when replacing the guru (D-132).
+        return MentorChoice::options();
     }
 
     /** @return array<string, mixed> */
@@ -555,24 +640,46 @@ class Form extends Component
             ? route('siswa.lomba-saya.show', $registration)
             : (Route::has('siswa.lomba-saya.index') ? route('siswa.lomba-saya.index') : null);
 
+        $waitingLomba = $registration->status === RegistrationStatus::MenungguLomba;
+        // D-148: a team resumed late answers until its own moment, not the registration deadline.
+        $grace = $registration->graceText();
+        // OBS-STEP2-TEAM: while the lomba waits for Kesiswaan nobody is invited and the ketua cannot invite yet, but the
+        // panel lists the team as Lomba saya does (read-only, "Diundang setelah lomba diverifikasi").
+        $showTeam = $canInvite || ($waitingLomba && $registration->isTeam() && $mine?->role === MemberRole::Ketua);
+
         return [
             'isLeader' => $mine?->role === MemberRole::Ketua,
             'pendingInvite' => $mine !== null && $mine->role === MemberRole::Anggota && $mine->confirmed_at === null && $registration->status === RegistrationStatus::MenungguKonfirmasi,
+            'answerNote' => $grace !== null ? 'Konfirmasi sebelum '.$grace.'.' : 'Konfirmasi sebelum batas pendaftaran.',
+            // The ketua invites and withdraws in the same window the anggota answer in (RegistrationPolicy::teamWindowOpen()).
+            'inviteHint' => 'Undangan berlaku sampai '.($grace ?? 'batas pendaftaran')
+                .'. Siswa yang belum aktivasi akun baru melihatnya setelah aktivasi.',
             'isTeam' => $registration->isTeam(),
             'label' => $registration->status->label(),
             'tone' => $registration->status->tone(),
-            'waitingMembers' => $registration->status === RegistrationStatus::MenungguKonfirmasi,
-            'membersText' => $anggota->count() === 0 ? null : "{$confirmed} dari {$anggota->count()} anggota sudah konfirmasi",
+            'waitingMembers' => $waitingLomba || $registration->status === RegistrationStatus::MenungguKonfirmasi,
+            // D-148: nothing goes out before Kesiswaan decides the lomba, so no confirmation count yet.
+            'membersText' => $anggota->count() === 0 || $waitingLomba ? null : "{$confirmed} dari {$anggota->count()} anggota sudah konfirmasi",
+            'waitingText' => $waitingLomba ? LombaPresenter::waitingForLomba($registration) : null,
+            // D-148: the steps start with "Kesiswaan memverifikasi lomba" while the lomba waits, not with the approval.
+            'waitingLomba' => $waitingLomba,
+            'first' => $waitingLomba ? 2 : 1,
+            'cancelNote' => $waitingLomba
+                ? 'Pendaftaran ini belum diteruskan, jadi tidak ada yang diberi tahu.'
+                : 'Anggota tim akan diberi tahu. Kamu bisa mendaftar lagi selama pendaftaran masih dibuka.',
             'mentor' => $mentor === null ? '–' : trim(($mentor->staffProfile?->honorific ? $mentor->staffProfile->honorific.' ' : '').$mentor->name),
             'leaderName' => (string) $members->firstWhere('role', MemberRole::Ketua)?->student?->user?->name,
             'canCancel' => Gate::allows('cancel', $registration),
             'phase' => $registration->status->phase(),
+            // FS1 QA: `surat_terbit` shares phase 3 with `disetujui`, but its letters exist: that step is done too.
+            'lettersDone' => $registration->status === RegistrationStatus::SuratTerbit || $registration->status->phase() > 3,
+            'stage' => $this->stage($registration, $mine?->role === MemberRole::Ketua),
             'lombaSaya' => $lombaSaya,
             'undangan' => route('siswa.undangan.show', $registration),
             'canInvite' => $canInvite,
             'slotsLeft' => $max !== null && $max > 0 ? max(0, $max - $active) : null,
-            'team' => ! $canInvite ? [] : $members
-                ->sortBy(fn (RegistrationMember $m): string => ($m->role === MemberRole::Ketua ? '0' : '1').($m->invited_at?->format('YmdHis') ?? ''))
+            // FS1: the one order of every team list (RegistrationMember::inTeamOrder()), the same as on Lomba saya.
+            'team' => ! $showTeam ? [] : RegistrationMember::inTeamOrder($members)
                 ->map(fn (RegistrationMember $m): array => [
                     'id' => (string) $m->getKey(),
                     'studentId' => (string) $m->student_id,
@@ -582,11 +689,51 @@ class Form extends Component
                         in_array((string) $m->getKey(), $expired, true) => 'expired',
                         $m->declined_at !== null => 'declined',
                         $m->confirmed_at !== null => 'confirmed',
+                        // D-148: invited once Kesiswaan verified the lomba (Lomba saya's `invitedLater`).
+                        $waitingLomba && $m->invited_at === null => 'later',
                         default => 'pending',
                     },
                 ])
                 ->values()
                 ->all(),
         ];
+    }
+
+    /**
+     * What happens now once the steps of the panel (approval, surat tugas) are behind the registration (FS1 QA: a
+     * registration waiting for its report showed only those steps and "Lihat di Lomba saya"). Null before the lomba runs.
+     * Only the ketua reports (ReportPolicy::create), so only the ketua gets the button; no deadline (D-151).
+     *
+     * @return array{title: string, text: string, action: ?array{label: string, href: string}}|null
+     */
+    private function stage(Registration $registration, bool $isLeader): ?array
+    {
+        $team = $registration->isTeam();
+        $revising = $registration->report?->status === ReportStatus::PerluRevisi;
+
+        return match ($registration->status) {
+            RegistrationStatus::Berlangsung => [
+                'title' => 'Lomba berlangsung',
+                'text' => $isLeader ? 'Setelah lomba selesai, laporkan hasilnya di Lomba saya.' : 'Setelah lomba selesai, ketua tim melaporkan hasilnya.',
+                'action' => null,
+            ],
+            RegistrationStatus::MenungguLaporan => [
+                'title' => $revising ? 'Laporan hasil perlu diperbaiki' : 'Laporkan hasil',
+                'text' => match (true) {
+                    ! $isLeader => $revising ? 'Ketua tim memperbaiki laporan dari akunnya.' : 'Ketua tim melaporkan hasil lomba dari akunnya.',
+                    $revising => 'Catatan perbaikannya ada di Lomba saya.',
+                    default => ReportFollowUp::PROMPT.($team ? ' Setiap anggota tim mendapat poin penuh setelah diverifikasi.' : ''),
+                },
+                'action' => $isLeader && Gate::allows('create', [Report::class, $registration]) && Route::has('siswa.lapor')
+                    ? ['label' => $revising ? 'Perbaiki laporan' : 'Laporkan hasil', 'href' => route('siswa.lapor', $registration)]
+                    : null,
+            ],
+            RegistrationStatus::LaporanDikirim => [
+                'title' => 'Laporan hasil terkirim',
+                'text' => 'Sekolah memeriksa laporan hasil. Poin tampil setelah diverifikasi.',
+                'action' => null,
+            ],
+            default => null,
+        };
     }
 }

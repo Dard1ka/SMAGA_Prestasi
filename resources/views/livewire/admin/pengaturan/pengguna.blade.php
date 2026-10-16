@@ -16,6 +16,19 @@
         @endif
     </x-sth.page-header>
 
+    {{-- FS1 QA round 2 (QA-DC-05): a full NISN from the top bar search is answered in "Bantuan akun siswa" at the bottom
+         of the page; this note on the first screen says what was found and links there. --}}
+    @if ($nisnNotice)
+        @if ($nisnNotice['name'] !== null)
+            <x-sth.alert :title="'Hasil NISN '.$nisnNotice['nisn']">
+                Akun siswa {{ $nisnNotice['name'] }} ada di Bantuan akun siswa.
+                <span class="mt-1 block"><x-sth.link href="#h-bantuan-siswa" :navigate="false" icon-right="chevron-down">Lihat akun siswa</x-sth.link></span>
+            </x-sth.alert>
+        @else
+            <x-sth.alert tone="warning" :title="'Hasil NISN '.$nisnNotice['nisn']">Tidak ada siswa dengan NISN {{ $nisnNotice['nisn'] }}.</x-sth.alert>
+        @endif
+    @endif
+
     @if ($pending)
         <x-sth.alert tone="warning" title="Penggantian Kepala Sekolah dijadwalkan">
             Peran Kepala Sekolah pindah dari {{ $pending->fromUser?->name ?? '–' }} ke {{ $pending->toUser?->name }}
@@ -31,7 +44,9 @@
     </div>
 
     @if ($staff->isEmpty())
-        <x-sth.empty-state icon="users" title="Tidak ada akun yang cocok">Ganti kata pencarian.</x-sth.empty-state>
+        {{-- FS1 QA: the top bar search ("Cari nama atau NISN") lands here, and a name only finds staff; a student is found by
+             the full NISN in "Bantuan akun siswa" (SECURITY §3m-3), so the empty list says where to look. --}}
+        <x-sth.empty-state icon="users" title="Tidak ada akun yang cocok">Ganti kata pencarian. Nama hanya mencari akun staf; akun siswa dicari dengan NISN lengkap di Bantuan akun siswa di bawah.</x-sth.empty-state>
     @else
         <x-sth.table caption="Akun staf per peran, {{ $staff->count() }} akun" caption-visible>
             <x-slot:head>
@@ -111,14 +126,14 @@
     {{-- B5 (backlog #13): privileged role changes waiting for a second Admin or the 24 h delay. --}}
     <livewire:admin.role-change-requests :key="'peran-menunggu'" />
 
-    {{-- Bantuan akun siswa (exact NIS/NISN only, SECURITY §3m-3) --}}
+    {{-- Bantuan akun siswa (exact NISN only, SECURITY §3m-3) --}}
     <x-sth.card as="section" aria-labelledby="h-bantuan-siswa" class="flex flex-col gap-4">
         <div>
             <h3 id="h-bantuan-siswa" class="title-card">Bantuan akun siswa</h3>
             <p class="text-sm muted">Untuk siswa yang lupa kata sandi atau akunnya diambil alih orang lain.</p>
         </div>
         <form wire:submit="findStudent" class="flex flex-wrap items-end gap-3" novalidate>
-            <x-sth.input wire:model="studentQuery" label="NIS atau NISN" inputmode="numeric" autocomplete="off" class="w-full max-w-xs" />
+            <x-sth.input wire:model="studentQuery" label="NISN" inputmode="numeric" autocomplete="off" class="w-full max-w-xs" />
             <x-sth.button type="submit" variant="soft" icon="search">Cari</x-sth.button>
         </form>
 
@@ -174,7 +189,7 @@
             </div>
             {{-- W4 (lead decision): privileged roles follow the "Ubah peran" approval rule. --}}
             <x-sth.select wire:model="new.role" label="Peran" :options="$roleOptions"
-                          hint="Admin, Kesiswaan, dan Tata Usaha: akun dibuat tanpa peran dulu. Perannya perlu persetujuan Admin lain, atau berlaku 24 jam kemudian bila hanya ada satu Admin." />
+                          hint="Admin, Kesiswaan, Tata Usaha, dan Humas: akun dibuat tanpa peran dulu. Perannya perlu persetujuan Admin lain, atau berlaku 24 jam kemudian bila hanya ada satu Admin." />
             <div class="grid gap-4 sm:grid-cols-3">
                 <x-sth.input wire:model="new.honorific" label="Sapaan" placeholder="Bu / Pak" optional autocomplete="off" />
                 <x-sth.input wire:model="new.nip" label="NIP" inputmode="numeric" optional autocomplete="off" class="sm:col-span-2" />
@@ -195,7 +210,7 @@
     <x-sth.modal id="staf-peran" title="Ubah peran" :description="$target ? 'Akun '.$target->name.'. Pengguna perlu login ulang.' : null" size="sm">
         <form id="staf-peran-form" wire:submit="changeRole" class="flex flex-col gap-4" novalidate>
             <x-sth.select wire:model="role" label="Peran baru" :options="$roleOptions"
-                          hint="Admin, Kesiswaan, dan Tata Usaha perlu persetujuan Admin lain, atau berlaku 24 jam kemudian bila hanya ada satu Admin." />
+                          hint="Admin, Kesiswaan, Tata Usaha, dan Humas perlu persetujuan Admin lain, atau berlaku 24 jam kemudian bila hanya ada satu Admin." />
             <x-sth.textarea wire:model="reason" label="Alasan" rows="2" />
         </form>
         <x-slot:footer>
@@ -271,7 +286,7 @@
                 <p class="m-0 rounded-tile border border-line bg-subtle px-4 py-3 text-center font-mono text-2xl font-bold tracking-[0.12em] select-all">{{ $issuedPassword }}</p>
                 <ul class="m-0 flex list-disc flex-col gap-1 pl-5 text-sm text-ink-2">
                     <li>Berlaku 72 jam. Setelah itu siswa perlu reset lagi.</li>
-                    <li>Siswa masuk dengan NIS/NISN dan kata sandi ini, menghubungkan email, lalu wajib membuat kata sandi baru. Kata sandi ini tidak bisa dipakai terus.</li>
+                    <li>Siswa masuk dengan NISN dan kata sandi ini, menghubungkan email, lalu wajib membuat kata sandi baru. Kata sandi ini tidak bisa dipakai terus.</li>
                     <li>Huruf besar dan kecil dibedakan.</li>
                 </ul>
             </div>

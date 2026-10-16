@@ -222,3 +222,11 @@ it('names the archive months the Admin set in the page subtitle (QA8)', function
         ->assertSee('Akun siswa diarsipkan 24 bulan setelah mulai kelas XII.')
         ->assertDontSee('18 bulan');
 });
+
+it('searches the archive overview by name or exact NISN, not by NIS (D-137)', function (): void {
+    $soon = b5ArsipStudent('2029-12-20', user: ['name' => 'Raka Aditya Pratama']);
+
+    Livewire::actingAs($this->admin)->test(ArsipOtomatis::class)
+        ->set('q', $soon->nisn)->assertSee('Raka Aditya Pratama')
+        ->set('q', $soon->nis)->assertDontSee('Raka Aditya Pratama');
+});

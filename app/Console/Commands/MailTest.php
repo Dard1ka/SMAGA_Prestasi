@@ -56,13 +56,24 @@ final class MailTest extends Command
             $caught = ! $allowlist->allows($to);
             $target = AllowlistTransport::mailerFor($settings, ! $caught);
 
-            $this->line($caught
-                ? 'Alamat ini tidak ada di STH_MAIL_ALLOWLIST: email hanya masuk Mailpit, tidak dikirim keluar.'
-                : "Alamat ini ada di STH_MAIL_ALLOWLIST: email dikirim sungguhan lewat mailer {$target}.");
+            $this->line(match (true) {
+                $caught && $allowlist->isOpen() => 'Alamat ini fiktif (misalnya @sth.test): email hanya masuk Mailpit, tidak dikirim keluar.',
+                $caught => 'Alamat ini tidak ada di STH_MAIL_ALLOWLIST: email hanya masuk Mailpit, tidak dikirim keluar.',
+                $allowlist->isOpen() => "STH_MAIL_ALLOWLIST terbuka: email dikirim sungguhan lewat mailer {$target}.",
+                default => "Alamat ini ada di STH_MAIL_ALLOWLIST: email dikirim sungguhan lewat mailer {$target}.",
+            });
+
+            if ($allowlist->isOpen()) {
+                $this->warn('STH_MAIL_ALLOWLIST berisi *: semua alamat nyata dikirim keluar, hanya alamat fiktif yang ditahan.');
+            }
 
             if ($allowlist->rejected() !== []) {
                 $this->warn('Entri STH_MAIL_ALLOWLIST yang diabaikan: '.implode(', ', $allowlist->rejected())
                     .' (tanda * hanya boleh di bagian nama sebelum @).');
+            }
+
+            if ($allowlist->openRefused()) {
+                $this->warn('Tanda * (buka untuk semua alamat) tidak dipakai, karena ada entri lain yang diabaikan. Perbaiki entri itu dulu.');
             }
 
             $settings = (array) config("mail.mailers.{$target}", []);

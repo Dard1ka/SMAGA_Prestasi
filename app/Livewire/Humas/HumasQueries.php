@@ -133,7 +133,9 @@ final class HumasQueries
         }
 
         if ($user->can(Permission::ReportVerify->value)) {
-            $badges['kesiswaan.verifikasi'] = Report::query()->awaitingVerification()->count();
+            $awaiting = Report::query()->awaitingVerification()->count();
+            $badges['kesiswaan.verifikasi'] = $awaiting;
+            $badges['humas.verifikasi'] = $awaiting;
         }
 
         return $badges;

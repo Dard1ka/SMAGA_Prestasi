@@ -74,7 +74,7 @@ it('offers no reset for a student account that cannot log in and says why (QA9)'
     session(A::passwordConfirmed());
 
     Livewire::test(Pengguna::class)
-        ->set('studentQuery', H::NIS)
+        ->set('studentQuery', H::NISN)
         ->call('findStudent')
         ->assertDontSeeHtml("openStudent('siswa-reset')")
         ->assertSee($message)
@@ -96,7 +96,7 @@ it('still offers the reset for a student who can log in (QA9)', function (): voi
     $this->actingAs($this->admin);
 
     Livewire::test(Pengguna::class)
-        ->set('studentQuery', H::NIS)
+        ->set('studentQuery', H::NISN)
         ->call('findStudent')
         ->assertSeeHtml("openStudent('siswa-reset')")
         ->assertDontSee('tidak bisa direset');
@@ -179,7 +179,7 @@ it('forgets the temporary password whenever its dialog closes, with one toast (Q
 
     $screen = Livewire::test(Pengguna::class)
         ->assertSeeHtml('data-sth-on-close="forgetIssuedPassword"')
-        ->set('studentQuery', H::NIS)
+        ->set('studentQuery', H::NISN)
         ->call('findStudent')
         ->call('openStudent', 'siswa-reset')
         ->set('studentReason', 'Siswa datang ke TU.')

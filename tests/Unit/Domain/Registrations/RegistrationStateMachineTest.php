@@ -7,6 +7,7 @@ use App\Domain\Registrations\RegistrationStateMachine as SM;
 
 it('allows exactly the transitions of ARCHITECTURE §6', function () {
     expect((new SM)->transitions())->toBe([
+        'menunggu_lomba' => ['menunggu_konfirmasi', 'menunggu_kepsek', 'dibatalkan'],
         'menunggu_konfirmasi' => ['menunggu_kepsek', 'dibatalkan'],
         'menunggu_kepsek' => ['disetujui', 'ditolak', 'dibatalkan'],
         'disetujui' => ['surat_terbit'],
@@ -69,6 +70,7 @@ it('never allows leaving a final status or skipping the principal', function () 
 it('maps every status to a tracker phase', function (string $status, int $phase) {
     expect((new SM)->phaseFor($status))->toBe($phase);
 })->with([
+    ['menunggu_lomba', 1],
     ['menunggu_konfirmasi', 1],
     ['menunggu_kepsek', 2],
     ['ditolak', 2],

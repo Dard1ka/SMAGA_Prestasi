@@ -11,7 +11,7 @@
     "The provided password was incorrect.": "Kata sandi salah.",
     "The provided two factor authentication code was invalid.": "Kode verifikasi dua langkah tidak valid.",
     "The provided two factor recovery code was invalid.": "Kode pemulihan dua langkah tidak valid.",
-    "These credentials do not match our records.": "NIS/NISN atau kata sandi salah.",
+    "These credentials do not match our records.": "NISN atau kata sandi salah.",
 
     "The :attribute must contain at least one letter.": ":Attribute harus berisi minimal satu huruf.",
     "The :attribute must contain at least one number.": ":Attribute harus berisi minimal satu angka.",

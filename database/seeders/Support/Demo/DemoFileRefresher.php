@@ -6,6 +6,7 @@ namespace Database\Seeders\Support\Demo;
 
 use App\Domain\Files\CoverThumbnail;
 use App\Enums\FilePurpose;
+use App\Enums\LetterType;
 use App\Enums\ReportFileKind;
 use App\Models\Competition;
 use App\Models\File;
@@ -214,7 +215,7 @@ final class DemoFileRefresher
     }
 
     /**
-     * Gives every demo letter (its PDF in demo/, named the way DemoSeeder names it) that lacks the number or the
+     * Gives every demo guru letter (its PDF in demo/, named the way DemoSeeder names it) that lacks the number or the
      * date of the invitation it answers the values a fresh seed writes (DemoLetterBasis). A letter Tata Usaha made
      * is never touched. Written without model events, so no audit entry. Only on request.
      *
@@ -328,13 +329,14 @@ final class DemoFileRefresher
     }
 
     /**
-     * Demo letters without the invitation's number or date.
+     * Demo guru letters without the invitation's number or date (the student letter names none since D-154).
      *
      * @return Collection<int, Letter>
      */
     private function lettersWithoutBasis(): Collection
     {
         return Letter::query()
+            ->where('type', LetterType::Guru)
             ->where(fn ($q) => $q->whereNull('basis_number')->orWhere('basis_number', '')->orWhereNull('basis_date'))
             ->whereHas('file', fn ($q) => $q->where('disk', 'local')->where('path', 'like', self::DIRECTORY.'/%'))
             ->with('file')

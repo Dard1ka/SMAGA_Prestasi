@@ -116,7 +116,7 @@ final class TemplateSurat extends Component
             'groups' => [
                 'Kop surat' => ['kop_1', 'kop_2', 'kop_3', 'kop_4', 'kop_5', 'kop_6'],
                 'Identitas' => ['school_name', 'city', 'signer_title'],
-                'Surat tugas siswa' => ['siswa_basis', 'siswa_intro', 'siswa_closing'],
+                'Surat tugas siswa' => ['siswa_dasar', 'siswa_intro', 'siswa_closing'],
                 'Surat perintah tugas guru' => ['guru_basis_1', 'guru_basis_2', 'guru_basis_3', 'guru_report', 'guru_closing'],
             ],
             'placeholders' => LetterTemplate::PLACEHOLDERS,
@@ -137,7 +137,7 @@ final class TemplateSurat extends Component
                     'by' => (string) ($a->causer?->name ?? '-'),
                     'at' => $a->created_at?->translatedFormat('j M Y H:i'),
                     'changed' => collect(array_keys((array) ($a->properties['changed'] ?? [])))
-                        ->map(fn (string $f) => LetterTemplate::FIELDS[$f][0] ?? $f)->implode(', '),
+                        ->map(fn (string $f): string => LetterTemplate::label($f))->unique()->implode(', '),
                     'restorable' => is_array($a->properties['snapshot'] ?? null),
                 ]),
             // Preview: the TU partials with a fictional sample (DESIGN-SPEC-v2 §5) and the unsaved draft.

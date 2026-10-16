@@ -8,8 +8,10 @@ use App\Enums\CompetitionStatus;
 use App\Enums\Participation;
 use App\Enums\RegistrationStatus;
 use App\Models\Competition;
+use App\Models\Registration;
 use App\Models\RegistrationMember;
 use App\Support\Sampul;
+use App\Support\StaffRoleLabel;
 use Carbon\CarbonImmutable;
 use DateTimeInterface;
 use Illuminate\Support\Collection;
@@ -21,6 +23,21 @@ use Illuminate\Support\Collection;
  */
 final class LombaPresenter
 {
+    /** "Laporan hasil" on the read screens: there is no report deadline (D-151), only this request. */
+    public const REPORT_LINE = 'Segera laporkan setelah lomba selesai';
+
+    /** D-148: a registration for the own lomba that Kesiswaan has not verified yet goes nowhere before that. */
+    public const WAITING_FOR_LOMBA = 'Pendaftaran diteruskan setelah Kesiswaan memverifikasi lomba ini.';
+
+    /**
+     * The sentence under a `menunggu_lomba` registration (Pendaftaran lomba panel, Lomba saya); a team also hears when its
+     * invitations go out.
+     */
+    public static function waitingForLomba(Registration $registration): string
+    {
+        return self::WAITING_FOR_LOMBA.($registration->isTeam() ? ' Undangan tim dikirim saat itu.' : '');
+    }
+
     /**
      * Status of the registration window: [label, tone, key] with key dibuka|segera|ditutup|ditolak|menunggu.
      * QA10: the lomba's status comes first. Only a published lomba has a window from its dates; the proposer of a lomba
@@ -71,7 +88,8 @@ final class LombaPresenter
 
     /**
      * The notice on Detail lomba for a lomba that is not in the catalog (only its proposer sees it there), one text per
-     * status (QA10: "Lomba ini masih ditutup" / "masih ditolak" read wrong). Null for a published lomba.
+     * status (QA10: "Lomba ini masih ditutup" / "masih ditolak" read wrong). Null for a published lomba. A rejection
+     * names the role that decided by the one lomba rule (StaffRoleLabel::forLomba()).
      *
      * @return array{title: string, text: string}|null
      */
@@ -84,7 +102,7 @@ final class LombaPresenter
             ],
             CompetitionStatus::Ditolak => [
                 'title' => 'Usulan ditolak',
-                'text' => 'Kesiswaan menolak usulan lomba ini, jadi lomba ini tidak tampil di katalog dan tidak menerima pendaftaran.',
+                'text' => StaffRoleLabel::forLomba($competition->verifier).' menolak usulan lomba ini, jadi lomba ini tidak tampil di katalog dan tidak menerima pendaftaran.',
             ],
             CompetitionStatus::MenungguVerifikasi => [
                 'title' => 'Belum tampil di katalog',
@@ -124,22 +142,56 @@ final class LombaPresenter
         return $parts === [] ? 'Penyelenggara belum diisi' : implode(' · ', $parts);
     }
 
+    /** "Pelaksanaan" (start – end of the lomba), "Tanggal menyusul" when no date is set (D-147). */
     public static function tanggal(Competition $competition): string
     {
-        $start = $competition->starts_on;
-        $final = $competition->final_on;
+        return self::range($competition->starts_on, $competition->final_on) ?? 'Tanggal menyusul';
+    }
 
-        if ($start === null && $final === null) {
-            return 'Tanggal menyusul';
+    /**
+     * "Pendaftaran" (registration opens – closes, D-147); null when neither date is set. With one date only it says which
+     * end that is ("Sampai 25 Okt 2026", "Mulai 12 Okt 2026"): a bare date read as a registration of that one day (FS1 QA).
+     */
+    public static function pendaftaran(Competition $competition): ?string
+    {
+        $opens = $competition->registration_opens_at;
+        $closes = $competition->registration_closes_at;
+
+        return match (true) {
+            $opens === null && $closes !== null => 'Sampai '.self::date($closes),
+            $opens !== null && $closes === null => 'Mulai '.self::date($opens),
+            default => self::range($opens, $closes),
+        };
+    }
+
+    /**
+     * A period the short way (D-147): "12–30 Okt 2026", "28 Sep – 5 Okt 2026", "28 Des 2026 – 5 Jan 2027"; one date
+     * when both are the same day or one is missing; null when both are missing. Compared by calendar day.
+     */
+    public static function range(?DateTimeInterface $from, ?DateTimeInterface $to): ?string
+    {
+        if ($from === null && $to === null) {
+            return null;
         }
 
-        if ($start !== null && $final !== null && ! $start->isSameDay($final)) {
-            return $start->isSameMonth($final)
-                ? $start->translatedFormat('j').'–'.self::date($final)
-                : self::date($start).' – '.self::date($final);
+        if ($from === null || $to === null) {
+            return self::date($from ?? $to);
         }
 
-        return self::date($start ?? $final);
+        $start = CarbonImmutable::instance($from)->locale('id');
+        $end = CarbonImmutable::instance($to)->locale('id');
+
+        if ($start->isSameDay($end)) {
+            return self::date($end);
+        }
+
+        if ($start->isSameMonth($end)) {
+            return $start->translatedFormat('j').'–'.self::date($end);
+        }
+
+        return $start->isSameYear($end)
+            ? $start->translatedFormat('j M').' – '.self::date($end)
+            : self::date($start).' – '.self::date($end);
     }
 
     public static function tempat(Competition $competition): string

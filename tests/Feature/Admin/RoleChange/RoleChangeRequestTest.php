@@ -8,6 +8,7 @@ use App\Actions\Roles\CancelRoleChange;
 use App\Actions\Roles\PrivilegedRoles;
 use App\Actions\Roles\RequestRoleChange;
 use App\Actions\Users\ChangeStaffRole;
+use App\Enums\Permission;
 use App\Enums\RoleName;
 use App\Enums\UserStatus;
 use App\Livewire\Admin\Pengaturan\Pengguna;
@@ -41,12 +42,12 @@ function b5SecondAdmin(): User
 // Non-privileged + guard ---------------------------------------------------------------------------
 
 it('applies a change to a non-privileged role at once', function (): void {
-    $guru = A::staff(RoleName::Guru);
+    $humas = A::staff(RoleName::Humas);
 
-    $result = app(RequestRoleChange::class)->handle($this->admin, $guru, RoleName::Humas, 'Pindah tugas ke humas.');
+    $result = app(RequestRoleChange::class)->handle($this->admin, $humas, RoleName::Guru, 'Kembali mengajar.');
 
     expect($result)->toBeNull()
-        ->and($guru->fresh()->getRoleNames()->all())->toBe([RoleName::Humas->value])
+        ->and($humas->fresh()->getRoleNames()->all())->toBe([RoleName::Guru->value])
         ->and(RoleChangeRequest::query()->count())->toBe(0);
 });
 
@@ -62,15 +63,15 @@ it('refuses privileged roles in the direct ChangeStaffRole action', function (Ro
 
     expect(fn () => app(ChangeStaffRole::class)->handle($this->admin, $guru, $role, 'Langsung.'))->toThrow(ValidationException::class)
         ->and($guru->fresh()->getRoleNames()->all())->toBe([RoleName::Guru->value]);
-})->with([RoleName::Admin, RoleName::Kesiswaan, RoleName::TataUsaha]);
+})->with([RoleName::Admin, RoleName::Kesiswaan, RoleName::TataUsaha, RoleName::Humas]);
 
 it('knows which roles are privileged', function (): void {
     expect(PrivilegedRoles::isPrivileged(RoleName::Admin))->toBeTrue()
         ->and(PrivilegedRoles::isPrivileged(RoleName::KepalaSekolah))->toBeTrue()
         ->and(PrivilegedRoles::isPrivileged(RoleName::TataUsaha))->toBeTrue()
         ->and(PrivilegedRoles::isPrivileged(RoleName::Kesiswaan))->toBeTrue()
-        ->and(PrivilegedRoles::isPrivileged(RoleName::Guru))->toBeFalse()
-        ->and(PrivilegedRoles::isPrivileged(RoleName::Humas))->toBeFalse();
+        ->and(PrivilegedRoles::isPrivileged(RoleName::Humas))->toBeTrue()
+        ->and(PrivilegedRoles::isPrivileged(RoleName::Guru))->toBeFalse();
 });
 
 // Second Admin approval ----------------------------------------------------------------------------
@@ -289,4 +290,30 @@ it('forbids the panel to non-Admins', function (): void {
     $this->actingAs(A::staff(RoleName::Kesiswaan));
 
     Livewire::test(RoleChangeRequests::class)->assertForbidden();
+});
+
+it('waits for a second Admin before an account becomes Humas, and takes Humas away at once (D-139)', function (): void {
+    b5SecondAdmin();
+    $guru = A::staff(RoleName::Guru);
+
+    $request = app(RequestRoleChange::class)->handle($this->admin, $guru, RoleName::Humas, 'Ditugaskan di humas.');
+
+    expect($request)->toBeInstanceOf(RoleChangeRequest::class)
+        ->and($guru->fresh()->getRoleNames()->all())->toBe([RoleName::Guru->value])
+        ->and(fn () => app(ChangeStaffRole::class)->handle($this->admin, A::staff(RoleName::Guru, ['email' => 'guru.dua@example.test', 'username' => 'guru.dua']), RoleName::Humas, 'Langsung.'))
+        ->toThrow(ValidationException::class);
+
+    $humas = A::staff(RoleName::Humas);
+    expect(app(RequestRoleChange::class)->handle($this->admin, $humas, RoleName::Guru, 'Kembali mengajar.'))->toBeNull()
+        ->and($humas->fresh()->getRoleNames()->all())->toBe([RoleName::Guru->value]);
+});
+
+it('leaves an account that is Humas already as it is: no new approval, no lost role (D-139)', function (): void {
+    $humas = A::staff(RoleName::Humas);
+
+    expect(PrivilegedRoles::needsApproval($humas, RoleName::Humas))->toBeFalse()
+        ->and(app(ApplyRoleChange::class)->applyDue())->toBe(0)
+        ->and($humas->fresh()->getRoleNames()->all())->toBe([RoleName::Humas->value])
+        ->and($humas->fresh()->can(Permission::ReportVerify->value))->toBeTrue()
+        ->and(RoleChangeRequest::query()->count())->toBe(0);
 });

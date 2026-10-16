@@ -9,7 +9,8 @@ use App\Models\TalentType;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * Codes are unique (6 possible). In tests that also run TalentSeeder, use TalentType::where('code', …) instead.
+ * Codes are unique (6 possible at random: "Lainnya", the jenis without bidang, only through `code()`, so no test gets
+ * a null bidang by chance). In tests that also run TalentSeeder, use TalentType::where('code', …) instead.
  *
  * @extends Factory<TalentType>
  */
@@ -21,7 +22,10 @@ class TalentTypeFactory extends Factory
     public function definition(): array
     {
         /** @var TalentTypeCode $code */
-        $code = fake()->unique()->randomElement(TalentTypeCode::cases());
+        $code = fake()->unique()->randomElement(array_values(array_filter(
+            TalentTypeCode::cases(),
+            fn (TalentTypeCode $c): bool => $c !== TalentTypeCode::Lainnya,
+        )));
 
         return [
             'code' => $code,

@@ -16,6 +16,9 @@
                     @if ($d['isTeam'])
                         @if ($member['confirmed'])
                             <x-sth.chip tone="green" icon="check" size="sm">Sudah konfirmasi</x-sth.chip>
+                        @elseif ($member['invitedLater'] ?? false)
+                            {{-- D-148: the invitation goes out once Kesiswaan verified the lomba (FS1 QA round 2). --}}
+                            <x-sth.chip icon="clock" size="sm" class="chip-wrap">Diundang setelah lomba diverifikasi</x-sth.chip>
                         @else
                             <x-sth.chip icon="clock" size="sm">Menunggu konfirmasi</x-sth.chip>
                         @endif
@@ -32,7 +35,13 @@
             <span class="label">Guru pembimbing</span>
             <div class="flex items-center gap-3">
                 <x-sth.avatar :name="$d['mentor']" size="sm" />
-                <span class="text-sm font-bold">{{ $d['mentor'] }}</span>
+                <span class="flex min-w-0 flex-col [overflow-wrap:anywhere]">
+                    <span class="text-sm font-bold">{{ $d['mentor'] }}</span>
+                    {{-- D-132: said only when the approver replaced the guru the student chose; D-150 names the role. --}}
+                    @if ($d['mentorByPrincipal'] ?? false)
+                        <span class="muted text-xs">Ditetapkan {{ $d['approverRole'] }}</span>
+                    @endif
+                </span>
             </div>
         </div>
     @endif

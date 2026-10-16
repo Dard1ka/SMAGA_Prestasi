@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Enums\TalentStatus;
+use App\Enums\TalentTypeCode;
 use App\Livewire\Guru\Binaan;
 use App\Models\TalentApplication;
 use App\Models\User;
@@ -15,8 +16,8 @@ use Tests\Feature\Kesiswaan\KesiswaanFixtures;
 
 /*
 | QA9 (2026-10-09), Guru › Siswa binaan: the tile "Pembinaan talenta · siswa yang dibina" and the caption "N siswa"
-| of the Talenta tab counted talent rows, so one student with two choices counted twice and a rejected choice counted
-| as coached. Both count students now; the tile only the students whose choice is still open (not "Tidak lolos").
+| of the Talenta tab counted talent rows, so one student with two choices counted twice. Both count students now.
+| D-142: no stages any more; every student with a choice of this guru pembina is coached, an old "tidak lolos" row too.
 | Fictional data only.
 */
 
@@ -47,30 +48,38 @@ function qa9TalentTile(Testable $component): string
     return trim($match[1] ?? '');
 }
 
-it('counts the students a guru coaches once each and leaves rejected choices out of the tile (QA9)', function (): void {
+it('shows old rows of every status without a stage and counts every coached student once', function (): void {
     $aurelia = GuruFixtures::student('Aurelia Maharani', 'X-3');
-    $fajar = GuruFixtures::student('Fajar Ramadhan', 'XII-1');
+    $hana = GuruFixtures::student('Hana Safira', 'X-8');
 
-    // Aurelia: two choices with the same guru pembina (Seleksi and Peserta pembinaan) = one student.
-    GuruFixtures::talent($this->retno, $aurelia, TalentStatus::Seleksi);
-    qa9SecondChoice($this->retno, $aurelia, TalentStatus::Pembinaan, 'Kimia');
-    // Fajar: a rejected choice is listed (with its chip), but he is not coached.
-    GuruFixtures::talent($this->retno, $fajar, TalentStatus::TidakLolos);
+    // Aurelia: an old "tidak lolos" row. Hana: two choices with the same guru pembina, one of them jenis Lainnya.
+    GuruFixtures::talent($this->retno, $aurelia, TalentStatus::TidakLolos);
+    GuruFixtures::talent($this->retno, $hana, TalentStatus::Seleksi);
+    $lainnya = new TalentApplication;
+    $lainnya->forceFill([
+        'student_id' => $hana->getKey(),
+        'talent_type_id' => KesiswaanFixtures::talentType(TalentTypeCode::Lainnya)->getKey(),
+        'talent_branch_id' => null,
+        'other_text' => 'Kaligrafi',
+        'mentor_id' => $this->retno->getKey(),
+    ])->save();
     // Another guru's student counts nowhere here.
     GuruFixtures::talent(GuruFixtures::guru('Hendra Kusuma, S.Pd., M.Si.'), GuruFixtures::student('Raka Pradipta', 'XII-2'));
 
     $component = Livewire::actingAs($this->retno)->test(Binaan::class)
-        // The tab still counts the rows it lists.
-        ->assertViewHas('counts', fn (array $c): bool => $c['talenta'] === 3);
+        ->assertViewHas('counts', fn (array $c): bool => $c['dibina'] === 2 && $c['talenta'] === 3);
 
-    expect(qa9TalentTile($component))->toBe('1');
+    expect(qa9TalentTile($component))->toBe('2');
 
     $component->call('setTab', 'talenta')
         ->assertSee('Aurelia Maharani')
-        ->assertSee('Fajar Ramadhan')
-        ->assertSee('Tidak lolos')
+        ->assertSee('Hana Safira')
+        ->assertSee('Kaligrafi')
         ->assertSee('Pembinaan talenta, 2 siswa')
-        ->assertDontSee('Pembinaan talenta, 3 siswa');
+        ->assertDontSee(['Tahap', 'Tidak lolos', 'Seleksi/asesmen', 'Asesmen', 'Raka Pradipta'])
+        // One label for a talent on every screen (FS1 QA): the jenis Lainnya reads "Lainnya (Kaligrafi)".
+        ->assertViewHas('talents', fn (array $rows): bool => collect($rows)->pluck('title')->contains('Lainnya (Kaligrafi)')
+            && collect($rows)->every(fn (array $row): bool => ! array_key_exists('status', $row) && ! array_key_exists('step', $row)));
 });
 
 it('counts the students that match the search in the caption of the Talenta tab (QA9)', function (): void {

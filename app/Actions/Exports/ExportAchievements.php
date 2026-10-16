@@ -30,7 +30,8 @@ use Spatie\SimpleExcel\SimpleExcelWriter;
  *
  * - `achievement.export` (AchievementPolicy::export); the screen also asks for a password from the last
  *   15 minutes before calling this.
- * - Same rows as the screen (AchievementFilters), at most MAX_ROWS; no NISN, phone, email or birth date.
+ * - Same rows as the screen (AchievementFilters), at most MAX_ROWS; the NISN instead of the NIS (D-137), no phone, email or birth date;
+ *   no Kategori column (D-135).
  * - Formula injection: every text cell is written as an explicit string cell (OpenSpout would turn a
  *   leading "=" into a formula) AND values starting with = + - @ tab CR LF get a leading apostrophe
  *   (OWASP), so a re-saved CSV stays safe too.
@@ -50,8 +51,8 @@ final class ExportAchievements
     public const FORMULA_PREFIXES = ['=', '+', '-', '@', "\t", "\r", "\n"];
 
     private const HEADER = [
-        'No', 'Nama', 'NIS', 'Kelas', 'Angkatan', 'Status akun', 'Lomba', 'Penyelenggara', 'Jenis penyelenggara',
-        'Kategori', 'Status ajang', 'Bidang', 'Tingkat', 'Capaian', 'Peserta', 'Pembimbing', 'Tahun ajaran',
+        'No', 'Nama', 'NISN', 'Kelas', 'Angkatan', 'Status akun', 'Lomba', 'Penyelenggara', 'Jenis penyelenggara',
+        'Status ajang', 'Bidang', 'Tingkat', 'Capaian', 'Peserta', 'Pembimbing', 'Tahun ajaran',
         'Tanggal final', 'Bobot tingkat', 'Bobot capaian', 'Bobot penyelenggara', 'Poin', 'Diverifikasi', 'Verifikator',
     ];
 
@@ -113,7 +114,7 @@ final class ExportAchievements
 
         $writer->addRow(new Row(array_merge(
             [new StringCell('', null), new StringCell('Total poin', $bold)],
-            array_map(fn (): Cell => new StringCell('', null), range(3, 21)),
+            array_map(fn (): Cell => new StringCell('', null), range(3, 20)),
             [new NumericCell((float) $total, $bold)],
         )));
         $writer->close();
@@ -166,14 +167,13 @@ final class ExportAchievements
         return new Row([
             new NumericCell($number, null),
             self::text($user?->name),
-            self::text($student?->nis),
+            self::text($student?->nisn),
             self::text($student?->classroom?->name),
             self::text($grade12 !== null ? (string) ($grade12->year - 2) : ''),
             self::text($status),
             self::text($competition?->name),
             self::text($competition?->organizer_name),
             self::text($competition?->organizerTypeLabel()),
-            self::text($a->weight_category->label()),
             self::text($competition?->event_status?->label()),
             self::text($competition?->bidang?->label()),
             self::text($a->level->label()),

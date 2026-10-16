@@ -47,4 +47,13 @@ class AppreciationEventPolicy
     {
         return $this->viewAny($user) && ! $event->isCompleted();
     }
+
+    /**
+     * "Cetak daftar" (D-141): the PDF of the students of one event who may be named. The same people who see the
+     * event; the list itself only holds students that pass `NamedStudent`.
+     */
+    public function printList(User $user, AppreciationEvent $event): bool
+    {
+        return $this->viewAny($user);
+    }
 }

@@ -170,7 +170,6 @@ it('downloads the talent export after a recent password confirmation and logs ev
     F::application(F::student('Aurelia Maharani', 'X-3'), branch: 'Kimia');
 
     Livewire::actingAs($this->kesiswaan)->test(Talenta::class)
-        ->call('setTahap', 'terdaftar')
         ->call('setJenis', 'osn')
         ->set('kelas', $hana->classroom_id)
         ->set('q', 'hana')
@@ -180,7 +179,7 @@ it('downloads the talent export after a recent password confirmation and logs ev
     $log = Activity::query()->where('event', 'talent.exported')->sole();
 
     expect((int) $log->causer_id)->toBe((int) $this->kesiswaan->getKey())
-        ->and($log->properties['filters'])->toBe(['tahap' => 'terdaftar', 'jenis' => 'osn', 'kelas' => $hana->classroom_id, 'q' => 'hana'])
+        ->and($log->properties['filters'])->toBe(['jenis' => 'osn', 'kelas' => $hana->classroom_id, 'q' => 'hana'])
         ->and($log->properties['rows'])->toBe(1)
         ->and($log->properties['large'])->toBeFalse();
 
@@ -201,7 +200,7 @@ it('alerts every Admin when a talent export has more than 500 rows', function ()
         ->and($log->properties['large'])->toBeTrue()
         ->and($log->properties['filters'])->toBe([]);
 
-    Notification::assertSentTo($this->admin, LargeExportNotice::class);
+    Notification::assertSentTo($this->admin, LargeExportNotice::class, fn (LargeExportNotice $n): bool => str_contains(implode(' ', $n->lines()), 'men-download Database talenta siswa berisi 501 baris'));
     Notification::assertNotSentTo($this->kesiswaan, LargeExportNotice::class);
 });
 

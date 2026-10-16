@@ -12,9 +12,9 @@ use Carbon\CarbonImmutable;
 
 /**
  * What Tata Usaha types for ONE letter (M1-A, lead 2026-10-04: every letter has its own form and its own
- * data, the two letters of a registration may differ): the complete number, the letter date, the "Dasar"
- * (surat dari / nomor / tanggal, plus "hal" on the guru letter) and the "Pelaksanaan" (hari, tanggal, pukul,
- * tempat). Who is in the letter (members, guru pembimbing, lomba name, signer) always comes from the
+ * data, the two letters of a registration may differ): the complete number, the letter date, the invitation under
+ * "Dasar" (surat dari / nomor / tanggal / hal: printed on the guru letter only since D-154) and the "Pelaksanaan"
+ * (hari, tanggal, pukul, tempat). Who is in the letter (members, guru pembimbing, lomba name, signer) always comes from the
  * database, never from this draft (SECURITY §3g).
  */
 final readonly class LetterDraft
@@ -111,6 +111,15 @@ final readonly class LetterDraft
 
     /** Does this letter type print the "Hal" of the invitation? Only the Surat Perintah Tugas does. */
     public static function usesSubject(LetterType $type): bool
+    {
+        return $type === LetterType::Guru;
+    }
+
+    /**
+     * Does this letter type print the invitation (Surat dari / Nomor / Tanggal)? Only the Surat Perintah Tugas: since
+     * D-154 the student letter's "Dasar" is the regulation text of the TU letter template.
+     */
+    public static function usesInvitation(LetterType $type): bool
     {
         return $type === LetterType::Guru;
     }

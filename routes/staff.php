@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AppreciationListPrintController;
 use App\Http\Controllers\LetterPrintController;
 use App\Livewire\Akun\ImportSiswa;
 use App\Livewire\Akun\StatusAktivasi;
@@ -44,6 +45,8 @@ Route::middleware(['area.staff', 'role:kepala_sekolah'])->prefix('kepsek')->name
 
 Route::middleware(['area.staff', 'role:tata_usaha'])->prefix('tu')->name('tu.')->group(function (): void {
     Route::livewire('/', SuratTugas::class)->name('beranda');
+    // D-150: Tata Usaha approves registrations too; the Kepala Sekolah's screen under the TU address (ApprovalQueue).
+    Route::livewire('/persetujuan', Persetujuan::class)->name('persetujuan.index');
     Route::livewire('/surat/arsip', ArsipSurat::class)->name('surat.arsip');
     Route::livewire('/surat/{registration}', SuratTugas::class)
         ->whereUlid('registration')
@@ -63,6 +66,17 @@ Route::middleware(['area.staff', 'role:humas'])->prefix('humas')->name('humas.')
     Route::livewire('/jadwal', Jadwal::class)->name('jadwal');
     Route::livewire('/apresiasi', Apresiasi::class)->name('apresiasi.index');
     Route::livewire('/arsip', Arsip::class)->name('arsip');
+    // D-139: Humas verifies reports too; the same screen as kesiswaan.verifikasi.*, area-aware.
+    Route::livewire('/verifikasi-hasil', VerifikasiHasil::class)->name('verifikasi.index');
+    Route::livewire('/verifikasi-hasil/{report}', VerifikasiHasil::class)->whereUlid('report')->name('verifikasi.show');
+});
+
+// D-141: "Cetak daftar" of an appreciation event, an inline PDF; shared by Humas, Kesiswaan and Admin
+// (AppreciationEventPolicy::printList, appreciation.manage).
+Route::middleware(['area.staff', 'role:humas|kesiswaan|admin'])->group(function (): void {
+    Route::get('/apresiasi/{event}/cetak', [AppreciationListPrintController::class, 'show'])
+        ->whereUlid('event')
+        ->name('apresiasi.cetak');
 });
 
 // --- end W2-C ---

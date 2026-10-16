@@ -52,6 +52,7 @@ const LCN_PRE_LOMBA = ['menunggu_konfirmasi', 'menunggu_kepsek', 'disetujui', 's
 const LCN_NAMES = [
     'Raka Pradipta', 'Nadia Putri Anindya', 'Hana Safira', 'Rizky Maulana', 'Dimas Arya Saputra',
     'Salsabila Azzahra', 'Bagas Wicaksono', 'Citra Lestari', 'Fajar Nugroho', 'Intan Permatasari',
+    'Sekar Ayu Lestari',
 ];
 
 /** The one notice of that class the user got (fails on none or several: one notice per save per person). */
@@ -141,8 +142,8 @@ it('tells the ketua and, for what a guru relies on, the guru pembimbing when one
     'peserta jadi tim' => [['participation' => 'tim'], 'participants', 'Peserta sekarang Tim, maks 3.', false],
     'link registrasi diganti' => [['registration_url' => 'https://example.org/nsif/daftar-baru'], 'registration_url', 'Link registrasi diganti.', true],
     'link registrasi dihapus' => [['registration_url' => ''], 'registration_url', 'Link registrasi dihapus.', true],
-    'website diganti' => [['website_url' => 'https://example.org/nsif-2026'], 'website_url', 'Website resmi diganti.', true],
-    'website dihapus' => [['website_url' => null], 'website_url', 'Website resmi dihapus.', true],
+    'website diganti' => [['website_url' => 'https://example.org/nsif-2026'], 'website_url', 'Link resmi diganti.', true],
+    'website dihapus' => [['website_url' => null], 'website_url', 'Link resmi dihapus.', true],
 ]);
 
 it('tells about a new juknis, and never about a new cover', function (): void {
@@ -189,6 +190,23 @@ it('lists every changed fact in one notice per person', function (): void {
         'Pelaksanaan sekarang Hybrid.',
         'Tempat sekarang Aula SMA Negeri 3 Semarang.',
     ])->and(C::auditRows())->toBe([['changed' => ['deadline', 'mode', 'location', 'participants'], 'students' => 1, 'mentors' => 1, 'mail' => true]]);
+});
+
+it('names the answer window of a team resumed late instead of the new deadline (FS1 fix wave, D-148)', function (): void {
+    $resumed = F::student('Raka Pradipta', 'XII-2');
+    $shortGrace = F::student('Nadia Putri Anindya', 'XI-4');
+    $plain = F::student('Hana Safira', 'XI-3');
+    $competition = C::lomba();
+    C::registration($competition, RegistrationStatus::MenungguKonfirmasi, $resumed)->forceFill(['answer_until' => '2026-10-12 09:00:00'])->save();
+    C::registration($competition, RegistrationStatus::MenungguKonfirmasi, $shortGrace)->forceFill(['answer_until' => '2026-10-08 09:00:00'])->save();
+    C::registration($competition, RegistrationStatus::MenungguKonfirmasi, $plain);
+
+    app(UpdateCompetition::class)->handle($this->kesiswaan, $competition, C::input($competition, ['registration_closes_at' => '2026-10-09']));
+
+    // The 3-day window of the resumed team ends after the new deadline: its invitations stay valid until then.
+    expect(lcnNotice($resumed->user)->lines)->toBe(['Batas daftar sekarang 9 Okt 2026. Undangan tim yang belum dijawab berlaku sampai 12 Okt 2026, 09.00.'])
+        ->and(lcnNotice($shortGrace->user)->lines)->toBe(['Batas daftar sekarang 9 Okt 2026. Undangan tim yang belum dijawab tidak berlaku lagi setelah tanggal itu.'])
+        ->and(lcnNotice($plain->user)->lines)->toBe(['Batas daftar sekarang 9 Okt 2026. Undangan tim yang belum dijawab tidak berlaku lagi setelah tanggal itu.']);
 });
 
 // What is not a fact ---------------------------------------------------------------------------------------------
@@ -312,7 +330,8 @@ it('gives each registration only the sentences of the facts it relies on', funct
         ->and(lcnNotice($leaders['berlangsung']->user)->lines)->toBe(['Tempat sekarang Aula SMA Negeri 3 Semarang.']);
 });
 
-it('tells a registration that waits for its report about a new final date, with the report deadline of the settings', function (): void {
+it('tells a registration that waits for its report about a new final date', function (): void {
+    // D-151: no report deadline any more, also when the old setting is changed.
     Setting::put(SettingKey::ReportDeadlineDays, 30);
 
     $guru = F::staff(RoleName::Guru, 'Pak Hendra Kusuma');
@@ -324,9 +343,9 @@ it('tells a registration that waits for its report about a new final date, with 
 
     app(UpdateCompetition::class)->handle($this->kesiswaan, $competition, C::input($competition, ['final_on' => '2026-11-10']));
 
-    expect(lcnNotice($waiting->user)->lines)->toBe(['Tanggal final sekarang 10 Nov 2026, batas laporan hasil 10 Des 2026.'])
+    expect(lcnNotice($waiting->user)->lines)->toBe(['Tanggal selesai sekarang 10 Nov 2026.'])
         ->and(lcnNotice($running->user)->lines)->toBe(['Tanggal lomba sekarang 7–10 Nov 2026.'])
-        ->and(lcnNotice($guru, BinaanCompetitionChanged::class)->lines)->toBe(['Tanggal final sekarang 10 Nov 2026, batas laporan hasil 10 Des 2026.'])
+        ->and(lcnNotice($guru, BinaanCompetitionChanged::class)->lines)->toBe(['Tanggal selesai sekarang 10 Nov 2026.'])
         ->and(lcnNotice($guru, BinaanCompetitionChanged::class)->url())->toBe(route('guru.binaan.show', ['registration' => $registration->getKey()]));
 });
 

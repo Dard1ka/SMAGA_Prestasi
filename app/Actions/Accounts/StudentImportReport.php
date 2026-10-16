@@ -7,7 +7,7 @@ namespace App\Actions\Accounts;
 /**
  * Result of ImportStudents. Rows never carry birth dates, phone numbers or passwords.
  *
- * Each row: ['row' => int (spreadsheet line), 'name' => ?string, 'nis' => ?string, 'classroom' => ?string (the class in
+ * Each row: ['row' => int (spreadsheet line), 'name' => ?string, 'nis' => ?string, 'nisn' => ?string, 'classroom' => ?string (the class in
  *            the file), 'errors' => list<string>, 'grade12_start_date' => ?string (Y-m-d), 'archive_at' => ?string
  *            (Y-m-d), 'sanitized' => bool (a leading = + - @ was stripped from a cell: "Sel dibersihkan", B2),
  *            'action' => string (one of the constants below), 'previous_classroom' => ?string (the stored class of a

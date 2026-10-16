@@ -15,7 +15,8 @@ use App\Models\User;
  *
  * - The catalog shows only `dipublikasikan` (D-27); an unpublished lomba is visible to its submitter
  *   and to verifiers (competition.verify). Lists use Competition::visibleTo($user).
- * - Every role with competition.create may upload a lomba; it always starts at menunggu_verifikasi.
+ * - Only siswa (usulan) and Admin hold competition.create (D-145); a new lomba always starts at
+ *   menunggu_verifikasi. Kesiswaan checks, corrects and decides it (verify, update), never adds one.
  */
 class CompetitionPolicy
 {
@@ -38,7 +39,7 @@ class CompetitionPolicy
             || $user->can(Permission::CompetitionVerify->value);
     }
 
-    /** Usulan / upload (D-27): lands in menunggu_verifikasi; rate limit lives in SubmitCompetition. */
+    /** Usulan (siswa) or Admin "Tambah lomba" (D-27, D-145): lands in menunggu_verifikasi; the siswa rate limit lives in SubmitCompetition. */
     public function create(User $user): bool
     {
         return $user->canLogIn() && $user->can(Permission::CompetitionCreate->value);
@@ -46,7 +47,7 @@ class CompetitionPolicy
 
     // --- W2-B: Kesiswaan methods (manage, update, verify, close) below ---
 
-    /** Kelola lomba screen (all statuses) and the full "Tambah lomba" form incl. weight fields (D-02). */
+    /** Kelola lomba screen (all statuses) and its drawer incl. weight fields (D-02); adding a lomba also needs `create` (D-145). */
     public function manage(User $user): bool
     {
         return $user->canLogIn()

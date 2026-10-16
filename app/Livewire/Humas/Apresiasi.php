@@ -491,6 +491,9 @@ class Apresiasi extends Component
             'completeNote' => $canUpdate ? self::completeNote($blocker, $event, $isUpcoming) : null,
             // Rows already `selesai` are a record too (DeleteAppreciationEvent refuses them).
             'canDelete' => $scheduled === $rows->count() && $user->can('delete', $event),
+            // D-141: the printable list of the students who may be named, for any event that holds prestasi.
+            'canPrint' => $rows->isNotEmpty() && $user->can('printList', $event),
+            'printUrl' => route('apresiasi.cetak', $event),
             'completedNote' => $completed ? self::completedNote($event) : null,
             'items' => $rows
                 ->map(function (Appreciation $a) use ($user, $completed, $canUpdate): array {

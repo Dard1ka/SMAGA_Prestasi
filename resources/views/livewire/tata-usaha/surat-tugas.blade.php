@@ -35,7 +35,7 @@
                         <span class="muted ellip text-xs">{{ $item->branch ? $item->branch.' · ' : '' }}{{ $item->isTeam() ? 'Tim '.$count.' siswa' : $count.' siswa' }}</span>
                         <span @class(['text-xs font-semibold', 'text-green' => $made === 0, 'text-blue' => $made > 0])>
                             @if ($made === 0)
-                                Disetujui Kepala Sekolah · {{ $item->principal_decided_at?->translatedFormat('j M') }}
+                                Disetujui {{ \App\Support\StaffRoleLabel::forDecision($item->principalDecider) }} · {{ $item->principal_decided_at?->translatedFormat('j M') }}
                             @elseif ($made < $needed)
                                 {{ $made }} dari {{ $needed }} PDF siap
                             @else
@@ -52,7 +52,7 @@
         {{-- A search found nothing: the sentence under "Hasil pencarian" says so; the queue itself is not empty. --}}
     @elseif (! $registration)
         <x-sth.empty-state icon="mail" title="Belum ada surat untuk dibuat">
-            Pendaftaran yang disetujui Kepala Sekolah muncul di sini.
+            Pendaftaran yang sudah disetujui muncul di sini.
             @if (Route::has('tu.surat.arsip'))
                 <x-slot:actions><x-sth.button variant="quiet" size="sm" href="{{ route('tu.surat.arsip') }}">Buka arsip surat</x-sth.button></x-slot:actions>
             @endif
@@ -64,10 +64,14 @@
             $typeName = $isGuru ? 'surat guru pendamping' : 'surat siswa';
             $model = $type->value;
             $guruSent = $letters->contains(fn ($l) => $l->type === \App\Enums\LetterType::Guru);
-            $basisLine = 'Surat dari '.$content->basisFrom
-                .($content->basisNumber ? ', nomor '.$content->basisNumber : '')
-                .($content->basisDateText ? ', tanggal '.$content->basisDateText : '')
-                .($isGuru && $content->basisSubject !== '' ? ', hal '.$content->basisSubject : '');
+            // D-154: the student letter's Dasar is the template's regulation text; one printed before it named the invitation.
+            $oldBasis = $isGuru ? null : $letterTemplate->oldSiswaBasis($content->basisFrom);
+            $basisLine = ! $isGuru && $oldBasis === null
+                ? $letterTemplate->siswaDasar($content->schoolYear)
+                : ($oldBasis ?? 'Surat dari '.$content->basisFrom)
+                    .($content->basisNumber ? ', nomor '.$content->basisNumber : '')
+                    .($content->basisDateText ? ', tanggal '.$content->basisDateText : '')
+                    .($isGuru && $content->basisSubject !== '' ? ', hal '.$content->basisSubject : '');
         @endphp
 
         <div class="flex flex-col gap-3">
@@ -138,18 +142,30 @@
                             <x-sth.input type="date" wire:model.live.debounce.400ms="{{ $model }}.tanggalSurat" label="Tanggal surat" class="md:max-w-60" />
                         </div>
 
-                        <fieldset class="m-0 flex flex-col gap-3 border-0 p-0">
-                            <legend class="mb-2 text-sm font-bold">Dasar <span class="muted font-medium">· Surat undangan lomba</span></legend>
-                            <div class="grid items-start gap-4 md:grid-cols-2">
-                                <x-sth.input wire:model.live.debounce.500ms="{{ $model }}.dasarDari" label="Surat dari" maxlength="200" class="md:col-span-2"
-                                             hint="Diisi dari penyelenggara lomba. Boleh diubah." />
-                                <x-sth.input wire:model.live.debounce.500ms="{{ $model }}.dasarNomor" label="Nomor surat undangan" optional maxlength="150" autocomplete="off" />
-                                <x-sth.input type="date" wire:model.live.debounce.400ms="{{ $model }}.dasarTanggal" label="Tanggal surat undangan" optional />
-                                @if ($isGuru)
+                        @if ($isGuru)
+                            <fieldset class="m-0 flex flex-col gap-3 border-0 p-0">
+                                <legend class="mb-2 text-sm font-bold">Dasar <span class="muted font-medium">· Surat undangan lomba</span></legend>
+                                <div class="grid items-start gap-4 md:grid-cols-2">
+                                    <x-sth.input wire:model.live.debounce.500ms="{{ $model }}.dasarDari" label="Surat dari" maxlength="200" class="md:col-span-2"
+                                                 hint="Diisi dari penyelenggara lomba. Boleh diubah." />
+                                    <x-sth.input wire:model.live.debounce.500ms="{{ $model }}.dasarNomor" label="Nomor surat undangan" optional maxlength="150" autocomplete="off" />
+                                    <x-sth.input type="date" wire:model.live.debounce.400ms="{{ $model }}.dasarTanggal" label="Tanggal surat undangan" optional />
                                     <x-sth.input wire:model.live.debounce.500ms="{{ $model }}.dasarHal" label="Hal" maxlength="150" class="md:col-span-2" />
-                                @endif
+                                </div>
+                            </fieldset>
+                        @else
+                            {{-- D-154: the student letter's Dasar is a fixed regulation text of the template, not the invitation. --}}
+                            <div class="flex flex-col gap-1">
+                                <p class="m-0 text-sm font-bold">Dasar <span class="muted font-medium">· Dari Template surat</span></p>
+                                <p class="m-0 text-sm [overflow-wrap:anywhere]">{{ $letterTemplate->siswaDasar($content->schoolYear) }}</p>
+                                <p class="muted m-0 text-xs">
+                                    Sama untuk semua surat siswa.
+                                    @if (Route::has('tu.surat.template'))
+                                        <a href="{{ route('tu.surat.template') }}" class="font-semibold" wire:navigate>Ubah di Template surat</a>
+                                    @endif
+                                </p>
                             </div>
-                        </fieldset>
+                        @endif
 
                         <fieldset class="m-0 flex flex-col gap-3 border-0 p-0">
                             <legend class="mb-2 text-sm font-bold">Pelaksanaan <span class="muted font-medium">· Diisi dari data lomba</span></legend>

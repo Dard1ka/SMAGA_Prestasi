@@ -199,8 +199,10 @@ it('lays the student letter out like the school sheet', function (): void {
 
     expect($html)->toContain('S U R A T &nbsp; T U G A S')
         ->toContain('Nomor : 400.3.8/313/MRD/X/2026')
-        ->toContain('Surat dari Panitia NSIF 2026')
-        ->toContain('012/NSIF/IX/2026')
+        // D-154: "Dasar" is the regulation text of the school's printed letter, not the invitation
+        ->toContain('<td>Peraturan Menteri Pendidikan Dasar dan Menengah Republik Indonesia Nomor 8 Tahun 2026 Hal : Penggunaan Dana BOS Kinerja bagi sekolah yang memiliki prestasi</td>')
+        ->not->toContain('Surat dari Panitia NSIF 2026')
+        ->not->toContain('012/NSIF/IX/2026')
         ->toContain('Kepala SMA Negeri 3 Semarang memberikan tugas kepada :')
         ->toContain('<th class="no">NO</th>')
         ->toContain('NAMA MURID')
@@ -220,9 +222,37 @@ it('lays the student letter out like the school sheet', function (): void {
         // verification + "replaces" footer stay
         ->toContain('Kode verifikasi: '.str_repeat('a', 32))
         ->toContain('Surat ini menggantikan surat nomor 400.3.8/300/MRD/X/2026 yang telah dicabut.')
-        // Helvetica (= Arial metrics), sheet margins
+        // Helvetica (= Arial metrics); equal left and right margins, so the letter stands in the middle of the page (RV1)
         ->toContain('font-family: Helvetica, Arial, sans-serif')
-        ->toContain('@page { margin: 56.7pt 39.7pt 56.7pt 39.7pt; }');
+        ->toContain('@page { margin: 56.7pt 61.14pt 56.7pt 61.14pt; }');
+});
+
+it('gives the student letter one Dasar row and the kop measures of the school letter (D-154)', function (): void {
+    $html = m1aLayoutHtml('surat-tugas-siswa', m1aLayoutContent($this), '400.3.8/313/MRD/X/2026');
+    $dom = new DOMDocument;
+    @$dom->loadHTML('<?xml encoding="utf-8"?>'.$html);
+    $xpath = new DOMXPath($dom);
+
+    expect($xpath->query('//table[@class="s-dasar"]//tr')->length)->toBe(1)
+        ->and(trim($xpath->query('//table[@class="s-dasar"]//td[@class="k"]')->item(0)->textContent))->toBe('Dasar')
+        // close under the Nomor, two empty rows before the intro
+        ->and((string) preg_replace('/\s+/', ' ', $html))->toContain('<div class="s-jarak-dasar"></div> <table class="s-dasar">')
+        ->and((string) preg_replace('/\s+/', ' ', $html))->toContain('</table> <div class="s-baris"></div> <div class="s-baris"></div> <div class="s-lebar">Kepala SMA Negeri 3 Semarang')
+        ->and($html)->toContain('.kop-siswa img { height: 75pt; }')
+        ->and($html)->toContain('.kop-siswa .kop-kiri { width: 70pt; padding-top: 3pt; }')
+        ->and($html)->toContain('.s-dasar .k { width: 103pt; }');
+
+    // The longest kop line still fits between the two emblems at 75 pt (no wrapped address line).
+    $metrics = (new Dompdf\Dompdf)->getFontMetrics();
+    $longest = max(array_map(
+        fn (string $line): float => $metrics->getTextWidth($line, $metrics->getFont('Helvetica', 'normal'), 8.2),
+        LetterTemplate::current()->kopDetailLines(),
+    ));
+    expect($longest)->toBeLessThanOrEqual(473 - 70 - 56.5);
+
+    // The Dasar text of the template takes the school year code.
+    $tpl = LetterTemplate::draft(['siswa_dasar' => 'Program {sekolah} {tahun_ajaran}']);
+    expect($tpl->siswaDasar('2026/2027'))->toBe('Program SMA Negeri 3 Semarang 2026/2027');
 });
 
 it('lays the guru letter out like the school Word file, "Kepada" stacked with its colons', function (): void {

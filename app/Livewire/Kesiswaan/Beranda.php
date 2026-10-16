@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Livewire\Kesiswaan;
 
-use App\Enums\TalentStatus;
 use App\Livewire\Kesiswaan\Concerns\WithKesiswaanBadges;
 use App\Models\Competition;
 use App\Models\Report;
@@ -66,9 +65,10 @@ class Beranda extends Component
 
         return view('livewire.kesiswaan.beranda', [
             'stats' => [
-                ['icon' => 'inbox', 'tone' => 'orange', 'label' => 'Upload lomba', 'value' => (string) $badges['kesiswaan.usulan'], 'note' => 'menunggu verifikasi', 'href' => route('kesiswaan.lomba.index', ['tab' => 'verifikasi'])],
+                ['icon' => 'inbox', 'tone' => 'orange', 'label' => 'Verifikasi usulan lomba', 'value' => (string) $badges['kesiswaan.usulan'], 'note' => 'menunggu diperiksa', 'href' => route('kesiswaan.lomba.index', ['tab' => 'verifikasi'])],
                 ['icon' => 'shield', 'tone' => 'blue', 'label' => 'Laporan hasil', 'value' => (string) $badges['kesiswaan.verifikasi'], 'note' => 'menunggu verifikasi', 'href' => route('kesiswaan.verifikasi.index')],
-                ['icon' => 'users', 'tone' => 'gray', 'label' => 'Talenta terdaftar', 'value' => (string) ($canTalent ? TalentApplication::query()->inStatus(TalentStatus::Terdaftar)->count() : 0), 'note' => 'belum dipetakan', 'href' => $canTalent ? route('kesiswaan.talenta.index', ['tahap' => 'terdaftar']) : null],
+                // D-142: no stages; every recorded choice of a student who still exists.
+                ['icon' => 'users', 'tone' => 'gray', 'label' => 'Talenta tercatat', 'value' => (string) ($canTalent ? TalentApplication::query()->whereHas('student')->count() : 0), 'note' => 'pilihan siswa', 'href' => $canTalent ? route('kesiswaan.talenta.index') : null],
                 ['icon' => 'trophy', 'tone' => 'green', 'label' => 'Lomba aktif', 'value' => (string) Competition::query()->openForRegistration($now)->count(), 'note' => 'pendaftaran dibuka', 'href' => route('kesiswaan.lomba.index')],
             ],
             'reports' => $reports,

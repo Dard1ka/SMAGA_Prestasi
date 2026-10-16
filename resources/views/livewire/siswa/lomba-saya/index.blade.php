@@ -97,7 +97,7 @@
             {{-- Invitation (W2-A1 handles confirm/decline). --}}
             @if ($detail['pendingInvite'])
                 <x-sth.alert tone="warning" title="Kamu diundang ke tim ini">
-                    Konfirmasi ikut agar pendaftaran bisa dikirim ke Kepala Sekolah.
+                    Konfirmasi ikut agar pendaftaran bisa diteruskan untuk persetujuan.
                     @if ($detail['inviteUrl'])
                         <x-sth.link :href="$detail['inviteUrl']" icon-right="chevron-right">Lihat undangan</x-sth.link>
                     @endif

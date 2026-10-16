@@ -73,7 +73,7 @@
                 @if ($date || $place)
                     <div class="num flex flex-wrap items-center gap-x-3.5 gap-y-1 text-sm text-ink-2">
                         @if ($date)
-                            <span class="inline-flex items-center gap-1.5"><x-sth.icon name="calendar" :size="16" /><span class="sr-only">Tanggal lomba:</span>{{ $date }}</span>
+                            <span class="inline-flex items-center gap-1.5"><x-sth.icon name="calendar" :size="16" /><span class="sr-only">Pelaksanaan:</span>{{ $date }}</span>
                         @endif
                         @if ($place)
                             <span class="inline-flex items-center gap-1.5"><x-sth.icon name="pin" :size="16" /><span class="sr-only">Tempat:</span>{{ $place }}</span>

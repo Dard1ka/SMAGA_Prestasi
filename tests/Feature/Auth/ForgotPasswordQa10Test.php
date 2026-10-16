@@ -22,7 +22,7 @@ use Tests\Feature\Auth\AuthTestHelpers as H;
 
 /*
 | QA10 item 2: the reset code could be guessed without end. The screen limits were keyed on the TYPED identifier, so
-| NIS, NISN and email of one student (and, on MySQL, accent variants of an address) each had their own counter, and
+| NISN and email of one student (and, on MySQL, accent variants of an address) each had their own counter, and
 | an account could get any number of codes. Now the screen limits are keyed on the account the identifier resolves
 | to and the client address (an unknown identifier keeps its own stable bucket), a reset code belongs to the browser
 | that asked for it, and SECURITY §3b holds per browser (reset) or per account (email codes): at most 5 codes an hour
@@ -73,15 +73,15 @@ function qa10AuthTryCode(Testable $component, string $code): Testable
         ->call('resetPassword');
 }
 
-it('shares the code request limit between NIS, NISN and email of one account (QA10)', function (): void {
+it('shares the code request limit between NISN and email of one account (QA10)', function (): void {
     H::activeStudent();
 
-    qa10AuthForgotFor(H::NIS);
+    qa10AuthForgotFor(H::NISN);
     qa10AuthForgotFor(H::NISN);
     qa10AuthForgotFor(QA10_AUTH_EMAIL);
 
     Livewire::test(ForgotPassword::class)
-        ->set('identifier', H::NIS)
+        ->set('identifier', H::NISN)
         ->call('sendCode')
         ->assertHasErrors('identifier')
         ->assertSet('step', 1)
@@ -98,13 +98,13 @@ it('keeps a separate, stable request limit for an identifier without an account 
     Livewire::test(ForgotPassword::class)->set('identifier', '123456789')->call('sendCode')->assertHasErrors('identifier');
 
     // The unknown number used up its own limit, not the student's.
-    qa10AuthForgotFor(H::NIS);
+    qa10AuthForgotFor(H::NISN);
 });
 
-it('shares the code check limit between NIS, NISN and email of one account (QA10)', function (): void {
+it('shares the code check limit between NISN and email of one account (QA10)', function (): void {
     H::activeStudent();
 
-    $first = qa10AuthForgotFor(H::NIS);
+    $first = qa10AuthForgotFor(H::NISN);
     $wrong = qa10AuthWrongCode(qa10AuthLastCode());
 
     foreach (range(1, 4) as $i) {
@@ -158,7 +158,7 @@ it('stops email codes once a signed-in account had 5 in an hour or 10 in a day (
     expect($send())->toBeTrue();
 });
 
-// Review of QA10: one code budget per account let anyone who knows a NIS switch "Lupa kata sandi" off for a day (ten
+// Review of QA10: one code budget per account let anyone who knows a NISN switch "Lupa kata sandi" off for a day (ten
 // wrong codes, or the day's codes, or a new code that cancelled the owner's). Now a reset code belongs to the browser
 // that asked for it: only that browser can use it, only its own new code cancels it, and wrong codes count against
 // that browser. The account keeps a looser daily cap of reset codes (IssueOtpCode::ACCOUNT_RESET_CODES_PER_DAY).
@@ -231,11 +231,11 @@ it('lets the owner reset after a stranger guessed codes for the account (QA10)',
     $reset = app(ResetPasswordWithCode::class);
 
     foreach (range(1, 2) as $round) {
-        $request->handle(H::NIS, 'browser-stranger');
+        $request->handle(H::NISN, 'browser-stranger');
         $wrong = qa10AuthWrongCode(qa10AuthLastCode());
 
         foreach (range(1, 5) as $i) {
-            expect(fn () => $reset->handle(H::NIS, $wrong, QA10_AUTH_NEW_PASSWORD, QA10_AUTH_NEW_PASSWORD, [], 'browser-stranger'))
+            expect(fn () => $reset->handle(H::NISN, $wrong, QA10_AUTH_NEW_PASSWORD, QA10_AUTH_NEW_PASSWORD, [], 'browser-stranger'))
                 ->toThrow(ValidationException::class);
         }
 
@@ -252,13 +252,13 @@ it('keeps the code of the owner when a stranger asks for a new one (QA10)', func
     $user = H::activeStudent()->user;
     $request = app(RequestPasswordResetCode::class);
 
-    $request->handle(H::NIS, 'browser-owner');
+    $request->handle(H::NISN, 'browser-owner');
     $ownerCode = qa10AuthLastCode();
 
     $this->travel(61)->seconds();
-    $request->handle(H::NIS, 'browser-stranger');
+    $request->handle(H::NISN, 'browser-stranger');
 
-    app(ResetPasswordWithCode::class)->handle(H::NIS, $ownerCode, QA10_AUTH_NEW_PASSWORD, QA10_AUTH_NEW_PASSWORD, [], 'browser-owner');
+    app(ResetPasswordWithCode::class)->handle(H::NISN, $ownerCode, QA10_AUTH_NEW_PASSWORD, QA10_AUTH_NEW_PASSWORD, [], 'browser-owner');
 
     expect(Hash::check(QA10_AUTH_NEW_PASSWORD, (string) User::query()->findOrFail($user->getKey())->password))->toBeTrue();
 });
@@ -267,14 +267,14 @@ it('accepts a code only in the browser that asked for it (QA10)', function (): v
     $user = H::activeStudent()->user;
     $reset = app(ResetPasswordWithCode::class);
 
-    app(RequestPasswordResetCode::class)->handle(H::NIS, 'browser-owner');
+    app(RequestPasswordResetCode::class)->handle(H::NISN, 'browser-owner');
     $code = qa10AuthLastCode();
 
-    expect(fn () => $reset->handle(H::NIS, $code, QA10_AUTH_NEW_PASSWORD, QA10_AUTH_NEW_PASSWORD, [], 'browser-stranger'))
+    expect(fn () => $reset->handle(H::NISN, $code, QA10_AUTH_NEW_PASSWORD, QA10_AUTH_NEW_PASSWORD, [], 'browser-stranger'))
         ->toThrow(ValidationException::class);
     expect(Hash::check(H::PASSWORD, (string) User::query()->findOrFail($user->getKey())->password))->toBeTrue();
 
-    $reset->handle(H::NIS, $code, QA10_AUTH_NEW_PASSWORD, QA10_AUTH_NEW_PASSWORD, [], 'browser-owner');
+    $reset->handle(H::NISN, $code, QA10_AUTH_NEW_PASSWORD, QA10_AUTH_NEW_PASSWORD, [], 'browser-owner');
     expect(Hash::check(QA10_AUTH_NEW_PASSWORD, (string) User::query()->findOrFail($user->getKey())->password))->toBeTrue();
 });
 
@@ -283,7 +283,7 @@ it('limits code requests per account and address, so a stranger elsewhere cannot
     $limits = app(ResetCodeLimits::class);
 
     foreach (range(1, 3) as $i) {
-        expect($limits->hit(ResetCodeLimits::SEND, H::NIS, '10.66.0.1'))->toBeNull();
+        expect($limits->hit(ResetCodeLimits::SEND, H::NISN, '10.66.0.1'))->toBeNull();
     }
 
     expect($limits->hit(ResetCodeLimits::SEND, H::NISN, '10.66.0.1'))->toBeGreaterThan(0)
@@ -295,11 +295,11 @@ it('limits code checks per account and address (QA10)', function (): void {
     $limits = app(ResetCodeLimits::class);
 
     foreach (range(1, 10) as $i) {
-        expect($limits->hit(ResetCodeLimits::VERIFY, H::NIS, '10.66.0.1'))->toBeNull();
+        expect($limits->hit(ResetCodeLimits::VERIFY, H::NISN, '10.66.0.1'))->toBeNull();
     }
 
     expect($limits->hit(ResetCodeLimits::VERIFY, QA10_AUTH_EMAIL, '10.66.0.1'))->toBeGreaterThan(0)
-        ->and($limits->hit(ResetCodeLimits::VERIFY, H::NIS, '10.20.0.1'))->toBeNull();
+        ->and($limits->hit(ResetCodeLimits::VERIFY, H::NISN, '10.20.0.1'))->toBeNull();
 });
 
 it('still resets the password with the right code on the way in (QA10)', function (): void {

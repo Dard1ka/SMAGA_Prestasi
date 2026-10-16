@@ -35,7 +35,7 @@ use Livewire\Component;
 /**
  * Pengguna & peran (Admin-Pengaturan tab + route admin.pengguna.index): staff accounts per role, "Tambah
  * pengguna", "Ubah peran", "Reset akun", "Nonaktifkan", "Ganti Kepala Sekolah" (24 h delay, cancellable)
- * and "Bantuan akun siswa" (exact NIS/NISN → reset / nonaktifkan / arsipkan with the W1-C Actions, and the
+ * and "Bantuan akun siswa" (exact NISN → reset / nonaktifkan / arsipkan with the W1-C Actions, and the
  * consent toggles photo/publish through App\Actions\Students\UpdateConsent).
  *
  * Targets are #[Locked] ids set only by the open*() methods; every action re-authorizes through the
@@ -75,6 +75,13 @@ final class Pengguna extends Component
 
     public string $studentQuery = '';
 
+    /**
+     * FS1 QA round 2 (QA-DC-05): the full NISN the top bar search ("Cari nama atau NISN") brought here. Its result stands
+     * in "Bantuan akun siswa" at the bottom of the page, so a note above the staff table says so and links there.
+     */
+    #[Locked]
+    public ?string $nisnFromSearch = null;
+
     #[Locked]
     public ?int $studentUserId = null;
 
@@ -105,8 +112,9 @@ final class Pengguna extends Component
             ? route('admin.pengguna.index')
             : route('admin.pengaturan', ['tab' => 'pengguna']);
 
-        if (preg_match('/^\d{9,10}$/', trim($this->search)) === 1) {
+        if (preg_match('/^\d{10}$/', trim($this->search)) === 1) {
             $this->studentQuery = trim($this->search);
+            $this->nisnFromSearch = $this->studentQuery;
             $this->search = '';
             $this->findStudent();
         }
@@ -151,7 +159,7 @@ final class Pengguna extends Component
             );
         }
 
-        // W4: a privileged role (Admin, Kesiswaan, Tata Usaha) waits as a RoleChangeRequest like "Ubah peran".
+        // W4: a privileged role (Admin, Kesiswaan, Tata Usaha, Humas) waits as a RoleChangeRequest like "Ubah peran".
         $request = RoleChangeRequest::query()->pending()->where('user_id', $user->getKey())->first();
 
         $this->resetNewForm();
@@ -364,13 +372,13 @@ final class Pengguna extends Component
         $this->studentUserId = null;
         $query = trim($this->studentQuery);
         $this->validate(
-            ['studentQuery' => ['required', 'regex:/^\d{9,10}$/']],
-            ['studentQuery.regex' => 'Isi NIS (9 digit) atau NISN (10 digit) lengkap.'],
-            ['studentQuery' => 'NIS atau NISN'],
+            ['studentQuery' => ['required', 'regex:/^\d{10}$/']],
+            ['studentQuery.regex' => 'Isi NISN (10 digit) lengkap.'],
+            ['studentQuery' => 'NISN'],
         );
 
         // Exact match only (no prefix search, SECURITY §3m-3).
-        $student = Student::query()->where('nis', $query)->orWhere('nisn', $query)->first(['id', 'user_id', 'photo_consent', 'publish_consent']);
+        $student = Student::query()->where('nisn', $query)->first(['id', 'user_id', 'photo_consent', 'publish_consent']);
 
         if ($student === null) {
             $this->addError('studentQuery', 'Siswa tidak ditemukan.');
@@ -519,6 +527,7 @@ final class Pengguna extends Component
         $staff = $term === '' ? $all : $all->filter(fn (User $u): bool => str_contains(mb_strtolower((string) $u->name), $term)
             || str_contains(mb_strtolower((string) $u->username), $term))->values();
         $target = $this->targetId !== null ? $all->firstWhere('id', $this->targetId) : null;
+        $studentAccount = $this->studentUserId !== null ? $this->studentSummary() : null;
 
         return view('livewire.admin.pengaturan.pengguna', [
             'staff' => $staff,
@@ -535,7 +544,11 @@ final class Pengguna extends Component
             // W4: user id => label of the privileged role still waiting (new accounts have no role until then).
             'pendingRoles' => RoleChangeRequest::query()->pending()->get(['id', 'user_id', 'to_role'])
                 ->mapWithKeys(fn (RoleChangeRequest $r) => [(int) $r->user_id => $r->to_role->label()])->all(),
-            'studentAccount' => $this->studentUserId !== null ? $this->studentSummary() : null,
+            'studentAccount' => $studentAccount,
+            // The note of a top bar NISN search, while "Bantuan akun siswa" still shows that NISN's answer.
+            'nisnNotice' => $this->nisnFromSearch !== null && trim($this->studentQuery) === $this->nisnFromSearch
+                ? ['nisn' => $this->nisnFromSearch, 'name' => $studentAccount['name'] ?? null]
+                : null,
             'canCreate' => Gate::allows('create', User::class),
             'canReplace' => Gate::allows('create', PrincipalReplacement::class),
         ]);

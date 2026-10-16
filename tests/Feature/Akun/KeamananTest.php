@@ -160,7 +160,7 @@ it('accepts a staff password that uses none of those and shows students their ow
 it('renews the session only when the password really changed and leaves no ghost device', function (): void {
     $user = b1Student();
 
-    $this->from('/login')->post('/login', ['identifier' => H::NIS, 'password' => H::PASSWORD])->assertRedirect(route('home'));
+    $this->from('/login')->post('/login', ['identifier' => H::NISN, 'password' => H::PASSWORD])->assertRedirect(route('home'));
 
     $old = session()->getId();
     H::fakeSessions($user, 2);

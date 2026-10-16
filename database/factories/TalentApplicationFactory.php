@@ -25,6 +25,7 @@ class TalentApplicationFactory extends Factory
             'student_id' => Student::factory(),
             'talent_type_id' => TalentType::factory(),
             'talent_branch_id' => fn (array $a) => TalentBranch::factory()->create(['talent_type_id' => $a['talent_type_id']])->getKey(),
+            'other_text' => null,
             'evidence_file_id' => null,
             'status' => TalentStatus::Terdaftar,
             'mentor_id' => null,
@@ -43,7 +44,7 @@ class TalentApplicationFactory extends Factory
         return $this->state(fn (array $attributes) => ['status' => $status]);
     }
 
-    /** "Tidak lolos" from $from, as RejectTalentApplication leaves the row. */
+    /** An old "tidak lolos" row from $from (before D-142: talents have no stages any more). */
     public function rejected(TalentStatus $from = TalentStatus::Seleksi, ?string $studentNote = null): static
     {
         return $this->state(fn (array $attributes) => [
@@ -53,7 +54,7 @@ class TalentApplicationFactory extends Factory
         ]);
     }
 
-    /** A rejected row whose student sent "Minta ditinjau ulang". */
+    /** An old rejected row whose student sent "Minta ditinjau ulang" (before D-142). */
     public function reviewRequested(?string $message = null): static
     {
         return $this->state(fn (array $attributes) => [

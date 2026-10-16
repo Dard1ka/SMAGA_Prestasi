@@ -15,7 +15,7 @@
             </x-sth.empty-state>
         @else
             <x-sth.empty-state icon="megaphone" title="Belum ada prestasi untuk dipublikasikan">
-                Prestasi yang sudah diverifikasi Kesiswaan dan punya izin publikasi akan muncul di sini.
+                Prestasi yang sudah diverifikasi dan punya izin publikasi akan muncul di sini.
             </x-sth.empty-state>
         @endif
     @else

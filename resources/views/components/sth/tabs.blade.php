@@ -4,7 +4,7 @@
     1. Links (server state, e.g. ?tab=): items with `href` → <nav> of links, current = aria-current="page".
        <x-sth.tabs label="Daftar lomba" variant="pill" :active="$tab" :items="[
            ['key' => 'katalog', 'label' => 'Katalog', 'count' => 8, 'href' => route('kesiswaan.lomba.index')],
-           ['key' => 'verifikasi', 'label' => 'Usulan lomba', 'count' => 3, 'href' => route('kesiswaan.lomba.index', ['tab' => 'verifikasi'])],
+           ['key' => 'verifikasi', 'label' => 'Verifikasi usulan lomba', 'count' => 3, 'href' => route('kesiswaan.lomba.index', ['tab' => 'verifikasi'])],
        ]" />
 
     2. Livewire: items with `attributes` → role="tab" buttons, aria-selected from `active`.
@@ -23,7 +23,7 @@
     $tabClass = $variant === 'pill' ? 'tabp' : 'stab';
     $isLinks = ! $panels && collect($items)->contains(fn ($item) => isset($item['href']));
     $id ??= 'tabs-'.\Illuminate\Support\Str::lower(\Illuminate\Support\Str::random(6));
-    $wrapper = $variant === 'pill' ? 'flex flex-wrap gap-1.5' : 'flex gap-7 overflow-x-auto border-b border-line';
+    $wrapper = $variant === 'pill' ? 'flex flex-wrap gap-1.5' : 'stabs';
 @endphp
 @if ($isLinks)
     <nav @if ($label) aria-label="{{ $label }}" @endif {{ $attributes->class($wrapper) }}>

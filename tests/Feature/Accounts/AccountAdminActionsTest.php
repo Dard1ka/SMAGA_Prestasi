@@ -54,7 +54,8 @@ it('resets a hijacked student account to a random temporary password and clears 
         ->and(Hash::check('Dipakai-penyerang-99', $user->password))->toBeFalse()
         ->and(strlen($temporary))->toBe(12)
         ->and(Hash::check($temporary, $user->password))->toBeTrue()
-        ->and(Hash::check(app(InitialPassword::class)->make('2010-03-02'), $user->password))->toBeFalse()
+        ->and(Hash::check(app(InitialPassword::class)->make(), $user->password))->toBeFalse()
+        ->and(Hash::check('sm4g4_020310', $user->password))->toBeFalse()
         ->and(H::sessionCount($user))->toBe(0)
         ->and($otp->fresh()->used_at)->not->toBeNull();
 
@@ -78,7 +79,6 @@ it('marks the temporary password of a reset until the owner chooses a new one', 
     $user->refresh();
     expect(CompleteActivation::hasTemporaryPassword($user))->toBeTrue()
         ->and(AccountControls::date($user, 'temporary_password_issued_at')->equalTo(now()))->toBeTrue()
-        ->and(CompleteActivation::mayKeepPassword($user))->toBeFalse()
         // Never mass-assignable.
         ->and($user->isFillable('temporary_password_issued_at'))->toBeFalse();
 
@@ -119,10 +119,8 @@ it('marks accounts that were reset before M2-A when the migration backfills, and
     $migration->backfill();
 
     expect(AccountControls::date($reset->fresh(), 'temporary_password_issued_at')?->equalTo($resetAt))->toBeTrue()
-        ->and(CompleteActivation::mayKeepPassword($reset->fresh()))->toBeFalse()
         ->and(CompleteActivation::hasTemporaryPassword($changed->fresh()))->toBeFalse()
         ->and(CompleteActivation::hasTemporaryPassword($imported->fresh()))->toBeFalse()
-        ->and(CompleteActivation::mayKeepPassword($imported->fresh()))->toBeTrue()
         ->and(DB::table('users')->whereNotNull('temporary_password_issued_at')->count())->toBe(1);
 });
 
@@ -130,10 +128,7 @@ it('never marks an imported account: the school password is not a temporary one'
     $user = H::pendingStudent()->user->fresh();
 
     expect(CompleteActivation::hasTemporaryPassword($user))->toBeFalse()
-        ->and(CompleteActivation::mayKeepPassword($user))->toBeTrue()
-        // Staff never may keep theirs, mark or no mark.
-        ->and(CompleteActivation::hasTemporaryPassword($this->admin))->toBeFalse()
-        ->and(CompleteActivation::mayKeepPassword($this->admin))->toBeFalse();
+        ->and(CompleteActivation::hasTemporaryPassword($this->admin))->toBeFalse();
 });
 
 it('keeps an archived account archived: it is not reset at all', function (): void {
@@ -166,7 +161,7 @@ it('disables an account: sessions revoked, login refused, audited', function ():
         ->and(H::sessionCount($user))->toBe(0)
         ->and(Activity::query()->where('event', 'account.disabled')->firstOrFail()->properties['reason'])->toBe('Pindah sekolah.');
 
-    $this->from('/login')->post('/login', ['identifier' => H::NIS, 'password' => H::PASSWORD])
+    $this->from('/login')->post('/login', ['identifier' => H::NISN, 'password' => H::PASSWORD])
         ->assertSessionHasErrors(['identifier' => AuthenticateUser::GENERIC_ERROR]);
     $this->assertGuest();
 });

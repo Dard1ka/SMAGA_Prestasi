@@ -5,8 +5,10 @@
     M1-A (lead, 2026-10-04): both letters follow the school's own files measure by measure.
     - guru  = Word file "ST PENGUKUHAN KEG OPSI": A4, margins top/bottom 306, left 1418, right 1134 twips,
               Arial 12 pt (lists under "Dasar" and "Kepada" 11 pt), line pitch 1.08;
-    - siswa = Excel sheet "ST_LOMBA … TIM": A4, margins left/right 0.55 in, top/bottom 0.79 in, Arial 11 pt
-              (title 12 pt), rows 15.95 pt, the sheet's column widths (469.5 pt in all).
+    - siswa = Excel sheet "ST_LOMBA … TIM": A4, top/bottom 0.79 in, Arial 11 pt (title 12 pt), rows 15.95 pt, the
+              sheet's column widths. The sheet itself stands at the left margin (0.55 in) and leaves a wider right
+              margin; since RV1 (lead, 2026-10-11) the letter is centred on the page instead: every block is as wide
+              as the kop picture (473 pt) and the left and right margins are equal, (595.28 - 473) / 2 = 61.14 pt.
     dompdf has no Arial: Helvetica is the core font with the same metrics (nothing to embed).
     All lengths are pt and every block has its own left offset + width, so nothing depends on dompdf's
     handling of negative margins. The guru page is laid out from the left edge of the Pemprov logo, which sits
@@ -21,7 +23,7 @@
     <meta charset="UTF-8">
     <title>{{ $title }}</title>
     <style>
-        @page { margin: {{ $letter === 'guru' ? '15.3pt 24.5pt 15.3pt 41.05pt' : '56.7pt 39.7pt 56.7pt 39.7pt' }}; }
+        @page { margin: {{ $letter === 'guru' ? '15.3pt 24.5pt 15.3pt 41.05pt' : '56.7pt 61.14pt 56.7pt 61.14pt' }}; }
         body { margin: 0; font-family: Helvetica, Arial, sans-serif; font-size: 12pt; line-height: 14.9pt; color: #000; }
         p, div { margin: 0; padding: 0; }
         table { border-collapse: collapse; border-spacing: 0; }
@@ -50,15 +52,18 @@
         .kop-guru img { height: 85.05pt; }
         .kop-garis-guru { margin-left: 23.65pt; width: 473.75pt; margin-top: 2pt; }
 
-        /* The sheet carries the kop as one picture, 473 pt wide: the same kop, smaller, logos inside the rule. */
+        /* The sheet carries the kop as one picture, 473 pt wide: the same kop, smaller, logos inside the rule.
+           473 pt is also the width of the page between the margins, so the kop and every block below it are centred.
+           D-154 (the school's printed letter): the emblems are 75 pt high and start above the first line, the longest
+           address line (344.6 pt at 8.2 pt) still fits between them (473 - 70 - 56.5 = 346.5 pt). */
         .kop-siswa { width: 473pt; }
-        .kop-siswa .kop-kiri { width: 66pt; padding-top: 11pt; }
-        .kop-siswa .kop-kanan { width: 54pt; padding-top: 11pt; }
+        .kop-siswa .kop-kiri { width: 70pt; padding-top: 3pt; }
+        .kop-siswa .kop-kanan { width: 56.5pt; padding-top: 3pt; }
         .kop-siswa .kop-teks { padding-top: 11pt; }
         .kop-siswa .kop-1 { font-size: 11pt; line-height: 12.65pt; }
         .kop-siswa .kop-2, .kop-siswa .kop-3 { font-size: 13pt; line-height: 14.95pt; }
         .kop-siswa .kop-4 { font-size: 8.2pt; line-height: 9.4pt; }
-        .kop-siswa img { height: 70pt; }
+        .kop-siswa img { height: 75pt; }
         .kop-garis-siswa { width: 473pt; margin-top: 8pt; }
 
         /* Surat Perintah Tugas (guru). */
@@ -105,28 +110,30 @@
 
         /* Surat Tugas (siswa). */
         .siswa { font-size: 11pt; line-height: 15.95pt; }
-        .s-lebar { width: 469.5pt; }
-        .s-jarak-kop { height: 17.5pt; }
-        .s-judul { width: 469.5pt; text-align: center; font-size: 12pt; }
+        .s-lebar { width: 473pt; }
+        /* D-154: the title stands about half a row under the rule, "Dasar" a little under the Nomor (the school's letter). */
+        .s-jarak-kop { height: 9.5pt; }
+        .s-judul { width: 473pt; text-align: center; font-size: 12pt; }
         .s-baris { height: 15.95pt; }
         .s-baris-15 { height: 15pt; }
-        .s-dasar { width: 469.5pt; }
+        .s-jarak-dasar { height: 4.5pt; }
+        .s-dasar { width: 473pt; }
         .s-dasar td { line-height: 15pt; }
-        .s-dasar .k { width: 95.25pt; }
+        .s-dasar .k { width: 103pt; }
         .s-dasar .s { width: 9pt; text-align: center; }
-        .s-murid { width: 469.5pt; }
+        .s-murid { width: 473pt; }
         .s-murid th, .s-murid td { border: 0.5pt solid #000; height: 20.1pt; line-height: 13pt; vertical-align: middle; text-align: center; padding: 0 1.5pt; }
         .s-murid th { font-weight: bold; }
         .s-murid .no { width: 21.75pt; }
         .s-murid .nama { text-align: left; }
         .s-murid .nis { width: 69pt; }
         .s-murid .kelas { width: 74.25pt; }
-        .s-pelaksanaan { margin-left: 24.75pt; width: 444.75pt; }
+        .s-pelaksanaan { margin-left: 24.75pt; width: 448.25pt; }
         .s-pelaksanaan .k { width: 70.5pt; }
         .s-pelaksanaan .s { width: 9pt; text-align: center; }
         .s-pelaksanaan .awal { width: 103.5pt; }
         .s-pelaksanaan .sd { width: 24.75pt; text-align: center; }
-        .s-ttd { margin-left: 243pt; width: 226.5pt; text-align: center; }
+        .s-ttd { margin-left: 246.5pt; width: 226.5pt; text-align: center; }
         .s-ttd .gambar { height: 60.95pt; }
         .s-ttd .gambar img { height: 60.95pt; }
         .s-ttd .nama { font-weight: bold; text-decoration: underline; }

@@ -9,6 +9,7 @@ use App\Http\Middleware\PublicPageHeaders;
 use App\Livewire\Akun\BukanSaya;
 use App\Livewire\Akun\Keamanan;
 use App\Livewire\Akun\Notifikasi;
+use App\Livewire\Akun\Profil;
 use App\Livewire\Auth\Activation;
 use App\Livewire\Auth\ForgotPassword;
 use App\Livewire\Auth\TwoFactorSetup;
@@ -126,6 +127,8 @@ Route::get('/berkas/publik/{file}', [FileController::class, 'publik'])
 // --- B1: Akun › Keamanan, Notifikasi (every role), K8 "Bukan saya?" (docs/dev-notes/B1.md, UI-MAP §2) ---
 // Keamanan/Notifikasi act only on the signed-in user (no ids in the URL). `staff.2fa` only affects staff.
 Route::middleware(['auth', 'active', 'activated', 'staff.2fa'])->group(function (): void {
+    // D-152: Profil saya (account menu, above Notifikasi) = the tabs Data diri (akun.profil) and Keamanan akun.
+    Route::livewire('/akun/profil', Profil::class)->name('akun.profil');
     Route::livewire('/akun/keamanan', Keamanan::class)->name('akun.keamanan');
     Route::livewire('/notifikasi', Notifikasi::class)->name('notifikasi.index');
 

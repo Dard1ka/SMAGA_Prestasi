@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Domain\Accounts\InitialPassword;
+
 /*
 | Settings of the app shell that belong to the server, not to the school (those live in the `settings` table,
 | App\Enums\SettingKey). Login, OTP and 2FA switches stay in config/fortify.php (`fortify.sth.*`).
@@ -22,5 +24,13 @@ return [
     'counts' => [
         'poll_seconds' => max(0, (int) env('STH_COUNTS_POLL_SECONDS', 60)),
     ],
+
+    /*
+    | Initial password of every newly imported student (D-138). Hashed at import only, never shown or logged
+    | (CLAUDE.md rule 3). Kesiswaan tells students outside the app; they must replace it at the first login.
+    | Spaces around the value are not part of it; empty, blank or unset = InitialPassword::DEFAULT (a blank value must
+    | never break a login, FS1 fix wave). After a change: reload.bat.
+    */
+    'initial_student_password' => InitialPassword::normalize(env('STH_INITIAL_STUDENT_PASSWORD')),
 
 ];

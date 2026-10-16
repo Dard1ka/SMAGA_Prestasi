@@ -28,14 +28,12 @@ use Laravel\Fortify\Fortify;
  *   limiter; the right password clears the counter of its own address only. After many failures from every address
  *   the account only lets in devices it signed in from before (KnownDevices, QA10 review).
  * - Disabled/archived accounts are refused and their sessions revoked (D-29, D-30).
- * - K7 detection: a failed login on an already-activated student account with that student's initial
- *   password pattern is logged as `security.initial_password_on_active` (never grants access). A student who
- *   kept the password from school at activation (`activation.password_kept`) logs in with it, so K7 cannot fire
- *   for that account until the owner changes the password.
+ * - K7 detection: a failed login on an already-activated student account with the configured initial password
+ *   or the old D-24 pattern is logged as `security.initial_password_on_active` (never grants access).
  */
 final class AuthenticateUser
 {
-    public const GENERIC_ERROR = 'NIS/NISN atau kata sandi salah.';
+    public const GENERIC_ERROR = 'NISN atau kata sandi salah.';
 
     private const RESOLVED = 'sth.login.authenticated_user';
 
@@ -119,7 +117,7 @@ final class AuthenticateUser
     {
         $student = $user->student;
 
-        if ($student !== null && ! $user->must_change_password && $student->birth_date !== null
+        if ($student !== null && ! $user->must_change_password
             && $this->initialPassword->matches($password, $student->birth_date)) {
             Log::warning('security.initial_password_on_active', ['user_id' => $user->getKey()]);
 

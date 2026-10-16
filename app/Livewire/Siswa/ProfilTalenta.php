@@ -6,12 +6,12 @@ namespace App\Livewire\Siswa;
 
 use App\Actions\Talent\ApplyTalent;
 use App\Actions\Talent\CancelTalentApplication;
-use App\Actions\Talent\RequestTalentReview;
 use App\Actions\Talent\SaveTalentProfile;
-use App\Actions\Talent\TalentNote;
+use App\Actions\Talent\TalentOtherText;
 use App\Enums\RegistrationStatus;
-use App\Enums\TalentStatus;
 use App\Http\Controllers\FileController;
+use App\Http\Middleware\EnsureTalentChosen;
+use App\Livewire\Akun\Profil;
 use App\Models\Registration;
 use App\Models\Student;
 use App\Models\TalentApplication;
@@ -19,15 +19,12 @@ use App\Models\TalentBranch;
 use App\Models\TalentProfile;
 use App\Models\TalentType;
 use App\Models\User;
-use Carbon\CarbonImmutable;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Route;
-use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
@@ -37,43 +34,36 @@ use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use Livewire\WithFileUploads;
 
 /**
- * Profil talenta (UI-MAP #15, board Profil-Talenta; replaces the school's Google Form, D-21, TALENT-FORM.md):
- * talent choices with their pipeline status, "Tambah talenta" (jenis → cabang from the DB, OLPAIN without
- * cabang, optional bukti), "Batalkan" while terdaftar (+ Urungkan), and the Riwayat talenta form.
- * Every ID sent by the browser is re-read from the DB and checked for ownership inside the Actions.
+ * Talenta saya, a tab of Profil saya since D-153 (before: the menu item "Profil talenta"; UI-MAP #15, board
+ * Profil-Talenta; replaces the school's Google Form, D-21, TALENT-FORM.md):
+ * the student's talent choices, "Tambah talenta" (jenis → cabang from the DB, OLPAIN and "Lainnya" without cabang,
+ * "Sebutkan" for the jenis or a cabang "Lainnya" (D-143), optional bukti), "Hapus" at any time (+ Urungkan), and the
+ * Riwayat talenta form. Every ID sent by the browser is re-read from the DB and checked for ownership inside the
+ * Actions.
  *
- * Lead, 2026-10-04: each choice shows Kesiswaan's "catatan untuk siswa" of the latest decision; a "tidak
- * lolos" choice has "Minta ditinjau ulang" (optional message ≤ 500 characters, one open request per rejection,
- * RequestTalentReview) instead of a second application for the same jenis + cabang.
+ * D-142: no stages, no review request, no decision note. A choice shows its guru pembina when Kesiswaan named one,
+ * else the day it was added.
  */
-#[Title('Profil talenta')]
+// D-153: the tab "Talenta saya" of Profil saya, so the page carries that title and the tabs of Akun\Profil::tabs().
+#[Title('Profil saya')]
 #[Layout('layouts::app', ['subtitle' => 'Pilih bidang yang ingin kamu kembangkan. Boleh lebih dari satu.'])]
 final class ProfilTalenta extends Component
 {
     use WithFileUploads;
 
-    /** id of the "Minta ditinjau ulang" dialog (<x-sth.modal>). */
-    public const REVIEW_DIALOG = 'tinjau-ulang';
-
-    /** Review requests one student may send per hour (on top of "one open request per rejection"). */
-    public const REVIEWS_PER_HOUR = 10;
-
     public string $jenis = '';
 
     public string $cabang = '';
 
+    /** "Sebutkan": the student's own talent for the jenis or a cabang "Lainnya" (D-143). */
+    public string $lainnya = '';
+
     /** @var TemporaryUploadedFile|null */
     public $bukti = null;
 
-    /** Last cancelled choice, for "Urungkan": ['type' => ulid, 'branch' => ?ulid, 'title' => string]. */
+    /** Last deleted choice, for "Urungkan": ['type' => ulid, 'branch' => ?ulid, 'other' => ?string, 'title' => string]. */
     #[Locked]
     public ?array $undo = null;
-
-    /** Rejected choice waiting in the "Minta ditinjau ulang" dialog. */
-    #[Locked]
-    public ?string $tinjauId = null;
-
-    public string $pesanTinjau = '';
 
     /** @var list<string> */
     public array $minat = [];
@@ -129,7 +119,8 @@ final class ProfilTalenta extends Component
 
         $this->jenis = $typeId;
         $this->cabang = '';
-        $this->resetValidation(['jenis', 'cabang']);
+        $this->lainnya = '';
+        $this->resetValidation(['jenis', 'cabang', 'lainnya']);
     }
 
     public function pilihCabang(string $branchId): void
@@ -139,7 +130,8 @@ final class ProfilTalenta extends Component
         }
 
         $this->cabang = $branchId;
-        $this->resetValidation('cabang');
+        $this->lainnya = '';
+        $this->resetValidation(['cabang', 'lainnya']);
     }
 
     public function hapusBukti(): void
@@ -159,6 +151,8 @@ final class ProfilTalenta extends Component
     public function daftar(ApplyTalent $apply): void
     {
         Gate::authorize('create', TalentApplication::class);
+        // The refusals of the previous try go; this try sets its own.
+        $this->resetValidation(['jenis', 'cabang', 'lainnya']);
 
         $type = TalentType::query()->find($this->jenis);
 
@@ -172,49 +166,49 @@ final class ProfilTalenta extends Component
             ? TalentBranch::query()->whereKey($this->cabang)->where('talent_type_id', $type->getKey())->first()
             : null;
 
-        $apply->handle($this->user(), $type, $branch, $this->bukti);
+        $gated = EnsureTalentChosen::applies($this->user());
+        $application = $apply->handle($this->user(), $type, $branch, $this->bukti, $this->lainnya);
 
-        $title = $this->titleOf($type, $branch);
-        $this->reset(['jenis', 'cabang', 'bukti', 'undo']);
+        $this->reset(['jenis', 'cabang', 'lainnya', 'bukti', 'undo']);
         unset($this->applications);
 
-        $this->dispatch('sth-toast', message: 'Terdaftar di penjaringan '.$title.'.', tone: 'success');
+        // FS1 fix wave: the first talent lifts the gate (D-144); go back to the page it held, if any (a team invitation
+        // link from a mail, a lomba). Only a path of this app, as the middleware stored it.
+        $back = $gated ? session()->pull(EnsureTalentChosen::INTENDED) : null;
+
+        if (is_string($back) && str_starts_with($back, '/') && ! str_starts_with($back, '//')) {
+            session()->flash('toast', $application->title().' ditambahkan.');
+            $this->redirect(url($back), navigate: true);
+
+            return;
+        }
+
+        $this->dispatch('sth-toast', message: $application->title().' ditambahkan.', tone: 'success');
     }
 
     public function batalkan(string $applicationId, CancelTalentApplication $cancel): void
     {
         $application = $this->ownApplication($applicationId, withTrashed: true);
 
-        // QA9: a stale tab (cancelled in another tab, or Kesiswaan moved it meanwhile) gets a toast, not an error page.
+        // QA9: a stale tab (deleted in another tab) gets a toast, not an error page.
         if ($application->trashed()) {
-            $this->staleChoice($this->titleOf($application->talentType, $application->talentBranch).' sudah kamu batalkan.');
+            $this->staleChoice($application->title().' sudah kamu hapus.');
 
             return;
         }
 
-        if ($application->status !== TalentStatus::Terdaftar) {
-            $this->staleChoice(CancelTalentApplication::PROCESSED_MESSAGE);
-
-            return;
-        }
-
-        try {
-            $cancel->handle($this->user(), $application);
-        } catch (ValidationException) {
-            // Moved by Kesiswaan between the check above and the lock of the Action.
-            $this->staleChoice(CancelTalentApplication::PROCESSED_MESSAGE);
-
-            return;
-        }
+        // D-142: any own choice, whatever its old status; nobody is notified.
+        $cancel->handle($this->user(), $application);
 
         $this->undo = [
             'type' => (string) $application->talent_type_id,
             'branch' => $application->talent_branch_id !== null ? (string) $application->talent_branch_id : null,
-            'title' => $this->titleOf($application->talentType, $application->talentBranch),
+            'other' => $application->other_text,
+            'title' => $application->title(),
         ];
         unset($this->applications);
 
-        $this->dispatch('sth-toast', message: $this->undo['title'].' dibatalkan.', tone: 'info');
+        $this->dispatch('sth-toast', message: $this->undo['title'].' dihapus.', tone: 'info');
     }
 
     public function urungkan(ApplyTalent $apply): void
@@ -226,93 +220,13 @@ final class ProfilTalenta extends Component
         $type = TalentType::query()->findOrFail($this->undo['type']);
         $branch = $this->undo['branch'] !== null ? TalentBranch::query()->findOrFail($this->undo['branch']) : null;
 
-        $apply->handle($this->user(), $type, $branch);
+        $apply->handle($this->user(), $type, $branch, null, $this->undo['other'] ?? null);
 
         $title = $this->undo['title'];
         $this->undo = null;
         unset($this->applications);
 
         $this->dispatch('sth-toast', message: $title.' dipulihkan.', tone: 'success');
-    }
-
-    // Minta ditinjau ulang --------------------------------------------------------------------
-
-    /**
-     * Opens the dialog for one of the student's own rejected choices (not yours → 404, not allowed → 403). QA9: a choice
-     * that is no longer open to a request (restored, the request already sent from another tab, cancelled) gets a toast
-     * and the list as it is now, like kirimTinjau(), instead of an error page.
-     */
-    public function mintaTinjau(string $applicationId): void
-    {
-        $application = $this->ownApplication($applicationId, withTrashed: true);
-
-        $stale = match (true) {
-            $application->trashed() => $this->titleOf($application->talentType, $application->talentBranch).' sudah kamu batalkan.',
-            $application->status !== TalentStatus::TidakLolos => RequestTalentReview::REOPENED_MESSAGE,
-            $application->review_requested_at !== null => RequestTalentReview::ALREADY_SENT_MESSAGE,
-            default => null,
-        };
-
-        if ($stale !== null) {
-            $this->staleChoice($stale);
-
-            return;
-        }
-
-        Gate::authorize('requestReview', $application);
-
-        $this->tinjauId = (string) $application->getKey();
-        $this->pesanTinjau = '';
-        $this->resetValidation('pesanTinjau');
-        $this->dispatch('sth-modal-open', id: self::REVIEW_DIALOG);
-    }
-
-    public function kirimTinjau(RequestTalentReview $request): void
-    {
-        $application = $this->ownApplication((string) $this->tinjauId);
-
-        // Sent from another tab, or Kesiswaan restored the choice meanwhile: say so instead of a 403 page.
-        if (! Gate::allows('requestReview', $application)) {
-            $this->closeReviewDialog();
-            unset($this->applications);
-            $this->dispatch('sth-toast', message: 'Permintaan sudah terkirim atau pilihan ini sudah dibuka kembali.', tone: 'error');
-
-            return;
-        }
-
-        $this->resetValidation('pesanTinjau');
-        $key = 'talenta-tinjau:'.$this->user()->getKey();
-
-        if (RateLimiter::tooManyAttempts($key, self::REVIEWS_PER_HOUR)) {
-            $this->addError('pesanTinjau', 'Terlalu sering. Coba lagi beberapa menit lagi.');
-
-            return;
-        }
-
-        try {
-            $request->handle($this->user(), $application, $this->pesanTinjau);
-        } catch (ValidationException $e) {
-            $errors = $e->errors();
-
-            if (isset($errors['pesan'])) {
-                $this->addError('pesanTinjau', (string) ($errors['pesan'][0] ?? 'Periksa pesanmu.'));
-
-                return;
-            }
-
-            $this->closeReviewDialog();
-            unset($this->applications);
-            $this->dispatch('sth-toast', message: (string) (collect($errors)->flatten()->first() ?? 'Permintaan tidak bisa dikirim.'), tone: 'error');
-
-            return;
-        }
-
-        RateLimiter::hit($key, 3600);
-
-        $title = $this->titleOf($application->talentType, $application->talentBranch);
-        $this->closeReviewDialog();
-        unset($this->applications);
-        $this->dispatch('sth-toast', message: 'Permintaan tinjau ulang '.$title.' terkirim ke Kesiswaan.', tone: 'success');
     }
 
     // Riwayat talenta -------------------------------------------------------------------------
@@ -428,50 +342,45 @@ final class ProfilTalenta extends Component
         $applications = $this->applications;
         $types = TalentType::query()->ordered()->with(['branches' => fn ($q) => $q->active()])->get();
         $selectedType = $types->firstWhere('id', $this->jenis);
-        $choiceKey = fn (TalentApplication $a): string => $a->talent_type_id.'|'.($a->talent_branch_id ?? '');
-        $taken = $applications->map($choiceKey)->all();
-        $rejected = $applications->filter(fn (TalentApplication $a): bool => $a->status === TalentStatus::TidakLolos)->map($choiceKey)->all();
+        $selectedBranch = $selectedType !== null && $this->cabang !== '' ? $selectedType->branches->firstWhere('id', $this->cabang) : null;
+        $needsOther = $selectedType !== null && ApplyTalent::needsOtherText($selectedType, $selectedBranch);
+        // Choices without a text of their own; a "Lainnya" cabang takes any number of texts (D-143), so it is never "taken".
+        $taken = $applications
+            ->filter(fn (TalentApplication $a): bool => $a->other_text === null)
+            ->map(fn (TalentApplication $a): string => $a->talent_type_id.'|'.($a->talent_branch_id ?? ''))
+            ->all();
         $profile = $student->talentProfile()->with('certificates')->first();
 
         $isTaken = fn (?string $branchId): bool => $selectedType !== null
             && in_array($selectedType->getKey().'|'.($branchId ?? ''), $taken, true);
-        $isRejected = fn (?string $branchId): bool => $selectedType !== null
-            && in_array($selectedType->getKey().'|'.($branchId ?? ''), $rejected, true);
 
-        $helper = match (true) {
+        // `$blocked` disables the button; the "Sebutkan" hint does not: the typed text reaches the server with the click.
+        $blocked = match (true) {
             $selectedType === null => 'Pilih jenis talenta dulu.',
             $selectedType->requiresBranch() && $this->cabang === '' => 'Pilih satu cabang dulu.',
-            // A rejected choice is not applied for twice: the student asks for a second look (ApplyTalent).
-            $isRejected($selectedType->requiresBranch() ? $this->cabang : null) => 'Pilihan ini belum lolos. Pakai "Minta ditinjau ulang" di daftar talenta pilihanmu.',
-            $isTaken($selectedType->requiresBranch() ? $this->cabang : null) => 'Sudah dipilih. Pilih cabang lain.',
+            ! $needsOther && $isTaken($selectedType->requiresBranch() ? $this->cabang : null) => ApplyTalent::DUPLICATE_MESSAGE,
             default => null,
         };
-
-        $reviewing = $this->tinjauId !== null ? $applications->firstWhere('id', $this->tinjauId) : null;
+        $helper = $blocked ?? ($needsOther && TalentOtherText::clean($this->lainnya) === null ? TalentOtherText::REQUIRED_MESSAGE : null);
 
         return view('livewire.siswa.profil-talenta', [
+            // D-153: Data diri · Talenta saya · Keamanan akun.
+            'tabs' => Profil::tabs($student->user),
             'identity' => [
                 'name' => $student->user->name,
-                'meta' => trim(($student->classroom?->name ?? '').' · NIS '.$student->nis, ' ·'),
+                'meta' => trim(($student->classroom?->name ?? '').' · NISN '.$student->nisn, ' ·'),
             ],
             'rows' => $applications->map(fn (TalentApplication $a): array => [
                 'id' => (string) $a->getKey(),
-                'title' => $this->titleOf($a->talentType, $a->talentBranch),
+                'title' => $a->title(),
                 'bidang' => $a->talentType?->bidang,
-                'status' => $a->status,
                 'info' => $this->infoOf($a),
-                'step' => $a->status->step(),
                 'evidence' => $a->evidenceFile?->original_name,
                 'evidenceUrl' => $a->evidence_file_id !== null && Route::has('files.show') ? route('files.show', $a->evidence_file_id) : null,
                 // M3-C: the click opens the preview popup; the href stays the download.
                 'evidencePreview' => $a->evidenceFile !== null ? FileController::previewUrl($a->evidenceFile) : null,
                 'evidencePreviewType' => $a->evidenceFile !== null ? FileController::previewType($a->evidenceFile) : null,
                 'canCancel' => Gate::allows('cancel', $a),
-                // Kesiswaan's note for the student of the latest decision (never the note for the guru pembina).
-                'note' => $a->student_note,
-                'rejected' => $a->status === TalentStatus::TidakLolos,
-                'canRequestReview' => $a->status === TalentStatus::TidakLolos && Gate::allows('requestReview', $a),
-                'reviewRequested' => $a->hasOpenReviewRequest(),
             ])->all(),
             'types' => $types,
             'selectedType' => $selectedType,
@@ -479,15 +388,12 @@ final class ProfilTalenta extends Component
                 'id' => (string) $b->getKey(),
                 'name' => $b->name,
                 'team' => $b->isTeam() ? 'Tim '.$b->team_size : null,
-                'taken' => $isTaken((string) $b->getKey()),
-                'rejected' => $isRejected((string) $b->getKey()),
+                'taken' => ! $b->isOther() && $isTaken((string) $b->getKey()),
             ])->all() ?? [],
+            'needsOther' => $needsOther,
+            'otherMax' => TalentOtherText::MAX,
             'helper' => $helper,
-            // The dialog is only in the page while there is a rejected choice to ask about.
-            'hasRejected' => $rejected !== [],
-            'reviewing' => $reviewing !== null ? $this->titleOf($reviewing->talentType, $reviewing->talentBranch) : null,
-            'reviewMax' => TalentNote::MAX_REVIEW_MESSAGE,
-            'year' => CarbonImmutable::now()->year,
+            'blocked' => $blocked !== null,
             // QA10: joined (confirmed) registrations only, like Portofolio "Lomba diikuti"; an open invitation is not one.
             'lombaCount' => Registration::query()
                 ->whereHas('members', fn (Builder $m) => $m->where('student_id', $student->getKey())->whereNotNull('confirmed_at')->whereNull('declined_at'))
@@ -503,6 +409,8 @@ final class ProfilTalenta extends Component
                 ])->values()->all(),
             'slotsLeft' => $this->certificateSlotsLeft(),
             'portfolioUrl' => route('siswa.portofolio'),
+            // D-144: a kelas X student without a talent is held here (EnsureTalentChosen) and reads why.
+            'gate' => EnsureTalentChosen::applies($this->user()),
         ]);
     }
 
@@ -513,26 +421,18 @@ final class ProfilTalenta extends Component
         return TalentProfile::MAX_CERTIFICATES - ($current - count($this->sertifikatHapus)) - count($this->sertifikatBaru);
     }
 
-    private function titleOf(?TalentType $type, ?TalentBranch $branch): string
-    {
-        return trim(($type?->code->label() ?? 'Talenta').($branch !== null ? ' · '.$branch->name : ''));
-    }
-
+    /** The guru pembina when Kesiswaan named one (D-142), else the day the choice was added. */
     private function infoOf(TalentApplication $application): string
     {
-        return match ($application->status) {
-            TalentStatus::Terdaftar => 'Menunggu pemetaan Kesiswaan',
-            TalentStatus::Pemetaan => 'Sedang dipetakan Kesiswaan',
-            TalentStatus::Seleksi => $application->assessment_on !== null
-                ? 'Seleksi/asesmen '.$application->assessment_on->locale('id')->translatedFormat('j M Y')
-                : 'Menunggu jadwal seleksi',
-            TalentStatus::Pembinaan => $application->mentor !== null
-                ? 'Pembina '.trim(($application->mentor->staffProfile?->honorific ? $application->mentor->staffProfile->honorific.' ' : '').$application->mentor->name)
-                : 'Peserta pembinaan',
-            TalentStatus::TidakLolos => $application->review_requested_at !== null
-                ? 'Belum lolos · permintaan tinjau ulang terkirim '.$application->review_requested_at->locale('id')->translatedFormat('j M Y')
-                : 'Belum lolos tahun ini',
-        };
+        $mentor = $application->mentor;
+
+        if ($mentor !== null) {
+            $honorific = $mentor->staffProfile?->honorific;
+
+            return 'Guru pembina '.trim(($honorific ? $honorific.' ' : '').$mentor->name);
+        }
+
+        return 'Ditambahkan '.$application->created_at?->locale('id')->translatedFormat('j M Y');
     }
 
     /**
@@ -557,13 +457,6 @@ final class ProfilTalenta extends Component
     {
         unset($this->applications);
         $this->dispatch('sth-toast', message: $message, tone: 'warning');
-    }
-
-    private function closeReviewDialog(): void
-    {
-        $this->tinjauId = null;
-        $this->pesanTinjau = '';
-        $this->dispatch('sth-modal-close', id: self::REVIEW_DIALOG);
     }
 
     /** Always read fresh (the Riwayat form may just have created it). */

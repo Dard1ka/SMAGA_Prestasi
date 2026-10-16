@@ -26,6 +26,7 @@ use Livewire\Livewire;
 use Symfony\Component\Mime\Email;
 use Tests\Feature\Kesiswaan\KesiswaanFixtures as F;
 use Tests\Feature\Kesiswaan\LombaChangeFixtures as C;
+use Tests\Support\TalentGate;
 
 /*
  * The "published lomba changed" notice (lead's mail test of 2026-10-09, finding 10-7, D-126) as people meet it:
@@ -60,6 +61,7 @@ function lcnScreenTeam(RegistrationStatus $status = RegistrationStatus::Menunggu
     $ketua = F::student('Raka Pradipta', 'XII-2');
     $confirmed = F::student('Nadia Putri Anindya', 'XI-4');
     $invited = F::student('Hana Safira', 'X-8');
+    TalentGate::pass($invited); // D-144: a kelas X student opens the siswa pages once she has a talent
 
     $competition = C::lomba($lomba);
     $registration = C::registration($competition, $status, $ketua, $guru);
@@ -269,7 +271,8 @@ it('shows no hint for a new lomba, a lomba in the queue or a lomba nobody is reg
     $empty = C::lomba();
     $closed = lcnScreenTeam()['competition'];
 
-    Livewire::actingAs($this->kesiswaan)->test(Form::class)
+    // "Tambah lomba" is Admin only (D-145).
+    Livewire::actingAs(F::staff(RoleName::Admin, 'Operator STH'))->test(Form::class)
         ->assertDontSee('sedang terdaftar di lomba ini')
         ->call('open')
         ->assertSet('formMode', 'create')
@@ -297,10 +300,11 @@ it('delivers a bell row and a mail with one sentence per line, and never the new
         'Tanggal lomba sekarang 8–10 Nov 2026.',
         'Tempat sekarang Aula SMA Negeri 3 Semarang.',
         'Link registrasi diganti.',
-        'Website resmi dihapus.',
+        'Link resmi dihapus.',
     ];
 
-    // The bell: one row per person, kind + title + one paragraph + the link to the own registration / binaan page.
+    // The bell: one row per person, kind + title + one paragraph + the link to the own registration / binaan page
+    // (stored as a path, App\Notifications\Channels\BellChannel).
     $row = $team['ketua']->notifications()->sole();
     $guruRow = $team['guru']->notifications()->sole();
 
@@ -309,7 +313,7 @@ it('delivers a bell row and a mail with one sentence per line, and never the new
             'kind' => 'competition.changed',
             'title' => 'Info lomba berubah: '.C::NAME,
             'body' => 'Kesiswaan mengubah data lomba ini. '.implode(' ', $sentences),
-            'url' => route('siswa.lomba-saya.show', ['registration' => $team['registration']->getKey()]),
+            'url' => route('siswa.lomba-saya.show', ['registration' => $team['registration']->getKey()], false),
             'registration_id' => $team['registration']->getKey(),
         ])
         ->and($guruRow->type)->toBe(BinaanCompetitionChanged::class)
@@ -317,7 +321,7 @@ it('delivers a bell row and a mail with one sentence per line, and never the new
             'kind' => 'competition.binaan_changed',
             'title' => 'Info lomba binaan berubah: '.C::NAME,
             'body' => 'Kesiswaan mengubah data lomba yang diikuti siswa binaan. '.implode(' ', $sentences),
-            'url' => route('guru.binaan.show', ['registration' => $team['registration']->getKey()]),
+            'url' => route('guru.binaan.show', ['registration' => $team['registration']->getKey()], false),
         ])
         ->and(DatabaseNotification::query()->count())->toBe(4)
         ->and($this->kesiswaan->notifications()->count())->toBe(0);

@@ -53,19 +53,20 @@
                         @forelse ($paragraphs as $paragraph)
                             <p class="m-0 leading-relaxed">{{ $paragraph }}</p>
                         @empty
-                            <p class="m-0 text-muted">Deskripsi belum ada. Lihat juknis atau website resmi di tab Dokumen.</p>
+                            <p class="m-0 text-muted">Deskripsi belum ada. Lihat juknis atau link resmi di tab Dokumen.</p>
                         @endforelse
                         <div class="flex flex-wrap gap-2">
                             @if ($competition->isPublished())
-                                <x-sth.chip tone="green" icon="check">Diverifikasi Kesiswaan</x-sth.chip>
+                                <x-sth.chip tone="green" icon="check">Diverifikasi {{ $verifiedBy }}</x-sth.chip>
                             @endif
                             @if ($competition->weight_category)
-                                <x-sth.chip tone="gray">Kategori penyelenggara {{ $competition->weight_category->value }}@if ($competition->event_status) · {{ $competition->event_status->label() }}@endif</x-sth.chip>
+                                {{-- "… B · Pemerintah (non-Puspresnas)" is wider than a 390px phone: the tag takes two lines there (FS1 QA). --}}
+                                <x-sth.chip tone="gray" class="chip-wrap">Kategori penyelenggara {{ $competition->weight_category->value }}@if ($competition->event_status) · {{ $competition->event_status->label() }}@endif</x-sth.chip>
                             @endif
                         </div>
                         @if ($rumus)
                             <div class="flex flex-col gap-2.5 border-t border-line pt-4">
-                                <p class="m-0 text-sm font-bold">Perkiraan poin jika Juara I <span class="font-medium text-muted">(tiap anggota tim dapat poin penuh)</span></p>
+                                <p class="m-0 text-sm font-bold">Perkiraan poin jika Juara I @if ($teamLomba)<span class="font-medium text-muted">(tiap anggota tim dapat poin penuh)</span>@endif</p>
                                 <x-sth.rumus-poin :tingkat="$rumus['tingkat']" :capaian="$rumus['capaian']" :penyelenggara="$rumus['penyelenggara']" :total="$rumus['total']" label="Perkiraan poin jika Juara I" />
                             </div>
                         @endif
@@ -87,17 +88,15 @@
                     @if ($jadwal === [])
                         <p class="m-0 text-muted">Jadwal belum diisi Kesiswaan.</p>
                     @else
-                        <ol class="m-0 flex list-none flex-col p-0">
+                        {{-- D-147: Pendaftaran, Pelaksanaan, Laporan hasil (no report deadline, D-151). --}}
+                        <dl class="m-0 flex flex-col p-0">
                             @foreach ($jadwal as $row)
-                                <li class="grid grid-cols-[110px_minmax(0,1fr)] items-center gap-x-4 gap-y-1 border-b border-line py-3 last:border-b-0 sm:grid-cols-[130px_minmax(0,1fr)_auto]">
-                                    <span class="display num text-md font-bold">{{ $row['date'] }}</span>
-                                    <span class="font-semibold">{{ $row['label'] }}</span>
-                                    @if ($row['chip'])
-                                        <x-sth.chip :tone="$row['tone']" size="sm" class="col-start-2 justify-self-start sm:col-start-auto sm:justify-self-end">{{ $row['chip'] }}</x-sth.chip>
-                                    @endif
-                                </li>
+                                <div class="grid grid-cols-1 gap-x-4 gap-y-1 border-b border-line py-3 last:border-b-0 sm:grid-cols-[130px_minmax(0,1fr)]">
+                                    <dt class="font-semibold">{{ $row['label'] }}</dt>
+                                    <dd class="num m-0">{{ $row['value'] }}</dd>
+                                </div>
                             @endforeach
-                        </ol>
+                        </dl>
                     @endif
                 </x-sth.tab-panel>
 

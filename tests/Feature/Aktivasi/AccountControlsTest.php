@@ -108,10 +108,10 @@ it('refuses an expired initial password with the generic error, like a wrong one
     $student = H::pendingStudent();
     b1Expire($student->user);
 
-    b1Login(H::NIS)->assertSessionHasErrors(['identifier' => AuthenticateUser::GENERIC_ERROR]);
+    b1Login(H::NISN)->assertSessionHasErrors(['identifier' => AuthenticateUser::GENERIC_ERROR]);
     $this->assertGuest();
 
-    b1Login(H::NIS, 'salah-sekali-123')->assertSessionHasErrors(['identifier' => AuthenticateUser::GENERIC_ERROR]);
+    b1Login(H::NISN, 'salah-sekali-123')->assertSessionHasErrors(['identifier' => AuthenticateUser::GENERIC_ERROR]);
     $this->assertGuest();
 });
 
@@ -119,7 +119,7 @@ it('accepts the initial password inside the window', function (): void {
     $student = H::pendingStudent();
     $student->user->forceFill(['initial_password_expires_at' => now()->addDay()])->saveQuietly();
 
-    b1Login(H::NIS)->assertRedirect(route('aktivasi'));
+    b1Login(H::NISN)->assertRedirect(route('aktivasi'));
     $this->assertAuthenticatedAs($student->user);
 });
 
@@ -127,7 +127,7 @@ it('ignores the window once the student chose an own password', function (): voi
     $active = H::activeStudent();
     b1Expire(b1User($active));
 
-    b1Login(H::NIS)->assertRedirect(route('home'));
+    b1Login(H::NISN)->assertRedirect(route('home'));
     $this->assertAuthenticatedAs(b1User($active));
 });
 
@@ -136,16 +136,16 @@ it('keeps the window and the failed-login count running while only the email is 
     $student = H::pendingStudent();
     $student->user->forceFill(['email' => 'nadia.anindya@example.test', 'email_verified_at' => now()])->saveQuietly();
 
-    b1Login(H::NIS, 'tebakan-salah-1')->assertSessionHasErrors(['identifier' => AuthenticateUser::GENERIC_ERROR]);
+    b1Login(H::NISN, 'tebakan-salah-1')->assertSessionHasErrors(['identifier' => AuthenticateUser::GENERIC_ERROR]);
     expect(AccountControls::failedAttempts(b1User($student)))->toBe(1);
 
     b1Expire($student->user);
 
-    b1Login(H::NIS)->assertSessionHasErrors(['identifier' => AuthenticateUser::GENERIC_ERROR]);
+    b1Login(H::NISN)->assertSessionHasErrors(['identifier' => AuthenticateUser::GENERIC_ERROR]);
     $this->assertGuest();
 });
 
-it('ends the window once the student kept the password at the last activation step', function (): void {
+it('ends the window once the student chose a new password at the last activation step', function (): void {
     $student = H::pendingStudent();
     $user = b1User($student);
     $user->forceFill([
@@ -154,11 +154,13 @@ it('ends the window once the student kept the password at the last activation st
         'initial_password_expires_at' => now()->addDay(),
     ])->saveQuietly();
 
-    app(CompleteActivation::class)->keepPassword($user);
+    // D-152: Data diri comes before the password step.
+    app(CompleteActivation::class)->confirmProfile($user, '2010-03-02', '081234567890');
+    app(CompleteActivation::class)->changePassword($user, 'Pelangi-senja-2026', 'Pelangi-senja-2026');
 
     $this->travel(30)->days();
 
-    b1Login(H::NIS)->assertRedirect(route('home'));
+    b1Login(H::NISN, 'Pelangi-senja-2026')->assertRedirect(route('home'));
     $this->assertAuthenticatedAs(b1User($student));
 });
 
@@ -186,7 +188,7 @@ it('reopens an expired window for 72 hours (Kesiswaan), audited, and the student
     expect($log->properties['reason'])->toBe('Siswa sakit saat aktivasi kelas.')
         ->and($log->causer_id)->toBe($this->kesiswaan->getKey());
 
-    b1Login(H::NIS)->assertRedirect(route('aktivasi'));
+    b1Login(H::NISN)->assertRedirect(route('aktivasi'));
 });
 
 it('refuses reopen without a reason, for active accounts, staff, or roles without student.import', function (): void {
@@ -306,7 +308,7 @@ it('computes the reopened deadline as the later one and knows when a reopen chan
 it('counts wrong passwords on a pending student and freezes the account at 10, alerting Admin and Kesiswaan', function (): void {
     $student = H::pendingStudent();
 
-    b1Login(H::NIS, 'tebakan-salah-1')->assertSessionHasErrors('identifier');
+    b1Login(H::NISN, 'tebakan-salah-1')->assertSessionHasErrors('identifier');
     expect(AccountControls::failedAttempts(b1User($student)))->toBe(1);
 
     H::fakeSessions(b1User($student), 1);
@@ -324,7 +326,7 @@ it('counts wrong passwords on a pending student and freezes the account at 10, a
     Notification::assertSentTo([$this->admin, $this->kesiswaan], AccountAlert::class, fn (AccountAlert $n) => $n->kind === 'account.frozen');
 
     // The right password no longer works, and the message is the generic one.
-    b1Login(H::NIS)->assertSessionHasErrors(['identifier' => AuthenticateUser::GENERIC_ERROR]);
+    b1Login(H::NISN)->assertSessionHasErrors(['identifier' => AuthenticateUser::GENERIC_ERROR]);
     $this->assertGuest();
 });
 
@@ -351,7 +353,7 @@ it('lifts a failed-login freeze through reopen (Kesiswaan) and resets the counte
     $user = b1User($student);
     expect(AccountControls::isFrozen($user))->toBeFalse()
         ->and(AccountControls::failedAttempts($user))->toBe(0);
-    b1Login(H::NIS)->assertRedirect(route('aktivasi'));
+    b1Login(H::NISN)->assertRedirect(route('aktivasi'));
 });
 
 it('logs a frozen account out of a running session', function (): void {
@@ -386,7 +388,9 @@ it('sends the bound address a notice with a single-use "Bukan saya?" link when t
         ->and(AccountControls::date($user, 'activated_at'))->toBeNull()
         ->and(DB::table('email_notices')->where('user_id', $user->getKey())->where('kind', 'bound')->count())->toBe(1);
 
-    app(CompleteActivation::class)->keepPassword($user);
+    // D-152: Data diri comes before the password step.
+    app(CompleteActivation::class)->confirmProfile($user, '2010-03-02', '081234567890');
+    app(CompleteActivation::class)->changePassword($user, 'Pelangi-senja-2026', 'Pelangi-senja-2026');
 
     $user = b1User($student);
     expect($user->status)->toBe(UserStatus::Active)
@@ -399,7 +403,8 @@ it('sends the bound address a notice with a single-use "Bukan saya?" link when t
             && $to->routes['mail'] === 'nadia.anindya@example.test'
             && str_contains($n->notMeUrl, '/akun/bukan-saya/')
             && str_contains($n->notMeUrl, 'signature=')
-            && ! str_contains(implode(' ', $n->lines()), H::NIS);
+            && ! str_contains(implode(' ', $n->lines()), H::NIS)
+            && ! str_contains(implode(' ', $n->lines()), H::NISN);
     });
 });
 
@@ -437,7 +442,7 @@ it('freezes the account from the "Bukan saya?" page: GET changes nothing, the bu
     Notification::assertNotSentTo($this->kesiswaan, AccountAlert::class);
 
     Livewire::test(BukanSaya::class, ['notice' => $notice])->assertSet('state', BukanSaya::STATE_INVALID);
-    b1Login(H::NIS)->assertSessionHasErrors(['identifier' => AuthenticateUser::GENERIC_ERROR]);
+    b1Login(H::NISN)->assertSessionHasErrors(['identifier' => AuthenticateUser::GENERIC_ERROR]);
 
     // Kesiswaan cannot lift a "Bukan saya" freeze; Admin can, with a reason.
     expect(fn () => app(ReopenActivationWindow::class)->handle($this->kesiswaan, $user, 'Siswa datang ke ruang Kesiswaan.'))->toThrow(ValidationException::class)
@@ -481,7 +486,8 @@ it('resets to a random temporary password valid for 72 hours, never the initial 
 
     $user = b1User($student);
     expect(Hash::check($temporary, $user->password))->toBeTrue()
-        ->and(Hash::check(app(InitialPassword::class)->make('2010-03-02'), $user->password))->toBeFalse()
+        ->and(Hash::check(app(InitialPassword::class)->make(), $user->password))->toBeFalse()
+        ->and(Hash::check('sm4g4_020310', $user->password))->toBeFalse()
         ->and($user->must_change_password)->toBeTrue()
         ->and(AccountControls::isFrozen($user))->toBeFalse()
         ->and(abs(AccountControls::date($user, 'initial_password_expires_at')->diffInMinutes(now()->addHours(72))))->toBeLessThan(2);
@@ -489,11 +495,11 @@ it('resets to a random temporary password valid for 72 hours, never the initial 
     $log = Activity::query()->where('event', 'account.reset')->sole();
     expect(json_encode($log->properties))->not->toContain($temporary);
 
-    b1Login(H::NIS, $temporary)->assertRedirect(route('aktivasi'));
+    b1Login(H::NISN, $temporary)->assertRedirect(route('aktivasi'));
     auth()->logout();
 
     $this->travel(73)->hours();
-    b1Login(H::NIS, $temporary)->assertSessionHasErrors(['identifier' => AuthenticateUser::GENERIC_ERROR]);
+    b1Login(H::NISN, $temporary)->assertSessionHasErrors(['identifier' => AuthenticateUser::GENERIC_ERROR]);
     $this->assertGuest();
 });
 

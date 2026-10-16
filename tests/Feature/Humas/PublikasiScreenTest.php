@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Enums\AppreciationStatus;
+use App\Enums\FilePurpose;
 use App\Enums\PublicationStatus;
 use App\Enums\RoleName;
 use App\Enums\UserStatus;
@@ -208,7 +209,7 @@ it('no longer offers a flyer mock-up, a template or a PNG, and has nothing left 
         ->filter(fn ($route): bool => str_contains(strtolower($route->uri().' '.$route->getName().' '.$route->getActionName()), 'flyer'));
 
     expect($flyerRoutes)->toBeEmpty()
-        ->and(File::query()->count())->toBe(0)
+        ->and(File::query()->whereNot('purpose', FilePurpose::Juknis)->count())->toBe(0)
         ->and(Storage::disk('local')->allFiles())->toBe([])
         ->and($publication->fresh()->flyer_file_id)->toBeNull();
 });
@@ -357,7 +358,7 @@ it('schedules and publishes without creating any file', function (): void {
 
     expect($publication->fresh()->status)->toBe(PublicationStatus::Dipublikasikan)
         ->and($publication->fresh()->flyer_file_id)->toBeNull()
-        ->and(File::query()->count())->toBe(0)
+        ->and(File::query()->whereNot('purpose', FilePurpose::Juknis)->count())->toBe(0)
         ->and(Storage::disk('local')->allFiles())->toBe([]);
 });
 
@@ -630,14 +631,14 @@ it('publishes an overdue card from the panel, tells the student then and lowers 
 
     Livewire::actingAs($this->humas)
         ->test(Publikasi::class)
-        ->assertDispatched('sth-badges', badges: ['humas.publikasi' => 0, 'humas.jadwal' => 2])
+        ->assertDispatched('sth-badges', badges: ['humas.publikasi' => 0, 'humas.jadwal' => 2, 'kesiswaan.verifikasi' => 0, 'humas.verifikasi' => 0])
         ->call('select', $overdue->getKey())
         ->call('askPublish')
         ->assertDispatched('sth-modal-open', id: Publikasi::PUBLISH_DIALOG)
-        ->assertDispatched('sth-badges', badges: ['humas.publikasi' => 0, 'humas.jadwal' => 2])
+        ->assertDispatched('sth-badges', badges: ['humas.publikasi' => 0, 'humas.jadwal' => 2, 'kesiswaan.verifikasi' => 0, 'humas.verifikasi' => 0])
         ->call('publish')
         ->assertDispatched('sth-toast', message: 'Publikasi ditandai sudah terbit. Siswa sudah diberi tahu.', tone: 'success')
-        ->assertDispatched('sth-badges', badges: ['humas.publikasi' => 0, 'humas.jadwal' => 1])
+        ->assertDispatched('sth-badges', badges: ['humas.publikasi' => 0, 'humas.jadwal' => 1, 'kesiswaan.verifikasi' => 0, 'humas.verifikasi' => 0])
         ->assertSee('Sudah terbit');
 
     $fresh = $overdue->fresh();

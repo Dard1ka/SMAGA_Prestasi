@@ -75,7 +75,7 @@ it('creates a privileged account without a role and a request that waits for a s
     expect(app(ApproveRoleChange::class)->handle($second, $request))->toBeTrue()
         ->and($user->fresh()->getRoleNames()->all())->toBe([$role])
         ->and(Activity::query()->where('event', 'account.role_changed')->sole()->properties['via'])->toBe('approval');
-})->with([RoleName::Admin->value, RoleName::Kesiswaan->value, RoleName::TataUsaha->value]);
+})->with([RoleName::Admin->value, RoleName::Kesiswaan->value, RoleName::TataUsaha->value, RoleName::Humas->value]);
 
 it('applies the role of a new account after 24 h when its creator is the only Admin', function (): void {
     $kepsek = A::staff(RoleName::KepalaSekolah);
@@ -112,7 +112,7 @@ it('gives non-privileged roles at once without a request', function (string $rol
     expect($user->fresh()->getRoleNames()->all())->toBe([$role])
         ->and(RoleChangeRequest::query()->count())->toBe(0);
     Notification::assertSentTo($this->admin, StaffAccountChanged::class);
-})->with([RoleName::Guru->value, RoleName::Humas->value]);
+})->with([RoleName::Guru->value]);
 
 it('counts pending Admin requests towards the 3-Admin limit and creates nothing when refused', function (): void {
     A::admin(['username' => 'operator2']);

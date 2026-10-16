@@ -64,7 +64,7 @@ it('keeps five rows in "Siswa teratas" (QA10)', function (): void {
         ->and(array_column($top, 'name'))->toBe(['Ayu Kirana', 'Bima Saputra', 'Citra Lestari', 'Dewi Anggraini', 'Eka Pratiwi']);
 });
 
-it('counts as "laporan lewat batas" only registrations that never sent a report (QA10)', function (): void {
+it('counts as "Belum lapor > 14 hari" only registrations that never sent a report (QA10, D-151)', function (): void {
     $past = ['starts_on' => now()->subDays(60)->format('Y-m-d'), 'final_on' => now()->subDays(50)->format('Y-m-d')];
 
     F::registration(RegistrationStatus::MenungguLaporan, ['Nadia Putri Anindya'], competition: $past);
@@ -80,5 +80,5 @@ it('counts as "laporan lewat batas" only registrations that never sent a report 
     $component = Livewire::actingAs($this->kepsek)->test(Dashboard::class);
 
     expect($component->viewData('kpi')['lewat'])->toBe(1)
-        ->and(collect($component->viewData('attention'))->pluck('title')->all())->toContain('1 laporan lewat batas 45 hari');
+        ->and(collect($component->viewData('attention'))->pluck('title')->all())->toContain('1 laporan belum dikirim lebih dari 14 hari setelah lomba');
 });

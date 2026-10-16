@@ -2,7 +2,7 @@
     Inline note box (tinted, icon + text). For page-level messages after an action use <x-sth.toast>.
 
     <x-sth.alert>Baru pertama masuk? Kamu akan diminta mengganti kata sandi dan menghubungkan email.</x-sth.alert>
-    <x-sth.alert tone="error">NIS/NISN atau kata sandi salah.</x-sth.alert>
+    <x-sth.alert tone="error">NISN atau kata sandi salah.</x-sth.alert>
     <x-sth.alert tone="warning" title="Perlu tindakan">Laporkan hasil WICE 2026 sebelum 24 Okt 2026.</x-sth.alert>
 
     Props: tone info (blue, default) | success (green) | warning (orange) | error (red) · title · icon

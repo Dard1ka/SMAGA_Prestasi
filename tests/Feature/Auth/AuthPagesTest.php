@@ -18,11 +18,11 @@ beforeEach(function (): void {
 it('renders the login page without ever showing the initial password pattern', function (): void {
     $this->get('/login')
         ->assertOk()
-        ->assertSee('Pakai NIS atau NISN dan kata sandi dari sekolah.')
+        ->assertSee('Pakai NISN dan kata sandi dari sekolah.')
         // M1-B: one field for NIS, NISN or the email bound at activation; the note follows the new order.
-        ->assertSee('NIS, NISN, atau email')
+        ->assertSee('NISN atau email')->assertDontSee('NIS, NISN')
         ->assertSee('Sudah aktivasi? Bisa juga masuk pakai email. Guru dan staf: username atau email.')
-        ->assertSee('Nanti diminta menghubungkan email dulu. Setelah itu boleh ganti kata sandi.')
+        ->assertSee('Baru pertama masuk? Nanti diminta menghubungkan email dulu, lalu membuat kata sandi baru.')
         ->assertSee('name="identifier"', false)
         ->assertSee(route('password.request'), false)
         ->assertDontSee('sm4g4')
@@ -33,7 +33,7 @@ it('renders the forgot password page for guests', function (): void {
     $this->get(route('password.request'))
         ->assertOk()
         ->assertSee('Lupa kata sandi')
-        ->assertSee('NIS, NISN, atau email')
+        ->assertSee('NISN atau email')
         ->assertDontSee('sm4g4');
 });
 
@@ -41,24 +41,27 @@ it('renders the activation page for a first login: the email comes first', funct
     $this->actingAs(H::pendingStudent()->user)
         ->get(route('aktivasi'))
         ->assertOk()
-        ->assertSee('Langkah 1 dari 3')
+        // D-152: a student has four steps (Data diri before the password).
+        ->assertSee('Langkah 1 dari 4')
         ->assertSee('Hubungkan email')
-        ->assertSee(H::NIS)
+        ->assertSee('NISN '.H::NISN)->assertDontSee(H::NIS)
         ->assertDontSee('Kata sandi baru')
         ->assertDontSee('Lewati, pakai kata sandi sekarang')
         ->assertDontSee('sm4g4');
 });
 
-it('renders the password step with the skip button for a student whose email is bound', function (): void {
-    $user = H::pendingStudent()->user;
+it('renders the password step without a skip button for a student whose email is bound', function (): void {
+    // D-152: Data diri was saved already, so the password step is next (step 4 of 4).
+    $user = H::pendingStudent(['phone' => '081234567890', 'profile_confirmed_at' => now()])->user;
     $user->forceFill(['email' => 'nadia.anindya@example.test', 'email_verified_at' => now()])->save();
 
     $this->actingAs($user)
         ->get(route('aktivasi'))
         ->assertOk()
-        ->assertSee('Langkah 3 dari 3')
-        ->assertSee('Ganti kata sandi')
-        ->assertSee('Lewati, pakai kata sandi sekarang')
+        ->assertSee('Langkah 4 dari 4')
+        ->assertSee('Buat kata sandi baru')
+        ->assertSee('Ganti kata sandi dari sekolah dengan kata sandi milikmu sendiri.')
+        ->assertDontSee('Lewati, pakai kata sandi sekarang')
         ->assertSee('Minimal 10 karakter')
         // M2-A: the hint names every rule, including the common-password one.
         ->assertSee('Jangan pakai tanggal lahir, NIS/NISN, nama, atau kata yang mudah ditebak.')
@@ -75,7 +78,7 @@ it('shows the test mode banner only in local test mode', function (): void {
     $user = H::pendingStudent()->user;
     app(IssueOtpCode::class)->handle($user, 'verify_email', 'nadia.anindya@example.test');
 
-    $this->actingAs($user)->get(route('aktivasi'))->assertOk()->assertSee('Langkah 2 dari 3')->assertSee('Mode uji: kode apa pun diterima.');
+    $this->actingAs($user)->get(route('aktivasi'))->assertOk()->assertSee('Langkah 2 dari 4')->assertSee('Mode uji: kode apa pun diterima.');
 });
 
 it('forwards an activated student from /beranda and the tour link to the siswa landing', function (): void {

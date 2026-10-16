@@ -24,7 +24,7 @@ use Spatie\Permission\Traits\HasRoles;
 
 /**
  * Account for every role. users.id stays BIGINT (ARCHITECTURE §4).
- * Students sign in with NIS/NISN (via `student`), staff with username or email.
+ * Students sign in with NISN (via `student`), staff with username or email.
  *
  * Not mass-assignable on purpose (CLAUDE.md §3.6): status, must_change_password, password_changed_at,
  * last_login_at, email_verified_at and the B1 account-control columns (initial_password_expires_at,
@@ -70,7 +70,7 @@ class User extends Authenticatable
             'failed_activation_attempts' => 'integer',
             'frozen_at' => 'immutable_datetime',
             'activated_at' => 'immutable_datetime',
-            // M2-A: set while the stored password is the temporary one of an Admin reset (no "Lewati" then).
+            // M2-A: set while the stored password is the temporary one of an Admin reset (the activation screen words its password step for it; every account replaces its password, D-138).
             'temporary_password_issued_at' => 'immutable_datetime',
         ];
     }

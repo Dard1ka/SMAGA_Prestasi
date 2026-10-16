@@ -17,7 +17,7 @@ use App\Models\Letter;
 use App\Models\Registration;
 use App\Models\RegistrationMember;
 use App\Models\ReportFile;
-use Carbon\CarbonImmutable;
+use App\Support\StaffRoleLabel;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Layout;
@@ -53,7 +53,7 @@ final class BinaanDetail extends Component
             ->with([
                 'competition',
                 'report.files.file',
-                'members' => fn ($m) => $m->orderByRaw("CASE WHEN role = 'ketua' THEN 0 ELSE 1 END")->orderBy('created_at'),
+                'report.verifier.roles',
                 'members.student:id,user_id,classroom_id',
                 'members.student.user:id,name',
                 'members.student.classroom:id,name',
@@ -63,12 +63,13 @@ final class BinaanDetail extends Component
 
         abort_unless($registration !== null && Gate::allows('viewAsMentor', $registration), 404);
 
+        // FS1: the one order of every team list (RegistrationMember::inTeamOrder()), the order the students see.
+        $registration->setRelation('members', RegistrationMember::inTeamOrder($registration->members));
         $competition = $registration->competition;
         $report = $registration->report;
         [$chip, $tone] = $this->binaanChip($registration);
-        $deadline = $competition !== null && $registration->status === RegistrationStatus::MenungguLaporan
-            ? $this->deadlineInfo($competition)
-            : null;
+        // D-151: no report deadline; the guru only reads that the report is still awaited.
+        $awaitingReport = $registration->status === RegistrationStatus::MenungguLaporan;
         $studentLetter = $registration->letters->firstWhere('type', LetterType::Siswa);
         $active = $registration->members->whereNull('declined_at');
         // An invitation the scheduler ended at the deadline also carries `declined_at` (D-50): the student never answered,
@@ -82,21 +83,25 @@ final class BinaanDetail extends Component
             'status' => $registration->status,
             'chip' => $chip,
             'tone' => $tone,
-            'deadline' => $deadline,
+            'awaitingReport' => $awaitingReport,
             // A report sent back for a revision also waits in menunggu_laporan: it was sent, not missing (QA5).
             'revising' => $report?->status === ReportStatus::PerluRevisi,
+            // FS1 QA: "Ketua tim …" only for a team; an individu student reports from the own account.
+            'reporter' => $registration->isTeam() ? 'Ketua tim' : 'Siswa',
             'facts' => array_values(array_filter([
                 ['icon' => 'trophy', 'label' => 'Tingkat', 'value' => $competition?->level?->label() ?? '–'],
-                ['icon' => 'calendar', 'label' => 'Tanggal lomba', 'value' => self::dateRange($competition?->starts_on, $competition?->final_on) ?: '–'],
+                ['icon' => 'calendar', 'label' => 'Pelaksanaan', 'value' => self::dateRange($competition?->starts_on, $competition?->final_on) ?: '–'],
                 ['icon' => 'pin', 'label' => 'Tempat', 'value' => $competition?->location ?: '–'],
                 ['icon' => 'users', 'label' => 'Peserta', 'value' => $this->binaanType($registration, $active->count())],
             ])),
             'organizer' => collect([$competition?->organizer_name, $competition?->weight_category?->label()])->filter()->implode(' · '),
-            'trackerDates' => $this->trackerDates($registration, $studentLetter, $deadline),
+            'trackerDates' => $this->trackerDates($registration, $studentLetter),
+            // FS1 QA round 2 (QA-DC-03): an individu registration has no team, so its one student carries neither the
+            // role "Ketua" nor a team confirmation chip.
             'members' => $registration->members->map(fn (RegistrationMember $m): array => [
                 'name' => $m->student?->user?->name ?? 'Siswa',
-                'meta' => trim(($m->student?->classroom?->name ?? '').' · '.$m->role?->label(), ' ·'),
-                'state' => match (true) {
+                'meta' => self::memberMeta($m, $registration->isTeam()),
+                'state' => ! $registration->isTeam() ? null : match (true) {
                     in_array((string) $m->getKey(), $expired, true) => ['Tidak menjawab', 'gray'],
                     $m->declined_at !== null => ['Menolak', 'red'],
                     $m->confirmed_at !== null => ['Terkonfirmasi', 'green'],
@@ -110,7 +115,7 @@ final class BinaanDetail extends Component
                 'claimed' => $report->claimed_result?->label(),
                 'final' => $report->final_result?->label(),
                 'submitted' => self::longDate($report->submitted_at),
-                'late' => (bool) $report->late,
+                'decider' => StaffRoleLabel::forDecision($report->verifier),
                 'note' => in_array($report->status, [ReportStatus::PerluRevisi, ReportStatus::Ditolak], true) ? $report->note : null,
                 'files' => $report->files
                     ->filter(fn (ReportFile $rf): bool => $rf->file !== null && Gate::allows('view', $rf->file))
@@ -139,12 +144,13 @@ final class BinaanDetail extends Component
     }
 
     /**
-     * Tracker dates per phase (same texts as the student's Lomba saya).
+     * Tracker dates per phase (same texts as the student's Lomba saya; phase 5 never shows a due date, D-151). Phase 6
+     * is dated only by a verification: `verified_at` also stamps a revision request (RequestReportRevision), and that
+     * day must not stand on "Poin & apresiasi" while it has not started (FS1 QA round 2, QA-DC-04).
      *
-     * @param  array{due: CarbonImmutable}|null  $deadline
      * @return array<int, string>
      */
-    private function trackerDates(Registration $registration, ?Letter $studentLetter, ?array $deadline): array
+    private function trackerDates(Registration $registration, ?Letter $studentLetter): array
     {
         $competition = $registration->competition;
         $report = $registration->report;
@@ -154,10 +160,8 @@ final class BinaanDetail extends Component
             2 => self::shortDate($registration->principal_decided_at),
             3 => self::shortDate($studentLetter?->issued_on),
             4 => self::dateRange($competition?->starts_on, $competition?->final_on, false),
-            5 => $report?->submitted_at !== null
-                ? self::shortDate($report->submitted_at)
-                : ($deadline !== null ? 'Batas '.self::shortDate($deadline['due']) : ''),
-            6 => self::shortDate($report?->verified_at),
+            5 => self::shortDate($report?->submitted_at),
+            6 => self::shortDate($report?->status === ReportStatus::Diverifikasi ? $report->verified_at : null),
         ], fn (string $text): bool => $text !== '');
     }
 

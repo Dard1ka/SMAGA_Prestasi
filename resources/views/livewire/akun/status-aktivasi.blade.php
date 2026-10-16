@@ -61,6 +61,7 @@
                         <x-sth.button variant="quiet" size="sm" icon="download" wire:click="export" wire:loading.attr="disabled" wire:target="export">Download CSV</x-sth.button>
                     </x-slot:actions>
                 </x-sth.page-header>
+                <p class="m-0 text-xs text-muted">Buka di Excel lewat Data › Dari Teks/CSV dan atur kolom NISN sebagai Teks agar angka 0 di depan tetap ada.</p>
 
                 <x-sth.card padding="none" class="flex min-w-0 flex-col">
                     <div class="flex flex-col gap-3 border-b border-line p-4">
@@ -74,7 +75,7 @@
                         </div>
                         <div class="grid grid-cols-1 gap-3 md:grid-cols-[220px_minmax(0,1fr)_auto] md:items-end">
                             <x-sth.select wire:model.live="daftarKelas" label="Kelas" size="sm" placeholder="Semua kelas" :options="$classes" />
-                            <x-sth.input type="search" wire:model.live.debounce.400ms="q" label="Cari" icon="search" placeholder="Nama, atau NIS/NISN lengkap" />
+                            <x-sth.input type="search" wire:model.live.debounce.400ms="q" label="Cari" icon="search" placeholder="Nama atau NISN lengkap" />
                             @if ($filtersActive)
                                 <x-sth.button variant="quiet" size="sm" wire:click="resetFilters">Hapus filter</x-sth.button>
                             @endif
@@ -82,7 +83,7 @@
                     </div>
 
                     <p class="m-0 border-b border-line bg-subtle px-4 py-2.5 text-sm text-muted" aria-live="polite">
-                        {{ $filteredCount }} siswa{{ $hasMore ? ', '.$rows->count().' tampil' : '' }}. Email dan NIS ditampilkan tersamar.
+                        {{ $filteredCount }} siswa{{ $hasMore ? ', '.$rows->count().' tampil' : '' }}. Email ditampilkan tersamar.
                     </p>
 
                     @if ($rows->isEmpty())
@@ -107,7 +108,7 @@
                                             <x-sth.avatar :name="$row['name']" size="sm" />
                                             <div class="flex min-w-0 flex-col">
                                                 <span class="ellip font-bold">{{ $row['name'] }}</span>
-                                                <span class="text-xs text-muted">{{ $row['classroom'] }} · <span class="num">{{ $row['nis'] }}</span></span>
+                                                <span class="text-xs text-muted">{{ $row['classroom'] }} · <span class="num">{{ $row['nisn'] }}</span></span>
                                             </div>
                                         </div>
                                     </td>
@@ -202,7 +203,7 @@
     {{-- on-close: X, Esc and a click outside reset ?kelas= too, not only "Tutup" (QA5 retest, #63). --}}
     <x-sth.modal id="aktivasi-kelas" size="lg" :open="$openClassOnLoad" on-close="closeClass"
         :title="$classDialog ? 'Kelas '.$classDialog['name'] : 'Status aktivasi kelas'"
-        description="Email dan NIS ditampilkan tersamar.">
+        description="Email ditampilkan tersamar.">
         @if ($classDialog)
             <div class="flex flex-col gap-3">
                 <div class="seg flex-wrap self-start" role="group" aria-label="Status siswa kelas {{ $classDialog['name'] }}">
@@ -221,9 +222,9 @@
                     <x-sth.empty-state icon="users" title="Tidak ada siswa dengan status ini" :card="false">Pilih status lain.</x-sth.empty-state>
                 @else
                     <x-sth.table caption="Status aktivasi siswa kelas {{ $classDialog['name'] }}" class="overflow-hidden rounded-tile border border-line" :card="false">
-                        {{-- Four columns so the table fits the 760px dialog without sideways scrolling: NIS and email sit under the name. --}}
+                        {{-- Four columns so the table fits the 760px dialog without sideways scrolling: NISN and email sit under the name. --}}
                         <x-slot:head>
-                            <th scope="col" class="min-w-44">Siswa, NIS, email</th>
+                            <th scope="col" class="min-w-44">Siswa, NISN, email</th>
                             <th scope="col" class="min-w-28">Status</th>
                             <th scope="col" class="min-w-40">Aktivasi dan login terakhir</th>
                             <th scope="col" class="min-w-24"><span class="sr-only">Aksi</span></th>
@@ -233,7 +234,7 @@
                                 <td>
                                     <div class="flex min-w-0 flex-col">
                                         <span class="font-bold">{{ $row['name'] }}</span>
-                                        <span class="text-xs text-muted">NIS <span class="num">{{ $row['nis'] }}</span></span>
+                                        <span class="text-xs text-muted">NISN <span class="num">{{ $row['nisn'] }}</span></span>
                                         <span class="text-xs text-muted">{{ $row['email'] ?? 'Belum ada email' }}</span>
                                     </div>
                                 </td>

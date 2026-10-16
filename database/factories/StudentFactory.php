@@ -54,6 +54,15 @@ class StudentFactory extends Factory
         return $this->state(fn (array $attributes) => ['user_id' => User::factory()->state(['activated_at' => now()])]);
     }
 
+    /** D-152: the student already confirmed birth date + No HP in the activation step "Data diri" (fictional number). */
+    public function profileConfirmed(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'phone' => '081234567890',
+            'profile_confirmed_at' => now(),
+        ]);
+    }
+
     public function archived(): static
     {
         return $this->state(fn (array $attributes) => ['user_id' => User::factory()->archived()]);

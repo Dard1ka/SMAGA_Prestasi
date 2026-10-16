@@ -307,7 +307,7 @@ class ImportSiswa extends Component
     }
 
     /**
-     * "Download baris yang perlu dicek": the refused rows and the rows with a note: row number, name, NIS, class,
+     * "Download baris yang perlu dicek": the refused rows and the rows with a note: row number, name, NISN, class,
      * what happens to the row and why (formula-safe). Never a birth date, a phone number or a password.
      */
     public function downloadInvalid(): ?BinaryFileResponse
@@ -330,7 +330,7 @@ class ImportSiswa extends Component
             $writer->addRow([
                 'Baris' => $row['row'],
                 'Nama lengkap' => self::cell($row['name']),
-                'NIS' => self::cell($row['nis']),
+                'NISN' => self::cell($row['nisn'] ?? null),
                 'Kelas' => self::cell($row['classroom']),
                 'Status' => self::ACTION_LABELS[$row['action'] ?? StudentImportReport::REJECTED][0],
                 'Keterangan' => self::cell(implode(' ', [...$row['errors'], ...($row['notes'] ?? [])])),

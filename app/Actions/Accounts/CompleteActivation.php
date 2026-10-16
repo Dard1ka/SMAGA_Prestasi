@@ -4,30 +4,32 @@ declare(strict_types=1);
 
 namespace App\Actions\Accounts;
 
+use App\Domain\Accounts\PhoneNumber;
+use App\Domain\Accounts\StudentProfileInput;
 use App\Enums\OtpPurpose;
 use App\Enums\UserStatus;
 use App\Models\OtpCode;
+use App\Models\Student;
 use App\Models\User;
 use App\Notifications\Accounts\EmailBindingNotice;
-use Illuminate\Auth\Access\AuthorizationException;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 
 /**
- * First-login activation, order of the lead's decision of 2026-10-04: email → code → password.
+ * First-login activation, order of the lead's decision of 2026-10-04: email → code → (students: Data diri, D-152) →
+ * password.
  *
  * - bindEmail(): step 2. Binds the email proven by a verified `verify_email` OTP and mails the K8 notice with the
  *   "Bukan saya?" link to that address (SendEmailBindingNotice). The account stays `pending_activation` until the
  *   password step, unless no password step is left (the password was already chosen: an account that was half-way
- *   in the old order), then it becomes active here.
- * - changePassword(): step 3, new password (SetNewPassword rules, must differ from the current one).
- * - keepPassword(): step 3 for STUDENTS only, and only for the school password of the import: keeps the stored hash
- *   (the password itself is never built, shown or logged, CLAUDE.md rule 3). Audited as `activation.password_kept`;
- *   `password_changed_at` stays null, so the school can list who still uses the password it handed out. Staff must
- *   change theirs (403), and so must a student whose password is the temporary one of an Admin reset
- *   (`temporary_password_issued_at`, M2-A after QA Q2-02: the Admin saw that password on screen).
+ *   in the old order), then it becomes active here (a student with an open profile step only after confirmProfile).
+ * - confirmProfile(): students only, birth date + No HP (D-152).
+ * - changePassword(): step 3, new password (SetNewPassword rules, must differ from the current one). Every account
+ *   replaces its password here, students and staff alike (D-138; D-92 now holds for all): there is no way to keep
+ *   the stored one, so the password of the school or of an Admin reset never outlives the first login.
  * - whenPasswordAlreadyChosen(): closes the activation after "Lupa kata sandi" on a half-activated account.
  *
  * The account becomes `active` in the same transaction as the password step: `activated_at` (K9 report) is set and
@@ -42,33 +44,29 @@ final class CompleteActivation
 
     public const EVENT_PASSWORD_CHANGED = 'account.initial_password_changed';
 
+    /** Audit rows written before D-138 only: the skip is gone, but old rows keep their label. */
     public const EVENT_PASSWORD_KEPT = 'activation.password_kept';
 
     public const EVENT_ACTIVATED = 'account.activated';
+
+    /** D-152: the student confirmed birth date + No HP during the activation (flags only, no values). */
+    public const EVENT_PROFILE_CONFIRMED = 'activation.profile_confirmed';
 
     public const MSG_SAME_PASSWORD = 'Pakai kata sandi yang berbeda dari yang sekarang.';
 
     public const MSG_EMAIL_FIRST = 'Hubungkan email dulu.';
 
-    public const MSG_ALREADY_ACTIVE = 'Akun ini sudah aktif.';
+    public const MSG_PROFILE_FIRST = 'Isi data diri dulu.';
 
-    public const MSG_MUST_CHANGE = 'Kata sandi akun ini wajib diganti.';
+    public const MSG_PROFILE_DONE = 'Data diri sudah tersimpan.';
+
+    public const MSG_ALREADY_ACTIVE = 'Akun ini sudah aktif.';
 
     public function __construct(
         private readonly SendEmailBindingNotice $notices,
         private readonly SetNewPassword $setPassword,
         private readonly DetermineActivationStep $activationStep,
     ) {}
-
-    /**
-     * Only a student account may keep its password, and only the school password of the import. Staff got theirs
-     * typed by an Admin, and a student's temporary password of an Admin reset was shown on the Admin's screen:
-     * both must be replaced.
-     */
-    public static function mayKeepPassword(User $user): bool
-    {
-        return ! self::hasTemporaryPassword($user) && $user->student()->exists() && ! $user->isStaff();
-    }
 
     /** The stored password is the temporary one of an Admin reset (ResetStudentAccount) and was not replaced yet. */
     public static function hasTemporaryPassword(User $user): bool
@@ -122,8 +120,9 @@ final class CompleteActivation
                 ])
                 ->log(self::EVENT_EMAIL_BOUND);
 
-            // No password step left (it was chosen before the email, in the old order): the activation is done.
-            if (! $locked->must_change_password) {
+            // No password step left (it was chosen before the email, in the old order): the activation is done,
+            // unless a student still has to confirm the profile (D-152, confirmProfile activates then).
+            if (! $locked->must_change_password && ! DetermineActivationStep::profileOpen($locked)) {
                 $this->activate($locked);
             }
 
@@ -152,7 +151,7 @@ final class CompleteActivation
             ['password' => 'kata sandi'],
         )->validate();
 
-        // Typing the current password again would be a hidden "keep": students have a button for that, staff may not.
+        // Typing the current password again would be a hidden "keep": every account must replace it (D-138).
         if (Hash::check($password, (string) $user->password)) {
             throw ValidationException::withMessages(['password' => self::MSG_SAME_PASSWORD]);
         }
@@ -162,44 +161,6 @@ final class CompleteActivation
             $this->assertPasswordStep($locked);
 
             $this->setPassword->handle($locked, $password, $keepSessionId, self::EVENT_PASSWORD_CHANGED);
-            $this->activate($locked);
-
-            $this->sync($user, $locked);
-        });
-    }
-
-    /**
-     * Step 3 without a change (students with the school password only): the stored hash stays as it is.
-     *
-     * @throws AuthorizationException for an account that is not a student's, or whose password is an Admin's
-     *                                temporary one
-     * @throws ValidationException when the account is not at the password step
-     */
-    public function keepPassword(User $user): void
-    {
-        if (! self::mayKeepPassword($user)) {
-            throw new AuthorizationException(self::MSG_MUST_CHANGE);
-        }
-
-        DB::transaction(function () use ($user): void {
-            $locked = $this->lock($user);
-
-            // Again on the locked row: an Admin reset may have landed after the caller loaded the account.
-            if (! self::mayKeepPassword($locked)) {
-                throw new AuthorizationException(self::MSG_MUST_CHANGE);
-            }
-
-            $this->assertPasswordStep($locked);
-
-            $locked->forceFill(['must_change_password' => false])->save();
-
-            // No password material: only the fact, the account and the time.
-            activity('auth')
-                ->performedOn($locked)
-                ->causedBy($locked)
-                ->event(self::EVENT_PASSWORD_KEPT)
-                ->log(self::EVENT_PASSWORD_KEPT);
-
             $this->activate($locked);
 
             $this->sync($user, $locked);
@@ -219,7 +180,8 @@ final class CompleteActivation
 
             if ($locked->status !== UserStatus::PendingActivation
                 || $locked->must_change_password
-                || ! DetermineActivationStep::emailVerified($locked)) {
+                || ! DetermineActivationStep::emailVerified($locked)
+                || DetermineActivationStep::profileOpen($locked)) {
                 return false;
             }
 
@@ -251,10 +213,70 @@ final class CompleteActivation
             ->event(self::EVENT_ACTIVATED)
             ->withProperties([
                 'otp_test_mode' => VerifyOtpCode::testModeActive(),
-                // false = the owner kept the password the school handed out (never an Admin's temporary one).
+                // Always true since D-138; false only on rows written when a student could still keep the school password.
                 'password_changed' => $user->password_changed_at !== null,
             ])
             ->log(self::EVENT_ACTIVATED);
+    }
+
+    /**
+     * Step "Data diri" (D-152), students only, between the code and the password: the birth date (pre-filled from the
+     * import, may be corrected) and the No HP, both required (StudentProfileInput). Stores them, stamps
+     * `students.profile_confirmed_at` and audits `activation.profile_confirmed` with two flags only (which field
+     * changed), never a value. When no password step is left (a password chosen through "Lupa kata sandi" while
+     * activating), the account becomes active here.
+     *
+     * @throws ValidationException keys `birth_date` / `phone`
+     */
+    public function confirmProfile(User $user, string $birthDate, string $phone): void
+    {
+        $this->assertProfileStep($user);
+
+        $errors = StudentProfileInput::errors($birthDate, $phone, CarbonImmutable::today());
+
+        if ($errors !== []) {
+            throw ValidationException::withMessages($errors);
+        }
+
+        /** @var CarbonImmutable $date */
+        $date = StudentProfileInput::parseBirthDate($birthDate);
+        $number = PhoneNumber::normalize($phone);
+
+        DB::transaction(function () use ($user, $date, $number): void {
+            $locked = $this->lock($user);
+            $this->assertProfileStep($locked);
+
+            /** @var Student $student */
+            $student = Student::query()->where('user_id', $locked->getKey())->lockForUpdate()->firstOrFail();
+
+            $birthDateChanged = $student->birth_date?->format('Y-m-d') !== $date->format('Y-m-d');
+            // A value that cannot be decrypted (an old key) counts as "changed": it is replaced.
+            $phoneChanged = rescue(fn () => $student->phone, null, false) !== $number;
+
+            $student->forceFill([
+                'birth_date' => $date->format('Y-m-d'),
+                'phone' => $number,
+                'profile_confirmed_at' => now(),
+            ])->save();
+
+            activity('auth')
+                ->performedOn($locked)
+                ->causedBy($locked)
+                ->event(self::EVENT_PROFILE_CONFIRMED)
+                ->withProperties([
+                    'birth_date_changed' => $birthDateChanged,
+                    'phone_changed' => $phoneChanged,
+                ])
+                ->log(self::EVENT_PROFILE_CONFIRMED);
+
+            if (! $locked->must_change_password) {
+                $this->activate($locked);
+            }
+
+            $this->sync($user, $locked);
+        });
+
+        $user->unsetRelation('student');
     }
 
     /**
@@ -266,7 +288,29 @@ final class CompleteActivation
 
         if ($step !== DetermineActivationStep::PASSWORD) {
             throw ValidationException::withMessages([
-                'password' => $step === null ? self::MSG_ALREADY_ACTIVE : self::MSG_EMAIL_FIRST,
+                'password' => match ($step) {
+                    null => self::MSG_ALREADY_ACTIVE,
+                    DetermineActivationStep::PROFILE => self::MSG_PROFILE_FIRST,
+                    default => self::MSG_EMAIL_FIRST,
+                },
+            ]);
+        }
+    }
+
+    /**
+     * @throws ValidationException
+     */
+    private function assertProfileStep(User $user): void
+    {
+        $step = ($this->activationStep)($user);
+
+        if ($step !== DetermineActivationStep::PROFILE) {
+            throw ValidationException::withMessages([
+                'birth_date' => match ($step) {
+                    null => self::MSG_ALREADY_ACTIVE,
+                    DetermineActivationStep::EMAIL => self::MSG_EMAIL_FIRST,
+                    default => self::MSG_PROFILE_DONE,
+                },
             ]);
         }
     }

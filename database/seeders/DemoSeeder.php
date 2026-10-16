@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Database\Seeders;
 
+use App\Actions\Letters\LetterDraft;
 use App\Domain\Accounts\InitialPassword;
 use App\Domain\Archive\GraduationCalculator;
 use App\Domain\Files\CoverThumbnail;
@@ -72,8 +73,8 @@ use RuntimeException;
  *
  * - Staff sign in with their username (kesiswaan, kepsek, tu, humas, operator, retno.w, hendra.k, maya.a,
  *   agus.s) and the dev-only password "password".
- * - Students sign in with NIS or NISN; their password is the initial password built by
- *   App\Domain\Accounts\InitialPassword from the seeded birth date (must_change_password = true).
+ * - Students sign in with their NISN; their password is the initial password of App\Domain\Accounts\InitialPassword
+ *   (config `sth.initial_student_password`, D-138; must_change_password = true).
  * - Leaderboard totals match the spec (Raka 312 … Nadia 104 = #14 of active students).
  */
 final class DemoSeeder extends Seeder
@@ -211,6 +212,8 @@ final class DemoSeeder extends Seeder
         'popda26' => ['Popda Kota Semarang 2026', 'olahraga', 'kota', 'dispora', '2026-09-12', '2026-09-12', 'Kota Semarang'],
         'taripelajar26' => ['Festival Tari Pelajar Semarang 2026', 'seni_budaya', 'kota', 'sanggar', '2026-09-05', '2026-09-05', 'Kota Semarang'],
         'wice26' => ['WICE 2026', 'riset', 'internasional', 'iysa', '2026-09-21', '2026-09-24', 'SEGi University, Kuala Lumpur', 'luring', 'tim', 3],
+        // Nadia and Raka as a team: the lomba is over, only the laporan hasil is left.
+        'lctmipa26' => ['LCT MIPA Kota Semarang 2026', 'sains', 'kota', 'disdikkota', '2026-10-03', '2026-10-03', 'Kota Semarang', 'luring', 'tim', 3],
     ];
 
     /**
@@ -438,7 +441,7 @@ final class DemoSeeder extends Seeder
                 'name' => $name,
                 'email' => null,
                 // Hashed by the model cast; the plain value is never stored or printed.
-                'password' => $initialPassword->make($birthDate),
+                'password' => $initialPassword->make(),
                 'status' => $alumni ? UserStatus::Archived : UserStatus::PendingActivation,
                 'must_change_password' => ! $alumni,
             ]);
@@ -563,7 +566,8 @@ final class DemoSeeder extends Seeder
             // Seven of the eight carry a cover (the list is DemoCoverArt::POSTERS); KRENOVA 2027 shows a card without one.
             $cover = DemoCoverArt::fileNameFor($name);
 
-            $this->competitions[$key] = Competition::query()->create([
+            // Status, verifier and weights are not fillable (CLAUDE §3.6): forceFill, like the Actions.
+            $this->competitions[$key] = tap((new Competition)->forceFill([
                 'name' => $name,
                 'description' => 'Info lomba contoh untuk pengembangan (data fiktif). Baca juknis untuk syarat lengkap.',
                 'bidang' => Bidang::from($bidang),
@@ -591,7 +595,7 @@ final class DemoSeeder extends Seeder
                 'verified_by' => $kesiswaan->getKey(),
                 'verified_at' => min($opens, '2026-09-25').' 08:00:00',
                 'created_at' => min($opens, '2026-09-25').' 07:30:00',
-            ]);
+            ]))->save();
         }
     }
 
@@ -607,7 +611,7 @@ final class DemoSeeder extends Seeder
         foreach ($proposals as [$name, $bidang, $organizer, $url, $brochure, $studentKey, $createdAt]) {
             $userId = $this->students[$studentKey]->user_id;
 
-            Competition::query()->create([
+            tap((new Competition)->forceFill([
                 'name' => $name,
                 'bidang' => Bidang::from($bidang),
                 'organizer_name' => $organizer,
@@ -617,7 +621,7 @@ final class DemoSeeder extends Seeder
                 'submitted_by' => $userId,
                 'created_at' => $createdAt,
                 'updated_at' => $createdAt,
-            ]);
+            ]))->save();
         }
     }
 
@@ -631,6 +635,15 @@ final class DemoSeeder extends Seeder
             'updated' => CarbonImmutable::parse('2026-09-25 01:00'),
         ]);
         $this->issueLetters($wice, 312, 1680, '2026-09-08', 'wice26');
+
+        // Nadia b: LCT MIPA 2026 with Raka — letters issued 4 Sep (numbers below WICE's, so the last numbers of the
+        // year stay 312 / 1680), the lomba was on 3 Oct: the ketua only has to report the result (not riset, so the
+        // report is the result and a certificate).
+        $lct = $this->registration('lctmipa26', ['nadia', 'raka'], 'hendra', RegistrationStatus::MenungguLaporan, CarbonImmutable::parse('2026-08-31 09:20'), [
+            'approved' => CarbonImmutable::parse('2026-09-02 10:00'),
+            'updated' => CarbonImmutable::parse('2026-10-04 01:00'),
+        ]);
+        $this->issueLetters($lct, 305, 1664, '2026-09-04', 'lctmipa26');
 
         // Kepala Sekolah queue (5), all registered 29 Sep.
         $this->registration('lpb26', ['nadia', 'dimas'], 'retno', RegistrationStatus::MenungguKepsek, CarbonImmutable::parse('2026-09-29 09:12'));
@@ -740,7 +753,10 @@ final class DemoSeeder extends Seeder
         return $registration;
     }
 
-    /** Both letters of a registration; they answer the invitation DemoLetterBasis gives the lomba's demo key (QA5). */
+    /**
+     * Both letters of a registration; the guru letter answers the invitation DemoLetterBasis gives the lomba's demo key
+     * (QA5). The student letter names no invitation since D-154: its Dasar is the template's regulation text.
+     */
     private function issueLetters(Registration $registration, int $siswaSequence, int $guruSequence, string $issuedOn, string $slug): void
     {
         $issued = CarbonImmutable::parse($issuedOn.' 10:00');
@@ -749,6 +765,7 @@ final class DemoSeeder extends Seeder
 
         foreach ([[LetterType::Siswa, $siswaSequence, 'surat-tugas-siswa-'], [LetterType::Guru, $guruSequence, 'surat-perintah-tugas-guru-']] as [$type, $sequence, $prefix]) {
             $number = $this->letterNumber->format((string) Setting::get($type->formatSetting()), $sequence, $issuedOn);
+            $invitation = LetterDraft::usesInvitation($type);
 
             Letter::query()->create([
                 'registration_id' => $registration->getKey(),
@@ -758,8 +775,8 @@ final class DemoSeeder extends Seeder
                 'year' => $issued->year,
                 'month' => $issued->month,
                 'issued_on' => $issuedOn,
-                'basis_number' => $basis['number'],
-                'basis_date' => $basis['date'],
+                'basis_number' => $invitation ? $basis['number'] : null,
+                'basis_date' => $invitation ? $basis['date'] : null,
                 'file_id' => DemoFiles::pdf($prefix.$slug.'.pdf', FilePurpose::Letter, $tu->getKey(), 'Nomor '.$number)->getKey(),
                 'verification_code' => Letter::newVerificationCode(),
                 'generated_by' => $tu->getKey(),
@@ -792,7 +809,7 @@ final class DemoSeeder extends Seeder
         $starts = CarbonImmutable::parse($startsOn);
         $kesiswaan = $this->staff['kesiswaan']->getKey();
 
-        return $this->competitions[$key] = Competition::query()->create([
+        return $this->competitions[$key] = tap((new Competition)->forceFill([
             'name' => $name,
             'bidang' => Bidang::from($bidang),
             'organizer_name' => $organizerName,
@@ -815,7 +832,7 @@ final class DemoSeeder extends Seeder
             'verified_at' => $starts->subDays(36)->setTime(8, 0),
             'created_at' => $starts->subDays(36)->setTime(7, 30),
             'updated_at' => $starts->addDays(1),
-        ]);
+        ]))->save();
     }
 
     // Humas ----------------------------------------------------------------------------------
@@ -885,37 +902,43 @@ final class DemoSeeder extends Seeder
         $types = TalentType::query()->get()->keyBy(fn (TalentType $type) => $type->code->value);
         $branches = TalentBranch::query()->get()->groupBy('talent_type_id');
 
-        // [student, type, branch, status, mentor, assessment on, evidence file, submitted on] — mockup-v2-notes/T2.md
+        // [student, type, branch, guru pembina, evidence file, submitted on, "Lainnya" text] — mockup-v2-notes/T2.md.
+        // D-142: no stages any more; every row is Terdaftar and the guru pembina is optional. D-143: Keisha's own talent.
+        // Every kelas X student of the demo (Aurelia, Hana, Galang) has a choice, so the D-144 gate lets them through.
         $applications = [
-            ['nadia', 'riset', 'OPSI', TalentStatus::Pembinaan, 'retno', null, 'sertifikat-opsi-2026.pdf', '2026-09-16'],
-            ['nadia', 'osn', 'Kimia', TalentStatus::Terdaftar, null, null, null, '2026-09-29'],
-            ['hana', 'osn', 'Biologi', TalentStatus::Pemetaan, 'hendra', '2026-10-07', 'sertifikat-osn-smp-biologi-2025.pdf', '2026-09-17'],
-            ['rizky', 'osn', 'Kimia', TalentStatus::Seleksi, 'hendra', '2026-10-05', 'sertifikat-okn-undip-2026.pdf', '2026-09-16'],
-            ['salsabila', 'fls3n', 'Baca Puisi', TalentStatus::Pembinaan, 'maya', null, 'sertifikat-fls3n-prov-2026.pdf', '2026-09-16'],
-            ['citra', 'fls3n', 'Tari Kreasi', TalentStatus::Pemetaan, 'maya', '2026-10-09', 'sertifikat-festival-tari-2026.pdf', '2026-09-21'],
-            ['fajar', 'o2sn', 'Pencak Silat', TalentStatus::Pembinaan, 'agus', null, 'piagam-o2sn-prov-2026.pdf', '2026-09-16'],
-            ['aurelia', 'debat', 'Debat Bahasa Indonesia (LDBI)', TalentStatus::Seleksi, 'maya', '2026-10-06', null, '2026-09-18'],
-            ['galang', 'olpain', null, TalentStatus::Terdaftar, null, null, 'sertifikat-olimpiade-pai-smp-2025.pdf', '2026-09-28'],
-            ['bima', 'riset', 'FIKSI', TalentStatus::Seleksi, 'retno', '2026-10-08', 'sertifikat-robotik-nasional-2025.pdf', '2026-09-17'],
+            ['nadia', 'riset', 'OPSI', 'retno', 'sertifikat-opsi-2026.pdf', '2026-09-16', null],
+            ['nadia', 'osn', 'Kimia', null, null, '2026-09-29', null],
+            ['hana', 'osn', 'Biologi', 'hendra', 'sertifikat-osn-smp-biologi-2025.pdf', '2026-09-17', null],
+            ['rizky', 'osn', 'Kimia', 'hendra', 'sertifikat-okn-undip-2026.pdf', '2026-09-16', null],
+            ['salsabila', 'fls3n', 'Baca Puisi', 'maya', 'sertifikat-fls3n-prov-2026.pdf', '2026-09-16', null],
+            ['citra', 'fls3n', 'Tari Kreasi', 'maya', 'sertifikat-festival-tari-2026.pdf', '2026-09-21', null],
+            ['fajar', 'o2sn', 'Pencak Silat', 'agus', 'piagam-o2sn-prov-2026.pdf', '2026-09-16', null],
+            ['aurelia', 'debat', 'Debat Bahasa Indonesia (LDBI)', 'maya', null, '2026-09-18', null],
+            ['galang', 'olpain', null, null, 'sertifikat-olimpiade-pai-smp-2025.pdf', '2026-09-28', null],
+            ['bima', 'riset', 'FIKSI', 'retno', 'sertifikat-robotik-nasional-2025.pdf', '2026-09-17', null],
+            ['keisha', 'lainnya', null, null, null, '2026-09-30', 'Kaligrafi'],
         ];
 
-        foreach ($applications as [$studentKey, $code, $branchName, $status, $mentor, $assessmentOn, $evidence, $submittedOn]) {
+        foreach ($applications as [$studentKey, $code, $branchName, $mentor, $evidence, $submittedOn, $otherText]) {
             $type = $types[TalentTypeCode::from($code)->value];
             $branch = $branchName === null ? null : $branches[$type->getKey()]->firstWhere('name', $branchName)
                 ?? throw new RuntimeException("Cabang talenta tidak ditemukan: {$code} / {$branchName}");
             $student = $this->students[$studentKey];
 
-            TalentApplication::query()->create([
+            // `other_text`, `status` and `mentor_id` are not mass-assignable (app/Actions/Talent only).
+            $application = new TalentApplication([
                 'student_id' => $student->getKey(),
                 'talent_type_id' => $type->getKey(),
                 'talent_branch_id' => $branch?->getKey(),
                 'evidence_file_id' => $evidence === null ? null : DemoFiles::pdf($evidence, FilePurpose::TalentEvidence, $student->user_id)->getKey(),
-                'status' => $status,
+            ]);
+            $application->forceFill([
+                'status' => TalentStatus::Terdaftar,
                 'mentor_id' => $mentor === null ? null : $this->staff[$mentor]->getKey(),
-                'assessment_on' => $assessmentOn,
+                'other_text' => $otherText,
                 'created_at' => $submittedOn.' 18:00:00',
                 'updated_at' => $submittedOn.' 18:00:00',
-            ]);
+            ])->save();
         }
 
         // Riwayat talenta: [interests, skills, organizations, junior-high achievements]

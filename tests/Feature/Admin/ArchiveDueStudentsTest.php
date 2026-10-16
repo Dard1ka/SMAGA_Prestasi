@@ -77,7 +77,7 @@ it('refuses a login of an archived student (D-29)', function (): void {
 
     $this->artisan('sth:arsip-otomatis')->assertSuccessful();
 
-    $this->post(route('login.store'), ['identifier' => H::NIS, 'password' => H::PASSWORD])->assertSessionHasErrors();
+    $this->post(route('login.store'), ['identifier' => H::NISN, 'password' => H::PASSWORD])->assertSessionHasErrors();
     $this->assertGuest();
 });
 

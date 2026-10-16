@@ -43,7 +43,7 @@ it('translates Fortify messages to Indonesian', function () {
 
     expect(__($english))->not->toBe($english)
         ->and(__($english))->toBe('Kode verifikasi dua langkah tidak valid.')
-        ->and(__('auth.failed'))->toBe('NIS/NISN atau kata sandi salah.');
+        ->and(__('auth.failed'))->toBe('NISN atau kata sandi salah.');
 });
 
 it('has an Indonesian line for every English validation key', function () {

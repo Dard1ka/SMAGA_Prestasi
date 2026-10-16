@@ -22,6 +22,8 @@ use Illuminate\Validation\ValidationException;
  * Other (not declined) members and the guru pembimbing are notified, and the Kepala Sekolah when the
  * registration was already waiting for their decision (lead, 2026-10-02). Everyone becomes free to register
  * for the lomba again.
+ * From `menunggu_lomba` (D-148) nobody is told: the anggota were never invited and the guru never heard of it (the
+ * D-134 reasoning), so a notice would be the first they hear of a registration that no longer exists.
  */
 final class CancelRegistration
 {
@@ -62,6 +64,10 @@ final class CancelRegistration
 
             return [$locked, $from];
         });
+
+        if ($from === RegistrationStatus::MenungguLomba) {
+            return $locked;
+        }
 
         $others = User::query()->canLogIn()
             ->whereHas('student.memberships', fn ($m) => $m

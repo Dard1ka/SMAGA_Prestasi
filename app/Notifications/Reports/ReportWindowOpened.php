@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Notifications\Reports;
 
+use App\Domain\Deadlines\ReportFollowUp;
 use App\Notifications\Support\MailGreeting;
 use App\Notifications\Support\PlainMailMessage;
 use Illuminate\Bus\Queueable;
@@ -13,17 +14,26 @@ use Illuminate\Notifications\Notification;
 use Illuminate\Support\Facades\Route;
 
 /**
- * To the ketua when the scheduler moves a registration to menunggu_laporan (the day after final_on).
+ * To the ketua when the scheduler moves a registration to menunggu_laporan (the day after final_on). No deadline
+ * since D-151: it asks to report now (ReportFollowUp::PROMPT).
  */
 class ReportWindowOpened extends Notification implements ShouldQueue
 {
     use Queueable;
 
+    /**
+     * A team registration: only then the mail says every member gets full points (FS1 QA). A declared default, not a
+     * promoted one, so a notice queued before this property existed still reads as before.
+     */
+    public bool $team = true;
+
     public function __construct(
         public readonly string $registrationId,
         public readonly string $competitionName,
-        public readonly string $dueOn,
-    ) {}
+        bool $team = true,
+    ) {
+        $this->team = $team;
+    }
 
     /** @return list<string> */
     public function via(object $notifiable): array
@@ -68,7 +78,9 @@ class ReportWindowOpened extends Notification implements ShouldQueue
 
     private function body(): string
     {
-        return 'Laporkan hasil lombamu paling lambat '.$this->dueOn.'. Setiap anggota tim mendapat poin penuh setelah diverifikasi.';
+        return ReportFollowUp::PROMPT.($this->team
+            ? ' Setiap anggota tim mendapat poin penuh setelah diverifikasi.'
+            : ' Poin diberikan setelah diverifikasi.');
     }
 
     private function url(): ?string

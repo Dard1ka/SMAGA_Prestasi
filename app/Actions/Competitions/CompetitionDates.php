@@ -13,7 +13,7 @@ use Throwable;
  * The date rules of a lomba that need more than one field or the clock (QA 2026-10-05, Q1-04). One place for
  * CreateCompetition, UpdateCompetition, VerifyCompetition and the Kesiswaan screens:
  *
- * - "Tanggal mulai" is never before "Batas daftar": a lomba cannot start while its registration is still open.
+ * - "Tanggal mulai" is never before "Pendaftaran ditutup": a lomba cannot start while its registration is still open.
  * - A lomba whose registration deadline or final date has passed may still be published, because old lomba
  *   are sometimes entered for the record, but only after an explicit "yes" (VerifyCompetition's
  *   `$confirmPastDates`). Saving such dates without publishing needs no confirmation.
@@ -22,7 +22,7 @@ use Throwable;
  */
 final class CompetitionDates
 {
-    public const STARTS_BEFORE_DEADLINE = 'Tanggal mulai tidak boleh sebelum batas daftar.';
+    public const STARTS_BEFORE_DEADLINE = 'Lomba tidak boleh dimulai sebelum pendaftaran ditutup.';
 
     public const PAST_QUESTION = 'Tanggal lomba ini sudah lewat. Tetap publikasikan?';
 
@@ -38,7 +38,7 @@ final class CompetitionDates
     }
 
     /**
-     * Adds the "mulai sebelum batas daftar" error to a validator of the lomba form, next to the other field
+     * Adds the "mulai sebelum pendaftaran ditutup" error to a validator of the lomba form, next to the other field
      * errors (only when both dates are valid by themselves).
      */
     public static function checkOrder(Validator $validator): void
@@ -55,7 +55,7 @@ final class CompetitionDates
     }
 
     /**
-     * The dates that already lie in the past, as field => "batas daftar 1 Sep 2026" (empty = nothing passed).
+     * The dates that already lie in the past, as field => "pendaftaran ditutup 1 Sep 2026" (empty = nothing passed).
      * The registration deadline counts until the end of its day when only a date is given (the form), the
      * final date until the end of that day.
      *
@@ -69,20 +69,20 @@ final class CompetitionDates
         $closes = self::moment($closesAt, endOfDayForDates: true);
 
         if ($closes !== null && $closes->lessThan($now)) {
-            $past['registration_closes_at'] = 'batas daftar '.self::label($closes);
+            $past['registration_closes_at'] = 'pendaftaran ditutup '.self::label($closes);
         }
 
         $final = self::moment($finalOn);
 
         if ($final !== null && $final->toDateString() < $now->toDateString()) {
-            $past['final_on'] = 'tanggal final '.self::label($final);
+            $past['final_on'] = 'tanggal selesai '.self::label($final);
         }
 
         return $past;
     }
 
     /**
-     * "Tanggal lomba ini sudah lewat (batas daftar 1 Sep 2026, tanggal final 2 Agu 2026). Tetap publikasikan?"
+     * "Tanggal lomba ini sudah lewat (pendaftaran ditutup 1 Sep 2026, tanggal selesai 2 Agt 2026). Tetap publikasikan?"
      *
      * @param  array<string, string>  $past  result of past()
      */

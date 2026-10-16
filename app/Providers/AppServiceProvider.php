@@ -7,6 +7,7 @@ namespace App\Providers;
 use App\Actions\Fortify\KnownDevices;
 use App\Actions\Fortify\LoginIdentifier;
 use App\Actions\Fortify\LoginLockout;
+use App\Domain\Accounts\InitialPassword;
 use App\Domain\Accounts\PasswordPolicy;
 use App\Domain\Archive\GraduationCalculator;
 use App\Domain\Deadlines\ReportDeadline;
@@ -14,6 +15,7 @@ use App\Enums\SettingKey;
 use App\Mail\LocalMailGuard;
 use App\Mail\Transport\AllowlistTransport;
 use App\Models\Setting;
+use App\Notifications\Channels\BellChannel;
 use App\Support\Audit\AuditChain;
 use App\Support\Audit\SecurityEventSubscriber;
 use Illuminate\Auth\Events\Lockout;
@@ -24,6 +26,7 @@ use Illuminate\Http\Request;
 use Illuminate\Mail\Events\MessageSending;
 use Illuminate\Mail\MailManager;
 use Illuminate\Mail\Markdown;
+use Illuminate\Notifications\Channels\DatabaseChannel;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Route;
@@ -45,10 +48,17 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        // Lead decision (SECURITY K5): new passwords need at least 10 characters.
-        $this->app->bind(PasswordPolicy::class, fn (): PasswordPolicy => new PasswordPolicy(self::MIN_PASSWORD_LENGTH));
+        // D-138: the one initial password of every new student comes from config, trimmed, the default for a blank
+        // value (InitialPassword::normalize()). bind(), not singleton: a changed config value is read on the next resolve.
+        $this->app->bind(InitialPassword::class, fn (): InitialPassword => InitialPassword::fromConfig());
 
-        // Admin-editable settings (D-25, Admin › Pengaturan › Batas & arsip). bind(), not singleton: a long-running
+        // Lead decision (SECURITY K5): new passwords need at least 10 characters; the initial password is refused (D-138).
+        $this->app->bind(PasswordPolicy::class, fn (): PasswordPolicy => new PasswordPolicy(
+            self::MIN_PASSWORD_LENGTH,
+            $this->app->make(InitialPassword::class)->make(),
+        ));
+
+        // Admin-editable settings (D-25, Admin › Pengaturan › Arsip akun). bind(), not singleton: a long-running
         // queue worker or scheduler must see a changed value on the next resolve.
         $this->app->bind(ReportDeadline::class, fn (): ReportDeadline => new ReportDeadline(
             self::settingInt(SettingKey::ReportDeadlineDays, ReportDeadline::DEFAULT_DAYS, ReportDeadline::MAX_DAYS),
@@ -56,6 +66,10 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(GraduationCalculator::class, fn (): GraduationCalculator => new GraduationCalculator(
             self::settingInt(SettingKey::ArchiveMonthsAfterGrade12, GraduationCalculator::DEFAULT_ARCHIVE_MONTHS, GraduationCalculator::MAX_ARCHIVE_MONTHS),
         ));
+
+        // Bell rows keep the path of their target, not the absolute address, so "Buka" still works when the app is
+        // reached under another host (RV1; the notification manager resolves the database channel by this class name).
+        $this->app->bind(DatabaseChannel::class, BellChannel::class);
 
         // Local development (D-121): mail transport "allowlist" = real delivery for listed addresses, Mailpit for the rest.
         $this->callAfterResolving('mail.manager', function (MailManager $manager): void {

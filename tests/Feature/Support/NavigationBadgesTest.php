@@ -106,11 +106,13 @@ it('keeps the number of the page when the page passes one', function (): void {
     expect(m2cSidebarBadge($html, 'tu.surat'))->toBe(2);
 
     DB::enableQueryLog();
-    $items = m2cNavItems(Navigation::for($tu, null, ['tu.surat' => 9], 'tu.surat.arsip'));
+    // D-150: the TU menu also counts "Persetujuan lomba"; a page that passes both keys costs no count query.
+    $items = m2cNavItems(Navigation::for($tu, null, ['tu.surat' => 9, 'kepsek.persetujuan' => 4], 'tu.surat.arsip'));
     $counts = collect(DB::getQueryLog())->filter(fn (array $q): bool => str_contains($q['query'], 'count(*)'));
     DB::disableQueryLog();
 
     expect($items['surat']['badge'])->toBe(9)
+        ->and($items['persetujuan']['badge'])->toBe(4)
         ->and($counts)->toBeEmpty();
 });
 
@@ -206,9 +208,9 @@ it('never counts for guests or preview users', function (): void {
 
 it('lists the badge keys of every role menu', function (): void {
     expect(Navigation::badgeKeys('kesiswaan'))->toBe(['kesiswaan.usulan', 'kesiswaan.verifikasi'])
-        ->and(Navigation::badgeKeys('tata_usaha'))->toBe(['tu.surat'])
+        ->and(Navigation::badgeKeys('tata_usaha'))->toBe(['tu.surat', 'kepsek.persetujuan'])
         ->and(Navigation::badgeKeys('kepala_sekolah'))->toBe(['kepsek.persetujuan'])
-        ->and(Navigation::badgeKeys('humas'))->toBe(['humas.publikasi', 'humas.jadwal'])
+        ->and(Navigation::badgeKeys('humas'))->toBe(['humas.publikasi', 'humas.verifikasi', 'humas.jadwal'])
         ->and(Navigation::badgeKeys('siswa'))->toBe(['siswa.lomba-saya'])
         ->and(Navigation::badgeKeys('admin'))->toBe([])
         ->and(Navigation::badgeKeys('guru'))->toBe([])

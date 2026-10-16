@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Support\Audit;
 
+use App\Domain\Accounts\InitialPassword;
 use App\Models\OtpCode;
 use Illuminate\Auth\Events\Failed;
 use Illuminate\Auth\Events\Lockout;
@@ -136,9 +137,9 @@ final class SecurityEventSubscriber
     }
 
     /**
-     * What a failed login may record of the typed identifier: NIS/NISN (digits) and e-mail addresses as typed;
-     * anything else (staff usernames, or a password typed into the wrong field) only as a short keyed fingerprint,
-     * so a password (e.g. the initial password, CLAUDE.md rule 3) never reaches a log file.
+     * What a failed login may record of the typed identifier: the NISN (10 digits, D-137) and e-mail addresses as
+     * typed; anything else, including a NIS and the initial password (all digits since D-138), only as a short
+     * keyed fingerprint, so a password never reaches a log file (CLAUDE.md rule 3).
      */
     public static function identifier(mixed $value): ?string
     {
@@ -148,7 +149,7 @@ final class SecurityEventSubscriber
 
         $value = trim($value);
 
-        if (preg_match('/^\d{4,20}$/', $value) === 1) {
+        if (preg_match('/^\d{10}$/', $value) === 1 && ! hash_equals(app(InitialPassword::class)->make(), $value)) {
             return $value;
         }
 

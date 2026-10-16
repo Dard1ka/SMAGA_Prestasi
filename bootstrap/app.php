@@ -3,6 +3,7 @@
 use App\Http\Middleware\EnsureAccountActive;
 use App\Http\Middleware\EnsureActivated;
 use App\Http\Middleware\EnsureStaffTwoFactor;
+use App\Http\Middleware\EnsureTalentChosen;
 use App\Http\Middleware\PreventCredentialPageCaching;
 use App\Http\Middleware\RememberLoggedOutAccount;
 use App\Http\Middleware\RestrictTwoFactorToStaff;
@@ -66,13 +67,16 @@ return Application::configure(basePath: dirname(__DIR__))
             'active' => EnsureAccountActive::class,
             'activated' => EnsureActivated::class,
             'staff.2fa' => EnsureStaffTwoFactor::class,
+            'talent.chosen' => EnsureTalentChosen::class,
             'role' => RoleMiddleware::class,
             'permission' => PermissionMiddleware::class,
             'role_or_permission' => RoleOrPermissionMiddleware::class,
         ]);
 
         // Convenience stacks for area route files: ->middleware('area.siswa') / ->middleware(['area.staff', 'role:guru']).
-        $middleware->group('area.siswa', ['auth', 'active', 'activated', 'role:siswa']);
+        // D-144: `talent.chosen` last, after `activated` and `role:siswa` (a kelas X student without a talent is held on
+        // Profil talenta; it never runs for staff or before the activation).
+        $middleware->group('area.siswa', ['auth', 'active', 'activated', 'role:siswa', 'talent.chosen']);
         $middleware->group('area.staff', ['auth', 'active', 'activated', 'staff.2fa']);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

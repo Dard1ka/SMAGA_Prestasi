@@ -89,13 +89,16 @@ it('derives the K9 state, flags and per-class counts', function (): void {
         ->and($summary['X-1']['counts']['arsip'])->toBe(1);
 });
 
-it('shows masked NIS and email only, and filters by class, status and exact NIS', function (): void {
+it('shows the NISN in full and the email masked (D-137), and filters by class, status and exact NISN', function (): void {
     $this->actingAs($this->kesiswaan);
     $nis = (string) $this->raka->nis;
+    $nisn = (string) $this->raka->nisn;
 
     Livewire::test(StatusAktivasi::class)
-        ->assertSee(ActivationReport::maskNis($nis))
+        ->assertSee($nisn)
         ->assertDontSee($nis)
+        ->assertDontSee('NIS ditampilkan tersamar')
+        ->assertSee('Email ditampilkan tersamar.')
         ->assertSee('n•••@example.test')
         ->assertDontSee('nadia.anindya@example.test')
         ->call('setStatus', AccountControls::STATE_EXPIRED)
@@ -105,8 +108,17 @@ it('shows masked NIS and email only, and filters by class, status and exact NIS'
         ->assertSee('Dimas Saputra')->assertDontSee('Raka Pratama')
         ->call('resetFilters')
         ->assertSet('daftarKelas', '')
+        ->set('q', $nisn)
+        ->assertSee('Raka Pratama')->assertDontSee('Salsa Maharani')
         ->set('q', $nis)
-        ->assertSee('Raka Pratama')->assertDontSee('Salsa Maharani');
+        ->assertDontSee('Raka Pratama');
+});
+
+it('tells Kesiswaan how to open the CSV without losing the leading zeros of the NISN', function (): void {
+    $this->actingAs($this->kesiswaan);
+
+    Livewire::test(StatusAktivasi::class)
+        ->assertSee('Buka di Excel lewat Data › Dari Teks/CSV dan atur kolom NISN sebagai Teks agar angka 0 di depan tetap ada.');
 });
 
 // --- M1-E: "Lihat" opens the class in a dialog (lead 2026-10-04, item 16) -------------------------------
@@ -128,9 +140,8 @@ it('opens the students of a class in a dialog instead of filtering the list at t
         ->assertSeeHtml($inDialog($this->raka))
         ->assertSeeHtml($inDialog($this->salsa))
         ->assertDontSeeHtml($inDialog($this->dimas))
-        // Masked in the dialog too.
-        ->assertSee(ActivationReport::maskNis((string) $this->raka->nis))
-        ->assertDontSee((string) $this->raka->nis)
+        // The dialog shows the NIS in full as well (D-131); the email stays masked.
+        ->assertSee((string) $this->raka->nisn)
         ->assertDontSee('nadia.anindya@example.test')
         // The list at the bottom keeps every class: "Lihat" no longer touches it.
         ->assertSet('daftarKelas', '')
@@ -318,10 +329,13 @@ it('exports a formula-safe CSV after a recent password confirmation, audited', f
 
     $csv = base64_decode((string) $download['content']);
     expect($csv)->toStartWith("\xEF\xBB\xBF")
-        ->toContain('Kelas;Nama;NIS;Status')
+        ->toContain('Kelas;Nama;NISN;Status')
         ->toContain('"\'=HYPERLINK(""http://evil.example"",""klik"")"')
         ->toContain('Kedaluwarsa')
-        ->not->toContain((string) $this->raka->nis)
+        // D-131: the file carries the NIS in full, as the screen does; the email stays masked.
+        ->toContain(';'.$this->raka->nisn.';')
+        ->not->toContain(';'.$this->raka->nis.';')
+        ->toContain('n•••@example.test')
         ->not->toContain('nadia.anindya@example.test');
 
     expect(Activity::query()->where('event', 'account.activation_report_exported')->sole()->properties['rows'])->toBe(5);

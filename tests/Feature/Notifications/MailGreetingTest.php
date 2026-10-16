@@ -106,13 +106,13 @@ function mailGreetingCases(): array
         [$fixed(CompetitionPublished::for($competition, true)), 'akun'], // Notice family
         [$fixed(new CompetitionSubmitted($competition, 'Nadia Putri Anindya')), 'akun'],
         [$fixed(new PublicationDue('01jpub', 'Nadia Putri Anindya', 'Juara II', 'OPSI 2026', 'Instagram', '12 Okt 2026, 09.00')), 'akun'],
-        [$fixed(new ReportSubmitted('01jrep', 'OPSI 2026', 'Nadia Putri Anindya', 'Juara II', false, false)), 'akun'],
+        [$fixed(new ReportSubmitted('01jrep', 'OPSI 2026', 'Nadia Putri Anindya', 'Juara II', false)), 'akun'],
         // The Action passes the greeting of the account owner: the mail itself goes to a bare address.
         [fn (User $to): BaseNotification => new EmailBindingNotice(EmailBindingNotice::BOUND, (string) FirstName::of($to->name), 'n•••@gmail.com', $signed, 7, MailGreeting::for($to)), 'akun'],
 
         // Always students
-        [$fixed(new ReportReminder($registrationId, 'OPSI 2026', '8 Nov 2026', 3)), 'siswa'],
-        [$fixed(new ReportWindowOpened($registrationId, 'OPSI 2026', '8 Nov 2026')), 'siswa'],
+        [$fixed(new ReportReminder($registrationId, 'OPSI 2026', 3)), 'siswa'],
+        [$fixed(new ReportWindowOpened($registrationId, 'OPSI 2026')), 'siswa'],
         [$fixed(CompetitionChanged::for($competition, $registrationId, ['Babak final sekarang 20 November 2026.'])), 'siswa'],
         [$fixed(new AchievementPublished('01jpub', '01jach', 'OPSI 2026', 'Juara II', 'Instagram')), 'siswa'],
         [$fixed(new AppreciationScheduled('01japp', 'Upacara Senin', $when, 'OPSI 2026', 'Juara II')), 'siswa'],
@@ -136,6 +136,7 @@ function mailGreetingCases(): array
         [$fixed(RegistrationCancelled::for($registration, 'guru')), 'staf'],
         [$fixed(RegistrationCancelled::for($registration, 'kepsek')), 'staf'],
         [$fixed(RegistrationApproved::for($registration, 'guru')), 'staf'],
+        [$fixed(RegistrationApproved::for($registration, 'guru', true, 'Bu Retno Wulandari, S.Pd.')), 'staf'],
         [$fixed(RegistrationApproved::for($registration, 'tu')), 'staf'],
         [$fixed(RegistrationRejected::for($registration, 'guru')), 'staf'],
         [$fixed(LettersIssued::for($registration, 'guru')), 'staf'],
@@ -266,9 +267,11 @@ it('covers every toMail() in app/Notifications with the matrix above', function 
         }
     }
 
-    // A new notification with a toMail() of its own belongs in mailGreetingCases().
+    // A new notification with a toMail() of its own belongs in mailGreetingCases(). The floor only proves the scan
+    // found the classes: 42 since FS1-E (D-142) deleted the four talent stage notices (TalentStageChanged,
+    // TalentApplicationRejected, TalentApplicationRestored, TalentReviewRequested).
     expect($missing)->toBe([])
-        ->and($concrete)->toBeGreaterThanOrEqual(46);
+        ->and($concrete)->toBeGreaterThanOrEqual(42);
 });
 
 it('builds no greeting by hand and sets no sign-off anywhere', function (): void {

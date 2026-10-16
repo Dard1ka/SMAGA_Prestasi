@@ -4,13 +4,15 @@ declare(strict_types=1);
 
 namespace App\Livewire\Siswa\LombaSaya;
 
+use App\Actions\Registrations\ApproveRegistration;
 use App\Actions\Registrations\CancelRegistration;
-use App\Actions\Reports\SubmitReport;
+use App\Domain\Deadlines\ReportFollowUp;
 use App\Enums\LetterType;
 use App\Enums\RegistrationStatus;
 use App\Enums\RegistrationType;
 use App\Enums\ReportFileKind;
 use App\Enums\ReportStatus;
+use App\Livewire\Siswa\Lomba\LombaPresenter;
 use App\Livewire\Siswa\LombaSaya\Concerns\ReportHelpers;
 use App\Models\Achievement;
 use App\Models\Letter;
@@ -19,6 +21,7 @@ use App\Models\RegistrationMember;
 use App\Models\Report;
 use App\Models\Student;
 use App\Models\User;
+use App\Support\StaffRoleLabel;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
@@ -154,15 +157,21 @@ final class Index extends Component
         $registration = $this->baseQuery()
             ->whereKey($this->selectedId)
             ->with([
-                'competition',
+                'competition.verifier.roles',
                 'mentor.staffProfile',
-                'members' => fn ($q) => $q->whereNull('declined_at')->orderByRaw("case when role = 'ketua' then 0 else 1 end")->orderBy('invited_at'),
+                // Sorted below in PHP (RegistrationMember::inTeamOrder()), never in SQL: the same order as every other team list.
+                'members' => fn ($q) => $q->whereNull('declined_at'),
                 'members.student.user',
                 'members.student.classroom',
                 'letters',
                 'report.files.file',
+                'report.verifier.roles',
+                // D-150: who approved or rejected (Kepala Sekolah or Tata Usaha), for "Disetujui oleh …" / "Ditetapkan …".
+                'principalDecider.roles',
             ])
             ->first();
+
+        $registration?->setRelation('members', RegistrationMember::inTeamOrder($registration->members));
 
         return $registration !== null && Gate::allows('view', $registration) ? $registration : null;
     }
@@ -218,9 +227,10 @@ final class Index extends Component
                 return ['Perlu revisi', 'orange'];
             }
 
-            $info = $this->deadlineInfo($registration->competition);
+            // D-151: no deadline, no days left: only the request.
+            ['chip' => $chip, 'tone' => $tone] = $this->reportChip();
 
-            return $info !== null ? [$info['chip'], $info['tone']] : [$status->label(), $status->tone()];
+            return [$chip, $tone];
         }
 
         if ($status === RegistrationStatus::Selesai && $registration->report?->status === ReportStatus::Ditolak) {
@@ -247,7 +257,6 @@ final class Index extends Component
         $achievement = $report !== null && $student !== null
             ? Achievement::query()->where('report_id', $report->getKey())->where('student_id', $student->getKey())->first()
             : null;
-        $deadline = $this->deadlineInfo($competition);
         [$chip, $tone] = $this->statusChip($registration, $mine);
 
         return [
@@ -261,7 +270,7 @@ final class Index extends Component
             'typeLabel' => $this->typeLabel($registration, $registration->members->count()),
             'dateText' => self::dateRange($competition->starts_on, $competition->final_on),
             'place' => $competition->location,
-            'trackerDates' => $this->trackerDates($registration, $studentLetter, $achievement, $deadline),
+            'trackerDates' => $this->trackerDates($registration, $studentLetter, $achievement),
             'isLeader' => $isLeader,
             'isTeam' => $registration->type === RegistrationType::Tim,
             'pendingInvite' => $mine !== null && ! $mine->isLeader() && $mine->confirmed_at === null
@@ -275,9 +284,11 @@ final class Index extends Component
             'canReport' => Gate::allows('create', [Report::class, $registration]),
             'reportUrl' => route('siswa.lapor', $registration),
             'report' => $report,
-            'deadline' => $deadline,
-            // The sentence "ditandai terlambat" follows SubmitReport's rule (QA8).
-            'marksLate' => SubmitReport::marksLate($competition, $report),
+            // The role that decided on the report, for "Catatan …" / "Diverifikasi …" (D-139); "sekolah" before a decision.
+            'decider' => StaffRoleLabel::forDecision($report?->verifier),
+            // D-151: no report deadline, only the request (and the chip of reportChip()).
+            'reportPrompt' => ReportFollowUp::PROMPT,
+            'reportChip' => $report?->status === ReportStatus::PerluRevisi ? null : $this->reportChip(),
             'estimate' => $report !== null ? $this->previewBreakdown($competition, $report->claimed_result) : null,
             'achievement' => $achievement,
             'certificate' => $this->fileLink($report?->files->firstWhere('kind', ReportFileKind::Sertifikat)?->file_id),
@@ -285,22 +296,40 @@ final class Index extends Component
             'lettersIssuedOn' => $studentLetter?->issued_on !== null ? self::shortDate($studentLetter->issued_on) : null,
             'members' => $registration->members->map(fn (RegistrationMember $m): array => [
                 'name' => $m->student?->user?->name ?? 'Siswa',
-                'meta' => trim(($m->student?->classroom?->name ?? '').' · '.$m->role?->label(), ' ·'),
+                'meta' => self::memberMeta($m, $registration->type === RegistrationType::Tim),
                 'confirmed' => $m->confirmed_at !== null,
+                // D-148: while the lomba waits for Kesiswaan nobody has been invited yet (`invited_at` is null), so the
+                // member is not "waiting for a confirmation" but invited once the lomba is verified (FS1 QA round 2).
+                'invitedLater' => $m->confirmed_at === null && $m->invited_at === null && $status === RegistrationStatus::MenungguLomba,
                 'me' => $m->student_id === $student?->getKey(),
             ])->all(),
             'mentor' => $registration->mentor !== null ? $this->mentorName($registration->mentor) : null,
+            // D-132: the approver put another guru in the place of the one the student chose.
+            'mentorByPrincipal' => $registration->mentor !== null && ApproveRegistration::mentorWasReplaced($registration),
+            // D-150: the role that decided ("sekolah" before a decision) and, once approved, who by name.
+            'approverRole' => StaffRoleLabel::forDecision($registration->principalDecider),
+            'approvedBy' => $registration->principalDecider !== null
+                ? 'Disetujui oleh '.$registration->principalDecider->name.' ('.StaffRoleLabel::forDecision($registration->principalDecider).').'
+                : null,
             'decidedOn' => self::longDate($registration->principal_decided_at),
             'registeredOn' => self::longDate($registration->created_at),
+            // D-148: the lomba itself still waits for Kesiswaan; nothing has gone out yet.
+            'waitingText' => $status === RegistrationStatus::MenungguLomba ? LombaPresenter::waitingForLomba($registration) : null,
+            // D-148: cancelled together with the rejected lomba; registering again is not possible then. The role that
+            // rejected it is named by the one lomba rule (StaffRoleLabel::forLomba(): Kesiswaan or Admin, Kesiswaan without one).
+            'cancelledText' => $status === RegistrationStatus::Dibatalkan && $registration->cancelledWithLomba()
+                ? 'Usulan lomba ini ditolak '.StaffRoleLabel::forLomba($competition->verifier).', jadi pendaftarannya ikut dibatalkan.'
+                : 'Kamu bisa mendaftar lagi selama pendaftaran lomba masih dibuka.',
             'allConfirmed' => $registration->members->every(fn (RegistrationMember $m): bool => $m->confirmed_at !== null),
         ];
     }
 
     /**
-     * @param  array{dueText: string}|null  $deadline
+     * Tracker dates per phase. Phase 5 shows the day the report was sent, never a due date (D-151).
+     *
      * @return array<int, string>
      */
-    private function trackerDates(Registration $registration, ?Letter $studentLetter, ?Achievement $achievement, ?array $deadline): array
+    private function trackerDates(Registration $registration, ?Letter $studentLetter, ?Achievement $achievement): array
     {
         $competition = $registration->competition;
         $report = $registration->report;
@@ -310,9 +339,7 @@ final class Index extends Component
             2 => self::shortDate($registration->principal_decided_at),
             3 => self::shortDate($studentLetter?->issued_on),
             4 => self::dateRange($competition->starts_on, $competition->final_on, false),
-            5 => $report?->submitted_at !== null
-                ? self::shortDate($report->submitted_at)
-                : ($deadline !== null && ! $registration->status->isFinal() ? 'Batas '.self::shortDate($deadline['due']) : ''),
+            5 => self::shortDate($report?->submitted_at),
             6 => self::shortDate($achievement?->verified_at),
         ], fn (string $text): bool => $text !== '');
     }
@@ -376,14 +403,19 @@ final class Index extends Component
 
     // Queries ---------------------------------------------------------------------------------
 
-    /** Registrations of this student (member who did not decline). @return Builder<Registration> */
+    /**
+     * Registrations of this student (member who did not decline). An anggota row without `invited_at` belongs to a
+     * team whose lomba still waits for Kesiswaan (D-148): that student was not invited yet and does not see it.
+     *
+     * @return Builder<Registration>
+     */
     private function baseQuery(): Builder
     {
         $studentId = $this->student()?->getKey();
 
         return Registration::query()->whereHas(
             'members',
-            fn (Builder $m) => $m->where('student_id', $studentId)->whereNull('declined_at'),
+            fn (Builder $m) => $m->where('student_id', $studentId)->whereNull('declined_at')->whereNotNull('invited_at'),
         );
     }
 
@@ -417,7 +449,7 @@ final class Index extends Component
 
     private function isVisibleTo(Registration $registration, Student $student): bool
     {
-        return $registration->members()->where('student_id', $student->getKey())->whereNull('declined_at')->exists();
+        return $registration->members()->where('student_id', $student->getKey())->whereNull('declined_at')->whereNotNull('invited_at')->exists();
     }
 
     /**

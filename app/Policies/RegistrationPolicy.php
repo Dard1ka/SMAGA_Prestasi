@@ -17,8 +17,8 @@ use DateTimeInterface;
 
 /**
  * Pendaftaran (ARCHITECTURE §6). Deny by default; not-yours → callers answer 404.
- * Owner of the file: W2-A1 (view, create, respond, cancel). W2-C adds `decide` (Kepala Sekolah only,
- * Admin denied, D-01) and other areas add their methods below the marked line.
+ * Owner of the file: W2-A1 (view, create, respond, cancel). W2-C adds `decide` (Kepala Sekolah or, since D-150,
+ * Tata Usaha; Admin denied, D-01) and other areas add their methods below the marked line.
  */
 class RegistrationPolicy
 {
@@ -45,6 +45,8 @@ class RegistrationPolicy
     /**
      * Siswa may register while the lomba is published and open and they are not in another
      * non-final registration of it. CreateRegistration re-checks everything inside its transaction.
+     * D-148: the submitter may also register for the own lomba while Kesiswaan has not decided it (same date window);
+     * that registration waits as `menunggu_lomba` (Competition::isOpenForRegistrationBy()).
      */
     public function create(User $user, Competition $competition): bool
     {
@@ -54,7 +56,7 @@ class RegistrationPolicy
             return false;
         }
 
-        if (! $competition->isOpenForRegistration()) {
+        if (! $competition->isOpenForRegistrationBy($user)) {
             return false;
         }
 
@@ -63,7 +65,8 @@ class RegistrationPolicy
 
     /**
      * Confirm or decline a team invite: only the invitee, only while the team waits (SECURITY §3m-3) and until the
-     * registration deadline (QA10: the same window ConfirmMembership checks, so "Ikut tim" only shows while it works).
+     * registration deadline (QA10: the same window ConfirmMembership checks, so "Ikut tim" only shows while it works;
+     * D-148: a team resumed late answers until `answer_until`, Registration::answersCloseAt()).
      */
     public function respond(User $user, Registration $registration): bool
     {
@@ -77,7 +80,7 @@ class RegistrationPolicy
             && $member->role === MemberRole::Anggota
             && $member->confirmed_at === null
             && $member->declined_at === null
-            && self::teamWindowOpen($this->competition($registration));
+            && self::teamWindowOpen($registration);
     }
 
     /**
@@ -85,20 +88,20 @@ class RegistrationPolicy
      * withdraw, until the lomba's registration deadline (end of that day), whatever the lomba's status. CloseCompetition
      * only takes the lomba out of the catalog: registrations that exist keep running, while a NEW registration still needs
      * an open, published lomba (create()). ExpirePendingInvitations expires the open invitations at the same deadline;
-     * a lomba without a deadline never expires them.
+     * a lomba without a deadline never expires them. D-148: a team resumed after (or shortly before) that deadline has
+     * until `answer_until`; the one source is Registration::answersCloseAt().
      */
-    public static function teamWindowOpen(?Competition $competition, ?DateTimeInterface $now = null): bool
+    public static function teamWindowOpen(Registration $registration, ?DateTimeInterface $now = null): bool
     {
-        if ($competition === null) {
-            return false;
-        }
-
-        $closes = $competition->registration_closes_at;
+        $closes = $registration->answersCloseAt();
 
         return $closes === null || $closes >= ($now ?? now());
     }
 
-    /** Leader cancels before the Kepala Sekolah decides (ARCHITECTURE §6, lead 2026-10-01). */
+    /**
+     * Leader cancels before the Kepala Sekolah decides (ARCHITECTURE §6, lead 2026-10-01), and while the registration
+     * waits for its lomba to be verified (`menunggu_lomba`, D-148 widens D-33).
+     */
     public function cancel(User $user, Registration $registration): bool
     {
         if (! $user->canLogIn()) {
@@ -109,25 +112,37 @@ class RegistrationPolicy
 
         return $student !== null
             && $registration->leader_student_id === $student->getKey()
-            && in_array($registration->status, [RegistrationStatus::MenungguKonfirmasi, RegistrationStatus::MenungguKepsek], true);
+            && in_array($registration->status, [RegistrationStatus::MenungguLomba, RegistrationStatus::MenungguKonfirmasi, RegistrationStatus::MenungguKepsek], true);
     }
 
-    // --- W2-C: decide (Kepala Sekolah only) and other areas' methods below ---
+    // --- W2-C: decide (Kepala Sekolah or Tata Usaha) and other areas' methods below ---
 
     /**
-     * Kepala Sekolah approval queue (UI-MAP #19). `registration.approve` is held by the Kepala Sekolah only;
-     * Admin has every permission except this one (D-01, SECURITY §3m-9), so Admin is denied here.
+     * Approval queue (UI-MAP #19). `registration.approve` is held by the Kepala Sekolah and Tata Usaha (D-150; each
+     * opens the same screen under its own address, App\Support\ApprovalQueue). Admin has every permission except this
+     * one (D-01, SECURITY §3m-9), so Admin is denied here.
      */
     public function viewApprovalQueue(User $user): bool
     {
         return $user->canLogIn() && $user->can(Permission::RegistrationApprove->value);
     }
 
-    /** Approve or reject one registration: Kepala Sekolah only, only while it waits for the decision. */
+    /** Approve or reject one registration: Kepala Sekolah or Tata Usaha (D-150), only while it waits for the decision. */
     public function decide(User $user, Registration $registration): bool
     {
         return $this->viewApprovalQueue($user)
             && $registration->status === RegistrationStatus::MenungguKepsek;
+    }
+
+    /**
+     * Put another guru pembimbing in the place of the one the student chose (D-132): part of the approval, so the
+     * same people at the same moment as decide(): the Kepala Sekolah or Tata Usaha (D-150), while the registration
+     * waits for the decision.
+     * Nobody changes the guru before that (the student's choice stands) or after it (the letters name that guru).
+     */
+    public function changeMentor(User $user, Registration $registration): bool
+    {
+        return $this->decide($user, $registration);
     }
 
     // --- B3: invite (replacement) members, backlog #9 ---
@@ -153,7 +168,7 @@ class RegistrationPolicy
             return false;
         }
 
-        return self::teamWindowOpen($this->competition($registration));
+        return self::teamWindowOpen($registration);
     }
 
     // --- end B3 ---
@@ -168,13 +183,15 @@ class RegistrationPolicy
 
     /**
      * One registration in the guru area: only its own guru pembimbing (SECURITY §3c "R binaan"). Staff with
-     * registration.view_all use their own screens; this ability deliberately ignores that permission.
+     * registration.view_all use their own screens; this ability deliberately ignores that permission. D-148: not a
+     * registration the guru was never told about (Registration::isKnownToMentor(), the rule of Siswa binaan).
      */
     public function viewAsMentor(User $user, Registration $registration): bool
     {
         return $this->viewBinaan($user)
             && $registration->mentor_id !== null
-            && (int) $registration->mentor_id === (int) $user->getKey();
+            && (int) $registration->mentor_id === (int) $user->getKey()
+            && $registration->isKnownToMentor();
     }
 
     // --- end B4 ---
@@ -182,13 +199,6 @@ class RegistrationPolicy
     protected function student(User $user): ?Student
     {
         return $user->loadMissing('student')->getRelation('student');
-    }
-
-    protected function competition(Registration $registration): ?Competition
-    {
-        return $registration->relationLoaded('competition') && $registration->competition !== null
-            ? $registration->competition
-            : Competition::withTrashed()->find($registration->competition_id);
     }
 
     protected function membership(User $user, Registration $registration): ?RegistrationMember

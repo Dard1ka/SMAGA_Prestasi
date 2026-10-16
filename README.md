@@ -90,7 +90,7 @@ dari data contoh desain (`docs/design/DESIGN-SPEC-v2.md` §5), bukan data sekola
 | Humas | `humas` | `password` |
 | Admin | `operator` | `password` |
 | Guru pembimbing | `retno.w`, `hendra.k`, `maya.a`, `agus.s` | `password` |
-| Siswa | NIS atau NISN fiktif, mis. Nadia `225226201` / `0098765432` | password awal sesuai pola sekolah dari tanggal lahir fiktif di `database/seeders/DemoSeeder.php` |
+| Siswa | NISN fiktif, mis. Nadia `0098765432` (login hanya dengan NISN, D-137) | password awal = nilai `sth.initial_student_password` di `config/sth.php` (D-138), dipakai seeder demo `database/seeders/DemoSeeder.php` |
 
 - Staf juga bisa masuk dengan email `<username>@sth.test`. Siswa wajib aktivasi saat pertama masuk
   (hubungkan email → kode 6 digit → kata sandi; siswa boleh memilih tidak mengganti kata sandi). Setelah

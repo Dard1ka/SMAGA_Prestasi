@@ -68,14 +68,14 @@ it('answers the same way for unknown or unusable identifiers and sends nothing',
 
     Mail::assertNothingQueued();
 })->with([
-    'unknown NIS' => ['123456789'],
-    'account without email' => [H::NIS],
+    'unknown number' => ['123456789'],
+    'account without email' => [H::NISN],
 ]);
 
 it('rejects a wrong code without revealing anything and keeps the old password', function (): void {
     $user = H::activeStudent()->user;
 
-    w1cRequestCode(H::NIS)
+    w1cRequestCode(H::NISN)
         ->set('code', '000000')
         ->set('password', 'Hujan-bulan-juni-26')
         ->set('password_confirmation', 'Hujan-bulan-juni-26')
@@ -97,7 +97,7 @@ it('gives the same code error for an identifier without an account', function ()
 it('does not reset archived accounts', function (): void {
     H::activeStudent(['status' => UserStatus::Archived]);
 
-    w1cRequestCode(H::NIS);
+    w1cRequestCode(H::NISN);
     w1cRequestCode('nadia.anindya@example.test');
 
     Mail::assertNothingQueued();
@@ -105,7 +105,7 @@ it('does not reset archived accounts', function (): void {
 
 // M1-B (lead, 2026-10-04): the student's own email is accepted here as well, same neutral answer.
 
-it('resets a student password when the bound email is typed instead of the NIS', function (): void {
+it('resets a student password when the bound email is typed instead of the NISN', function (): void {
     $user = H::activeStudent()->user;
 
     $component = w1cRequestCode(' Nadia.Anindya@example.test')->assertSee(RequestPasswordResetCode::GENERIC_STATUS);
@@ -138,9 +138,10 @@ it('gives the neutral answer and sends nothing for a student email before the ac
     Mail::assertNothingQueued();
 });
 
-it('closes a half-finished activation when the password is reset with the NIS', function (): void {
-    // The student bound the email, left before the password step and then used "Lupa kata sandi".
-    $student = H::pendingStudent();
+it('closes a half-finished activation when the password is reset with the NISN', function (): void {
+    // The student bound the email and saved Data diri (D-152), left before the password step and then used "Lupa
+    // kata sandi". With Data diri still open the account stays pending (ActivationProfileTest).
+    $student = H::pendingStudent(['phone' => '081234567890', 'profile_confirmed_at' => now()]);
     $user = $student->user;
     $user->forceFill([
         'email' => 'nadia.anindya@example.test',
@@ -148,7 +149,7 @@ it('closes a half-finished activation when the password is reset with the NIS', 
         'initial_password_expires_at' => now()->subDay(),
     ])->save();
 
-    $component = w1cRequestCode(H::NIS);
+    $component = w1cRequestCode(H::NISN);
 
     $code = null;
     Mail::assertQueued(OtpCodeMail::class, function (OtpCodeMail $mail) use (&$code): bool {
@@ -180,4 +181,12 @@ it('leaves an account without a verified email pending after nothing was reset',
 
     expect(app(CompleteActivation::class)->whenPasswordAlreadyChosen($user))->toBeFalse()
         ->and($user->fresh()->status)->toBe(UserStatus::PendingActivation);
+});
+
+it('sends no reset code for the NIS of an activated student (D-137: NISN or email only)', function (): void {
+    H::activeStudent();
+
+    w1cRequestCode(H::NIS)->assertSee(RequestPasswordResetCode::GENERIC_STATUS);
+
+    Mail::assertNothingQueued();
 });
