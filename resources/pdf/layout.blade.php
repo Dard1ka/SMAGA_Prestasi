@@ -53,15 +53,17 @@
         .kop-garis-guru { margin-left: 23.65pt; width: 473.75pt; margin-top: 2pt; }
 
         /* The sheet carries the kop as one picture, 473 pt wide: the same kop, smaller, logos inside the rule.
-           473 pt is also the width of the page between the margins, so the kop and every block below it are centred. */
+           473 pt is also the width of the page between the margins, so the kop and every block below it are centred.
+           D-154 (the school's printed letter): the emblems are 75 pt high and start above the first line, the longest
+           address line (344.6 pt at 8.2 pt) still fits between them (473 - 70 - 56.5 = 346.5 pt). */
         .kop-siswa { width: 473pt; }
-        .kop-siswa .kop-kiri { width: 66pt; padding-top: 11pt; }
-        .kop-siswa .kop-kanan { width: 54pt; padding-top: 11pt; }
+        .kop-siswa .kop-kiri { width: 70pt; padding-top: 3pt; }
+        .kop-siswa .kop-kanan { width: 56.5pt; padding-top: 3pt; }
         .kop-siswa .kop-teks { padding-top: 11pt; }
         .kop-siswa .kop-1 { font-size: 11pt; line-height: 12.65pt; }
         .kop-siswa .kop-2, .kop-siswa .kop-3 { font-size: 13pt; line-height: 14.95pt; }
         .kop-siswa .kop-4 { font-size: 8.2pt; line-height: 9.4pt; }
-        .kop-siswa img { height: 70pt; }
+        .kop-siswa img { height: 75pt; }
         .kop-garis-siswa { width: 473pt; margin-top: 8pt; }
 
         /* Surat Perintah Tugas (guru). */
@@ -109,13 +111,15 @@
         /* Surat Tugas (siswa). */
         .siswa { font-size: 11pt; line-height: 15.95pt; }
         .s-lebar { width: 473pt; }
-        .s-jarak-kop { height: 17.5pt; }
+        /* D-154: the title stands about half a row under the rule, "Dasar" a little under the Nomor (the school's letter). */
+        .s-jarak-kop { height: 9.5pt; }
         .s-judul { width: 473pt; text-align: center; font-size: 12pt; }
         .s-baris { height: 15.95pt; }
         .s-baris-15 { height: 15pt; }
+        .s-jarak-dasar { height: 4.5pt; }
         .s-dasar { width: 473pt; }
         .s-dasar td { line-height: 15pt; }
-        .s-dasar .k { width: 95.25pt; }
+        .s-dasar .k { width: 103pt; }
         .s-dasar .s { width: 9pt; text-align: center; }
         .s-murid { width: 473pt; }
         .s-murid th, .s-murid td { border: 0.5pt solid #000; height: 20.1pt; line-height: 13pt; vertical-align: middle; text-align: center; padding: 0 1.5pt; }

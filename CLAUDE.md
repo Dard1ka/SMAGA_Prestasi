@@ -34,7 +34,7 @@ consent flags (D-16, SECURITY §3m-7).
 ## 2. Sources of truth (read before changing behaviour)
 | file | content |
 |---|---|
-| `docs/DECISIONS.md` | decision log D-01…D-151 (D-135…D-151 = §D15, the school's feedback of 2026-10-12 (FS1); package E = D-142…D-144: talent choices without stages or verification (Kesiswaan records, optional guru pembina, tabs Semua / Belum mengisi (kelas X)), a seventh jenis and a cabang "Lainnya" with a typed text, kelas X students held on Profil talenta until they pick one; package B = D-145…D-151: only siswa (full "Usulkan lomba" page) and Admin add a lomba, Kesiswaan checks and corrects, weights computed from the jenis penyelenggara + Puspresnas, duration-based dates and a required juknis, a registration for an own queued lomba waits as `menunggu_lomba`, participant data and an editable phone, Kepala Sekolah **or** Tata Usaha approves, laporan hasil without a deadline (reminders H+3 / H+14); package A = D-135…D-136: three new names, the Admin menu item Database prestasi, the Excel without Kategori, oldest-first pending lomba, red count badges; package D = D-137…D-138: students log in with the NISN only and see the NISN instead of the NIS, one initial password for every student from config, replaced at the first login, no "Lewati"; package C = D-139…D-141: Humas verifies results next to Kesiswaan in its own area and is a privileged role, new reports are mailed to Kesiswaan and Humas, decision texts name the deciding role, Verifikasi hasil without "Tolak", "Cetak daftar" of an appreciation event; D-130…D-134 = §D14, the demo and the joint review of 2026-10-11 (RV1): open mode of the local mail allowlist, NIS in full for Kesiswaan and Admin, the Kepala Sekolah may replace the guru pembimbing with the approval and the approval notice names the guru, student letter centred, the replaced guru is told nothing; D-122…D-129 = §D13, the lead's mail and notification test of 2026-10-09 (EM2): publication schedule = reminder only, appreciation start time and picker, "Lainnya" field, lomba change notice, live bell and counts, confirm dialogs, mail templates; §D13 also carries a dated addendum of Brevo facts for D-121; D-121 = §D12, real mail from a local stack: Brevo + allowlist, *sementara*; D-45…D-61 = backlog wave + W4 product choices, *sementara*; D-62…D-65 = security hardening, *final*; D-66…D-77 = Q1 security/performance pass and the lead's follow-up choices; D-78…D-91 = §D6, the lead's choices after the hand test of 2026-10-04; D-92…D-102 = §D7, the rules changed by the fixes after the QA pass of 2026-10-05; D-103…D-108 = §D8, the lead's six requests of 2026-10-06 (wave M3) and the schema change of QA4; D-109…D-112 = §D9, the lead's answers after the retest of M3 on 2026-10-07 (QA5); D-113…D-116 = §D10, the explore round after PR 14 (QA6); D-117…D-120 = §D11, the visual direction v3 "Tinta dan Sampul", lomba covers, the staff copy rule and the school crest as the brand mark (UI3)), U-01…U-06, open questions §F. **Wins over everything.** |
+| `docs/DECISIONS.md` | decision log D-01…D-154 (D-154 = §D17, the student letter after the school's printed letter of 2026-10-16 (ST1): "Dasar" = one regulation text of Template surat, kop and spacing of the paper; D-152…D-153 = §D16, Profil saya and Talenta saya (PS1); D-135…D-151 = §D15, the school's feedback of 2026-10-12 (FS1); package E = D-142…D-144: talent choices without stages or verification (Kesiswaan records, optional guru pembina, tabs Semua / Belum mengisi (kelas X)), a seventh jenis and a cabang "Lainnya" with a typed text, kelas X students held on Profil talenta until they pick one; package B = D-145…D-151: only siswa (full "Usulkan lomba" page) and Admin add a lomba, Kesiswaan checks and corrects, weights computed from the jenis penyelenggara + Puspresnas, duration-based dates and a required juknis, a registration for an own queued lomba waits as `menunggu_lomba`, participant data and an editable phone, Kepala Sekolah **or** Tata Usaha approves, laporan hasil without a deadline (reminders H+3 / H+14); package A = D-135…D-136: three new names, the Admin menu item Database prestasi, the Excel without Kategori, oldest-first pending lomba, red count badges; package D = D-137…D-138: students log in with the NISN only and see the NISN instead of the NIS, one initial password for every student from config, replaced at the first login, no "Lewati"; package C = D-139…D-141: Humas verifies results next to Kesiswaan in its own area and is a privileged role, new reports are mailed to Kesiswaan and Humas, decision texts name the deciding role, Verifikasi hasil without "Tolak", "Cetak daftar" of an appreciation event; D-130…D-134 = §D14, the demo and the joint review of 2026-10-11 (RV1): open mode of the local mail allowlist, NIS in full for Kesiswaan and Admin, the Kepala Sekolah may replace the guru pembimbing with the approval and the approval notice names the guru, student letter centred, the replaced guru is told nothing; D-122…D-129 = §D13, the lead's mail and notification test of 2026-10-09 (EM2): publication schedule = reminder only, appreciation start time and picker, "Lainnya" field, lomba change notice, live bell and counts, confirm dialogs, mail templates; §D13 also carries a dated addendum of Brevo facts for D-121; D-121 = §D12, real mail from a local stack: Brevo + allowlist, *sementara*; D-45…D-61 = backlog wave + W4 product choices, *sementara*; D-62…D-65 = security hardening, *final*; D-66…D-77 = Q1 security/performance pass and the lead's follow-up choices; D-78…D-91 = §D6, the lead's choices after the hand test of 2026-10-04; D-92…D-102 = §D7, the rules changed by the fixes after the QA pass of 2026-10-05; D-103…D-108 = §D8, the lead's six requests of 2026-10-06 (wave M3) and the schema change of QA4; D-109…D-112 = §D9, the lead's answers after the retest of M3 on 2026-10-07 (QA5); D-113…D-116 = §D10, the explore round after PR 14 (QA6); D-117…D-120 = §D11, the visual direction v3 "Tinta dan Sampul", lomba covers, the staff copy rule and the school crest as the brand mark (UI3)), U-01…U-06, open questions §F. **Wins over everything.** |
 | `docs/ARCHITECTURE.md` | binding contract: data model, enums, state machine, domain rules |
 | `docs/SECURITY.md` | threat model, top-10 risks §1, controls §3a–§3m (K1–K12), pre-release checklist §4 |
 | `docs/TALENT-FORM.md` | talent types/branches (seed source for `talent_types`, `talent_branches`) |
@@ -412,11 +412,21 @@ logs in through `POST /login` and expects a 403/404 on the next GET would see th
   template), written once by `IssueLetters` / `RevokeLetter` (`LetterPdf::printed()`); the TU preview of an issued
   letter is drawn from it (`LetterContent::fromArray()`, `LetterTemplate::fromArray()`), never again from today's
   data. It holds names, NIS and NIP, so it stays out of the activity log; letters made before it say so in the preview.
-  A letter that is not issued yet takes the invitation and schedule fields of the other letter, never over a field TU
-  typed for it (`SuratTugas::SHARED_FIELDS`, `$typed`, D-116); "Koreksi" on Arsip surat opens
+  A letter that is not issued yet takes the schedule fields of the other letter (the invitation too before D-154),
+  never over a field TU typed for it (`SuratTugas::SHARED_FIELDS`, `$typed`, D-116); "Koreksi" on Arsip surat opens
   `tu.surat.show?koreksi=<letter>`; "Kirim" asks first once every letter exists (QA6). The student letter stands in
   the middle of the page (D-133: equal left and right margins of 61.14 pt, every block 473 pt wide, in
-  `resources/pdf/layout.blade.php`); the guru letter keeps the measures of the school's Word file.
+  `resources/pdf/layout.blade.php`); the guru letter keeps the measures of the school's Word file. Since D-154 (the
+  school's printed student letter) the student letter's "Dasar" is one regulation text of the TU letter template
+  (`LetterTemplate` field `siswa_dasar`, `siswaDasar($schoolYear)`, codes `{sekolah}` / `{tahun_ajaran}`; `siswa_basis`
+  and `{penyelenggara}` are gone); the invitation (Surat dari / Nomor / Tanggal / Hal) is asked and printed on the guru
+  letter only (`LetterDraft::usesInvitation()`; a student letter row keeps no `basis_*`; the student tab shows the
+  template's Dasar with "Ubah di Template surat"); the student kop has 75 pt emblems and the title, Dasar and intro
+  stand as on the paper (`.s-jarak-kop`, `.s-jarak-dasar`, two empty rows). The TU preview of the student letter is the
+  PDF page at 0.94 px per pt from sm up (margins 57.5 px, `partials/kop` with `$kop = 'siswa'`), drawn at 560 px and
+  shrunk as a whole in a narrower box (`.kertas-siswa` / `.lembar-siswa` in `app.css`, `zoom` in 2 % steps); a letter printed
+  before D-154 (its stored template still has `siswa_basis`) previews its three old Dasar rows
+  (`LetterTemplate::$oldSiswaBasis`, only set by `fromArray()`).
 - **Accounts**: students log in by their **NISN** (10 digits) and, once activation is finished, by the bound
   email (`LoginIdentifier::resolveStudent()`, D-78, D-137); the NIS is only stored (import matching D-81, the
   student letter). A number that matches only a NIS resolves to nobody: the same answer as an unknown account
@@ -1106,6 +1116,16 @@ also one active before, is held there until one is chosen (right after the activ
 the *sementara* "kelas X only" of D-152. Do not bring back: "Profil talenta" as an item of the siswa sidebar, a talent
 gate for kelas X only, a Talenta saya tab for staff.
 
+The student letter after the school's printed letter on 2026-10-16 (ST1), **D-154** (DECISIONS §D17,
+`docs/dev-notes/ST1.md`; the lead's photo of the school's letter, FS1 item 14 for kop to intro), **final** for the Dasar
+as one regulation text of Template surat and the invitation on the guru letter only, *sementara* for the default Dasar
+text, the 75 pt emblems and the spacing (measured from a photo, not on paper): "Dasar" of the student letter is
+`siswa_dasar` (the BOS Kinerja regulation by default, TU replaces it every budget year); no Nomor / Tanggal rows of the
+invitation on the student letter; the TU preview mirrors the PDF at the sheet's scale. Do not bring back: "Surat dari
+{penyelenggara}" with the invitation's Nomor and Tanggal on the student letter, the invitation fields on the student
+tab or shared from it, `basis_*` stored on a student letter, a student preview with 37 px side margins, a preview of a
+letter printed before D-154 that shows the new Dasar instead of what its PDF printed.
+
 Known stale text (do not "fix" code to match it): `docs/DEPLOY.md` §9 path A (Google Workspace relay) is not an option
 for the school (lead, 2026-10-08) and §9 has no Brevo path yet;
 DESIGN-SPEC-v2 §1 and the Admin-Pengaturan mockup still show 30 days (and the mockup's WICE deadline
@@ -1287,7 +1307,9 @@ opened one route for both roles); TU approving and then issuing the letters sign
 D-150: should the Kepala Sekolah sign that too, with the D-14 / D-138 risk form; keep or remove the unused
 `report_deadline_days` key and `ReportDeadline` (D-151 keeps them); the reminder days 3 / 14 and the 7-day catch-up;
 the old wording "Batas daftar" (Kelola lomba table, change notice) and "Juknis/brosur diganti." (D-147). Letters: the
-template fix (FS1 item 14) still waits for the school's template; the student letter keeps the NIS column until then.
+top of the student letter follows the school's printed letter since D-154 (ST1); the lower part (the table with its NIS
+column, Pelaksanaan, signature) and the guru letter still wait for the rest of the school's template, and D-154's
+default Dasar text, emblem size and spacing are *sementara* (measured from a photo; print one letter and compare).
 Public DNS check of 2026-10-01 (not yet confirmed with the school): the domain's DNS is on Cloudflare (`www`, `mail`,
 `webmail` proxied); the main website and the school mail are on Desnet shared hosting (SPF, DKIM and DMARC `p=none`
 exist), so apparently **not** on the Ubuntu server (§1 assumes the same host: confirm). No `prestasi` record exists
@@ -1425,6 +1447,12 @@ between the code and the new password. One migration (`students.profile_confirme
 only; the student form and the activation step are render-tested only. Committed (`720a015`) and pushed with FS1 in PR 30.
 PS1 follow-up 2026-10-16 (D-153, same note): Profil talenta became the tab Talenta saya of Profil saya, and the talent
 gate holds every student without a talent (any class), right after the activation too. No migration.
+ST1 2026-10-16 (`docs/dev-notes/ST1.md`, D-154; same checkout, committed and pushed with FS1 in PR 30): the lead's photo of the school's printed
+student letter. The student letter's "Dasar" is one regulation text of Template surat (`siswa_dasar`), the invitation
+is asked and printed on the guru letter only, the student kop and spacing follow the paper, and the TU preview of the
+student letter is the PDF at the sheet's scale (it had 37 px margins); a letter printed before keeps its old preview
+rows. No migration. Full suite → 3760 passed, 1 skipped; `pint --test` clean (825 files); checked in the app's browser
+as the demo TU account (1366 and 1024 px) and on a rendered sample PDF; nothing compared on paper yet.
 
 | area | owner | state (details in `docs/dev-notes/<ID>.md`) |
 |---|---|---|

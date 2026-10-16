@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Domain\Files\PdfScanner;
 use App\Enums\FilePurpose;
+use App\Enums\LetterType;
 use App\Enums\ReportFileKind;
 use App\Enums\SettingKey;
 use App\Models\File;
@@ -439,21 +440,24 @@ it('renders and scans every demo file of a full local seed (slow, STH_DEMO_FULL=
 
 // QA5 (2026-10-07): a demo surat tugas names the invitation it answers ----------------------------------------
 
-it('gives every demo letter the number and date of the invitation it answers', function (): void {
+it('gives every demo guru letter the number and date of the invitation it answers, the student letter none (D-154)', function (): void {
     m3dSeedDemo();
 
     $letters = Letter::query()->whereHas('file', fn ($q) => $q->where('path', 'like', 'demo/%'))->get();
+    $guru = $letters->where('type', LetterType::Guru);
 
-    expect($letters)->not->toBeEmpty()
-        ->and($letters->filter(fn (Letter $l): bool => blank($l->basis_number) || $l->basis_date === null))->toBeEmpty()
+    expect($guru)->not->toBeEmpty()
+        ->and($guru->filter(fn (Letter $l): bool => blank($l->basis_number) || $l->basis_date === null))->toBeEmpty()
         // The invitation is older than the letter that answers it.
-        ->and($letters->filter(fn (Letter $l): bool => $l->basis_date->gte($l->issued_on)))->toBeEmpty();
+        ->and($guru->filter(fn (Letter $l): bool => $l->basis_date->gte($l->issued_on)))->toBeEmpty()
+        // Since D-154 the student letter's Dasar is the template's regulation text.
+        ->and($letters->where('type', LetterType::Siswa)->filter(fn (Letter $l): bool => filled($l->basis_number) || $l->basis_date !== null))->toBeEmpty();
 });
 
 it('fills the invitation of an older demo letter only with --lengkapi, and says when there is something to fill', function (): void {
     m3dSeedDemo();
 
-    $older = Letter::query()->whereHas('file', fn ($q) => $q->where('path', 'like', 'demo/%'))->orderBy('id')->firstOrFail();
+    $older = Letter::query()->where('type', LetterType::Guru)->whereHas('file', fn ($q) => $q->where('path', 'like', 'demo/%'))->orderBy('id')->firstOrFail();
     $number = $older->basis_number;
     $older->forceFill(['basis_number' => null, 'basis_date' => null])->save();
 
@@ -474,7 +478,7 @@ it('fills the invitation of an older demo letter only with --lengkapi, and says 
         ->and($older->fresh()->basis_date)->not->toBeNull();
 
     // A letter made by Tata Usaha (not in demo/) is never touched.
-    $real = Letter::query()->whereHas('file', fn ($q) => $q->where('path', 'like', 'demo/%'))->orderByDesc('id')->firstOrFail();
+    $real = Letter::query()->where('type', LetterType::Guru)->whereHas('file', fn ($q) => $q->where('path', 'like', 'demo/%'))->orderByDesc('id')->firstOrFail();
     $real->file->forceFill(['path' => 'surat/2026/buatan-tu.pdf'])->save();
     $real->forceFill(['basis_number' => null, 'basis_date' => null])->save();
 

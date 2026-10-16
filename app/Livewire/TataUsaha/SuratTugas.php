@@ -61,12 +61,13 @@ class SuratTugas extends Component
     public const SEND_DIALOG = 'kirim-surat';
 
     /**
-     * What both letters print about the invitation and the event (QA6, Q1-15, D-116). A letter that is not made yet
-     * takes these from the other letter when TU typed them there or that letter was issued with them, but never over a
-     * field TU typed for this letter itself, not even an emptied one or one set back to the lomba value (D-83: two
-     * forms, never one shared draft). The number, the letter date and "Hal" stay per letter.
+     * What both letters print about the event (QA6, Q1-15, D-116). A letter that is not made yet takes these from the
+     * other letter when TU typed them there or that letter was issued with them, but never over a field TU typed for
+     * this letter itself, not even an emptied one or one set back to the lomba value (D-83: two forms, never one shared
+     * draft). The number and the letter date stay per letter; the invitation (Surat dari, Nomor, Tanggal, Hal) is
+     * printed by the guru letter only since D-154, so it is not shared any more.
      */
-    private const SHARED_FIELDS = ['dasarDari', 'dasarNomor', 'dasarTanggal', 'hari', 'tanggal', 'pukul', 'tempat'];
+    private const SHARED_FIELDS = ['hari', 'tanggal', 'pukul', 'tempat'];
 
     /** Action error key → form field (per letter). */
     private const ERROR_MAP = [
@@ -652,13 +653,15 @@ class SuratTugas extends Component
     {
         $form = $this->form($type);
         $issuedOn = self::parseDate($form['tanggalSurat']);
-        $basisDate = self::parseDate($form['dasarTanggal']);
+        // D-154: the student letter prints no invitation; its hidden form keys (carried from the guru form) stay out.
+        $invitation = LetterDraft::usesInvitation($type);
+        $basisDate = $invitation ? self::parseDate($form['dasarTanggal']) : null;
 
         $draft = new LetterDraft(
             number: $form['nomor'],
             issuedOn: $issuedOn ?? CarbonImmutable::today(),
-            basisFrom: $form['dasarDari'],
-            basisNumber: trim($form['dasarNomor']) !== '' ? trim($form['dasarNomor']) : null,
+            basisFrom: $invitation ? $form['dasarDari'] : '',
+            basisNumber: $invitation && trim($form['dasarNomor']) !== '' ? trim($form['dasarNomor']) : null,
             basisDate: $basisDate,
             scheduleDay: $form['hari'],
             scheduleDate: $form['tanggal'],
@@ -677,7 +680,7 @@ class SuratTugas extends Component
             $dates['issued_on'] = trim($form['tanggalSurat']) === '' ? 'Isi tanggal surat.' : 'Tanggal surat tidak valid.';
         }
 
-        if ($basisDate === null && trim($form['dasarTanggal']) !== '') {
+        if ($invitation && $basisDate === null && trim($form['dasarTanggal']) !== '') {
             $dates['basis_date'] = 'Tanggal surat undangan tidak valid.';
         }
 

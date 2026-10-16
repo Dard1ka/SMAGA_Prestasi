@@ -525,7 +525,7 @@ lead's workspace). "Built" = in `feat/fs1-feedback-sekolah` at `01b379b`, tested
 | 11 | setelah simpan langsung ke pendaftaran lomba | B · D-145, D-148 | Usulkan step 2 = Pendaftaran lomba; `menunggu_lomba` | built |
 | 12 | "daftar lomba" → "pendaftaran lomba" | A · D-135 | panel title, Bantuan | built |
 | 13 | validasi kepala sekolah ATAU TU | B · D-150 | `registration.approve` for TU, `tu.persetujuan.index` | built; TU-approves-and-issues risk accepted |
-| 14 | perbaikan template surat | — | — | **deferred**: waits for the school's letter template (the student letter keeps its NIS column until then) |
+| 14 | perbaikan template surat | ST1 · D-154 (2026-10-16) | student letter: Dasar = the template's regulation text (no invitation rows), kop and spacing of the school's printed letter, TU preview at the PDF's scale (`docs/dev-notes/ST1.md`) | **built for the top of the student letter** (the lead's photo shows kop to intro); the table (NIS column), Pelaksanaan, signature and the guru letter wait for the rest of the school's template |
 | 15 | laporan hasil tanpa batas waktu, "segera laporkan" | B · D-151 | no deadline anywhere; reminders H+3 / H+14; KPI "Belum lapor > 14 hari" | built |
 | 16 | verifikasi hasil dipindah ke humas | C · D-139 | Humas verifies on `humas.verifikasi.*` (Kesiswaan keeps verifying, see 21) | built |
 | 17 | button verifikasi hasil: verifikasi + revisi saja, tanpa tolak | C · D-140 | Verifikasi hasil without "Tolak" | built |

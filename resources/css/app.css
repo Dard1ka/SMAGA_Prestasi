@@ -2087,6 +2087,41 @@
     }
 }
 
+/*
+ | Paper preview of the student letter (D-154, tata-usaha/partials/pratinjau-siswa): from sm up the sheet is the PDF page
+ | drawn at 560 px (0.94 px per pt, margins included), and a narrower box shrinks it as a whole with `zoom`, in 2 % steps
+ | (each step starts where the larger one no longer fits), so its lines break exactly as on the PDF. Outside any layer
+ | on purpose: it must win over the sheet's own w-full / max-w utilities. Browsers without `zoom` keep the fluid sheet.
+ */
+@supports (zoom: 1) {
+    @media (min-width: 40rem) {
+        .kertas-siswa {
+            container-type: inline-size;
+        }
+
+        .kertas-siswa > .lembar-siswa {
+            width: 560px;
+            max-width: none;
+        }
+
+        @container (max-width: 559.98px) { .kertas-siswa > .lembar-siswa { zoom: 0.98; } }
+        @container (max-width: 548.79px) { .kertas-siswa > .lembar-siswa { zoom: 0.96; } }
+        @container (max-width: 537.59px) { .kertas-siswa > .lembar-siswa { zoom: 0.94; } }
+        @container (max-width: 526.39px) { .kertas-siswa > .lembar-siswa { zoom: 0.92; } }
+        @container (max-width: 515.19px) { .kertas-siswa > .lembar-siswa { zoom: 0.9; } }
+        @container (max-width: 503.99px) { .kertas-siswa > .lembar-siswa { zoom: 0.88; } }
+        @container (max-width: 492.79px) { .kertas-siswa > .lembar-siswa { zoom: 0.86; } }
+        @container (max-width: 481.59px) { .kertas-siswa > .lembar-siswa { zoom: 0.84; } }
+        @container (max-width: 470.39px) { .kertas-siswa > .lembar-siswa { zoom: 0.82; } }
+        @container (max-width: 459.19px) { .kertas-siswa > .lembar-siswa { zoom: 0.8; } }
+        @container (max-width: 447.99px) { .kertas-siswa > .lembar-siswa { zoom: 0.78; } }
+        @container (max-width: 436.79px) { .kertas-siswa > .lembar-siswa { zoom: 0.76; } }
+        @container (max-width: 425.59px) { .kertas-siswa > .lembar-siswa { zoom: 0.74; } }
+        @container (max-width: 414.39px) { .kertas-siswa > .lembar-siswa { zoom: 0.72; } }
+        @container (max-width: 403.19px) { .kertas-siswa > .lembar-siswa { zoom: 0.7; } }
+    }
+}
+
 @keyframes sth-fade {
     from {
         opacity: 0;

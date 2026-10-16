@@ -125,8 +125,10 @@ it('issues one letter at a time, each with its own number and data, as a signed 
         ->and($siswa->sequence)->toBeNull()
         ->and($siswa->year)->toBe(2026)
         ->and($siswa->month)->toBe(10)
-        ->and($siswa->basis_from)->toBe('Panitia NSIF 2026')
-        ->and($siswa->basis_number)->toBe('017/PAN-NSIF/IX/2026')
+        // D-154: the student letter prints no invitation, so its row keeps none.
+        ->and($siswa->basis_from)->toBeNull()
+        ->and($siswa->basis_number)->toBeNull()
+        ->and($siswa->basis_date)->toBeNull()
         ->and($siswa->basis_subject)->toBeNull()
         ->and($siswa->schedule_day)->toBe('Sabtu')
         ->and($siswa->schedule_date)->toBe('7 November 2026')
@@ -141,6 +143,8 @@ it('issues one letter at a time, each with its own number and data, as a signed 
     expect($guru->full_number)->toBe(W2C_GURU)
         ->and($guru->issued_on->toDateString())->toBe('2026-10-02')
         ->and($guru->place)->toBe('Aula Universitas Contoh')
+        ->and($guru->basis_from)->toBe('Panitia NSIF 2026')
+        ->and($guru->basis_number)->toBe('017/PAN-NSIF/IX/2026')
         ->and($guru->basis_subject)->toBe('Undangan')
         ->and($siswa->fresh()->place)->toBe('Daring');
 
@@ -305,8 +309,10 @@ it('validates every field of the draft at once', function (): void {
         ]);
     }
 
-    // "Hal" belongs to the guru letter only; a far-away letter date is refused.
-    expect(IssueLetters::draftErrors($draft, LetterType::Siswa))->not->toHaveKey('basis_subject')
+    // The invitation and its "Hal" belong to the guru letter only (D-154); a far-away letter date is refused.
+    expect(array_keys(IssueLetters::draftErrors($draft, LetterType::Siswa)))->toEqualCanonicalizing([
+        'number', 'schedule_day', 'schedule_date', 'schedule_time', 'place',
+    ])
         ->and(IssueLetters::draftErrors(w2cDraft(issuedOn: '2020-01-01'), LetterType::Siswa))->toHaveKey('issued_on');
 });
 
@@ -747,17 +753,15 @@ it('takes the error toast of a failed "Buat PDF" away once the PDF is made or an
 
 // QA6: explore round 3 after PR 14 (2026-10-07) ----------------------------------------------------
 
-it('carries what TU typed about the invitation into the guru letter that is not made yet (QA6, #61 Q1-15)', function (): void {
+it('carries what TU typed about the event into the guru letter that is not made yet (QA6, #61 Q1-15)', function (): void {
     $registration = w2cTeam($this->mentor);
 
     $component = Livewire::actingAs($this->tu)->test(SuratTugas::class, ['registration' => $registration])
         ->set('siswa.nomor', W2C_SISWA)
-        ->set('siswa.dasarNomor', '017/PAN-NSIF/IX/2026')
-        ->set('siswa.dasarTanggal', '2026-09-15')
+        ->set('siswa.tanggal', '8 November 2026')
         ->set('siswa.tempat', 'Gedung A')
         ->call('setTab', 'guru')
-        ->assertSet('guru.dasarNomor', '017/PAN-NSIF/IX/2026')
-        ->assertSet('guru.dasarTanggal', '2026-09-15')
+        ->assertSet('guru.tanggal', '8 November 2026')
         ->assertSet('guru.tempat', 'Gedung A')
         ->assertSet('guru.nomor', '');
 
@@ -773,11 +777,12 @@ it('fills the guru form from the issued student letter when the page is opened a
     $registration = w2cTeam($this->mentor);
     app(IssueLetters::class)->handle($this->tu, $registration, LetterType::Siswa, w2cDraft());
 
+    // The event comes along; the invitation does not, since the student letter names none (D-154).
     Livewire::actingAs($this->tu)->test(SuratTugas::class, ['registration' => $registration])
         ->assertSet('tab', 'guru')
-        ->assertSet('guru.dasarDari', 'Panitia NSIF 2026')
-        ->assertSet('guru.dasarNomor', '017/PAN-NSIF/IX/2026')
-        ->assertSet('guru.dasarTanggal', '2026-09-15')
+        ->assertSet('guru.dasarDari', 'Penyelenggara swasta')
+        ->assertSet('guru.dasarNomor', '')
+        ->assertSet('guru.dasarTanggal', '')
         ->assertSet('guru.tanggal', '7 November 2026')
         ->assertSet('guru.nomor', '');
 });
@@ -832,17 +837,17 @@ it('never refills a field TU changed on the other letter, even back to the lomba
     $registration = w2cTeam($this->mentor);
 
     Livewire::actingAs($this->tu)->test(SuratTugas::class, ['registration' => $registration])
-        ->set('siswa.dasarNomor', '017/PAN-NSIF/IX/2026')
+        ->set('siswa.pukul', '08.00 WIB s.d Selesai')
         ->set('siswa.tempat', 'Gedung A')
         ->call('setTab', 'guru')
         ->assertSet('guru.tempat', 'Gedung A')
         ->set('guru.tempat', 'Kota Semarang')   // the lomba value, on purpose
-        ->set('guru.dasarNomor', '')            // this invitation has no number for the guru
+        ->set('guru.pukul', '')                 // emptied on purpose
         ->call('setTab', 'siswa')
         ->assertSet('siswa.tempat', 'Gedung A')
         ->call('setTab', 'guru')
         ->assertSet('guru.tempat', 'Kota Semarang')
-        ->assertSet('guru.dasarNomor', '');
+        ->assertSet('guru.pukul', '');
 });
 
 it('opens a correction only for a current letter of this registration and drops ?koreksi= once it is saved (QA6 review)', function (): void {
@@ -884,9 +889,101 @@ it('wraps a long word on the paper preview of both letters instead of widening t
     $registration = w2cTeam($this->mentor);
 
     Livewire::actingAs($this->tu)->test(SuratTugas::class, ['registration' => $registration])
-        ->assertSeeHtml('sm:py-[50px] [overflow-wrap:anywhere]" aria-label="Preview surat tugas siswa"')
+        ->assertSeeHtml('sm:py-[53px] [overflow-wrap:anywhere]" aria-label="Preview surat tugas siswa"')
         ->call('setTab', 'guru')
         ->assertSeeHtml('sm:pl-[52px] [overflow-wrap:anywhere]" aria-label="Preview surat perintah tugas guru"');
+});
+
+// D-154: the student letter as the school prints it (2026-10-16) --------------------------------------------
+
+it('gives the student letter the Dasar of the template and asks the invitation for the guru letter only (D-154)', function (): void {
+    $registration = w2cTeam($this->mentor);
+    $dasar = LetterTemplate::FIELDS['siswa_dasar'][4];
+
+    Livewire::actingAs($this->tu)->test(SuratTugas::class, ['registration' => $registration])
+        ->assertSet('tab', 'siswa')
+        ->assertSee('Dari Template surat')
+        ->assertSee($dasar)
+        ->assertSee('Ubah di Template surat')
+        ->assertSeeHtml('href="'.route('tu.surat.template').'"')
+        ->assertDontSee('Nomor surat undangan')
+        ->assertDontSee('Surat dari')
+        // the sheet is the PDF page at 560 px, shrunk as a whole in a narrower box
+        ->assertSeeHtml('<div class="kertas-siswa">')
+        ->assertSeeHtml('<div class="lembar-siswa relative')
+        ->assertSeeHtml('sm:px-[57.5px] sm:py-[53px]')
+        ->call('setTab', 'guru')
+        ->assertSee('Nomor surat undangan')
+        ->assertSee('Surat dari')
+        ->assertDontSee('Dari Template surat');
+
+    $css = (string) file_get_contents(resource_path('css/app.css'));
+    expect($css)->toContain('.kertas-siswa > .lembar-siswa {')
+        ->toContain('width: 560px;')
+        ->toContain('@container (max-width: 559.98px) { .kertas-siswa > .lembar-siswa { zoom: 0.98; } }')
+        ->toContain('@container (max-width: 403.19px) { .kertas-siswa > .lembar-siswa { zoom: 0.7; } }');
+});
+
+it('makes the student letter whatever its hidden invitation keys hold, and keeps no invitation on it (D-154)', function (): void {
+    $registration = w2cTeam($this->mentor);
+
+    $component = Livewire::actingAs($this->tu)->test(SuratTugas::class, ['registration' => $registration])
+        ->set('siswa.nomor', W2C_SISWA)
+        ->set('siswa.dasarDari', '')
+        ->set('siswa.dasarNomor', str_repeat('x', 500))
+        ->set('siswa.dasarTanggal', 'bukan-tanggal')
+        ->call('generate')
+        ->assertHasNoErrors();
+
+    $letter = Letter::query()->where('type', LetterType::Siswa)->sole();
+
+    expect($letter->basis_from)->toBeNull()
+        ->and($letter->basis_number)->toBeNull()
+        ->and($letter->basis_date)->toBeNull()
+        ->and($letter->printed['template']['values']['siswa_dasar'])->toBe(LetterTemplate::FIELDS['siswa_dasar'][4])
+        ->and($letter->printed['template']['values'])->not->toHaveKey('siswa_basis');
+
+    // The issued letter reads as its PDF: the regulation text, no invitation rows.
+    $component->call('setTab', 'siswa')
+        ->assertSee('Isi PDF yang sudah dibuat')
+        ->assertSee('Penggunaan Dana BOS Kinerja bagi sekolah yang memiliki prestasi')
+        ->assertDontSee('Surat dari');
+
+    // The guru letter still needs where its invitation came from.
+    $guru = new LetterDraft(
+        number: W2C_GURU,
+        issuedOn: CarbonImmutable::parse('2026-10-01'),
+        basisFrom: '',
+        basisNumber: null,
+        basisDate: null,
+        scheduleDay: 'Sabtu',
+        scheduleDate: '7 November 2026',
+        scheduleTime: '07.00 WIB s.d Selesai',
+        place: 'Daring',
+    );
+    expect(IssueLetters::draftErrors($guru, LetterType::Guru))->toHaveKey('basis_from')
+        ->and(IssueLetters::draftErrors($guru, LetterType::Siswa))->not->toHaveKey('basis_from');
+});
+
+it('shows a student letter printed before D-154 with its three Dasar rows, as its PDF has them (D-108)', function (): void {
+    $registration = w2cTeam($this->mentor);
+    $letter = app(IssueLetters::class)->handle($this->tu, $registration, LetterType::Siswa, w2cDraft());
+
+    // What a letter printed before 2026-10-16 stored: the old field `siswa_basis`, no `siswa_dasar`.
+    $printed = $letter->printed;
+    $values = $printed['template']['values'];
+    unset($values['siswa_dasar']);
+    $printed['template']['values'] = ['siswa_basis' => 'Surat dari {penyelenggara}'] + $values;
+    $letter->forceFill(['printed' => $printed])->save();
+
+    Livewire::actingAs($this->tu)->test(SuratTugas::class, ['registration' => $registration])
+        ->call('setTab', 'siswa')
+        ->assertSee('Isi PDF yang sudah dibuat')
+        ->assertSee('Surat dari Panitia NSIF 2026')
+        ->assertSee('017/PAN-NSIF/IX/2026')
+        ->assertSee('15 September 2026')
+        ->assertSee('Surat dari Panitia NSIF 2026, nomor 017/PAN-NSIF/IX/2026, tanggal 15 September 2026')
+        ->assertDontSee('Penggunaan Dana BOS Kinerja');
 });
 
 it('fits the two letter tabs on a phone while both letters still have to be made (QA7)', function (): void {
