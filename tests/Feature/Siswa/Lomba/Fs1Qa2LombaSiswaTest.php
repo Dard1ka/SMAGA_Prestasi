@@ -185,18 +185,18 @@ it('names the tab that leads to Profil talenta after it while a kelas X student 
     $drawer = collect(Navigation::for($user, 'siswa', [], 'siswa.talenta')['sections'])->flatMap(fn (array $s) => $s['items'])->keyBy('key');
 
     expect($tab['href'])->toBe(route('siswa.talenta'))
-        // One name per menu (D-119): the menu item it opens is "Profil talenta".
-        ->and($tab['label'])->toBe('Profil talenta')
+        // One name per menu (D-119): the page it opens is "Talenta saya" (D-153).
+        ->and($tab['label'])->toBe('Talenta saya')
         ->and($tab['icon'])->toBe('user')
         ->and($tab['locked'] ?? false)->toBeFalse()
-        // The drawer agrees: Portofolio is locked there, Profil talenta is open.
+        // The drawer agrees: Portofolio is locked there, Profil saya (with Talenta saya) is open.
         ->and($drawer['portofolio']['locked'])->toBeTrue()
-        ->and($drawer['profil-talenta']['locked'])->toBeFalse();
+        ->and($drawer['profil-saya']['locked'])->toBeFalse();
 
     $html = fs1qa2Plain((string) $this->actingAs($user)->get(route('siswa.talenta'))->assertOk()->getContent());
     preg_match('/<nav aria-label="Menu utama" class="tabbar[^"]*">(.*?)<\/nav>/s', $html, $tabbar);
 
-    expect($tabbar[1] ?? '')->toContain('Profil talenta')->not->toContain('Portofolio');
+    expect($tabbar[1] ?? '')->toContain('Talenta saya')->not->toContain('Portofolio');
 
     // A student who may move freely keeps the Portofolio tab.
     $free = collect(Navigation::for($this->nadiaUser, 'siswa', [], 'siswa.beranda')['tabbar'])->keyBy('key')['profil'];

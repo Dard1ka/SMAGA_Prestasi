@@ -1,4 +1,7 @@
-{{-- Profil talenta (UI-MAP #15, board Profil-Talenta). Data from App\Livewire\Siswa\ProfilTalenta::render(). --}}
+{{-- Talenta saya, a tab of Profil saya (D-153; UI-MAP #15, board Profil-Talenta). Data from
+     App\Livewire\Siswa\ProfilTalenta::render(). --}}
+<div class="flex flex-col gap-[22px]">
+<x-sth.tabs label="Profil saya" :items="$tabs" active="talenta" />
 <div class="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_420px]">
     {{-- D-144: a kelas X student without a talent comes here from every other page until one is chosen. --}}
     @if ($gate)
@@ -250,4 +253,5 @@
             </form>
         </x-sth.card>
     </div>
+</div>
 </div>

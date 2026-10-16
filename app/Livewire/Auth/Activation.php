@@ -307,7 +307,7 @@ class Activation extends Component
             'passwordHint' => $setPassword->hint($user),
             'isStudent' => $isStudent,
             'temporaryPassword' => CompleteActivation::hasTemporaryPassword($user),
-            // FS1 QA (D-144): a kelas X student without a talent is held on Profil talenta next, so the done screen says so.
+            // D-144, D-153: a student without a talent is held on Talenta saya next, so the done screen says so.
             'talentFirst' => $this->step === self::STEP_DONE && EnsureTalentChosen::applies($user),
         ]);
     }

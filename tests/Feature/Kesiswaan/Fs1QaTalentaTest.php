@@ -189,7 +189,6 @@ it('shows a held kelas X student the closed menus as locked (BUG-08)', function 
         ->and($items['cari-lomba']['locked'])->toBeTrue()
         ->and($items['lomba-saya']['locked'])->toBeTrue()
         ->and($items['portofolio']['locked'])->toBeTrue()
-        ->and($items['profil-talenta']['locked'])->toBeFalse()
         ->and($items['bantuan']['locked'])->toBeFalse()
         ->and($items['notifikasi']['locked'])->toBeFalse()
         // D-152: Profil saya (tabs Data diri + Keamanan akun) stays open.
@@ -214,7 +213,7 @@ it('shows a held kelas X student the closed menus as locked (BUG-08)', function 
         ->and(collect($nav['tabbar'])->keyBy('key')['profil']['href'])->toBe(route('siswa.portofolio'));
 });
 
-it('never locks the menus of a student above kelas X', function (): void {
+it('never locks the menus of a student who chose a talent, above kelas X too (D-153)', function (): void {
     $user = L::user(L::student('Nadia Putri Anindya', 'XI-4'));
 
     $nav = Navigation::for($user, 'siswa', [], 'siswa.beranda');
@@ -227,7 +226,7 @@ it('tells a held kelas X student about the talent in Bantuan instead of a tour t
 
     $this->actingAs(L::user($student))->get(route('siswa.bantuan'))->assertOk()
         ->assertSee('Pilih talenta')
-        ->assertSee('Tour bisa dibuka setelah kamu memilih minimal satu talenta di Profil talenta.')
+        ->assertSee('Tour bisa dibuka setelah kamu memilih minimal satu talenta di Talenta saya.')
         ->assertDontSee('href="'.route('siswa.tour').'"', false);
 
     fs1qaTalent($student, TalentTypeCode::Lainnya, other: 'Membaca');
@@ -264,6 +263,6 @@ it('says on the activation done screen that a kelas X student picks a talent fir
         ->set('password', 'Pelangi-senja-2026')->set('password_confirmation', 'Pelangi-senja-2026')
         ->call('savePassword')->assertHasNoErrors()
         ->assertSet('step', Activation::STEP_DONE)
-        ->assertSee('Pilih minimal satu talenta dulu di Profil talenta. Setelah itu kamu bisa daftar lomba dan pantau prestasimu.')
+        ->assertSee('Pilih minimal satu talenta dulu di Talenta saya (menu Profil saya). Setelah itu kamu bisa daftar lomba dan pantau prestasimu.')
         ->assertDontSee('Sekarang kamu bisa daftar lomba');
 });

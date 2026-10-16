@@ -44,6 +44,37 @@ Built on the demo copy checkout (`feat/fs1-feedback-sekolah` at `1741687` + the 
 - The talent requirement stays kelas X only (D-144); the school's line said "setiap siswa".
 - The registration panel still says "Data salah? Hubungi Kesiswaan." under the read-only birth date (not changed).
 
+## Follow-up 2026-10-16: Talenta saya (D-153)
+The lead: "profil talenta dipindah ke menu profil saya menjadi talenta saya dan itu harus diisi saat setelah aktivasi
+berhasil"; asked who must fill it, the lead chose "semua siswa tanpa talenta" (also students already active).
+- `Akun\Profil::tabs(?User)`: Data diri · **Talenta saya** (siswa only, `siswa.talenta`) · Keamanan akun; passed the
+  user by `Profil`, `Keamanan` and `Siswa\ProfilTalenta` (title "Profil saya", the tabs above its old grid).
+- `Navigation`: the sidebar item `profil-talenta` is gone (siswa › Akun = Profil saya, Notifikasi, Bantuan); `profil-saya`
+  also matches `siswa.talenta` / `siswa.profil-talenta`; the held phone tab is named "Talenta saya".
+- `EnsureTalentChosen::applies()`: every student who can log in and has no talent (no kelas X condition); the activation
+  done screen and "Mulai" lead there (the gate keeps the tour address and `ProfilTalenta::daftar()` returns to it).
+- `Siswa\TurMenu`: tip 5 = Profil saya (same position), the closing tip points at Bantuan at 490 px (one item up);
+  the phone tip of Portofolio no longer speaks of talents.
+- Copy: Bantuan, the activation done screen, the Portofolio card "Talenta saya", PANDUAN-PENGGUNA, UI-MAP.
+- Open for the lead: Kesiswaan › Database talenta siswa still has the tab "Belum mengisi (kelas X)" (only kelas X
+  rows); with D-153 it could list every class. Not changed without a request.
+- Tests: `HasilFixtures::student()` and `LombaFixtures::student()` give a student outside kelas X one talent ("Lainnya
+  (Membaca)", `TalentGate::pass`), `talent: false` for none (the talent tests); three tests on other helpers pass the
+  gate themselves (`StaffTwoFactorTest`, `CspSafeTest`, `SiswaPeringkatTest`); the old "kelas XI/XII are never held"
+  tests now assert D-153.
+
+- TEST-RESULTS of D-153 (2026-10-16): full suite `--parallel --processes=8` → **3752 passed, 1 skipped (22500
+  assertions)**, 994 s; `pint` clean. `reload.bat` run on the demo stack; as the demo TU account Profil saya shows the
+  tabs Data diri and Keamanan akun only. Not seen in a browser: a student's Talenta saya tab, the held student and the
+  activation done screen (no student password of the demo copy is known here; render tests only).
+
+## Demo copy database, 2026-10-16
+The lead saw a 403 for Tata Usaha on `/tu/persetujuan` (through the demo tunnel). Cause: the demo copy's database came
+from the 2026-10-11 dump and only `migrate` had run after the FS1 code arrived; FS1 deploy steps 3–4 were missing, so TU
+had no `registration.approve`, Humas no `report.verify`, every role still held `competition.create`, and the talent
+type "Lainnya" did not exist. Fixed by `db:seed --class=RoleSeeder --force` and `db:seed --class=TalentSeeder --force`
+on the local MySQL; `/tu/persetujuan` then opened as the demo TU account (7 waiting registrations). No code change.
+
 ## TEST-RESULTS (2026-10-15, on this machine)
 - Full suite `--parallel --processes=8` → **3749 passed, 1 skipped, 2 failed (22473 assertions)**, 962 s; the two failures
   were `Kesiswaan/Fs1QaTalentaTest` (the old menu key `keamanan`, the activation without Data diri), fixed in that file and

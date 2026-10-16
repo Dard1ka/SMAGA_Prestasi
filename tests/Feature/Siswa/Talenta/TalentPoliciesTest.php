@@ -15,12 +15,12 @@ uses(RefreshDatabase::class);
 beforeEach(function (): void {
     F::boot();
 
-    $this->nadia = F::student();
+    $this->nadia = F::student(talent: false);
     $this->application = TalentApplication::factory()->create(['student_id' => $this->nadia->getKey()]);
 });
 
 it('TalentApplicationPolicy: students apply and cancel their own choices in every status', function (): void {
-    $dimas = F::student('Dimas Arya Nugroho');
+    $dimas = F::student('Dimas Arya Nugroho', talent: false);
 
     expect($this->nadia->user->can('create', TalentApplication::class))->toBeTrue()
         ->and($this->nadia->user->can('viewAny', TalentApplication::class))->toBeTrue()
@@ -76,7 +76,7 @@ it('TalentApplicationPolicy: only talent.manage updates a choice, never the stud
 
 it('TalentProfilePolicy: own profile only; Kesiswaan and guru pembina may read it', function (): void {
     $profile = TalentProfile::factory()->create(['student_id' => $this->nadia->getKey()]);
-    $dimas = F::student('Dimas Arya Nugroho');
+    $dimas = F::student('Dimas Arya Nugroho', talent: false);
     $kesiswaan = F::staff(RoleName::Kesiswaan);
 
     expect($this->nadia->user->can('save', [TalentProfile::class, $profile]))->toBeTrue()

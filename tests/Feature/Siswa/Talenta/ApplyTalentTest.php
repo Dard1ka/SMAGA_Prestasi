@@ -37,7 +37,7 @@ beforeEach(function (): void {
     F::boot();
     $this->seed(TalentSeeder::class);
 
-    $this->nadia = F::student();
+    $this->nadia = F::student(talent: false);
     $this->apply = app(ApplyTalent::class);
 });
 
@@ -117,7 +117,7 @@ it('requires a cabang of the chosen jenis for every other type', function (): vo
 });
 
 it('lets kelas XII join (D-23) and refuses staff and archived/disabled accounts', function (): void {
-    $xii = F::student('Raka Pradipta', 'XII-2');
+    $xii = F::student('Raka Pradipta', 'XII-2', talent: false);
     expect($this->apply->handle($xii->user, w2a2TalentType(TalentTypeCode::O2sn), w2a2TalentBranch(TalentTypeCode::O2sn, 'Atletik'))->exists)->toBeTrue();
 
     expect(fn () => $this->apply->handle(F::staff(RoleName::Kesiswaan), w2a2TalentType(TalentTypeCode::Osn), w2a2TalentBranch(TalentTypeCode::Osn, 'Fisika')))
@@ -146,7 +146,7 @@ it('cancels own choices in any status, and re-applying restores the same row', f
     $cancel = app(CancelTalentApplication::class);
     $kimia = $this->apply->handle($this->nadia->user, w2a2TalentType(TalentTypeCode::Osn), w2a2TalentBranch(TalentTypeCode::Osn, 'Kimia'), F::pdf());
 
-    expect(fn () => $cancel->handle(F::student('Dimas Arya Nugroho')->user, $kimia))->toThrow(AuthorizationException::class);
+    expect(fn () => $cancel->handle(F::student('Dimas Arya Nugroho', talent: false)->user, $kimia))->toThrow(AuthorizationException::class);
 
     $cancel->handle($this->nadia->user, $kimia);
     expect($kimia->fresh()->trashed())->toBeTrue()

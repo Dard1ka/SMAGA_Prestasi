@@ -94,8 +94,10 @@ class TurMenu extends Component
             2 => ['title' => 'Lomba saya', 'text' => 'Pantau status, download surat tugas, dan laporkan hasil.', 'icon' => 'clipboard', 'label' => 'Lomba saya', 'spot' => 'top-[208px]', 'pop' => 'top-[188px]'],
             3 => ['title' => 'Portofolio', 'text' => 'Semua prestasi dan sertifikatmu.', 'icon' => 'award', 'label' => 'Portofolio', 'spot' => 'top-[256px]', 'pop' => 'top-[236px]'],
             4 => ['title' => 'Peringkat', 'text' => 'Lihat poin dan posisimu.', 'icon' => 'bars', 'label' => 'Peringkat', 'spot' => 'top-[304px]', 'pop' => 'top-[284px]'],
-            5 => ['title' => 'Profil talenta', 'text' => 'Atur minat dan bakatmu.', 'icon' => 'user', 'label' => 'Profil talenta', 'spot' => 'top-[394px]', 'pop' => 'top-[374px]'],
-            self::DONE => ['title' => 'Siap dipakai!', 'text' => 'Tour ini bisa dibuka lagi di menu Bantuan.', 'icon' => 'help', 'label' => 'Bantuan', 'spot' => 'top-[538px]', 'pop' => 'top-[429px]'],
+            // D-153: Profil saya (Data diri, Talenta saya, Keamanan akun) is the first item of "Akun", where Profil
+            // talenta stood; Bantuan moved up one item (Akun = Profil saya, Notifikasi, Bantuan).
+            5 => ['title' => 'Profil saya', 'text' => 'Data diri, talenta, dan keamanan akunmu.', 'icon' => 'user', 'label' => 'Profil saya', 'spot' => 'top-[394px]', 'pop' => 'top-[374px]'],
+            self::DONE => ['title' => 'Siap dipakai!', 'text' => 'Tour ini bisa dibuka lagi di menu Bantuan.', 'icon' => 'help', 'label' => 'Bantuan', 'spot' => 'top-[490px]', 'pop' => 'top-[381px]'],
         ];
     }
 
@@ -112,7 +114,7 @@ class TurMenu extends Component
             1 => ['title' => 'Lomba', 'text' => 'Cari lomba dari sekolah dan daftar di sini.', 'icon' => 'search', 'label' => 'Lomba', 'spot' => 'left-[calc(6px+(100vw-12px)/5)]', 'arrow' => 'left-[calc(6px+(100vw-12px)*3/10-24px)]'],
             2 => ['title' => 'Lomba saya', 'text' => 'Pantau status, download surat tugas, dan laporkan hasil.', 'icon' => 'clipboard', 'label' => 'Lomba saya', 'spot' => 'left-[calc(6px+(100vw-12px)*2/5)]', 'arrow' => 'left-[calc(6px+(100vw-12px)/2-24px)]'],
             3 => ['title' => 'Peringkat', 'text' => 'Lihat poin dan posisimu.', 'icon' => 'bars', 'label' => 'Peringkat', 'spot' => 'left-[calc(6px+(100vw-12px)*3/5)]', 'arrow' => 'left-[calc(6px+(100vw-12px)*7/10-24px)]'],
-            4 => ['title' => 'Portofolio', 'text' => 'Prestasi dan data talentamu.', 'icon' => 'award', 'label' => 'Portofolio', 'spot' => 'left-[calc(6px+(100vw-12px)*4/5)]', 'arrow' => 'left-[calc(6px+(100vw-12px)*9/10-24px)]'],
+            4 => ['title' => 'Portofolio', 'text' => 'Semua prestasi dan sertifikatmu.', 'icon' => 'award', 'label' => 'Portofolio', 'spot' => 'left-[calc(6px+(100vw-12px)*4/5)]', 'arrow' => 'left-[calc(6px+(100vw-12px)*9/10-24px)]'],
         ];
     }
 }

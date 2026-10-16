@@ -11,6 +11,7 @@ use Laravel\Fortify\Fortify;
 use Livewire\Livewire;
 use PragmaRX\Google2FA\Google2FA;
 use Tests\Feature\Auth\AuthTestHelpers as H;
+use Tests\Support\TalentGate;
 
 uses(RefreshDatabase::class);
 
@@ -42,7 +43,10 @@ it('can be switched off locally with STH_REQUIRE_STAFF_2FA=false', function (): 
 });
 
 it('never asks students for 2FA, but keeps them out of staff checks via role middleware', function (): void {
-    $this->actingAs(H::activeStudent()->user);
+    // D-153: an active student has chosen a talent, else the talent gate holds the siswa area.
+    $student = H::activeStudent();
+    TalentGate::pass($student);
+    $this->actingAs($student->user);
 
     $this->get('/_test/siswa-area')->assertOk()->assertSee('siswa ok');
 });

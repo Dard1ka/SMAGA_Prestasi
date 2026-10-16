@@ -19,6 +19,7 @@ use App\Models\Competition;
 use App\Models\Student;
 use App\Models\User;
 use Tests\Feature\Auth\AuthTestHelpers;
+use Tests\Support\TalentGate;
 
 /**
  * W2-A1 fixtures (fictional names from DESIGN-SPEC-v2 §5 or Faker only).
@@ -37,13 +38,22 @@ final class LombaFixtures
     }
 
     /** Active, activated student (role siswa). Returned fresh so every column is loaded (strict models). */
-    public static function student(string $name = 'Nadia Putri Anindya', string $kelas = 'XI-4', array $user = []): Student
+    /**
+     * An active student. D-153: an active student has chosen a talent (else the talent gate holds every siswa page), so a
+     * student outside kelas X gets one ("Lainnya (Membaca)", TalentGate::pass). Kelas X students stay without one, so the
+     * gate tests keep testing the gate; `talent: false` gives a student of any class no talent.
+     */
+    public static function student(string $name = 'Nadia Putri Anindya', string $kelas = 'XI-4', array $user = [], bool $talent = true): Student
     {
         $classroom = Classroom::query()->where('name', $kelas)->first()
             ?? Classroom::factory()->level(str_starts_with($kelas, 'XII') ? 12 : (str_starts_with($kelas, 'XI') ? 11 : 10))->create(['name' => $kelas]);
 
         $student = Student::factory()->activated()->create(['classroom_id' => $classroom->getKey()]);
         $student->user->forceFill(array_merge(['name' => $name, 'status' => UserStatus::Active], $user))->save();
+
+        if ($talent && (int) $classroom->level !== 10) {
+            TalentGate::pass($student);
+        }
 
         return $student->fresh(['user', 'classroom']);
     }

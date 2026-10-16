@@ -11,7 +11,7 @@ use App\Models\TalentApplication;
 use App\Models\TalentType;
 
 /**
- * Tests only. D-144: a kelas X student without a talent choice is held on Profil talenta (EnsureTalentChosen). A test
+ * Tests only. D-144, D-153: a student without a talent choice is held on Talenta saya (EnsureTalentChosen). A test
  * whose kelas X student opens another siswa page gives that student one choice first: the jenis "Lainnya" with the
  * text "Membaca" (the seeded jenis when TalentSeeder ran, else a factory one).
  */

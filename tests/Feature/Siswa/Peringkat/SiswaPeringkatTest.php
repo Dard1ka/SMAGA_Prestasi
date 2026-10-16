@@ -13,6 +13,7 @@ use App\Support\Navigation;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Tests\Feature\Publik\PublikFixtures;
+use Tests\Support\TalentGate;
 
 /*
 | B4 · backlog #2: siswa.peringkat = public ranking data (consent rules) for active students only, own row
@@ -31,6 +32,7 @@ beforeEach(function (): void {
     $aurelia = $f->student('Aurelia Maharani', 'X-3');
     $ardi = $f->student('Ardiansyah Nur Hakim', 'XII-3', archived: true, attributes: ['grade12_start_date' => '2024-07-01']);
     $this->nadia = $f->student('Nadia Putri Anindya', 'XI-4', consent: false);
+    TalentGate::pass($this->nadia); // D-153: else the talent gate holds every siswa page
     $this->dimas = $f->student('Dimas Arya Nugroho', 'XI-1', consent: false);
 
     $fiksi = $f->lomba('FIKSI 2026', Bidang::Riset, Level::Nasional, '2026-09-01');

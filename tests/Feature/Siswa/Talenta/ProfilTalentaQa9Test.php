@@ -27,7 +27,7 @@ beforeEach(function (): void {
     $this->withoutVite();
     Notification::fake();
 
-    $this->nadia = F::student();
+    $this->nadia = F::student(talent: false);
     $this->osn = TalentType::query()->where('code', TalentTypeCode::Osn)->firstOrFail();
     $this->kimia = $this->osn->branches()->where('name', 'Kimia')->firstOrFail();
 });

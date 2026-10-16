@@ -22,7 +22,7 @@ beforeEach(function (): void {
     $this->seed(TalentSeeder::class);
     $this->withoutVite();
 
-    $this->nadia = F::student();
+    $this->nadia = F::student(talent: false);
     $this->osn = TalentType::query()->where('code', TalentTypeCode::Osn)->firstOrFail();
     $this->kimia = $this->osn->branches()->where('name', 'Kimia')->firstOrFail();
 });
@@ -31,7 +31,7 @@ it('renders the seven jenis from the DB with bidang, and the account data', func
     $this->actingAs($this->nadia->user)
         ->get(route('siswa.talenta'))
         ->assertOk()
-        ->assertSee('<title>Profil talenta · SMAGA Talent Hub</title>', false)
+        ->assertSee('<title>Profil saya · SMAGA Talent Hub</title>', false)
         ->assertSeeInOrder(['OSN', 'Riset', 'FLS3N', 'O2SN', 'OLPAIN', 'Debat', 'Lainnya'])
         ->assertSee('Seni Budaya')
         ->assertSee('Nadia Putri Anindya')
@@ -180,7 +180,7 @@ it('lets the student delete any own choice, also one Kesiswaan handled, and tell
         'mentor_id' => $pembina->getKey(),
     ]);
     $theirs = TalentApplication::factory()->status($status)->create([
-        'student_id' => F::student('Dimas Arya Nugroho')->getKey(),
+        'student_id' => F::student('Dimas Arya Nugroho', talent: false)->getKey(),
         'talent_type_id' => $this->osn->getKey(),
         'talent_branch_id' => $this->osn->branches()->where('name', 'Fisika')->value('id'),
     ]);

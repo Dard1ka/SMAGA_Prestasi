@@ -464,6 +464,10 @@ logs in through `POST /login` and expects a 403/404 on the next GET would see th
   `StudentPolicy::updateProfile` = the owner rule of `updatePhone`, the rules of `StudentProfileInput`, audit
   `student.profile_updated` with the changed field names only, nobody told); name, NISN, class and email are read-only;
   staff read name, role, username and email, no form (a forged `save()` → 403). `EnsureTalentChosen` lets `akun.profil` through.
+  Since D-153 a student has a third tab in between, **Talenta saya** = the old "Profil talenta" page (`siswa.talenta`,
+  `Siswa\ProfilTalenta`, now titled "Profil saya"); `Akun\Profil::tabs(?User)` adds it for a siswa account only, and the
+  siswa sidebar › Akun is Profil saya, Notifikasi, Bantuan (no item "Profil talenta"; `profil-saya` is also current on
+  `siswa.talenta`).
 - **Models & permissions**: status/verification/points columns are not in `$fillable`; Actions set them
   with `forceFill()`. Permissions = `App\Enums\Permission` (`competition.verify`, `registration.approve`,
   `letter.generate`, `report.verify`, `student.import`, `weight.manage`, …), matrix in
@@ -485,9 +489,10 @@ logs in through `POST /login` and expects a 403/404 on the next GET would see th
   array{mentor_id?, note?})`, policy `update`, nobody notified), "Download data (Excel)" with the columns of
   `Talenta::EXPORT_HEADER` following the screen filters, never an empty file. `MoveTalentStage`,
   `RejectTalentApplication`, `RestoreTalentApplication`, `RequestTalentReview` and the four talent notices are deleted;
-  the columns `status`, `rejected_from`, `review_*`, `student_note*`, `assessment_on` stay. **Kelas X gate** (D-144):
-  `App\Http\Middleware\EnsureTalentChosen` (`talent.chosen`, last in `area.siswa`) sends a kelas X student (classroom
-  level 10) who can log in and has no talent choice to `siswa.talenta` (JSON: 403) with `EnsureTalentChosen::ALERT`;
+  the columns `status`, `rejected_from`, `review_*`, `student_note*`, `assessment_on` stay. **Talent gate** (D-144,
+  widened to every class by D-153): `App\Http\Middleware\EnsureTalentChosen` (`talent.chosen`, last in `area.siswa`)
+  sends a student of any class who can log in and has no talent choice to `siswa.talenta` (Profil saya › Talenta saya;
+  JSON: 403) with `EnsureTalentChosen::ALERT`, also right after the activation and also students active before;
   exempt: `EXEMPT_ROUTES` (Profil talenta, Bantuan, Akun › Keamanan, Notifikasi + its counter, logout) and every Livewire
   update (not a persistent Livewire middleware); tests use `Tests\Support\TalentGate::pass()`.
   *Historic (removed by D-142, kept for the old texts below):* two optional notes per application: `note` = for the guru pembina (internal), `student_note` = for the
@@ -1095,6 +1100,11 @@ diri and Keamanan akun, and a student activation of four steps (email → code �
 password). Do not bring back: "Keamanan akun" as its own item in the avatar menu or the siswa sidebar, a student
 activation that ends without the birth date and No HP confirmed, a password step before Data diri, an active student sent
 back to the activation for a missing No HP, a birth date or a phone number in an audit row, a profile form for staff.
+**D-153** (DECISIONS §D16, the lead on 2026-10-16), **final**: "Profil talenta" is the tab Talenta saya of Profil saya
+(Data diri · Talenta saya · Keamanan akun, students only), and every student without a talent choice, of any class and
+also one active before, is held there until one is chosen (right after the activation too); this widens D-144 and ends
+the *sementara* "kelas X only" of D-152. Do not bring back: "Profil talenta" as an item of the siswa sidebar, a talent
+gate for kelas X only, a Talenta saya tab for staff.
 
 Known stale text (do not "fix" code to match it): `docs/DEPLOY.md` §9 path A (Google Workspace relay) is not an option
 for the school (lead, 2026-10-08) and §9 has no Brevo path yet;
@@ -1412,7 +1422,9 @@ the lead's request after checking the school's lists: the account menu item Prof
 new `akun.profil`, and Keamanan akun) and a required "Data diri" step (birth date + No HP) in the student activation
 between the code and the new password. One migration (`students.profile_confirmed_at`, run on the local MySQL). Full suite
 → 3749 passed, 1 skipped, 2 failed (both fixed and green alone); `pint --test` clean (825 files). Browser: staff views
-only; the student form and the activation step are render-tested only.
+only; the student form and the activation step are render-tested only. Committed (`720a015`) and pushed with FS1 in PR 30.
+PS1 follow-up 2026-10-16 (D-153, same note): Profil talenta became the tab Talenta saya of Profil saya, and the talent
+gate holds every student without a talent (any class), right after the activation too. No migration.
 
 | area | owner | state (details in `docs/dev-notes/<ID>.md`) |
 |---|---|---|

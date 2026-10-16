@@ -35,7 +35,7 @@ beforeEach(function (): void {
     $this->withoutVite();
     config(['fortify.sth.require_staff_2fa' => false]);
 
-    $this->nadia = F::student();
+    $this->nadia = F::student(talent: false);
     $this->osn = TalentType::query()->where('code', TalentTypeCode::Osn)->sole();
     $this->lainnya = TalentType::query()->where('code', TalentTypeCode::Lainnya)->sole();
 });

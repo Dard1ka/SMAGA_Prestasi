@@ -38,7 +38,7 @@ it('builds the siswa menu from the spec with disabled items for missing routes',
 
     expect(array_column($nav['sections'], 'label'))->toBe(['Menu', 'Akun'])
         // D-152: Profil saya (tabs Data diri + Keamanan akun) above Notifikasi.
-        ->and(array_keys($items))->toBe(['beranda', 'cari-lomba', 'lomba-saya', 'portofolio', 'peringkat', 'profil-talenta', 'profil-saya', 'notifikasi', 'bantuan'])
+        ->and(array_keys($items))->toBe(['beranda', 'cari-lomba', 'lomba-saya', 'portofolio', 'peringkat', 'profil-saya', 'notifikasi', 'bantuan'])
         // Wave 2 created real routes: an item is disabled exactly while its route is missing.
         ->and($items['beranda']['disabled'])->toBe(! Route::has('siswa.beranda'))
         ->and($items['beranda']['href'])->toBe(Route::has('siswa.beranda') ? route('siswa.beranda') : '#')

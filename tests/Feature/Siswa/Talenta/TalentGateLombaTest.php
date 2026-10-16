@@ -78,7 +78,7 @@ it('holds the student again before Usulkan lomba once the last talent is deleted
     $this->actingAs($this->hanaUser)->get(route('siswa.lomba.usulkan'))->assertRedirect(route('siswa.talenta'));
 });
 
-it('never holds a student of kelas XI or XII before Usulkan lomba', function (): void {
+it('lets a kelas XI or XII student who chose a talent open Usulkan lomba (D-153)', function (): void {
     foreach (['XI-2', 'XII-1'] as $kelas) {
         $student = F::student('Siswa '.$kelas, $kelas);
         $this->actingAs(F::user($student))->get(route('siswa.lomba.usulkan'))->assertOk()->assertSee('Data lomba');

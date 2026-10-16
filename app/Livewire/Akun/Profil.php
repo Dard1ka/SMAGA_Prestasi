@@ -13,13 +13,15 @@ use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Route;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
 /**
- * Profil saya › Data diri (`akun.profil`, every role, D-152): the account menu item above Notifikasi. Two tabs,
- * "Data diri" (this page) and "Keamanan akun" (Akun\Keamanan, `akun.keamanan`, unchanged), see tabs().
+ * Profil saya › Data diri (`akun.profil`, every role, D-152): the account menu item above Notifikasi. Tabs, see
+ * tabs(): "Data diri" (this page), for a student "Talenta saya" (Siswa\ProfilTalenta, D-153) and "Keamanan akun"
+ * (Akun\Keamanan, `akun.keamanan`, unchanged).
  *
  * - Student: name, NISN, class and email read-only; birth date and No HP editable (UpdateStudentProfile, the same rules
  *   as the "Data diri" step of the activation). Shown to the owner only: there is no id in the address.
@@ -75,23 +77,29 @@ final class Profil extends Component
             'roles' => collect($user->getRoleNames())
                 ->map(fn (string $role): string => RoleName::tryFrom($role)?->label() ?? $role)
                 ->implode(', '),
-            'tabs' => self::tabs(),
+            'tabs' => self::tabs($user),
             'birthDateMin' => $today->subYears(StudentProfileInput::MAX_AGE)->format('Y-m-d'),
             'birthDateMax' => $today->subYears(StudentProfileInput::MIN_AGE)->format('Y-m-d'),
         ]);
     }
 
     /**
-     * The two tabs of Profil saya (D-152), drawn on both pages.
+     * The tabs of Profil saya, drawn on every one of its pages: Data diri and Keamanan akun (D-152), and for a student
+     * Talenta saya in between (D-153; the page Siswa\ProfilTalenta, `siswa.talenta`).
      *
      * @return list<array{key: string, label: string, href: string}>
      */
-    public static function tabs(): array
+    public static function tabs(?User $user = null): array
     {
-        return [
-            ['key' => 'profil', 'label' => 'Data diri', 'href' => route('akun.profil')],
-            ['key' => 'keamanan', 'label' => 'Keamanan akun', 'href' => route('akun.keamanan')],
-        ];
+        $tabs = [['key' => 'profil', 'label' => 'Data diri', 'href' => route('akun.profil')]];
+
+        if ($user !== null && $user->hasRoleName(RoleName::Siswa) && Route::has('siswa.talenta')) {
+            $tabs[] = ['key' => 'talenta', 'label' => 'Talenta saya', 'href' => route('siswa.talenta')];
+        }
+
+        $tabs[] = ['key' => 'keamanan', 'label' => 'Keamanan akun', 'href' => route('akun.keamanan')];
+
+        return $tabs;
     }
 
     /** The signed-in student's own record, or null for staff (the edit needs the siswa role, StudentPolicy). */

@@ -120,9 +120,10 @@ Jangan pernah membagikan kata sandi atau kode email kepada siapa pun, termasuk g
 
 ## 2. Siswa
 
-**Siswa kelas X: pilih talenta dulu** (sejak 12 Oktober 2026). Selama kamu belum punya satu pun pilihan talenta, menu lain
-terkunci (ikon gembok) dan setiap halaman lain membawamu ke **Profil talenta** dengan pesan "Pilih minimal satu talenta untuk melanjutkan. Belum punya? Pilih
-Lainnya lalu tulis minatmu." Pilih satu talenta (lihat **Profil talenta** di bawah), lalu menu lain terbuka lagi. Bantuan,
+**Semua siswa: pilih talenta dulu** (kelas X sejak 12 Oktober 2026, semua kelas sejak 16 Oktober 2026, juga langsung
+setelah aktivasi selesai). Selama kamu belum punya satu pun pilihan talenta, menu lain terkunci (ikon gembok) dan setiap
+halaman lain membawamu ke **Talenta saya** (menu **Profil saya**) dengan pesan "Pilih minimal satu talenta untuk melanjutkan. Belum punya? Pilih
+Lainnya lalu tulis minatmu." Pilih satu talenta (lihat **Talenta saya** di bawah), lalu menu lain terbuka lagi. Bantuan,
 Notifikasi, Profil saya, dan Keluar tetap bisa dibuka. Link dari email (mis. undangan tim) yang tadi tertahan: buka
 lagi setelah memilih talenta.
 
@@ -233,7 +234,7 @@ Nama lomba tidak boleh berisi alamat web; tulis alamatnya di kolom link resmi.
 - **Peringkat**: peringkat kumulatif siswa aktif; barismu ditandai "Kamu". Peringkat alumni ada di halaman publik
   (pilih **Alumni** atau **Semua**).
 
-**Profil talenta** (sejak 12 Oktober 2026 tanpa tahap dan tanpa seleksi: Kesiswaan hanya mencatat pilihanmu)
+**Talenta saya** (tab di **Profil saya** sejak 16 Oktober 2026; sejak 12 Oktober 2026 tanpa tahap dan tanpa seleksi: Kesiswaan hanya mencatat pilihanmu)
 - **Tambah talenta**: pilih jenis talenta (boleh lebih dari satu) → pilih cabang → **Daftar penjaringan**. Bukti dukung
   boleh dilampirkan.
 - **Lainnya**: tidak ada yang cocok? Pilih jenis **Lainnya**, atau cabang **Lainnya** di sebuah jenis, lalu tulis
@@ -400,7 +401,7 @@ dengan nama atau NISN.
   - **Semua**: setiap pilihan talenta, terbaru di atas, juga baris lama yang dulu berstatus apa pun (tampil sebagai
     data biasa). Saring per jenis (tombol di atas tabel), cabang, dan kelas.
   - **Belum mengisi (kelas X)**: siswa kelas X yang belum memilih satu pun talenta (nama, kelas, NISN). Siswa ini
-    ditahan di Profil talenta sampai memilih (§2). Saring per kelas atau cari nama/NISN.
+    ditahan di Talenta saya sampai memilih (§2). Saring per kelas atau cari nama/NISN.
 - Klik ikon mata di tab **Semua** untuk membuka panel: data siswa, semua pilihannya, bukti dukung (tekan **Buka** untuk
   preview, lihat §1), minat, organisasi, dan prestasi SMP. Di panel:
   - **Guru pembina** (boleh kosong, "Tanpa guru pembina") dan **Catatan untuk guru pembina** (boleh kosong; hanya dibaca
@@ -744,7 +745,7 @@ Oktober 2026 bisa berisi jadwal asesmen). Pendaftaran yang diteruskan setelah lo
 | Lomba tidak ada di katalog | Mungkin belum diverifikasi atau pendaftarannya sudah tutup. Pakai **Usulkan lomba**. |
 | Anggota tim belum bisa diundang | Anggota harus punya akun aktif dan belum terdaftar di lomba yang sama. |
 | Laporan hasil tidak bisa dikirim | Hanya ketua tim, dan hanya setelah lomba selesai. Tidak ada batas waktu (sejak 12 Oktober 2026). |
-| Siswa kelas X: setiap menu kembali ke Profil talenta | Kamu belum punya pilihan talenta. Pilih satu (boleh **Lainnya** dengan teks sendiri), lalu menu lain terbuka. |
+| Siswa: setiap menu kembali ke Talenta saya | Kamu belum punya pilihan talenta. Pilih satu (boleh **Lainnya** dengan teks sendiri), lalu menu lain terbuka. |
 | "Tulis talentamu di kolom Sebutkan." / "Tulis 3 sampai 60 karakter." | Jenis atau cabang **Lainnya** butuh isian **Sebutkan** sepanjang 3–60 karakter. |
 | "Talenta ini sudah kamu pilih." / "Sudah dipilih. Pilih cabang lain." | Pilihan itu sudah ada di daftarmu (huruf besar/kecil dan spasi tidak membedakan). Pilih yang lain. |
 | Usulkan lomba: "Upload juknis, brosur, atau undangan." | Juknis, brosur, atau undangan lomba wajib di-upload (PDF, JPG, PNG, atau WEBP, maks. 5 MB). |

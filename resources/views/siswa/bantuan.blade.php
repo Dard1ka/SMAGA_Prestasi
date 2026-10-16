@@ -1,11 +1,11 @@
 {{-- Siswa · Bantuan (UI-MAP sidebar "Bantuan"; static text from docs/PANDUAN-PENGGUNA.md §2, content owner I). Re-opens the menu tour (siswa.tour). --}}
 <x-layouts::app title="Bantuan" subtitle="Cara singkat memakai SMAGA Talent Hub.">
-    {{-- D-144 (FS1 QA): a kelas X student without a talent is held on Profil talenta; the tour lives on Beranda. --}}
+    {{-- D-144, D-153: a student without a talent is held on Profil saya › Talenta saya; the tour lives on Beranda. --}}
     @php($talentFirst = auth()->user() !== null && \App\Http\Middleware\EnsureTalentChosen::applies(auth()->user()))
     <div class="grid grid-cols-1 items-start gap-[18px] lg:grid-cols-[minmax(0,1fr)_340px]">
         <div class="flex min-w-0 flex-col gap-[18px]">
             @foreach ([
-                ['icon' => 'award', 'title' => 'Pilih talenta', 'text' => 'Siswa kelas X memilih minimal satu talenta dulu di Profil talenta, baru menu lain bisa dibuka. Belum punya? Pilih Lainnya lalu tulis minatmu. Talenta bisa ditambah atau dihapus kapan saja.'],
+                ['icon' => 'award', 'title' => 'Pilih talenta', 'text' => 'Setiap siswa memilih minimal satu talenta dulu di Talenta saya (menu Profil saya), baru menu lain bisa dibuka. Belum punya? Pilih Lainnya lalu tulis minatmu. Talenta bisa ditambah atau dihapus kapan saja.'],
                 ['icon' => 'search', 'title' => 'Pendaftaran lomba', 'text' => 'Buka Cari lomba, pilih lomba, lalu isi panel Pendaftaran lomba. Pilih guru pembimbing. Untuk tim, undang anggota; setiap anggota konfirmasi dari akunnya sendiri.'],
                 ['icon' => 'check-circle', 'title' => 'Persetujuan dan surat tugas', 'text' => 'Kepala Sekolah atau Tata Usaha menyetujui pendaftaranmu, lalu Tata Usaha mengirim surat tugas. Download suratnya di Lomba saya.'],
                 ['icon' => 'upload', 'title' => 'Laporkan hasil', 'text' => 'Ketua tim melapor segera setelah lomba selesai, lengkap dengan sertifikat atau foto. Setelah sekolah memverifikasi, setiap anggota mendapat poin penuh.'],
@@ -27,8 +27,8 @@
             <x-sth.card as="aside" aria-labelledby="h-tur" class="flex flex-col gap-3">
                 <h2 id="h-tur" class="title-card m-0">Tour singkat menu</h2>
                 @if ($talentFirst)
-                    {{-- "Buka tour" would only bring the student back to Profil talenta (the menu item, not repeated here). --}}
-                    <p class="m-0 text-sm text-ink-2">Tour bisa dibuka setelah kamu memilih minimal satu talenta di Profil talenta.</p>
+                    {{-- "Buka tour" would only bring the student back to Talenta saya (a tab of Profil saya, not repeated here). --}}
+                    <p class="m-0 text-sm text-ink-2">Tour bisa dibuka setelah kamu memilih minimal satu talenta di Talenta saya.</p>
                 @else
                     <p class="m-0 text-sm text-ink-2">Lihat lagi penjelasan setiap menu, sebentar saja.</p>
                     <x-sth.button icon="arrow-right" :href="route('siswa.tour')" class="self-start">Buka tour</x-sth.button>

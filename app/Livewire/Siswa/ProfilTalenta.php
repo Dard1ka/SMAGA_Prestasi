@@ -11,6 +11,7 @@ use App\Actions\Talent\TalentOtherText;
 use App\Enums\RegistrationStatus;
 use App\Http\Controllers\FileController;
 use App\Http\Middleware\EnsureTalentChosen;
+use App\Livewire\Akun\Profil;
 use App\Models\Registration;
 use App\Models\Student;
 use App\Models\TalentApplication;
@@ -33,7 +34,8 @@ use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use Livewire\WithFileUploads;
 
 /**
- * Profil talenta (UI-MAP #15, board Profil-Talenta; replaces the school's Google Form, D-21, TALENT-FORM.md):
+ * Talenta saya, a tab of Profil saya since D-153 (before: the menu item "Profil talenta"; UI-MAP #15, board
+ * Profil-Talenta; replaces the school's Google Form, D-21, TALENT-FORM.md):
  * the student's talent choices, "Tambah talenta" (jenis → cabang from the DB, OLPAIN and "Lainnya" without cabang,
  * "Sebutkan" for the jenis or a cabang "Lainnya" (D-143), optional bukti), "Hapus" at any time (+ Urungkan), and the
  * Riwayat talenta form. Every ID sent by the browser is re-read from the DB and checked for ownership inside the
@@ -42,7 +44,8 @@ use Livewire\WithFileUploads;
  * D-142: no stages, no review request, no decision note. A choice shows its guru pembina when Kesiswaan named one,
  * else the day it was added.
  */
-#[Title('Profil talenta')]
+// D-153: the tab "Talenta saya" of Profil saya, so the page carries that title and the tabs of Akun\Profil::tabs().
+#[Title('Profil saya')]
 #[Layout('layouts::app', ['subtitle' => 'Pilih bidang yang ingin kamu kembangkan. Boleh lebih dari satu.'])]
 final class ProfilTalenta extends Component
 {
@@ -361,6 +364,8 @@ final class ProfilTalenta extends Component
         $helper = $blocked ?? ($needsOther && TalentOtherText::clean($this->lainnya) === null ? TalentOtherText::REQUIRED_MESSAGE : null);
 
         return view('livewire.siswa.profil-talenta', [
+            // D-153: Data diri · Talenta saya · Keamanan akun.
+            'tabs' => Profil::tabs($student->user),
             'identity' => [
                 'name' => $student->user->name,
                 'meta' => trim(($student->classroom?->name ?? '').' · NISN '.$student->nisn, ' ·'),

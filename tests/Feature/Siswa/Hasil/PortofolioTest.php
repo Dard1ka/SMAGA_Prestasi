@@ -91,11 +91,13 @@ it('shows the profile header, the verified achievements with rumus and the own c
         ->assertDontSee('OSN Provinsi 2025');
 });
 
-it('points a student without a talent to "Tambah talenta" (D-142 wording, FS1 fix wave)', function (): void {
-    $this->actingAs($this->raka->user)
-        ->get(route('siswa.portofolio'))
-        ->assertOk()
-        ->assertSee('Belum ada talenta. Tambah talenta di Profil talenta.')
+it('points a student without a talent to "Tambah talenta" (D-142 wording, FS1 fix wave, D-153)', function (): void {
+    // D-153: such a student is held on Talenta saya at the next page, so the empty card shows only on a render.
+    $bima = F::student('Bima Satria Wicaksono', 'XI-3', talent: false);
+    $this->actingAs($bima->user)->get(route('siswa.portofolio'))->assertRedirect(route('siswa.talenta'));
+
+    Livewire::actingAs($bima->user)->test(Portofolio::class)
+        ->assertSee('Belum ada talenta. Tambah talenta di Profil saya, tab Talenta saya.')
         ->assertDontSee('penjaringan');
 });
 

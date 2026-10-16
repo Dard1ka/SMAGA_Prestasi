@@ -7,18 +7,17 @@ namespace App\Http\Middleware;
 use App\Models\Student;
 use App\Models\User;
 use Closure;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
  * Alias `talent.chosen`, last in the group `area.siswa` (after `activated` and `role:siswa`, so a student who still
- * has to activate reaches `aktivasi` first and a staff account never gets here). D-144 (FS1-E): a kelas X student
- * (classroom level 10) with no talent choice (a deleted one does not count) is held on Profil talenta, which shows
- * ALERT, until one is chosen; "Lainnya" with an own text is always possible. Students who were already active when
- * this came in are held at their next page, on purpose.
+ * has to activate reaches `aktivasi` first and a staff account never gets here). D-144 (FS1-E), widened by D-153: a
+ * student of any class with no talent choice (a deleted one does not count) is held on Profil saya › Talenta saya,
+ * which shows ALERT, until one is chosen; "Lainnya" with an own text is always possible. A student who just finished
+ * the activation lands there first; students who were already active are held at their next page, on purpose.
  *
- * Open on the way: Profil talenta, Bantuan, Akun › Keamanan, Notifikasi (and its counter) and logout (EXEMPT_ROUTES;
+ * Open on the way: Talenta saya, Bantuan, Profil saya (Data diri, Keamanan akun), Notifikasi (and its counter) and logout (EXEMPT_ROUTES;
  * the last four are outside `area.siswa` today, listed so a later move of a route cannot lock the student in), and
  * every Livewire update. Livewire updates never pass through `area.siswa`: Livewire only re-runs its persistent
  * middleware, and this one is not; the route-name check is a second guard. The first-run tour lives on Beranda, so
@@ -34,7 +33,10 @@ final class EnsureTalentChosen
     /** @var list<string> */
     public const EXEMPT_ROUTES = ['siswa.talenta', 'siswa.bantuan', 'akun.profil', 'akun.keamanan', 'notifikasi.index', 'notifikasi.jumlah', 'logout', 'logout.get'];
 
-    /** Is $user a kelas X student who may log in and has no talent choice? One query. Also drives the alert. */
+    /**
+     * Is $user a student who may log in and has no talent choice? One query. Also drives the alert. Since D-153 every
+     * class (X, XI, XII); before, kelas X only (D-144).
+     */
     public static function applies(User $user): bool
     {
         if (! $user->canLogIn()) {
@@ -43,7 +45,6 @@ final class EnsureTalentChosen
 
         return Student::query()
             ->where('user_id', $user->getKey())
-            ->whereHas('classroom', fn (Builder $c) => $c->where('level', 10))
             ->whereDoesntHave('talentApplications')
             ->exists();
     }

@@ -19,9 +19,10 @@ use Tests\Feature\Siswa\Hasil\HasilFixtures as F;
 use Tests\Support\TalentGate;
 
 /*
-| FS1-E (D-144): a kelas X student with no talent choice is held on Profil talenta with the required alert until one is
-| chosen. Livewire updates, Profil talenta, Bantuan, Akun › Keamanan, Notifikasi and logout stay open; the gate runs
-| after activation and only for students. Fictional data only.
+| FS1-E (D-144), widened by D-153: a student of any class with no talent choice is held on Profil saya › Talenta saya
+| (`siswa.talenta`) with the required alert until one is chosen. Livewire updates, Talenta saya, Bantuan, Profil saya
+| (Data diri, Keamanan akun), Notifikasi and logout stay open; the gate runs after activation and only for students.
+| Fictional data only.
 */
 
 uses(RefreshDatabase::class);
@@ -61,14 +62,20 @@ it('sends a kelas X student without a talent to Profil talenta with the required
     $this->actingAs($this->hana->user)->get(route('home'))->assertRedirect(route('siswa.beranda'));
 });
 
-it('runs after activation and only for kelas X students without any talent', function (): void {
-    $nadia = F::student('Nadia Putri Anindya', 'XI-4');
-    $raka = F::student('Raka Pradipta', 'XII-2');
+it('runs after activation and holds every student without any talent, whatever the class (D-153)', function (): void {
+    $nadia = F::student('Nadia Putri Anindya', 'XI-4', talent: false);
+    $raka = F::student('Raka Pradipta', 'XII-2', talent: false);
 
     foreach ([$nadia, $raka] as $student) {
+        expect(EnsureTalentChosen::applies($student->user))->toBeTrue();
+        $this->actingAs($student->user)->get(route('siswa.beranda'))->assertRedirect(route('siswa.talenta'));
+        $this->actingAs($student->user)->get(route('siswa.talenta'))->assertOk()->assertSee(EnsureTalentChosen::ALERT);
+
+        // One talent lets the student through.
+        gateChoice($student);
+        expect(EnsureTalentChosen::applies($student->user))->toBeFalse();
         $this->actingAs($student->user)->get(route('siswa.beranda'))->assertOk();
         $this->actingAs($student->user)->get(route('siswa.talenta'))->assertOk()->assertDontSee(EnsureTalentChosen::ALERT);
-        expect(EnsureTalentChosen::applies($student->user))->toBeFalse();
     }
 
     // An old "tidak lolos" row is a talent: not gated.
@@ -105,7 +112,7 @@ it('runs after activation and only for kelas X students without any talent', fun
 
 it('keeps the exempt routes and Livewire updates open', function (string $route): void {
     $this->actingAs($this->hana->user)->get(route($route))->assertOk();
-})->with(['siswa.talenta', 'siswa.bantuan', 'akun.keamanan', 'notifikasi.index']);
+})->with(['siswa.talenta', 'siswa.bantuan', 'akun.profil', 'akun.keamanan', 'notifikasi.index']);
 
 it('lets the gated student pick a Lainnya talent through Livewire and opens the other pages', function (): void {
     expect(Livewire::getPersistentMiddleware())->not->toContain(EnsureTalentChosen::class);

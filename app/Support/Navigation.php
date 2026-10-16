@@ -172,8 +172,8 @@ final class Navigation
             $sections[$best[0]]['items'][$best[1]]['current'] = true;
         }
 
-        // D-144 (FS1 QA): a kelas X student without a talent is held on Profil talenta. The menus that would only bring
-        // that student back there are shown locked, so a tap no longer seems to do nothing.
+        // D-144 (FS1 QA), D-153: a student without a talent is held on Profil saya › Talenta saya. The menus that would
+        // only bring that student back there are shown locked, so a tap no longer seems to do nothing.
         $gated = $role === 'siswa' && $user instanceof User && EnsureTalentChosen::applies($user);
 
         if ($gated) {
@@ -195,7 +195,7 @@ final class Navigation
         ];
     }
 
-    /** Does the kelas X talent gate (EnsureTalentChosen) send this menu route back to Profil talenta? */
+    /** Does the talent gate (EnsureTalentChosen) send this menu route back to Talenta saya? */
     private static function heldByTalentGate(?string $route): bool
     {
         return $route !== null && ! in_array($route, EnsureTalentChosen::EXEMPT_ROUTES, true);
@@ -231,15 +231,15 @@ final class Navigation
             $items[array_search($max, $scores, true)]['current'] = true;
         }
 
-        // D-144 (FS1 QA): while a kelas X student must pick a talent, the tab that holds Profil talenta leads there and
-        // the other tabs are locked (see for()). FS1 QA round 2: it then carries the name and icon of the menu item it
-        // opens, "Profil talenta" (one name per menu, D-119), because the menu drawer shows Portofolio locked meanwhile.
+        // D-144 (FS1 QA), D-153: while a student must pick a talent, the tab that holds Talenta saya leads there and
+        // the other tabs are locked (see for()). FS1 QA round 2: it then carries the name and icon of the page it
+        // opens, "Talenta saya" (one name per menu, D-119), because the menu drawer shows Portofolio locked meanwhile.
         if ($gated) {
             foreach ($items as $i => $item) {
                 if ($item['key'] === 'profil' && Route::has('siswa.talenta')) {
                     $items[$i]['href'] = route('siswa.talenta');
                     $items[$i]['route'] = 'siswa.talenta';
-                    $items[$i]['label'] = 'Profil talenta';
+                    $items[$i]['label'] = 'Talenta saya';
                     $items[$i]['icon'] = 'user';
                 } else {
                     $items[$i]['locked'] = self::heldByTalentGate($item['route']);
@@ -323,8 +323,9 @@ final class Navigation
         $cariLomba = ['key' => 'cari-lomba', 'label' => 'Cari lomba', 'icon' => 'search', 'route' => ['siswa.lomba.index', 'siswa.katalog'], 'match' => ['siswa.lomba.*', 'siswa.katalog*']];
         $kelolaLomba = ['key' => 'kelola-lomba', 'label' => 'Kelola lomba', 'icon' => 'trophy', 'route' => ['kesiswaan.lomba.index', 'kesiswaan.lomba'], 'match' => ['kesiswaan.lomba.*']];
         $notifikasi = ['key' => 'notifikasi', 'label' => 'Notifikasi', 'icon' => 'bell', 'route' => ['notifikasi.index']];
-        // D-152: Profil saya = the tabs Data diri (akun.profil) and Keamanan akun (akun.keamanan).
-        $profil = ['key' => 'profil-saya', 'label' => 'Profil saya', 'icon' => 'user', 'route' => ['akun.profil'], 'match' => ['akun.profil', 'akun.keamanan']];
+        // D-152: Profil saya = the tabs Data diri (akun.profil) and Keamanan akun (akun.keamanan); D-153 adds a
+        // student's Talenta saya (siswa.talenta), which used to be the menu item "Profil talenta".
+        $profil = ['key' => 'profil-saya', 'label' => 'Profil saya', 'icon' => 'user', 'route' => ['akun.profil'], 'match' => ['akun.profil', 'akun.keamanan', 'siswa.talenta', 'siswa.profil-talenta']];
 
         return [
             'siswa' => [
@@ -338,9 +339,8 @@ final class Navigation
                         ['key' => 'peringkat', 'label' => 'Peringkat', 'icon' => 'bars', 'route' => ['siswa.peringkat', 'peringkat', 'public.peringkat']],
                     ]],
                     ['label' => 'Akun', 'items' => [
-                        // D-152: the bulb, so Profil saya keeps the person icon of the avatar menu.
-                        ['key' => 'profil-talenta', 'label' => 'Profil talenta', 'icon' => 'bulb', 'route' => ['siswa.talenta', 'siswa.profil-talenta']],
                         // B1/W4: account pages of every role (staff reach them from the avatar menu and the bell).
+                        // D-153: Profil talenta is the tab Talenta saya of Profil saya, no longer an item of its own.
                         $profil,
                         $notifikasi,
                         ['key' => 'bantuan', 'label' => 'Bantuan', 'icon' => 'help', 'route' => ['siswa.bantuan', 'bantuan']],

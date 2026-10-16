@@ -172,7 +172,7 @@ final class Keamanan extends Component
         return view('livewire.akun.keamanan', [
             'user' => $user,
             // D-152: this page is the tab "Keamanan akun" of Profil saya.
-            'tabs' => Profil::tabs(),
+            'tabs' => Profil::tabs($user),
             'isStaff' => $isStaff,
             'passwordHint' => $setPassword->hint($user),
             'passwordChangedAt' => AccountControls::date($user, 'password_changed_at'),

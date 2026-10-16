@@ -161,8 +161,8 @@
             <h1 class="title-page">Akun sudah aktif</h1>
             <p class="muted">
                 @if ($talentFirst)
-                    {{-- D-144: a kelas X student without a talent goes to Profil talenta first (FS1 QA). --}}
-                    Pilih minimal satu talenta dulu di Profil talenta. Setelah itu kamu bisa daftar lomba dan pantau prestasimu.
+                    {{-- D-153: every student without a talent goes to Profil saya › Talenta saya first. --}}
+                    Pilih minimal satu talenta dulu di Talenta saya (menu Profil saya). Setelah itu kamu bisa daftar lomba dan pantau prestasimu.
                 @elseif ($isStudent)
                     Sekarang kamu bisa daftar lomba dan pantau prestasimu.
                 @else
