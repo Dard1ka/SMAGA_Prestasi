@@ -11,6 +11,7 @@ use App\Actions\Letters\RevokeLetter;
 use App\Actions\Letters\SendLetters;
 use App\Actions\Letters\StreamLetter;
 use App\Actions\Registrations\ApproveRegistration;
+use App\Actions\Registrations\CancelApprovedRegistration;
 use App\Actions\Templates\LetterTemplate;
 use App\Domain\Letters\LetterNumber;
 use App\Domain\Support\Dates;
@@ -24,6 +25,7 @@ use App\Models\Registration;
 use App\Models\Setting;
 use App\Models\User;
 use App\Policies\LetterPolicy;
+use App\Support\StaffRoleLabel;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Contracts\View\View;
@@ -60,12 +62,18 @@ class SuratTugas extends Component
     /** "Kirim" asks first once every letter exists (QA6, Q1-10): the send cannot be taken back. */
     public const SEND_DIALOG = 'kirim-surat';
 
+    /** D-155: "Hapus dari antrean" asks for the reason first; the cancel cannot be taken back. */
+    public const CANCEL_DIALOG = 'hapus-antrean';
+
+    public const MSG_CANCELLED_ELSEWHERE = 'Pendaftaran ini sudah tidak ada di antrean surat. Daftar sudah diperbarui.';
+
     /**
      * What both letters print about the event (QA6, Q1-15, D-116). A letter that is not made yet takes these from the
      * other letter when TU typed them there or that letter was issued with them, but never over a field TU typed for
      * this letter itself, not even an emptied one or one set back to the lomba value (D-83: two forms, never one shared
-     * draft). The number and the letter date stay per letter; the invitation (Surat dari, Nomor, Tanggal, Hal) is
-     * printed by the guru letter only since D-154, so it is not shared any more.
+     * draft). The number and the letter date stay per letter; the invitation (Surat dari, Nomor, Tanggal, Hal) is not
+     * shared since D-154: the guru letter keeps its own (D-157: "surat gurunya dibuat default saja"), the student letter
+     * prints its optional one as "Dasar" number 2.
      */
     private const SHARED_FIELDS = ['hari', 'tanggal', 'pukul', 'tempat'];
 
@@ -130,6 +138,13 @@ class SuratTugas extends Component
     public string $koreksi = '';
 
     public string $alasan = '';
+
+    /** D-155: the registration "Hapus dari antrean" asked about; set only by askCancel(). */
+    #[Locked]
+    public ?string $cancellingId = null;
+
+    /** D-155: the reason typed in the dialog (CancelApprovedRegistration checks it). */
+    public string $cancelNote = '';
 
     /**
      * Form keys TU typed per letter during this visit (`siswa` / `guru` => list of keys), so carrySharedFields() can
@@ -474,6 +489,152 @@ class SuratTugas extends Component
         $this->refreshBadge();
     }
 
+    // --- D-155: remove an approved registration from the queue (cancel it with a reason) ---
+
+    /** Opens the dialog for the selected registration (D-128 pattern: the confirm acts only on this stored question). */
+    public function askCancel(): void
+    {
+        Gate::authorize('viewQueue', Letter::class);
+        $registration = $this->registrationId !== null ? $this->selectedOrNull() : null;
+
+        if ($registration === null || $registration->status !== RegistrationStatus::Disetujui) {
+            $this->cancelledElsewhere();
+
+            return;
+        }
+
+        Gate::authorize('cancelApproved', $registration);
+
+        $this->resetErrorBag('cancelNote');
+        $this->cancelNote = '';
+        $this->cancellingId = (string) $registration->getKey();
+        $this->dispatch('sth-modal-open', id: self::CANCEL_DIALOG);
+    }
+
+    /** The dialog closed without a cancel (X, Esc, "Batal"): forget the question. */
+    public function forgetCancel(): void
+    {
+        $this->resetErrorBag('cancelNote');
+        $this->reset('cancellingId', 'cancelNote');
+    }
+
+    /** "Hapus dari antrean" in the dialog. Without askCancel() first it does nothing (a double click is not an error). */
+    public function cancelQueued(CancelApprovedRegistration $cancel): void
+    {
+        if ($this->cancellingId === null) {
+            return;
+        }
+
+        Gate::authorize('viewQueue', Letter::class);
+        $this->resetErrorBag('cancelNote');
+        $registration = Registration::query()->find($this->cancellingId);
+
+        if ($registration === null || $registration->status !== RegistrationStatus::Disetujui) {
+            $this->cancelledElsewhere();
+
+            return;
+        }
+
+        // Who will hear of it, read before the cancel (the same rule the Action uses after it).
+        $told = CancelApprovedRegistration::audience($registration, $this->user());
+
+        try {
+            $cancel->handle($this->user(), $registration, $this->cancelNote);
+        } catch (ValidationException $e) {
+            if (array_key_exists('note', $e->errors())) {
+                $this->addError('cancelNote', (string) $e->errors()['note'][0]);
+
+                return;
+            }
+
+            $this->cancelledElsewhere();
+
+            return;
+        }
+
+        $this->dispatch('sth-modal-close', id: self::CANCEL_DIALOG);
+        $this->reset('cancellingId', 'cancelNote');
+        $this->clearFailure();
+        $this->dispatch('sth-toast', message: 'Pendaftaran dibatalkan dan dihapus dari antrean. '.self::toldSentence($told), tone: 'success');
+        $this->openNextInQueue();
+        $this->refreshBadge();
+    }
+
+    /** A registration another tab, account or "Kirim" took out of the queue meanwhile: a toast and the fresh queue. */
+    private function cancelledElsewhere(): void
+    {
+        $this->dispatch('sth-modal-close', id: self::CANCEL_DIALOG);
+        $this->reset('cancellingId', 'cancelNote');
+        $this->dispatch('sth-toast', message: self::MSG_CANCELLED_ELSEWHERE, tone: 'warning');
+        $this->openNextInQueue();
+        $this->refreshBadge();
+    }
+
+    /** After a registration left the queue: the first one still in it (and its address), or the empty queue. */
+    private function openNextInQueue(): void
+    {
+        $current = $this->registrationId !== null ? $this->selectedOrNull() : null;
+
+        if ($current !== null && $current->status === RegistrationStatus::Disetujui) {
+            return;
+        }
+
+        $this->reset('revisingId', 'alasan', 'koreksi');
+        $next = $this->searched($this->queueQuery())->first();
+
+        if ($next !== null) {
+            $this->select($next);
+            $this->dispatch('sth-address', url: route('tu.surat.show', $next));
+
+            return;
+        }
+
+        $this->registrationId = null;
+        $this->typed = [];
+        $this->dispatch('sth-address', url: route('tu.beranda'));
+    }
+
+    /**
+     * What the dialog says before the click: the registration is cancelled, which letters are revoked, who is told.
+     *
+     * @param  Collection<int, Letter>  $letters  the current letters of the registration
+     */
+    private function cancelNotice(Registration $registration, Collection $letters): string
+    {
+        $made = $letters->count();
+
+        return 'Pendaftaran '.$registration->competition?->name.' dibatalkan dan hilang dari antrean.'
+            .($made > 0 ? ' '.$made.' surat yang sudah dibuat ikut dicabut.' : '')
+            .' '.self::toldSentence(CancelApprovedRegistration::audience($registration, $this->user()))
+            .' Pembatalan tidak bisa dikembalikan; siswa bisa mendaftar lagi selama pendaftaran lomba masih dibuka.';
+    }
+
+    /**
+     * "3 siswa, guru pembimbing, dan Drs. Bambang Hartono, M.Pd. (Kepala Sekolah) diberi tahu beserta alasannya." Only who
+     * CancelApprovedRegistration::audience() names (D-109: never a notice nobody gets).
+     *
+     * @param  array{siswa: list<User>, guru: list<User>, pemutus: list<User>}  $told
+     */
+    public static function toldSentence(array $told): string
+    {
+        $parts = array_values(array_filter([
+            $told['siswa'] !== [] ? count($told['siswa']).' siswa' : null,
+            $told['guru'] !== [] ? 'guru pembimbing' : null,
+            $told['pemutus'] !== [] ? $told['pemutus'][0]->name.' ('.StaffRoleLabel::forDecision($told['pemutus'][0]).') yang menyetujuinya' : null,
+        ]));
+
+        if ($parts === []) {
+            return 'Tidak ada akun aktif yang diberi tahu.';
+        }
+
+        $last = array_pop($parts);
+        $list = $parts === [] ? $last : implode(', ', $parts).(count($parts) > 1 ? ',' : '').' dan '.$last;
+
+        return ucfirst($list).' diberi tahu beserta alasannya.';
+    }
+
+    // --- end D-155 ---
+
     public function download(string $letterId): StreamedResponse
     {
         $registration = $this->selected();
@@ -572,6 +733,13 @@ class SuratTugas extends Component
                 'sent' => $letters->isNotEmpty() && $letters->every(fn (Letter $l): bool => $l->sent_at !== null),
                 'history' => $this->history($registration),
             ];
+
+            // D-155: "Hapus dari antrean" (Tata Usaha, while the registration is still approved and unsent).
+            $canCancel = Gate::allows('cancelApproved', $registration);
+            $data += [
+                'canCancel' => $canCancel,
+                'cancelNotice' => $canCancel ? $this->cancelNotice($registration, $letters) : '',
+            ];
         }
 
         return view('livewire.tata-usaha.surat-tugas', $data)->layoutData([
@@ -653,15 +821,13 @@ class SuratTugas extends Component
     {
         $form = $this->form($type);
         $issuedOn = self::parseDate($form['tanggalSurat']);
-        // D-154: the student letter prints no invitation; its hidden form keys (carried from the guru form) stay out.
-        $invitation = LetterDraft::usesInvitation($type);
-        $basisDate = $invitation ? self::parseDate($form['dasarTanggal']) : null;
+        $basisDate = self::parseDate($form['dasarTanggal']);
 
         $draft = new LetterDraft(
             number: $form['nomor'],
             issuedOn: $issuedOn ?? CarbonImmutable::today(),
-            basisFrom: $invitation ? $form['dasarDari'] : '',
-            basisNumber: $invitation && trim($form['dasarNomor']) !== '' ? trim($form['dasarNomor']) : null,
+            basisFrom: $form['dasarDari'],
+            basisNumber: trim($form['dasarNomor']) !== '' ? trim($form['dasarNomor']) : null,
             basisDate: $basisDate,
             scheduleDay: $form['hari'],
             scheduleDate: $form['tanggal'],
@@ -680,7 +846,7 @@ class SuratTugas extends Component
             $dates['issued_on'] = trim($form['tanggalSurat']) === '' ? 'Isi tanggal surat.' : 'Tanggal surat tidak valid.';
         }
 
-        if ($invitation && $basisDate === null && trim($form['dasarTanggal']) !== '') {
+        if ($basisDate === null && trim($form['dasarTanggal']) !== '') {
             $dates['basis_date'] = 'Tanggal surat undangan tidak valid.';
         }
 

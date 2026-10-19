@@ -244,6 +244,34 @@ class Registration extends Model
                 ->exists();
     }
 
+    /**
+     * D-155: removed from the letter queue by Tata Usaha (CancelApprovedRegistration::REASON = 'letter_queue'): the
+     * reason and who did it, read from that audit row; null for every other registration.
+     *
+     * @return array{note: string, by: ?User}|null
+     */
+    public function letterQueueCancellation(): ?array
+    {
+        if ($this->status !== RegistrationStatus::Dibatalkan) {
+            return null;
+        }
+
+        $row = $this->activitiesAsSubject()
+            ->where('event', 'registration.cancelled')
+            ->where('properties->reason', 'letter_queue')
+            ->with('causer')
+            ->latest('id')
+            ->first();
+
+        if ($row === null) {
+            return null;
+        }
+
+        $causer = $row->causer;
+
+        return ['note' => (string) ($row->properties['note'] ?? ''), 'by' => $causer instanceof User ? $causer : null];
+    }
+
     /** One registration of scopeKnownToMentor() (D-148). */
     public function isKnownToMentor(): bool
     {

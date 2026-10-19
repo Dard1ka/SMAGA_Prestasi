@@ -10,7 +10,7 @@ it('allows exactly the transitions of ARCHITECTURE §6', function () {
         'menunggu_lomba' => ['menunggu_konfirmasi', 'menunggu_kepsek', 'dibatalkan'],
         'menunggu_konfirmasi' => ['menunggu_kepsek', 'dibatalkan'],
         'menunggu_kepsek' => ['disetujui', 'ditolak', 'dibatalkan'],
-        'disetujui' => ['surat_terbit'],
+        'disetujui' => ['surat_terbit', 'dibatalkan'],
         'ditolak' => [],
         'surat_terbit' => ['berlangsung'],
         'berlangsung' => ['menunggu_laporan'],
@@ -47,12 +47,13 @@ it('follows the happy path of a team registration', function () {
 
 it('throws a DomainException with an Indonesian message', function () {
     try {
-        (new SM)->assertTransition(SM::DISETUJUI, SM::DIBATALKAN);
+        // D-155 lets disetujui → dibatalkan (Tata Usaha); once the letters were sent it cannot be cancelled any more.
+        (new SM)->assertTransition(SM::SURAT_TERBIT, SM::DIBATALKAN);
         $this->fail('No exception thrown');
     } catch (InvalidTransition $e) {
         expect($e)->toBeInstanceOf(DomainException::class)
             ->and($e->getMessage())->toBe('Aksi ini tidak bisa dilakukan pada status pendaftaran sekarang.')
-            ->and($e->from)->toBe('disetujui')
+            ->and($e->from)->toBe('surat_terbit')
             ->and($e->to)->toBe('dibatalkan');
     }
 });

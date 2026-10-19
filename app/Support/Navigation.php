@@ -414,6 +414,8 @@ final class Navigation
                         ['key' => 'jadwal', 'label' => 'Jadwal', 'icon' => 'calendar', 'route' => ['humas.jadwal'], 'badge' => 'humas.jadwal'],
                         ['key' => 'apresiasi', 'label' => 'Apresiasi', 'icon' => 'award', 'route' => ['humas.apresiasi.index', 'humas.apresiasi']],
                         ['key' => 'arsip', 'label' => 'Arsip', 'icon' => 'folder', 'route' => ['humas.arsip']],
+                        // D-156: the photos of verified laporan hasil, for the flyer Humas designs itself.
+                        ['key' => 'foto', 'label' => 'Arsip foto', 'icon' => 'image', 'route' => ['humas.foto']],
                     ]],
                 ],
             ],

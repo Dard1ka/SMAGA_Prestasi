@@ -440,18 +440,17 @@ it('renders and scans every demo file of a full local seed (slow, STH_DEMO_FULL=
 
 // QA5 (2026-10-07): a demo surat tugas names the invitation it answers ----------------------------------------
 
-it('gives every demo guru letter the number and date of the invitation it answers, the student letter none (D-154)', function (): void {
+it('gives every demo letter the number and date of the invitation it answers, the student letter too (D-157)', function (): void {
     m3dSeedDemo();
 
     $letters = Letter::query()->whereHas('file', fn ($q) => $q->where('path', 'like', 'demo/%'))->get();
-    $guru = $letters->where('type', LetterType::Guru);
 
-    expect($guru)->not->toBeEmpty()
-        ->and($guru->filter(fn (Letter $l): bool => blank($l->basis_number) || $l->basis_date === null))->toBeEmpty()
+    expect($letters->where('type', LetterType::Guru))->not->toBeEmpty()
+        // The student letter prints the invitation as "Dasar" number 2 (D-157).
+        ->and($letters->where('type', LetterType::Siswa))->not->toBeEmpty()
+        ->and($letters->filter(fn (Letter $l): bool => blank($l->basis_number) || $l->basis_date === null))->toBeEmpty()
         // The invitation is older than the letter that answers it.
-        ->and($guru->filter(fn (Letter $l): bool => $l->basis_date->gte($l->issued_on)))->toBeEmpty()
-        // Since D-154 the student letter's Dasar is the template's regulation text.
-        ->and($letters->where('type', LetterType::Siswa)->filter(fn (Letter $l): bool => filled($l->basis_number) || $l->basis_date !== null))->toBeEmpty();
+        ->and($letters->filter(fn (Letter $l): bool => $l->basis_date->gte($l->issued_on)))->toBeEmpty();
 });
 
 it('fills the invitation of an older demo letter only with --lengkapi, and says when there is something to fill', function (): void {

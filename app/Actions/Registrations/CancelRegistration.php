@@ -27,6 +27,12 @@ use Illuminate\Validation\ValidationException;
  */
 final class CancelRegistration
 {
+    /**
+     * The statuses the ketua may cancel from (RegistrationPolicy::cancel). Checked again under the lock: the state
+     * machine also allows disetujui → dibatalkan, but only for Tata Usaha (D-155, CancelApprovedRegistration).
+     */
+    public const LEADER_STATUSES = [RegistrationStatus::MenungguLomba, RegistrationStatus::MenungguKonfirmasi, RegistrationStatus::MenungguKepsek];
+
     public function __construct(private readonly RegistrationStateMachine $machine) {}
 
     /** @throws ValidationException */
@@ -48,6 +54,10 @@ final class CancelRegistration
             $from = $locked->status;
 
             try {
+                if (! in_array($from, self::LEADER_STATUSES, true)) {
+                    throw new InvalidTransition($from->value, RegistrationStatus::Dibatalkan->value);
+                }
+
                 $this->machine->assertTransition($from, RegistrationStatus::Dibatalkan);
             } catch (InvalidTransition) {
                 throw ValidationException::withMessages(['registration' => 'Pendaftaran ini sudah tidak bisa dibatalkan.']);

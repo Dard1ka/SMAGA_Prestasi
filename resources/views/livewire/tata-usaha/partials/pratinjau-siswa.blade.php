@@ -6,6 +6,7 @@
     regulation text; a letter printed before D-154 (its stored template still has `siswa_basis`) shows its three old
     rows Dasar / Nomor / Tanggal, as its PDF has them (D-108). A box narrower than 560 px shrinks the whole sheet
     (`.kertas-siswa` / `.lembar-siswa` in resources/css/app.css), so the kop and the Dasar break as on the PDF.
+    D-157: an invitation TU typed makes "Dasar" a numbered list, 1. the regulation text, 2. the invitation.
     Vars: $content (LetterContent) · $number (issued or typed number, or null) · $tpl / $letterTemplate (optional)
 --}}
 <div class="kertas-siswa">
@@ -34,8 +35,17 @@
 
         <p class="relative m-0 mt-[15px]">{{ $tpl->siswaIntro() }}</p>
     @else
+        @php($siswaInvitation = $content->siswaInvitation())
         <div class="relative mt-1 grid grid-cols-[90px_9px_1fr] leading-[14.1px] sm:grid-cols-[97px_8.5px_1fr]">
-            <span>Dasar</span><span class="text-center">:</span><span>{{ $tpl->siswaDasar($content->schoolYear) }}</span>
+            <span>Dasar</span><span class="text-center">:</span>
+            @if ($siswaInvitation === null)
+                <span>{{ $tpl->siswaDasar($content->schoolYear) }}</span>
+            @else
+                <span class="grid grid-cols-[15px_1fr]">
+                    <span>1.</span><span>{{ $tpl->siswaDasar($content->schoolYear) }}</span>
+                    <span>2.</span><span>{{ $siswaInvitation }}</span>
+                </span>
+            @endif
         </div>
 
         <p class="relative m-0 mt-[30px]">{{ $tpl->siswaIntro() }}</p>

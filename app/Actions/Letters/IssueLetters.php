@@ -44,6 +44,9 @@ final class IssueLetters
 
     public const MAX_BASIS_FROM = 200;
 
+    /** D-157: the student letter's invitation has a number or a date but no "Surat dari". */
+    public const MSG_INVITATION_FROM = 'Isi asal surat undangan, atau kosongkan nomor dan tanggalnya.';
+
     public function __construct(
         private readonly LetterNumber $numbers,
         private readonly LetterPdf $pdf,
@@ -176,8 +179,8 @@ final class IssueLetters
      */
     public function newLetter(Registration $registration, LetterType $type, string $number, LetterDraft $draft, LetterContent $content): Letter
     {
-        // D-154: a student letter prints no invitation, so its row keeps none.
-        $invitation = LetterDraft::usesInvitation($type);
+        // D-157: an invitation left empty on the student letter is kept as none.
+        $from = $content->basisFrom !== '' ? $content->basisFrom : null;
 
         return new Letter([
             'registration_id' => $registration->getKey(),
@@ -187,9 +190,9 @@ final class IssueLetters
             'year' => $draft->issuedOn->year,
             'month' => $draft->issuedOn->month,
             'issued_on' => $draft->issuedOn->toDateString(),
-            'basis_from' => $invitation ? $content->basisFrom : null,
-            'basis_number' => $invitation ? $content->basisNumber : null,
-            'basis_date' => $invitation ? $draft->basisDate?->toDateString() : null,
+            'basis_from' => $from,
+            'basis_number' => $content->basisNumber,
+            'basis_date' => $draft->basisDate?->toDateString(),
             'basis_subject' => LetterDraft::usesSubject($type) ? $content->basisSubject : null,
             'schedule_day' => $content->scheduleDay,
             'schedule_date' => $content->scheduleDate,
@@ -246,9 +249,14 @@ final class IssueLetters
             'place' => [$draft->place, self::MAX_TEXT, 'Isi tempat pelaksanaan.'],
         ];
 
-        // D-154: only the guru letter prints the invitation; the student letter's Dasar comes from the template.
-        if (LetterDraft::usesInvitation($type)) {
+        // D-157: the guru letter must name the invitation; on the student letter it is optional ("Dasar" number 2), but
+        // a number or a date needs to say whose letter it is.
+        if (LetterDraft::requiresInvitation($type)) {
             $required = ['basis_from' => [$draft->basisFrom, self::MAX_BASIS_FROM, 'Isi asal surat undangan, misalnya nama penyelenggara.']] + $required;
+        } elseif (mb_strlen(trim($draft->basisFrom)) > self::MAX_BASIS_FROM) {
+            $errors['basis_from'] = 'Maksimal '.self::MAX_BASIS_FROM.' karakter.';
+        } elseif (trim($draft->basisFrom) === '' && (trim((string) $draft->basisNumber) !== '' || $draft->basisDate !== null)) {
+            $errors['basis_from'] = self::MSG_INVITATION_FROM;
         }
 
         if (LetterDraft::usesSubject($type)) {
@@ -265,11 +273,11 @@ final class IssueLetters
             }
         }
 
-        if (LetterDraft::usesInvitation($type) && mb_strlen(trim((string) $draft->basisNumber)) > self::MAX_TEXT) {
+        if (mb_strlen(trim((string) $draft->basisNumber)) > self::MAX_TEXT) {
             $errors['basis_number'] = 'Maksimal '.self::MAX_TEXT.' karakter.';
         }
 
-        if (LetterDraft::usesInvitation($type) && $draft->basisDate !== null && $draft->basisDate->gt($draft->issuedOn)) {
+        if ($draft->basisDate !== null && $draft->basisDate->gt($draft->issuedOn)) {
             $errors['basis_date'] = 'Tanggal surat undangan tidak boleh setelah tanggal surat.';
         }
 

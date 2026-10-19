@@ -125,10 +125,10 @@ it('issues one letter at a time, each with its own number and data, as a signed 
         ->and($siswa->sequence)->toBeNull()
         ->and($siswa->year)->toBe(2026)
         ->and($siswa->month)->toBe(10)
-        // D-154: the student letter prints no invitation, so its row keeps none.
-        ->and($siswa->basis_from)->toBeNull()
-        ->and($siswa->basis_number)->toBeNull()
-        ->and($siswa->basis_date)->toBeNull()
+        // D-157: the student letter keeps the invitation it prints as Dasar number 2, never its "Hal".
+        ->and($siswa->basis_from)->toBe('Panitia NSIF 2026')
+        ->and($siswa->basis_number)->toBe('017/PAN-NSIF/IX/2026')
+        ->and($siswa->basis_date->toDateString())->toBe('2026-09-15')
         ->and($siswa->basis_subject)->toBeNull()
         ->and($siswa->schedule_day)->toBe('Sabtu')
         ->and($siswa->schedule_date)->toBe('7 November 2026')
@@ -309,10 +309,14 @@ it('validates every field of the draft at once', function (): void {
         ]);
     }
 
-    // The invitation and its "Hal" belong to the guru letter only (D-154); a far-away letter date is refused.
-    expect(array_keys(IssueLetters::draftErrors($draft, LetterType::Siswa)))->toEqualCanonicalizing([
-        'number', 'schedule_day', 'schedule_date', 'schedule_time', 'place',
+    // The student letter has no "Hal" and an optional invitation (D-157), but a number without "Surat dari" is refused
+    // with its own sentence; a far-away letter date is refused.
+    $siswa = IssueLetters::draftErrors($draft, LetterType::Siswa);
+
+    expect(array_keys($siswa))->toEqualCanonicalizing([
+        'number', 'basis_from', 'basis_number', 'basis_date', 'schedule_day', 'schedule_date', 'schedule_time', 'place',
     ])
+        ->and($siswa['basis_from'])->toBe(IssueLetters::MSG_INVITATION_FROM)
         ->and(IssueLetters::draftErrors(w2cDraft(issuedOn: '2020-01-01'), LetterType::Siswa))->toHaveKey('issued_on');
 });
 
@@ -777,7 +781,7 @@ it('fills the guru form from the issued student letter when the page is opened a
     $registration = w2cTeam($this->mentor);
     app(IssueLetters::class)->handle($this->tu, $registration, LetterType::Siswa, w2cDraft());
 
-    // The event comes along; the invitation does not, since the student letter names none (D-154).
+    // The event comes along; the invitation does not: each letter keeps its own (D-154, D-157).
     Livewire::actingAs($this->tu)->test(SuratTugas::class, ['registration' => $registration])
         ->assertSet('tab', 'guru')
         ->assertSet('guru.dasarDari', 'Penyelenggara swasta')
@@ -896,25 +900,43 @@ it('wraps a long word on the paper preview of both letters instead of widening t
 
 // D-154: the student letter as the school prints it (2026-10-16) --------------------------------------------
 
-it('gives the student letter the Dasar of the template and asks the invitation for the guru letter only (D-154)', function (): void {
+it('gives the student letter the Dasar of the template and an optional invitation as Dasar 2 (D-154, D-157)', function (): void {
     $registration = w2cTeam($this->mentor);
     $dasar = LetterTemplate::FIELDS['siswa_dasar'][4];
 
-    Livewire::actingAs($this->tu)->test(SuratTugas::class, ['registration' => $registration])
+    $component = Livewire::actingAs($this->tu)->test(SuratTugas::class, ['registration' => $registration])
         ->assertSet('tab', 'siswa')
+        ->assertSee('Dasar 1')
         ->assertSee('Dari Template surat')
         ->assertSee($dasar)
         ->assertSee('Ubah di Template surat')
         ->assertSeeHtml('href="'.route('tu.surat.template').'"')
-        ->assertDontSee('Nomor surat undangan')
-        ->assertDontSee('Surat dari')
+        // Dasar 2: "Surat dari" stays filled with the penyelenggara, number and date optional, no "Hal".
+        ->assertSee('Dasar 2')
+        ->assertSee('Nomor surat undangan')
+        ->assertSet('siswa.dasarDari', 'Penyelenggara swasta')
+        ->assertSeeHtml('wire:model.live.debounce.500ms="siswa.dasarDari"')
+        ->assertDontSeeHtml('siswa.dasarHal')
+        // the preview numbers the two Dasar texts
+        ->assertSeeHtml('<span>1.</span><span>'.$dasar.'</span>')
+        ->assertSeeHtml('<span>2.</span><span>Surat dari Penyelenggara swasta</span>')
+        ->set('siswa.dasarNomor', '017/PAN-NSIF/IX/2026')
+        ->set('siswa.dasarTanggal', '2026-09-15')
+        ->assertSeeHtml('<span>2.</span><span>Surat dari Penyelenggara swasta Nomor 017/PAN-NSIF/IX/2026 Tanggal 15 September 2026</span>')
         // the sheet is the PDF page at 560 px, shrunk as a whole in a narrower box
         ->assertSeeHtml('<div class="kertas-siswa">')
         ->assertSeeHtml('<div class="lembar-siswa relative')
-        ->assertSeeHtml('sm:px-[57.5px] sm:py-[53px]')
-        ->call('setTab', 'guru')
+        ->assertSeeHtml('sm:px-[57.5px] sm:py-[53px]');
+
+    // Emptied, the letter has the one Dasar of the template, without numbers.
+    $component->set('siswa.dasarDari', '')->set('siswa.dasarNomor', '')->set('siswa.dasarTanggal', '')
+        ->assertDontSeeHtml('<span>1.</span>')
+        ->assertSeeHtml('<span>'.$dasar.'</span>');
+
+    // The guru letter is unchanged: its invitation with "Hal", no template Dasar block.
+    $component->call('setTab', 'guru')
         ->assertSee('Nomor surat undangan')
-        ->assertSee('Surat dari')
+        ->assertSeeHtml('guru.dasarHal')
         ->assertDontSee('Dari Template surat');
 
     $css = (string) file_get_contents(resource_path('css/app.css'));
@@ -924,14 +946,25 @@ it('gives the student letter the Dasar of the template and asks the invitation f
         ->toContain('@container (max-width: 403.19px) { .kertas-siswa > .lembar-siswa { zoom: 0.7; } }');
 });
 
-it('makes the student letter whatever its hidden invitation keys hold, and keeps no invitation on it (D-154)', function (): void {
+it('issues the student letter with or without the invitation and refuses a number without "Surat dari" (D-157)', function (): void {
     $registration = w2cTeam($this->mentor);
 
+    // A number or a date of the invitation needs to say whose letter it is.
+    $refused = Livewire::actingAs($this->tu)->test(SuratTugas::class, ['registration' => $registration])
+        ->set('siswa.nomor', W2C_SISWA)
+        ->set('siswa.dasarDari', '')
+        ->set('siswa.dasarNomor', '017/PAN-NSIF/IX/2026')
+        ->set('siswa.dasarTanggal', 'bukan-tanggal')
+        ->call('generate')
+        ->assertHasErrors(['siswa.dasarDari', 'siswa.dasarTanggal']);
+
+    expect($refused->errors()->first('siswa.dasarDari'))->toBe(IssueLetters::MSG_INVITATION_FROM)
+        ->and(Letter::query()->count())->toBe(0);
+
+    // Without any invitation: one Dasar, no invitation kept on the row.
     $component = Livewire::actingAs($this->tu)->test(SuratTugas::class, ['registration' => $registration])
         ->set('siswa.nomor', W2C_SISWA)
         ->set('siswa.dasarDari', '')
-        ->set('siswa.dasarNomor', str_repeat('x', 500))
-        ->set('siswa.dasarTanggal', 'bukan-tanggal')
         ->call('generate')
         ->assertHasNoErrors();
 
@@ -941,13 +974,35 @@ it('makes the student letter whatever its hidden invitation keys hold, and keeps
         ->and($letter->basis_number)->toBeNull()
         ->and($letter->basis_date)->toBeNull()
         ->and($letter->printed['template']['values']['siswa_dasar'])->toBe(LetterTemplate::FIELDS['siswa_dasar'][4])
-        ->and($letter->printed['template']['values'])->not->toHaveKey('siswa_basis');
+        ->and($letter->printed['template']['values'])->not->toHaveKey('siswa_basis')
+        // "Koreksi" starts from what it printed: still no invitation, not the penyelenggara again.
+        ->and(LetterDraft::fromLetter($letter, $registration)['dasarDari'])->toBe('');
 
-    // The issued letter reads as its PDF: the regulation text, no invitation rows.
+    // The issued letter reads as its PDF: the regulation text, no invitation.
     $component->call('setTab', 'siswa')
         ->assertSee('Isi PDF yang sudah dibuat')
         ->assertSee('Penggunaan Dana BOS Kinerja bagi sekolah yang memiliki prestasi')
-        ->assertDontSee('Surat dari');
+        ->assertDontSee('Surat dari')
+        ->assertDontSeeHtml('<span>1.</span>');
+
+    // With the invitation: kept on the row and printed as Dasar number 2.
+    $other = w2cTeam($this->mentor);
+    Livewire::actingAs($this->tu)->test(SuratTugas::class, ['registration' => $other])
+        ->set('siswa.nomor', '400.3.8/314/MRD/X/2026')
+        ->set('siswa.dasarNomor', '017/PAN-NSIF/IX/2026')
+        ->set('siswa.dasarTanggal', '2026-09-15')
+        ->call('generate')
+        ->assertHasNoErrors()
+        ->call('setTab', 'siswa')
+        ->assertSeeHtml('<li>Surat dari Penyelenggara swasta Nomor 017/PAN-NSIF/IX/2026 Tanggal 15 September 2026</li>')
+        ->assertSeeHtml('<span>2.</span><span>Surat dari Penyelenggara swasta Nomor 017/PAN-NSIF/IX/2026 Tanggal 15 September 2026</span>');
+
+    $withInvitation = Letter::query()->where('registration_id', $other->getKey())->sole();
+
+    expect($withInvitation->basis_from)->toBe('Penyelenggara swasta')
+        ->and($withInvitation->basis_number)->toBe('017/PAN-NSIF/IX/2026')
+        ->and($withInvitation->basis_date->toDateString())->toBe('2026-09-15')
+        ->and($withInvitation->basis_subject)->toBeNull();
 
     // The guru letter still needs where its invitation came from.
     $guru = new LetterDraft(

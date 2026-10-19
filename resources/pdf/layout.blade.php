@@ -121,6 +121,9 @@
         .s-dasar td { line-height: 15pt; }
         .s-dasar .k { width: 103pt; }
         .s-dasar .s { width: 9pt; text-align: center; }
+        /* D-157: with an invitation, "Dasar" is a numbered list (1. regulation text, 2. invitation). */
+        .s-daftar { width: 100%; }
+        .s-daftar .n { width: 16pt; }
         .s-murid { width: 473pt; }
         .s-murid th, .s-murid td { border: 0.5pt solid #000; height: 20.1pt; line-height: 13pt; vertical-align: middle; text-align: center; padding: 0 1.5pt; }
         .s-murid th { font-weight: bold; }

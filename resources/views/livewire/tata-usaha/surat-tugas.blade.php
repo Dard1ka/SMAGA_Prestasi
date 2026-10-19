@@ -65,7 +65,9 @@
             $model = $type->value;
             $guruSent = $letters->contains(fn ($l) => $l->type === \App\Enums\LetterType::Guru);
             // D-154: the student letter's Dasar is the template's regulation text; one printed before it named the invitation.
+            // D-157: an invitation on a student letter printed since then is its Dasar number 2.
             $oldBasis = $isGuru ? null : $letterTemplate->oldSiswaBasis($content->basisFrom);
+            $siswaInvitation = $isGuru || $oldBasis !== null ? null : $content->siswaInvitation();
             $basisLine = ! $isGuru && $oldBasis === null
                 ? $letterTemplate->siswaDasar($content->schoolYear)
                 : ($oldBasis ?? 'Surat dari '.$content->basisFrom)
@@ -154,9 +156,10 @@
                                 </div>
                             </fieldset>
                         @else
-                            {{-- D-154: the student letter's Dasar is a fixed regulation text of the template, not the invitation. --}}
+                            {{-- D-154: Dasar 1 of the student letter is a fixed regulation text of the template. D-157: the
+                                 invitation is optional here and, left filled, prints as Dasar 2 (no "Hal"). --}}
                             <div class="flex flex-col gap-1">
-                                <p class="m-0 text-sm font-bold">Dasar <span class="muted font-medium">· Dari Template surat</span></p>
+                                <p class="m-0 text-sm font-bold">Dasar 1 <span class="muted font-medium">· Dari Template surat</span></p>
                                 <p class="m-0 text-sm [overflow-wrap:anywhere]">{{ $letterTemplate->siswaDasar($content->schoolYear) }}</p>
                                 <p class="muted m-0 text-xs">
                                     Sama untuk semua surat siswa.
@@ -165,6 +168,15 @@
                                     @endif
                                 </p>
                             </div>
+                            <fieldset class="m-0 flex flex-col gap-3 border-0 p-0">
+                                <legend class="mb-2 text-sm font-bold">Dasar 2 <span class="muted font-medium">· Surat undangan lomba</span></legend>
+                                <div class="grid items-start gap-4 md:grid-cols-2">
+                                    <x-sth.input wire:model.live.debounce.500ms="{{ $model }}.dasarDari" label="Surat dari" optional maxlength="200" class="md:col-span-2"
+                                                 hint="Diisi dari penyelenggara lomba. Kosongkan bila tidak ada surat undangan, surat siswa lalu hanya memuat Dasar 1." />
+                                    <x-sth.input wire:model.live.debounce.500ms="{{ $model }}.dasarNomor" label="Nomor surat undangan" optional maxlength="150" autocomplete="off" />
+                                    <x-sth.input type="date" wire:model.live.debounce.400ms="{{ $model }}.dasarTanggal" label="Tanggal surat undangan" optional />
+                                </div>
+                            </fieldset>
                         @endif
 
                         <fieldset class="m-0 flex flex-col gap-3 border-0 p-0">
@@ -207,7 +219,16 @@
                         <dt class="text-sm font-semibold text-muted">Tanggal surat</dt>
                         <dd class="m-0 text-sm">{{ $content->issuedOnText }}</dd>
                         <dt class="text-sm font-semibold text-muted">Dasar</dt>
-                        <dd class="m-0 text-sm">{{ $basisLine }}</dd>
+                        <dd class="m-0 text-sm">
+                            @if ($siswaInvitation !== null)
+                                <ol class="m-0 list-decimal pl-5">
+                                    <li>{{ $basisLine }}</li>
+                                    <li>{{ $siswaInvitation }}</li>
+                                </ol>
+                            @else
+                                {{ $basisLine }}
+                            @endif
+                        </dd>
                         <dt class="text-sm font-semibold text-muted">Pelaksanaan</dt>
                         <dd class="m-0 text-sm">{{ $content->scheduleDay }}, {{ $content->scheduleDate }} · {{ $content->scheduleTime }} · {{ $content->place }}</dd>
                     </dl>
@@ -323,6 +344,27 @@
                 </x-sth.modal>
             @endunless
         </x-sth.card>
+
+        @if ($canCancel)
+            {{-- D-155: Tata Usaha takes an approved registration out of the queue by cancelling it, with a reason. --}}
+            <x-sth.card as="section" class="flex flex-col gap-3" aria-labelledby="h-hapus-antrean">
+                <h2 id="h-hapus-antrean" class="title-card">Hapus dari antrean</h2>
+                <p class="muted m-0 text-sm">Untuk pendaftaran yang tidak jadi dibuatkan surat tugas. Pendaftarannya dibatalkan dengan alasan dan surat yang sudah dibuat dicabut.</p>
+                <div>
+                    <x-sth.button variant="danger" icon="trash" wire:click="askCancel" wire:loading.attr="disabled" wire:target="askCancel" aria-haspopup="dialog">Hapus dari antrean</x-sth.button>
+                </div>
+            </x-sth.card>
+
+            <x-sth.modal :id="\App\Livewire\TataUsaha\SuratTugas::CANCEL_DIALOG" title="Hapus dari antrean surat?" size="sm" on-close="forgetCancel"
+                         :description="$cancelNotice">
+                <x-sth.textarea wire:model="cancelNote" label="Alasan pembatalan" rows="3" maxlength="500"
+                                hint="Minimal 5 karakter. Dikirim ke siswa dan guru pembimbing." />
+                <x-slot:footer>
+                    <x-sth.button variant="quiet" data-sth-close>Batal</x-sth.button>
+                    <x-sth.button variant="danger" icon="trash" wire:click="cancelQueued" wire:loading.attr="disabled" wire:target="cancelQueued">Hapus dari antrean</x-sth.button>
+                </x-slot:footer>
+            </x-sth.modal>
+        @endif
 
         @if ($history !== [])
             {{-- B3 (#11): revoked versions stay on record (number never reused). --}}

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Database\Seeders;
 
-use App\Actions\Letters\LetterDraft;
 use App\Domain\Accounts\InitialPassword;
 use App\Domain\Archive\GraduationCalculator;
 use App\Domain\Files\CoverThumbnail;
@@ -754,8 +753,8 @@ final class DemoSeeder extends Seeder
     }
 
     /**
-     * Both letters of a registration; the guru letter answers the invitation DemoLetterBasis gives the lomba's demo key
-     * (QA5). The student letter names no invitation since D-154: its Dasar is the template's regulation text.
+     * Both letters of a registration; they answer the invitation DemoLetterBasis gives the lomba's demo key (QA5). The
+     * student letter prints it as "Dasar" number 2 after the template's regulation text (D-157).
      */
     private function issueLetters(Registration $registration, int $siswaSequence, int $guruSequence, string $issuedOn, string $slug): void
     {
@@ -765,7 +764,6 @@ final class DemoSeeder extends Seeder
 
         foreach ([[LetterType::Siswa, $siswaSequence, 'surat-tugas-siswa-'], [LetterType::Guru, $guruSequence, 'surat-perintah-tugas-guru-']] as [$type, $sequence, $prefix]) {
             $number = $this->letterNumber->format((string) Setting::get($type->formatSetting()), $sequence, $issuedOn);
-            $invitation = LetterDraft::usesInvitation($type);
 
             Letter::query()->create([
                 'registration_id' => $registration->getKey(),
@@ -775,8 +773,8 @@ final class DemoSeeder extends Seeder
                 'year' => $issued->year,
                 'month' => $issued->month,
                 'issued_on' => $issuedOn,
-                'basis_number' => $invitation ? $basis['number'] : null,
-                'basis_date' => $invitation ? $basis['date'] : null,
+                'basis_number' => $basis['number'],
+                'basis_date' => $basis['date'],
                 'file_id' => DemoFiles::pdf($prefix.$slug.'.pdf', FilePurpose::Letter, $tu->getKey(), 'Nomor '.$number)->getKey(),
                 'verification_code' => Letter::newVerificationCode(),
                 'generated_by' => $tu->getKey(),

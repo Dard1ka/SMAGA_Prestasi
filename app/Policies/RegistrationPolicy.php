@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Policies;
 
+use App\Actions\Registrations\CancelRegistration;
 use App\Enums\MemberRole;
 use App\Enums\Permission;
 use App\Enums\RegistrationStatus;
@@ -112,7 +113,20 @@ class RegistrationPolicy
 
         return $student !== null
             && $registration->leader_student_id === $student->getKey()
-            && in_array($registration->status, [RegistrationStatus::MenungguLomba, RegistrationStatus::MenungguKonfirmasi, RegistrationStatus::MenungguKepsek], true);
+            && in_array($registration->status, CancelRegistration::LEADER_STATUSES, true);
+    }
+
+    /**
+     * D-155: remove an approved registration from the letter queue (CancelApprovedRegistration), before its letters
+     * were sent. Only an account that both approves registrations and makes the letters: Tata Usaha (the Kepala
+     * Sekolah has no `letter.generate`, Admin no `registration.approve`, D-01).
+     */
+    public function cancelApproved(User $user, Registration $registration): bool
+    {
+        return $user->canLogIn()
+            && $user->can(Permission::RegistrationApprove->value)
+            && $user->can(Permission::LetterGenerate->value)
+            && $registration->status === RegistrationStatus::Disetujui;
     }
 
     // --- W2-C: decide (Kepala Sekolah or Tata Usaha) and other areas' methods below ---

@@ -9,6 +9,7 @@ use App\Livewire\Guru\BinaanDetail;
 use App\Livewire\Guru\Lomba as GuruLomba;
 use App\Livewire\Humas\Apresiasi;
 use App\Livewire\Humas\Arsip;
+use App\Livewire\Humas\ArsipFoto;
 use App\Livewire\Humas\Jadwal;
 use App\Livewire\Humas\Publikasi;
 use App\Livewire\Kepsek\Laporan;
@@ -66,6 +67,8 @@ Route::middleware(['area.staff', 'role:humas'])->prefix('humas')->name('humas.')
     Route::livewire('/jadwal', Jadwal::class)->name('jadwal');
     Route::livewire('/apresiasi', Apresiasi::class)->name('apresiasi.index');
     Route::livewire('/arsip', Arsip::class)->name('arsip');
+    // D-156: the photos of verified laporan hasil, for the flyer Humas designs itself (consent-gated).
+    Route::livewire('/arsip-foto', ArsipFoto::class)->name('foto');
     // D-139: Humas verifies reports too; the same screen as kesiswaan.verifikasi.*, area-aware.
     Route::livewire('/verifikasi-hasil', VerifikasiHasil::class)->name('verifikasi.index');
     Route::livewire('/verifikasi-hasil/{report}', VerifikasiHasil::class)->whereUlid('report')->name('verifikasi.show');

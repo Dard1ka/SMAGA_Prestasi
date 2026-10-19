@@ -317,11 +317,39 @@ final class Index extends Component
             'waitingText' => $status === RegistrationStatus::MenungguLomba ? LombaPresenter::waitingForLomba($registration) : null,
             // D-148: cancelled together with the rejected lomba; registering again is not possible then. The role that
             // rejected it is named by the one lomba rule (StaffRoleLabel::forLomba(): Kesiswaan or Admin, Kesiswaan without one).
-            'cancelledText' => $status === RegistrationStatus::Dibatalkan && $registration->cancelledWithLomba()
-                ? 'Usulan lomba ini ditolak '.StaffRoleLabel::forLomba($competition->verifier).', jadi pendaftarannya ikut dibatalkan.'
-                : 'Kamu bisa mendaftar lagi selama pendaftaran lomba masih dibuka.',
+            'cancelledText' => $this->cancelledText($registration, $status),
             'allConfirmed' => $registration->members->every(fn (RegistrationMember $m): bool => $m->confirmed_at !== null),
         ];
+    }
+
+    /**
+     * Why a registration ended as dibatalkan. D-148: cancelled together with the rejected lomba (registering again is
+     * not possible then; the role that rejected it comes from StaffRoleLabel::forLomba()). D-155: Tata Usaha removed it
+     * from the letter queue, with the reason. Otherwise the ketua cancelled it.
+     */
+    private function cancelledText(Registration $registration, RegistrationStatus $status): string
+    {
+        $again = 'Kamu bisa mendaftar lagi selama pendaftaran lomba masih dibuka.';
+
+        if ($status !== RegistrationStatus::Dibatalkan) {
+            return $again;
+        }
+
+        if ($registration->cancelledWithLomba()) {
+            return 'Usulan lomba ini ditolak '.StaffRoleLabel::forLomba($registration->competition?->verifier).', jadi pendaftarannya ikut dibatalkan.';
+        }
+
+        $byQueue = $registration->letterQueueCancellation();
+
+        if ($byQueue !== null) {
+            $by = $byQueue['by'] !== null
+                ? 'oleh '.$byQueue['by']->name.' ('.StaffRoleLabel::forDecision($byQueue['by']).')'
+                : StaffRoleLabel::FALLBACK;
+
+            return 'Dibatalkan '.$by.' sebelum surat tugas dikirim. Alasan: '.$byQueue['note'].' '.$again;
+        }
+
+        return $again;
     }
 
     /**

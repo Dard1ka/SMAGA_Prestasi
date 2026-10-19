@@ -73,3 +73,56 @@ Dasar and the intro sentence. Built on the demo copy checkout (`feat/fs1-feedbac
 - Line break that differs from the photo: the school's Dasar breaks "… bagi sekolah yang / memiliki prestasi", STH
   "… bagi sekolah / yang memiliki prestasi" (the photo gives no absolute scale; compare on paper).
 - Not checked: a phone width, a printed letter, TU › Template surat in the browser (render-tested only).
+
+## D-157: the invitation back on the student letter, optional, as Dasar 2 · status: built, not committed
+The lead after D-154: "Tetap bisa input seperti gambar 1 tpi dibuat opsional, jika user TU input sesuaii di gambar satu
+maka tambahkan dasar baru dibawah gambar ketiga yang berasal dari surat undangannya siapa yang diinput oleh TU." Asked
+before any change, the lead answered: numbered "1." and "2."; "Surat dari" stays prefilled with the penyelenggara; the
+sentence has no "Hal"; "Jangan di apa apakan surat gurunya dibuat default saja" (guru letter unchanged, so the invitation
+is not shared between the two forms either); emptied, the letter keeps the one unnumbered Dasar of D-154.
+
+- `app/Actions/Letters/LetterContent.php`: `siswaInvitation()` = "Surat dari X[ Nomor Y][ Tanggal Z]", null when Surat dari
+  is empty.
+- `app/Actions/Letters/LetterDraft.php`: `requiresInvitation(LetterType)` (guru only) replaces `usesInvitation()`;
+  `fromLetter()` keeps Surat dari empty for a letter whose `printed` record exists and has none (a correction of a
+  student letter printed without the invitation no longer gets the penyelenggara back; letters without a printed record,
+  the demo ones included, still fall back to the penyelenggara).
+- `app/Actions/Letters/IssueLetters.php`: `newLetter()` stores the invitation for both types (`basis_from` null when
+  empty, never `basis_subject` on a student letter); `draftErrors()`: required for the guru letter as before; on the
+  student letter only the length checks, the date check and `MSG_INVITATION_FROM` ("Isi asal surat undangan, atau
+  kosongkan nomor dan tanggalnya.") for a number or date without Surat dari (coordinator choice).
+- `app/Livewire/TataUsaha/SuratTugas.php`: `draft()` passes the invitation of every form again (the unreadable-date error
+  too); `SHARED_FIELDS` stays hari, tanggal, pukul, tempat.
+- `resources/pdf/surat-tugas-siswa.blade.php` + `layout.blade.php` (`.s-daftar`, number column 16 pt): with an invitation
+  the Dasar cell holds a two-row table "1. regulation" / "2. invitation"; without, the one row of D-154.
+- `resources/views/livewire/tata-usaha/partials/pratinjau-siswa.blade.php`: the same numbered list in the preview (15 px
+  number column, the sheet's scale); `surat-tugas.blade.php`: student tab "Dasar 1 · Dari Template surat" + fieldset
+  "Dasar 2 · Surat undangan lomba" (Surat dari, Nomor, Tanggal; all optional; no Hal); the summary of an issued student
+  letter is an ordered list when it printed an invitation.
+- `database/seeders/DemoSeeder.php`, `DemoFileRefresher.php`: invitation number and date on both demo letters again
+  (`--lengkapi` fills both); the demo student letters print it as Dasar 2 (their Surat dari is the penyelenggara through
+  `fromLetter()`).
+- Tests: `SuratTugasTest` (the student tab with Dasar 1 + 2 and the live numbered preview, emptied back to one Dasar, the
+  guru tab still with Hal; issuing with and without the invitation, the refusal, the correction start; the validation
+  case of a student draft), `LetterLayoutTest` (numbered rows in the PDF, the one-row case with an empty invitation, the
+  `.s-daftar` CSS), `RefreshDemoFilesTest` (both demo letters carry the invitation).
+- Docs: DECISIONS D-157 (§D19, summary row, dated pointer on D-154), CLAUDE.md §2, §5 letters, §8, §10.
+
+Interpretations (*sementara* in D-157): the refusal sentence for a number or date without Surat dari; the number column
+width (16 pt / 15 px), not compared on paper; TU › Template surat's sample letter keeps its invitation, so its student
+preview shows Dasar 1 and 2.
+
+TEST-RESULTS (2026-10-19, on this machine; the laptop had restarted, the lead started Docker, then at the lead's choice
+`queue` + `scheduler` were stopped before `mysql`, `app`, `web` came up, so no mail could go out):
+- `tests/Feature/TataUsaha` 108 passed (698 assertions); `tests/Feature/Letters` 26 passed (267);
+  `Kepsek/RevocationNoticeTest` 5 passed; `Demo/RefreshDemoFilesTest` 9 passed, 1 skipped (the slow full render).
+- Full suite `--parallel --processes=8` → **3783 passed, 1 skipped (22751 assertions)**, 946 s; `pint --test` clean
+  (830 files); `npm run build` OK; `dev-cache.sh --force` run; `sth:demo:refresh-files --berkas=surat-tugas-siswa-*
+  --force` redrew the 5 demo student letters.
+- Browser (the app's pane at its own width, about 800 px, demo TU account, nothing issued): the NSIF student tab shows
+  Dasar 1 from the template and Dasar 2 with Surat dari "Penyelenggara swasta", Nomor and Tanggal optional, no Hal; a
+  typed invitation number appears at once in the preview as "2. Surat dari Penyelenggara swasta Nomor …" under "1.
+  Peraturan …" (the typed number was not saved). The redrawn demo WICE student letter (PDF opened from disk) prints
+  "1. Peraturan …" and "2. Surat dari IYSA Nomor IYSA/WICE/INV/118/VIII/2026 Tanggal 28 Agustus 2026".
+- Not checked: a phone width, the guru tab in the browser (tests only), a printed letter, a real issue and "Koreksi" in
+  the browser (tests only).

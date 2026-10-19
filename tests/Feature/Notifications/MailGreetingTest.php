@@ -34,6 +34,7 @@ use App\Notifications\Registrations\InvitationWithdrawn;
 use App\Notifications\Registrations\MemberResponded;
 use App\Notifications\Registrations\RegistrationAwaitingPrincipal;
 use App\Notifications\Registrations\RegistrationCancelled;
+use App\Notifications\Registrations\RegistrationCancelledBySchool;
 use App\Notifications\Registrations\TeamInvitation;
 use App\Notifications\Reports\ReportReminder;
 use App\Notifications\Reports\ReportSubmitted;
@@ -90,6 +91,7 @@ function mailGreetingCases(): array
         'leader_student_id' => F::student('Raka Aditya Pratama', 'XI-2')->getKey(),
     ]);
     $registrationId = (string) $registration->getKey();
+    $decider = User::factory()->create(['name' => 'Sri Handayani']);
     $report = Report::factory()->create();
     $signed = 'http://127.0.0.1:8080/akun/bukan-saya/01jabc?expires=1790000000&signature=0123abcd';
     $when = 'Senin, 12 Oktober 2026 pukul 07.00 WIB';
@@ -123,6 +125,7 @@ function mailGreetingCases(): array
         [$fixed(new InvitationWithdrawn($registration)), 'siswa'],
         [$fixed(new InvitationsExpired($registration, 1, true, 2)), 'siswa'],
         [$fixed(RegistrationCancelled::for($registration, 'siswa')), 'siswa'],
+        [$fixed(RegistrationCancelledBySchool::for($registration, 'siswa', $decider, 'Lomba diundur penyelenggara')), 'siswa'],
         [$fixed(RegistrationApproved::for($registration, 'siswa')), 'siswa'],
         [$fixed(RegistrationRejected::for($registration, 'siswa')), 'siswa'],
         [$fixed(LettersIssued::for($registration, 'siswa')), 'siswa'],
@@ -135,6 +138,8 @@ function mailGreetingCases(): array
         [$fixed(new RegistrationAwaitingPrincipal($registration)), 'staf'],
         [$fixed(RegistrationCancelled::for($registration, 'guru')), 'staf'],
         [$fixed(RegistrationCancelled::for($registration, 'kepsek')), 'staf'],
+        [$fixed(RegistrationCancelledBySchool::for($registration, 'guru', $decider, 'Lomba diundur penyelenggara')), 'staf'],
+        [$fixed(RegistrationCancelledBySchool::for($registration, 'pemutus', $decider, 'Lomba diundur penyelenggara')), 'staf'],
         [$fixed(RegistrationApproved::for($registration, 'guru')), 'staf'],
         [$fixed(RegistrationApproved::for($registration, 'guru', true, 'Bu Retno Wulandari, S.Pd.')), 'staf'],
         [$fixed(RegistrationApproved::for($registration, 'tu')), 'staf'],

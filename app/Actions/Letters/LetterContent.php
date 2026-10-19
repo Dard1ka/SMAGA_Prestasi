@@ -198,6 +198,21 @@ final readonly class LetterContent
         return $text;
     }
 
+    /**
+     * Student letter, "Dasar" number 2 (D-157): the invitation TU typed, without "Hal"; null when "Surat dari" is empty,
+     * and the letter then prints its one regulation text without numbers (D-154).
+     */
+    public function siswaInvitation(): ?string
+    {
+        if ($this->basisFrom === '') {
+            return null;
+        }
+
+        return 'Surat dari '.$this->basisFrom
+            .($this->basisNumber !== null ? ' Nomor '.$this->basisNumber : '')
+            .($this->basisDateText !== null ? ' Tanggal '.$this->basisDateText : '');
+    }
+
     /** Guru letter, "Untuk" point 1 (worded as in the school's file, without a full stop). */
     public function guruTask(): string
     {

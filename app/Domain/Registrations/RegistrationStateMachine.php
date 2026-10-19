@@ -41,12 +41,14 @@ final class RegistrationStateMachine
      * menunggu_kepsek → dibatalkan: "leader cancels before the principal decides" (§6, mockup Lomba-Saya).
      * menunggu_lomba (D-148): the submitter's registration for the own queued lomba; publishing it continues the
      * registration (tim → menunggu_konfirmasi, individu → menunggu_kepsek), rejecting it or the leader cancels it.
+     * disetujui → dibatalkan (D-155): Tata Usaha removes an approved registration from the letter queue before the
+     * letters were sent (CancelApprovedRegistration); the leader never cancels from here (CancelRegistration).
      */
     private const TRANSITIONS = [
         self::MENUNGGU_LOMBA => [self::MENUNGGU_KONFIRMASI, self::MENUNGGU_KEPSEK, self::DIBATALKAN],
         self::MENUNGGU_KONFIRMASI => [self::MENUNGGU_KEPSEK, self::DIBATALKAN],
         self::MENUNGGU_KEPSEK => [self::DISETUJUI, self::DITOLAK, self::DIBATALKAN],
-        self::DISETUJUI => [self::SURAT_TERBIT],
+        self::DISETUJUI => [self::SURAT_TERBIT, self::DIBATALKAN],
         self::DITOLAK => [],
         self::SURAT_TERBIT => [self::BERLANGSUNG],
         self::BERLANGSUNG => [self::MENUNGGU_LAPORAN],

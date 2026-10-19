@@ -5,6 +5,7 @@
     Hari / Tanggal / Pukul / Tempat · closing · signature block centred on the right.
     D-154 (the school's printed letter of 2026-10-16): "Dasar" is one regulation text of the template, wrapping under
     itself, close under the Nomor and two empty rows above the intro; the invitation's Nomor / Tanggal rows are gone.
+    D-157: an invitation TU typed (optional on this letter) is "Dasar" number 2, one sentence without "Hal".
     Vars: $content (App\Actions\Letters\LetterContent) · $number · $verification · $pdfImages · $replaces
 --}}
 @extends('pdf::layout', ['title' => 'Surat Tugas '.$number, 'letter' => 'siswa'])
@@ -21,11 +22,22 @@
     <div class="s-judul">Nomor : {{ $number }}</div>
     <div class="s-jarak-dasar"></div>
 
+    {{-- D-157: with an invitation typed by TU, "Dasar" is numbered: 1. the regulation text, 2. the invitation. --}}
+    @php($siswaInvitation = $content->siswaInvitation())
     <table class="s-dasar">
         <tr>
             <td class="k">Dasar</td>
             <td class="s">:</td>
-            <td>{{ $tpl->siswaDasar($content->schoolYear) }}</td>
+            @if ($siswaInvitation === null)
+                <td>{{ $tpl->siswaDasar($content->schoolYear) }}</td>
+            @else
+                <td>
+                    <table class="s-daftar">
+                        <tr><td class="n">1.</td><td>{{ $tpl->siswaDasar($content->schoolYear) }}</td></tr>
+                        <tr><td class="n">2.</td><td>{{ $siswaInvitation }}</td></tr>
+                    </table>
+                </td>
+            @endif
         </tr>
     </table>
     <div class="s-baris"></div>
