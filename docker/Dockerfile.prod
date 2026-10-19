@@ -59,7 +59,7 @@ RUN npm run build \
 ########################################################################################################
 # web: nginx serving public/ and forwarding /index.php to app:9000 (docker/nginx/prod.conf).
 ########################################################################################################
-FROM nginxinc/nginx-unprivileged:1.30-alpine@sha256:ed04ec1ff34502c339ee5c3ae3f855442398edc1d05591e2b98981dcbbd20b1e AS web
+FROM nginxinc/nginx-unprivileged:1.30-alpine@sha256:782bb89768cc87b7f95c18b95baa1af250e5d451f26794f59363540161147c01 AS web
 
 # Security fixes that are newer than the pinned base image (CI: Trivy fails on fixable HIGH/CRITICAL). List only the
 # packages Trivy names, and drop one again once a newer base digest (Dependabot) already contains the fix.
