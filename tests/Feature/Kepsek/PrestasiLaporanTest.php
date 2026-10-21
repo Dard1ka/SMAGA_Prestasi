@@ -34,8 +34,8 @@ beforeEach(function (): void {
     $this->kepsek = F::kepsek();
 
     $this->mentor = W2cFixtures::mentor('Retno Wulandari, S.Pd.');
-    $this->nadia = F::student('Nadia Putri Anindya', 'XI-4');              // no publish consent: internal pages still name her
-    $this->raka = F::student('Raka Pradipta', 'XII-2');
+    $this->nadia = F::student('Nadia Putri Anindya', 'XI-D');
+    $this->raka = F::student('Raka Pradipta', 'XII-B');
     $this->raka->user->forceFill(['status' => UserStatus::Archived])->save();
 
     F::achievement($this->nadia, Bidang::Riset, Level::Nasional, ResultType::Juara2, '68.00', '2026-09-24', 'OPSI 2026', $this->mentor);
@@ -53,12 +53,12 @@ it('aggregates a school year per bidang, tingkat, kelas and guru pembimbing', fu
     expect($rows)->toHaveCount(2)
         ->and($summary['totals'])->toMatchArray(['prestasi' => 2, 'siswa' => 1, 'lomba' => 2, 'nasional' => 1, 'points' => '100.00'])
         ->and(collect($summary['bidang'])->firstWhere('label', 'Riset')['prestasi'])->toBe(1)
-        ->and(collect($summary['kelas'])->pluck('label')->all())->toBe(['XI-4'])
+        ->and(collect($summary['kelas'])->pluck('label')->all())->toBe(['XI-D'])
         ->and(collect($summary['pembimbing'])->pluck('label')->all())->toContain('Retno Wulandari, S.Pd.', 'Tanpa pembimbing');
 
     $all = $data->summary($data->rows(ExportPeriod::all()));
     expect($all['totals']['prestasi'])->toBe(3)
-        ->and(collect($all['kelas'])->pluck('label')->all())->toBe(['XI-4', 'XII-2']);
+        ->and(collect($all['kelas'])->pluck('label')->all())->toBe(['XI-D', 'XII-B']);
 
     $range = $data->rows(ExportPeriod::range(CarbonImmutable::parse('2026-09-01'), CarbonImmutable::parse('2026-09-30')));
     expect($range->pluck('lomba')->all())->toBe(['OPSI 2026']);

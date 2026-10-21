@@ -11,10 +11,9 @@ use Illuminate\Database\Eloquent\Builder;
 /**
  * To Humas: a verified achievement (n members) is in the publication queue (status siap).
  *
- * QA10: the queue only lists students who may be named (NamedStudent: publish consent, not deleted, not disabled), so
- * the notice counts only those members of the report and is not sent at all when there is none (`shouldSend()`):
- * before, Humas was mailed about a queue that showed nothing (consent defaults to false). The caller (VerifyReport)
- * needs no change.
+ * QA10: the queue only lists students who may be named (NamedStudent: not deleted, not disabled; no consent since
+ * D-162), so the notice counts only those members of the report and is not sent at all when there is none
+ * (`shouldSend()`): Humas is never mailed about a queue that shows nothing. The caller (VerifyReport) needs no change.
  */
 final class AchievementReadyForPublication extends Notice
 {
@@ -34,7 +33,7 @@ final class AchievementReadyForPublication extends Notice
         $notice = new self(
             kind: 'achievement.ready_for_publication',
             title: 'Prestasi baru siap dipublikasikan',
-            body: $who.' meraih '.$achievement->result->label().' di '.$competition.'. Cek persetujuan publikasi sebelum di-upload.',
+            body: $who.' meraih '.$achievement->result->label().' di '.$competition.'.',
             routeName: 'humas.beranda',
             actionLabel: 'Buka antrean publikasi',
             extra: ['report_id' => (string) $achievement->report_id],

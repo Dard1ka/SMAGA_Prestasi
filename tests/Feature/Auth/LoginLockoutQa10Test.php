@@ -150,7 +150,8 @@ it('clears the limits of every address of the account on an Admin reset (QA10)',
     qa10AuthFailFrom(QA10_AUTH_ATTACKER_IP, 20, 61);
     qa10AuthAssertLimited(qa10AuthLogin(QA10_AUTH_ATTACKER_IP, H::NISN));
 
-    $temporary = app(ResetStudentAccount::class)->handle($admin, $student->user, 'Pemilik datang ke ruang TU dengan kartu pelajar.');
+    $temporary = 'sementara8';
+    app(ResetStudentAccount::class)->handle($admin, $student->user, 'Pemilik datang ke ruang TU dengan kartu pelajar.', $temporary);
 
     qa10AuthLogin(QA10_AUTH_ATTACKER_IP, H::NISN, $temporary)->assertSessionHasNoErrors();
     $this->assertAuthenticatedAs(User::query()->findOrFail($student->user->getKey()));

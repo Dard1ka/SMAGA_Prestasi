@@ -46,15 +46,15 @@ it('opens each verification area for its roles only (D-139 role × route matrix)
             : $response->assertForbidden();
     }
 
-    $this->actingAs(F::student('Raka Pradipta', 'XII-2')->user)->get($url)->assertForbidden();
+    $this->actingAs(F::student('Raka Pradipta', 'XII-B')->user)->get($url)->assertForbidden();
     auth()->logout();
     $this->get($url)->assertRedirect(route('login'));
 })->with('verification screens');
 
 it('keeps a Humas user inside humas.* on the screen, after a decision and after a colleague decided (D-139)', function (): void {
     $first = F::pendingReport();
-    $second = F::pendingReport(F::student('Raka Pradipta', 'XI-4'));
-    $second->forceFill(['submitted_at' => now()->subDays(2)])->save(); // oldest first: $second is selected
+    $second = F::pendingReport(F::student('Raka Pradipta', 'XI-D'));
+    $second->forceFill(['submitted_at' => now()->subMinutes(5)])->save(); // newest first (D-164): $second is selected
 
     $html = $this->actingAs($this->humas)->get(route('humas.verifikasi.show', $first))->assertOk()
         ->assertSee('Antrean publikasi')->getContent();
@@ -105,7 +105,7 @@ it('keeps the decision away from a Humas who is the guru pembimbing of the repor
 
 it('counts the Humas queue in the menu, on other pages, in the live counts and after a decision (D-100, D-127)', function (): void {
     F::pendingReport();
-    F::pendingReport(F::student('Raka Pradipta', 'XI-4'));
+    F::pendingReport(F::student('Raka Pradipta', 'XI-D'));
 
     expect(Navigation::badgeKeys('humas'))->toBe(['humas.publikasi', 'humas.verifikasi', 'humas.jadwal'])
         ->and(NavigationServiceProvider::badges($this->humas, 'humas'))->toMatchArray(['humas.verifikasi' => 2])

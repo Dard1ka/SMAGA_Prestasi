@@ -20,8 +20,8 @@ beforeEach(function (): void {
 function publikDataSet(): array
 {
     $f = new PublikFixtures;
-    $nadia = $f->student('Nadia Putri Anindya', 'XI-4');
-    $raka = $f->student('Raka Pradipta', 'XII-2');
+    $nadia = $f->student('Nadia Putri Anindya', 'XI-D');
+    $raka = $f->student('Raka Pradipta', 'XII-B');
     $opsi = $f->lomba('OPSI 2026', Bidang::Riset, Level::Nasional, '2026-09-20');
     $fiksi = $f->lomba('FIKSI 2025', Bidang::Riset, Level::Nasional, '2025-10-12');
     $o2sn = $f->lomba('O2SN Kota Semarang 2026', Bidang::Olahraga, Level::Kota, '2026-02-14');
@@ -108,7 +108,7 @@ it('makes new data visible after PublicAchievements::flush()', function (): void
     $f = new PublikFixtures;
     $this->get(route('public.home'))->assertOk()->assertDontSee('Keisha Larasati');
 
-    $keisha = $f->student('Keisha Larasati', 'XI-6');
+    $keisha = $f->student('Keisha Larasati', 'XI-F');
     $f->prestasi($keisha, $f->lomba('NSIF 2026', Bidang::Riset, Level::Nasional, '2026-08-20'), ResultType::MedaliEmas);
 
     $this->get(route('public.home'))->assertOk()->assertDontSee('Keisha Larasati');

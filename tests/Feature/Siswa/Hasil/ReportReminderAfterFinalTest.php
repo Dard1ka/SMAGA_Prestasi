@@ -68,12 +68,12 @@ it('sends each reminder once, never after a report and never far behind', functi
     Notification::assertSentToTimes($this->nadia->user, ReportReminder::class, 1);
 
     // A report waits for its revision (back in menunggu_laporan): it was sent, so no reminder.
-    $revising = F::registration(F::student('Keisha Larasati', 'XI-6'), RegistrationStatus::MenungguLaporan, $this->competition);
+    $revising = F::registration(F::student('Keisha Larasati', 'XI-F'), RegistrationStatus::MenungguLaporan, $this->competition);
     $report = Report::factory()->create(['registration_id' => $revising->getKey(), 'claimed_result' => ResultType::Finalis]);
     $report->forceFill(['status' => ReportStatus::PerluRevisi])->save();
 
     // A lomba whose final lies far back (H+72 > 14 + CATCH_UP_DAYS): nothing on the first run after the deploy.
-    $old = F::registration(F::student('Raka Pradipta', 'XII-2'), RegistrationStatus::MenungguLaporan, F::competition([
+    $old = F::registration(F::student('Raka Pradipta', 'XII-B'), RegistrationStatus::MenungguLaporan, F::competition([
         'name' => 'OPSI 2026', 'starts_on' => '2026-07-30', 'final_on' => '2026-08-01',
     ]));
 
@@ -89,7 +89,7 @@ it('stops at the edge of the catch-up window', function (): void {
     $this->artisan('sth:reports:remind', ['--date' => '2026-10-15'])->assertSuccessful(); // H+21 = 14 + 7
     Notification::assertSentToTimes($this->nadia->user, ReportReminder::class, 1);
 
-    $other = F::registration(F::student('Hana Safira', 'X-8'), RegistrationStatus::MenungguLaporan, $this->competition);
+    $other = F::registration(F::student('Hana Safira', 'X-H'), RegistrationStatus::MenungguLaporan, $this->competition);
     $this->artisan('sth:reports:remind', ['--date' => '2026-10-16'])->assertSuccessful(); // H+22
     Notification::assertNotSentTo($other->leader->user, ReportReminder::class);
 });

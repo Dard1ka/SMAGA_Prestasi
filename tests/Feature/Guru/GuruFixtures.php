@@ -32,7 +32,7 @@ final class GuruFixtures
         return KesiswaanFixtures::staff(RoleName::Guru, $name);
     }
 
-    public static function student(string $name = 'Nadia Putri Anindya', string $classroom = 'XI-4'): Student
+    public static function student(string $name = 'Nadia Putri Anindya', string $classroom = 'XI-D'): Student
     {
         return KesiswaanFixtures::student($name, $classroom);
     }

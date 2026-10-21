@@ -184,7 +184,7 @@ it('renders a native dialog with a labelled title and a close button', function 
 // QA5 retest (2026-10-07, backlog #63): a dialog whose state lives on the server resets it however it is closed --
 
 it('tells the page when a dialog with on-close is closed, by any button, Esc or a click outside', function (): void {
-    $this->blade('<x-sth.modal id="kelas" title="Kelas X-1" on-close="closeClass">Isi</x-sth.modal>')
+    $this->blade('<x-sth.modal id="kelas" title="Kelas X-A" on-close="closeClass">Isi</x-sth.modal>')
         ->assertSee('data-sth-on-close="closeClass"', false);
 
     $this->blade('<x-sth.modal id="usul" title="Usulkan lomba">Isi</x-sth.modal>')

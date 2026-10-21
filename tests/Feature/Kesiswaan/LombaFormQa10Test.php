@@ -82,7 +82,7 @@ function qa10LombaTeamRegistration(Competition $competition, RegistrationStatus 
 {
     return Registration::factory()->create([
         'competition_id' => $competition->getKey(),
-        'leader_student_id' => F::student('Raka Pradipta', 'XII-2')->getKey(),
+        'leader_student_id' => F::student('Raka Pradipta', 'XII-B')->getKey(),
         'type' => RegistrationType::Tim,
         'status' => $status,
     ]);

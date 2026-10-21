@@ -22,7 +22,7 @@ beforeEach(function (): void {
     F::roles();
     $this->nadia = F::student();
     $this->nadiaUser = F::user($this->nadia);
-    $this->rizky = F::student('Rizky Maulana', 'XI-1');
+    $this->rizky = F::student('Rizky Maulana', 'XI-A');
 });
 
 function usPhoneError(Closure $call): string

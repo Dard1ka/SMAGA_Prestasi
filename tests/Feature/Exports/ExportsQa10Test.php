@@ -40,7 +40,7 @@ beforeEach(function (): void {
 function qa10LombaExportRows(int $count, bool $withAchievement): void
 {
     $template = $withAchievement ? Achievement::factory()->create() : null;
-    $classroomId = $template?->student->classroom_id ?? Classroom::factory()->level(11)->create(['name' => 'XI-4'])->getKey();
+    $classroomId = $template?->student->classroom_id ?? Classroom::factory()->level(11)->create(['name' => 'XI-D'])->getKey();
     $now = now()->toDateTimeString();
 
     foreach (array_chunk(range(1, $count), 200) as $chunk) {

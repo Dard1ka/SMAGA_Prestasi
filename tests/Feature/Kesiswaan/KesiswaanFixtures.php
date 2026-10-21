@@ -52,7 +52,7 @@ final class KesiswaanFixtures
         return AuthTestHelpers::staff($role, ['name' => $name, 'email' => str($name)->slug().'.'.$role->value.'@example.test']);
     }
 
-    public static function student(string $name = 'Rizky Maulana', string $classroom = 'XI-1', ?string $nis = null, ?string $nisn = null): Student
+    public static function student(string $name = 'Rizky Maulana', string $classroom = 'XI-A', ?string $nis = null, ?string $nisn = null): Student
     {
         $user = User::factory()->create(['name' => $name])->fresh();
         $user->forceFill(['status' => UserStatus::Active, 'must_change_password' => false, 'password_changed_at' => now()])->save();
@@ -188,7 +188,7 @@ final class KesiswaanFixtures
             ?? TalentBranch::factory()->create(['talent_type_id' => $type->getKey(), 'name' => $branch]);
 
         return TalentApplication::factory()->status($status)->create([
-            'student_id' => ($student ?? self::student('Hana Safira', 'X-8'))->getKey(),
+            'student_id' => ($student ?? self::student('Hana Safira', 'X-H'))->getKey(),
             'talent_type_id' => $type->getKey(),
             'talent_branch_id' => $branchModel->getKey(),
         ])->fresh();

@@ -48,7 +48,7 @@ beforeEach(function (): void {
     $this->kepsek = F::staff(RoleName::KepalaSekolah, 'Kepala Sekolah Contoh');
     $this->nadia = F::student();
     $this->nadiaUser = F::user($this->nadia);
-    $this->rizky = F::student('Rizky Maulana', 'XI-1');
+    $this->rizky = F::student('Rizky Maulana', 'XI-A');
     $this->rizkyUser = F::user($this->rizky);
 });
 

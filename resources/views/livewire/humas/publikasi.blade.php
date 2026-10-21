@@ -15,12 +15,12 @@
             </x-sth.empty-state>
         @else
             <x-sth.empty-state icon="megaphone" title="Belum ada prestasi untuk dipublikasikan">
-                Prestasi yang sudah diverifikasi dan punya izin publikasi akan muncul di sini.
+                Prestasi yang sudah diverifikasi akan muncul di sini.
             </x-sth.empty-state>
         @endif
     @else
         <div class="flex flex-col gap-5 xl:flex-row xl:items-start">
-            <section aria-label="Papan publikasi" class="grid min-w-0 flex-1 gap-4 md:grid-cols-3 md:items-start md:gap-3">
+            <section aria-label="Papan publikasi" class="grid grid-cols-1 min-w-0 flex-1 gap-4 md:grid-cols-3 md:items-start md:gap-3">
                 @foreach ($lanes as $lane)
                     <div class="flex min-w-0 flex-col gap-2.5" wire:key="lane-{{ $lane['key'] }}">
                         <div class="flex h-8 items-center gap-2 px-0.5">
@@ -102,6 +102,10 @@
                         <p class="m-0 text-xs text-muted">Kanal: {{ $publishing['channels'] }}</p>
                     @endif
                 </div>
+                @if ($publishing['team'] !== [])
+                    {{-- D-160: the teammates' cards are published in the same step, each student told. --}}
+                    <p class="m-0 text-md [overflow-wrap:anywhere]">Kartu anggota tim lain ikut ditandai terbit: {{ implode(', ', $publishing['team']) }}.</p>
+                @endif
                 <p class="m-0 text-md">Status menjadi Dipublikasikan dan tidak bisa dikembalikan ke antrean.</p>
             </div>
         @else

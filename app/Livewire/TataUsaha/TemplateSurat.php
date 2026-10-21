@@ -162,9 +162,9 @@ final class TemplateSurat extends Component
             basisDateText: '15 September 2026',
             basisSubject: 'Undangan',
             students: [
-                ['no' => 1, 'name' => 'RAKA PRADIPTA', 'nis' => '224225101', 'class' => 'XII - 2'],
-                ['no' => 2, 'name' => 'BIMA SATRIA WICAKSONO', 'nis' => '224225102', 'class' => 'XII - 7'],
-                ['no' => 3, 'name' => 'YOGA PRATAMA', 'nis' => '224225103', 'class' => 'XII - 5'],
+                ['no' => 1, 'name' => 'RAKA PRADIPTA', 'nis' => '224225101', 'class' => 'XII - B'],
+                ['no' => 2, 'name' => 'BIMA SATRIA WICAKSONO', 'nis' => '224225102', 'class' => 'XII - G'],
+                ['no' => 3, 'name' => 'YOGA PRATAMA', 'nis' => '224225103', 'class' => 'XII - E'],
             ],
             mentor: ['name' => 'Hendra Kusuma, S.Pd., M.Si.', 'rank' => 'Penata, III/c', 'nip' => '[NIP]', 'position' => 'Guru'],
             scheduleDay: 'Sabtu',

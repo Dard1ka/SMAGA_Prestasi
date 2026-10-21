@@ -36,9 +36,9 @@ beforeEach(function (): void {
     $this->kepsek = F::staff(RoleName::KepalaSekolah, 'Kepala Sekolah Contoh');
     $this->admin = F::staff(RoleName::Admin, 'Operator');
     $this->nadia = F::student();
-    $this->dimas = F::student('Dimas Arya Nugroho', 'XI-4');
-    $this->keisha = F::student('Keisha Larasati', 'XI-6');
-    $this->rizky = F::student('Rizky Maulana', 'XI-1');
+    $this->dimas = F::student('Dimas Arya Nugroho', 'XI-D');
+    $this->keisha = F::student('Keisha Larasati', 'XI-F');
+    $this->rizky = F::student('Rizky Maulana', 'XI-A');
 });
 
 function w2a1Register(object $t, $student, $competition, RegistrationType $type, array $members = [], ?int $mentor = null): Registration

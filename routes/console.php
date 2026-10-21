@@ -91,6 +91,7 @@ Schedule::job(new PruneExpiredCache)
 
 // --- B5/W4: delayed privileged role changes (docs/dev-notes/B5.md, backlog #13 / #27) ---
 // Requests made while only one Admin existed apply 24 h later unless cancelled (idempotent; approvals apply at once).
+// Since 21 Okt 2026 role changes apply at once and nothing new waits: this only finishes requests made before that day.
 Schedule::call(fn () => app(ApplyRoleChange::class)->applyDue())
     ->name('sth:peran-tertunda')
     ->everyFiveMinutes()

@@ -25,7 +25,7 @@ use Tests\Feature\Humas\HumasFixtures;
 | D-124 (lead, 2026-10-10; hand test of 2026-10-09, finding 6-1): one "Masukkan" puts every ticked achievement on the
 | event in one transaction (all or nothing) and tells each guru pembimbing ONCE, naming every binaan of that click.
 | Before, a team of two was two clicks and two "Binaan masuk daftar apresiasi" mails. The student's own notice stays
-| one per achievement; eligibility (verified, publish consent, on no other event: D-97) is unchanged.
+| one per achievement; eligibility (verified, may be named (D-162: no consent), on no other event: D-97) is unchanged.
 | Fictional data only.
 */
 
@@ -172,9 +172,9 @@ it('is all or nothing: one achievement that may not go on the event stops the wh
         ->and(Activity::query()->where('event', 'appreciation.recorded')->where('properties->appreciation_event_id', $event->getKey())->count())->toBe(0);
     Notification::assertNothingSent();
 })->with([
-    'no publish consent' => [
-        fn () => HumasFixtures::achievement(['publish_consent' => false], studentName: 'Fajar Ramadhan'),
-        'Siswa belum memberi izin publikasi.',
+    'a disabled account' => [
+        fn () => HumasFixtures::achievement(studentName: 'Fajar Ramadhan', disabled: true),
+        RecordAppreciations::INACTIVE_MESSAGE,
     ],
     'not verified' => [
         fn () => HumasFixtures::achievement(studentName: 'Fajar Ramadhan', verified: false),

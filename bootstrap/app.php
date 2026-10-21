@@ -30,7 +30,8 @@ return Application::configure(basePath: dirname(__DIR__))
             Route::middleware('web')->group(base_path('routes/staff.php'));
             Route::middleware('web')->group(base_path('routes/admin.php'));
 
-            if (app()->environment('local')) {
+            // /_dev only on a local stack, and there only while STH_DEV_PAGES is not false (config sth.dev_pages).
+            if (app()->environment('local') && config('sth.dev_pages', true)) {
                 Route::middleware('web')->group(base_path('routes/dev.php'));
             }
         },

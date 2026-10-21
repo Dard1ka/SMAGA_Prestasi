@@ -20,7 +20,7 @@ enum SettingKey: string
     case LetterFormatGuru = 'letter_format_guru';
     /** Search engines may index the aggregate public pages (student pages are always noindex). */
     case PublicIndexing = 'public_indexing';
-    /** "Lihat sertifikat" links on public pages (still needs publish_consent of every team member). */
+    /** "Lihat sertifikat" links on public pages (every team member must be named: not disabled, not deleted). */
     case PublicCertificates = 'public_certificates';
     /** K1 (B1): days an imported initial password stays valid, 1–30 (App\Actions\Accounts\AccountControls). */
     case ActivationWindowDays = 'activation_window_days';

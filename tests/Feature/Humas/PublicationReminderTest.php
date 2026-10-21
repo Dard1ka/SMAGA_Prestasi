@@ -62,7 +62,6 @@ function em2HideStudent(Publication $publication, string $state): void
     $user = $student->user()->firstOrFail();
 
     match ($state) {
-        'consent withdrawn' => $student->forceFill(['publish_consent' => false])->save(),
         'disabled' => $user->forceFill(['status' => UserStatus::Disabled])->save(),
         'deleted account' => $user->delete(),
         'deleted student' => $student->delete(),
@@ -164,13 +163,12 @@ it('skips a student who may not be named and mails nobody', function (string $st
 
     Notification::assertNothingSent();
 })->with([
-    'consent withdrawn' => ['consent withdrawn'],
     'disabled account' => ['disabled'],
     'deleted account' => ['deleted account'],
     'deleted student record' => ['deleted student'],
 ]);
 
-it('still reminds for an alumnus with consent, and the row stays scheduled', function (): void {
+it('still reminds for an alumnus, and the row stays scheduled', function (): void {
     $publication = em2Scheduled();
     $alumnus = $publication->achievement->student->user;
     $alumnus->forceFill(['status' => UserStatus::Archived])->save();

@@ -30,8 +30,8 @@ beforeEach(function (): void {
     $this->withoutVite();
     $this->guru = F::staff(RoleName::Guru);
     $this->nadia = F::student();
-    $this->dimas = F::student('Dimas Arya Nugroho', 'XI-4');
-    $this->keisha = F::student('Keisha Larasati', 'XI-6');
+    $this->dimas = F::student('Dimas Arya Nugroho', 'XI-D');
+    $this->keisha = F::student('Keisha Larasati', 'XI-F');
     User::query()->whereKey([$this->nadia->user_id, $this->dimas->user_id, $this->keisha->user_id])->update(['tour_seen_at' => now()]);
 });
 
@@ -46,7 +46,7 @@ it('sends guests to login and blocks other roles from the siswa area', function 
 })->with(['siswa.beranda', 'siswa.lomba.index', 'siswa.lomba.show', 'siswa.bantuan']);
 
 it('sends a student who has not finished activation to aktivasi', function (): void {
-    $pending = F::student('Hana Safira', 'X-2', ['status' => UserStatus::PendingActivation, 'must_change_password' => true]);
+    $pending = F::student('Hana Safira', 'X-B', ['status' => UserStatus::PendingActivation, 'must_change_password' => true]);
 
     $this->actingAs(F::user($pending))->get(route('siswa.beranda'))->assertRedirect(route('aktivasi'));
 });
@@ -158,7 +158,7 @@ it('builds a team through the member search and sends invitations', function ():
 
 it('returns only name and class from the member search, with exact NISN matching (SECURITY §3m-3)', function (): void {
     $lomba = F::teamCompetition(3);
-    F::student('Dimas Alumni', 'XII-1', ['status' => UserStatus::Archived]);
+    F::student('Dimas Alumni', 'XII-A', ['status' => UserStatus::Archived]);
     $this->actingAs(F::user($this->nadia));
 
     $form = Livewire::test(Form::class, ['competitionId' => $lomba->getKey()]);

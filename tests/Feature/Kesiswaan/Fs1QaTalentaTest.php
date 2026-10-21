@@ -70,7 +70,7 @@ function fs1qaTalentPlain(string $html): string
 }
 
 it('writes a talent with free text one way in the table, the panel and the row buttons (BUG-05, BUG-10)', function (): void {
-    $kirana = F::student('Kirana Ayu Lestari', 'X-2');
+    $kirana = F::student('Kirana Ayu Lestari', 'X-B');
     $lainnya = fs1qaTalent($kirana, TalentTypeCode::Lainnya, other: 'Menulis cerpen');
     $osn = fs1qaTalent($kirana, TalentTypeCode::Osn, 'Lainnya', 'Olimpiade astrofisika');
 
@@ -90,7 +90,7 @@ it('writes a talent with free text one way in the table, the panel and the row b
 });
 
 it('fits the table beside the panel at 1366 px and keeps the eye button on a phone (BUG-02, BUG-03)', function (): void {
-    fs1qaTalent(F::student('Kirana Ayu Lestari', 'X-2'), TalentTypeCode::Osn, 'Kimia');
+    fs1qaTalent(F::student('Kirana Ayu Lestari', 'X-B'), TalentTypeCode::Osn, 'Kimia');
 
     $html = fs1qaTalentPlain(Livewire::actingAs($this->kesiswaan)->test(Talenta::class)->html());
 
@@ -105,7 +105,7 @@ it('fits the table beside the panel at 1366 px and keeps the eye button on a pho
 });
 
 it('brings the panel into view after a row button (BUG-03)', function (): void {
-    $row = fs1qaTalent(F::student('Kirana Ayu Lestari', 'X-2'), TalentTypeCode::Osn, 'Kimia');
+    $row = fs1qaTalent(F::student('Kirana Ayu Lestari', 'X-B'), TalentTypeCode::Osn, 'Kimia');
 
     $component = Livewire::actingAs($this->kesiswaan)->test(Talenta::class)
         ->call('showPanel', $row->getKey())
@@ -120,7 +120,7 @@ it('brings the panel into view after a row button (BUG-03)', function (): void {
 });
 
 it('leaves out the jenis and cabang filters on "Belum mengisi" and fits that list on a phone (BUG-04)', function (): void {
-    F::student('Dimas Saputra Wibowo', 'X-5', nisn: '0071234567');
+    F::student('Dimas Saputra Wibowo', 'X-E', nisn: '0071234567');
 
     $html = fs1qaTalentPlain(Livewire::actingAs($this->kesiswaan)->test(Talenta::class)->call('setTab', 'belum')->html());
 
@@ -130,7 +130,7 @@ it('leaves out the jenis and cabang filters on "Belum mengisi" and fits that lis
         ->not->toContain('disabled')
         ->toContain('Kelas')->toContain('Nama atau NISN')
         ->toContain('table-fixed sm:min-w-[560px]')
-        ->toContain('<span class="text-xs text-muted sm:hidden">X-5 · NISN <span class="num">0071234567</span></span>');
+        ->toContain('<span class="text-xs text-muted sm:hidden">X-E · NISN <span class="num">0071234567</span></span>');
 
     Livewire::actingAs($this->kesiswaan)->test(Talenta::class)
         ->assertSeeHtml('aria-label="Jenis talenta"')->assertSee('Cabang talenta');
@@ -138,7 +138,7 @@ it('leaves out the jenis and cabang filters on "Belum mengisi" and fits that lis
 
 it('writes the talent of a binaan one way and stacks it under the name on a phone (BUG-05, BUG-06)', function (): void {
     $retno = GuruFixtures::guru();
-    $hana = F::student('Hana Safira', 'X-8');
+    $hana = F::student('Hana Safira', 'X-H');
     fs1qaTalent($hana, TalentTypeCode::Lainnya, other: 'Kaligrafi', mentor: $retno);
     fs1qaTalent($hana, TalentTypeCode::Fls3n, 'Lainnya', 'Fotografi jalanan', $retno);
 
@@ -153,7 +153,7 @@ it('writes the talent of a binaan one way and stacks it under the name on a phon
 });
 
 it('lets the bidang tag of a jenis tile wrap inside the tile on a phone (BUG-01)', function (): void {
-    $student = L::student('Kirana Ayu Lestari', 'XI-2');
+    $student = L::student('Kirana Ayu Lestari', 'XI-B');
 
     $html = fs1qaTalentPlain(Livewire::actingAs(L::user($student))->test(ProfilTalenta::class)->html());
 
@@ -163,7 +163,7 @@ it('lets the bidang tag of a jenis tile wrap inside the tile on a phone (BUG-01)
 });
 
 it('lists the bidang of the recommendations in plain Indonesian (BUG-09)', function (): void {
-    $student = L::student('Kirana Ayu Lestari', 'XI-2');
+    $student = L::student('Kirana Ayu Lestari', 'XI-B');
     fs1qaTalent($student, TalentTypeCode::Osn, 'Kimia');
     fs1qaTalent($student, TalentTypeCode::Fls3n, 'Tari');
     L::openCompetition(['name' => 'Olimpiade Sains Fiktif 2026', 'bidang' => Bidang::Sains]);
@@ -178,7 +178,7 @@ it('lists the bidang of the recommendations in plain Indonesian (BUG-09)', funct
 });
 
 it('shows a held kelas X student the closed menus as locked (BUG-08)', function (): void {
-    $student = L::student('Kirana Ayu Lestari', 'X-2');
+    $student = L::student('Kirana Ayu Lestari', 'X-B');
     $user = L::user($student);
 
     $nav = Navigation::for($user, 'siswa', [], 'siswa.talenta');
@@ -214,7 +214,7 @@ it('shows a held kelas X student the closed menus as locked (BUG-08)', function 
 });
 
 it('never locks the menus of a student who chose a talent, above kelas X too (D-153)', function (): void {
-    $user = L::user(L::student('Nadia Putri Anindya', 'XI-4'));
+    $user = L::user(L::student('Nadia Putri Anindya', 'XI-D'));
 
     $nav = Navigation::for($user, 'siswa', [], 'siswa.beranda');
 
@@ -222,7 +222,7 @@ it('never locks the menus of a student who chose a talent, above kelas X too (D-
 });
 
 it('tells a held kelas X student about the talent in Bantuan instead of a tour that bounces (BUG-08)', function (): void {
-    $student = L::student('Kirana Ayu Lestari', 'X-2');
+    $student = L::student('Kirana Ayu Lestari', 'X-B');
 
     $this->actingAs(L::user($student))->get(route('siswa.bantuan'))->assertOk()
         ->assertSee('Pilih talenta')
@@ -243,7 +243,7 @@ it('says on the activation done screen that a kelas X student picks a talent fir
     $kelasX = AuthTestHelpers::pendingStudent([
         'nis' => '225226301',
         'nisn' => '0081234567',
-        'classroom_id' => Classroom::factory()->level(10)->create(['name' => 'X-7'])->getKey(),
+        'classroom_id' => Classroom::factory()->level(10)->create(['name' => 'X-G'])->getKey(),
     ]);
 
     $this->actingAs($kelasX->user);

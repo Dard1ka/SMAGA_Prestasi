@@ -33,9 +33,10 @@ Isi: [Semua pengguna](#1-semua-pengguna) · [Siswa](#2-siswa) · [Guru pembimbin
 Setelah muncul "Akun sudah aktif", tekan **Mulai**. Lain kali kamu bisa masuk pakai NISN atau email itu.
 
 **Masuk pertama kali (guru dan staf)**: langkahnya sama (email → kode → kata sandi), tetapi kata sandi sementara dari
-Admin **wajib** diganti. Sesudah itu pasang verifikasi dua langkah: pasang aplikasi authenticator di HP (mis. Google
-Authenticator), pindai kode QR, masukkan kode 6 angka, lalu **simpan kode pemulihan** di tempat aman.
-Verifikasi dua langkah hanya untuk guru dan staf; akun siswa tidak memakainya.
+Admin **wajib** diganti. Server sekolah saat ini berjalan **tanpa verifikasi dua langkah** (sejak 21 Oktober 2026):
+guru dan staf cukup masuk dengan username atau email dan kata sandi. Bila kelak server memakainya, sesudah kata sandi
+baru pasang aplikasi authenticator di HP (mis. Google Authenticator), pindai kode QR, masukkan kode 6 angka, lalu
+**simpan kode pemulihan** di tempat aman. Verifikasi dua langkah hanya untuk guru dan staf; akun siswa tidak memakainya.
 
 **Aturan kata sandi baru** (saat aktivasi, di **Keamanan akun**, dan di **Lupa kata sandi**). Aturannya juga tertulis
 di bawah kolom "Kata sandi baru".
@@ -83,7 +84,8 @@ Hapus isinya, daftar kembali penuh. Dari halaman lain, ketik lalu tekan Enter un
   - Ganti email: isi email baru dan kata sandi → **Kirim kode** → masukkan kode dari email itu → **Simpan email**.
     Email lama dan baru menerima pemberitahuan dengan link "Bukan saya?".
   - **Perangkat yang masuk**: **Keluarkan** perangkat yang tidak kamu kenal, atau **Keluarkan semua perangkat lain**.
-  - Guru dan staf: **Pasang 2FA** / **Kelola 2FA** (verifikasi dua langkah).
+  - Guru dan staf, hanya bila server memakai verifikasi dua langkah: **Pasang 2FA** / **Kelola 2FA**. Tanpa itu
+    bagian ini tidak tampil.
 - **Keluar**: selalu keluar setelah memakai komputer bersama. Halaman masuk tidak disimpan browser dan kolom kata
   sandinya dikosongkan, jadi tombol Back tidak memunculkan lagi NISN dan kata sandi orang sebelumnya. Keluar hanya
   lewat menu ini; mengetik `/logout` di kolom alamat tidak mengeluarkan akun (kamu hanya dibawa ke beranda).
@@ -188,15 +190,18 @@ download surat tugasnya (PDF). Bila Tata Usaha mengoreksi surat, kamu mendapat n
   terbit"), tanpa tombol download. File-nya untuk guru; kamu cukup men-download surat siswa.
 
 **Laporkan hasil** (ketua tim)
-1. Setelah lomba selesai, buka **Lomba saya** → **Laporkan hasil**.
+1. Setelah lomba selesai, buka **Lomba saya** → **Laporkan hasil** (atau tombol **Laporkan hasil** di Beranda, yang
+   langsung membuka kotak kuning yang sama di Lomba saya). Formnya terbuka di kotak itu, juga di HP.
 2. Pilih capaian, upload sertifikat dan foto (PDF/JPG/PNG/WEBP, maks. 5 MB per file; laporan atau artikel
-   penelitian PDF maks. 10 MB) → **Kirim laporan**.
+   penelitian PDF maks. 10 MB) → **Kirim laporan**. Ketua menerima notifikasi "Laporan hasil terkirim", anggota tim
+   lain "Laporan hasil dikirim" (juga saat laporan perbaikan dikirim ulang).
 3. **Tidak ada batas waktu** (sejak 12 Oktober 2026), tetapi laporkan secepatnya: di **Lomba saya** tertulis **Segera
    laporkan** dan "Segera laporkan hasil lombamu.". Ketua yang belum melapor diingatkan lewat notifikasi dan email
    **3 hari** dan **14 hari** setelah lomba selesai. Tidak ada lagi tanda "Terlambat".
 4. Sekolah memeriksa: Kesiswaan atau Humas. **Perlu revisi** = perbaiki lalu kirim lagi. Catatannya menyebut siapa
    yang meminta, mis. "Catatan Humas". Setelah diverifikasi, poin masuk ke portofolio **setiap anggota tim** (poin
    penuh), dan di **Lomba saya** tertulis "Diverifikasi Kesiswaan" atau "Diverifikasi Humas" beserta tanggalnya.
+   Catatan dari sekolah (mis. mengapa capaiannya disesuaikan) ikut di notifikasi dan tampil di kartu Capaian.
 
 **Usulkan lomba** (sejak 12 Oktober 2026 hanya siswa yang mengusulkan lomba; guru dan Kesiswaan tidak lagi memasukkan
 lomba): lomba belum ada di katalog? **Cari lomba** → **Usulkan lomba**. Halaman **Usulkan lomba** berisi isian lomba
@@ -252,7 +257,9 @@ Nama lomba tidak boleh berisi alamat web; tulis alamatnya di kolom link resmi.
 - Prestasimu dijadwalkan diapresiasi? Notifikasinya menyebut acara, **hari, dan jam mulainya**, mis. "pada Senin,
   12 Oktober 2026 pukul 07.00 WIB". Kalau jadwalnya berubah atau acaranya batal, kamu diberi tahu lagi.
 - Notifikasi "Prestasimu sudah dipublikasikan" datang setelah Humas menandai publikasinya sudah terbit di kanal
-  sekolah, bukan pada waktu yang dijadwalkan.
+  sekolah, bukan pada waktu yang dijadwalkan. Untuk tim, setiap anggota diberi tahu.
+- Di **Portofolio**, kartu prestasinya juga menulis jadwal apresiasi ("Dijadwalkan diapresiasi di …") dan tanggal
+  publikasinya.
 
 **Bantuan**: ringkasan cara pakai dan **Buka tur** untuk melihat lagi penjelasan menu.
 
@@ -302,7 +309,7 @@ memuat ulang halaman. Angka itu tampil di semua halaman, juga di **Status aktiva
 **Kelola lomba** (sejak 12 Oktober 2026 Kesiswaan **memeriksa dan mengoreksi**, tidak lagi menambah lomba: lomba baru
 datang dari usulan siswa, §2, atau dari Admin lewat **Tambah lomba**, §8; tombol **Tambah lomba** tidak ada di menu
 Kesiswaan.)
-1. **Verifikasi usulan lomba** → **Periksa & lengkapi**: semua isian lomba bisa dikoreksi. Susunannya sama dengan
+1. **Verifikasi usulan lomba** (usulan terbaru di atas) → **Periksa & lengkapi**: semua isian lomba bisa dikoreksi. Susunannya sama dengan
    halaman usulan siswa:
    - **Penyelenggara**: begitu jenis penyelenggara dipilih atau **Ajang Puspresnas** dicentang, **Kategori bobot** dan
      **Status ajang** terisi sendiri, dan di atasnya tertulis **Hasil peta**, mis. "Kategori C · bobot 0,60 ·
@@ -371,7 +378,7 @@ Kesiswaan.)
    ada tetap berjalan.
 
 **Verifikasi hasil**
-1. **Verifikasi hasil** → buka laporan → periksa capaian dan bukti (sertifikat, foto). Tekan **Buka** pada sebuah
+1. **Verifikasi hasil** → buka laporan (terbaru di atas; yang terbaru terbuka lebih dulu) → periksa capaian dan bukti (sertifikat, foto). Tekan **Buka** pada sebuah
    bukti: file-nya tampil di jendela preview di halaman yang sama, jadi tidak perlu di-download dulu (lihat §1).
 2. Hanya ada dua tombol (sejak 12 Oktober 2026): **Verifikasi dan beri poin** (poin dihitung otomatis: tingkat ×
    capaian × penyelenggara) atau **Minta revisi** (catatan wajib; petunjuknya "Wajib untuk minta revisi.").
@@ -425,7 +432,10 @@ file Excel-nya; cari dengan nama atau NISN. File Excel tidak memuat kolom Katego
 
 **Import siswa** (dipakai saat awal dan **diulang tiap tahun ajaran** agar kelas selalu benar)
 1. **Import siswa** → **Download template Excel** → isi Nama lengkap, NIS, NISN, Tanggal lahir, **Kelas** (kelas
-   sekarang), No HP (opsional). Masukkan **semua** siswa aktif, bukan hanya siswa baru. Kolom NIS, NISN, dan No HP
+   sekarang, ditulis persis seperti di menu **Kelas** Admin, mis. **X-A**, **XI-B**, **XII-C**; besar-kecil huruf dan
+   spasi tidak berpengaruh, "X-1" tidak dikenali lagi). Import hanya memasukkan siswa ke kelas yang sudah ada: kelas
+   yang belum ada ditolak "Kelas tidak ditemukan.", jadi minta Admin menyiapkan kelasnya dulu, No HP (opsional). Masukkan **semua** siswa aktif,
+   bukan hanya siswa baru. Kolom NIS, NISN, dan No HP
    di template sudah berformat Teks, jadi angka nol di depan tidak hilang; pakai template yang baru di-download.
 2. Pilih **Tahun ajaran data** → upload file → periksa **preview**:
    - **Siswa baru**: akun akan dibuat.
@@ -447,6 +457,10 @@ file Excel-nya; cari dengan nama atau NISN. File Excel tidak memuat kolom Katego
 5. Siswa yang tidak ada di file dibiarkan apa adanya. Akun alumni (arsip) dilewati.
 
 **Status aktivasi** (menu **Data**, juga lewat notifikasi peringatan): siapa yang sudah/belum aktivasi per kelas.
+- Baris atas: kotak angka (Sudah aktif, Belum aktivasi, dan Kedaluwarsa / Dibekukan bila ada) dan di kanannya kotak
+  **Akun dibekukan** dan **Kata sandi awal dicoba di akun aktif** (3 baris, lalu **Tampilkan lebih banyak**).
+- Di bawahnya pilih **Per kelas** atau **Daftar siswa**: hanya satu tabel yang tampil, 10 baris dulu, lalu
+  **Tampilkan lebih banyak** ("Menampilkan 10 dari … kelas/siswa").
 - Tekan **Lihat** di baris kelas: daftar siswa kelas itu terbuka dalam **popup** (status, email tersamar, aktivasi,
   login terakhir; 40 baris per langkah, **Tampilkan lebih banyak**). Tutup dengan **Tutup**.
 - **NISN tampil lengkap** di daftar siswa, di popup kelas, dan di file **Download CSV**, supaya mudah dicocokkan dengan
@@ -458,14 +472,14 @@ file Excel-nya; cari dengan nama atau NISN. File Excel tidak memuat kolom Katego
   akun dibekukan, atau sisa waktunya kurang dari 72 jam. Sebelum Anda menekan, dialognya menulis hasilnya ("Dibuka
   lagi sampai …").
 - **Buka pembekuan** untuk akun yang dibekukan karena salah kata sandi berkali-kali. Keduanya juga ada di dalam popup.
-- **Daftar siswa** di bawahnya untuk mencari siswa di semua kelas → **Download CSV**.
+- **Daftar siswa** untuk mencari siswa di semua kelas (tab status, kelas, "Nama atau NISN lengkap") → **Download CSV**.
 
 **Apresiasi**: acara apresiasi dikelola bersama Humas; caranya sama dengan §7, termasuk **Cetak daftar**.
 
 ## 5. Kepala Sekolah
 
 - **Persetujuan lomba** (sampai 14 Oktober 2026 namanya **Persetujuan** di menu Kepala Sekolah): daftar pendaftaran
-  yang menunggu (status "Menunggu persetujuan"), 20 per langkah (**Tampilkan lebih banyak**). **Setujui** (bisa beberapa
+  yang menunggu (status "Menunggu persetujuan"), **terbaru di atas**, 20 per langkah (**Tampilkan lebih banyak**). **Setujui** (bisa beberapa
   sekaligus; **Pilih semua** hanya memilih yang sedang tampil) atau **Tolak** dengan alasan (wajib). Setelah disetujui,
   Tata Usaha membuat surat tugas. Bila ditolak, siswa dan guru pembimbingnya menerima alasannya. Angka di menu
   **Persetujuan lomba** langsung berkurang, tanpa memuat ulang halaman.
@@ -517,7 +531,8 @@ adalah guru pembimbing saat pendaftaran disetujui (bisa guru yang ditetapkan Kep
 pilihan siswa).
 PDF surat siswa dicetak di tengah halaman (margin kiri dan kanan sama); surat yang dibuat sebelum 11 Okt 2026 tetap
 seperti saat dibuat, dan **Koreksi** membuat surat baru dengan tata letak sekarang.
-1. **Antrean surat** → buka pendaftaran yang sudah disetujui ("Disetujui Kepala Sekolah" atau "Disetujui Tata Usaha").
+1. **Antrean surat** → buka pendaftaran yang sudah disetujui ("Disetujui Kepala Sekolah" atau "Disetujui Tata Usaha");
+   yang terbaru disetujui ada di atas dan terbuka lebih dulu.
 2. Pilih tab **Surat siswa**. Isi:
    - **Nomor surat**: ketik **nomor lengkap** sesuai buku agenda, mis. `400.3.8/313/MRD/X/2026`. Di bawah kolom ada
      "Terakhir dipakai" dan satu contoh. Nomor yang sudah pernah dipakai untuk surat sejenis ditolak.
@@ -555,7 +570,7 @@ surat mengikuti surat asli sekolah, lengkap dengan lambang Pemprov dan lambang s
 
 - **Verifikasi hasil** (sejak 12 Oktober 2026; menu sendiri, angka merah = laporan yang menunggu): Humas ikut
   memeriksa laporan hasil siswa bersama Kesiswaan. Caranya sama dengan Kesiswaan (§4, **Verifikasi hasil**):
-  1. Buka laporan teratas (yang paling lama menunggu) → periksa capaian dan bukti; **Buka** menampilkan bukti di
+  1. Buka laporan teratas (yang terbaru dikirim; laporan terbaru terbuka lebih dulu) → periksa capaian dan bukti; **Buka** menampilkan bukti di
      jendela preview.
   2. **Verifikasi dan beri poin**, atau **Minta revisi** dengan catatan (wajib). Tidak ada tombol **Tolak**: laporan
      yang tidak sah dikembalikan dengan **Minta revisi**.
@@ -568,10 +583,9 @@ surat mengikuti surat asli sekolah, lengkap dengan lambang Pemprov dan lambang s
     "Laporan ini sudah diputuskan. Antrean sudah diperbarui."
   - Laporan binaan sendiri diverifikasi petugas lain: akun Humas yang juga guru pembimbing laporan itu tidak melihat
     tombol keputusan.
-  - Di layar ini tampil juga siswa yang belum memberi izin publikasi. Nama itu hanya untuk pemeriksaan: siswa tersebut
-    tidak muncul di Antrean publikasi, Data untuk flyer, Apresiasi, atau Cetak daftar.
   - Akun Humas wajib memakai verifikasi dua langkah (§1), seperti staf lain.
-- **Antrean publikasi**: prestasi terverifikasi yang **boleh dipublikasikan** (ada izin publikasi). Klik satu kartu:
+- **Antrean publikasi**: semua prestasi yang sudah diverifikasi (sejak 20 Oktober 2026 tidak ada lagi izin publikasi atau
+  izin foto: semua nama dan foto boleh dipakai; hanya siswa yang akunnya dinonaktifkan tidak tampil). Klik satu kartu:
   panel **Siapkan publikasi** terbuka di kanan. Isi caption, lalu **Jadwalkan** (pilih tanggal dan kanal) atau
   **Tandai dipublikasikan**. Angka di menu **Antrean publikasi** dan **Jadwal** berubah sendiri, tanpa memuat ulang
   halaman.
@@ -579,6 +593,10 @@ surat mengikuti surat asli sekolah, lengkap dengan lambang Pemprov dan lambang s
     dan kanal, lalu → **Tandai dipublikasikan**. Setelah dikonfirmasi, status menjadi Dipublikasikan, **tidak bisa
     dikembalikan ke antrean**, dan siswa langsung diberi tahu. Untuk alumni tertulis "Akun siswa tidak aktif, jadi
     tidak ada notifikasi." Kanal belum dipilih? Pesannya muncul di bawah isian dan jendela tidak terbuka.
+  - **Prestasi tim**: tiap anggota punya kartunya sendiri. Kartu anggota lain yang masih menunggu ikut ditandai terbit
+    dengan caption dan kanal yang sama, dan setiap anggota diberi tahu; jendelanya menyebut siapa saja.
+  - **Masukkan ke acara apresiasi** di panel ini juga memasukkan anggota tim lain yang belum ada di acara mana pun
+    (panelnya menyebut namanya); setiap anggota diberi tahu.
 - **Data untuk flyer** (bagian teratas panel itu): aplikasi ini **tidak membuat flyer**. Flyer dibuat Humas sendiri
   di aplikasi desain yang biasa dipakai; aplikasi ini menyediakan datanya supaya nama dan capaian tidak salah tulis.
   - Isinya: nama dan kelas siswa (untuk tim: semua anggota, ketua lebih dulu), capaian, lomba, cabang, tingkat,
@@ -587,9 +605,9 @@ surat mengikuti surat asli sekolah, lengkap dengan lambang Pemprov dan lambang s
   - Klik **Salin data**, lalu tempel di aplikasi desain. Yang tersalin adalah teks, satu fakta per baris, mis.
     "Capaian: Juara II". Muncul pesan "Data disalin." Kalau muncul "Tekan Ctrl+C untuk menyalin.", teksnya sudah
     terpilih: tekan Ctrl+C.
-  - Aplikasi ini tidak menyediakan foto siswa. Bila tertulis seorang siswa tidak mengizinkan fotonya dipakai,
-    jangan pakai fotonya. Anggota tim yang tidak mengizinkan namanya dipublikasikan tidak ditampilkan; jumlahnya
-    disebut dalam satu keterangan. Keterangan izin ini tidak ikut tersalin.
+  - Foto dokumentasi lomba ada di menu **Arsip foto** (laporan yang sudah diverifikasi): setiap foto bisa dilihat dan
+    di-download untuk flyer. Anggota tim yang akunnya dinonaktifkan tidak ditampilkan; jumlahnya disebut dalam satu
+    keterangan yang tidak ikut tersalin.
   - Tombol **Download PNG** dan pilihan template flyer sudah tidak ada.
 - **Jadwal hanya pengingat** (sejak 10 Oktober 2026; sebelumnya status berubah sendiri saat jadwal tiba). Aplikasi ini
   tidak memposting ke kanal mana pun, jadi hanya Humas yang tahu kapan publikasi benar-benar terbit.
@@ -638,18 +656,16 @@ surat mengikuti surat asli sekolah, lengkap dengan lambang Pemprov dan lambang s
      dilaksanakan): membuka PDF di **tab baru**, siap dicetak di kertas A4 dari browser.
      - Isinya kop sekolah, "Daftar siswa apresiasi", nama acara, hari, tanggal, dan jam, lalu tabel **No · Nama ·
        Kelas · Capaian · Lomba · Tingkat**, diurutkan per kelas lalu nama. Alumni ditulis "Alumni" di kolom Kelas.
-     - Hanya siswa yang **memberi izin publikasi** dan akunnya tidak nonaktif. Siswa lain tidak dicetak; di bawah
-       tabel hanya tertulis jumlahnya, mis. "2 prestasi tidak dicantumkan karena siswanya belum memberi izin
-       publikasi atau akunnya nonaktif." Izin yang dicabut setelah prestasi dimasukkan ke acara ikut berlaku.
+     - Siswa yang akunnya dinonaktifkan tidak dicetak; di bawah tabel hanya tertulis jumlahnya, mis. "2 prestasi
+       tidak dicantumkan karena akun siswanya nonaktif."
      - NIS, NISN, dan poin tidak pernah dicetak.
      - Setiap cetak tercatat di log audit ("Daftar apresiasi dicetak"), tanpa nama siswa. Kesiswaan juga bisa
        mencetak dari menu **Apresiasi**-nya.
 - **Arsip**: publikasi yang sudah selesai, dengan kolom Lomba, Siswa, Capaian, Kanal, dan Terbit. Klik **Lihat** di
   ujung baris untuk membuka lagi caption dan data publikasi itu. Kolom Flyer sudah tidak ada.
-- **Izin dicabut**: bila izin publikasi seorang siswa dicabut, namanya di Arsip, Apresiasi, dan Jadwal diganti label
-  netral ("Siswa kelas XI") dengan chip "Izin dicabut", pencarian namanya tidak menemukan apa-apa, dan baris itu di
-  Arsip tidak punya **Lihat** (hanya "–"). Artinya postingan dan flyer tentang siswa itu perlu **diturunkan dari
-  kanal sekolah**; flyer buatan Humas sendiri disimpan di luar aplikasi ini, jadi menghapusnya juga tugas Humas.
+- **Akun nonaktif**: siswa yang akunnya dinonaktifkan Admin ditulis netral ("Siswa kelas XI") di Arsip, Apresiasi, dan
+  Jadwal, pencarian namanya tidak menemukan apa-apa, baris itu di Arsip tidak punya **Lihat**, dan prestasinya tidak bisa
+  dimasukkan ke acara apresiasi.
 
 ## 8. Admin
 
@@ -666,41 +682,45 @@ Admin tidak menyetujui pendaftaran lomba (itu Kepala Sekolah atau Tata Usaha).
 Mulai dari **Status sistem**: daftar hal yang belum siap (mis. belum ada akun Kepala Sekolah atau Tata Usaha yang aktif,
 sehingga pendaftaran lomba tidak bisa disetujui, atau belum ada tanda tangan) dan aktivitas Admin terbaru.
 
+**Kelas** (menu Data, sejak 21 Oktober 2026): daftar kelas yang dipakai import siswa, per tingkat, dengan jumlah
+siswa aktif dan semua siswa. Import hanya memasukkan siswa ke kelas yang ada di sini, jadi siapkan kelas dulu sebelum
+import.
+- **Tambah kelas**: pilih tingkat (X, XI, XII), ketik nama setelah tanda hubung, mis. **A** atau **IPA 1** (huruf,
+  angka, dan spasi, maksimal 12 karakter) → tersimpan sebagai "X-A" atau "XI-IPA 1".
+- **Ganti nama**: hanya bagian setelah tanda hubung; tingkatnya tetap karena tanggal arsip siswa mengikuti tingkat.
+- **Hapus**: hanya untuk kelas yang tidak berisi siswa sama sekali, termasuk alumni; pindahkan siswanya dulu lewat
+  import siswa. Hapus meminta konfirmasi. Semua perubahan tercatat di log audit.
+
 **Pengguna & peran** (beberapa aksi meminta kata sandi Anda lagi)
 - **Tambah pengguna** → isi nama, username, email, peran, kata sandi sementara → **Buat akun**. Berikan kata sandi
-  sementara langsung ke pemiliknya; saat login pertama ia menghubungkan email, mengganti kata sandi itu, dan memasang
-  2FA.
-  - Guru: peran langsung berlaku.
-  - **Admin, Kesiswaan, Tata Usaha, Humas** (Humas sejak 12 Oktober 2026, karena ikut memverifikasi laporan hasil;
-    akun Humas yang sudah ada tetap memegang perannya): akun dibuat **tanpa peran** dulu (di daftar: "Tanpa peran" + "Menunggu: <peran>").
-    Perannya berlaku setelah **Admin lain menyetujui**; bila Anda satu-satunya Admin, berlaku **24 jam** kemudian
-    (Kepala Sekolah diberi tahu, bisa dibatalkan). Selama menunggu, pemilik akun hanya bisa aktivasi dan membuka
-    halaman akunnya.
-  - Maksimal 3 akun Admin (permintaan yang menunggu ikut dihitung). Kepala Sekolah tidak lewat sini, tetapi lewat
-    **Ganti pejabat**.
-- **Ubah peran** → pilih peran baru, isi alasan → **Simpan peran**. Memberi peran Admin, Kesiswaan, Tata Usaha, atau
-  Humas juga perlu persetujuan Admin lain (atau 24 jam bila Anda satu-satunya Admin). Menurunkan peran langsung berlaku.
-- **Perubahan peran** (panel di layar ini): permintaan yang menunggu. **Setujui** permintaan Admin lain (tidak bisa
-  menyetujui permintaan Anda sendiri), atau **Batalkan** dengan alasan. Semua langkah tercatat di log audit.
+  sementara langsung ke pemiliknya; saat login pertama ia mengonfirmasi email dengan kode dan mengganti kata sandi itu.
+  **Peran langsung berlaku** untuk semua peran (sejak 21 Oktober 2026 tidak ada lagi persetujuan Admin lain atau tunggu
+  24 jam). Maksimal 3 akun Admin. Kepala Sekolah tidak lewat sini, tetapi lewat **Ganti pejabat**.
+- **Ubah peran** → pilih peran baru, isi alasan → **Simpan peran**. Langsung berlaku dan tercatat di log audit.
+- **Perubahan peran** (panel di layar ini): hanya untuk permintaan lama yang dibuat sebelum 21 Oktober 2026 dan masih
+  menunggu: **Setujui** atau **Batalkan** dengan alasan.
 - **Ganti pejabat** / **Tetapkan Kepala Sekolah**: berlaku 24 jam setelah disimpan; Kepala Sekolah lama dan semua
   Admin diberi tahu dan bisa membatalkan.
-- **Reset kata sandi & email** (siswa lupa atau akun diambil alih): cek identitas siswa tatap muka dulu. Sistem
-  membuat **kata sandi sementara acak, berlaku 72 jam, ditampilkan sekali** → berikan langsung ke siswa (jangan difoto
-  atau dikirim lewat chat) → **Sudah saya berikan**. Email dilepas, semua perangkat dikeluarkan, siswa mengulang aktivasi
-  (email → kode → kata sandi) dan **wajib membuat kata sandi baru**: tidak ada tombol "Lewati" untuk siapa pun,
-  dan kata sandi sementara itu tidak bisa dipakai terus. Siswa baru dari import memakai satu kata sandi awal dari sekolah
+- **Bantuan akun siswa**: cari siswa dengan **nama** (minimal 3 huruf) atau **NISN** 10 digit. Bila beberapa siswa
+  cocok, pilih yang benar dari daftarnya (**Pilih**).
+- **Reset kata sandi & email** (akun siswa yang diambil orang lain; siswa yang hanya lupa kata sandi memakai **Lupa
+  kata sandi** di halaman masuk): cek identitas siswa tatap muka dulu, lalu **ketik sendiri kata sandi sementara**
+  (minimal 8 karakter) dan alasannya → **Reset kata sandi & email** → berikan kata sandi itu langsung ke siswa (jangan
+  dikirim lewat chat). Email siswa **dilepas** dan semua perangkat dikeluarkan; dalam **72 jam** siswa masuk dengan NISN
+  dan kata sandi sementara, menghubungkan emailnya sendiri, memasukkan kode, lalu **wajib membuat kata sandi baru**.
+  Data diri dan pilihan talenta tetap. Siswa baru dari import memakai satu kata sandi awal dari sekolah
   (nilainya diberi tahu Kesiswaan di luar aplikasi, tidak tampil di layar); akun yang di-import sebelum 12 Okt 2026 tetap
   memakai kata sandi lamanya sampai direset.
   Akun yang **dibekukan** tidak menerima email apa pun dan tidak bisa memakai "Lupa kata sandi"; reset inilah jalannya.
-- **Reset akun** staf: Anda mengetik kata sandi sementara; email diverifikasi ulang dan 2FA dipasang ulang saat login
-  berikutnya. Sampai pemiliknya memverifikasi email lagi, ia hanya menerima email tentang akunnya, **bukan email
+- **Reset akun** staf: Anda mengetik kata sandi sementara; email diverifikasi ulang saat login berikutnya (dan 2FA
+  dipasang ulang, hanya bila server memakai verifikasi dua langkah). Sampai pemiliknya memverifikasi email lagi, ia hanya menerima email tentang akunnya, **bukan email
   pekerjaan** (mis. surat tugas terbit); hal yang sama berlaku untuk akun staf baru yang belum pernah masuk. Lebih dari
   10 reset (siswa + staf) dalam 1 jam memicu peringatan ke semua Admin.
 - **Nonaktifkan atau arsipkan** (pindah sekolah, dsb.): alasan wajib. Akun arsip tidak bisa masuk; prestasinya tetap
   tampil.
-- **Persetujuan publikasi** siswa: centang izin foto/publikasi sesuai formulir orang tua → **Simpan persetujuan**.
-  Bila izin publikasi **dicabut**: nama siswa hilang dari halaman publik, dan Humas tidak lagi melihat namanya
-  maupun data publikasinya (kecuali di layar Verifikasi hasil, D-139). Minta Humas menurunkan postingan dan flyer siswa itu dari kanal sekolah.
+- Sejak 20 Oktober 2026 **tidak ada lagi izin publikasi atau izin foto** yang perlu diatur: nama setiap siswa boleh
+  tampil di halaman publik dan di publikasi Humas, dan semua foto boleh dipakai. Yang tidak disebut namanya hanya siswa
+  yang akunnya dinonaktifkan. Halaman publik tetap tidak pernah menampilkan foto, NIS, NISN, HP, email, atau tanggal lahir.
   Catatan: sejak 6 Oktober 2026 aplikasi ini tidak membuat flyer (Humas membuatnya sendiri di luar aplikasi). File
   flyer yang dulu dibuat aplikasi **tidak terhapus otomatis** dan masih tersimpan, tetapi tidak ada lagi layar yang
   menampilkan link-nya.
@@ -771,14 +791,14 @@ Oktober 2026 bisa berisi jadwal asesmen). Pendaftaran yang diteruskan setelah lo
 | TU: surat belum bisa dikirim | Buat dulu PDF surat yang belum ada (surat siswa atau surat guru pendamping). |
 | Humas: acara tidak bisa ditandai sudah dilaksanakan | Tanggal acara belum tiba, atau acaranya belum berisi prestasi. Acara kosong hanya bisa dihapus. |
 | Humas: "Prestasi ini sudah dijadwalkan di acara …" | Satu prestasi hanya bisa ada di satu acara. Buka acara yang disebut, tekan **Lepas dari acara** di baris prestasi itu, lalu masukkan ke acara yang benar. "Sudah diapresiasi" berarti acaranya sudah dilaksanakan dan tidak bisa diubah. |
-| Humas: "Sebagian prestasi yang dipilih sudah tidak bisa dimasukkan. …" | Sejak daftar dibuka ada prestasi yang masuk acara lain atau izin publikasinya dicabut. Tidak ada yang tersimpan; daftar sudah diperbarui. Centang lagi, lalu tekan **Masukkan**. |
+| Humas: "Sebagian prestasi yang dipilih sudah tidak bisa dimasukkan. …" | Sejak daftar dibuka ada prestasi yang masuk acara lain atau akun siswanya dinonaktifkan. Tidak ada yang tersimpan; daftar sudah diperbarui. Centang lagi, lalu tekan **Masukkan**. |
 | Humas: "Pilih minimal satu prestasi." / "Maksimal 30 prestasi sekali masuk." | Centang paling sedikit satu dan paling banyak 30 prestasi. Lebih dari 30: masukkan dalam dua kali. |
 | Humas: "Isi jam acara." | **Jam mulai** wajib untuk acara baru. Isi jamnya, mis. 07.00. |
 | Humas: publikasi bertanda "Lewat jadwal", siswa belum diberi tahu | Memang begitu: jadwal hanya pengingat. Setelah publikasi di-upload ke kanal, tekan **Tandai dipublikasikan**; kalau belum, pilih waktu baru lalu **Jadwalkan ulang**. |
 | Kesiswaan atau Humas: tombol **Tolak** tidak ada di Verifikasi hasil | Memang sudah dihapus (12 Oktober 2026). Laporan yang tidak sah dikembalikan dengan **Minta revisi**; tulis alasannya di catatan. |
 | Humas: membuka alamat `/kesiswaan/verifikasi-hasil` dan muncul kode 403 | Humas memakai menu **Verifikasi hasil** miliknya sendiri (`/humas/verifikasi-hasil`). Link di email Humas sudah menuju ke sana. |
 | "Laporan ini sudah diputuskan. Antrean sudah diperbarui." | Rekan Kesiswaan atau Humas lebih dulu memutuskan laporan itu. Tidak ada yang perlu diulang; lanjutkan ke laporan berikutnya. |
-| Cetak daftar: ada siswa yang tidak tercantum | Siswa itu belum memberi izin publikasi (atau izinnya dicabut), atau akunnya nonaktif. Jumlahnya tertulis di bawah tabel. Izin publikasi diatur Admin (§8). |
+| Cetak daftar: ada siswa yang tidak tercantum | Akun siswa itu dinonaktifkan Admin. Jumlahnya tertulis di bawah tabel. |
 | Humas: tombol **Download PNG** atau pilihan template flyer tidak ada | Memang sudah dihapus: aplikasi ini tidak membuat flyer. Pakai **Data untuk flyer** → **Salin data**, lalu buat flyernya di aplikasi desain. |
 | Jendela preview hanya berisi satu kalimat, PDF-nya tidak tampil | Browser di perangkat itu (banyak HP) tidak bisa menampilkan PDF di dalam halaman. Tekan **Download** di jendela itu, lalu buka file-nya. |
 | Jendela preview: "File tidak bisa ditampilkan, coba download atau muat ulang halaman." | Bisa karena sudah terlalu lama tidak aktif, atau terlalu banyak file dibuka dalam satu menit. Muat ulang halaman, tunggu sebentar, lalu coba lagi. |
@@ -795,4 +815,4 @@ Oktober 2026 bisa berisi jadwal asesmen). Pendaftaran yang diteruskan setelah lo
 | Halaman "Ada gangguan" (kode 500) atau "Sedang dirawat" (kode 503) | Coba lagi beberapa menit kemudian. Kalau tetap muncul, hubungi Admin dan sebutkan kodenya. |
 | "Terlalu banyak percobaan" saat konfirmasi kata sandi | Tunggu 1 menit, lalu coba lagi dengan kata sandi yang benar. |
 | Salah data (nama, kelas, NIS) | Hubungi Kesiswaan atau Admin; siswa tidak bisa mengubahnya sendiri. Kelas diperbarui lewat import siswa tahunan. |
-| Staf baru: "Akun ini belum punya peran" | Peran Admin, Kesiswaan, Tata Usaha, atau Humas menunggu persetujuan Admin lain (atau 24 jam). Coba masuk lagi nanti. |
+| Staf baru: "Akun ini belum punya peran" | Sejak 21 Oktober 2026 peran langsung berlaku. Pesan ini hanya untuk permintaan lama yang masih menunggu; minta Admin menyetujuinya di **Perubahan peran**. |

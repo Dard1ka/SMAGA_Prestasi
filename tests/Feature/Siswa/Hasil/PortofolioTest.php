@@ -53,12 +53,12 @@ beforeEach(function (): void {
     w2a2Achievement($this->nadia, 'KRENOVA Kota Semarang 2026', Level::Kota, ResultType::Juara1, WeightCategory::B); // 32
     w2a2Achievement($this->nadia, 'O2SN Kota Semarang 2026', Level::Kota, ResultType::Peserta, WeightCategory::A); // 4
 
-    $this->raka = F::student('Raka Pradipta', 'XII-2');
+    $this->raka = F::student('Raka Pradipta', 'XII-B');
     w2a2Achievement($this->raka, 'OSN Nasional 2025', Level::Nasional, ResultType::MedaliEmas, WeightCategory::A); // 80 + …
     w2a2Achievement($this->raka, 'OSN Provinsi 2025', Level::Provinsi, ResultType::Juara1, WeightCategory::A); // 60 → 140
 
     // An alumnus with more points does not push Nadia down ("#n dari siswa aktif", DESIGN-SPEC §5).
-    $alumnus = F::student('Ardiansyah Nur Hakim', 'XII-3');
+    $alumnus = F::student('Ardiansyah Nur Hakim', 'XII-C');
     $alumnus->user->forceFill(['status' => UserStatus::Archived])->save();
     w2a2Achievement($alumnus, 'OSN Nasional 2024', Level::Internasional, ResultType::Juara1, WeightCategory::A);
 });
@@ -93,7 +93,7 @@ it('shows the profile header, the verified achievements with rumus and the own c
 
 it('points a student without a talent to "Tambah talenta" (D-142 wording, FS1 fix wave, D-153)', function (): void {
     // D-153: such a student is held on Talenta saya at the next page, so the empty card shows only on a render.
-    $bima = F::student('Bima Satria Wicaksono', 'XI-3', talent: false);
+    $bima = F::student('Bima Satria Wicaksono', 'XI-C', talent: false);
     $this->actingAs($bima->user)->get(route('siswa.portofolio'))->assertRedirect(route('siswa.talenta'));
 
     Livewire::actingAs($bima->user)->test(Portofolio::class)

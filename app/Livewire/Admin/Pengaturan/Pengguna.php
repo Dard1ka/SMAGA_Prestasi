@@ -8,7 +8,6 @@ use App\Actions\Accounts\ArchiveAccount;
 use App\Actions\Accounts\DisableAccount;
 use App\Actions\Accounts\ResetStudentAccount;
 use App\Actions\Roles\RequestRoleChange;
-use App\Actions\Students\UpdateConsent;
 use App\Actions\Users\CancelPrincipalReplacement;
 use App\Actions\Users\ChangeStaffRole;
 use App\Actions\Users\CreateStaffAccount;
@@ -17,6 +16,7 @@ use App\Actions\Users\ResetStaffAccount;
 use App\Actions\Users\StaffRoles;
 use App\Enums\RoleName;
 use App\Enums\UserStatus;
+use App\Http\Middleware\EnsureStaffTwoFactor;
 use App\Livewire\Admin\Concerns\RequiresRecentPassword;
 use App\Models\PrincipalReplacement;
 use App\Models\RoleChangeRequest;
@@ -34,9 +34,10 @@ use Livewire\Component;
 
 /**
  * Pengguna & peran (Admin-Pengaturan tab + route admin.pengguna.index): staff accounts per role, "Tambah
- * pengguna", "Ubah peran", "Reset akun", "Nonaktifkan", "Ganti Kepala Sekolah" (24 h delay, cancellable)
- * and "Bantuan akun siswa" (exact NISN → reset / nonaktifkan / arsipkan with the W1-C Actions, and the
- * consent toggles photo/publish through App\Actions\Students\UpdateConsent).
+ * pengguna" and "Ubah peran" (the role applies at once, also Admin / Kesiswaan / Tata Usaha / Humas, since 21 Okt 2026),
+ * "Reset akun", "Nonaktifkan", "Ganti Kepala Sekolah" (24 h delay, cancellable)
+ * and "Bantuan akun siswa" (name or NISN → "Reset kata sandi & email" / nonaktifkan / arsipkan with the W1-C
+ * Actions; the consent toggles are gone since D-162, 20 Okt 2026).
  *
  * Targets are #[Locked] ids set only by the open*() methods; every action re-authorizes through the
  * UserPolicy / PrincipalReplacementPolicy inside the Action, and needs a password confirmation from the last
@@ -45,6 +46,13 @@ use Livewire\Component;
 final class Pengguna extends Component
 {
     use RequiresRecentPassword;
+
+    /** D-158: "Bantuan akun siswa" searches a part of the name from NAME_MIN letters and lists MATCH_LIMIT matches. */
+    public const NAME_MIN = 3;
+
+    public const MATCH_LIMIT = 10;
+
+    public const MSG_QUERY = 'Isi nama atau NISN siswa.';
 
     /** Topbar search (?q=): filters staff; digits prefill the student lookup. */
     #[Url(as: 'q', except: '')]
@@ -85,20 +93,30 @@ final class Pengguna extends Component
     #[Locked]
     public ?int $studentUserId = null;
 
+    /**
+     * D-158: the students whose name matched the search, when more than one did (view model, at most MATCH_LIMIT).
+     *
+     * @var list<array{id: int, name: string, classroom: ?string, nisn: ?string, status: string}>
+     */
+    #[Locked]
+    public array $studentMatches = [];
+
+    #[Locked]
+    public bool $studentMatchesMore = false;
+
     public string $studentReason = '';
 
     public string $studentStatus = 'disabled';
 
-    /** B1 — K10: temporary password of the last student reset, shown once; cleared by forgetIssuedPassword(). */
+    /**
+     * "Reset kata sandi & email" (lead, 2026-10-21): the temporary password the Admin types in the dialog. Emptied when
+     * the dialog opens, after the reset and on a refusal; never shown back, flashed or logged.
+     */
+    public string $studentPassword = '';
+
+    /** The student account the open reset dialog asked about (openStudent()); resetStudent() does nothing without it. */
     #[Locked]
-    public ?string $issuedPassword = null;
-
-    /** Consent toggles of the found student (D-16), saved through App\Actions\Students\UpdateConsent. */
-    public bool $photoConsent = false;
-
-    public bool $publishConsent = false;
-
-    public string $consentNote = '';
+    public ?int $resetAskedFor = null;
 
     /** Page to come back to after a password confirmation (the tab or /admin/pengguna). */
     #[Locked]
@@ -159,21 +177,10 @@ final class Pengguna extends Component
             );
         }
 
-        // W4: a privileged role (Admin, Kesiswaan, Tata Usaha, Humas) waits as a RoleChangeRequest like "Ubah peran".
-        $request = RoleChangeRequest::query()->pending()->where('user_id', $user->getKey())->first();
-
+        // 21 Okt 2026 (the lead): the chosen role is given at once, privileged roles included.
         $this->resetNewForm();
         $this->dispatch('sth-modal-close', id: 'staf-baru');
-
-        if ($request !== null) {
-            $this->dispatch('role-change-requested');
-        }
-
-        $this->dispatch('sth-toast', message: match (true) {
-            $request === null => 'Akun staf dibuat. Berikan kata sandi sementara langsung ke pemiliknya.',
-            $request->usesDelay() => 'Akun staf dibuat tanpa peran. Peran '.$request->to_role->label().' berlaku '.$request->effective_at?->translatedFormat('j M Y H:i').' bila tidak dibatalkan.',
-            default => 'Akun staf dibuat tanpa peran. Peran '.$request->to_role->label().' menunggu persetujuan Admin lain.',
-        }, tone: 'success');
+        $this->dispatch('sth-toast', message: 'Akun staf dibuat. Berikan kata sandi sementara langsung ke pemiliknya.', tone: 'success');
     }
 
     public function openStaff(int $userId, string $modal): void
@@ -197,7 +204,7 @@ final class Pengguna extends Component
         $this->dispatch('sth-modal-open', id: in_array($modal, ['staf-peran', 'staf-reset', 'staf-nonaktif'], true) ? $modal : 'staf-nonaktif');
     }
 
-    /** B5 (backlog #13): privileged roles become a RoleChangeRequest (second Admin or 24 h delay). */
+    /** Applies at once for every role since 21 Okt 2026 (the lead): no second Admin, no 24 h delay. */
     public function changeRole(RequestRoleChange $change): void
     {
         $target = $this->staffUser((int) $this->targetId);
@@ -221,13 +228,8 @@ final class Pengguna extends Component
             return;
         }
 
-        $request = $change->handle($this->actor(), $target, RoleName::from($this->role), $this->reason);
-        $this->dispatch('role-change-requested');
-        $this->closeModal('staf-peran', match (true) {
-            $request === null => 'Peran diubah. Pengguna perlu login ulang.',
-            $request->usesDelay() => 'Perubahan peran berlaku '.$request->effective_at?->translatedFormat('j M Y H:i').' bila tidak dibatalkan.',
-            default => 'Perubahan peran menunggu persetujuan Admin lain.',
-        });
+        $change->handle($this->actor(), $target, RoleName::from($this->role), $this->reason);
+        $this->closeModal('staf-peran', 'Peran diubah. Pengguna perlu login ulang.');
     }
 
     public function resetStaff(ResetStaffAccount $reset): void
@@ -263,7 +265,9 @@ final class Pengguna extends Component
             );
         }
 
-        $this->closeModal('staf-reset', 'Akun direset. Pengguna mengganti kata sandi dan memasang 2FA lagi saat login.');
+        $this->closeModal('staf-reset', EnsureStaffTwoFactor::featureEnabled()
+            ? 'Akun direset. Pengguna mengganti kata sandi dan memasang 2FA lagi saat login.'
+            : 'Akun direset. Pengguna mengganti kata sandi saat login.');
     }
 
     public function disableStaff(DisableAccount $disable): void
@@ -365,60 +369,97 @@ final class Pengguna extends Component
 
     // Students ------------------------------------------------------------------------------------
 
+    /**
+     * "Bantuan akun siswa": a full NISN (exact match, SECURITY §3m-3) or, since D-158, a part of the name (at least
+     * NAME_MIN letters). One match opens it; several are listed (at most MATCH_LIMIT) to pick from with chooseStudent().
+     */
     public function findStudent(): void
     {
         Gate::authorize('viewAny', User::class);
 
         $this->studentUserId = null;
-        $query = trim($this->studentQuery);
+        $this->studentMatches = [];
+        $this->studentMatchesMore = false;
+        $query = preg_replace('/\s+/u', ' ', trim($this->studentQuery)) ?? '';
+        $this->studentQuery = $query;
+        $byNisn = preg_match('/^\d+$/', $query) === 1;
         $this->validate(
-            ['studentQuery' => ['required', 'regex:/^\d{10}$/']],
-            ['studentQuery.regex' => 'Isi NISN (10 digit) lengkap.'],
-            ['studentQuery' => 'NISN'],
+            ['studentQuery' => ['required', 'string', 'max:100', $byNisn ? 'regex:/^\s*\d{10}\s*$/' : 'min:'.self::NAME_MIN]],
+            [
+                'studentQuery.required' => self::MSG_QUERY,
+                'studentQuery.regex' => 'Isi NISN (10 digit) lengkap.',
+                'studentQuery.min' => 'Ketik minimal '.self::NAME_MIN.' huruf nama siswa.',
+            ],
+            ['studentQuery' => 'nama atau NISN'],
         );
 
-        // Exact match only (no prefix search, SECURITY §3m-3).
-        $student = Student::query()->where('nisn', $query)->first(['id', 'user_id', 'photo_consent', 'publish_consent']);
+        if ($byNisn) {
+            $student = Student::query()->where('nisn', $query)->first(['id', 'user_id']);
 
-        if ($student === null) {
+            if ($student === null) {
+                $this->addError('studentQuery', 'Siswa tidak ditemukan.');
+
+                return;
+            }
+
+            $this->openStudentAccount((int) $student->user_id);
+
+            return;
+        }
+
+        // Wildcards are dropped, not escaped: the escape character differs between MySQL and SQLite, and no name has one.
+        $like = '%'.str_replace(['%', '_', '\\'], '', mb_strtolower($query)).'%';
+        $users = User::query()
+            ->whereHas('student')
+            ->whereRaw('LOWER(name) LIKE ?', [$like])
+            ->with('student.classroom:id,name')
+            ->orderBy('name')
+            ->limit(self::MATCH_LIMIT + 1)
+            ->get(['id', 'name', 'status']);
+
+        if ($users->isEmpty()) {
             $this->addError('studentQuery', 'Siswa tidak ditemukan.');
 
             return;
         }
 
-        $this->studentUserId = (int) $student->user_id;
-        $this->photoConsent = (bool) $student->photo_consent;
-        $this->publishConsent = (bool) $student->publish_consent;
-        $this->reset('studentReason', 'consentNote');
-    }
+        if ($users->count() === 1) {
+            $this->openStudentAccount((int) $users->first()->getKey());
 
-    /** Persetujuan foto & publikasi (photo_consent / publish_consent), audited with its basis. */
-    public function saveConsent(UpdateConsent $update): void
-    {
-        $student = $this->studentUser()->student;
-        abort_if($student === null, 404);
-        Gate::authorize('updateConsent', $student);
-
-        $this->validate(
-            ['photoConsent' => ['boolean'], 'publishConsent' => ['boolean'], 'consentNote' => ['required', 'string', 'max:'.UpdateConsent::MAX_NOTE]],
-            [],
-            ['consentNote' => 'dasar perubahan'],
-        );
-
-        if (! $this->passwordRecentlyConfirmed()) {
             return;
         }
 
-        try {
-            $update->handle($this->actor(), $student, $this->photoConsent, $this->publishConsent, $this->consentNote);
-        } catch (ValidationException $e) {
-            throw ValidationException::withMessages(['consentNote' => $e->errors()['note'] ?? collect($e->errors())->flatten()->all()]);
-        }
-
-        $this->reset('consentNote');
-        $this->dispatch('sth-toast', message: 'Persetujuan disimpan. Halaman publik ikut diperbarui.', tone: 'success');
+        $this->studentMatchesMore = $users->count() > self::MATCH_LIMIT;
+        $this->studentMatches = $users->take(self::MATCH_LIMIT)->map(fn (User $u): array => [
+            'id' => (int) $u->getKey(),
+            'name' => (string) $u->name,
+            'classroom' => $u->student?->classroom?->name,
+            'nisn' => $u->student?->nisn,
+            'status' => $u->status->value,
+        ])->values()->all();
     }
 
+    /** D-158: one of the listed name matches. The id comes from the browser, so it must be a student account. */
+    public function chooseStudent(int $userId): void
+    {
+        Gate::authorize('viewAny', User::class);
+
+        abort_unless(User::query()->whereKey($userId)->whereHas('student')->exists(), 404);
+
+        $this->studentMatches = [];
+        $this->openStudentAccount($userId);
+    }
+
+    private function openStudentAccount(int $userId): void
+    {
+        $student = Student::query()->where('user_id', $userId)->firstOrFail(['id', 'user_id']);
+
+        $this->studentUserId = (int) $student->user_id;
+        $this->resetAskedFor = null;
+        $this->reset('studentReason', 'studentPassword');
+    }
+
+    /** Ask step of "Reset kata sandi & email" and "Nonaktifkan atau arsipkan" (CLAUDE.md §7, D-128 pattern). */
     public function openStudent(string $modal): void
     {
         $target = $this->studentUser();
@@ -429,13 +470,22 @@ final class Pengguna extends Component
         }
 
         $this->resetErrorBag();
-        $this->reset('studentReason');
+        $this->reset('studentReason', 'studentPassword');
+        $this->resetAskedFor = $modal === 'siswa-reset' ? (int) $target->getKey() : null;
         $this->studentStatus = UserStatus::Disabled->value;
         $this->dispatch('sth-modal-open', id: $modal === 'siswa-reset' ? 'siswa-reset' : 'siswa-nonaktif');
     }
 
+    /**
+     * "Reset kata sandi & email" (lead, 2026-10-21): the password the Admin typed, the email removed, the student
+     * activates again (email → code → new password) within 72 hours. A silent no-op without the dialog's question.
+     */
     public function resetStudent(ResetStudentAccount $reset): void
     {
+        if ($this->resetAskedFor === null || $this->resetAskedFor !== $this->studentUserId) {
+            return;
+        }
+
         $target = $this->studentUser();
         Gate::authorize('resetPassword', $target);
 
@@ -444,45 +494,47 @@ final class Pengguna extends Component
             return;
         }
 
-        $this->validate(['studentReason' => ['required', 'string', 'max:500']], [], ['studentReason' => 'alasan']);
+        // Both fields at once, with the Action's own rules and sentences.
+        $errors = [];
+
+        if (trim($this->studentReason) === '' || mb_strlen(trim($this->studentReason)) > 500) {
+            $errors['studentReason'] = ResetStudentAccount::MSG_REASON;
+        }
+
+        if (mb_strlen($this->studentPassword) < ResetStudentAccount::MIN_PASSWORD) {
+            $errors['studentPassword'] = ResetStudentAccount::MSG_PASSWORD;
+        }
+
+        if ($errors !== []) {
+            throw ValidationException::withMessages($errors);
+        }
+
+        $this->resetErrorBag();
 
         if (! $this->passwordRecentlyConfirmed()) {
+            $this->reset('studentPassword');
+
             return;
         }
 
-        // B1 — K10: random temporary password (72 h), shown once in the "siswa-sandi" dialog, never stored in plaintext.
+        $password = $this->studentPassword;
+        $this->reset('studentPassword');
+
         try {
-            $this->issuedPassword = $reset->handle($this->actor(), $target, $this->studentReason);
+            $reset->handle($this->actor(), $target, $this->studentReason, $password);
         } catch (ValidationException $e) {
-            // The account changed between this check and the Action's lock (QA9); other messages go under the field.
+            // The account changed between this check and the Action's lock (QA9); other messages go under their field.
             if ($this->resetRefused($e->errors()['user'][0] ?? null, 'siswa-reset')) {
                 return;
             }
 
-            throw ValidationException::withMessages(['studentReason' => collect($e->errors())->flatten()->all()]);
+            throw ValidationException::withMessages(
+                collect($e->errors())->mapWithKeys(fn (array $m, string $k) => [$k === 'password' ? 'studentPassword' : 'studentReason' => $m])->all(),
+            );
         }
 
-        $this->reset('studentReason');
-        $this->dispatch('sth-modal-close', id: 'siswa-reset');
-        $this->dispatch('sth-modal-open', id: 'siswa-sandi');
-    }
-
-    /**
-     * B1 — K10: the Admin confirms the temporary password was handed over; it disappears from the page. QA9: also the
-     * dialog's on-close, so closing it with X, Esc or a click outside forgets it too. "Sudah saya berikan" closes the
-     * dialog, which calls this again: only the first call says "Akun direset".
-     */
-    public function forgetIssuedPassword(): void
-    {
-        $issued = $this->issuedPassword !== null;
-        $this->issuedPassword = null;
-
-        if (! $issued) {
-            return;
-        }
-
-        $this->dispatch('sth-modal-close', id: 'siswa-sandi');
-        $this->dispatch('sth-toast', message: 'Akun direset. Siswa masuk dengan kata sandi sementara lalu aktivasi lagi.', tone: 'success');
+        $this->resetAskedFor = null;
+        $this->closeModal('siswa-reset', 'Akun direset dan email dilepas. Siswa masuk dengan NISN dan kata sandi sementara dalam 72 jam, lalu menghubungkan email dan membuat kata sandi baru.');
     }
 
     /** QA9: a decision in the "Perubahan peran" panel changes rows of the staff table (role, "Menunggu: …"). */
@@ -540,8 +592,10 @@ final class Pengguna extends Component
                 ->filter(fn (User $u) => $u->canLogIn() && ! $u->hasAnyRole([RoleName::Admin->value, RoleName::KepalaSekolah->value]))
                 ->mapWithKeys(fn (User $u) => [(string) $u->getKey() => $u->name.' ('.$u->username.')'])
                 ->all(),
+            // STH_STAFF_2FA=false: no 2FA words on this screen (no chip, no "memasang 2FA" in the dialogs).
+            'twoFactor' => EnsureStaffTwoFactor::featureEnabled(),
             'roleOptions' => collect(StaffRoles::assignable())->mapWithKeys(fn (RoleName $r) => [$r->value => $r->label()])->all(),
-            // W4: user id => label of the privileged role still waiting (new accounts have no role until then).
+            // User id => label of a role request made before 21 Okt 2026 that still waits (new changes apply at once).
             'pendingRoles' => RoleChangeRequest::query()->pending()->get(['id', 'user_id', 'to_role'])
                 ->mapWithKeys(fn (RoleChangeRequest $r) => [(int) $r->user_id => $r->to_role->label()])->all(),
             'studentAccount' => $studentAccount,
@@ -567,7 +621,7 @@ final class Pengguna extends Component
             ->values();
     }
 
-    /** @return array{name: string, classroom: ?string, status: UserStatus, email: ?string, activated: bool, lastLogin: ?string, canConsent: bool, resetRefusal: ?string} */
+    /** @return array{name: string, classroom: ?string, status: UserStatus, email: ?string, activated: bool, lastLogin: ?string, resetRefusal: ?string} */
     private function studentSummary(): ?array
     {
         $user = User::query()->with('student.classroom:id,name')->find($this->studentUserId, ['id', 'name', 'email', 'status', 'must_change_password', 'last_login_at']);
@@ -583,7 +637,6 @@ final class Pengguna extends Component
             'email' => $user->email !== null ? self::maskEmail($user->email) : null,
             'activated' => ! $user->must_change_password && $user->status === UserStatus::Active,
             'lastLogin' => $user->last_login_at?->translatedFormat('j M Y H:i'),
-            'canConsent' => Gate::allows('updateConsent', $user->student),
             // QA9: why the reset is not offered (the account cannot log in), else null.
             'resetRefusal' => ResetStudentAccount::refusal($user),
         ];
@@ -626,7 +679,8 @@ final class Pengguna extends Component
             return false;
         }
 
-        $this->reset('reason', 'tempPassword', 'tempPassword_confirmation', 'studentReason');
+        $this->reset('reason', 'tempPassword', 'tempPassword_confirmation', 'studentReason', 'studentPassword');
+        $this->resetAskedFor = null;
         $this->resetErrorBag();
         $this->dispatch('sth-modal-close', id: $dialog);
         $this->dispatch('sth-toast', message: $refusal, tone: 'warning');
@@ -657,7 +711,7 @@ final class Pengguna extends Component
 
     private function closeModal(string $id, string $message): void
     {
-        $this->reset('reason', 'tempPassword', 'tempPassword_confirmation', 'principalTarget', 'principalReason', 'cancelReason', 'studentReason');
+        $this->reset('reason', 'tempPassword', 'tempPassword_confirmation', 'principalTarget', 'principalReason', 'cancelReason', 'studentReason', 'studentPassword');
         $this->dispatch('sth-modal-close', id: $id);
         $this->dispatch('sth-toast', message: $message, tone: 'success');
     }

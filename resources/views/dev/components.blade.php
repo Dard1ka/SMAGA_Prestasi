@@ -5,7 +5,7 @@
 --}}
 @php
     $people = [
-        'siswa' => ['name' => 'Nadia Putri Anindya', 'meta' => 'Siswa · XI-4', 'badges' => ['siswa.lomba-saya' => 2]],
+        'siswa' => ['name' => 'Nadia Putri Anindya', 'meta' => 'Siswa · XI-D', 'badges' => ['siswa.lomba-saya' => 2]],
         'guru' => ['name' => 'Pak Hendra Kusuma, S.Pd., M.Si.', 'meta' => 'Guru Pembimbing', 'badges' => []],
         'kesiswaan' => ['name' => 'Ibu Dwi Rahayu', 'meta' => 'Kesiswaan', 'badges' => ['kesiswaan.usulan' => 3, 'kesiswaan.verifikasi' => 4]],
         'kepala_sekolah' => ['name' => 'Drs. Bambang Hartono, M.Pd.', 'meta' => 'Kepala Sekolah', 'badges' => ['kepsek.persetujuan' => 5]],
@@ -48,7 +48,7 @@
         ['title' => 'OSN Tingkat Kota Semarang 2026', 'sub' => 'Puspresnas · Kategori A · Individu', 'bidang' => 'sains', 'tingkat' => 'Kota/Kab', 'batas' => '8 Okt 2026', 'soon' => null, 'count' => 12, 'status' => ['green', 'check', 'Dipublikasikan']],
         ['title' => 'O2SN Kota Semarang 2026 · Bulu tangkis', 'sub' => 'Puspresnas · Kategori A · Individu', 'bidang' => 'olahraga', 'tingkat' => 'Kota/Kab', 'batas' => '9 Okt 2026', 'soon' => null, 'count' => 4, 'status' => ['green', 'check', 'Dipublikasikan']],
         ['title' => 'Lomba Peneliti Belia (LPB) 2026', 'sub' => 'Center for Young Scientists · Kategori C · Tim maks 3', 'bidang' => 'riset', 'tingkat' => 'Nasional', 'batas' => '10 Okt 2026', 'soon' => null, 'count' => 5, 'status' => ['green', 'check', 'Dipublikasikan']],
-        ['title' => 'Kompetisi Robotik Pelajar Jateng 2026', 'sub' => 'Usulan Bima Satria Wicaksono · XII-7', 'bidang' => 'riset', 'tingkat' => 'Provinsi', 'batas' => '–', 'soon' => null, 'count' => 0, 'status' => ['gray', 'clock', 'Menunggu verifikasi']],
+        ['title' => 'Kompetisi Robotik Pelajar Jateng 2026', 'sub' => 'Usulan Bima Satria Wicaksono · XII-G', 'bidang' => 'riset', 'tingkat' => 'Provinsi', 'batas' => '–', 'soon' => null, 'count' => 0, 'status' => ['gray', 'clock', 'Menunggu verifikasi']],
     ];
 
     $sections = ['warna' => 'Warna', 'tombol' => 'Tombol', 'ikon' => 'Ikon', 'chip' => 'Chip', 'kartu' => 'Kartu', 'form' => 'Formulir',
@@ -92,7 +92,7 @@
                     </div>
                 </div>
             @endforeach
-            <div class="grid gap-3 border-t border-line pt-4 sm:grid-cols-2">
+            <div class="grid grid-cols-1 gap-3 border-t border-line pt-4 sm:grid-cols-2">
                 <div class="flex flex-col gap-1">
                     <p class="title-page">Judul halaman 28/700 (24 di ponsel)</p>
                     <p class="title-section">Judul bagian 20/700</p>
@@ -417,7 +417,7 @@
                 <span class="label">OPSI 2026 · selesai</span>
                 <x-sth.tracker :phase="6" state="done" :dates="['6 Jul', '8 Jul', '10 Jul', '4–7 Agu', '12 Agu', '15 Agu']" />
             </div>
-            <div class="grid gap-6 border-t border-line pt-5 sm:grid-cols-3">
+            <div class="grid grid-cols-1 gap-6 border-t border-line pt-5 sm:grid-cols-3">
                 <x-sth.tracker :phase="5" state="action" compact />
                 <x-sth.tracker :phase="2" compact />
                 <x-sth.tracker :phase="6" state="done" compact />
@@ -486,7 +486,7 @@
                 <p class="title-page m-0 text-xl @min-[460px]:text-2xl @min-[640px]:text-3xl">National Science and Invention Fair (NSIF) 2026</p>
                 <p class="m-0 text-sm text-muted">Penyelenggara swasta · Kategori D</p>
             </x-sth.lomba-head>
-            <div class="grid gap-3 lg:grid-cols-2">
+            <div class="grid grid-cols-1 gap-3 lg:grid-cols-2">
                 <x-sth.alert>Baru pertama masuk? Kamu akan diminta mengganti kata sandi dan menghubungkan email.</x-sth.alert>
                 <x-sth.alert tone="success">Pendaftaran terkirim. Menunggu persetujuan sekolah.</x-sth.alert>
                 <x-sth.alert tone="warning" title="Perlu tindakan">Laporkan hasil WICE 2026 sebelum 8 Nov 2026.</x-sth.alert>

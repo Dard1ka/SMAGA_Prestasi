@@ -17,7 +17,7 @@ beforeEach(function (): void {
     $this->withoutVite();
 
     $f = new PublikFixtures;
-    $this->student = $f->student('Nadia Putri Anindya', 'XI-4');
+    $this->student = $f->student('Nadia Putri Anindya', 'XI-D');
     $this->lomba = $f->lomba('OPSI 2026', Bidang::Riset, Level::Nasional, '2026-09-20');
     $f->prestasi($this->student, $this->lomba, ResultType::Juara2);
     $this->slug = $f->slug($this->student);

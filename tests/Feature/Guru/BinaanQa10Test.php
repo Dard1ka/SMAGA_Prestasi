@@ -29,8 +29,8 @@ beforeEach(function (): void {
     Notification::fake();
 
     $this->retno = GuruFixtures::guru('Retno Wulandari, S.Pd.');
-    $this->nadia = GuruFixtures::student('Nadia Putri Anindya', 'XI-4');
-    $this->raka = GuruFixtures::student('Raka Pradipta', 'XI-4');
+    $this->nadia = GuruFixtures::student('Nadia Putri Anindya', 'XI-D');
+    $this->raka = GuruFixtures::student('Raka Pradipta', 'XI-D');
     $this->registration = GuruFixtures::registration($this->retno, $this->nadia, RegistrationStatus::MenungguKonfirmasi, [$this->raka]);
     // Raka has not answered the invitation yet.
     RegistrationMember::query()->where('registration_id', $this->registration->getKey())->where('student_id', $this->raka->getKey())
@@ -52,7 +52,7 @@ it('lists only the students in the team as binaan of a lomba (QA10)', function (
 it('says "Tidak menjawab" for an invitation that ran out at the deadline, "Menolak" only for a real answer (lead, 2026-10-10)', function (): void {
     // The scheduler ends an unanswered invitation at the registration deadline with `declined_at` (D-50). The two student
     // screens tell it from a real decline since QA10; the guru's detail still said "Menolak" for a student who never answered.
-    $dimas = GuruFixtures::student('Dimas Arya Nugroho', 'XI-4');
+    $dimas = GuruFixtures::student('Dimas Arya Nugroho', 'XI-D');
     $declined = new RegistrationMember(['registration_id' => $this->registration->getKey(), 'student_id' => $dimas->getKey(), 'invited_at' => now()]);
     $declined->forceFill(['role' => MemberRole::Anggota, 'declined_at' => now()])->save();
 

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Actions\Publications\NamedStudent;
 use App\Enums\RegistrationStatus;
 use App\Enums\UserStatus;
 use Database\Factories\StudentFactory;
@@ -21,6 +22,8 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * Student record (the name lives on `user`). Public output must never include nis, nisn, phone or
  * birth_date (D-16); phone and birth_date are hidden from array/JSON serialisation as a safety net.
  * grade12_start_date / archive_at are computed by App\Domain\Archive\GraduationCalculator.
+ * The columns `photo_consent` / `publish_consent` stay in the table but are unused since D-162 (20 Okt 2026):
+ * not fillable, not cast, never read (production migrations are forward-only).
  */
 class Student extends Model
 {
@@ -38,8 +41,6 @@ class Student extends Model
         'grade12_start_date',
         'archive_at',
         'phone',
-        'photo_consent',
-        'publish_consent',
     ];
 
     /** @var list<string> */
@@ -58,8 +59,6 @@ class Student extends Model
             'phone' => 'encrypted',
             // D-152: set by CompleteActivation::confirmProfile() only, never mass-assigned.
             'profile_confirmed_at' => 'immutable_datetime',
-            'photo_consent' => 'boolean',
-            'publish_consent' => 'boolean',
         ];
     }
 
@@ -141,10 +140,13 @@ class Student extends Model
             ->whereHas('user', fn (Builder $q) => $q->whereIn('status', [UserStatus::PendingActivation, UserStatus::Active]));
     }
 
-    /** Consent flag for public pages (D-16). @param Builder<Student> $query */
+    /**
+     * Students who may be named on the public pages and in the Humas screens: NamedStudent (not deleted, account not
+     * disabled; alumni stay). No consent condition since D-162. @param Builder<Student> $query
+     */
     public function scopePublishable(Builder $query): void
     {
-        $query->where('publish_consent', true);
+        NamedStudent::constrain($query);
     }
 
     /**

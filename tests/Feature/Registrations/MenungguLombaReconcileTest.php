@@ -45,7 +45,7 @@ beforeEach(function (): void {
     $this->admin = F::staff(RoleName::Admin, 'Operator STH');
     $this->nadia = F::student();
     $this->nadiaUser = F::user($this->nadia);
-    $this->rizky = F::student('Rizky Maulana', 'XI-1');
+    $this->rizky = F::student('Rizky Maulana', 'XI-A');
 });
 
 /** Nadia's queued lomba "ISPO 2027" with her waiting registration (individu, or a team with Rizky). */

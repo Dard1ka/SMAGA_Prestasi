@@ -8,6 +8,7 @@ use App\Actions\Accounts\VerifyOtpCode;
 use App\Actions\Registrations\CreateRegistration;
 use App\Enums\SettingKey;
 use App\Enums\UserStatus;
+use App\Http\Middleware\EnsureStaffTwoFactor;
 use App\Models\PrincipalReplacement;
 use App\Models\Setting;
 use App\Models\Student;
@@ -69,7 +70,10 @@ final class Ringkasan extends Component
     public function render(): View
     {
         $today = CarbonImmutable::today();
-        $staffWithout2fa = User::query()->staff()->canLogIn()->whereNull('two_factor_confirmed_at')->count();
+        // Nothing about 2FA while it does not exist in the app (STH_STAFF_2FA=false).
+        $staffWithout2fa = EnsureStaffTwoFactor::featureEnabled()
+            ? User::query()->staff()->canLogIn()->whereNull('two_factor_confirmed_at')->count()
+            : 0;
 
         $attention = array_values(array_filter([
             Setting::get(SettingKey::SignatureFileId) === null

@@ -1,5 +1,5 @@
 {{-- Humas · Jadwal. Data is prepared in App\Livewire\Humas\Jadwal (read-only). --}}
-<div class="grid gap-5 xl:grid-cols-[minmax(0,1fr)_400px] xl:items-start">
+<div class="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_400px] xl:items-start">
     <section aria-labelledby="jadwal-publikasi" class="flex min-w-0 flex-col gap-3">
         <x-sth.page-header id="jadwal-publikasi" title="Publikasi terjadwal" />
 
@@ -64,9 +64,6 @@
                                 <li wire:key="apr-{{ $row['id'] }}" class="flex flex-col rounded-tile bg-subtle px-3 py-2">
                                     <span class="text-sm font-semibold">{{ $row['student'] }}</span>
                                     <span class="text-xs text-muted">{{ $row['headline'] }}</span>
-                                    @if ($row['consentWithdrawn'])
-                                        <x-sth.chip tone="orange" size="sm" class="mt-1 self-start">Izin dicabut</x-sth.chip>
-                                    @endif
                                 </li>
                             @endforeach
                         </ul>

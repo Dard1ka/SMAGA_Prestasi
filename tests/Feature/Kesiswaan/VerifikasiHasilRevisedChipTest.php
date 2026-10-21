@@ -29,7 +29,7 @@ beforeEach(function (): void {
     $this->withoutVite();
 
     $this->kesiswaan = F::staff(RoleName::Kesiswaan);
-    $this->nadia = F::student('Nadia Putri Anindya', 'XI-4');
+    $this->nadia = F::student('Nadia Putri Anindya', 'XI-D');
 });
 
 it('tags a report sent for the first time as "Laporan baru"', function (): void {

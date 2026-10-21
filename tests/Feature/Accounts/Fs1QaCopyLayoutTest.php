@@ -31,7 +31,7 @@ beforeEach(function (): void {
 it('shows the search placeholder "Nama atau NISN lengkap" on Status aktivasi and Arsip otomatis (QA-01)', function (): void {
     $admin = A::admin();
 
-    $this->actingAs(F::staff(RoleName::Kesiswaan))->get(route('kesiswaan.aktivasi.index'))
+    $this->actingAs(F::staff(RoleName::Kesiswaan))->get(route('kesiswaan.aktivasi.index', ['tampil' => 'siswa']))
         ->assertOk()
         ->assertSee('placeholder="Nama atau NISN lengkap"', false)
         ->assertDontSee('Nama, atau');
@@ -43,10 +43,10 @@ it('shows the search placeholder "Nama atau NISN lengkap" on Status aktivasi and
 });
 
 it('explains the initial password of new students without the pattern and keeps the Nama column wide (QA-02, QA-03)', function (): void {
-    Classroom::factory()->create(['name' => 'X-1', 'level' => 10]);
+    Classroom::factory()->create(['name' => 'X-A', 'level' => 10]);
     $file = UploadedFile::fake()->createWithContent('data-siswa.csv', implode("\n", [
         'Nama lengkap,NIS,NISN,Tanggal lahir,Kelas saat pendaftaran,No HP',
-        'Aurelia Maharani Kusumawardani,226227031,0101234557,12-05-2011,X-1,',
+        'Aurelia Maharani Kusumawardani,226227031,0101234557,12-05-2011,X-A,',
     ])."\n");
 
     Livewire::actingAs(F::staff(RoleName::Kesiswaan))->test(ImportSiswa::class)

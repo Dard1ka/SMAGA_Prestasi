@@ -19,6 +19,7 @@ use App\Models\Registration;
 use App\Models\Report;
 use App\Models\User;
 use App\Notifications\Reports\ReportSubmitted;
+use App\Notifications\Verification\ReportSent;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -32,7 +33,7 @@ use Throwable;
  * "perlu revisi" (reports.registration_id is unique). Evidence goes through StoreUpload (private disk,
  * sniffed MIME, images re-encoded without EXIF). D-151: a laporan hasil has no deadline, so a report is never
  * flagged `late` any more (the column stays; a sent report always gets false). Kesiswaan and Humas are notified after
- * commit (queued mail + database).
+ * commit (queued mail + database), and since D-160 the members too (ReportSent: a receipt for the ketua).
  *
  * Validation errors use the field names of the Livewire form (hasil, asli, sertifikat, foto, pengumuman,
  * judul, abstrak, laporan, artikel, poster).
@@ -96,6 +97,7 @@ final class SubmitReport
         }
 
         $this->notifyVerifiers($report, $registration, $resubmitted);
+        $this->notifyMembers($report, $registration, $resubmitted);
 
         return $report;
     }
@@ -289,6 +291,26 @@ final class SubmitReport
             $report,
             (string) $registration->competition->name,
             (string) ($registration->leader?->user?->name ?? 'Ketua tim'),
+            $resubmitted,
+        ));
+    }
+
+    /**
+     * D-160: the confirmed members who can log in hear that the report went out (the ketua as a receipt), the same
+     * members "Minta revisi" and the verification tell (RequestReportRevision::memberUsers()).
+     */
+    private function notifyMembers(Report $report, Registration $registration, bool $resubmitted): void
+    {
+        $members = RequestReportRevision::memberUsers($report);
+
+        if ($members === []) {
+            return;
+        }
+
+        Notification::send($members, ReportSent::for(
+            $report,
+            (string) $registration->competition->name,
+            $registration->leader?->user,
             $resubmitted,
         ));
     }

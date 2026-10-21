@@ -22,8 +22,8 @@ use Tests\Feature\Humas\HumasFixtures as H;
 
 /*
  * D-156 (lead, 2026-10-16): Humas › Arsip foto lists the photos students attached to their verified laporan hasil, to
- * download for the flyer Humas designs itself. Only teams whose every member may be named and allows a photo
- * (D-16, D-71, SECURITY §3m-7). Fictional data only.
+ * download for the flyer Humas designs itself. Only teams whose every member may be named (NamedStudent: no disabled or
+ * deleted account); no consent since D-162 (every photo may be used). Fictional data only.
  */
 
 uses(RefreshDatabase::class);
@@ -63,7 +63,7 @@ it('lists the photos of verified reports with the team, the lomba and a preview 
     $achievement = H::achievement(competitionName: 'OPSI 2026');
     // The verified result is the one shown (the factory picks a random one).
     $achievement->report->forceFill(['final_result' => ResultType::Juara2])->save();
-    H::teammate($achievement, 'Raka Pradipta', 'XII-2');
+    H::teammate($achievement, 'Raka Pradipta', 'XII-B');
     $photo = d156Photo($achievement, 'foto-penyerahan-medali.png');
     // a certificate is evidence, not a photo
     ReportFile::factory()->create(['report_id' => $achievement->report_id, 'kind' => ReportFileKind::Sertifikat]);
@@ -74,7 +74,7 @@ it('lists the photos of verified reports with the team, the lomba and a preview 
         ->assertSee('Arsip foto')
         ->assertSee('OPSI 2026')
         ->assertSee('Juara II')
-        ->assertSee('Nadia Putri Anindya (XI-4), Raka Pradipta (XII-2)')
+        ->assertSee('Nadia Putri Anindya (XI-D), Raka Pradipta (XII-B)')
         ->assertSee('foto-penyerahan-medali.png')
         ->assertSee('1</span> laporan dengan foto', false)
         ->assertSee('href="'.route('files.show', $photo).'"', false)
@@ -84,12 +84,30 @@ it('lists the photos of verified reports with the team, the lomba and a preview 
         ->assertSee('href="'.route('humas.foto').'"', false);
 });
 
-it('leaves out a team in which somebody does not allow a photo or a name, and only counts it', function (array $state): void {
+it('lists a team whatever the old consent columns of its members say (D-162)', function (array $state): void {
+    $team = H::achievement(competitionName: 'OPSI 2026', studentState: $state);
+    H::teammate($team, 'Raka Pradipta', 'XII-B', $state);
+    d156Photo($team, 'dokumentasi-tim.png');
+
+    Livewire::actingAs($this->humas)->test(ArsipFoto::class)
+        ->assertSee('OPSI 2026')
+        ->assertSee('dokumentasi-tim.png')
+        ->assertSee('Raka Pradipta')
+        ->assertSee('Nadia Putri Anindya')
+        ->assertDontSee('laporan tidak ditampilkan')
+        ->assertDontSee('mengizinkan');
+})->with([
+    'old photo column false' => [['photo_consent' => false]],
+    'old publish column false' => [['publish_consent' => false]],
+    'both false' => [['photo_consent' => false, 'publish_consent' => false]],
+]);
+
+it('leaves out a team with a disabled teammate, and only counts it in one neutral sentence', function (): void {
     $shown = H::achievement(studentName: 'Hana Safira', competitionName: 'FLS3N 2026');
     d156Photo($shown);
 
     $hidden = H::achievement(competitionName: 'OPSI 2026');
-    H::teammate($hidden, 'Raka Pradipta', 'XII-2', $state);
+    H::teammate($hidden, 'Raka Pradipta', 'XII-B', disabled: true);
     d156Photo($hidden, 'rahasia.png');
 
     Livewire::actingAs($this->humas)->test(ArsipFoto::class)
@@ -97,11 +115,8 @@ it('leaves out a team in which somebody does not allow a photo or a name, and on
         ->assertDontSee('OPSI 2026')
         ->assertDontSee('rahasia.png')
         ->assertDontSee('Raka Pradipta')
-        ->assertSee('1 laporan tidak ditampilkan karena ada siswa yang tidak mengizinkan fotonya dipakai atau namanya dipublikasikan.');
-})->with([
-    'no photo consent' => [['photo_consent' => false]],
-    'no publish consent' => [['publish_consent' => false]],
-]);
+        ->assertSee('1 laporan tidak ditampilkan karena akun salah satu anggotanya nonaktif.');
+});
 
 it('leaves out a team with a disabled member, and a report that is not verified', function (): void {
     $disabled = H::achievement(competitionName: 'OPSI 2026');

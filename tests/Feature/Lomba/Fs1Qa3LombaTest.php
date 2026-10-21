@@ -105,8 +105,8 @@ it('names the official link "Link resmi" in the lomba change notice (BUG-LOMBA-1
 });
 
 it('keeps the whole member name in the Tim card of Undangan tim on a phone (BUG-N5)', function (): void {
-    $hanum = F::student('Qa Talenta Hanum Safitri', 'XI-2');
-    $irfan = F::student('Qa Talenta Irfan Hakim', 'XI-3');
+    $hanum = F::student('Qa Talenta Hanum Safitri', 'XI-B');
+    $irfan = F::student('Qa Talenta Irfan Hakim', 'XI-C');
 
     $registration = app(CreateRegistration::class)
         ->handle(F::user($hanum), F::teamCompetition(3), RegistrationType::Tim, [$irfan->getKey()], $this->guru->getKey());

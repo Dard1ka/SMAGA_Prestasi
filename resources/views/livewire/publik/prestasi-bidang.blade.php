@@ -22,7 +22,7 @@
     </div>
 
     {{-- First column 300px: the three year labels of the chart ("2024/2025") need 78px each at 13px, plus air. --}}
-    <div class="grid items-start gap-5 lg:grid-cols-[300px_minmax(0,1fr)] xl:grid-cols-[300px_400px_minmax(0,1fr)]" wire:loading.class="opacity-70">
+    <div class="grid grid-cols-1 items-start gap-5 lg:grid-cols-[300px_minmax(0,1fr)] xl:grid-cols-[300px_400px_minmax(0,1fr)]" wire:loading.class="opacity-70">
         {{-- Level 1: bidang --}}
         <x-sth.card as="section" aria-labelledby="h-bidang" class="flex min-w-0 flex-col gap-3.5">
             <div class="flex items-baseline justify-between gap-2">
@@ -123,7 +123,6 @@
                         <x-sth.button variant="quiet" size="sm" icon="chevron-down" wire:click="tampilkanLebih">Tampilkan lebih banyak</x-sth.button>
                     </div>
                 @endif
-                <p class="m-0 text-xs text-muted">Nama siswa tampil bila ada persetujuan publikasi.</p>
             @endif
         </x-sth.card>
 

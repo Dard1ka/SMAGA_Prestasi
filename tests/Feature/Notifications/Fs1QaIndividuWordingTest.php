@@ -32,7 +32,7 @@ beforeEach(function (): void {
     F::boot();
     $this->withoutVite();
     $this->guru = F::staff(RoleName::Guru, 'Hendra Kusuma, S.Pd., M.Si.');
-    $this->citra = F::student('Citra Wulandari', 'XI-2');
+    $this->citra = F::student('Citra Wulandari', 'XI-B');
 });
 
 afterEach(fn () => F::resetToday());

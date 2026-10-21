@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace App\Policies;
 
+use App\Actions\Publications\NamedStudent;
 use App\Enums\FilePurpose;
 use App\Enums\Permission;
 use App\Enums\ReportFileKind;
 use App\Enums\ReportStatus;
 use App\Enums\SettingKey;
-use App\Enums\UserStatus;
 use App\Models\Competition;
 use App\Models\File;
 use App\Models\Letter;
@@ -31,12 +31,12 @@ use Illuminate\Support\Facades\DB;
  * - talent_evidence      → application evidence: TalentApplicationPolicy::view (W2-A2) or talent.manage;
  *                          Riwayat talenta certificates (talent_profile_files): the student, talent.manage,
  *                          or a guru with talent.assess who mentors one of that student's applications
- * - flyer                → publication.manage while its publication is eligible (verified + publish consent,
- *                          PublicationPolicy::eligible(); SECURITY §3i, §3m-7)
+ * - flyer                → publication.manage while its publication is eligible (verified + a student who may be
+ *                          named, PublicationPolicy::eligible(); SECURITY §3i)
  * - signature            → signature.manage only (TU never downloads it, SECURITY §3m-5)
  * - import               → the uploader or student.import
  * The uploader may always fetch their own file, except the signature image and a flyer.
- * Guests: only viewPublic() below (verified certificates with consent, Admin switch on).
+ * Guests: only viewPublic() below (verified certificates of students who may be named, Admin switch on).
  */
 class FilePolicy
 {
@@ -51,7 +51,7 @@ class FilePolicy
         }
 
         // Before the uploader shortcut: the "owner" of a flyer is the Humas user who generated it, and a
-        // withdrawn publish consent must win over that.
+        // student who may no longer be named (disabled or deleted account) must win over that.
         if ($file->purpose === FilePurpose::Flyer) {
             return $this->viaPublication($user, $file);
         }
@@ -98,25 +98,12 @@ class FilePolicy
         $members = Student::withTrashed()
             ->with('user:id,status,deleted_at')
             ->whereHas('memberships', fn ($m) => $m->where('registration_id', $report->registration_id)->whereNull('declined_at'))
-            ->get(['id', 'user_id', 'publish_consent', 'deleted_at']);
+            ->get(['id', 'user_id', 'deleted_at']);
 
-        return $members->isNotEmpty() && $members->every(fn (Student $member): bool => self::appearsByName($member));
-    }
-
-    /**
-     * QA9: the rule PublicAchievements::mapRow() uses for a "named" student. Publish consent, and neither the student
-     * record nor the account is deleted and the account is not disabled. An archived alumnus with consent stays named;
-     * a disabled or deleted student is anonymous on every public page, so their certificate is never public either.
-     */
-    private static function appearsByName(Student $student): bool
-    {
-        $user = $student->user;
-
-        return (bool) $student->publish_consent
-            && $student->deleted_at === null
-            && $user !== null
-            && $user->deleted_at === null
-            && $user->status !== UserStatus::Disabled;
+        // QA9: the "named" rule of the public pages (NamedStudent): neither the student record nor the account is
+        // deleted and the account is not disabled; an archived alumnus stays named. A disabled or deleted student is
+        // anonymous on every public page, so their certificate is never public either. No consent since D-162.
+        return $members->isNotEmpty() && $members->every(fn (Student $member): bool => NamedStudent::allows($member));
     }
 
     private function viaCompetition(User $user, File $file): bool
@@ -136,8 +123,8 @@ class FilePolicy
 
     /**
      * A flyer carries the student's name and class: `publication.manage` AND a publication that uses it
-     * and is still publishable (verified achievement + publish consent, PublicationPolicy::eligible()).
-     * Consent withdrawn → nobody downloads it any more, the user who generated it included.
+     * and is still publishable (verified achievement + a student who may be named, PublicationPolicy::eligible()).
+     * Account disabled or deleted → nobody downloads it any more, the user who generated it included.
      */
     private function viaPublication(User $user, File $file): bool
     {

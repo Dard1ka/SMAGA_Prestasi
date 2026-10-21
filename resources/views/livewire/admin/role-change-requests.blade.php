@@ -1,4 +1,5 @@
-{{-- Perubahan peran menunggu (backlog #13, B5): embedded in Admin › Pengguna & peran. Renders nothing visible when empty. --}}
+{{-- Perubahan peran (backlog #13, B5): embedded in Admin › Pengguna & peran. Since 21 Okt 2026 role changes apply at once,
+     so this lists only requests made before that day (pending, or finished in the last 30 days). Renders nothing visible when empty. --}}
 <div>
     @if ($pending->isNotEmpty() || $recent->isNotEmpty())
         <x-sth.card as="section" aria-labelledby="h-peran-menunggu" class="flex flex-col gap-4">
@@ -9,7 +10,7 @@
                         <span class="cnt">{{ $pending->count() }}</span>
                     @endif
                 </div>
-                <p class="text-sm muted">Peran Admin, Kesiswaan, Tata Usaha, dan Humas perlu persetujuan Admin lain. Bila hanya ada satu Admin, berlaku 24 jam kemudian.</p>
+                <p class="text-sm muted">Peran yang diubah sekarang langsung berlaku. Daftar ini hanya memuat permintaan lama yang belum selesai dan yang selesai 30 hari terakhir.</p>
             </div>
 
             @if ($pending->isNotEmpty())
@@ -27,7 +28,7 @@
                             @if ($r->usesDelay())
                                 <x-sth.chip tone="orange" icon="clock" size="sm">Berlaku {{ $r->effective_at->translatedFormat('j M H:i') }}</x-sth.chip>
                             @else
-                                <x-sth.chip tone="blue" size="sm">Menunggu Admin lain</x-sth.chip>
+                                <x-sth.chip tone="blue" size="sm">Belum diputuskan</x-sth.chip>
                             @endif
                             <span class="flex w-full flex-wrap justify-end gap-2 sm:w-auto">
                                 @if ($row['canApprove'])

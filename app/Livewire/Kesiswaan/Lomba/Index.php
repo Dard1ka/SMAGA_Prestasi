@@ -448,7 +448,9 @@ class Index extends Component
         return Competition::query()
             ->pendingVerification()
             ->with(['submitter.roles', 'submitter.student.classroom', 'juknisFile'])
-            ->oldest()
+            // UX2 (the lead, 2026-10-20): the verification queue lists the newest usulan first.
+            ->latest()
+            ->orderByDesc('id')
             ->get()
             ->map(function (Competition $c) use ($user): array {
                 $submitter = $c->submitter;

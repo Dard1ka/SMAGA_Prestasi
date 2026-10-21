@@ -33,7 +33,7 @@ afterEach(function (): void {
 });
 
 it('builds the siswa menu from the spec with disabled items for missing routes', function (): void {
-    $nav = Navigation::for(['name' => 'Nadia Putri Anindya', 'meta' => 'Siswa · XI-4'], 'siswa', ['siswa.lomba-saya' => 2], 'none');
+    $nav = Navigation::for(['name' => 'Nadia Putri Anindya', 'meta' => 'Siswa · XI-D'], 'siswa', ['siswa.lomba-saya' => 2], 'none');
     $items = sthNavItems($nav);
 
     expect(array_column($nav['sections'], 'label'))->toBe(['Menu', 'Akun'])
@@ -49,7 +49,7 @@ it('builds the siswa menu from the spec with disabled items for missing routes',
         ->and(array_column($nav['tabbar'], 'label'))->toBe(['Beranda', 'Lomba', 'Lomba saya', 'Peringkat', 'Portofolio'])
         ->and($items['lomba-saya']['label'])->toBe('Lomba saya')
         ->and($items['portofolio']['label'])->toBe('Portofolio')
-        ->and($nav['user'])->toBe(['name' => 'Nadia Putri Anindya', 'meta' => 'Siswa · XI-4', 'initials' => 'NA']);
+        ->and($nav['user'])->toBe(['name' => 'Nadia Putri Anindya', 'meta' => 'Siswa · XI-D', 'initials' => 'NA']);
 });
 
 it('draws the tab replicas of the mobile menu tour with the tab bar labels', function (): void {
@@ -174,7 +174,7 @@ it('puts Profil saya above Notifikasi in the avatar menu of every role, Keamanan
 it('leaves the phone search icon out when a tab already opens that page', function (): void {
     // One way to each place: below lg the siswa tab "Lomba" is Cari lomba. Staff have no tab bar and keep the icon.
     $render = fn (array $nav): string => Blade::render('<x-sth.topbar :nav="$nav" title="Beranda" />', ['nav' => $nav]);
-    $siswa = $render(Navigation::for(['name' => 'Nadia Putri Anindya', 'meta' => 'Siswa · XI-4'], 'siswa', [], 'none'));
+    $siswa = $render(Navigation::for(['name' => 'Nadia Putri Anindya', 'meta' => 'Siswa · XI-D'], 'siswa', [], 'none'));
     $staff = $render(Navigation::for(['name' => 'Ibu Dwi Rahayu', 'roles' => ['kesiswaan']], 'kesiswaan', [], 'none'));
 
     expect($siswa)->toContain('id="cari-atas"') // the text box of lg and up stays

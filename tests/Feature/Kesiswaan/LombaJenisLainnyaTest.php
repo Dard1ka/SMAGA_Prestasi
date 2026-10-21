@@ -267,7 +267,7 @@ it('keeps a published "Lainnya" lomba complete: the kind cannot be emptied, anot
 
 it('never lets the typed kind touch the points', function (): void {
     $competition = lainnyaPublished(['weight_category' => WeightCategory::D, 'level' => Level::Nasional]);
-    $student = F::student('Nadia Putri Anindya', 'XI-4', '225226201');
+    $student = F::student('Nadia Putri Anindya', 'XI-D', '225226201');
     [$achievement] = (new PrestasiFixtures)->prestasi([$student], $competition, ResultType::Juara1);
     $before = $achievement->only(['w_level', 'w_result', 'w_organizer', 'points', 'weight_category']);
 
@@ -434,8 +434,8 @@ it('shows "Lainnya (…)" on Guru › Lomba and keeps another guru\'s unpublishe
 
 it('shows "Lainnya (…)" in Database prestasi and in its Excel, and still filters by "Lainnya"', function (): void {
     $fixtures = new PrestasiFixtures;
-    $nadia = F::student('Nadia Putri Anindya', 'XI-4', '225226201');
-    $raka = F::student('Raka Pradipta', 'XII-2', '224225101');
+    $nadia = F::student('Nadia Putri Anindya', 'XI-D', '225226201');
+    $raka = F::student('Raka Pradipta', 'XII-B', '224225101');
     [$achievement] = $fixtures->prestasi([$nadia], lainnyaPublished(), ResultType::Juara1);
     $fixtures->prestasi([$raka], lainnyaPublished(['name' => 'Festival Rumus Fiktif 2026', 'organizer_type_other' => '=1+1']), ResultType::Juara2);
     $fixtures->prestasi([$raka], $fixtures->lomba('OPSI 2025', Bidang::Riset, Level::Nasional, '2025-09-01'), ResultType::Juara1);
@@ -469,7 +469,6 @@ it('shows "Lainnya (…)" in Database prestasi and in its Excel, and still filte
 it('does not show the typed kind to students or on the public pages', function (): void {
     $competition = lainnyaPublished(['organizer_type_other' => 'Sanggar tertutup']);
     $student = LombaFixtures::student();
-    $student->forceFill(['publish_consent' => true])->save();
     (new PrestasiFixtures)->prestasi([$student], $competition, ResultType::Juara1);
     PublicAchievements::flush();
 

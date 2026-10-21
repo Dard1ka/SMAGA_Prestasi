@@ -154,7 +154,8 @@ it('removes TOTP from a student account on the Admin reset (K10)', function (): 
     $user = h1Student('pending');
     $user->forceFill(h1StaleTotp())->save();
 
-    $temporary = app(ResetStudentAccount::class)->handle(H::staff(RoleName::Admin), $user, 'Siswa tertahan di verifikasi dua langkah.');
+    $temporary = 'sementara8';
+    app(ResetStudentAccount::class)->handle(H::staff(RoleName::Admin), $user, 'Siswa tertahan di verifikasi dua langkah.', $temporary);
 
     $user->refresh();
     expect($user->two_factor_secret)->toBeNull()
@@ -169,7 +170,7 @@ it('removes TOTP from a student account on the Admin reset (K10)', function (): 
 it('records in the reset audit entry that there was no TOTP to remove', function (): void {
     config(['session.driver' => 'database']);
 
-    app(ResetStudentAccount::class)->handle(H::staff(RoleName::Admin), h1Student('activated'), 'Lupa kata sandi dan email.');
+    app(ResetStudentAccount::class)->handle(H::staff(RoleName::Admin), h1Student('activated'), 'Lupa kata sandi dan email.', 'sementara8');
 
     expect(Activity::query()->where('event', 'account.reset')->sole()->properties['two_factor_removed'])->toBeFalse();
 });

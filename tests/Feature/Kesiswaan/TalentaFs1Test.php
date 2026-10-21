@@ -66,11 +66,11 @@ function fs1eExportRows(Testable $component): array
 }
 
 it('lists old rows of every status as plain data, with no stage control', function (): void {
-    F::application(F::student('Hana Safira', 'X-8'), TalentStatus::Terdaftar, 'Biologi');
-    F::application(F::student('Aurelia Maharani', 'X-3'), TalentStatus::Pemetaan, 'Kimia');
-    F::application(F::student('Bima Satria Wicaksono', 'XII-7'), TalentStatus::Seleksi, 'Fisika');
-    F::application(F::student('Nadia Putri Anindya', 'XI-1'), TalentStatus::Pembinaan, 'Astronomi');
-    $rejected = F::application(F::student('Citra Ayu Lestari', 'XI-2'), TalentStatus::TidakLolos, 'Matematika');
+    F::application(F::student('Hana Safira', 'X-H'), TalentStatus::Terdaftar, 'Biologi');
+    F::application(F::student('Aurelia Maharani', 'X-C'), TalentStatus::Pemetaan, 'Kimia');
+    F::application(F::student('Bima Satria Wicaksono', 'XII-G'), TalentStatus::Seleksi, 'Fisika');
+    F::application(F::student('Nadia Putri Anindya', 'XI-A'), TalentStatus::Pembinaan, 'Astronomi');
+    $rejected = F::application(F::student('Citra Ayu Lestari', 'XI-B'), TalentStatus::TidakLolos, 'Matematika');
     $rejected->forceFill(['rejected_from' => TalentStatus::Seleksi, 'review_requested_at' => now(), 'review_message' => 'Mohon ditinjau.'])->save();
 
     Livewire::actingAs($this->kesiswaan)->test(Talenta::class)
@@ -88,7 +88,7 @@ it('lists old rows of every status as plain data, with no stage control', functi
 
 it('shows a Lainnya choice with its text and the guru pembina on the row', function (): void {
     $guru = F::staff(RoleName::Guru, 'Pak Hendra Kusuma');
-    $hana = F::student('Hana Safira', 'X-8');
+    $hana = F::student('Hana Safira', 'X-H');
     fs1eTalent(TalentTypeCode::Lainnya, null, ['student_id' => $hana->getKey(), 'other_text' => 'Kaligrafi', 'mentor_id' => $guru->getKey()]);
     fs1eTalent(TalentTypeCode::Osn, 'Lainnya', ['student_id' => $hana->getKey(), 'other_text' => 'Robotika']);
 
@@ -106,11 +106,11 @@ it('shows a Lainnya choice with its text and the guru pembina on the row', funct
 });
 
 it('lists active kelas X students without a talent in "Belum mengisi (kelas X)"', function (): void {
-    $hana = F::student('Hana Safira', 'X-8', nisn: '0103456714');
-    $aurelia = F::student('Aurelia Maharani', 'X-3', nisn: '0101234557');
-    $galang = F::student('Galang Putra Mahendra', 'X-1');
-    F::student('Rizky Maulana', 'XI-1');
-    $alumnus = F::student('Dimas Arya Nugroho', 'X-5');
+    $hana = F::student('Hana Safira', 'X-H', nisn: '0103456714');
+    $aurelia = F::student('Aurelia Maharani', 'X-C', nisn: '0101234557');
+    $galang = F::student('Galang Putra Mahendra', 'X-A');
+    F::student('Rizky Maulana', 'XI-A');
+    $alumnus = F::student('Dimas Arya Nugroho', 'X-E');
     $alumnus->user->forceFill(['status' => UserStatus::Archived])->save();
 
     // Aurelia deleted her only talent (soft delete): she has none. Galang keeps an old "tidak lolos" row: he has one.
@@ -121,14 +121,14 @@ it('lists active kelas X students without a talent in "Belum mengisi (kelas X)"'
         ->assertViewHas('counts', fn (array $c) => $c['belum'] === 2 && $c['semua'] === 1)
         ->call('setTab', 'belum')->assertSet('tab', 'belum')
         ->assertViewHas('counts', fn (array $c) => $c['belum'] === 2)
-        ->assertSee('Hana Safira')->assertSee('0103456714')->assertSee('X-8')
+        ->assertSee('Hana Safira')->assertSee('0103456714')->assertSee('X-H')
         ->assertSee('Aurelia Maharani')
         ->assertDontSee(['Galang Putra Mahendra', 'Rizky Maulana', 'Dimas Arya Nugroho'])
         // Search by NISN or name, and the kelas filter, work here too.
         ->set('q', '0103456714')->assertSee('Hana Safira')->assertDontSee('Aurelia Maharani')
         ->set('q', 'aurelia')->assertSee('Aurelia Maharani')->assertDontSee('Hana Safira')
         ->set('q', '')
-        ->set('kelas', (string) Classroom::query()->where('name', 'X-8')->value('id'))
+        ->set('kelas', (string) Classroom::query()->where('name', 'X-H')->value('id'))
         ->assertSee('Hana Safira')->assertDontSee('Aurelia Maharani')
         ->set('q', 'tidak ada')
         ->assertSee('Tidak ada siswa di sini')
@@ -140,7 +140,7 @@ it('lists active kelas X students without a talent in "Belum mengisi (kelas X)"'
 
 it('saves an optional guru pembina and the note for the guru without notifying anyone', function (): void {
     $guru = F::staff(RoleName::Guru, 'Pak Hendra Kusuma');
-    $row = F::application(F::student('Hana Safira', 'X-8'), TalentStatus::Seleksi);
+    $row = F::application(F::student('Hana Safira', 'X-H'), TalentStatus::Seleksi);
 
     $component = Livewire::actingAs($this->kesiswaan)->test(Talenta::class)
         ->call('showPanel', $row->getKey())
@@ -169,10 +169,10 @@ it('saves an optional guru pembina and the note for the guru without notifying a
 it('exports the screen filters with the FS1 columns and never an empty file', function (): void {
     session()->put('auth.password_confirmed_at', time());
     $guru = F::staff(RoleName::Guru, 'Pak Hendra Kusuma');
-    $hana = F::student('Hana Safira', 'X-8', nisn: '0103456714');
+    $hana = F::student('Hana Safira', 'X-H', nisn: '0103456714');
     fs1eTalent(TalentTypeCode::Osn, 'Lainnya', ['student_id' => $hana->getKey(), 'other_text' => '=1+1']);
     fs1eTalent(TalentTypeCode::Debat, 'Debat Bahasa Indonesia (LDBI)', ['student_id' => $hana->getKey(), 'mentor_id' => $guru->getKey(), 'note' => 'Catatan internal.']);
-    fs1eTalent(TalentTypeCode::Lainnya, null, ['student_id' => F::student('Aurelia Maharani', 'X-3')->getKey(), 'other_text' => 'Kaligrafi']);
+    fs1eTalent(TalentTypeCode::Lainnya, null, ['student_id' => F::student('Aurelia Maharani', 'X-C')->getKey(), 'other_text' => 'Kaligrafi']);
 
     $component = Livewire::actingAs($this->kesiswaan)->test(Talenta::class)
         ->call('setJenis', 'osn')
@@ -219,8 +219,8 @@ it('exports the screen filters with the FS1 columns and never an empty file', fu
 });
 
 it('hides the download button in "Belum mengisi (kelas X)"', function (): void {
-    F::application(F::student('Aurelia Maharani', 'X-3'));
-    F::student('Hana Safira', 'X-8');
+    F::application(F::student('Aurelia Maharani', 'X-C'));
+    F::student('Hana Safira', 'X-H');
 
     Livewire::actingAs($this->kesiswaan)->test(Talenta::class)
         ->assertSeeHtml('wire:click="export"')
@@ -231,8 +231,8 @@ it('hides the download button in "Belum mengisi (kelas X)"', function (): void {
 
 it('downloads nothing from "Belum mengisi (kelas X)", even for a crafted call (FS1 fix wave)', function (): void {
     session()->put('auth.password_confirmed_at', time());
-    F::application(F::student('Aurelia Maharani', 'X-3'));
-    F::student('Hana Safira', 'X-8');
+    F::application(F::student('Aurelia Maharani', 'X-C'));
+    F::student('Hana Safira', 'X-H');
 
     Livewire::actingAs($this->kesiswaan)->test(Talenta::class)
         ->call('setTab', 'belum')
@@ -244,7 +244,7 @@ it('downloads nothing from "Belum mengisi (kelas X)", even for a crafted call (F
 });
 
 it('keeps every other role away from the screen', function (): void {
-    $row = F::application(F::student('Citra Ayu Lestari', 'XI-2'), TalentStatus::TidakLolos, 'Fisika');
+    $row = F::application(F::student('Citra Ayu Lestari', 'XI-B'), TalentStatus::TidakLolos, 'Fisika');
 
     foreach ([F::staff(RoleName::Guru, 'Pak Hendra Kusuma'), F::staff(RoleName::Humas, 'Mas Galih'), F::staff(RoleName::TataUsaha, 'Staf TU'), F::staff(RoleName::KepalaSekolah, 'Kepala'), $row->student->user] as $user) {
         Livewire::actingAs($user)->test(Talenta::class)->assertForbidden();
@@ -258,7 +258,7 @@ it('keeps every other role away from the screen', function (): void {
 });
 
 it('checks the permission again inside every action', function (string $method, array $arguments): void {
-    $row = F::application(F::student('Citra Ayu Lestari', 'XI-2'));
+    $row = F::application(F::student('Citra Ayu Lestari', 'XI-B'));
     session()->put('auth.password_confirmed_at', time());
 
     $component = Livewire::actingAs($this->kesiswaan)->test(Talenta::class)
@@ -300,10 +300,10 @@ it('wraps one long word of the student in the detail panel instead of widening t
 });
 
 it('names the Kesiswaan beranda tile "Talenta tercatat" and counts every talent', function (): void {
-    F::application(F::student('Hana Safira', 'X-8'), TalentStatus::Terdaftar);
-    F::application(F::student('Aurelia Maharani', 'X-3'), TalentStatus::Seleksi, 'Kimia');
-    F::application(F::student('Citra Ayu Lestari', 'XI-2'), TalentStatus::TidakLolos, 'Fisika');
-    F::application(F::student('Bima Satria Wicaksono', 'XII-7'), TalentStatus::Pembinaan, 'Matematika')->delete();
+    F::application(F::student('Hana Safira', 'X-H'), TalentStatus::Terdaftar);
+    F::application(F::student('Aurelia Maharani', 'X-C'), TalentStatus::Seleksi, 'Kimia');
+    F::application(F::student('Citra Ayu Lestari', 'XI-B'), TalentStatus::TidakLolos, 'Fisika');
+    F::application(F::student('Bima Satria Wicaksono', 'XII-G'), TalentStatus::Pembinaan, 'Matematika')->delete();
 
     $this->actingAs($this->kesiswaan)->get(route('kesiswaan.beranda'))->assertOk()
         ->assertSee('Talenta tercatat')

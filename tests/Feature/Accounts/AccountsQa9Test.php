@@ -67,7 +67,7 @@ it('refuses to reset a student account that cannot log in (QA9)', function (User
     $user = H::activeStudent(['status' => $status])->user->fresh();
     $hash = $user->password;
 
-    expect(qa9AccountErrors(fn () => app(ResetStudentAccount::class)->handle($this->admin, $user, 'Lupa kata sandi.')))->toBe([$message])
+    expect(qa9AccountErrors(fn () => app(ResetStudentAccount::class)->handle($this->admin, $user, 'Lupa kata sandi.', 'sementara8')))->toBe([$message])
         ->and($user->fresh()->password)->toBe($hash)
         ->and($user->fresh()->status)->toBe($status)
         ->and(Activity::query()->where('event', 'account.reset')->exists())->toBeFalse();
@@ -93,7 +93,7 @@ it('still resets a pending or active account (QA9)', function (): void {
     $pending = H::pendingStudent()->user->fresh();
     $guru = A::staff(RoleName::Guru);
 
-    expect(app(ResetStudentAccount::class)->handle($this->admin, $pending, 'Lupa kata sandi.'))->toHaveLength(12);
+    app(ResetStudentAccount::class)->handle($this->admin, $pending, 'Akun diambil alih.', 'sementara8');
     app(ResetStaffAccount::class)->handle($this->admin, $guru, 'Sementara-2026!y', 'Lupa kata sandi.');
 
     expect($pending->fresh()->status)->toBe(UserStatus::PendingActivation)

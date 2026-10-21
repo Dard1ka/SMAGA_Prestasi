@@ -8,6 +8,7 @@ use App\Actions\Publications\RemindDuePublication;
 use App\Enums\AppreciationStatus;
 use App\Enums\PublicationStatus;
 use App\Enums\RoleName;
+use App\Enums\UserStatus;
 use App\Livewire\Humas\Apresiasi;
 use App\Livewire\Humas\Publikasi;
 use App\Models\Appreciation;
@@ -22,7 +23,7 @@ use Tests\Feature\Humas\HumasFixtures;
 
 /*
  * QA9: Humas screens open while something else changed the row. Publikasi: a second tab published the selected card
- * → 403 (PublicationPolicy before the Action's "sudah dipublikasikan"); Admin withdrew the publish consent → 404.
+ * → 403 (PublicationPolicy before the Action's "sudah dipublikasikan"); Admin disabled the student's account → 404.
  * Apresiasi (Humas and Kesiswaan): a colleague deleted the event → 404 (findOrFail).
  * The screens now say what happened and refresh; an id they never showed is still a 404. Fictional data only.
  *
@@ -117,14 +118,14 @@ it('leaves a card publishable after the scheduler reminded Humas about it (D-122
     expect($publication->fresh()->status)->toBe(PublicationStatus::Dipublikasikan);
 });
 
-it('tells Humas that the selected card left the queue when the consent was withdrawn, instead of a 404 (QA9)', function (string $method): void {
+it('tells Humas that the selected card left the queue when the account was disabled, instead of a 404 (QA9)', function (string $method): void {
     $publication = HumasFixtures::publication();
     $component = Livewire::actingAs($this->humas)->test(Publikasi::class)
         ->assertSet('selectedId', $publication->getKey())
         ->set('date', CarbonImmutable::tomorrow()->format('Y-m-d'))
         ->set('time', '09:00');
 
-    $publication->achievement->student->forceFill(['publish_consent' => false])->save();
+    $publication->achievement->student->user->forceFill(['status' => UserStatus::Disabled])->save();
 
     $component->call($method)
         ->assertOk()
@@ -136,14 +137,14 @@ it('tells Humas that the selected card left the queue when the consent was withd
     expect($publication->fresh()->status)->toBe(PublicationStatus::Siap);
 })->with(['askPublish', 'schedule', 'recordAppreciation']);
 
-it('closes the dialog and publishes nothing when the consent was withdrawn while it was open', function (): void {
+it('closes the dialog and publishes nothing when the account was disabled while it was open', function (): void {
     $publication = HumasFixtures::publication();
     $component = Livewire::actingAs($this->humas)->test(Publikasi::class)
         ->set('channels', ['instagram'])
         ->call('askPublish')
         ->assertSet('publishingId', $publication->getKey());
 
-    $publication->achievement->student->forceFill(['publish_consent' => false])->save();
+    $publication->achievement->student->user->forceFill(['status' => UserStatus::Disabled])->save();
 
     $component->call('publish')
         ->assertOk()
@@ -159,7 +160,7 @@ it('closes the dialog and publishes nothing when the consent was withdrawn while
 
 it('still answers 404 for a card the queue never held (QA9)', function (): void {
     HumasFixtures::publication();
-    $hidden = HumasFixtures::publication(['publish_consent' => false], studentName: 'Fajar Ramadhan');
+    $hidden = HumasFixtures::publication(studentName: 'Fajar Ramadhan', disabled: true);
 
     Livewire::actingAs($this->humas)->test(Publikasi::class)
         ->call('select', $hidden->getKey())

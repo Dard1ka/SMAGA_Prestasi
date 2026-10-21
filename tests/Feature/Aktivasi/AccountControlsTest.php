@@ -73,12 +73,12 @@ function b1Expire(User $user): void
 // K1 ---------------------------------------------------------------------------------------------
 
 it('gives imported students the activation window from the setting (default 14 days)', function (): void {
-    Classroom::factory()->create(['name' => 'X-1', 'level' => 10]);
+    Classroom::factory()->create(['name' => 'X-A', 'level' => 10]);
 
     $path = tempnam(sys_get_temp_dir(), 'sth-b1-');
     $handle = fopen($path, 'wb');
     fputcsv($handle, ['Nama lengkap', 'NIS', 'NISN', 'Tanggal lahir', 'Kelas saat pendaftaran', 'No HP'], ',', '"', '');
-    fputcsv($handle, ['Nadia Putri Anindya', H::NIS, H::NISN, '02-03-2010', 'X-1', ''], ',', '"', '');
+    fputcsv($handle, ['Nadia Putri Anindya', H::NIS, H::NISN, '02-03-2010', 'X-A', ''], ',', '"', '');
     fclose($handle);
 
     try {
@@ -466,23 +466,26 @@ it('expires "Bukan saya?" links after 7 days', function (): void {
 
 // K10 --------------------------------------------------------------------------------------------
 
-it('generates 12-character temporary passwords without look-alike characters', function (): void {
+// Easy to read out: three lowercase syllables and four digits ("bakuro4827"), no look-alikes. Since 2026-10-21 only the
+// email scenario uses it (the Admin types the temporary password of a student reset).
+it('generates easy temporary passwords: three syllables and four digits, no look-alike characters', function (): void {
     $passwords = collect(range(1, 50))->map(fn () => app(GenerateTemporaryPassword::class)->handle());
 
     $passwords->each(function (string $pw): void {
-        expect(strlen($pw))->toBe(12)
-            ->and($pw)->toMatch('/[a-z]/')->toMatch('/[A-Z]/')->toMatch('/[2-9]/')
-            ->and($pw)->not->toMatch('/[01OIl]/');
+        expect(strlen($pw))->toBe(GenerateTemporaryPassword::LENGTH)
+            ->and($pw)->toMatch('/^([bdfghjkmnprstvwyz][aeiou]){3}[2-9]{4}$/')
+            ->and($pw)->not->toMatch('/[01clqxA-Z]/');
     });
 
     expect($passwords->unique()->count())->toBe(50);
 });
 
-it('resets to a random temporary password valid for 72 hours, never the initial pattern', function (): void {
+it('resets to the temporary password the Admin typed, valid for 72 hours, never the initial pattern', function (): void {
     $student = H::activeStudent();
     $student->user->forceFill(['frozen_at' => now(), 'frozen_reason' => AccountControls::FROZEN_NOT_ME])->saveQuietly();
 
-    $temporary = app(ResetStudentAccount::class)->handle($this->admin, b1User($student), 'Siswa datang ke TU, akun dibajak.');
+    $temporary = 'sementara8';
+    app(ResetStudentAccount::class)->handle($this->admin, b1User($student), 'Siswa datang ke TU, akun dibajak.', $temporary);
 
     $user = b1User($student);
     expect(Hash::check($temporary, $user->password))->toBeTrue()
@@ -508,7 +511,7 @@ it('alerts every Admin once when one Admin resets more than 10 accounts within a
     $students = Student::factory()->count(11)->create();
 
     foreach ($students as $student) {
-        app(ResetStudentAccount::class)->handle($this->admin, b1User($student), 'Reset massal uji.');
+        app(ResetStudentAccount::class)->handle($this->admin, b1User($student), 'Reset massal uji.', 'sementara8');
     }
 
     Notification::assertSentToTimes($this->admin, AccountAlert::class, 1);
@@ -518,7 +521,7 @@ it('alerts every Admin once when one Admin resets more than 10 accounts within a
 
 it('does not alert for 10 resets or fewer', function (): void {
     foreach (Student::factory()->count(10)->create() as $student) {
-        app(ResetStudentAccount::class)->handle($this->admin, b1User($student), 'Reset uji.');
+        app(ResetStudentAccount::class)->handle($this->admin, b1User($student), 'Reset uji.', 'sementara8');
     }
 
     Notification::assertNotSentTo($this->admin, AccountAlert::class);

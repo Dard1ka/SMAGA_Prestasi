@@ -101,7 +101,7 @@
                 <p class="m-0 text-sm muted">Prestasi alumni tetap tampil di peringkat dan halaman publik.</p>
             @endif
         @else
-            <div class="grid gap-[22px] xl:grid-cols-3">
+            <div class="grid grid-cols-1 gap-[22px] xl:grid-cols-3">
                 <x-sth.card as="section" aria-labelledby="h-arsip-run" class="flex flex-col gap-3">
                     <div class="flex flex-col gap-1">
                         <h2 id="h-arsip-run" class="title-card">Arsip otomatis</h2>

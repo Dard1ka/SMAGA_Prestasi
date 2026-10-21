@@ -84,11 +84,13 @@ it('shows the Kepala Sekolah and Humas counts on pages that pass none', function
     Registration::factory()->count(2)->create(); // menunggu_kepsek
     Registration::factory()->status(RegistrationStatus::Disetujui)->create();
 
-    $consenting = Student::factory()->consenting()->create();
-    foreach (Achievement::factory()->count(2)->create(['student_id' => $consenting->getKey()]) as $achievement) {
+    $named = Student::factory()->create();
+    foreach (Achievement::factory()->count(2)->create(['student_id' => $named->getKey()]) as $achievement) {
         Publication::factory()->create(['achievement_id' => $achievement->getKey()]);
     }
-    Publication::factory()->create(); // student without publish consent: not in the Humas queue
+    // A disabled account is never named to Humas, so its card is not in the queue (D-162: no consent any more).
+    $disabled = Student::factory()->create(['user_id' => User::factory()->disabled()]);
+    Publication::factory()->create(['achievement_id' => Achievement::factory()->create(['student_id' => $disabled->getKey()])->getKey()]);
 
     $kepsek = $this->actingAs(H::staff(RoleName::KepalaSekolah))->get(route('kepsek.surat.index'))->assertOk()->getContent();
     $humas = $this->actingAs(H::staff(RoleName::Humas))->get(route('notifikasi.index'))->assertOk()->getContent();

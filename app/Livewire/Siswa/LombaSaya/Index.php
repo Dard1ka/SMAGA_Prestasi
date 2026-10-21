@@ -38,7 +38,8 @@ use Livewire\Component;
 
 /**
  * Lomba saya (UI-MAP #12, board Lomba-Saya): list Berjalan/Selesai + detail pane with the 6-phase tracker,
- * surat tugas, tim and the laporan hasil card (inline LaporHasil on desktop, `siswa.lapor` on phones).
+ * surat tugas, tim and the laporan hasil card (inline LaporHasil at every width since UX2; `?lapor=1` opens it, the
+ * address the Beranda button and the old `siswa.lapor` page use).
  * Routes: siswa.lomba-saya.index (list; desktop auto-selects the first item) and siswa.lomba-saya.show.
  * Shows registrations where the student is a member who did not decline (incl. open invitations).
  */
@@ -60,7 +61,8 @@ final class Index extends Component
     #[Locked]
     public bool $explicit = false;
 
-    /** Desktop: the report form is open inside the detail pane. */
+    /** The report form is open inside the detail pane (UX2: also on phones; `?lapor=1` opens it from the Beranda). */
+    #[Url(except: false)]
     public bool $lapor = false;
 
     public function mount(?Registration $registration = null): void
@@ -74,9 +76,13 @@ final class Index extends Component
             $this->selectedId = (string) $registration->getKey();
             $this->explicit = true;
             $this->tab = $registration->status->isFinal() ? 'selesai' : 'berjalan';
+            // Only the ketua who may report now gets the open form; anyone else just sees the card.
+            $this->lapor = $this->lapor && Gate::allows('create', [Report::class, $registration]);
 
             return;
         }
+
+        $this->lapor = false;
 
         if (! in_array($this->tab, self::TABS, true)) {
             $this->tab = 'berjalan';
@@ -282,7 +288,6 @@ final class Index extends Component
                 ? route('siswa.lomba.show', $registration->competition_id).'#h-daftar'
                 : null,
             'canReport' => Gate::allows('create', [Report::class, $registration]),
-            'reportUrl' => route('siswa.lapor', $registration),
             'report' => $report,
             // The role that decided on the report, for "Catatan …" / "Diverifikasi …" (D-139); "sekolah" before a decision.
             'decider' => StaffRoleLabel::forDecision($report?->verifier),

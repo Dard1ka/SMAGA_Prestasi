@@ -73,7 +73,7 @@ it('refuses a guru usulan (D-145)', function (): void {
 
 it('denies users without competition.create or who cannot log in', function (): void {
     $noRole = User::factory()->create()->fresh();
-    $disabled = F::user(F::student('Siswa Nonaktif', 'X-1', ['status' => UserStatus::Disabled]));
+    $disabled = F::user(F::student('Siswa Nonaktif', 'X-A', ['status' => UserStatus::Disabled]));
 
     expect(fn () => app(SubmitCompetition::class)->handle($noRole, F::usulan(), K::pdf()))->toThrow(AuthorizationException::class)
         ->and(fn () => app(SubmitCompetition::class)->handle($disabled, F::usulan(), K::pdf()))->toThrow(AuthorizationException::class);
@@ -184,8 +184,8 @@ it('stores a link trimmed when the Action is called with spaces around it, and a
 it('keeps the Action closed to an account that may not send a lomba', function (): void {
     // Only siswa and Admin hold competition.create (D-145). Closed: no role, cannot log in.
     $noRole = User::factory()->create()->fresh();
-    $disabled = F::user(F::student('Siswa Nonaktif', 'X-1', ['status' => UserStatus::Disabled]));
-    $archived = F::user(F::student('Siswa Alumni', 'XII-1', ['status' => UserStatus::Archived]));
+    $disabled = F::user(F::student('Siswa Nonaktif', 'X-A', ['status' => UserStatus::Disabled]));
+    $archived = F::user(F::student('Siswa Alumni', 'XII-A', ['status' => UserStatus::Archived]));
 
     foreach ([$noRole, $disabled, $archived] as $user) {
         expect(fn () => app(SubmitCompetition::class)->handle($user, F::usulan(['name' => 'Lomba A']), K::pdf()))
@@ -322,8 +322,8 @@ it('brings a juknis the Action refuses into view as an error too', function (): 
 
 it('keeps the page closed to an account that may not send a lomba', function (): void {
     $noRole = User::factory()->create()->fresh();
-    $disabled = F::user(F::student('Siswa Nonaktif', 'X-1', ['status' => UserStatus::Disabled]));
-    $archived = F::user(F::student('Siswa Alumni', 'XII-1', ['status' => UserStatus::Archived]));
+    $disabled = F::user(F::student('Siswa Nonaktif', 'X-A', ['status' => UserStatus::Disabled]));
+    $archived = F::user(F::student('Siswa Alumni', 'XII-A', ['status' => UserStatus::Archived]));
 
     foreach ([$noRole, $disabled, $archived] as $user) {
         Livewire::actingAs($user)->test(Usulkan::class)->assertForbidden();

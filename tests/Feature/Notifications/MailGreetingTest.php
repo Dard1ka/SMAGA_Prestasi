@@ -88,7 +88,7 @@ function mailGreetingCases(): array
     $competition = F::teamCompetition(3, ['name' => 'Lomba Karya Tulis Ilmiah Nasional 2026']);
     $registration = Registration::factory()->team()->create([
         'competition_id' => $competition->getKey(),
-        'leader_student_id' => F::student('Raka Aditya Pratama', 'XI-2')->getKey(),
+        'leader_student_id' => F::student('Raka Aditya Pratama', 'XI-B')->getKey(),
     ]);
     $registrationId = (string) $registration->getKey();
     $decider = User::factory()->create(['name' => 'Sri Handayani']);
@@ -100,7 +100,7 @@ function mailGreetingCases(): array
 
     return [
         // Whoever receives it
-        [$fixed(new AccountAlert('account.frozen', 'Akun dibekukan', ['Nadia Putri Anindya (XI-4) dibekukan setelah 10 kali gagal masuk.'])), 'akun'],
+        [$fixed(new AccountAlert('account.frozen', 'Akun dibekukan', ['Nadia Putri Anindya (XI-D) dibekukan setelah 10 kali gagal masuk.'])), 'akun'],
         [$fixed(SecurityNotice::passwordChanged()), 'akun'],
         [$fixed(new PasswordWasReset), 'akun'],
         [$fixed(new SignatureReplaced('Raka')), 'akun'], // AdminNotice family
@@ -212,7 +212,7 @@ it('keeps a name on one line', function (): void {
 
 it('works for accounts that were loaded together (strict models forbid lazy loading)', function (): void {
     F::student('Nadia Putri Anindya');
-    F::student('Dimas Arya Saputra', 'XI-4');
+    F::student('Dimas Arya Saputra', 'XI-D');
     F::staff(RoleName::KepalaSekolah, MAIL_GREETING_KEPSEK);
     F::staff(RoleName::Kesiswaan, 'Siti Rahmawati, S.Pd.');
 

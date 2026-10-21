@@ -23,7 +23,11 @@ final class ReportRevisionRequested extends Notice
 
     public string $memberBody = '';
 
-    public static function for(Report $report, string $competitionName, string $note, string $decider): self
+    /**
+     * `$leaderCanResend` false (D-160): the ketua's account cannot log in, so nobody can send the report again; the
+     * members are not told that the ketua fixes it but to ask the school (RequestReportRevision::leaderCanResend()).
+     */
+    public static function for(Report $report, string $competitionName, string $note, string $decider, bool $leaderCanResend = true): self
     {
         $notice = new self(
             kind: 'report.revision_requested',
@@ -37,7 +41,8 @@ final class ReportRevisionRequested extends Notice
 
         $notice->leaderUserId = self::leaderUserId($report);
         $notice->memberTitle = 'Laporan hasil perlu revisi: '.$competitionName;
-        $notice->memberBody = 'Catatan '.$decider.': '.self::sentence($note).' Ketua tim memperbaiki laporan dari akunnya.';
+        $notice->memberBody = 'Catatan '.$decider.': '.self::sentence($note)
+            .($leaderCanResend ? ' Ketua tim memperbaiki laporan dari akunnya.' : ' Akun ketua tim tidak bisa dipakai masuk, jadi hubungi Kesiswaan untuk melanjutkan laporan ini.');
 
         return $notice;
     }

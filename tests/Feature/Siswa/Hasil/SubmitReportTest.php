@@ -105,7 +105,7 @@ it('only lets the ketua submit, and only while the registration waits for the re
     expect(fn () => app(SubmitReport::class)->handle($this->dimas->user, $this->registration, w2a2ReportData()))
         ->toThrow(AuthorizationException::class);
 
-    $outsider = F::student('Rizky Maulana', 'XI-1');
+    $outsider = F::student('Rizky Maulana', 'XI-A');
     expect(fn () => app(SubmitReport::class)->handle($outsider->user, $this->registration, w2a2ReportData()))
         ->toThrow(AuthorizationException::class)
         ->and(fn () => app(SubmitReport::class)->handle($this->kesiswaan, $this->registration, w2a2ReportData()))
@@ -155,7 +155,7 @@ it('requires title, abstract (max 250 words) and the research report only for ri
     }
 
     $olahraga = F::competition(['name' => 'O2SN Kota Semarang 2026', 'bidang' => Bidang::Olahraga]);
-    $individual = F::registration(F::student('Yoga Pratama', 'XII-5'), competition: $olahraga);
+    $individual = F::registration(F::student('Yoga Pratama', 'XII-E'), competition: $olahraga);
     $leader = $individual->leader->user;
 
     $report = app(SubmitReport::class)->handle($leader, $individual, w2a2ReportData([

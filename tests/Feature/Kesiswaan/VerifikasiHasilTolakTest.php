@@ -65,10 +65,10 @@ it('checks the reason of a rejection in one place, for the screen and the Action
 });
 
 it('says who hears about a decision on a report (D-109, D-110)', function (): void {
-    $leader = F::student('Nadia Putri Anindya', 'XI-4');
-    $dimas = F::student('Dimas Arya Nugroho', 'XI-4');
-    $keisha = F::student('Keisha Larasati', 'XI-6');
-    $solo = F::pendingReport(F::student('Raka Pradipta', 'XII-2'));
+    $leader = F::student('Nadia Putri Anindya', 'XI-D');
+    $dimas = F::student('Dimas Arya Nugroho', 'XI-D');
+    $keisha = F::student('Keisha Larasati', 'XI-F');
+    $solo = F::pendingReport(F::student('Raka Pradipta', 'XII-B'));
     $team = F::pendingReport($leader, [$dimas, $keisha], mentor: $this->guru);
 
     expect(RequestReportRevision::audience($solo))->toBe(['told' => 1, 'of' => 1, 'mentor' => false])
@@ -88,9 +88,9 @@ it('says who hears about a decision on a report (D-109, D-110)', function (): vo
 });
 
 it('says whether the report can be sent again: only while the ketua can log in (D-109)', function (): void {
-    $leader = F::student('Nadia Putri Anindya', 'XI-4');
-    $dimas = F::student('Dimas Arya Nugroho', 'XI-4');
-    $solo = F::pendingReport(F::student('Raka Pradipta', 'XII-2'));
+    $leader = F::student('Nadia Putri Anindya', 'XI-D');
+    $dimas = F::student('Dimas Arya Nugroho', 'XI-D');
+    $solo = F::pendingReport(F::student('Raka Pradipta', 'XII-B'));
     $team = F::pendingReport($leader, [$dimas]);
 
     expect(RequestReportRevision::leaderCanResend($solo))->toBeTrue()
@@ -133,7 +133,7 @@ it('offers only "Verifikasi dan beri poin" and "Minta revisi" (D-140)', function
 });
 
 it('still closes a report through RejectReport for old data: ditolak, selesai without points, team and guru told (D-140)', function (): void {
-    $leader = F::student('Nadia Putri Anindya', 'XI-4');
+    $leader = F::student('Nadia Putri Anindya', 'XI-D');
     $report = F::pendingReport($leader, mentor: $this->guru);
 
     app(RejectReport::class)->handle($this->kesiswaan, $report, 'Sertifikat bukan atas nama siswa.');
@@ -171,7 +171,7 @@ it('keeps every other role away from the question (D-128)', function (): void {
         Livewire::actingAs(F::staff($role, 'Staf '.$role->value))->test(VerifikasiHasil::class)->assertForbidden();
     }
 
-    Livewire::actingAs(F::student('Raka Pradipta', 'XII-2')->user)->test(VerifikasiHasil::class)->assertForbidden();
+    Livewire::actingAs(F::student('Raka Pradipta', 'XII-B')->user)->test(VerifikasiHasil::class)->assertForbidden();
 
     expect($report->fresh()->status)->toBe(ReportStatus::Dikirim);
 });
@@ -179,8 +179,8 @@ it('keeps every other role away from the question (D-128)', function (): void {
 // Honest result banners (D-109) ------------------------------------------------------------------------------------
 
 it('names who got the note in the banner after "Minta revisi" (D-109)', function (string $case, string $text): void {
-    $leader = F::student('Nadia Putri Anindya', 'XI-4');
-    $dimas = F::student('Dimas Arya Nugroho', 'XI-4');
+    $leader = F::student('Nadia Putri Anindya', 'XI-D');
+    $dimas = F::student('Dimas Arya Nugroho', 'XI-D');
 
     $report = match ($case) {
         'solo' => F::pendingReport($leader),

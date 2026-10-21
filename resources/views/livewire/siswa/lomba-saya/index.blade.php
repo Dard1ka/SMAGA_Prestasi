@@ -1,5 +1,5 @@
 {{-- Lomba saya (UI-MAP #12, board Lomba-Saya). Data prepared in App\Livewire\Siswa\LombaSaya\Index; view only formats. --}}
-<div class="grid items-start gap-5 lg:grid-cols-[minmax(300px,380px)_minmax(0,1fr)]">
+<div class="grid grid-cols-1 items-start gap-5 lg:grid-cols-[minmax(300px,380px)_minmax(0,1fr)]">
     {{-- List: always on desktop; on phones only when no lomba was opened. --}}
     <section aria-label="Daftar pendaftaran lomba" @class(['flex min-w-0 flex-col gap-3', 'hidden lg:flex' => $explicit])>
         <nav class="seg seg-block" aria-label="Status lomba">

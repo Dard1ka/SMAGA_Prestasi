@@ -71,9 +71,10 @@ final class RequestReportRevision
         $competitionName = self::competitionName($locked);
 
         $decider = StaffRoleLabel::forDecision($actor);
+        $leaderCanResend = self::leaderCanResend($locked);
 
         foreach (self::memberUsers($locked) as $user) {
-            $user->notify(ReportRevisionRequested::for($locked, $competitionName, $note, $decider));
+            $user->notify(ReportRevisionRequested::for($locked, $competitionName, $note, $decider, $leaderCanResend));
         }
 
         self::mentorUser($locked)?->notify(BinaanReportDecided::revision($locked, $competitionName, $note, $decider));

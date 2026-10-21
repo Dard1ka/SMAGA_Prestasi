@@ -130,6 +130,9 @@ final class SetNewPassword
                 'must_change_password' => false,
                 'password_changed_at' => now(),
                 'temporary_password_issued_at' => null,
+                // The window of an initial or temporary password ends with it (an active student reset by an Admin
+                // keeps its status since D-158, so the activation no longer clears it).
+                'initial_password_expires_at' => null,
             ])->save();
 
             activity('auth')

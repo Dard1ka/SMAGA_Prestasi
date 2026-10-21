@@ -45,7 +45,7 @@ use Throwable;
  * - A row whose NIS AND NISN belong to one registered student is an UPDATE (M1-C, lead 2026-10-04: every school
  *   year Kesiswaan uploads all students with their current class). It moves the student to the class in the
  *   file and stores the phone number when the file has one; it never touches the name, the birth date, the
- *   password, the email, the status, the consent flags or the activation. A different name or birth date only
+ *   password, the email, the status or the activation. A different name or birth date only
  *   gives a note. Only one of the two numbers matching → the row is refused. An archived (alumni) account is
  *   skipped with a note; a deleted one is refused.
  * - Archive dates stay a function of class + school year: an update recomputes them with GraduationCalculator
@@ -293,7 +293,7 @@ final class ImportStudents
     private function validateRows(array $rows, SchoolYear $year): array
     {
         $classrooms = Classroom::query()->get();
-        $byName = $classrooms->keyBy(fn (Classroom $c): string => mb_strtoupper($c->name));
+        $byName = $classrooms->keyBy(fn (Classroom $c): string => mb_strtoupper(str_replace(' ', '', $c->name)));
         /** @var array<string, string> $classNames classroom id => name */
         $classNames = $classrooms->pluck('name', 'id')->all();
 
@@ -670,7 +670,7 @@ final class ImportStudents
      * Move a registered student to the class of the file (row locked, compared again with what is stored now) and
      * keep the archive dates in line with class + school year. Only `classroom_id`, `import_school_year`,
      * `grade12_start_date`, `archive_at` and `phone` are ever written: never the account (name, password, email,
-     * status, activation) and never the consent flags.
+     * status, activation).
      *
      * @param  array<string, mixed>  $data  a validated MOVED / UNCHANGED row
      * @param  array<string, string>  $classNames  classroom id => name

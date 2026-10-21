@@ -32,7 +32,7 @@ beforeEach(function (): void {
     $this->seed(TalentSeeder::class);
     $this->withoutVite();
 
-    $this->hana = F::student('Hana Safira', 'X-8');
+    $this->hana = F::student('Hana Safira', 'X-H');
 });
 
 /** A talent choice of $student as the Actions leave it. */
@@ -63,8 +63,8 @@ it('sends a kelas X student without a talent to Profil talenta with the required
 });
 
 it('runs after activation and holds every student without any talent, whatever the class (D-153)', function (): void {
-    $nadia = F::student('Nadia Putri Anindya', 'XI-4', talent: false);
-    $raka = F::student('Raka Pradipta', 'XII-2', talent: false);
+    $nadia = F::student('Nadia Putri Anindya', 'XI-D', talent: false);
+    $raka = F::student('Raka Pradipta', 'XII-B', talent: false);
 
     foreach ([$nadia, $raka] as $student) {
         expect(EnsureTalentChosen::applies($student->user))->toBeTrue();
@@ -79,17 +79,17 @@ it('runs after activation and holds every student without any talent, whatever t
     }
 
     // An old "tidak lolos" row is a talent: not gated.
-    $aurelia = F::student('Aurelia Maharani', 'X-3');
+    $aurelia = F::student('Aurelia Maharani', 'X-C');
     gateChoice($aurelia, TalentStatus::TidakLolos);
     $this->actingAs($aurelia->user)->get(route('siswa.beranda'))->assertOk();
 
     // A deleted row is not: gated.
-    $galang = F::student('Galang Putra Mahendra', 'X-1');
+    $galang = F::student('Galang Putra Mahendra', 'X-A');
     gateChoice($galang)->delete();
     $this->actingAs($galang->user)->get(route('siswa.beranda'))->assertRedirect(route('siswa.talenta'));
 
     // Activation comes first: the gate never sends a student who still has to activate to the talent page.
-    $pending = F::student('Citra Ayu Lestari', 'X-2');
+    $pending = F::student('Citra Ayu Lestari', 'X-B');
     $pending->user->forceFill(['status' => UserStatus::PendingActivation, 'must_change_password' => true, 'password_changed_at' => null, 'email_verified_at' => null])->save();
     $this->actingAs($pending->user->fresh())->get(route('siswa.beranda'))->assertRedirect(route('aktivasi'));
     $this->actingAs($pending->user->fresh())->get(route('siswa.talenta'))->assertRedirect(route('aktivasi'));
@@ -100,8 +100,8 @@ it('runs after activation and holds every student without any talent, whatever t
     expect(EnsureTalentChosen::applies($kesiswaan))->toBeFalse();
 
     // The classroom's "active" switch does not matter: the level does.
-    $room = Classroom::factory()->level(10)->create(['name' => 'X-9', 'active' => false]);
-    $bima = F::student('Bima Satria Wicaksono', 'X-9');
+    $room = Classroom::factory()->level(10)->create(['name' => 'X-I', 'active' => false]);
+    $bima = F::student('Bima Satria Wicaksono', 'X-I');
     expect($bima->classroom_id)->toBe($room->getKey());
     $this->actingAs($bima->user)->get(route('siswa.beranda'))->assertRedirect(route('siswa.talenta'));
 

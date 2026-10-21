@@ -28,14 +28,14 @@ beforeEach(function (): void {
     $this->withoutVite();
     $this->travelTo('2029-12-01 09:00:00');
     $this->admin = A::admin();
-    $this->class = Classroom::factory()->level(12)->create(['name' => 'XII-2']);
+    $this->class = Classroom::factory()->level(12)->create(['name' => 'XII-B']);
 });
 
 function b5ArsipStudent(string $archiveAt, bool $archived = false, array $user = []): Student
 {
     $factory = $archived ? Student::factory()->archived() : Student::factory()->activated();
     $student = $factory->create([
-        'classroom_id' => Classroom::query()->where('name', 'XII-2')->value('id'),
+        'classroom_id' => Classroom::query()->where('name', 'XII-B')->value('id'),
         'grade12_start_date' => '2028-07-01',
         'archive_at' => $archiveAt,
     ]);

@@ -473,17 +473,26 @@ it('sends activated users away from the activation screen', function (): void {
 
 // M2-A (QA 2026-10-05, Q2-02): the temporary password of an Admin reset was shown on the Admin's screen, so the
 // student must replace it. Only the school password of the import may be kept.
-it('makes a student replace the temporary password of an Admin reset: same order, no skip', function (): void {
+// The lead on 2026-10-21: "Reset kata sandi & email" removes the email, so the student binds an own address again
+// (email → code → password); the Data diri stays confirmed, so that step is skipped.
+it('makes a student activate again after an Admin reset: email, code, password, no Data diri, no skip', function (): void {
     config(['session.driver' => 'database']);
 
-    $user = H::activeStudent()->user;
-    $temporary = app(ResetStudentAccount::class)->handle(H::staff(RoleName::Admin), $user, 'Siswa lupa kata sandi dan email.');
+    $student = H::activeStudent();
+    $student->forceFill(['phone' => '081298765432', 'profile_confirmed_at' => now()->subMonth()])->save();
+    $user = $student->user;
+    $temporary = 'sementara8';
+    app(ResetStudentAccount::class)->handle(H::staff(RoleName::Admin), $user, 'Siswa datang ke TU, akun diambil alih.', $temporary);
 
     expect(CompleteActivation::hasTemporaryPassword($user->fresh()))->toBeTrue();
 
     $this->from('/login')->post('/login', ['identifier' => H::NISN, 'password' => $temporary])->assertRedirect(route('aktivasi'));
 
-    $component = m1bToPasswordStep($user->fresh())
+    [$component, $code] = m1bToCodeStep($user->fresh());
+    $component->set('code', $code)
+        ->call('verifyCode')
+        ->assertHasNoErrors()
+        ->assertSet('step', Activation::STEP_PASSWORD)
         ->assertSee('Buat kata sandi baru')
         ->assertSee('Ganti kata sandi sementara dari Admin.')
         ->assertDontSee('Lewati, pakai kata sandi sekarang');
@@ -499,6 +508,9 @@ it('makes a student replace the temporary password of an Admin reset: same order
 
     $user->refresh();
     expect($user->status)->toBe(UserStatus::PendingActivation)
+        ->and($user->email)->toBe(M1B_EMAIL)
+        ->and($student->fresh()->profile_confirmed_at)->not->toBeNull()
+        ->and($student->fresh()->phone)->toBe('081298765432')
         ->and($user->must_change_password)->toBeTrue()
         ->and(CompleteActivation::hasTemporaryPassword($user))->toBeTrue()
         ->and(m1bEvent(CompleteActivation::EVENT_PASSWORD_KEPT))->toBeNull()

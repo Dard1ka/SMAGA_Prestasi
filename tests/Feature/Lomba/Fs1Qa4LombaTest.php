@@ -27,9 +27,9 @@ beforeEach(function (): void {
     Notification::fake();
     $this->withoutVite();
     $this->guru = F::staff(RoleName::Guru);
-    $this->laras = F::student('Qa Talenta Laras Wulandari Kusumaningrum', 'XI-2');
-    $this->bagas = F::student('Qa Talenta Bagas Pratama Wicaksono', 'XI-2');
-    $this->bagus = F::student('Qa Talenta Bagas Prasetyo Nugroho', 'XI-2');
+    $this->laras = F::student('Qa Talenta Laras Wulandari Kusumaningrum', 'XI-B');
+    $this->bagas = F::student('Qa Talenta Bagas Pratama Wicaksono', 'XI-B');
+    $this->bagus = F::student('Qa Talenta Bagas Prasetyo Nugroho', 'XI-B');
 });
 
 /** The rendered panel without Livewire's block markers, so a tag and its text can be matched together. */

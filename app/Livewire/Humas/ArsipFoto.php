@@ -31,9 +31,9 @@ use Livewire\WithPagination;
  * verification first, 12 reports per page, search on lomba or student name. Each photo opens in the preview popup and
  * downloads through `files.show` (FilePolicy: Humas holds `report.verify`, D-139; every download is audited).
  *
- * Consent (D-16, D-71, SECURITY §3m-7): the photos are meant for a public flyer, so a report is listed only when every
- * member of its team may be named (NamedStudent) and allows the use of a photo (`photo_consent`); the others are only
- * counted in one sentence. Never NIS/NISN, points or contact data.
+ * The photos are meant for a public flyer, so a report is listed only when every confirmed member of its team may be
+ * named (NamedStudent: no disabled or deleted account); the others are only counted in one sentence. Every photo may be
+ * used since D-162 (20 Okt 2026, no consent any more). Never NIS/NISN, points or contact data.
  */
 #[Title('Arsip foto')]
 #[Layout('layouts::app', ['subtitle' => 'Foto dokumentasi lomba dari laporan hasil yang sudah diverifikasi.'])]
@@ -73,7 +73,7 @@ class ArsipFoto extends Component
     }
 
     /**
-     * withPhotos() whose every confirmed member may be named and allows a photo (the consent rule above).
+     * withPhotos() whose every confirmed member may be named (the rule above).
      *
      * @return Builder<Report>
      */
@@ -82,7 +82,7 @@ class ArsipFoto extends Component
         return self::withPhotos()->whereDoesntHave('registration.members', fn (Builder $members) => $members
             ->whereNotNull('confirmed_at')
             ->whereNull('declined_at')
-            ->whereDoesntHave('student', fn (Builder $student) => NamedStudent::constrain($student)->where('photo_consent', true)));
+            ->whereDoesntHave('student', fn (Builder $student) => NamedStudent::constrain($student)));
     }
 
     public function render(): View
@@ -120,7 +120,7 @@ class ArsipFoto extends Component
             'page' => $page,
             'total' => $page->total(),
             'searching' => $term !== '',
-            // Reports left out for consent, whatever the search (one sentence, no names).
+            // Reports left out for an inactive member, whatever the search (one sentence, no names).
             'hidden' => max(0, self::withPhotos()->count() - self::usable()->count()),
         ])->layoutData(['badges' => HumasQueries::badges($user), 'search' => false]);
     }

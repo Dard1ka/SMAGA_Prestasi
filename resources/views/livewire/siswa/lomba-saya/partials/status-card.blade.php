@@ -107,12 +107,12 @@
                     </p>
                 </div>
                 @if ($d['canReport'])
+                    {{-- UX2: one place to report at every width; the Beranda button opens this card with ?lapor=1. --}}
                     <div class="flex shrink-0 gap-2">
-                        <x-sth.button icon="upload" :href="$d['reportUrl']" class="lg:hidden">Laporkan hasil</x-sth.button>
                         @if ($lapor)
-                            <x-sth.button variant="quiet" size="sm" wire:click="closeLapor" class="hidden lg:inline-flex">Batal</x-sth.button>
+                            <x-sth.button variant="quiet" size="sm" wire:click="closeLapor">Batal</x-sth.button>
                         @else
-                            <x-sth.button icon="upload" wire:click="openLapor" class="hidden lg:inline-flex">Laporkan hasil</x-sth.button>
+                            <x-sth.button icon="upload" wire:click="openLapor">{{ $report?->status === RS::PerluRevisi ? 'Perbaiki laporan' : 'Laporkan hasil' }}</x-sth.button>
                         @endif
                     </div>
                 @endif
@@ -126,7 +126,7 @@
             @endif
 
             @if ($d['canReport'] && $lapor)
-                <div class="hidden border-t border-line pt-4 lg:block">
+                <div class="border-t border-line pt-4">
                     <livewire:siswa.lomba-saya.lapor-hasil :registration="$registration" :inline="true" :key="'lapor-'.$registration->getKey()" />
                 </div>
             @endif
@@ -167,7 +167,7 @@
             </x-sth.card>
         @elseif ($d['achievement'])
             @php($a = $d['achievement'])
-            <div class="grid gap-4 2xl:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
+            <div class="grid grid-cols-1 gap-4 2xl:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
                 <x-sth.card as="section" aria-labelledby="capaian-judul" class="flex flex-col gap-4">
                     <div class="flex items-start gap-3">
                         <span class="flex size-11 shrink-0 items-center justify-center rounded-tile bg-gold-bg text-gold" aria-hidden="true"><x-sth.icon name="award" /></span>
@@ -180,6 +180,10 @@
                             <p class="muted m-0 text-sm">Diverifikasi {{ $d['decider'] }} {{ $a->verified_at?->locale('id')->translatedFormat('j M Y') }}.</p>
                         </div>
                     </div>
+                    {{-- D-160: the verifier's "Catatan untuk siswa" (e.g. why the capaian differs from the claim). --}}
+                    @if ($report?->note)
+                        <p class="m-0 text-sm [overflow-wrap:anywhere]"><span class="font-semibold">Catatan {{ $d['decider'] }}:</span> {{ $report->note }}</p>
+                    @endif
                     <x-sth.rumus-poin :tingkat="$a->w_level" :capaian="$a->w_result" :penyelenggara="$a->w_organizer" :total="$a->points" result-label="Total" />
                 </x-sth.card>
                 <x-sth.card as="section" aria-labelledby="sert-judul" class="flex flex-col gap-3">

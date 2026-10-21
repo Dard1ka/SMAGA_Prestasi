@@ -150,7 +150,7 @@ it('accepts a link of exactly 500 characters and refuses a link field that is no
 });
 
 it('refuses to publish a usulan until the weight and date fields are complete', function (): void {
-    $siswa = F::student('Raka Pradipta', 'XII-2')->user;
+    $siswa = F::student('Raka Pradipta', 'XII-B')->user;
     $usulan = Competition::factory()->proposal()->create(['name' => 'ISPO 2027', 'bidang' => 'riset', 'submitted_by' => $siswa->getKey()]);
 
     try {

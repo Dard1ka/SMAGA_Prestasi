@@ -10,13 +10,13 @@ use App\Enums\MemberRole;
 use App\Enums\ReportFileKind;
 use App\Enums\RoleName;
 use App\Enums\SettingKey;
+use App\Enums\UserStatus;
 use App\Models\File;
 use App\Models\Letter;
 use App\Models\Registration;
 use App\Models\Report;
 use App\Models\ReportFile;
 use App\Models\Setting;
-use App\Models\Student;
 use App\Models\TalentApplication;
 use App\Models\TalentProfile;
 use App\Models\User;
@@ -160,12 +160,11 @@ function w2a1PublicCertificate(object $t, ReportFileKind $kind = ReportFileKind:
     $file = File::factory()->purpose(FilePurpose::ReportEvidence)->create(['owner_user_id' => $t->nadia->user_id]);
     Storage::disk('local')->put($file->path, '%PDF-1.4');
     ReportFile::factory()->create(['report_id' => $report->getKey(), 'file_id' => $file->getKey(), 'kind' => $kind]);
-    Student::query()->whereKey([$t->nadia->getKey(), $t->dimas->getKey()])->update(['publish_consent' => true]);
 
     return [$file, $registration];
 }
 
-it('serves a verified certificate to guests only with every member\'s consent and the Admin switch on', function (): void {
+it('serves a verified certificate to guests only while every member is named and the Admin switch is on', function (): void {
     [$file] = w2a1PublicCertificate($this);
 
     $this->get(route('files.public', $file))->assertNotFound(); // switch off (default)
@@ -174,7 +173,8 @@ it('serves a verified certificate to guests only with every member\'s consent an
     $this->get(route('files.public', $file))->assertOk()->assertHeader('X-Content-Type-Options', 'nosniff');
     expect(Activity::query()->where('event', 'file.public_downloaded')->whereNull('causer_id')->exists())->toBeTrue();
 
-    Student::query()->whereKey($this->dimas->getKey())->update(['publish_consent' => false]);
+    // D-162: no consent any more; only a disabled (or deleted) member hides the team certificate.
+    User::query()->whereKey($this->dimas->user_id)->update(['status' => UserStatus::Disabled->value]);
     $this->get(route('files.public', $file))->assertNotFound();
 
     // The authenticated route keeps its own rules: guests are sent to login.

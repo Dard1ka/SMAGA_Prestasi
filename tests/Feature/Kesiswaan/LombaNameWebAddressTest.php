@@ -58,7 +58,7 @@ it('accepts ordinary lomba names, also with dots and numbers', function (string 
 ]);
 
 it('refuses a usulan whose name carries a web address and stores nothing', function (): void {
-    $siswa = F::student('Raka Pradipta', 'XII-2')->user;
+    $siswa = F::student('Raka Pradipta', 'XII-B')->user;
 
     try {
         app(SubmitCompetition::class)->handle($siswa, LombaFixtures::usulan(['name' => 'Lomba Sains, daftar ulang di www.situs-palsu.com']), F::pdf());
@@ -72,7 +72,7 @@ it('refuses a usulan whose name carries a web address and stores nothing', funct
 });
 
 it('still accepts a usulan with an ordinary name and the address in the website field', function (): void {
-    $siswa = F::student('Raka Pradipta', 'XII-2')->user;
+    $siswa = F::student('Raka Pradipta', 'XII-B')->user;
 
     $competition = app(SubmitCompetition::class)->handle($siswa, LombaFixtures::usulan([
         'name' => 'Olimpiade Sains Pelajar Nusantara 2026',

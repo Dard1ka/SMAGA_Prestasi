@@ -751,7 +751,7 @@ class SuratTugas extends Component
     /** @return Builder<Registration> */
     private function queueQuery(): Builder
     {
-        return Registration::query()->awaitingLetters()->orderBy('principal_decided_at')->orderBy('created_at');
+        return Registration::query()->awaitingLetters()->orderByDesc('principal_decided_at')->orderByDesc('created_at')->orderByDesc('id');
     }
 
     /**

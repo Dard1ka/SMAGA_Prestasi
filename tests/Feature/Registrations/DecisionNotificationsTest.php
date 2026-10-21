@@ -35,7 +35,7 @@ beforeEach(function (): void {
     $this->kepsek = F::staff(RoleName::KepalaSekolah, 'Drs. Bambang Hartono, M.Pd.');
     $this->admin = F::staff(RoleName::Admin, 'Operator STH');
     $this->nadia = F::student();
-    $this->dimas = F::student('Dimas Arya Nugroho', 'XI-4');
+    $this->dimas = F::student('Dimas Arya Nugroho', 'XI-D');
 });
 
 /** Team of Nadia (ketua) + Dimas, guided by the guru; $confirmed = Dimas accepted, so it waits for the Kepala Sekolah. */

@@ -106,7 +106,7 @@ it('accepts only guru accounts as pembina', function (): void {
 it('allows Kesiswaan and Admin only', function (): void {
     $application = F::application();
     $rejected = TalentApplication::factory()->rejected()->create([
-        'student_id' => F::student('Bima Satria Wicaksono', 'XII-7')->getKey(),
+        'student_id' => F::student('Bima Satria Wicaksono', 'XII-G')->getKey(),
         'talent_type_id' => F::talentType()->getKey(),
         'mentor_id' => $this->guru->getKey(),
     ]);
@@ -136,9 +136,9 @@ it('refuses every change on a choice the student deleted', function (): void {
 });
 
 it('moves the note of rows rejected before the change to the student note and reads the stage from the audit log', function (): void {
-    $rejected = F::application(F::student('Galang Putra Mahendra', 'X-TAHFIDZ'), TalentStatus::TidakLolos);
-    $unknown = F::application(F::student('Aurelia Maharani', 'X-3'), TalentStatus::TidakLolos, 'Kimia');
-    $open = F::application(F::student('Bima Satria Wicaksono', 'XII-7'), TalentStatus::Seleksi, 'Fisika');
+    $rejected = F::application(F::student('Galang Putra Mahendra', 'X-A'), TalentStatus::TidakLolos);
+    $unknown = F::application(F::student('Aurelia Maharani', 'X-C'), TalentStatus::TidakLolos, 'Kimia');
+    $open = F::application(F::student('Bima Satria Wicaksono', 'XII-G'), TalentStatus::Seleksi, 'Fisika');
 
     // The shape the old code left behind: one `note`, sent to the student on a rejection.
     DB::table('talent_applications')->where('id', $rejected->getKey())->update(['note' => 'Kuota cabang penuh.']);

@@ -66,7 +66,7 @@ it('releases the code limits of the day after an Admin reset (QA10)', function (
         $this->travel($i === 5 ? 3600 : 61)->seconds();
     }
 
-    app(ResetStudentAccount::class)->handle(H::staff(RoleName::Admin), $user, 'Pemilik datang dengan kartu pelajar.');
+    app(ResetStudentAccount::class)->handle(H::staff(RoleName::Admin), $user->fresh(), 'Pemilik datang dengan kartu pelajar.', 'sementara8');
     $this->travel(61)->seconds();
 
     $this->actingAs(User::query()->findOrFail($user->getKey()));

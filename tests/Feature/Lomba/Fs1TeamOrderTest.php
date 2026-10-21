@@ -127,8 +127,8 @@ it('lists a waiting team (no invitation times yet) in the same order on the pane
         'name' => 'Lomba Tim Usulan Fiktif', 'participation' => Participation::Tim, 'max_team_size' => 4,
     ]));
     // Zaki is added before Ayu: the database order is the opposite of the name order.
-    $zaki = F::student('Qa Talenta Zaki Pratama', 'XI-2');
-    $ayu = F::student('Qa Talenta Ayu Lestari', 'XI-3');
+    $zaki = F::student('Qa Talenta Zaki Pratama', 'XI-B');
+    $ayu = F::student('Qa Talenta Ayu Lestari', 'XI-C');
     $registration = app(CreateRegistration::class)
         ->handle($this->nadiaUser, $own, RegistrationType::Tim, [$zaki->getKey(), $ayu->getKey()], $this->guru->getKey());
 
@@ -150,8 +150,8 @@ it('lists a waiting team (no invitation times yet) in the same order on the pane
 
 it('lists a team invited at the same moment in the same order on the panel, Lomba saya, Undangan tim and the guru detail', function (): void {
     $lomba = F::teamCompetition(4, ['name' => 'Lomba Tim Terbuka Fiktif']);
-    $zaki = F::student('Qa Talenta Zaki Pratama', 'XI-2');
-    $ayu = F::student('Qa Talenta Ayu Lestari', 'XI-3');
+    $zaki = F::student('Qa Talenta Zaki Pratama', 'XI-B');
+    $ayu = F::student('Qa Talenta Ayu Lestari', 'XI-C');
     $registration = app(CreateRegistration::class)
         ->handle($this->nadiaUser, $lomba, RegistrationType::Tim, [$zaki->getKey(), $ayu->getKey()], $this->guru->getKey());
 
@@ -182,8 +182,8 @@ it('lists a team invited at the same moment in the same order on the panel, Lomb
 
 it('puts a member invited later after the ones invited first on every team screen', function (): void {
     $lomba = F::teamCompetition(4, ['name' => 'Lomba Tim Terbuka Fiktif']);
-    $ayu = F::student('Qa Talenta Ayu Lestari', 'XI-3');
-    $zaki = F::student('Qa Talenta Zaki Pratama', 'XI-2');
+    $ayu = F::student('Qa Talenta Ayu Lestari', 'XI-C');
+    $zaki = F::student('Qa Talenta Zaki Pratama', 'XI-B');
     $registration = app(CreateRegistration::class)
         ->handle($this->nadiaUser, $lomba, RegistrationType::Tim, [$ayu->getKey(), $zaki->getKey()], $this->guru->getKey());
 
@@ -207,7 +207,7 @@ it('puts a member invited later after the ones invited first on every team scree
 it('keeps the team order of Registration members after the order helper (an Eloquent collection stays one)', function (): void {
     $lomba = F::teamCompetition(4);
     $registration = app(CreateRegistration::class)
-        ->handle($this->nadiaUser, $lomba, RegistrationType::Tim, [F::student('Qa Talenta Zaki Pratama', 'XI-2')->getKey()], $this->guru->getKey());
+        ->handle($this->nadiaUser, $lomba, RegistrationType::Tim, [F::student('Qa Talenta Zaki Pratama', 'XI-B')->getKey()], $this->guru->getKey());
 
     $members = Registration::query()->with('members.student.user')->findOrFail($registration->getKey())->members;
 

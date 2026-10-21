@@ -27,7 +27,7 @@
             @endif
         </div>
         <p class="text-sm muted">Diatur tim deploy. Hubungi mereka untuk mengubah server atau alamat pengirim.</p>
-        <dl class="grid gap-3 sm:grid-cols-2">
+        <dl class="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
                 <dt class="text-sm font-semibold muted">Email pengirim</dt>
                 <dd class="num">{{ $fromAddress !== '' ? $fromAddress : '–' }}</dd>

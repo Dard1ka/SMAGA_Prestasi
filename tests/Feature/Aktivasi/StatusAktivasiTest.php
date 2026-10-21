@@ -33,8 +33,8 @@ beforeEach(function (): void {
     $this->admin = A::admin();
     $this->kesiswaan = A::staff(RoleName::Kesiswaan);
 
-    $this->xi4 = Classroom::factory()->level(11)->create(['name' => 'XI-4']);
-    $this->x1 = Classroom::factory()->create(['name' => 'X-1', 'level' => 10]);
+    $this->xi4 = Classroom::factory()->level(11)->create(['name' => 'XI-D']);
+    $this->x1 = Classroom::factory()->create(['name' => 'X-A', 'level' => 10]);
 
     $make = function (Classroom $class, string $name, array $user = []): Student {
         $student = Student::factory()->create(['classroom_id' => $class->getKey()]);
@@ -82,11 +82,11 @@ it('derives the K9 state, flags and per-class counts', function (): void {
         ->and($rows['Dimas Saputra']['flags'])->toContain('Gagal masuk 10 kali');
 
     $summary = app(ActivationReport::class)->summary()->keyBy('classroom');
-    expect($summary->keys()->all())->toBe(['X-1', 'XI-4'])
-        ->and($summary['XI-4']['total'])->toBe(3)
-        ->and($summary['XI-4']['counts']['aktif'])->toBe(1)
-        ->and($summary['XI-4']['activePct'])->toBe(33)
-        ->and($summary['X-1']['counts']['arsip'])->toBe(1);
+    expect($summary->keys()->all())->toBe(['X-A', 'XI-D'])
+        ->and($summary['XI-D']['total'])->toBe(3)
+        ->and($summary['XI-D']['counts']['aktif'])->toBe(1)
+        ->and($summary['XI-D']['activePct'])->toBe(33)
+        ->and($summary['X-A']['counts']['arsip'])->toBe(1);
 });
 
 it('shows the NISN in full and the email masked (D-137), and filters by class, status and exact NISN', function (): void {
@@ -95,6 +95,7 @@ it('shows the NISN in full and the email masked (D-137), and filters by class, s
     $nisn = (string) $this->raka->nisn;
 
     Livewire::test(StatusAktivasi::class)
+        ->call('setView', 'siswa')
         ->assertSee($nisn)
         ->assertDontSee($nis)
         ->assertDontSee('NIS ditampilkan tersamar')
@@ -118,6 +119,7 @@ it('tells Kesiswaan how to open the CSV without losing the leading zeros of the 
     $this->actingAs($this->kesiswaan);
 
     Livewire::test(StatusAktivasi::class)
+        ->call('setView', 'siswa')
         ->assertSee('Buka di Excel lewat Data › Dari Teks/CSV dan atur kolom NISN sebagai Teks agar angka 0 di depan tetap ada.');
 });
 
@@ -135,7 +137,7 @@ it('opens the students of a class in a dialog instead of filtering the list at t
         ->call('showClass', $this->xi4->getKey())
         ->assertDispatched('sth-modal-open', id: 'aktivasi-kelas')
         ->assertSet('kelas', $this->xi4->getKey())
-        ->assertSee('Kelas XI-4')
+        ->assertSee('Kelas XI-D')
         ->assertSeeHtml($inDialog($this->nadia))
         ->assertSeeHtml($inDialog($this->raka))
         ->assertSeeHtml($inDialog($this->salsa))
@@ -143,17 +145,16 @@ it('opens the students of a class in a dialog instead of filtering the list at t
         // The dialog shows the NIS in full as well (D-131); the email stays masked.
         ->assertSee((string) $this->raka->nisn)
         ->assertDontSee('nadia.anindya@example.test')
-        // The list at the bottom keeps every class: "Lihat" no longer touches it.
+        // "Lihat" touches neither the list filter nor the chosen table (D-159).
         ->assertSet('daftarKelas', '')
-        ->assertSeeHtml($inList($this->dimas))
-        ->assertSeeHtml($inList($this->raka))
+        ->assertSet('tampil', 'kelas')
+        ->assertDontSeeHtml($inList($this->raka))
         // Tabs only for the states this class has.
         ->assertSeeHtml("setClassStatus('kedaluwarsa')")
         ->assertDontSeeHtml("setClassStatus('dibekukan')")
         ->call('setClassStatus', AccountControls::STATE_EXPIRED)
         ->assertSeeHtml($inDialog($this->salsa))
         ->assertDontSeeHtml($inDialog($this->raka))
-        ->assertSeeHtml($inList($this->raka))
         ->call('setClassStatus', 'tidak-ada')
         ->assertSet('kelasStatus', '')
         ->assertSeeHtml($inDialog($this->raka))
@@ -161,7 +162,7 @@ it('opens the students of a class in a dialog instead of filtering the list at t
         ->call('setClassStatus', AccountControls::STATE_ACTIVE)
         ->call('showClass', $this->x1->getKey())
         ->assertSet('kelasStatus', '')
-        ->assertSee('Kelas X-1')
+        ->assertSee('Kelas X-A')
         ->assertSeeHtml($inDialog($this->dimas))
         ->assertDontSeeHtml($inDialog($this->nadia))
         ->call('closeClass')
@@ -180,13 +181,13 @@ it('resets ?kelas= however the class dialog is closed, not only with Tutup (QA5 
 
 it('opens the dialog on page load with ?kelas= and drops an unknown class', function (): void {
     $this->actingAs($this->kesiswaan);
-    $empty = Classroom::factory()->create(['name' => 'X-9', 'level' => 10]);
+    $empty = Classroom::factory()->create(['name' => 'X-I', 'level' => 10]);
 
     Livewire::withQueryParams(['kelas' => $this->xi4->getKey()])
         ->test(StatusAktivasi::class)
         ->assertSet('kelas', $this->xi4->getKey())
         ->assertSeeHtml('data-sth-autoopen')
-        ->assertSee('Kelas XI-4')
+        ->assertSee('Kelas XI-D')
         ->assertSeeHtml('wire:key="kelas-siswa-'.$this->salsa->user_id.'"')
         ->assertSet('daftarKelas', '');
 
@@ -203,9 +204,9 @@ it('opens the dialog on page load with ?kelas= and drops an unknown class', func
 
     // Both routes of the shared component.
     $this->get(route('kesiswaan.aktivasi.index', ['kelas' => $this->xi4->getKey()]))
-        ->assertOk()->assertSee('data-sth-autoopen', false)->assertSee('Kelas XI-4');
+        ->assertOk()->assertSee('data-sth-autoopen', false)->assertSee('Kelas XI-D');
     $this->actingAs($this->admin)->get(route('admin.aktivasi.index', ['kelas' => $this->x1->getKey()]))
-        ->assertOk()->assertSee('data-sth-autoopen', false)->assertSee('Kelas X-1');
+        ->assertOk()->assertSee('data-sth-autoopen', false)->assertSee('Kelas X-A');
     $this->actingAs($this->admin)->get(route('admin.aktivasi.index'))
         ->assertOk()->assertDontSee('data-sth-autoopen', false);
 });
@@ -233,7 +234,7 @@ it('keeps the list filter in its own address parameter and forgets the dialog wh
 
 it('shows a class in steps of 40 inside the dialog', function (): void {
     $this->actingAs($this->kesiswaan);
-    $big = Classroom::factory()->create(['name' => 'X-2', 'level' => 10]);
+    $big = Classroom::factory()->create(['name' => 'X-B', 'level' => 10]);
     Student::factory()->count(45)->create(['classroom_id' => $big->getKey()]);
 
     expect(fn () => Livewire::test(StatusAktivasi::class)->set('kelasLimit', 5000))->toThrow(Exception::class);
@@ -370,6 +371,7 @@ it('offers "Buka ulang" only where it changes something and says what will happe
     $rakaDeadline = AccountControls::date(User::query()->findOrFail($this->raka->user_id), 'initial_password_expires_at');
 
     Livewire::test(StatusAktivasi::class)
+        ->call('setView', 'siswa')
         ->assertSeeHtml($button($this->salsa))    // expired
         ->assertSeeHtml($button($soon))           // 20 hours left: a reopen gives more
         ->assertSeeHtml($button($this->dimas))    // frozen after failed logins
@@ -470,4 +472,84 @@ it('keeps unfreeze and the window setting Admin-only and the target locked', fun
         ->set('windowDays', '20')->call('saveWindow')->assertHasNoErrors();
 
     expect(app(AccountControls::class)->windowDays())->toBe(20);
+});
+
+// --- D-159: one table at a time, previews of 10 rows, the two boxes next to the tiles ------------------------
+
+it('shows one table at a time: Per kelas first, Daftar siswa on its tab or with a list filter (D-159)', function (): void {
+    $this->actingAs($this->kesiswaan);
+    $inList = fn (Student $s): string => 'wire:key="siswa-'.$s->user_id.'"';
+
+    Livewire::test(StatusAktivasi::class)
+        ->assertSet('tampil', 'kelas')
+        ->assertSeeHtml('role="tablist"')
+        ->assertSeeHtml('wire:key="kelas-'.$this->xi4->getKey().'"')
+        ->assertDontSeeHtml($inList($this->raka))
+        ->assertDontSee('Download CSV')
+        ->assertSee('Menampilkan 2 dari 2 kelas')
+        ->call('setView', 'siswa')
+        ->assertSet('tampil', 'siswa')
+        ->assertSeeHtml($inList($this->raka))
+        ->assertDontSeeHtml('wire:key="kelas-'.$this->xi4->getKey().'"')
+        ->assertSee('Download CSV')
+        ->assertSee('Menampilkan 5 dari 5 siswa. Email ditampilkan tersamar.')
+        ->call('setView', 'apa-saja')
+        ->assertSet('tampil', 'kelas')
+        // Using a list filter opens the list.
+        ->set('q', 'Raka')
+        ->assertSet('tampil', 'siswa')
+        ->assertSeeHtml($inList($this->raka));
+
+    // A list filter in the address opens the list; ?tampil=siswa alone too; anything else is Per kelas.
+    Livewire::withQueryParams(['status' => AccountControls::STATE_EXPIRED])->test(StatusAktivasi::class)
+        ->assertSet('tampil', 'siswa')
+        ->assertSeeHtml($inList($this->salsa));
+    Livewire::withQueryParams(['tampil' => 'siswa'])->test(StatusAktivasi::class)->assertSet('tampil', 'siswa');
+    Livewire::withQueryParams(['tampil' => 'x'])->test(StatusAktivasi::class)->assertSet('tampil', 'kelas');
+});
+
+it('previews 10 rows of each table and adds more with "Tampilkan lebih banyak" (D-159)', function (): void {
+    $this->actingAs($this->kesiswaan);
+
+    foreach (range(1, 12) as $i) {
+        $class = Classroom::factory()->create(['name' => 'XII-'.chr(64 + $i), 'level' => 12]);
+        Student::factory()->count(2)->create(['classroom_id' => $class->getKey()]);
+    }
+
+    $component = Livewire::test(StatusAktivasi::class)
+        ->assertSee('Menampilkan 10 dari 14 kelas')
+        ->assertSeeHtml('wire:click="showMoreClasses"')
+        ->call('showMoreClasses')
+        ->assertSee('Menampilkan 14 dari 14 kelas')
+        ->assertDontSeeHtml('wire:click="showMoreClasses"')
+        ->call('setView', 'siswa')
+        ->assertSee('Menampilkan 10 dari 29 siswa.')
+        ->assertSeeHtml('wire:click="showMore"');
+
+    $component->call('showMore')
+        ->assertSee('Menampilkan 29 dari 29 siswa.')
+        ->assertDontSeeHtml('wire:click="showMore"')
+        // A new filter starts the list again at 10 rows.
+        ->call('setStatus', AccountControls::STATE_PENDING)
+        ->assertSet('limit', StatusAktivasi::PREVIEW);
+});
+
+it('keeps the two boxes short: three frozen accounts first, then more (D-159)', function (): void {
+    $this->actingAs($this->kesiswaan);
+
+    foreach (range(1, 4) as $i) {
+        $student = Student::factory()->create(['classroom_id' => $this->x1->getKey()]);
+        $student->user->forceFill(['name' => 'Beku '.$i, 'frozen_at' => now()->subMinutes($i), 'frozen_reason' => AccountControls::FROZEN_FAILED_ATTEMPTS])->saveQuietly();
+    }
+
+    Livewire::test(StatusAktivasi::class)
+        ->assertSee('Akun dibekukan')
+        ->assertSee('Kata sandi awal dicoba di akun aktif')
+        ->assertSeeHtml('wire:click="showMoreFrozen"')
+        ->assertSee('Tampilkan lebih banyak (2 lagi)')
+        ->assertSee('Beku 1')->assertDontSee('Beku 4')
+        ->call('showMoreFrozen')
+        ->assertSee('Beku 4')
+        ->assertDontSeeHtml('wire:click="showMoreFrozen"')
+        ->assertDontSeeHtml('wire:click="showMoreK7"');
 });

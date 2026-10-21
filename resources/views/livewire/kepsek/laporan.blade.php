@@ -24,7 +24,7 @@
                 </span>
             @endif
         </div>
-        <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <x-sth.select wire:model.live="tahun" label="Periode" :options="$yearOptions" />
             @if ($tahun === 'rentang')
                 <x-sth.input wire:model.live="dari" type="date" label="Dari tanggal" />
@@ -50,7 +50,7 @@
         <x-sth.stat-tile icon="bars" tone="orange" label="Nasional ke atas" :value="number_format($summary['totals']['nasional'], 0, ',', '.')" note="nasional dan internasional" />
     </div>
 
-    <div class="grid gap-[22px] xl:grid-cols-2" wire:loading.class="opacity-70">
+    <div class="grid grid-cols-1 gap-[22px] xl:grid-cols-2" wire:loading.class="opacity-70">
         @foreach ($groupTables as $key => [$title, $head])
             @php $groups = collect($summary[$key])->filter(fn ($g) => $g['prestasi'] > 0 || in_array($key, ['bidang', 'tingkat'], true)); @endphp
             <section aria-labelledby="h-grup-{{ $key }}" @class(['flex min-w-0 flex-col gap-2', 'xl:col-span-2' => $key === 'kelas'])>

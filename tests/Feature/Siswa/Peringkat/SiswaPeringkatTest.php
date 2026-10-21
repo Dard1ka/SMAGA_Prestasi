@@ -16,7 +16,7 @@ use Tests\Feature\Publik\PublikFixtures;
 use Tests\Support\TalentGate;
 
 /*
-| B4 · backlog #2: siswa.peringkat = public ranking data (consent rules) for active students only, own row
+| B4 · backlog #2: siswa.peringkat = public ranking data (named rule, no consent since D-162) for active students only, own row
 | marked "Kamu", own rank identical to PersonalRank (D-37, Beranda/Portofolio).
 */
 
@@ -27,13 +27,13 @@ beforeEach(function (): void {
     $this->travelTo(now()->setDate(2026, 10, 1)->setTime(10, 0));
 
     $f = $this->f = new PublikFixtures;
-    $raka = $f->student('Raka Pradipta', 'XII-2');
-    $salsa = $f->student('Salsabila Kirana', 'XI-5');
-    $aurelia = $f->student('Aurelia Maharani', 'X-3');
-    $ardi = $f->student('Ardiansyah Nur Hakim', 'XII-3', archived: true, attributes: ['grade12_start_date' => '2024-07-01']);
-    $this->nadia = $f->student('Nadia Putri Anindya', 'XI-4', consent: false);
+    $raka = $f->student('Raka Pradipta', 'XII-B');
+    $salsa = $f->student('Salsabila Kirana', 'XI-E');
+    $aurelia = $f->student('Aurelia Maharani', 'X-C');
+    $ardi = $f->student('Ardiansyah Nur Hakim', 'XII-C', archived: true, attributes: ['grade12_start_date' => '2024-07-01']);
+    $this->nadia = $f->student('Nadia Putri Anindya', 'XI-D', attributes: ['publish_consent' => false]); // old column: ignored (D-162)
     TalentGate::pass($this->nadia); // D-153: else the talent gate holds every siswa page
-    $this->dimas = $f->student('Dimas Arya Nugroho', 'XI-1', consent: false);
+    $this->dimas = $f->student('Dimas Arya Nugroho', 'XI-A', attributes: ['publish_consent' => false]);
 
     $fiksi = $f->lomba('FIKSI 2026', Bidang::Riset, Level::Nasional, '2026-09-01');
     $opsi = $f->lomba('OPSI 2025', Bidang::Riset, Level::Nasional, '2025-09-01');
@@ -66,12 +66,12 @@ it('lets only students open the page', function (): void {
         ->assertSee('Kamu');
 });
 
-it('marks the own row with the own name and keeps other students anonymous without consent', function (): void {
+it('marks the own row with the own name and names the other students too (D-162)', function (): void {
     Livewire::actingAs($this->nadia->user)->test(Peringkat::class)
         ->assertSee('Nadia Putri Anindya')
         ->assertSee('Kamu')
-        ->assertSee('Siswa kelas XI')
-        ->assertDontSee('Dimas Arya Nugroho')
+        ->assertSee('Dimas Arya Nugroho')
+        ->assertDontSee('Siswa kelas XI')
         ->assertDontSee('Ardiansyah Nur Hakim')
         ->assertSeeInOrder(['Raka Pradipta', 'Salsabila Kirana', 'Aurelia Maharani', 'Nadia Putri Anindya'])
         ->assertViewHas('me', fn (array $me): bool => $me['rank'] === 4 && $me['me'] === true && $me['points_label'] === '68');
@@ -89,11 +89,19 @@ it('shows the same personal rank as Beranda (PersonalRank, active students only)
         ->assertSee('dari siswa aktif');
 });
 
-it('finds the own row by the public slug when the student consented', function (): void {
-    $this->nadia->forceFill(['publish_consent' => true])->save();
-
-    Livewire::actingAs($this->nadia->user->fresh())->test(Peringkat::class)
+it('finds the own row by the public slug, whatever the old consent column says (D-162)', function (): void {
+    Livewire::actingAs($this->nadia->user)->test(Peringkat::class)
         ->assertViewHas('me', fn (array $me): bool => $me['rank'] === 4 && $me['named'] === true && $me['slug'] !== null);
+});
+
+it('leaves a disabled classmate out of the list', function (): void {
+    $laras = $this->f->student('Laras Wening Pangestu', 'XI-G', disabled: true);
+    $this->f->prestasi($laras, $this->f->lomba('Olimpiade Riset Nasional 2026', Bidang::Riset, Level::Nasional, '2026-08-01'), ResultType::Juara1);
+
+    Livewire::actingAs($this->nadia->user)->test(Peringkat::class)
+        ->assertDontSee('Laras Wening Pangestu')
+        ->assertDontSee('Siswa kelas XI')
+        ->assertViewHas('me', fn (array $me): bool => $me['rank'] === 4);
 });
 
 it('recomputes the own rank under the bidang and angkatan filters', function (): void {
@@ -124,7 +132,7 @@ it('offers only the angkatan of active students and links to the public alumni r
         ->assertViewHas('angkatanOptions', fn (array $options): bool => array_keys($options) === [2026, 2025, 2024])
         ->assertViewHas('publicUrl', route('public.peringkat', ['status' => 'alumni']))
         ->assertDontSee('Ardiansyah Nur Hakim')
-        ->assertDontSee('XII-3');
+        ->assertDontSee('XII-C');
 });
 
 it('ignores unknown filter values', function (): void {
@@ -141,14 +149,14 @@ it('marks the own class in kelas mode', function (): void {
     Livewire::actingAs($this->nadia->user)->test(Peringkat::class)
         ->call('pilihMode', 'kelas')
         ->assertSee('Kelasmu')
-        ->assertViewHas('me', fn (array $me): bool => $me['kelas'] === 'XI-4' && $me['me'] === true);
+        ->assertViewHas('me', fn (array $me): bool => $me['kelas'] === 'XI-D' && $me['me'] === true);
 });
 
 it('keeps the own row on screen when it is below the shown part', function (): void {
     $lomba = $this->f->lomba('Olimpiade Riset Nasional 2026', Bidang::Riset, Level::Nasional, '2026-08-01');
 
     foreach (range(1, Peringkat::STEP) as $i) {
-        $this->f->prestasi($this->f->student('Siswa Contoh '.$i, 'X-1'), $lomba, ResultType::Juara1); // 80 each
+        $this->f->prestasi($this->f->student('Siswa Contoh '.$i, 'X-A'), $lomba, ResultType::Juara1); // 80 each
     }
 
     Livewire::actingAs($this->nadia->user)->test(Peringkat::class)
@@ -158,7 +166,7 @@ it('keeps the own row on screen when it is below the shown part', function (): v
 });
 
 it('shows an empty personal card for a student without verified achievements', function (): void {
-    $hana = $this->f->student('Hana Safira', 'X-8', consent: false);
+    $hana = $this->f->student('Hana Safira', 'X-H');
 
     Livewire::actingAs($hana->user)->test(Peringkat::class)
         ->assertSee('Belum ada prestasi terverifikasi.')

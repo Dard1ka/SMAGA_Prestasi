@@ -138,7 +138,7 @@ it('shows status and "Lihat" of an own proposal without a sideways scroll on a p
 it('says the invitation of a member waits for Kesiswaan when the lomba still waits (LOMBA-04)', function (): void {
     $own = F::pendingCompetition($this->nadiaUser, F::usulanAttributes(['name' => 'Lomba Tim Usulan Fiktif', 'participation' => Participation::Tim, 'max_team_size' => 3]));
     $published = F::teamCompetition(3, ['name' => 'Lomba Tim Terbit Fiktif']);
-    $dimas = F::student('Dimas Arya Nugroho', 'XI-4');
+    $dimas = F::student('Dimas Arya Nugroho', 'XI-D');
 
     Livewire::actingAs($this->nadiaUser)->test(PendaftaranForm::class, ['competitionId' => $own->getKey()])
         ->set('type', 'tim')->set('q', 'Dimas')->call('tambah', $dimas->getKey())
@@ -179,7 +179,7 @@ it('shows the current stage instead of pending steps once the lomba ran (LOMBA-0
         ->assertSee('Laporkan hasil')->assertSee('Segera laporkan hasil lombamu.')
         // An individu registration hears nothing about a team.
         ->assertDontSee('Setiap anggota tim')
-        ->assertSeeHtml('href="'.route('siswa.lapor', $registration).'"')
+        ->assertSeeHtml('href="'.route('siswa.lomba-saya.show', ['registration' => $registration, 'lapor' => 1]).'#lapor-judul'.'"')
         // Both earlier steps are done (check marks), no pending number left.
         ->assertDontSeeHtml('<span class="num">1</span>')
         ->assertDontSeeHtml('<span class="num">2</span>');
@@ -188,7 +188,7 @@ it('shows the current stage instead of pending steps once the lomba ran (LOMBA-0
 it('asks for the corrected report, and tells a member that the ketua reports (LOMBA-06)', function (): void {
     $lomba = F::teamCompetition(3, ['name' => 'Lomba Tim Fiktif 2026']);
     $registration = fs1qaRegistration($lomba, $this->nadia, RegistrationStatus::MenungguLaporan, RegistrationType::Tim);
-    $dimas = F::student('Dimas Arya Nugroho', 'XI-4');
+    $dimas = F::student('Dimas Arya Nugroho', 'XI-D');
     $member = new RegistrationMember(['registration_id' => $registration->getKey(), 'student_id' => $dimas->getKey(), 'invited_at' => now()]);
     $member->forceFill(['role' => MemberRole::Anggota, 'confirmed_at' => now()])->save();
 
@@ -198,12 +198,12 @@ it('asks for the corrected report, and tells a member that the ketua reports (LO
     Livewire::actingAs($this->nadiaUser)->test(PendaftaranForm::class, ['competitionId' => $lomba->getKey()])
         ->assertSee('Laporan hasil perlu diperbaiki')
         ->assertSee('Perbaiki laporan')
-        ->assertSeeHtml('href="'.route('siswa.lapor', $registration).'"');
+        ->assertSeeHtml('href="'.route('siswa.lomba-saya.show', ['registration' => $registration, 'lapor' => 1]).'#lapor-judul'.'"');
 
     Livewire::actingAs(F::user($dimas))->test(PendaftaranForm::class, ['competitionId' => $lomba->getKey()])
         ->assertSee('Kamu sudah terdaftar')
         ->assertSee('Ketua tim memperbaiki laporan dari akunnya.')
-        ->assertDontSeeHtml('href="'.route('siswa.lapor', $registration).'"');
+        ->assertDontSeeHtml('href="'.route('siswa.lomba-saya.show', ['registration' => $registration, 'lapor' => 1]).'#lapor-judul'.'"');
 });
 
 it('marks the surat tugas step done once the letters are out, and names the running lomba (LOMBA-06)', function (): void {

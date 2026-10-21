@@ -1,8 +1,8 @@
 {{--
     Level 3 of the drill-down and /prestasi/siswa/{slug}: student header (total points, rank) + every
-    verified achievement sorted by points. Data: PublicAchievements::studentDetail() (consenting students
+    verified achievement sorted by points. Data: PublicAchievements::studentDetail() (named students
     only). Certificates: a `files.public` link only when FilePolicy::viewPublic allows it (Admin switch +
-    publish consent of every team member, decided in PublicAchievements), else just the badge.
+    every team member named, decided in PublicAchievements), else just the badge.
 
     @include('livewire.publik.partials.siswa-detail', ['detail' => $detail, 'level' => 1])
     level: heading level of the student name (1 on the student page, 2 inside Prestasi per bidang)
@@ -54,7 +54,7 @@
 
     <ul class="m-0 flex list-none flex-col gap-2 p-0">
         @foreach ($detail['achievements'] as $item)
-            <li wire:key="ach-{{ $loop->index }}-{{ $item['competition'] }}" class="grid gap-3 rounded-card border border-line bg-surface px-3.5 py-3 sm:grid-cols-[48px_minmax(0,1fr)_auto] sm:items-start">
+            <li wire:key="ach-{{ $loop->index }}-{{ $item['competition'] }}" class="grid grid-cols-1 gap-3 rounded-card border border-line bg-surface px-3.5 py-3 sm:grid-cols-[48px_minmax(0,1fr)_auto] sm:items-start">
                 <span class="hidden sm:block"><x-sth.bidang-tile :bidang="$item['bidang']" /></span>
                 <div class="flex min-w-0 flex-col gap-1 [overflow-wrap:anywhere]">
                     <{{ $hItem }} class="m-0 text-md leading-5 font-bold">

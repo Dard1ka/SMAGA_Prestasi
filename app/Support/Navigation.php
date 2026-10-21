@@ -429,6 +429,8 @@ final class Navigation
                     ['label' => 'Data', 'items' => [
                         // FS1 (D-135): same screen as Kesiswaan, allowed by role:kesiswaan|admin.
                         ['key' => 'prestasi', 'label' => 'Database prestasi', 'icon' => 'database', 'route' => ['kesiswaan.prestasi.index'], 'match' => ['kesiswaan.prestasi*']],
+                        // Admin\Kelas: the classes the import may put students into (add, rename, delete).
+                        ['key' => 'kelas', 'label' => 'Kelas', 'icon' => 'folder', 'route' => ['admin.kelas.index'], 'match' => ['admin.kelas*']],
                         ['key' => 'import', 'label' => 'Import siswa', 'icon' => 'upload', 'route' => ['admin.import']],
                         ['key' => 'pengguna', 'label' => 'Pengguna & peran', 'icon' => 'users', 'route' => ['admin.pengguna.index', 'admin.pengguna'], 'match' => ['admin.pengguna*']],
                         // B1 (K9/K2/K1): activation report + activation window setting.
@@ -631,7 +633,7 @@ final class Navigation
     }
 
     /**
-     * Class name for the siswa user card ("Siswa · XI-4"). Loads the relation explicitly so strict
+     * Class name for the siswa user card ("Siswa · XI-D"). Loads the relation explicitly so strict
      * mode (no lazy loading) is respected; returns null while the relation does not exist yet.
      *
      * @param  object|array<string, mixed>|null  $user

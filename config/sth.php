@@ -33,4 +33,11 @@ return [
     */
     'initial_student_password' => InitialPassword::normalize(env('STH_INITIAL_STUDENT_PASSWORD')),
 
+    /*
+    | Developer pages under /_dev (component showcase, routes/dev.php). Loaded only when APP_ENV=local AND this is true
+    | (bootstrap/app.php); false = every /_dev address answers 404 on a local stack too (a demo shown to other people).
+    | Default true. Never loaded outside APP_ENV=local, whatever this says. After a change: reload.bat.
+    */
+    'dev_pages' => (bool) env('STH_DEV_PAGES', true),
+
 ];

@@ -12,6 +12,7 @@ use App\Actions\Fortify\KnownDevices;
 use App\Actions\Fortify\LoginIdentifier;
 use App\Actions\Fortify\LoginResponse;
 use App\Actions\Fortify\TwoFactorChallenge;
+use App\Http\Middleware\EnsureStaffTwoFactor;
 use App\Http\Middleware\RememberLoggedOutAccount;
 use App\Http\Middleware\RestrictTwoFactorToStaff;
 use App\Models\User;
@@ -101,9 +102,11 @@ class FortifyServiceProvider extends ServiceProvider
         // lockout lives in AuthenticateUser. AuthenticateUser memoises its result, so running it from both
         // RedirectIfTwoFactorAuthenticatable and AttemptToAuthenticate checks the password only once.
         // TOTP is staff only (RestrictTwoFactorToStaff): once the password is accepted, a student account goes
-        // straight on, so a secret left on it can never hold the student at /two-factor-challenge.
+        // straight on, so a secret left on it can never hold the student at /two-factor-challenge. With STH_STAFF_2FA=false
+        // (EnsureStaffTwoFactor::featureEnabled()) nobody is asked: a confirmed secret is ignored, password only (the
+        // challenge route does not exist then; RedirectIfTwoFactorAuthenticatable itself does not look at the feature).
         Fortify::authenticateThrough(fn (Request $request) => [
-            fn (Request $request, Closure $next) => RestrictTwoFactorToStaff::allows($authenticate($request))
+            fn (Request $request, Closure $next) => EnsureStaffTwoFactor::featureEnabled() && RestrictTwoFactorToStaff::allows($authenticate($request))
                 ? app(RedirectIfTwoFactorAuthenticatable::class)->handle($request, $next)
                 : $next($request),
             AttemptToAuthenticate::class,

@@ -29,7 +29,8 @@ it('lists pending lomba in the catalog oldest first, between open and closed lom
         ->assertSeeInOrder(['Lomba Terbuka', 'Usulan Lama', 'Usulan Baru', 'Lomba Selesai']);
 })->with(['kesiswaan', 'admin']);
 
-it('keeps the verification queue oldest first', function (): void {
+// UX2 (the lead, 2026-10-20): the verification queue lists the newest usulan first (the catalog keeps D-135).
+it('lists the verification queue newest first', function (): void {
     Livewire::withQueryParams(['tab' => 'verifikasi'])->actingAs($this->kesiswaan)->test(Index::class)
-        ->assertSeeInOrder(['Usulan Lama', 'Usulan Baru']);
+        ->assertSeeInOrder(['Usulan Baru', 'Usulan Lama']);
 });

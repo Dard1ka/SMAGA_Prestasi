@@ -68,9 +68,9 @@ it('names BUMD under category B in the drawer legend (BUG-LOMBA-12)', function (
 
 it('offers only the kelas X classes on "Belum mengisi (kelas X)" (BUG-N2)', function (): void {
     $this->seed(TalentSeeder::class);
-    F::student('Gita Permata', 'X-2');
-    $xi = Classroom::query()->where('name', 'XI-2')->first() ?? Classroom::factory()->level(11)->create(['name' => 'XI-2']);
-    Classroom::query()->where('name', 'XII-1')->first() ?? Classroom::factory()->level(12)->create(['name' => 'XII-1']);
+    F::student('Gita Permata', 'X-B');
+    $xi = Classroom::query()->where('name', 'XI-B')->first() ?? Classroom::factory()->level(11)->create(['name' => 'XI-B']);
+    Classroom::query()->where('name', 'XII-A')->first() ?? Classroom::factory()->level(12)->create(['name' => 'XII-A']);
 
     $semua = Livewire::actingAs($this->kesiswaan)->test(Talenta::class);
     expect(array_keys($semua->viewData('classes')))->toContain('Kelas X', 'Kelas XI', 'Kelas XII');
@@ -79,7 +79,7 @@ it('offers only the kelas X classes on "Belum mengisi (kelas X)" (BUG-N2)', func
     expect(array_keys($belum->viewData('classes')))->toBe(['Kelas X']);
 
     $html = fs1qa2StaffPlain($belum->html());
-    expect($html)->toContain('X-2')->not->toContain('XI-2')->not->toContain('XII-1');
+    expect($html)->toContain('X-B')->not->toContain('XI-B')->not->toContain('XII-A');
 
     // A class outside kelas X can never match this tab: it is dropped, not shown as an empty result.
     $belum->set('kelas', (string) $xi->getKey())
@@ -101,7 +101,7 @@ it('offers only the kelas X classes on "Belum mengisi (kelas X)" (BUG-N2)', func
 
 it('gives the eye button of Database talenta siswa a cell it fits in (BUG-N3)', function (): void {
     $this->seed(TalentSeeder::class);
-    $student = F::student('Kirana Ayu Lestari', 'X-2');
+    $student = F::student('Kirana Ayu Lestari', 'X-B');
     $row = new TalentApplication;
     $row->forceFill([
         'student_id' => $student->getKey(),

@@ -80,14 +80,14 @@ function m1aLayoutPdf(string $view, LetterContent $content, string $number): Pdf
 
 // What a letter prints -------------------------------------------------------------------------------
 
-it('prints students the way the school does: capitals, "XI - 4", ketua first', function (): void {
+it('prints students the way the school does: capitals, "XI - D", ketua first', function (): void {
     $content = m1aLayoutContent($this);
 
     expect(array_column($content->students, 'name'))->toBe(['RAKA PRADIPTA', 'BIMA SATRIA WICAKSONO', 'YOGA PRATAMA'])
-        ->and(array_column($content->students, 'class'))->toBe(['XI - 4', 'XI - 4', 'XI - 4'])
+        ->and(array_column($content->students, 'class'))->toBe(['XI - D', 'XI - D', 'XI - D'])
         ->and(array_column($content->students, 'no'))->toBe([1, 2, 3])
-        ->and(LetterContent::classLabel('XII-10'))->toBe('XII - 10')
-        ->and(LetterContent::classLabel('X - 3'))->toBe('X - 3')
+        ->and(LetterContent::classLabel('XII-J'))->toBe('XII - J')
+        ->and(LetterContent::classLabel('X - C'))->toBe('X - C')
         ->and(LetterContent::classLabel('Kelas khusus'))->toBe('Kelas khusus');
 });
 
@@ -208,7 +208,7 @@ it('lays the student letter out like the school sheet', function (): void {
         ->toContain('<th class="no">NO</th>')
         ->toContain('NAMA MURID')
         ->toContain('<td class="nama">RAKA PRADIPTA</td>')
-        ->toContain('<td class="kelas">XI - 4</td>')
+        ->toContain('<td class="kelas">XI - D</td>')
         ->toContain('untuk mengikuti Lomba National Science and Invention Fair (NSIF) 2026, pada :')
         ->toContain('<td class="awal">7 November 2026</td>')
         ->toContain('<td class="sd">s.d</td>')

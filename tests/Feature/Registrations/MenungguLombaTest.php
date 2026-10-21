@@ -35,8 +35,8 @@ beforeEach(function (): void {
     $this->kepsek = F::staff(RoleName::KepalaSekolah, 'Kepala Sekolah Contoh');
     $this->nadia = F::student();
     $this->nadiaUser = F::user($this->nadia);
-    $this->rizky = F::student('Rizky Maulana', 'XI-1');
-    $this->dimas = F::student('Dimas Arya Nugroho', 'XI-4');
+    $this->rizky = F::student('Rizky Maulana', 'XI-A');
+    $this->dimas = F::student('Dimas Arya Nugroho', 'XI-D');
 });
 
 /** Nadia's queued team lomba (max 3) with her waiting team registration: Nadia ketua, Rizky anggota. */

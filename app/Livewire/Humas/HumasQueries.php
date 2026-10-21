@@ -20,7 +20,7 @@ use Illuminate\Database\Eloquent\Builder;
 /**
  * Shared queries + small formatters of the Humas screens (W2-C helper). The queue only shows
  * publications of verified achievements whose student may be named (mirrors PublicationPolicy::eligible();
- * SECURITY §3m-7; QA10: NamedStudent, so a disabled or deleted student leaves the queue like one without consent).
+ * QA10: NamedStudent, so a disabled or deleted student leaves the queue; no consent condition since D-162).
  */
 final class HumasQueries
 {
@@ -51,13 +51,13 @@ final class HumasQueries
     }
 
     /**
-     * Case-insensitive filter on student name or competition name. With $consentingNamesOnly a student
-     * without publish consent is not found by name (Arsip shows such a row without the name, so the search
-     * must not confirm it either).
+     * Case-insensitive filter on student name or competition name. With $namedOnly a student NamedStudent leaves
+     * out (disabled or deleted account) is not found by name (Arsip shows such a row without the name, so the
+     * search must not confirm it either).
      *
      * @param  Builder<Publication>  $query
      */
-    public static function search(Builder $query, string $term, bool $consentingNamesOnly = false): void
+    public static function search(Builder $query, string $term, bool $namedOnly = false): void
     {
         $term = trim($term);
 
@@ -69,13 +69,13 @@ final class HumasQueries
 
         $query->whereHas('achievement', fn (Builder $a) => $a->where(fn (Builder $w) => $w
             ->whereHas('student', fn (Builder $s) => $s
-                ->when($consentingNamesOnly, fn (Builder $c) => $c->where('publish_consent', true))
+                ->when($namedOnly, fn (Builder $c) => NamedStudent::constrain($c))
                 ->whereHas('user', fn (Builder $u) => $u->where('name', 'like', $like)))
             ->orWhereHas('competition', fn (Builder $c) => $c->where('name', 'like', $like))));
     }
 
     /**
-     * Verified achievements with publish consent that may go on an appreciation event.
+     * Verified achievements of students who may be named (NamedStudent) that may go on an appreciation event.
      *
      * @return Builder<Achievement>
      */
@@ -83,13 +83,13 @@ final class HumasQueries
     {
         return Achievement::query()
             ->whereNotNull('verified_at')
-            ->whereHas('student', fn (Builder $s) => $s->where('publish_consent', true));
+            ->whereHas('student', fn (Builder $s) => NamedStudent::constrain($s));
     }
 
     /**
      * Case-insensitive filter on student name or competition name for the picker "Tambah prestasi" (D-124), the
      * way search() filters publications: `%` and `_` are literal. Give it appreciableAchievements(): that query
-     * already demands publish consent, so a student without consent is never confirmed by name.
+     * already leaves out disabled or deleted students, so such a student is never confirmed by name.
      *
      * @param  Builder<Achievement>  $achievements
      */

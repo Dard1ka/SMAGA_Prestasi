@@ -10,7 +10,7 @@ use App\Models\User;
 
 /**
  * Prestasi (verified achievements, one row per team member). Deny by default.
- * Public pages do not use this policy: they read through their own consent-gated queries (D-16).
+ * Public pages do not use this policy: they read through their own queries (PublicAchievements, D-16).
  *
  * Owner of viewAny/view: W2-A2 (Portofolio). W2-B adds the Kesiswaan abilities (export, …) below the marker.
  */

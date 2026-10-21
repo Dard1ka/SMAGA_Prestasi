@@ -60,6 +60,10 @@ final class AuditLog extends Component
         'appreciation.list_printed' => 'Daftar apresiasi dicetak',
         'appreciation.released' => 'Prestasi dilepas dari acara',
         'student.class_changed' => 'Kelas siswa diperbarui',
+        // Admin › Kelas (App\Actions\Classrooms).
+        'classroom.created' => 'Kelas ditambahkan',
+        'classroom.renamed' => 'Nama kelas diganti',
+        'classroom.deleted' => 'Kelas dihapus',
         'student.phone_updated' => 'No HP siswa diperbarui',
         'student.profile_updated' => 'Data diri siswa diubah',
         'talent.restored' => 'Pengajuan talenta dipulihkan',
@@ -104,6 +108,7 @@ final class AuditLog extends Component
         'signature.replaced' => 'Tanda tangan diganti',
         'signature.removed' => 'Tanda tangan dihapus',
         'student.archive_date_changed' => 'Tanggal arsip diubah',
+        // Old rows only: nothing writes this event since D-162 (20 Okt 2026, consent removed).
         'student.consent_updated' => 'Persetujuan publikasi diubah',
         'student.import' => 'Impor siswa',
         'talent.exported' => 'Data talenta di-download',

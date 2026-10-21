@@ -1,6 +1,6 @@
 {{--
     Humas · Arsip foto (D-156). Data is prepared in App\Livewire\Humas\ArsipFoto: verified reports whose whole team may
-    be named and allows a photo, each with its photos. "Lihat" opens the preview popup (<x-sth.preview>), the href and
+    be named (no disabled or deleted account; no consent since D-162), each with its photos. "Lihat" opens the preview popup (<x-sth.preview>), the href and
     "Download" are the file itself (files.show, audited).
 --}}
 <div class="flex flex-col gap-4">
@@ -11,7 +11,7 @@
 
     @if ($hidden > 0)
         <p class="m-0 text-xs text-muted">
-            {{ $hidden }} laporan tidak ditampilkan karena ada siswa yang tidak mengizinkan fotonya dipakai atau namanya dipublikasikan.
+            {{ $hidden }} laporan tidak ditampilkan karena akun salah satu anggotanya nonaktif.
         </p>
     @endif
 

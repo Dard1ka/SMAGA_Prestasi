@@ -37,7 +37,7 @@ it('seeds reference data idempotently and without demo data outside local', func
     $this->seed(DatabaseSeeder::class);
     $this->seed(DatabaseSeeder::class);
 
-    expect(Classroom::query()->count())->toBe(36)
+    expect(Classroom::query()->count())->toBe(34)
         ->and(TalentType::query()->count())->toBe(7)
         ->and(TalentBranch::query()->count())->toBe(40)
         ->and(WeightVersion::query()->count())->toBe(1)

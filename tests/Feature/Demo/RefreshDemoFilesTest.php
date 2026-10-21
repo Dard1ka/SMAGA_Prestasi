@@ -184,7 +184,7 @@ it('works out the right document for every demo file from what it is attached to
         ->and($smp->data['name'])->toBe('Hana Safira')
         ->and($smp->data['affiliation'])->toBe('Peserta jenjang SMP, Kota Semarang')
         ->and($report->data['title'])->toBe('Bioplastik dari limbah kulit pisang untuk kemasan jajanan sekolah')
-        ->and($report->data['authors'])->toBe([['name' => 'Keisha Larasati', 'nis' => '225226166', 'class' => 'XI-6']])
+        ->and($report->data['authors'])->toBe([['name' => 'Keisha Larasati', 'nis' => '225226166', 'class' => 'XI-F']])
         ->and($report->data['mentor'])->toBe('Retno Wulandari, S.Pd.')
         ->and($report->data['competition'])->toBe('Lomba Karya Tulis Ilmiah Remaja Jawa Tengah 2026')
         ->and($team->data['name'])->toBe('Yoga Pratama')

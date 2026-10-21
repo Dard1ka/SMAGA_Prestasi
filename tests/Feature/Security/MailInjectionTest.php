@@ -106,7 +106,7 @@ function mailInjectionCase(string $kind, string $hostile): array
         ],
         'peringatan akun' => [
             F::staff(RoleName::Admin),
-            new AccountAlert('account.frozen', 'Akun dibekukan', [$hostile.' (XI-4) dibekukan setelah 10 kali gagal masuk.']),
+            new AccountAlert('account.frozen', 'Akun dibekukan', [$hostile.' (XI-D) dibekukan setelah 10 kali gagal masuk.']),
         ],
     };
 }
@@ -179,7 +179,7 @@ it('keeps a signed action URL and punctuation in the texts intact', function ():
         [new EmailBindingNotice(EmailBindingNotice::CHANGED_OLD, "Ma'ruf", 'n•••@gmail.com', $url, 7), "Halo Ma'ruf,", 'baru saja diganti ke n•••@gmail.com.'],
         [new PasswordWasReset, 'Halo Nadia,', 'baru saja diganti lewat "Lupa kata sandi". Semua perangkat sudah dikeluarkan.'],
         [new LetterRevokedNotice('Ibu Siti', 'Surat Tugas', '400.3.8/313/MRD/X/2026', '400.3.8.6/14/2026', 'OSN', 'Salah tulis'), 'Penggantinya: nomor 400.3.8.6/14/2026.', 'Ibu Siti mencabut Surat Tugas nomor 400.3.8/313/MRD/X/2026 (OSN).'],
-        [new RoleChangeNotice(RoleChangeNotice::REQUESTED, 'Raka', 'Sari', 'Tata Usaha', '3 Okt 2026, 09.00'), 'Raka meminta peran Sari diubah menjadi Tata Usaha.', 'Jika keliru, minta Admin membatalkannya.'], // QA10: the reader here is no Admin
+        [new RoleChangeNotice(RoleChangeNotice::APPLIED, 'Raka', "Ma'ruf", 'Tata Usaha'), "Peran Ma'ruf sekarang Tata Usaha.", 'Pengguna perlu login ulang.'], // an old request that applied (since 21 Okt 2026 nothing new waits)
         [new SignatureReplaced('Raka'), 'Raka meng-upload gambar tanda tangan + stempel baru.', 'Jika tanpa persetujuan Kepala Sekolah, hubungi Admin sekarang.'],
     ];
 

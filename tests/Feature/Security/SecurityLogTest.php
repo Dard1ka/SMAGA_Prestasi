@@ -22,7 +22,7 @@ uses(RefreshDatabase::class);
 
 /*
  | Backlog #16: `security` log channel (daily, 90 days) fed by login failures/lockouts, OTP abuse, Admin
- | resets/archive/consent changes (activity rows) and every `security.*` message; OTP cleanup job.
+ | resets/archive changes (activity rows) and every `security.*` message; OTP cleanup job.
  */
 
 beforeEach(function (): void {
@@ -109,22 +109,22 @@ it('copies security.* messages of the default log (lockout, OTP test mode, …) 
         ->and(b2SecurityRecordsNamed('registration.created'))->toBe([]);
 });
 
-it('mirrors audited Admin actions (resets, archive, consent) with ids only, never the reason', function (): void {
+it('mirrors audited Admin actions (resets, archive dates) with ids only, never the reason', function (): void {
     $admin = H::staff(RoleName::Admin);
     $student = H::activeStudent();
 
     activity('account')->causedBy($admin)->performedOn($student->user)->event('account.reset')
         ->withProperties(['reason' => 'HP siswa hilang'])->log('account.reset');
-    activity('student')->causedBy($admin)->performedOn($student)->event('student.consent_updated')
-        ->withProperties(['note' => 'Surat orang tua'])->log('student.consent_updated');
+    activity('student')->causedBy($admin)->performedOn($student)->event('student.archive_date_changed')
+        ->withProperties(['note' => 'Surat orang tua'])->log('student.archive_date_changed');
     activity('registration')->causedBy($admin)->event('registration.created')->log('registration.created');
 
     $reset = b2SecurityRecordsNamed('security.audit.account.reset');
-    $consent = b2SecurityRecordsNamed('security.audit.student.consent_updated');
+    $archiveDate = b2SecurityRecordsNamed('security.audit.student.archive_date_changed');
 
     expect($reset)->toHaveCount(1)
         ->and($reset[0]['context'])->toMatchArray(['log' => 'account', 'causer_id' => $admin->getKey(), 'subject_type' => 'User', 'subject_id' => (string) $student->user_id])
-        ->and($consent)->toHaveCount(1)
+        ->and($archiveDate)->toHaveCount(1)
         ->and(b2SecurityRecordsNamed('security.audit.registration.created'))->toBe([])
         ->and(json_encode(b2SecurityRecords()))->not->toContain('HP siswa hilang')->not->toContain('Surat orang tua');
 });
@@ -214,14 +214,15 @@ it('schedules the OTP cleanup hourly and the audit seal + verify commands', func
         ->and($seal)->not->toBeNull();
 });
 
-it('treats account, role, archive, consent, settings and export events as security relevant', function (string $event, bool $audited): void {
+it('treats account, role, archive, settings and export events as security relevant', function (string $event, bool $audited): void {
     expect(SecurityEventSubscriber::isAuditedEvent($event))->toBe($audited);
 })->with([
     ['account.reset', true],
     ['account.unarchived', true],
     ['role.change_requested', true],
     ['student.archive_date_changed', true],
-    ['student.consent_updated', true],
+    // D-162: nothing writes a consent event any more.
+    ['student.consent_updated', false],
     ['signature.replaced', true],
     ['audit.exported', true],
     ['talent.exported', true],

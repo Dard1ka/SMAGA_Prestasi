@@ -97,17 +97,28 @@ final class DetermineActivationStep
 
     /**
      * Test mode leaves no verification timestamp, so the audit trail answers: the newest of "email bound" and
-     * "account reset" for this account is "email bound" (CompleteActivation::bindEmail).
+     * "account reset" for this account is "email bound" (CompleteActivation::bindEmail). Every student reset removes
+     * the email again (lead, 2026-10-21; `email_detached` true); a row of the password-only reset of D-158 (19–21 Oct,
+     * `email_detached` false) did not open the email step, so it does not count.
      */
     private static function boundInTestMode(User $user): bool
     {
-        $event = Activity::query()
+        $rows = Activity::query()
             ->where('subject_type', $user->getMorphClass())
             ->where('subject_id', (string) $user->getKey())
             ->whereIn('event', [CompleteActivation::EVENT_EMAIL_BOUND, ...self::EMAIL_STEP_REOPENED])
             ->latest('id')
-            ->value('event');
+            ->limit(20)
+            ->get(['id', 'event', 'properties']);
 
-        return $event === CompleteActivation::EVENT_EMAIL_BOUND;
+        foreach ($rows as $row) {
+            if ($row->event === 'account.reset' && $row->properties->get('email_detached') === false) {
+                continue;
+            }
+
+            return $row->event === CompleteActivation::EVENT_EMAIL_BOUND;
+        }
+
+        return false;
     }
 }

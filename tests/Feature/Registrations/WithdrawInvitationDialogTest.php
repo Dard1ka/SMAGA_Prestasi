@@ -35,8 +35,8 @@ beforeEach(function (): void {
     $this->guru = F::staff(RoleName::Guru);
     $this->kepsek = F::staff(RoleName::KepalaSekolah, 'Kepala Sekolah Contoh');
     $this->nadia = F::student();
-    $this->dimas = F::student('Dimas Arya Nugroho', 'XI-4');
-    $this->keisha = F::student('Keisha Larasati', 'XI-6');
+    $this->dimas = F::student('Dimas Arya Nugroho', 'XI-D');
+    $this->keisha = F::student('Keisha Larasati', 'XI-F');
 });
 
 /** Team registration of Nadia (ketua) with the given anggota invited. */
@@ -202,8 +202,8 @@ it('keeps the dialog state locked: the browser cannot name the invitation to wit
 
 it('opens no dialog for a row that is not an open invitation and names the reason (D-128)', function (): void {
     $lomba = F::teamCompetition(4);
-    $rizky = F::student('Rizky Maulana', 'XI-1');
-    $hana = F::student('Hana Safira', 'X-3');
+    $rizky = F::student('Rizky Maulana', 'XI-A');
+    $hana = F::student('Hana Safira', 'X-C');
     // Rizky has not answered, so the team keeps waiting and the ketua may still change it.
     $registration = d128Team($this, $lomba, [$this->dimas, $this->keisha, $rizky]);
     app(ConfirmMembership::class)->handle(F::user($this->dimas), $registration->fresh());

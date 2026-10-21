@@ -115,9 +115,8 @@ class Beranda extends Component
                 'title' => $registration->competition->name.' · laporan hasil',
                 'note' => ReportFollowUp::PROMPT,
                 'button' => 'Laporkan hasil',
-                'href' => $this->route('siswa.lapor', ['registration' => $registration->getKey()])
-                    ?? $this->route('siswa.lomba-saya.index')
-                    ?? route('siswa.beranda'),
+                // UX2: the yellow card of Lomba saya, already open (one place to report).
+                'href' => route('siswa.lomba-saya.show', ['registration' => $registration->getKey(), 'lapor' => 1]).'#lapor-judul',
             ];
         }
 

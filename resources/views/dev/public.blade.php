@@ -37,7 +37,7 @@
                 <th scope="col" class="w-28">Kelas</th>
                 <th scope="col" class="w-28 text-right">Poin</th>
             </x-slot:head>
-            @foreach ([['Raka Pradipta', 'XII-2', 312], ['Salsabila Kirana', 'XI-5', 268], ['Bima Satria Wicaksono', 'XII-7', 240], ['Aurelia Maharani', 'X-3', 196], ['Fajar Ramadhan', 'XII-1', 180]] as $i => [$name, $class, $points])
+            @foreach ([['Raka Pradipta', 'XII-B', 312], ['Salsabila Kirana', 'XI-E', 268], ['Bima Satria Wicaksono', 'XII-G', 240], ['Aurelia Maharani', 'X-C', 196], ['Fajar Ramadhan', 'XII-A', 180]] as $i => [$name, $class, $points])
                 <tr>
                     <td><span @class(['inline-flex size-[26px] items-center justify-center rounded-full text-xs font-bold', 'bg-medal text-ink' => $i === 0, 'bg-gray-bg text-gray' => $i > 0])>{{ $i + 1 }}</span></td>
                     <td><span class="flex items-center gap-2.5"><x-sth.avatar :name="$name" size="sm" /><span class="font-semibold">{{ $name }}</span></span></td>

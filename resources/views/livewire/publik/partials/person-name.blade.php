@@ -1,5 +1,5 @@
 {{--
-    Student name (or anonymous label). Consenting students with a public slug link to their page.
+    Student name (or anonymous label). Named students with a public slug link to their page.
 
     @include('livewire.publik.partials.person-name', ['person' => $row, 'class' => 'text-sm'])
     @include('livewire.publik.partials.person-name', ['person' => $row, 'wrap' => true])   table cells on phones

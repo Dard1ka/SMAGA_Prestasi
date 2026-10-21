@@ -51,6 +51,7 @@ enum Permission: string
     case UserResetPassword = 'user.reset_password';
     case UserArchive = 'user.archive';                      // manual disable/archive (D-30)
     case UserReplacePrincipal = 'user.replace_principal';   // D-01
+    case ClassroomManage = 'classroom.manage';              // kelola kelas: tambah, ganti nama, hapus (Admin only, Admin › Kelas)
 
     // Settings
     case WeightManage = 'weight.manage';

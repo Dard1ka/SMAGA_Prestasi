@@ -114,7 +114,7 @@ it('says on the screen that the period is too large for a PDF and shows the refu
 });
 
 it('loads the achievement rows once per redraw and lists the school years with a small query (QA10)', function (): void {
-    F::achievement(F::student('Raka Pradipta', 'XII-2'), finalOn: '2025-03-05', lomba: 'FIKSI 2025');
+    F::achievement(F::student('Raka Pradipta', 'XII-B'), finalOn: '2025-03-05', lomba: 'FIKSI 2025');
     F::achievement(F::student('Salsabila Kirana'), finalOn: '2026-09-24');
     $this->actingAs($this->kepsek);
 
@@ -128,7 +128,7 @@ it('loads the achievement rows once per redraw and lists the school years with a
 });
 
 it('lists the school years with achievements plus the current one, newest first (QA10)', function (): void {
-    F::achievement(F::student('Raka Pradipta', 'XII-2'), finalOn: '2025-03-05', lomba: 'FIKSI 2025');
+    F::achievement(F::student('Raka Pradipta', 'XII-B'), finalOn: '2025-03-05', lomba: 'FIKSI 2025');
     $noFinal = F::achievement(F::student('Salsabila Kirana'), finalOn: '2023-08-10');
     Competition::query()->whereKey($noFinal->competition_id)->update(['final_on' => null]); // falls back to verified_at
 

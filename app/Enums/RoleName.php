@@ -40,7 +40,8 @@ enum RoleName: string
     /**
      * Seeded permission set (RoleSeeder). Admin gets everything except approving registrations,
      * which stays with the Kepala Sekolah and Tata Usaha (D-01, D-150, CLAUDE.md §8). Only siswa (usulan) and Admin
-     * add a lomba (D-145); Kesiswaan checks, corrects and decides it.
+     * add a lomba (D-145); Kesiswaan checks, corrects and decides it. `classroom.manage` (Admin › Kelas) is Admin only:
+     * it comes with "everything" and no other role lists it.
      *
      * @return list<Permission>
      */

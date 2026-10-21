@@ -379,7 +379,7 @@ it('does not block editing a published lomba whose dates are over, and shows no 
 // Takes back Q1-18 / D-95 for a lomba rejection: no reason and a short one are both accepted.
 
 it('rejects a lomba without a reason or with a short one and still tells the submitter', function (?string $note, ?string $stored, string $body): void {
-    $siswa = F::student('Raka Pradipta', 'XII-2')->user;
+    $siswa = F::student('Raka Pradipta', 'XII-B')->user;
     $usulan = Competition::factory()->proposal()->create(['name' => 'ISPO 2027', 'submitted_by' => $siswa->getKey()]);
 
     app(VerifyCompetition::class)->handle($this->kesiswaan, $usulan, CompetitionStatus::Ditolak, $note);
@@ -395,7 +395,7 @@ it('rejects a lomba without a reason or with a short one and still tells the sub
 ]);
 
 it('still refuses a rejection reason longer than 1.000 characters', function (): void {
-    $siswa = F::student('Raka Pradipta', 'XII-2')->user;
+    $siswa = F::student('Raka Pradipta', 'XII-B')->user;
     $usulan = Competition::factory()->proposal()->create(['name' => 'ISPO 2027', 'submitted_by' => $siswa->getKey()]);
 
     expect(fn () => app(VerifyCompetition::class)->handle($this->kesiswaan, $usulan, CompetitionStatus::Ditolak, str_repeat('a', 1001)))
@@ -406,7 +406,7 @@ it('still refuses a rejection reason longer than 1.000 characters', function ():
 });
 
 it('sends a rejection from the queue card without a reason', function (): void {
-    $siswa = F::student('Raka Pradipta', 'XII-2')->user;
+    $siswa = F::student('Raka Pradipta', 'XII-B')->user;
     $usulan = Competition::factory()->proposal()->create(['name' => 'ISPO 2027', 'submitted_by' => $siswa->getKey()]);
 
     Livewire::withQueryParams(['tab' => 'verifikasi'])->actingAs($this->kesiswaan)->test(Index::class)
@@ -424,7 +424,7 @@ it('sends a rejection from the queue card without a reason', function (): void {
 });
 
 it('says the submitter gets the reason when one was typed on the queue card', function (): void {
-    $siswa = F::student('Raka Pradipta', 'XII-2')->user;
+    $siswa = F::student('Raka Pradipta', 'XII-B')->user;
     $usulan = Competition::factory()->proposal()->create(['name' => 'ISPO 2027', 'submitted_by' => $siswa->getKey()]);
 
     Livewire::withQueryParams(['tab' => 'verifikasi'])->actingAs($this->kesiswaan)->test(Index::class)
@@ -443,7 +443,7 @@ it('does not claim the submitter was told when nobody gets a notification', func
     if ($who === 'own entry') {
         $submitter = $this->kesiswaan;
     } else {
-        $submitter = F::student('Putri Maharani Kusuma', 'XII-1')->user;
+        $submitter = F::student('Putri Maharani Kusuma', 'XII-A')->user;
         $submitter->forceFill(['status' => 'archived'])->save();
     }
 

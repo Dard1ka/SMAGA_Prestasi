@@ -94,7 +94,7 @@
             </p>
         </div>
 
-        <div id="panel-surat" role="tabpanel" aria-labelledby="tab-{{ $model }}" class="grid items-start gap-[22px] xl:grid-cols-[minmax(0,1fr)_minmax(0,560px)]">
+        <div id="panel-surat" role="tabpanel" aria-labelledby="tab-{{ $model }}" class="grid grid-cols-1 items-start gap-[22px] xl:grid-cols-[minmax(0,1fr)_minmax(0,560px)]">
             <x-sth.card as="section" class="flex min-w-0 flex-col gap-5" aria-labelledby="h-data-surat">
                 <div class="flex flex-wrap items-baseline justify-between gap-2">
                     <h2 id="h-data-surat" class="title-card">
@@ -133,7 +133,7 @@
                             </x-sth.alert>
                         @endunless
 
-                        <div class="grid items-start gap-4 md:grid-cols-2">
+                        <div class="grid grid-cols-1 items-start gap-4 md:grid-cols-2">
                             <x-sth.input wire:model.live.debounce.500ms="{{ $model }}.nomor" :label="$revising ? 'Nomor surat baru' : 'Nomor surat'"
                                          placeholder="Ketik nomor lengkap" maxlength="64" autocomplete="off" class="num {{ $revising ? '' : 'md:col-span-2' }}"
                                          :hint="'Terakhir dipakai: '.($lastNumber ?? 'belum ada').'.'.($example ? ' Contoh: '.$example.'.' : '')" />
@@ -147,7 +147,7 @@
                         @if ($isGuru)
                             <fieldset class="m-0 flex flex-col gap-3 border-0 p-0">
                                 <legend class="mb-2 text-sm font-bold">Dasar <span class="muted font-medium">· Surat undangan lomba</span></legend>
-                                <div class="grid items-start gap-4 md:grid-cols-2">
+                                <div class="grid grid-cols-1 items-start gap-4 md:grid-cols-2">
                                     <x-sth.input wire:model.live.debounce.500ms="{{ $model }}.dasarDari" label="Surat dari" maxlength="200" class="md:col-span-2"
                                                  hint="Diisi dari penyelenggara lomba. Boleh diubah." />
                                     <x-sth.input wire:model.live.debounce.500ms="{{ $model }}.dasarNomor" label="Nomor surat undangan" optional maxlength="150" autocomplete="off" />
@@ -170,7 +170,7 @@
                             </div>
                             <fieldset class="m-0 flex flex-col gap-3 border-0 p-0">
                                 <legend class="mb-2 text-sm font-bold">Dasar 2 <span class="muted font-medium">· Surat undangan lomba</span></legend>
-                                <div class="grid items-start gap-4 md:grid-cols-2">
+                                <div class="grid grid-cols-1 items-start gap-4 md:grid-cols-2">
                                     <x-sth.input wire:model.live.debounce.500ms="{{ $model }}.dasarDari" label="Surat dari" optional maxlength="200" class="md:col-span-2"
                                                  hint="Diisi dari penyelenggara lomba. Kosongkan bila tidak ada surat undangan, surat siswa lalu hanya memuat Dasar 1." />
                                     <x-sth.input wire:model.live.debounce.500ms="{{ $model }}.dasarNomor" label="Nomor surat undangan" optional maxlength="150" autocomplete="off" />
@@ -181,7 +181,7 @@
 
                         <fieldset class="m-0 flex flex-col gap-3 border-0 p-0">
                             <legend class="mb-2 text-sm font-bold">Pelaksanaan <span class="muted font-medium">· Diisi dari data lomba</span></legend>
-                            <div class="grid items-start gap-4 md:grid-cols-2">
+                            <div class="grid grid-cols-1 items-start gap-4 md:grid-cols-2">
                                 <x-sth.input wire:model.live.debounce.500ms="{{ $model }}.hari" label="Hari" maxlength="150" />
                                 <x-sth.input wire:model.live.debounce.500ms="{{ $model }}.tanggal" label="Tanggal" maxlength="150"
                                              hint="Lebih dari sehari: 7 November 2026 s.d 9 November 2026." />
@@ -213,7 +213,7 @@
                         </div>
                     </form>
                 @else
-                    <dl class="m-0 grid gap-x-4 gap-y-2 sm:grid-cols-[160px_1fr]">
+                    <dl class="m-0 grid grid-cols-1 gap-x-4 gap-y-2 sm:grid-cols-[160px_1fr]">
                         <dt class="text-sm font-semibold text-muted">Nomor surat</dt>
                         <dd class="num m-0 text-sm font-bold">{{ $letter->full_number }}</dd>
                         <dt class="text-sm font-semibold text-muted">Tanggal surat</dt>

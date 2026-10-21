@@ -58,8 +58,8 @@ function qa10RegSiswaBoot(object $t): void
     $t->guru = F::staff(RoleName::Guru);
     $t->kesiswaan = F::staff(RoleName::Kesiswaan, 'Ibu Dwi Rahayu');
     $t->nadia = F::student();
-    $t->dimas = F::student('Dimas Arya Nugroho', 'XI-4');
-    $t->keisha = F::student('Keisha Larasati', 'XI-6');
+    $t->dimas = F::student('Dimas Arya Nugroho', 'XI-D');
+    $t->keisha = F::student('Keisha Larasati', 'XI-F');
     User::query()->whereKey([$t->nadia->user_id, $t->dimas->user_id, $t->keisha->user_id])->update(['tour_seen_at' => now()]);
 }
 

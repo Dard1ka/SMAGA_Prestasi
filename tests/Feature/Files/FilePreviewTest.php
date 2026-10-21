@@ -13,7 +13,6 @@ use App\Models\Registration;
 use App\Models\Report;
 use App\Models\ReportFile;
 use App\Models\Setting;
-use App\Models\Student;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
@@ -37,8 +36,8 @@ beforeEach(function (): void {
     F::boot();
 
     $this->kesiswaan = F::staff(RoleName::Kesiswaan);
-    $this->nadia = F::student('Nadia Putri Anindya', 'XI-4');
-    $this->dimas = F::student('Dimas Arya Nugroho', 'XI-4');
+    $this->nadia = F::student('Nadia Putri Anindya', 'XI-D');
+    $this->dimas = F::student('Dimas Arya Nugroho', 'XI-D');
     $this->report = F::pendingReport($this->nadia);
 });
 
@@ -237,7 +236,6 @@ it('never makes a file of the public route framable', function (string $mime, st
     $file = File::factory()->purpose(FilePurpose::ReportEvidence)->create(['mime' => $mime, 'owner_user_id' => $this->nadia->user_id]);
     Storage::disk('local')->put($file->path, M3C_PDF_BYTES);
     ReportFile::factory()->create(['report_id' => $report->getKey(), 'file_id' => $file->getKey(), 'kind' => ReportFileKind::Sertifikat]);
-    Student::query()->whereKey([$this->nadia->getKey(), $this->dimas->getKey()])->update(['publish_consent' => true]);
     Setting::put(SettingKey::PublicCertificates, true);
 
     $response = $this->get(m3cInline($file, 'files.public'));

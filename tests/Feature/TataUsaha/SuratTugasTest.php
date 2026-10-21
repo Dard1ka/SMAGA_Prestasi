@@ -702,8 +702,8 @@ it('shows an issued letter the way its PDF printed it, after the template, the s
         'kop_5' => 'Kode Pos 50999, Telepon 0000000',
     ]));
     Setting::put(SettingKey::SignerName, 'Plt. Kepala Sekolah Baru, S.Pd.');
-    // The yearly import moves the whole team (they were all in XI-4 when the letter was made).
-    $xii9 = Classroom::factory()->level(12)->create(['name' => 'XII-9']);
+    // The yearly import moves the whole team (they were all in XI-D when the letter was made).
+    $xii9 = Classroom::factory()->level(12)->create(['name' => 'XII-I']);
     Student::query()->update(['classroom_id' => $xii9->getKey()]);
 
     Livewire::actingAs($this->tu)->test(SuratTugas::class, ['registration' => $registration])
@@ -713,8 +713,8 @@ it('shows an issued letter the way its PDF printed it, after the template, the s
         ->assertDontSee('Kode Pos 50999')
         ->assertSee('Drs. Bambang Hartono, M.Pd.')
         ->assertDontSee('Plt. Kepala Sekolah Baru')
-        ->assertSee('XI - 4')
-        ->assertDontSee('XII - 9');
+        ->assertSee('XI - D')
+        ->assertDontSee('XII - I');
 });
 
 it('does not claim to show the PDF for a letter issued before STH kept what it printed', function (): void {

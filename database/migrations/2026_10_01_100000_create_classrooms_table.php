@@ -12,7 +12,7 @@ return new class extends Migration
     {
         Schema::create('classrooms', function (Blueprint $table) {
             $table->ulid('id')->primary();
-            $table->string('name', 20)->unique();          // X-1, X-TAHFIDZ, X-OLIMP, XI-12, XII-3
+            $table->string('name', 20)->unique();          // X-A, X-TAHFIDZ, X-OLIMP, XI-L, XII-C (numbered before D-165)
             $table->unsignedTinyInteger('level')->index();  // 10, 11, 12
             $table->boolean('active')->default(true);
             $table->timestamps();

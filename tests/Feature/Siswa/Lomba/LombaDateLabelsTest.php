@@ -92,7 +92,7 @@ it('uses the same labels on the team invitation', function (): void {
         'registration_opens_at' => '2026-10-12 00:00:00', 'registration_closes_at' => '2026-10-30 23:59:59',
         'starts_on' => '2026-11-08', 'final_on' => '2026-11-10', 'participation' => Participation::Tim,
     ]);
-    $leader = F::student('Dimas Arya Nugroho', 'XI-4');
+    $leader = F::student('Dimas Arya Nugroho', 'XI-D');
     $registration = Registration::factory()->create([
         'competition_id' => $c->getKey(),
         'leader_student_id' => $leader->getKey(),

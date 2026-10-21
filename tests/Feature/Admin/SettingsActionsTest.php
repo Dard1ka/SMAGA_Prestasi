@@ -54,7 +54,7 @@ function sthPngUpload(string $name = 'ttd.png', int $width = 64, int $height = 3
 // Arsip akun (tab key `batas`) ------------------------------------------------------------------------------
 
 it('updates the archive months and recalculates archive dates', function (): void {
-    $class = Classroom::factory()->level(12)->create(['name' => 'XII-2']);
+    $class = Classroom::factory()->level(12)->create(['name' => 'XII-B']);
     $current = Student::factory()->create(['classroom_id' => $class->id, 'grade12_start_date' => '2026-07-01', 'archive_at' => '2028-01-01']);
     $alumni = Student::factory()->archived()->create(['classroom_id' => $class->id, 'grade12_start_date' => '2023-07-01', 'archive_at' => '2025-01-01']);
 

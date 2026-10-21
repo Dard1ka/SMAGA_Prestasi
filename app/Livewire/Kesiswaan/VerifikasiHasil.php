@@ -227,7 +227,9 @@ class VerifikasiHasil extends Component
             // Only the members still in the team, as the detail and RecordAchievements count them (QA8).
             ->with(['registration' => fn ($q) => $q->withTrashed()->with(['competition' => fn ($c) => $c->withTrashed(), 'leader.user', 'leader.classroom'])
                 ->withCount(['members' => fn ($m) => $m->whereNull('declined_at')])])
-            ->orderBy('submitted_at');
+            // UX2 (the lead, 2026-10-20): newest report first (also for Humas, the same screen); the first opens itself.
+            ->orderByDesc('submitted_at')
+            ->orderByDesc('id');
     }
 
     /** @return array<string, mixed> */

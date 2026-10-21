@@ -32,7 +32,7 @@ beforeEach(function (): void {
     $this->nadia->forceFill(['phone' => '081211112222', 'birth_date' => '2010-03-14'])->save();
     $this->nadia = $this->nadia->fresh(['user', 'classroom']);
     $this->nadiaUser = F::user($this->nadia);
-    $this->rizky = F::student('Rizky Maulana', 'XI-1');
+    $this->rizky = F::student('Rizky Maulana', 'XI-A');
     // Two different birth dates: Undangan tim shows the invitee's own (FS1 QA round 2), never the ketua's.
     $this->rizky->forceFill(['birth_date' => '2010-11-02'])->save();
     $this->rizkyUser = F::user($this->rizky);
@@ -42,7 +42,7 @@ it('shows the read-only data from the account and the phone field', function ():
     $lomba = F::openCompetition();
 
     Livewire::actingAs($this->nadiaUser)->test(PendaftaranForm::class, ['competitionId' => $lomba->getKey()])
-        ->assertSee('Data peserta')->assertSee('Nadia Putri Anindya')->assertSee('XI-4')->assertSee($this->nadia->nisn)
+        ->assertSee('Data peserta')->assertSee('Nadia Putri Anindya')->assertSee('XI-D')->assertSee($this->nadia->nisn)
         ->assertSee($this->nadia->birth_date->locale('id')->translatedFormat('j F Y'))->assertSee('Data salah? Hubungi Kesiswaan.')
         ->assertSee('No HP')->assertSee('Contoh 081234567890.')
         ->assertSet('phone', '081211112222');

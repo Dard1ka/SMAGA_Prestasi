@@ -25,8 +25,8 @@ use Tests\Feature\Siswa\Lomba\LombaFixtures as F;
 
 /*
 | QA9: `files.public` (FilePolicy::viewPublic, D-39) serves a verified certificate only while every member of the
-| registration may appear by name on the public pages: publish consent AND an account that is not disabled and not
-| deleted, the rule PublicAchievements uses for "named" (an archived alumnus with consent stays named). A team
+| registration may appear by name on the public pages: an account that is not disabled and not
+| deleted, the rule PublicAchievements uses for "named" (an archived alumnus stays named; no consent since D-162). A team
 | certificate prints every member's name, so one disabled or deleted teammate hides it. The answer is never indexed.
 */
 
@@ -52,7 +52,6 @@ function qa9PublicCertificate(Student ...$members): File
     $file = File::factory()->purpose(FilePurpose::ReportEvidence)->create(['owner_user_id' => $members[0]->user_id]);
     Storage::disk('local')->put($file->path, '%PDF-1.4');
     ReportFile::factory()->create(['report_id' => $report->getKey(), 'file_id' => $file->getKey()]);
-    Student::query()->whereKey(array_map(fn (Student $s): string => $s->getKey(), $members))->update(['publish_consent' => true]);
 
     return $file;
 }
@@ -66,7 +65,7 @@ function qa9MemberGoes(Student $student, string $how): void
     };
 }
 
-it('stops serving a team certificate once a teammate with consent is disabled or deleted (QA9)', function (string $how): void {
+it('stops serving a team certificate once a teammate is disabled or deleted (QA9)', function (string $how): void {
     $file = qa9PublicCertificate($this->nadia, $this->dimas);
     $this->get(route('files.public', $file))->assertOk();
 
@@ -84,12 +83,23 @@ it('stops serving the own certificate of a student who is disabled or deleted (Q
     $this->get(route('files.public', $file))->assertNotFound();
 })->with(['disabled account', 'deleted account', 'deleted student record']);
 
-it('keeps serving the certificate of an alumnus or a not yet activated teammate with consent (QA9)', function (UserStatus $status): void {
+it('keeps serving the certificate of an alumnus or a not yet activated teammate (QA9)', function (UserStatus $status): void {
     $file = qa9PublicCertificate($this->nadia, $this->dimas);
     User::query()->whereKey($this->dimas->user_id)->update(['status' => $status->value]);
 
     $this->get(route('files.public', $file))->assertOk();
 })->with([UserStatus::Archived, UserStatus::PendingActivation]);
+
+it('serves a team certificate whatever the old consent columns say, and only while the Admin switch is on (D-162)', function (): void {
+    $file = qa9PublicCertificate($this->nadia, $this->dimas);
+    Student::query()->whereKey([$this->nadia->getKey(), $this->dimas->getKey()])->update(['publish_consent' => false, 'photo_consent' => false]);
+
+    $this->get(route('files.public', $file))->assertOk();
+
+    Setting::put(SettingKey::PublicCertificates, false);
+
+    $this->get(route('files.public', $file))->assertNotFound();
+});
 
 it('tells search engines not to index a public certificate (QA9)', function (): void {
     $file = qa9PublicCertificate($this->nadia, $this->dimas);
@@ -107,8 +117,8 @@ it('drops the certificate link from the public student page once a teammate is d
     $this->withoutVite();
     $this->travelTo(now()->setDate(2026, 10, 1)->setTime(10, 0));
     $f = new PublikFixtures;
-    $keisha = $f->student('Keisha Larasati', 'XI-6');
-    $citra = $f->student('Citra Ayu Lestari', 'XI-2');
+    $keisha = $f->student('Keisha Larasati', 'XI-F');
+    $citra = $f->student('Citra Ayu Lestari', 'XI-B');
     $lkti = $f->lomba('LKTI Nasional 2026', Bidang::Riset, Level::Nasional, '2026-08-20');
     $f->prestasi($keisha, $lkti, ResultType::Juara1);
     $f->prestasi($citra, $lkti, ResultType::Juara1);

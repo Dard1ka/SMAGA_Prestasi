@@ -103,8 +103,8 @@
             @endif
         </x-sth.card>
 
-        @if ($isStaff)
-            {{-- Verifikasi dua langkah (staf) --}}
+        @if ($showTwoFactor)
+            {{-- Verifikasi dua langkah (staf; absent while STH_STAFF_2FA=false) --}}
             <x-sth.card as="section" aria-labelledby="h-2fa" class="flex flex-col gap-4">
                 <x-sth.page-header id="h-2fa" title="Verifikasi dua langkah" subtitle="Kode dari aplikasi autentikator setiap kali masuk." />
                 <div class="flex flex-wrap items-center justify-between gap-3">

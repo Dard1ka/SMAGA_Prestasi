@@ -1,12 +1,12 @@
 {{--
     Initials avatar (first + last name word, honorifics/degrees skipped: "Ibu Dwi Rahayu" → DR).
-    A photo is shown only when the caller passes `src` — callers must check photo_consent first
-    (DESIGN-SPEC-v2 §1.12); otherwise initials.
+    A photo is shown only when the caller passes `src`; otherwise initials. Public pages never pass one
+    (no student photo there; the consent flag is gone since D-162).
 
     <x-sth.avatar name="Nadia Putri Anindya" />                 decorative (name is next to it)
     <x-sth.avatar name="Nadia Putri Anindya" size="lg" labelled /> role="img" aria-label (stand-alone)
 
-    Props: name · size xs (28) | sm (32) | md (38, default) | lg (40) | xl (48) · src (consented photo URL)
+    Props: name · size xs (28) | sm (32) | md (38, default) | lg (40) | xl (48) · src (photo URL)
            (initials are 13px even in the smallest avatar: nothing on screen is smaller, DESIGN-SPEC-v3 §2)
            labelled (announce the name; default decorative)
 --}}

@@ -57,7 +57,7 @@ it('says a member of a team that waits for its lomba is invited after the verifi
     $own = F::pendingCompetition($this->nadiaUser, F::usulanAttributes([
         'name' => 'Lomba Tim Usulan Fiktif', 'participation' => Participation::Tim, 'max_team_size' => 3,
     ]));
-    $cahaya = F::student('Cahaya Lestari', 'XI-2');
+    $cahaya = F::student('Cahaya Lestari', 'XI-B');
     $registration = app(CreateRegistration::class)
         ->handle($this->nadiaUser, $own, RegistrationType::Tim, [$cahaya->getKey()], $this->guru->getKey());
 
@@ -79,7 +79,7 @@ it('says a member of a team that waits for its lomba is invited after the verifi
 });
 
 it('shows the sole participant of an individu registration without the team role (BUG-LOMBA-16, QA-DC-03)', function (): void {
-    $cahaya = F::student('Cahaya Lestari', 'XI-2');
+    $cahaya = F::student('Cahaya Lestari', 'XI-B');
     $registration = Registration::factory()->create([
         'competition_id' => F::openCompetition(['name' => 'Lomba Sains Individu Fiktif 2026'])->getKey(),
         'leader_student_id' => $cahaya->getKey(),
@@ -89,8 +89,8 @@ it('shows the sole participant of an individu registration without the team role
 
     $html = fs1qa2Plain(Livewire::actingAs(F::user($cahaya))->test(LombaSaya::class, ['registration' => $registration])->html());
 
-    expect($html)->toContain('<span class="muted text-xs">XI-2</span>')
-        ->not->toContain('XI-2 · Ketua');
+    expect($html)->toContain('<span class="muted text-xs">XI-B</span>')
+        ->not->toContain('XI-B · Ketua');
 
     // A team keeps the roles.
     $tim = Registration::factory()->create([
@@ -101,7 +101,7 @@ it('shows the sole participant of an individu registration without the team role
     ]);
 
     Livewire::actingAs(F::user($cahaya))->test(LombaSaya::class, ['registration' => $tim])
-        ->assertSee('XI-2 · Ketua');
+        ->assertSee('XI-B · Ketua');
 });
 
 it('drops the registration deadline chip once the registration is past the registration step (BUG-LOMBA-17)', function (): void {
@@ -135,7 +135,7 @@ it('drops the registration deadline chip once the registration is past the regis
 it('keeps the deadline chip while a team still waits for its members', function (): void {
     $lomba = F::teamCompetition(3, ['name' => 'Lomba Tim Fiktif 2026', 'registration_closes_at' => now()->addDays(5)->setTime(23, 59, 59)]);
     $chip = 'Batas '.$lomba->registration_closes_at->locale('id')->translatedFormat('j M');
-    $dimas = F::student('Dimas Arya Nugroho', 'XI-4');
+    $dimas = F::student('Dimas Arya Nugroho', 'XI-D');
 
     app(CreateRegistration::class)->handle($this->nadiaUser, $lomba, RegistrationType::Tim, [$dimas->getKey()], $this->guru->getKey());
 
@@ -146,7 +146,7 @@ it('keeps the deadline chip while a team still waits for its members', function 
 
 it('shows the invitee the own Data peserta before "Ikut tim" (BUG-07)', function (): void {
     $this->nadia->forceFill(['birth_date' => '2010-03-14', 'phone' => '081211112222'])->save();
-    $gita = F::student('Gita Permata', 'XI-2');
+    $gita = F::student('Gita Permata', 'XI-B');
     $gita->forceFill(['birth_date' => '2010-11-02', 'phone' => '081298764421'])->save();
     $gita = $gita->fresh(['user', 'classroom']);
 
@@ -166,7 +166,7 @@ it('shows the invitee the own Data peserta before "Ikut tim" (BUG-07)', function
         ->html());
 
     // The read-only block sits in the answer card, above the No HP field and the buttons.
-    expect($html)->toMatch('/Ikut tim ini\?.*Data peserta.*Gita Permata.*XI-2.*'.$gita->nisn.'.*2 November 2010.*Data salah\? Hubungi Kesiswaan\..*No HP.*Ikut tim/s');
+    expect($html)->toMatch('/Ikut tim ini\?.*Data peserta.*Gita Permata.*XI-B.*'.$gita->nisn.'.*2 November 2010.*Data salah\? Hubungi Kesiswaan\..*No HP.*Ikut tim/s');
 
     // Once answered there is nothing left to check: the block goes with the question.
     $registration->members()->where('student_id', $gita->getKey())->update(['confirmed_at' => now()]);
@@ -178,7 +178,7 @@ it('shows the invitee the own Data peserta before "Ikut tim" (BUG-07)', function
 });
 
 it('names the tab that leads to Profil talenta after it while a kelas X student must pick a talent (BUG-N4)', function (): void {
-    $elang = F::student('Elang Mahardika', 'X-3');
+    $elang = F::student('Elang Mahardika', 'X-C');
     $user = F::user($elang);
 
     $tab = collect(Navigation::for($user, 'siswa', [], 'siswa.talenta')['tabbar'])->keyBy('key')['profil'];

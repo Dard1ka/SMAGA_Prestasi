@@ -67,7 +67,7 @@ Route::middleware(['area.staff', 'role:humas'])->prefix('humas')->name('humas.')
     Route::livewire('/jadwal', Jadwal::class)->name('jadwal');
     Route::livewire('/apresiasi', Apresiasi::class)->name('apresiasi.index');
     Route::livewire('/arsip', Arsip::class)->name('arsip');
-    // D-156: the photos of verified laporan hasil, for the flyer Humas designs itself (consent-gated).
+    // D-156: the photos of verified laporan hasil, for the flyer Humas designs itself (no inactive team member, D-162).
     Route::livewire('/arsip-foto', ArsipFoto::class)->name('foto');
     // D-139: Humas verifies reports too; the same screen as kesiswaan.verifikasi.*, area-aware.
     Route::livewire('/verifikasi-hasil', VerifikasiHasil::class)->name('verifikasi.index');

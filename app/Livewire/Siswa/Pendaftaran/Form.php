@@ -724,8 +724,8 @@ class Form extends Component
                     $revising => 'Catatan perbaikannya ada di Lomba saya.',
                     default => ReportFollowUp::PROMPT.($team ? ' Setiap anggota tim mendapat poin penuh setelah diverifikasi.' : ''),
                 },
-                'action' => $isLeader && Gate::allows('create', [Report::class, $registration]) && Route::has('siswa.lapor')
-                    ? ['label' => $revising ? 'Perbaiki laporan' : 'Laporkan hasil', 'href' => route('siswa.lapor', $registration)]
+                'action' => $isLeader && Gate::allows('create', [Report::class, $registration])
+                    ? ['label' => $revising ? 'Perbaiki laporan' : 'Laporkan hasil', 'href' => route('siswa.lomba-saya.show', ['registration' => $registration, 'lapor' => 1]).'#lapor-judul']
                     : null,
             ],
             RegistrationStatus::LaporanDikirim => [

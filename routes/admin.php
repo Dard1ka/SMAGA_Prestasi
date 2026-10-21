@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Livewire\Admin\ArsipOtomatis;
 use App\Livewire\Admin\AuditLog;
+use App\Livewire\Admin\Kelas;
 use App\Livewire\Admin\Pengaturan;
 use App\Livewire\Admin\Pengguna;
 use App\Livewire\Admin\Ringkasan;
@@ -23,6 +24,9 @@ Route::middleware(['area.staff', 'role:admin'])->prefix('admin')->name('admin.')
 
     // Account/settings blockers + latest Admin audit entries (W2-D addition).
     Route::livewire('/ringkasan', Ringkasan::class)->name('ringkasan');
+
+    // Classes: add, rename, delete (ClassroomPolicy, `classroom.manage`; the import only uses classes listed here).
+    Route::livewire('/kelas', Kelas::class)->name('kelas.index');
 
     // Sensitive screens: password confirmation to open (framework window) + 15 min inside each action
     // (App\Livewire\Admin\Concerns\RequiresRecentPassword, SECURITY §3m-9).

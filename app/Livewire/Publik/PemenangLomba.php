@@ -12,7 +12,7 @@ use Livewire\Component;
 
 /**
  * Publik · Pemenang per lomba (UI-MAP #2b, D-31): the verified results of one lomba grouped by capaian,
- * best first, with the same consent rules as the other public pages. No achievements → 404.
+ * best first, with the same naming rule as the other public pages. No achievements → 404.
  */
 final class PemenangLomba extends Component
 {

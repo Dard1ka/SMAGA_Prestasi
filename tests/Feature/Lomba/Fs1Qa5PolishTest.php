@@ -152,7 +152,7 @@ it('lists the team of a registration that waits for its own lomba in the panel, 
     $own = F::pendingCompetition($this->nadiaUser, F::usulanAttributes([
         'name' => 'Lomba Tim Usulan Fiktif', 'participation' => Participation::Tim, 'max_team_size' => 3,
     ]));
-    $cahaya = F::student('Qa Talenta Cahaya Lestari Kusumaningrum', 'XI-2');
+    $cahaya = F::student('Qa Talenta Cahaya Lestari Kusumaningrum', 'XI-B');
     $registration = app(CreateRegistration::class)
         ->handle($this->nadiaUser, $own, RegistrationType::Tim, [$cahaya->getKey()], $this->guru->getKey());
 

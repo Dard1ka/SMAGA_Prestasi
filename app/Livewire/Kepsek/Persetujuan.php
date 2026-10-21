@@ -494,8 +494,8 @@ class Persetujuan extends Component
     }
 
     /**
-     * The rows on screen: waiting (or decided during this visit), oldest first, at most $limit. A long queue made
-     * the page several hundred kB, so the rest comes with "Tampilkan lebih banyak".
+     * The rows on screen: waiting (or decided during this visit), newest first (the lead, 2026-10-19), at most
+     * $limit. A long queue made the page several hundred kB, so the rest comes with "Tampilkan lebih banyak".
      *
      * @return Builder<Registration>
      */
@@ -509,8 +509,8 @@ class Persetujuan extends Component
                 ->where('status', RegistrationStatus::MenungguKepsek)
                 ->when($recent !== [], fn (Builder $q) => $q->orWhereIn('id', $recent)))
         )
-            ->orderBy('created_at')
-            ->orderBy('id')
+            ->orderByDesc('created_at')
+            ->orderByDesc('id')
             ->limit($this->limit);
     }
 

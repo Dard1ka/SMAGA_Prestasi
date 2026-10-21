@@ -33,7 +33,7 @@ final class KepsekFixtures
         return AdminTestHelpers::staff(RoleName::KepalaSekolah, array_merge(['name' => 'Dra. Sri Wahyuni, M.Pd.', 'username' => 'kepsek'], $attributes));
     }
 
-    public static function student(string $name, string $class = 'XI-4'): Student
+    public static function student(string $name, string $class = 'XI-D'): Student
     {
         return W2cFixtures::student($name, $class);
     }

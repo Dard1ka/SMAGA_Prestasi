@@ -43,7 +43,7 @@ final class LombaFixtures
      * student outside kelas X gets one ("Lainnya (Membaca)", TalentGate::pass). Kelas X students stay without one, so the
      * gate tests keep testing the gate; `talent: false` gives a student of any class no talent.
      */
-    public static function student(string $name = 'Nadia Putri Anindya', string $kelas = 'XI-4', array $user = [], bool $talent = true): Student
+    public static function student(string $name = 'Nadia Putri Anindya', string $kelas = 'XI-D', array $user = [], bool $talent = true): Student
     {
         $classroom = Classroom::query()->where('name', $kelas)->first()
             ?? Classroom::factory()->level(str_starts_with($kelas, 'XII') ? 12 : (str_starts_with($kelas, 'XI') ? 11 : 10))->create(['name' => $kelas]);

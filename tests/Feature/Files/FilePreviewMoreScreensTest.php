@@ -41,7 +41,7 @@ function m3PreviewAttributes(File $file, string $type): array
 
 it('opens the evidence of a talent choice in the popup on Kesiswaan › Talenta', function (): void {
     $kesiswaan = F::staff(RoleName::Kesiswaan);
-    $application = F::application(F::student('Hana Safira', 'X-8'), TalentStatus::Terdaftar, 'Biologi');
+    $application = F::application(F::student('Hana Safira', 'X-H'), TalentStatus::Terdaftar, 'Biologi');
     $evidence = File::factory()->create([
         'original_name' => 'sertifikat-osn-smp-biologi-2025.pdf',
         'purpose' => FilePurpose::TalentEvidence,
@@ -57,7 +57,7 @@ it('opens the evidence of a talent choice in the popup on Kesiswaan › Talenta'
 });
 
 it('opens the student\'s own talent evidence in the popup on Profil talenta', function (): void {
-    $application = F::application(F::student('Hana Safira', 'X-8'), TalentStatus::Terdaftar, 'Biologi');
+    $application = F::application(F::student('Hana Safira', 'X-H'), TalentStatus::Terdaftar, 'Biologi');
     $evidence = File::factory()->create([
         'original_name' => 'sertifikat-osn-smp-biologi-2025.pdf',
         'purpose' => FilePurpose::TalentEvidence,
@@ -74,7 +74,7 @@ it('opens the student\'s own talent evidence in the popup on Profil talenta', fu
 
 it('opens the juknis of a queued lomba in the popup on Usulan lomba', function (): void {
     $kesiswaan = F::staff(RoleName::Kesiswaan);
-    $siswa = F::student('Bima Satria Wicaksono', 'XII-7')->user;
+    $siswa = F::student('Bima Satria Wicaksono', 'XII-G')->user;
     $juknis = File::factory()->create([
         'original_name' => 'juknis-robotik-jateng.pdf',
         'purpose' => FilePurpose::Juknis,
@@ -95,7 +95,7 @@ it('opens the juknis of a queued lomba in the popup on Usulan lomba', function (
 
 it('leaves a file that cannot be previewed as a plain download link', function (): void {
     $kesiswaan = F::staff(RoleName::Kesiswaan);
-    $application = F::application(F::student('Hana Safira', 'X-8'), TalentStatus::Terdaftar, 'Biologi');
+    $application = F::application(F::student('Hana Safira', 'X-H'), TalentStatus::Terdaftar, 'Biologi');
     $evidence = File::factory()->create([
         'original_name' => 'bukti.docx',
         'mime' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',

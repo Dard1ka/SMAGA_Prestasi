@@ -94,7 +94,7 @@ it('opens a report detail by URL and 404s unknown ids', function (): void {
 });
 
 it('lists every pending upload in the queue, from any role incl. Kesiswaan itself (D-27)', function (): void {
-    Competition::factory()->proposal()->create(['name' => 'ISPO 2027', 'bidang' => 'riset', 'submitted_by' => F::student('Raka Pradipta', 'XII-2')->user_id]);
+    Competition::factory()->proposal()->create(['name' => 'ISPO 2027', 'bidang' => 'riset', 'submitted_by' => F::student('Raka Pradipta', 'XII-B')->user_id]);
     Competition::factory()->create(['name' => 'Lomba Guru Upload', 'submitted_by' => F::staff(RoleName::Guru, 'Bu Retno Wulandari')->getKey()]);
     Competition::factory()->create(['name' => 'Lomba Kesiswaan Sendiri', 'submitted_by' => $this->kesiswaan->getKey()]);
     F::competition(['name' => 'Lomba Peneliti Belia (LPB) 2026']);
@@ -192,7 +192,7 @@ it('needs a note to ask for a revision from the screen', function (): void {
 });
 
 it('shows the NISN in full in the talent table (D-137)', function (): void {
-    $hana = F::student('Hana Safira', 'X-8', '226227088', '0103456714');
+    $hana = F::student('Hana Safira', 'X-H', '226227088', '0103456714');
     F::application($hana);
 
     Livewire::actingAs($this->kesiswaan)->test(Talenta::class)
@@ -270,13 +270,13 @@ it('marks the talent export like the other exports: title, who exported it and w
 
 it('imports students in three steps and never shows the initial password pattern', function (): void {
     session(['auth.password_confirmed_at' => time()]); // QA9: the import needs a recent password confirmation
-    Classroom::factory()->level(10)->create(['name' => 'X-3']);
-    Classroom::factory()->level(10)->create(['name' => 'X-8']);
+    Classroom::factory()->level(10)->create(['name' => 'X-C']);
+    Classroom::factory()->level(10)->create(['name' => 'X-H']);
 
     $csv = "Nama lengkap;NIS;NISN;Tanggal lahir;Kelas saat pendaftaran;No HP\n"
-        ."Aurelia Maharani;226227031;0101234557;12-05-2011;X-3;\n"
-        ."Hana Safira;226227088;0103456714;03-01-2011;X-8;081234567890\n"
-        ."Galang Putra Mahendra;226227004;0102345686;31-02-2011;X-3;\n";
+        ."Aurelia Maharani;226227031;0101234557;12-05-2011;X-C;\n"
+        ."Hana Safira;226227088;0103456714;03-01-2011;X-H;081234567890\n"
+        ."Galang Putra Mahendra;226227004;0102345686;31-02-2011;X-C;\n";
     $file = UploadedFile::fake()->createWithContent('data-siswa-2026-2027.csv', $csv);
 
     $component = Livewire::actingAs($this->kesiswaan)->test(ImportSiswa::class)
@@ -345,9 +345,9 @@ it('tells a second tab that a report was already decided instead of showing an e
 })->with(['verify', 'requestRevision']);
 
 it('counts only the members still in the team on a queue card (QA8)', function (): void {
-    $leader = F::student('Nadia Putri Anindya', 'XI-4');
-    $stays = F::student('Raka Pradipta', 'XI-4');
-    $left = F::student('Bima Satria Wicaksono', 'XI-4');
+    $leader = F::student('Nadia Putri Anindya', 'XI-D');
+    $stays = F::student('Raka Pradipta', 'XI-D');
+    $left = F::student('Bima Satria Wicaksono', 'XI-D');
     $report = F::pendingReport($leader, [$stays, $left]);
     RegistrationMember::query()->where('registration_id', $report->registration_id)->where('student_id', $left->getKey())
         ->firstOrFail()->forceFill(['confirmed_at' => null, 'declined_at' => now()])->save();
@@ -355,15 +355,15 @@ it('counts only the members still in the team on a queue card (QA8)', function (
     // The detail and the points count two people; the card said "+2" with the declined member.
     $card = Livewire::actingAs($this->kesiswaan)->test(VerifikasiHasil::class)->viewData('queue')->first();
 
-    expect($card['student'])->toBe('Nadia Putri Anindya · XI-4 +1');
+    expect($card['student'])->toBe('Nadia Putri Anindya · XI-D +1');
 });
 
 it('keeps the address on the report it shows (QA8)', function (): void {
     // The cards and the move after a decision changed the panel but not the address, so a reload or a copied link
     // opened the report of the first link again. The screen names the shown report for the hook in app.js.
     $first = F::pendingReport();
-    $second = F::pendingReport(F::student('Raka Pradipta', 'XI-4'));
-    $second->forceFill(['submitted_at' => now()->subHours(2)])->save(); // the queue runs oldest first: $first is older
+    $second = F::pendingReport(F::student('Raka Pradipta', 'XI-D'));
+    $second->forceFill(['submitted_at' => now()->subDays(2)])->save(); // the queue runs newest first (UX2): $first is newer
 
     $screen = Livewire::actingAs($this->kesiswaan)->test(VerifikasiHasil::class)
         ->assertSet('selectedId', $first->getKey())

@@ -41,10 +41,10 @@ beforeEach(function (): void {
     $this->agus = KesiswaanFixtures::staff(RoleName::Guru, 'Agus Setiawan, S.Or.');
 
     // Kelas XI in 2026/2027 → angkatan 2025; XII → 2024 (grade12_start_date from the student factory).
-    $this->nadia = KesiswaanFixtures::student('Nadia Putri Anindya', 'XI-4', '225226201', '0098765432');
-    $this->dimas = KesiswaanFixtures::student('Dimas Arya Nugroho', 'XI-4', '225226202', '0098765433');
-    $this->raka = KesiswaanFixtures::student('Raka Pradipta', 'XII-2', '224225101', '0094225101');
-    $this->fajar = KesiswaanFixtures::student('Fajar Ramadhan', 'XII-1', '224225102', '0094225102');
+    $this->nadia = KesiswaanFixtures::student('Nadia Putri Anindya', 'XI-D', '225226201', '0098765432');
+    $this->dimas = KesiswaanFixtures::student('Dimas Arya Nugroho', 'XI-D', '225226202', '0098765433');
+    $this->raka = KesiswaanFixtures::student('Raka Pradipta', 'XII-B', '224225101', '0094225101');
+    $this->fajar = KesiswaanFixtures::student('Fajar Ramadhan', 'XII-A', '224225102', '0094225102');
 
     $wice = $f->lomba('WICE 2026', Bidang::Riset, Level::Nasional, '2026-09-24', [
         'organizer_type' => OrganizerType::PerusahaanSwasta, 'event_status' => EventStatus::NonPemerintah]);

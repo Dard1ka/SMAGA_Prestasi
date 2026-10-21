@@ -27,7 +27,7 @@ beforeEach(function (): void {
     F::boot();
     $this->withoutVite();
     $this->guru = F::staff(RoleName::Guru, 'Hendra Kusuma, S.Pd., M.Si.');
-    $this->citra = F::student('Citra Wulandari', 'XI-2');
+    $this->citra = F::student('Citra Wulandari', 'XI-B');
 });
 
 it('shows the sole participant of an individu registration without "Ketua" or "Terkonfirmasi" (QA-DC-03)', function (): void {
@@ -36,7 +36,7 @@ it('shows the sole participant of an individu registration without "Ketua" or "T
     $page = Livewire::actingAs($this->guru)->test(BinaanDetail::class, ['registration' => $registration]);
 
     expect($page->viewData('members'))->toBe([
-        ['name' => 'Citra Wulandari', 'meta' => 'XI-2', 'state' => null],
+        ['name' => 'Citra Wulandari', 'meta' => 'XI-B', 'state' => null],
     ]);
 
     $page->assertSee('Peserta')
@@ -45,12 +45,12 @@ it('shows the sole participant of an individu registration without "Ketua" or "T
 });
 
 it('keeps the roles and the confirmation chips of a team', function (): void {
-    $registration = F::registration($this->citra, RegistrationStatus::MenungguLaporan, members: [F::student('Dimas Arya Nugroho', 'XI-2')], mentor: $this->guru);
+    $registration = F::registration($this->citra, RegistrationStatus::MenungguLaporan, members: [F::student('Dimas Arya Nugroho', 'XI-B')], mentor: $this->guru);
 
     Livewire::actingAs($this->guru)->test(BinaanDetail::class, ['registration' => $registration])
         ->assertSee('Anggota tim')
-        ->assertSee('XI-2 · Ketua')
-        ->assertSee('XI-2 · Anggota')
+        ->assertSee('XI-B · Ketua')
+        ->assertSee('XI-B · Anggota')
         ->assertSee('Terkonfirmasi');
 });
 

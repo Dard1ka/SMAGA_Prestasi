@@ -38,7 +38,7 @@ class Beranda extends Component
         $reports = $user?->can('viewQueue', Report::class)
             ? Report::query()->awaitingVerification()
                 ->with(['registration' => fn ($q) => $q->withTrashed()->with(['competition' => fn ($c) => $c->withTrashed(), 'leader.user'])])
-                ->orderBy('submitted_at')->limit(5)->get()
+                ->orderByDesc('submitted_at')->orderByDesc('id')->limit(5)->get()
                 ->map(fn (Report $r): array => [
                     'id' => $r->getKey(),
                     'title' => $r->registration?->competition?->name ?? 'Lomba',
@@ -47,7 +47,7 @@ class Beranda extends Component
                 ])
             : collect();
 
-        $uploads = Competition::query()->pendingVerification()->with('submitter')->oldest()->limit(5)->get()
+        $uploads = Competition::query()->pendingVerification()->with('submitter')->latest()->orderByDesc('id')->limit(5)->get()
             ->map(fn (Competition $c): array => [
                 'title' => $c->name,
                 'sub' => 'Dari '.($c->submitter?->name ?? 'akun dihapus'),

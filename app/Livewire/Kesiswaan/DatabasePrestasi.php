@@ -283,7 +283,6 @@ final class DatabasePrestasi extends Component
                     $user->status === UserStatus::Archived => 'Alumni',
                     default => $user->status?->label() ?? '–',
                 }],
-                ['label' => 'Boleh dipublikasikan', 'value' => $student?->publish_consent ? 'Ya' : 'Tidak'],
             ],
             'lomba' => $competition?->name ?? 'Lomba',
             'bidang' => $competition?->bidang,

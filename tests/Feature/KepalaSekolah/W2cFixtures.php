@@ -53,7 +53,7 @@ final class W2cFixtures
         return $guru->fresh();
     }
 
-    public static function student(string $name, string $class = 'XI-4', ?string $nis = null): Student
+    public static function student(string $name, string $class = 'XI-D', ?string $nis = null): Student
     {
         $classroom = Classroom::query()->where('name', $class)->first()
             ?? Classroom::factory()->level((int) (str_starts_with($class, 'XII') ? 12 : (str_starts_with($class, 'XI') ? 11 : 10)))->create(['name' => $class]);
@@ -68,7 +68,7 @@ final class W2cFixtures
     }
 
     /** Student who finished the first-login activation (so `activated` lets them through). */
-    public static function activeStudent(string $name, string $class = 'XI-4'): Student
+    public static function activeStudent(string $name, string $class = 'XI-D'): Student
     {
         $student = self::student($name, $class);
         $student->user->forceFill([

@@ -36,35 +36,40 @@ beforeEach(function (): void {
 });
 
 it('prints only the students who may be named, sorted by class then name, without NIS, NISN or points (D-141)', function (): void {
-    $nadia = H::achievement(['nis' => '225226201', 'nisn' => '0098765432']); // XI-4, OPSI 2026, Juara II, Nasional
-    $fajar = H::teammate($nadia, 'Fajar Ramadhan', 'XI-4');
-    $raka = H::teammate($nadia, 'Raka Pradipta', 'X-2');
-    $yoga = H::teammate($nadia, 'Yoga Pratama', 'XII-2');
-    $dimas = H::teammate($nadia, 'Dimas Arya Nugroho', 'XII-2');
-    $keisha = H::teammate($nadia, 'Keisha Larasati', 'XI-6');
+    $nadia = H::achievement(['nis' => '225226201', 'nisn' => '0098765432']); // XI-D, OPSI 2026, Juara II, Nasional
+    $fajar = H::teammate($nadia, 'Fajar Ramadhan', 'XI-D');
+    $raka = H::teammate($nadia, 'Raka Pradipta', 'X-B');
+    $yoga = H::teammate($nadia, 'Yoga Pratama', 'XII-B');
+    $dimas = H::teammate($nadia, 'Dimas Arya Nugroho', 'XII-B');
+    $keisha = H::teammate($nadia, 'Keisha Larasati', 'XI-F');
     $event = H::event(heldTime: '07:00');
     app(RecordAppreciations::class)->handle($this->humas, $event, [$nadia, $fajar, $raka, $yoga, $dimas, $keisha]);
 
-    // After scheduling: Yoga became an alumnus, Dimas withdrew consent, Keisha's account was disabled.
+    // After scheduling: Yoga became an alumnus, Dimas's old consent column is false (ignored since D-162), Keisha's
+    // and Bima's accounts were disabled.
+    $bima = H::teammate($nadia, 'Bima Satria Wicaksono', 'XII-G');
+    app(RecordAppreciations::class)->handle($this->humas, $event, [$bima]);
     $yoga->student->user->forceFill(['status' => UserStatus::Archived])->save();
-    $dimas->student->forceFill(['publish_consent' => false])->save();
+    $dimas->student->forceFill(['publish_consent' => false, 'photo_consent' => false])->save();
     $keisha->student->user->forceFill(['status' => UserStatus::Disabled])->save();
+    $bima->student->user->forceFill(['status' => UserStatus::Disabled])->save();
 
     $list = AppreciationList::for($event->fresh());
 
-    expect(array_column($list['rows'], 'name'))->toBe(['Raka Pradipta', 'Fajar Ramadhan', 'Nadia Putri Anindya', 'Yoga Pratama'])
-        ->and(array_column($list['rows'], 'class'))->toBe(['X-2', 'XI-4', 'XI-4', 'Alumni'])
-        ->and(array_column($list['rows'], 'no'))->toBe([1, 2, 3, 4])
-        ->and($list['rows'][0])->toBe(['no' => 1, 'name' => 'Raka Pradipta', 'class' => 'X-2', 'result' => ResultType::Juara2->label(), 'competition' => 'OPSI 2026', 'level' => Level::Nasional->label()])
+    expect(array_column($list['rows'], 'name'))->toBe(['Raka Pradipta', 'Fajar Ramadhan', 'Nadia Putri Anindya', 'Dimas Arya Nugroho', 'Yoga Pratama'])
+        ->and(array_column($list['rows'], 'class'))->toBe(['X-B', 'XI-D', 'XI-D', 'XII-B', 'Alumni'])
+        ->and(array_column($list['rows'], 'no'))->toBe([1, 2, 3, 4, 5])
+        ->and($list['rows'][0])->toBe(['no' => 1, 'name' => 'Raka Pradipta', 'class' => 'X-B', 'result' => ResultType::Juara2->label(), 'competition' => 'OPSI 2026', 'level' => Level::Nasional->label()])
         ->and($list['omitted'])->toBe(2);
 
     View::addNamespace(PdfRenderer::VIEW_NAMESPACE, resource_path('pdf'));
     $html = view('pdf::daftar-apresiasi', PrintAppreciationList::viewData($event->fresh()))->render();
 
     expect($html)->toContain('Daftar siswa apresiasi')->toContain('Upacara Senin, 5 Oktober 2026')->toContain(EventWhen::long($event))
-        ->toContain('Raka Pradipta')->toContain('Yoga Pratama')
-        ->toContain('2 prestasi tidak dicantumkan karena siswanya belum memberi izin publikasi atau akunnya nonaktif.')
-        ->not->toContain('Dimas Arya Nugroho')->not->toContain('Keisha Larasati')
+        ->toContain('Raka Pradipta')->toContain('Yoga Pratama')->toContain('Dimas Arya Nugroho')
+        ->toContain('2 prestasi tidak dicantumkan karena akun siswanya nonaktif.')
+        ->not->toContain('izin publikasi')
+        ->not->toContain('Bima Satria Wicaksono')->not->toContain('Keisha Larasati')
         ->not->toContain('225226201')->not->toContain('0098765432')
         ->not->toContain('poin')->not->toContain('style="');
 });
@@ -96,7 +101,7 @@ it('refuses the list to every other role, guests and unknown events (D-141)', fu
     foreach ([RoleName::Guru, RoleName::KepalaSekolah, RoleName::TataUsaha] as $role) {
         $this->actingAs(K::staff($role, 'Staf '.$role->value))->get(route('apresiasi.cetak', $event))->assertForbidden();
     }
-    $this->actingAs(K::student('Raka Pradipta', 'XII-2')->user)->get(route('apresiasi.cetak', $event))->assertForbidden();
+    $this->actingAs(K::student('Raka Pradipta', 'XII-B')->user)->get(route('apresiasi.cetak', $event))->assertForbidden();
     $this->actingAs($this->humas)->get('/apresiasi/01ARZ3NDEKTSV4RRFFQ69G5FAV/cetak')->assertNotFound();
     auth()->logout();
     $this->get(route('apresiasi.cetak', $event))->assertRedirect(route('login'));
@@ -120,8 +125,8 @@ it('shows "Cetak daftar" on every event card with prestasi, on both Apresiasi ro
 
 it('leaves out a student whose record or account was deleted after scheduling', function (): void {
     $nadia = H::achievement();
-    $fajar = H::teammate($nadia, 'Fajar Ramadhan', 'XI-4');
-    $raka = H::teammate($nadia, 'Raka Pradipta', 'X-2');
+    $fajar = H::teammate($nadia, 'Fajar Ramadhan', 'XI-D');
+    $raka = H::teammate($nadia, 'Raka Pradipta', 'X-B');
     $event = H::event(heldTime: '07:00');
     app(RecordAppreciations::class)->handle($this->humas, $event, [$nadia, $fajar, $raka]);
 

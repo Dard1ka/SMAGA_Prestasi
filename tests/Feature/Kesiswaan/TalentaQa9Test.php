@@ -39,8 +39,8 @@ beforeEach(function (): void {
 // 3. A choice the student deleted ---------------------------------------------------------------------------
 
 it('says the student deleted the choice instead of a 404 page (QA9)', function (string $method, bool $withId): void {
-    $deleted = F::application(F::student('Hana Safira', 'X-8'));
-    $other = F::application(F::student('Aurelia Maharani', 'X-3'), TalentStatus::Pemetaan, 'Kimia');
+    $deleted = F::application(F::student('Hana Safira', 'X-H'));
+    $other = F::application(F::student('Aurelia Maharani', 'X-C'), TalentStatus::Pemetaan, 'Kimia');
 
     $component = Livewire::actingAs($this->kesiswaan)->test(Talenta::class)
         ->call('showPanel', $deleted->getKey())
@@ -66,7 +66,7 @@ it('says the student deleted the choice instead of a 404 page (QA9)', function (
 ]);
 
 it('empties the panel when the student deleted the last choice (QA9)', function (): void {
-    $deleted = F::application(F::student('Hana Safira', 'X-8'));
+    $deleted = F::application(F::student('Hana Safira', 'X-H'));
 
     $component = Livewire::actingAs($this->kesiswaan)->test(Talenta::class)->assertSet('panelId', $deleted->getKey());
 
@@ -83,7 +83,7 @@ it('empties the panel when the student deleted the last choice (QA9)', function 
 it('keeps an unchanged guru pembina who left from blocking the panel and says he is not active (QA9)', function (): void {
     $gone = F::staff(RoleName::Guru, 'Pak Hendra Kusuma');
     $otherGone = F::staff(RoleName::Guru, 'Bu Sari Wulandari');
-    $row = F::application(F::student('Bima Satria Wicaksono', 'XII-7'), TalentStatus::Pemetaan, 'Fisika');
+    $row = F::application(F::student('Bima Satria Wicaksono', 'XII-G'), TalentStatus::Pemetaan, 'Fisika');
     $row->forceFill(['mentor_id' => $gone->getKey()])->save();
     $gone->forceFill(['status' => UserStatus::Disabled])->save();
     $otherGone->forceFill(['status' => UserStatus::Archived])->save();
@@ -110,8 +110,8 @@ it('keeps an unchanged guru pembina who left from blocking the panel and says he
 
 it('accepts the unchanged guru pembina of the row in UpdateTalentAssessment::validated(), never another inactive one (QA9)', function (): void {
     $gone = F::staff(RoleName::Guru, 'Pak Hendra Kusuma');
-    $row = F::application(F::student('Bima Satria Wicaksono', 'XII-7'), TalentStatus::Seleksi, 'Fisika');
-    $other = F::application(F::student('Hana Safira', 'X-8'));
+    $row = F::application(F::student('Bima Satria Wicaksono', 'XII-G'), TalentStatus::Seleksi, 'Fisika');
+    $other = F::application(F::student('Hana Safira', 'X-H'));
     $row->forceFill(['mentor_id' => $gone->getKey()])->save();
     $gone->forceFill(['status' => UserStatus::Archived])->save();
     $assessment = app(UpdateTalentAssessment::class);
@@ -127,7 +127,7 @@ it('accepts the unchanged guru pembina of the row in UpdateTalentAssessment::val
 // 6. The export pages in a unique order ----------------------------------------------------------------------
 
 it('pages through the export rows in a unique order (QA9)', function (): void {
-    F::application(F::student('Hana Safira', 'X-8'));
+    F::application(F::student('Hana Safira', 'X-H'));
     session()->put('auth.password_confirmed_at', time());
     $queries = collect();
     DB::listen(fn (QueryExecuted $query) => $queries->push($query->sql));
@@ -148,11 +148,11 @@ it('pages through the export rows in a unique order (QA9)', function (): void {
 
 it('counts every row that matches the filter, not only the rows on screen (QA9)', function (): void {
     foreach (range(1, 31) as $i) {
-        F::application(F::student('Siswa Contoh '.$i, 'X-8'));
+        F::application(F::student('Siswa Contoh '.$i, 'X-H'));
     }
 
-    F::application(F::student('Aurelia Maharani', 'X-3'), TalentStatus::Terdaftar, 'Kimia');
-    $kelas = (string) Classroom::query()->where('name', 'X-8')->value('id');
+    F::application(F::student('Aurelia Maharani', 'X-C'), TalentStatus::Terdaftar, 'Kimia');
+    $kelas = (string) Classroom::query()->where('name', 'X-H')->value('id');
 
     Livewire::actingAs($this->kesiswaan)->test(Talenta::class)
         ->set('kelas', $kelas)

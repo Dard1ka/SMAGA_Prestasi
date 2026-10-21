@@ -10,18 +10,18 @@ use Illuminate\Database\Eloquent\Builder;
 
 /**
  * QA10: the "named" rule of the public pages (QA9, D-30) for the Humas side, in one place. A student may be named
- * (publication queue, the reminder to Humas, the Humas notices) only with publish consent while neither the student record nor
- * the account is deleted and the account is not disabled. An archived alumnus with consent stays named (D-29).
+ * (public pages, publication queue, the reminder to Humas, the Humas notices, "Data untuk flyer", Arsip foto, the
+ * appreciation list) while neither the student record nor the account is deleted and the account is not disabled. An
+ * archived alumnus stays named (D-29). No consent condition any more (dihapus 20 Okt 2026, D-162).
  *
- * The same rule also lives in `PublicAchievements::mapRow()` and `FilePolicy::appearsByName()` (QA9, not this area's
- * files); they could call this class.
+ * The same rule also lives in `PublicAchievements::mapRow()` (a joined SQL row, no model); `FilePolicy` calls this class.
  */
 final class NamedStudent
 {
     /** The rule for one loaded student (the user relation is loaded when missing). */
     public static function allows(?Student $student): bool
     {
-        if ($student === null || $student->deleted_at !== null || $student->publish_consent !== true) {
+        if ($student === null || $student->deleted_at !== null) {
             return false;
         }
 
@@ -44,7 +44,6 @@ final class NamedStudent
     {
         return $students
             ->withoutTrashed()
-            ->where('publish_consent', true)
             ->whereHas('user', fn (Builder $user) => $user
                 ->withoutTrashed()
                 ->where('status', '!=', UserStatus::Disabled->value));

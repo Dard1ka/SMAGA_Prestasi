@@ -20,9 +20,6 @@
                         <span class="text-xs text-muted">{{ $row['headline'] }} · {{ $row['competition'] }}</span>
                     </div>
                     <div class="flex flex-wrap items-center gap-1.5">
-                        @if ($row['consentWithdrawn'])
-                            <x-sth.chip tone="orange" size="sm">Izin dicabut</x-sth.chip>
-                        @endif
                         <x-sth.chip :tone="$row['status'][0]" size="sm">{{ $row['status'][1] }}</x-sth.chip>
                         @if ($row['canRelease'])
                             <x-sth.button variant="quiet" size="sm" aria-haspopup="dialog" wire:click="confirmRelease('{{ $row['id'] }}')">Lepas dari acara<span class="sr-only">: {{ $row['student'] }}, {{ $row['headline'] }}</span></x-sth.button>
@@ -48,7 +45,7 @@
             @else
                 <x-sth.input type="search" wire:model.live.debounce.400ms="search" id="cari-prestasi" label="Cari prestasi" icon="search"
                     placeholder="Nama siswa atau nama lomba" maxlength="100" autocomplete="off"
-                    hint="Hanya prestasi siswa yang punya izin publikasi dan belum masuk acara mana pun." />
+                    hint="Hanya prestasi yang belum masuk acara mana pun. Siswa dengan akun nonaktif tidak ditampilkan." />
                 <p class="m-0 text-xs text-muted" role="status">{{ $picker['status'] }}</p>
 
                 @if ($picker['kept'] !== [] || $picker['rows'] !== [])

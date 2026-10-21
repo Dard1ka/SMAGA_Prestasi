@@ -117,7 +117,7 @@ it('requires a cabang of the chosen jenis for every other type', function (): vo
 });
 
 it('lets kelas XII join (D-23) and refuses staff and archived/disabled accounts', function (): void {
-    $xii = F::student('Raka Pradipta', 'XII-2', talent: false);
+    $xii = F::student('Raka Pradipta', 'XII-B', talent: false);
     expect($this->apply->handle($xii->user, w2a2TalentType(TalentTypeCode::O2sn), w2a2TalentBranch(TalentTypeCode::O2sn, 'Atletik'))->exists)->toBeTrue();
 
     expect(fn () => $this->apply->handle(F::staff(RoleName::Kesiswaan), w2a2TalentType(TalentTypeCode::Osn), w2a2TalentBranch(TalentTypeCode::Osn, 'Fisika')))

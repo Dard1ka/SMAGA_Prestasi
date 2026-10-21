@@ -24,7 +24,7 @@
         <x-sth.stat-tile icon="clock" tone="red" label="Belum lapor > 14 hari" :value="$kpi['lewat']" note="Lomba selesai lebih dari 14 hari lalu" />
     </div>
 
-    <div class="grid gap-[22px] xl:grid-cols-3">
+    <div class="grid grid-cols-1 gap-[22px] xl:grid-cols-3">
         <x-sth.card as="section" class="flex flex-col gap-4 xl:col-span-2" aria-labelledby="per-tahun-title">
             <div class="flex flex-col gap-1">
                 <h2 id="per-tahun-title" class="title-card">
@@ -145,7 +145,7 @@
         </x-sth.card>
     </div>
 
-    <div class="grid gap-[22px] xl:grid-cols-3">
+    <div class="grid grid-cols-1 gap-[22px] xl:grid-cols-3">
         <x-sth.card as="section" class="flex flex-col gap-4" aria-labelledby="per-tingkat-title">
             <div class="flex flex-col gap-1">
                 <h2 id="per-tingkat-title" class="title-card">{{ $perLevel['nationalUp'] }} prestasi nasional ke atas</h2>

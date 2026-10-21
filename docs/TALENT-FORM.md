@@ -13,7 +13,7 @@ Halaman 1 (semua wajib):
 | Field | Tipe | Pilihan |
 |---|---|---|
 | Nama lengkap | teks | – |
-| Kelas | pilihan tunggal | X-1 … X-10, X-TAHFIDZ, X-OLIMP, XI-1 … XI-12 (tidak ada kelas XII) |
+| Kelas | pilihan tunggal | X-1 … X-10, X-TAHFIDZ, X-OLIMP, XI-1 … XI-12 (tidak ada kelas XII). **Di STH sejak 21 Okt 2026 (D-165, D-166) dengan huruf:** X-A … X-J, XI-A … XI-L, XII-A … XII-L (1 = A … 12 = L), tanpa X-TAHFIDZ dan X-OLIMP (bukan kelas sekolah, lead); Admin menambah, mengganti nama, dan menghapus kelas di Admin › Kelas. Formulir asli sekolah memakai angka |
 | Pilihan jenis talenta | pilihan tunggal (bercabang) | OSN · Riset · FLS3N · O2SN · OLPAIN · Debat |
 
 Halaman 2 bergantung pada jenis talenta (lalu Kirim). Semua cabang punya **"Kirimkan bukti dukung (sertifikat), jika memiliki"**: upload opsional, 1 file, maks 10 MB.
@@ -30,7 +30,7 @@ Halaman 2 bergantung pada jenis talenta (lalu Kirim). Semua cabang punya **"Kiri
 - Jadikan master data: `jenis_talenta` (6) → `cabang_talenta` (daftar di atas, bisa ditambah Admin/Kesiswaan), flag `is_tim` + `ukuran_tim` untuk cabang tim FLS3N. *(12 Okt 2026: sejak D-143 ada jenis ketujuh **Lainnya** dan cabang **Lainnya** di setiap jenis yang punya cabang; lihat bagian di bawah.)*
 - Di STH, nama & kelas otomatis dari akun siswa (tidak diketik ulang). Siswa memilih jenis talenta + cabang, upload bukti opsional (aturan upload sama dengan modul lain: PDF/JPG/PNG, maks 10 MB).
 - Status penjaringan: Terdaftar → Pemetaan → Seleksi/Asesmen → Peserta pembinaan / Tidak lolos (dikelola Kesiswaan/guru pembina). *(12 Okt 2026: sejak D-142 tanpa tahap dan tanpa verifikasi; Kesiswaan hanya mencatat. Kolom status tetap untuk data lama.)*
-- Daftar kelas di form = validasi kolom "Kelas saat pendaftaran" pada import Excel (termasuk X-TAHFIDZ, X-OLIMP).
+- Daftar kelas di form = validasi kolom "Kelas saat pendaftaran" pada import Excel (termasuk X-TAHFIDZ, X-OLIMP). *21 Okt 2026: import kini memakai daftar kelas yang disiapkan Admin di Admin › Kelas (D-166); X-TAHFIDZ dan X-OLIMP tidak dipakai.*
 - Mapping ke 4 bidang STH (perlu konfirmasi): OSN→Sains · Riset→Riset · FLS3N→Seni Budaya · O2SN→Olahraga · Debat→Seni Budaya (sesuai dokumen konsep) · OLPAIN→**belum jelas**.
 
 ## Keputusan user (30 Sep 2026)

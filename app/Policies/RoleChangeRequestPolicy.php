@@ -9,7 +9,8 @@ use App\Models\RoleChangeRequest;
 use App\Models\User;
 
 /**
- * Privileged role changes waiting for a second Admin or the 24 h delay (backlog #13, owner B5). Deny by default;
+ * Privileged role changes waiting for a second Admin or the 24 h delay (backlog #13, owner B5; since 21 Okt 2026 only
+ * requests made before that day, new changes apply at once). Deny by default;
  * disabled/archived accounts can never act. Nobody approves their own request or their own promotion
  * (SECURITY §3c-10); any Admin may cancel while it is pending.
  */

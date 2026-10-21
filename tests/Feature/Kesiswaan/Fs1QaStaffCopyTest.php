@@ -74,5 +74,5 @@ it('tells where a student is found when the staff search finds no name (QA-DC-02
     Livewire::test(Pengguna::class)
         ->set('search', 'Citra Wulandari')
         ->assertSee('Tidak ada akun yang cocok')
-        ->assertSee('Nama hanya mencari akun staf; akun siswa dicari dengan NISN lengkap di Bantuan akun siswa di bawah.');
+        ->assertSee('Kotak ini hanya mencari akun staf; akun siswa dicari dengan nama atau NISN di Bantuan akun siswa di bawah.');
 });

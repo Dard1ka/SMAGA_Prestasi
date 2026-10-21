@@ -33,7 +33,7 @@ use RuntimeException;
  * - Needs AchievementPolicy::exportSchoolReport (`achievement.view_all` + `dashboard.view` + `achievement.export`).
  * - Watermarked with the exporter's name + username + timestamp: PDF = diagonal text and a footer line on every
  *   page; XLSX = the first rows of every sheet, the print header/footer and the document properties.
- * - Internal document: real names (no consent gate) but never NIS/NISN/phone/email/birth date.
+ * - Internal document: real names (also of disabled accounts) but never NIS/NISN/phone/email/birth date.
  * - XLSX cells are explicit string/number cells (no formulas, SECURITY §3f); PDF through the locked-down
  *   App\Domain\Letters\PdfRenderer (static template `resources/pdf/laporan-prestasi.blade.php`, {{ }} only).
  * - Audited (`school_report.exported`: format, period, bidang, rows, sha256, watermark); more than

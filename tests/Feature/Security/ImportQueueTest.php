@@ -34,7 +34,7 @@ uses(RefreshDatabase::class);
 beforeEach(function (): void {
     F::boot();
     $this->withoutVite();
-    Classroom::factory()->create(['name' => 'X-1', 'level' => 10]);
+    Classroom::factory()->create(['name' => 'X-A', 'level' => 10]);
     $this->kesiswaan = F::staff(RoleName::Kesiswaan);
     session(['auth.password_confirmed_at' => time()]); // QA9: the import needs a recent password confirmation
 });
@@ -58,11 +58,11 @@ function b2ImportCsv(int $valid, int $invalid = 0, array $extra = []): string
     $lines = ['Nama lengkap,NIS,NISN,Tanggal lahir,Kelas saat pendaftaran,No HP'];
 
     for ($i = 1; $i <= $valid; $i++) {
-        $lines[] = sprintf('Siswa Uji %s,2252%05d,00%08d,02-03-2010,X-1,', b2Letters($i), $i, $i);
+        $lines[] = sprintf('Siswa Uji %s,2252%05d,00%08d,02-03-2010,X-A,', b2Letters($i), $i, $i);
     }
 
     for ($i = 1; $i <= $invalid; $i++) {
-        $lines[] = sprintf('Siswa Salah %s,2253%05d,%09d,02-03-2010,X-1,', b2Letters($i), $i, $i);
+        $lines[] = sprintf('Siswa Salah %s,2253%05d,%09d,02-03-2010,X-A,', b2Letters($i), $i, $i);
     }
 
     foreach ($extra as $row) {
@@ -98,11 +98,11 @@ function b2QueuedImport(User $actor, string $csv): StudentImport
 
 it('strips formula prefixes but flags those rows as "Sel dibersihkan"', function (): void {
     $csv = b2ImportCsv(0, 0, [
-        ['=Nadia Putri Anindya', '225226201', '0098765432', '02-03-2010', 'X-1', ''],
-        ['@Raka Pratama', '225226202', '0098765433', '02-03-2010', 'X-1', ''],
-        ['Salsa Maharani', '-225226203', '0098765434', '02-03-2010', 'X-1', '+6281298765432'],
-        ['Dimas Saputra', '225226204', '0098765435', '02-03-2010', 'X-1', '+6281298765433'],
-        ['"=HYPERLINK(""http://evil.example"",""klik"")"', '225226205', '0098765436', '02-03-2010', 'X-1', ''],
+        ['=Nadia Putri Anindya', '225226201', '0098765432', '02-03-2010', 'X-A', ''],
+        ['@Raka Pratama', '225226202', '0098765433', '02-03-2010', 'X-A', ''],
+        ['Salsa Maharani', '-225226203', '0098765434', '02-03-2010', 'X-A', '+6281298765432'],
+        ['Dimas Saputra', '225226204', '0098765435', '02-03-2010', 'X-A', '+6281298765433'],
+        ['"=HYPERLINK(""http://evil.example"",""klik"")"', '225226205', '0098765436', '02-03-2010', 'X-A', ''],
     ]);
 
     $report = app(ImportStudents::class)->handle($this->kesiswaan, b2CsvPath($csv), 'csv', '2026/2027');
@@ -254,7 +254,7 @@ it('keeps small imports synchronous', function (): void {
 });
 
 it('shows the "Sel dibersihkan" chip and a note on the preview', function (): void {
-    $csv = b2ImportCsv(1, 0, [['=Nadia Putri Anindya', '225226201', '0098765432', '02-03-2010', 'X-1', '']]);
+    $csv = b2ImportCsv(1, 0, [['=Nadia Putri Anindya', '225226201', '0098765432', '02-03-2010', 'X-A', '']]);
 
     Livewire::actingAs($this->kesiswaan)->test(ImportSiswa::class)
         ->set('schoolYear', '2026/2027')

@@ -2,7 +2,7 @@
      App\Livewire\Siswa\ProfilTalenta::render(). --}}
 <div class="flex flex-col gap-[22px]">
 <x-sth.tabs label="Profil saya" :items="$tabs" active="talenta" />
-<div class="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_420px]">
+<div class="grid grid-cols-1 items-start gap-5 xl:grid-cols-[minmax(0,1fr)_420px]">
     {{-- D-144: a kelas X student without a talent comes here from every other page until one is chosen. --}}
     @if ($gate)
         <x-sth.alert tone="warning" icon="alert" class="xl:col-span-2">{{ \App\Http\Middleware\EnsureTalentChosen::ALERT }}</x-sth.alert>

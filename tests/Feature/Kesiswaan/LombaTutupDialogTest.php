@@ -32,7 +32,7 @@ beforeEach(function (): void {
 
 it('asks in its own dialog before a lomba is closed and closes nothing yet (D-128)', function (): void {
     $lomba = F::competition(['name' => 'Lomba Peneliti Belia (LPB) 2026']);
-    F::pendingReport(F::student('Nadia Putri Anindya', 'XI-4'), [F::student('Raka Pradipta', 'XI-4')], competition: $lomba);
+    F::pendingReport(F::student('Nadia Putri Anindya', 'XI-D'), [F::student('Raka Pradipta', 'XI-D')], competition: $lomba);
 
     Livewire::actingAs($this->kesiswaan)->test(Index::class)
         ->assertSeeHtml('wire:click="askClose(\''.$lomba->getKey().'\')"')
@@ -146,7 +146,7 @@ it('keeps every other role away from the question (D-128)', function (): void {
         Livewire::actingAs(F::staff($role, 'Staf '.$role->value))->test(Index::class)->assertForbidden();
     }
 
-    Livewire::actingAs(F::student('Raka Pradipta', 'XII-2')->user)->test(Index::class)->assertForbidden();
+    Livewire::actingAs(F::student('Raka Pradipta', 'XII-B')->user)->test(Index::class)->assertForbidden();
 
     expect($lomba->fresh()->status)->toBe(CompetitionStatus::Dipublikasikan);
 });

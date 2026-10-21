@@ -25,8 +25,8 @@ use Tests\Feature\Auth\AuthTestHelpers;
 use Tests\Feature\Humas\HumasFixtures;
 
 /*
-| Humas · Publikasi (Livewire): lanes, consent filter, panel, data for the flyer (M3-E: no generator),
-| schedule, publish, apresiasi.
+| Humas · Publikasi (Livewire): lanes, named filter (NamedStudent; no consent since D-162), panel, data for the flyer
+| (M3-E: no generator), schedule, publish, apresiasi.
 */
 
 uses(RefreshDatabase::class);
@@ -37,9 +37,9 @@ beforeEach(function (): void {
     $this->humas = HumasFixtures::humas();
 });
 
-it('lists only verified achievements with publish consent', function (): void {
-    HumasFixtures::publication(studentName: 'Nadia Putri Anindya', competitionName: 'OPSI 2026');
-    HumasFixtures::publication(['publish_consent' => false], studentName: 'Fajar Ramadhan', competitionName: 'O2SN Provinsi 2026');
+it('lists every verified achievement except one of a disabled account, without consent chips (D-162)', function (): void {
+    HumasFixtures::publication(['publish_consent' => false, 'photo_consent' => false], studentName: 'Nadia Putri Anindya', competitionName: 'OPSI 2026');
+    HumasFixtures::publication(studentName: 'Fajar Ramadhan', competitionName: 'O2SN Provinsi 2026', disabled: true);
 
     Livewire::actingAs($this->humas)
         ->test(Publikasi::class)
@@ -49,7 +49,9 @@ it('lists only verified achievements with publish consent', function (): void {
         ->assertDontSee('Fajar Ramadhan')
         ->assertSee('Pembimbing Bu Retno Wulandari')
         ->assertSee('Juara II Nasional')
-        ->assertSee('Izin foto ada');
+        ->assertDontSee('Izin foto ada')
+        ->assertDontSee('Tanpa foto')
+        ->assertDontSee('mengizinkan');
 });
 
 it('preselects the first ready card and suggests a caption', function (): void {
@@ -58,7 +60,7 @@ it('preselects the first ready card and suggests a caption', function (): void {
     Livewire::actingAs($this->humas)
         ->test(Publikasi::class)
         ->assertSet('selectedId', $publication->getKey())
-        ->assertSet('caption', "Selamat kepada Nadia Putri Anindya (XI-4), Juara II OPSI 2026 tingkat nasional. Terima kasih Bu Retno Wulandari atas bimbingannya.\n#SMAGASpectacular #SMAN3Semarang")
+        ->assertSet('caption', "Selamat kepada Nadia Putri Anindya (XI-D), Juara II OPSI 2026 tingkat nasional. Terima kasih Bu Retno Wulandari atas bimbingannya.\n#SMAGASpectacular #SMAN3Semarang")
         ->assertSet('channels', ['instagram', 'website'])
         ->assertSee('Siapkan publikasi');
 });
@@ -79,7 +81,7 @@ it('shows the data for the flyer as one fact per line, with a copy button for th
         ->assertSee('Data untuk flyer')
         ->assertSeeInOrder([
             'Nama:', 'Nadia Putri Anindya',
-            'Kelas:', 'XI-4',
+            'Kelas:', 'XI-D',
             'Capaian:', 'Juara II',
             'Lomba:', 'OPSI 2026',
             'Tingkat:', 'Nasional',
@@ -113,50 +115,58 @@ it('shows the data for the flyer as one fact per line, with a copy button for th
 
 it('lists every team member with class in the data for the flyer', function (): void {
     $publication = HumasFixtures::publication();
-    HumasFixtures::teammate($publication->achievement, 'Raka Pradipta', 'XII-2');
-    HumasFixtures::teammate($publication->achievement, 'Salsabila Kirana', 'X-3', ['photo_consent' => false]);
+    HumasFixtures::teammate($publication->achievement, 'Raka Pradipta', 'XII-B');
+    HumasFixtures::teammate($publication->achievement, 'Salsabila Kirana', 'X-C', ['photo_consent' => false]);
 
     Livewire::actingAs($this->humas)
         ->test(Publikasi::class)
-        ->assertSeeInOrder(['Anggota tim:', 'Nadia Putri Anindya (XI-4)', 'Raka Pradipta (XII-2)', 'Salsabila Kirana (X-3)', 'Capaian:', 'Juara II'])
+        ->assertSeeInOrder(['Anggota tim:', 'Nadia Putri Anindya (XI-D)', 'Raka Pradipta (XII-B)', 'Salsabila Kirana (X-C)', 'Capaian:', 'Juara II'])
         ->assertDontSee('Nama:')
         ->assertDontSee('Kelas:')
-        ->assertSee('Tidak mengizinkan fotonya dipakai: Salsabila Kirana.')
-        ->assertDontSee('tidak mengizinkan namanya dipublikasikan');
+        ->assertDontSee('mengizinkan');
 });
 
-it('never names a team member without publish consent in the data for the flyer', function (): void {
+it('never names a team member with a disabled account in the data for the flyer', function (): void {
     $publication = HumasFixtures::publication();
-    HumasFixtures::teammate($publication->achievement, 'Raka Pradipta', 'XII-2');
-    HumasFixtures::teammate($publication->achievement, 'Fajar Ramadhan', 'XII-5', ['publish_consent' => false]);
+    HumasFixtures::teammate($publication->achievement, 'Raka Pradipta', 'XII-B');
+    HumasFixtures::teammate($publication->achievement, 'Fajar Ramadhan', 'XII-E', disabled: true);
 
     Livewire::actingAs($this->humas)
         ->test(Publikasi::class)
-        ->assertSeeInOrder(['Anggota tim:', 'Nadia Putri Anindya (XI-4)', 'Raka Pradipta (XII-2)'])
-        ->assertSee('1 anggota tim tidak mengizinkan namanya dipublikasikan, jadi tidak ditampilkan di sini.')
+        ->assertSeeInOrder(['Anggota tim:', 'Nadia Putri Anindya (XI-D)', 'Raka Pradipta (XII-B)'])
+        ->assertSee('1 anggota tim tidak ditampilkan karena akunnya nonaktif.')
         ->assertDontSee('Fajar Ramadhan')
-        ->assertDontSee('XII-5');
+        ->assertDontSee('XII-E');
 });
 
-it('says that the student does not allow a photo, and offers none', function (): void {
+it('says nothing about photos and offers none', function (): void {
     HumasFixtures::publication(['photo_consent' => false]);
 
     Livewire::actingAs($this->humas)
         ->test(Publikasi::class)
-        ->assertSee('Tanpa foto')
-        ->assertSee('Siswa ini tidak mengizinkan fotonya dipakai.')
+        ->assertDontSee('Tanpa foto')
+        ->assertDontSee('Izin foto ada')
+        ->assertDontSee('fotonya dipakai')
         ->assertDontSeeHtml('<img')
         ->assertDontSee('inisial');
 });
 
-it('closes the panel, data for the flyer included, once publish consent is withdrawn', function (): void {
+it('says in the empty state that verified prestasi appear here, without a consent condition', function (): void {
+    Livewire::actingAs($this->humas)
+        ->test(Publikasi::class)
+        ->assertSee('Belum ada prestasi untuk dipublikasikan')
+        ->assertSee('Prestasi yang sudah diverifikasi akan muncul di sini.')
+        ->assertDontSee('izin publikasi');
+});
+
+it('closes the panel, data for the flyer included, once the account is disabled', function (): void {
     $publication = HumasFixtures::publication();
     $component = Livewire::actingAs($this->humas)
         ->test(Publikasi::class)
         ->assertSee('Data untuk flyer')
         ->assertSee('Nadia Putri Anindya');
 
-    $publication->achievement->student->forceFill(['publish_consent' => false])->save();
+    $publication->achievement->student->user->forceFill(['status' => UserStatus::Disabled])->save();
 
     $component->call('tampilkanLebih')
         ->assertSet('selectedId', null)
@@ -217,7 +227,7 @@ it('no longer offers a flyer mock-up, a template or a PNG, and has nothing left 
 it('selects a card, and 404s for a publication outside the visible queue', function (): void {
     HumasFixtures::publication();
     $other = HumasFixtures::publication(publicationState: ['status' => PublicationStatus::Terjadwal, 'scheduled_at' => now()->addDay(), 'channels' => ['instagram']], studentName: 'Raka Pradipta', competitionName: 'FIKSI 2026');
-    $hidden = HumasFixtures::publication(['publish_consent' => false], studentName: 'Fajar Ramadhan');
+    $hidden = HumasFixtures::publication(studentName: 'Fajar Ramadhan', disabled: true);
 
     $component = Livewire::actingAs($this->humas)->test(Publikasi::class)
         ->call('select', $other->getKey())
@@ -229,7 +239,7 @@ it('selects a card, and 404s for a publication outside the visible queue', funct
 
 it('keeps the selected id locked', function (): void {
     $publication = HumasFixtures::publication();
-    $hidden = HumasFixtures::publication(['publish_consent' => false], studentName: 'Fajar Ramadhan');
+    $hidden = HumasFixtures::publication(studentName: 'Fajar Ramadhan', disabled: true);
 
     expect(fn () => Livewire::actingAs($this->humas)->test(Publikasi::class)->set('selectedId', $hidden->getKey()))
         ->toThrow(Exception::class);
@@ -240,7 +250,7 @@ it('keeps the selected id locked', function (): void {
 it('preselects ?pilih= and never selects one that is not visible', function (): void {
     HumasFixtures::publication();
     $second = HumasFixtures::publication(studentName: 'Raka Pradipta', competitionName: 'FIKSI 2026');
-    $hidden = HumasFixtures::publication(['publish_consent' => false], studentName: 'Fajar Ramadhan');
+    $hidden = HumasFixtures::publication(studentName: 'Fajar Ramadhan', disabled: true);
 
     Livewire::withQueryParams(['pilih' => $second->getKey()])
         ->actingAs($this->humas)
@@ -320,7 +330,7 @@ it('publishes from the panel through the dialog and notifies the student', funct
             'Tandai sudah terbit?',
             'Siswa langsung diberi tahu.',
             'OPSI 2026',
-            'Nadia Putri Anindya · XI-4 · Juara II Nasional',
+            'Nadia Putri Anindya · XI-D · Juara II Nasional',
             'Kanal: Instagram, Mading sekolah',
             'Status menjadi Dipublikasikan dan tidak bisa dikembalikan ke antrean.',
         ])
@@ -523,7 +533,7 @@ it('says the student was told only when the student can still log in (QA8)', fun
 
 // EM2 (lead, 2026-10-10; D-122): the schedule is only a reminder, "Tandai dipublikasikan" asks first -----------
 
-/** A scheduled card of a consenting student; $at in the past = "lewat jadwal". */
+/** A scheduled card of a student who may be named; $at in the past = "lewat jadwal". */
 function em2Card(DateTimeInterface $at, string $name = 'Nadia Putri Anindya', string $lomba = 'OPSI 2026'): Publication
 {
     return HumasFixtures::publication(publicationState: [
@@ -570,7 +580,7 @@ it('marks a scheduled card whose time has passed as "Lewat jadwal" and leads wit
 });
 
 it('promises no student notice on an overdue card of an alumnus: alert, hint and dialog agree (D-109)', function (): void {
-    // An archived account is still in the queue (consent given) but is not told on "Tandai dipublikasikan".
+    // An archived account is still in the queue (an alumnus stays named) but is not told on "Tandai dipublikasikan".
     $overdue = em2Card(CarbonImmutable::now()->subDay()->setTime(21, 50));
     $overdue->achievement->student->user->forceFill(['status' => UserStatus::Archived])->save();
 

@@ -99,8 +99,8 @@ it('lists the ketua first while the own lomba waits and the members have no invi
     $own = F::pendingCompetition($this->nadiaUser, F::usulanAttributes([
         'name' => 'Lomba Tim Usulan Fiktif', 'participation' => Participation::Tim, 'max_team_size' => 4,
     ]));
-    $bunga = F::student('Qa Talenta Bunga Citra', 'XI-2');
-    $dimas = F::student('Qa Talenta Dimas Arya', 'XI-3');
+    $bunga = F::student('Qa Talenta Bunga Citra', 'XI-B');
+    $dimas = F::student('Qa Talenta Dimas Arya', 'XI-C');
     $registration = app(CreateRegistration::class)
         ->handle($this->nadiaUser, $own, RegistrationType::Tim, [$bunga->getKey(), $dimas->getKey()], $this->guru->getKey());
 
@@ -122,8 +122,8 @@ it('lists the ketua first while the own lomba waits and the members have no invi
 
 it('lists the ketua first and then the members by invitation time once the lomba is published, as Lomba saya does', function (): void {
     $lomba = F::teamCompetition(4, ['name' => 'Lomba Tim Terbuka Fiktif']);
-    $zaki = F::student('Qa Talenta Zaki Pratama', 'XI-2');
-    $ayu = F::student('Qa Talenta Ayu Lestari', 'XI-3');
+    $zaki = F::student('Qa Talenta Zaki Pratama', 'XI-B');
+    $ayu = F::student('Qa Talenta Ayu Lestari', 'XI-C');
     $registration = app(CreateRegistration::class)
         ->handle($this->nadiaUser, $lomba, RegistrationType::Tim, [$zaki->getKey(), $ayu->getKey()], $this->guru->getKey());
 
@@ -150,8 +150,8 @@ it('lists the ketua first and then the members by invitation time once the lomba
 
 it('sorts members invited at the same moment by name in the panel', function (): void {
     $lomba = F::teamCompetition(4, ['name' => 'Lomba Tim Terbuka Fiktif']);
-    $zaki = F::student('Qa Talenta Zaki Pratama', 'XI-2');
-    $ayu = F::student('Qa Talenta Ayu Lestari', 'XI-3');
+    $zaki = F::student('Qa Talenta Zaki Pratama', 'XI-B');
+    $ayu = F::student('Qa Talenta Ayu Lestari', 'XI-C');
     $registration = app(CreateRegistration::class)
         ->handle($this->nadiaUser, $lomba, RegistrationType::Tim, [$zaki->getKey(), $ayu->getKey()], $this->guru->getKey());
     $registration->members()->where('role', 'anggota')->update(['invited_at' => now()->subHour()->startOfSecond()]);

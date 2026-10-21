@@ -10,7 +10,7 @@ use Tests\Feature\Humas\HumasFixtures;
 
 /*
 | FlyerData (M3-E): the facts Humas types into the flyer it makes itself. STH generates no flyer.
-| One fact per line, only what is known, never a student without publish consent (D-16, D-71), no points,
+| One fact per line, only what is known, every student named except a disabled or deleted account (D-162: no consent), no points,
 | no NIS/NISN. Fictional data only (DESIGN-SPEC-v2 §5).
 */
 
@@ -42,7 +42,7 @@ it('gives every known fact of one student, in the order of the screen', function
 
     expect($data->rows)->toBe([
         ['label' => 'Nama', 'values' => ['Nadia Putri Anindya'], 'list' => false],
-        ['label' => 'Kelas', 'values' => ['XI-4'], 'list' => false],
+        ['label' => 'Kelas', 'values' => ['XI-D'], 'list' => false],
         ['label' => 'Capaian', 'values' => ['Juara II'], 'list' => false],
         ['label' => 'Lomba', 'values' => ['OPSI 2026'], 'list' => false],
         ['label' => 'Cabang', 'values' => ['Karya Ilmiah Terapan'], 'list' => false],
@@ -81,7 +81,7 @@ it('writes the lomba dates in full', function (?string $start, ?string $final, s
 
 it('never carries points, NIS/NISN, birth date, phone or email', function (): void {
     $achievement = HumasFixtures::achievement();
-    HumasFixtures::teammate($achievement, 'Raka Pradipta', 'XII-2');
+    HumasFixtures::teammate($achievement, 'Raka Pradipta', 'XII-B');
     $data = FlyerData::of($achievement->fresh());
     $text = (string) json_encode([$data->rows, $data->notes], JSON_UNESCAPED_UNICODE);
 
@@ -108,14 +108,14 @@ it('never carries points, NIS/NISN, birth date, phone or email', function (): vo
 
 it('lists a team with the ketua first, then by name, each with class', function (): void {
     $achievement = HumasFixtures::achievement(studentName: 'Nadia Putri Anindya');
-    HumasFixtures::teammate($achievement, 'Salsabila Kirana', 'X-3');
-    HumasFixtures::teammate($achievement, 'Dimas Arya Nugroho', 'XII-2');
+    HumasFixtures::teammate($achievement, 'Salsabila Kirana', 'X-C');
+    HumasFixtures::teammate($achievement, 'Dimas Arya Nugroho', 'XII-B');
 
     $data = FlyerData::of($achievement->fresh());
 
     expect($data->rows[0])->toBe([
         'label' => 'Anggota tim',
-        'values' => ['Nadia Putri Anindya (XI-4)', 'Dimas Arya Nugroho (XII-2)', 'Salsabila Kirana (X-3)'],
+        'values' => ['Nadia Putri Anindya (XI-D)', 'Dimas Arya Nugroho (XII-B)', 'Salsabila Kirana (X-C)'],
         'list' => true,
     ])
         ->and(array_column($data->rows, 'label'))->not->toContain('Nama')->not->toContain('Kelas')
@@ -127,50 +127,64 @@ it('lists a team with the ketua first, then by name, each with class', function 
     expect(FlyerData::of($other)->rows[0])->toBe($data->rows[0]);
 });
 
-it('names who does not allow a photo in a team', function (): void {
-    $achievement = HumasFixtures::achievement(['photo_consent' => false]);
-    HumasFixtures::teammate($achievement, 'Raka Pradipta', 'XII-2');
-    HumasFixtures::teammate($achievement, 'Salsabila Kirana', 'X-3', ['photo_consent' => false]);
-
-    expect(FlyerData::of($achievement->fresh())->notes)
-        ->toBe(['Tidak mengizinkan fotonya dipakai: Nadia Putri Anindya, Salsabila Kirana.']);
-});
-
-it('leaves a team member without publish consent out of the list and only counts them', function (): void {
-    $achievement = HumasFixtures::achievement();
-    HumasFixtures::teammate($achievement, 'Raka Pradipta', 'XII-2');
-    HumasFixtures::teammate($achievement, 'Fajar Ramadhan', 'XII-5', ['publish_consent' => false, 'photo_consent' => false]);
-    HumasFixtures::teammate($achievement, 'Bima Satria Wicaksono', 'XII-6', ['publish_consent' => false]);
+it('names every member and adds no note, whatever the old consent columns say (D-162)', function (): void {
+    $achievement = HumasFixtures::achievement(['photo_consent' => false, 'publish_consent' => false]);
+    HumasFixtures::teammate($achievement, 'Raka Pradipta', 'XII-B', ['publish_consent' => false]);
+    HumasFixtures::teammate($achievement, 'Salsabila Kirana', 'X-C', ['photo_consent' => false]);
 
     $data = FlyerData::of($achievement->fresh());
     $text = (string) json_encode([$data->rows, $data->notes], JSON_UNESCAPED_UNICODE);
 
-    expect($data->rows[0]['values'])->toBe(['Nadia Putri Anindya (XI-4)', 'Raka Pradipta (XII-2)'])
-        ->and($data->notes)->toBe(['2 anggota tim tidak mengizinkan namanya dipublikasikan, jadi tidak ditampilkan di sini.'])
-        ->and($text)->not->toContain('Fajar Ramadhan')
-        ->not->toContain('Bima Satria Wicaksono')
-        ->not->toContain('XII-5')
-        ->not->toContain('XII-6');
+    expect($data->rows[0]['values'])->toBe(['Nadia Putri Anindya (XI-D)', 'Raka Pradipta (XII-B)', 'Salsabila Kirana (X-C)'])
+        ->and($data->notes)->toBe([])
+        ->and($text)->not->toContain('mengizinkan');
+
+    $single = HumasFixtures::achievement(['photo_consent' => false, 'publish_consent' => false], studentName: 'Hana Safira', competitionName: 'FLS3N 2026');
+    $one = FlyerData::of($single->fresh());
+
+    expect($one->rows[0])->toBe(['label' => 'Nama', 'values' => ['Hana Safira'], 'list' => false])
+        ->and($one->rows[1])->toBe(['label' => 'Kelas', 'values' => ['XI-D'], 'list' => false])
+        ->and($one->notes)->toBe([]);
 });
 
-it('names nobody when no member of the team gave publish consent', function (): void {
-    $achievement = HumasFixtures::achievement(['publish_consent' => false]);
-    HumasFixtures::teammate($achievement, 'Fajar Ramadhan', 'XII-5', ['publish_consent' => false]);
+it('leaves a team member with a disabled or deleted account out of the list and only counts them', function (): void {
+    $achievement = HumasFixtures::achievement();
+    HumasFixtures::teammate($achievement, 'Raka Pradipta', 'XII-B');
+    HumasFixtures::teammate($achievement, 'Fajar Ramadhan', 'XII-E', disabled: true);
+    HumasFixtures::teammate($achievement, 'Bima Satria Wicaksono', 'XII-F')->student->delete();
+
+    $data = FlyerData::of($achievement->fresh());
+    $text = (string) json_encode([$data->rows, $data->notes], JSON_UNESCAPED_UNICODE);
+
+    expect($data->rows[0]['values'])->toBe(['Nadia Putri Anindya (XI-D)', 'Raka Pradipta (XII-B)'])
+        ->and($data->notes)->toBe(['2 anggota tim tidak ditampilkan karena akunnya nonaktif.'])
+        ->and($text)->not->toContain('Fajar Ramadhan')
+        ->not->toContain('Bima Satria Wicaksono')
+        ->not->toContain('XII-E')
+        ->not->toContain('XII-F');
+});
+
+it('names nobody when every member of the team has a disabled account', function (): void {
+    $achievement = HumasFixtures::achievement(disabled: true);
+    HumasFixtures::teammate($achievement, 'Fajar Ramadhan', 'XII-E', disabled: true);
 
     $data = FlyerData::of($achievement->fresh());
     $text = (string) json_encode([$data->rows, $data->notes], JSON_UNESCAPED_UNICODE);
 
     expect($data->rows[0])->toBe(['label' => 'Nama', 'values' => ['Siswa kelas XI'], 'list' => false])
         ->and(array_column($data->rows, 'label'))->not->toContain('Anggota tim')->not->toContain('Kelas')
-        ->and($data->notes[0])->toBe('2 anggota tim tidak mengizinkan namanya dipublikasikan, jadi tidak ditampilkan di sini.')
+        ->and($data->notes)->toBe(['2 anggota tim tidak ditampilkan karena akunnya nonaktif.'])
         ->and($text)->not->toContain('Nadia Putri Anindya')
         ->not->toContain('Fajar Ramadhan')
-        ->not->toContain('XI-4')
-        ->not->toContain('XII-5');
+        ->not->toContain('XI-D')
+        ->not->toContain('XII-E');
 });
 
-it('says so when the one student does not allow a photo', function (): void {
-    $achievement = HumasFixtures::achievement(['photo_consent' => false]);
+it('says so when the one student has a disabled account', function (): void {
+    $achievement = HumasFixtures::achievement(disabled: true);
 
-    expect(FlyerData::of($achievement->fresh())->notes)->toBe(['Siswa ini tidak mengizinkan fotonya dipakai.']);
+    $data = FlyerData::of($achievement->fresh());
+
+    expect($data->rows[0])->toBe(['label' => 'Nama', 'values' => ['Siswa kelas XI'], 'list' => false])
+        ->and($data->notes)->toBe(['Akun siswa ini nonaktif, jadi namanya tidak ditampilkan.']);
 });

@@ -2,7 +2,7 @@
 <section aria-labelledby="h-batas" class="flex flex-col gap-5">
     <x-sth.page-header id="h-batas" title="Arsip akun" subtitle="Kapan akun siswa diarsipkan." />
 
-    <form wire:submit="save" class="grid gap-4 md:grid-cols-2" novalidate>
+    <form wire:submit="save" class="grid grid-cols-1 gap-4 md:grid-cols-2" novalidate>
         <x-sth.card as="section" aria-labelledby="h-batas-arsip" class="flex flex-col gap-3">
             <h3 id="h-batas-arsip" class="title-card">Arsip otomatis</h3>
             <x-sth.input wire:model.live.debounce.400ms="archiveMonths" type="number" min="1" max="120" inputmode="numeric"

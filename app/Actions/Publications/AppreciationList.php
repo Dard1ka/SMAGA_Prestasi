@@ -11,7 +11,7 @@ use App\Models\AppreciationEvent;
 /**
  * D-141: the students of one appreciation event that may be named in print, ordered by class and name. Every
  * appreciation of the event with an achievement counts (scheduled and given); a student who fails `NamedStudent`
- * (no publish consent, deleted, disabled) is not listed and only raises `omitted`. Never NIS, NISN, points or mentor.
+ * (deleted, disabled) is not listed and only raises `omitted`. Never NIS, NISN, points or mentor.
  */
 final class AppreciationList
 {
@@ -54,7 +54,7 @@ final class AppreciationList
             ];
         }
 
-        // Real classes first (natural order: X-2, XI-4, XII-2), "Alumni" then "–" last, then by name.
+        // Real classes first (natural order: X-B, XI-D, XII-B), "Alumni" then "–" last, then by name.
         usort($people, static fn (array $a, array $b): int => self::group($a['class']) <=> self::group($b['class'])
             ?: strnatcasecmp($a['class'], $b['class'])
             ?: strcmp(mb_strtolower($a['name']), mb_strtolower($b['name'])));

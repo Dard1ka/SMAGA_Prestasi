@@ -94,30 +94,30 @@ final class DemoSeeder extends Seeder
         'agus' => ['Agus Setiawan, S.Or.', 'agus.s', RoleName::Guru, 'Pak', 'Guru pembina Olahraga', null],
     ];
 
-    /** key => [name, class, NIS, NISN, birth date, photo consent, alumni] — NIS pattern 22<yy><yy+1>NNN. Public: see STAFF. */
+    /** key => [name, class, NIS, NISN, birth date, alumni] — NIS pattern 22<yy><yy+1>NNN. Public: see STAFF. */
     public const STUDENTS = [
-        'nadia' => ['Nadia Putri Anindya', 'XI-4', '225226201', '0098765432', '2009-03-02', true, false],
-        'dimas' => ['Dimas Arya Nugroho', 'XI-4', '225226204', '0093417728', '2009-07-19', false, false],
-        'keisha' => ['Keisha Larasati', 'XI-6', '225226166', '0095263014', '2009-11-08', false, false],
-        'raka' => ['Raka Pradipta', 'XII-2', '224225108', '0087315529', '2008-05-14', true, false],
-        'salsabila' => ['Salsabila Kirana', 'XI-5', '225226157', '0094128806', '2009-09-23', false, false],
-        'bima' => ['Bima Satria Wicaksono', 'XII-7', '224225219', '0086650213', '2008-12-01', false, false],
-        'aurelia' => ['Aurelia Maharani', 'X-3', '226227031', '0101482657', '2010-04-11', true, false],
-        'fajar' => ['Fajar Ramadhan', 'XII-1', '224225012', '0085902347', '2008-10-05', false, false],
-        'citra' => ['Citra Ayu Lestari', 'XI-2', '225226073', '0096604581', '2009-06-17', false, false],
-        'yoga' => ['Yoga Pratama', 'XII-5', '224225147', '0088123906', '2008-02-27', false, false],
-        'hana' => ['Hana Safira', 'X-8', '226227088', '0103519214', '2010-08-30', false, false],
-        'rizky' => ['Rizky Maulana', 'XI-1', '225226118', '0092745530', '2009-01-12', false, false],
-        'farhan' => ['Farhan Aditya', 'XI-3', '225226092', '0097381145', '2009-05-04', false, false],
-        'laras' => ['Laras Wening Pangestu', 'XI-7', '225226181', '0091836627', '2009-10-21', false, false],
-        'galuh' => ['Galuh Prameswari', 'XII-4', '224225066', '0084471935', '2008-07-09', false, false],
-        'bayu' => ['Bayu Anggara', 'XII-6', '224225031', '0089254410', '2008-03-15', false, false],
-        'galang' => ['Galang Putra Mahendra', 'X-TAHFIDZ', '226227004', '0102736486', '2010-12-03', false, false],
+        'nadia' => ['Nadia Putri Anindya', 'XI-D', '225226201', '0098765432', '2009-03-02', false],
+        'dimas' => ['Dimas Arya Nugroho', 'XI-D', '225226204', '0093417728', '2009-07-19', false],
+        'keisha' => ['Keisha Larasati', 'XI-F', '225226166', '0095263014', '2009-11-08', false],
+        'raka' => ['Raka Pradipta', 'XII-B', '224225108', '0087315529', '2008-05-14', false],
+        'salsabila' => ['Salsabila Kirana', 'XI-E', '225226157', '0094128806', '2009-09-23', false],
+        'bima' => ['Bima Satria Wicaksono', 'XII-G', '224225219', '0086650213', '2008-12-01', false],
+        'aurelia' => ['Aurelia Maharani', 'X-C', '226227031', '0101482657', '2010-04-11', false],
+        'fajar' => ['Fajar Ramadhan', 'XII-A', '224225012', '0085902347', '2008-10-05', false],
+        'citra' => ['Citra Ayu Lestari', 'XI-B', '225226073', '0096604581', '2009-06-17', false],
+        'yoga' => ['Yoga Pratama', 'XII-E', '224225147', '0088123906', '2008-02-27', false],
+        'hana' => ['Hana Safira', 'X-H', '226227088', '0103519214', '2010-08-30', false],
+        'rizky' => ['Rizky Maulana', 'XI-A', '225226118', '0092745530', '2009-01-12', false],
+        'farhan' => ['Farhan Aditya', 'XI-C', '225226092', '0097381145', '2009-05-04', false],
+        'laras' => ['Laras Wening Pangestu', 'XI-G', '225226181', '0091836627', '2009-10-21', false],
+        'galuh' => ['Galuh Prameswari', 'XII-D', '224225066', '0084471935', '2008-07-09', false],
+        'bayu' => ['Bayu Anggara', 'XII-F', '224225031', '0089254410', '2008-03-15', false],
+        'galang' => ['Galang Putra Mahendra', 'X-A', '226227004', '0102736486', '2010-12-03', false],
         // Alumni: angkatan 2022, kelas XII from July 2024, archived 1 January 2026.
-        'ardiansyah' => ['Ardiansyah Nur Hakim', 'XII-3', '222223041', '0067219043', '2006-09-18', false, true],
-        'tiara' => ['Tiara Anjani Lestari', 'XII-8', '222223187', '0065508172', '2006-11-25', false, true],
-        'putri' => ['Putri Maharani Kusuma', 'XII-1', '222223112', '0066341809', '2006-04-02', false, true],
-        'bagas' => ['Bagas Wirayudha', 'XII-5', '222223009', '0064792251', '2006-08-07', false, true],
+        'ardiansyah' => ['Ardiansyah Nur Hakim', 'XII-C', '222223041', '0067219043', '2006-09-18', true],
+        'tiara' => ['Tiara Anjani Lestari', 'XII-H', '222223187', '0065508172', '2006-11-25', true],
+        'putri' => ['Putri Maharani Kusuma', 'XII-A', '222223112', '0066341809', '2006-04-02', true],
+        'bagas' => ['Bagas Wirayudha', 'XII-E', '222223009', '0064792251', '2006-08-07', true],
     ];
 
     /**
@@ -432,7 +432,7 @@ final class DemoSeeder extends Seeder
         $initialPassword = app(InitialPassword::class);
         $graduation = app(GraduationCalculator::class);
 
-        foreach (self::STUDENTS as $key => [$name, $class, $nis, $nisn, $birthDate, $photoConsent, $alumni]) {
+        foreach (self::STUDENTS as $key => [$name, $class, $nis, $nisn, $birthDate, $alumni]) {
             $importYear = $alumni ? '2024/2025' : '2026/2027';
             $dates = $graduation->calculate((int) Classroom::levelFromName($class), $importYear);
 
@@ -456,8 +456,6 @@ final class DemoSeeder extends Seeder
                 'grade12_start_date' => $dates->grade12StartDate->format('Y-m-d'),
                 'archive_at' => $dates->archiveAt->format('Y-m-d'),
                 'phone' => null,
-                'photo_consent' => $photoConsent,
-                'publish_consent' => true,
             ]);
         }
     }

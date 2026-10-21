@@ -5,36 +5,39 @@ declare(strict_types=1);
 namespace App\Actions\Accounts;
 
 /**
- * K10 (docs/SECURITY.md §3a): random temporary password for an Admin reset — 12 characters from an alphabet
- * without look-alikes (no 0/O, 1/l/I), at least one lowercase letter, one uppercase letter and one digit.
- * CSPRNG only (random_int). Shown once to the Admin, never stored in plaintext or logged.
+ * A random, easy-to-type temporary password: three lowercase syllables and four digits, e.g. "bakuro4827" (10
+ * characters, about 31 bits; no c, l, q or x, digits 2–9). CSPRNG only (random_int). Written for the Admin reset of
+ * D-158; since 2026-10-21 the Admin types the temporary password of a student reset (ResetStudentAccount), so the app
+ * no longer calls this. Its only caller is the email scenario (`tests/E2E/support/email-scenario.php`), which makes
+ * staff passwords with it: delete this class together with those calls.
  */
 final class GenerateTemporaryPassword
 {
-    public const LENGTH = 12;
+    public const LENGTH = 10;
 
-    private const LOWER = 'abcdefghjkmnpqrstuvwxyz';
+    public const SYLLABLES = 3;
 
-    private const UPPER = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+    public const DIGIT_COUNT = 4;
+
+    private const CONSONANTS = 'bdfghjkmnprstvwyz';
+
+    private const VOWELS = 'aeiou';
 
     private const DIGITS = '23456789';
 
     public function handle(): string
     {
-        $all = self::LOWER.self::UPPER.self::DIGITS;
-        $chars = [self::pick(self::LOWER), self::pick(self::UPPER), self::pick(self::DIGITS)];
+        $password = '';
 
-        while (count($chars) < self::LENGTH) {
-            $chars[] = self::pick($all);
+        for ($i = 0; $i < self::SYLLABLES; $i++) {
+            $password .= self::pick(self::CONSONANTS).self::pick(self::VOWELS);
         }
 
-        // Fisher–Yates with random_int so the guaranteed classes are not always in front.
-        for ($i = count($chars) - 1; $i > 0; $i--) {
-            $j = random_int(0, $i);
-            [$chars[$i], $chars[$j]] = [$chars[$j], $chars[$i]];
+        for ($i = 0; $i < self::DIGIT_COUNT; $i++) {
+            $password .= self::pick(self::DIGITS);
         }
 
-        return implode('', $chars);
+        return $password;
     }
 
     private static function pick(string $alphabet): string

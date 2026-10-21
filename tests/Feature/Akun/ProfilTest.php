@@ -51,7 +51,7 @@ it('shows a student the read-only data, the two fields and both tabs', function 
         ->assertSee('Keamanan akun')
         ->assertSee('href="'.route('akun.keamanan').'"', false)
         ->assertSee($student->nisn)
-        ->assertSee('XI-4')
+        ->assertSee('XI-D')
         ->assertSee('nadia.anindya@example.test')
         ->assertSee('Tanggal lahir')
         ->assertSee('No HP')

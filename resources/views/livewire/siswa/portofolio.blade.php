@@ -33,7 +33,7 @@
         </div>
     </x-sth.card>
 
-    <div class="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
+    <div class="grid grid-cols-1 items-start gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
         <div class="@container flex min-w-0 flex-col gap-4">
             <x-sth.tabs panels id="porto" label="Bagian portofolio" active="prestasi" :items="[
                 ['key' => 'prestasi', 'label' => 'Prestasi', 'count' => $achievementCount],
@@ -76,6 +76,13 @@
                                             <x-sth.chip tone="gold" class="num">{{ $item['points'] }} poin</x-sth.chip>
                                             <span class="muted num text-xs">{{ $item['formula'] }}</span>
                                         </div>
+                                        {{-- D-160: the appreciation and the publication by Humas, the facts the notices link here for. --}}
+                                        @if ($item['appreciation'])
+                                            <p class="m-0 flex items-start gap-1.5 text-sm [overflow-wrap:anywhere]"><x-sth.icon name="award" :size="16" class="mt-0.5 shrink-0 text-gold" />{{ $item['appreciation'] }}</p>
+                                        @endif
+                                        @if ($item['published'])
+                                            <p class="m-0 flex items-start gap-1.5 text-sm"><x-sth.icon name="check" :size="16" class="mt-0.5 shrink-0 text-green" />{{ $item['published'] }}</p>
+                                        @endif
                                         @if ($item['certificateUrl'])
                                             {{-- With a preview the click opens the popup (<x-sth.preview>); the href stays the download. --}}
                                             <a href="{{ $item['certificateUrl'] }}" class="flex items-center gap-3 rounded-tile border border-line p-2.5 text-ink no-underline hover:bg-hover"

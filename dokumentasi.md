@@ -21,9 +21,9 @@ asli. Itu bukan bug, itu sisa uji. Angka saat ini: 24 siswa, 34 pengguna, 72 lom
 
 | Nama | Masuk dengan | Peran | Kelas | Status | Catatan |
 |---|---|---|---|---|---|
-| Arga Uji Satu | NIS 227226901 | Siswa | X-1 | Aktif | Punya 6 pendaftaran uji (lihat bagian 5) |
-| Bela Uji Dua | NIS 227226902 | Siswa | XI-3 | Aktif | Anggota tim Arga di LPB 2026 |
-| Candra Uji Tiga | NIS 227226903 | Siswa | X-4 | Aktif | Di-reset Admin lalu aktivasi lagi saat QA-3 |
+| Arga Uji Satu | NIS 227226901 | Siswa | X-A | Aktif | Punya 6 pendaftaran uji (lihat bagian 5) |
+| Bela Uji Dua | NIS 227226902 | Siswa | XI-C | Aktif | Anggota tim Arga di LPB 2026 |
+| Candra Uji Tiga | NIS 227226903 | Siswa | X-D | Aktif | Di-reset Admin lalu aktivasi lagi saat QA-3 |
 | Uji QA Dua | username `uji.qa2` | Humas | – | Aktif | Akun staf uji |
 
 Kata sandi akun-akun ini dibuat saat uji dan tidak dicatat. Kalau perlu masuk: Admin › Pengguna › reset.

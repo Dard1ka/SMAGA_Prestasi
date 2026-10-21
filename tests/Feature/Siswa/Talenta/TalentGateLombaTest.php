@@ -37,7 +37,7 @@ beforeEach(function (): void {
     Notification::fake();
     $this->withoutVite();
 
-    $this->hana = F::student('Hana Safira', 'X-8');
+    $this->hana = F::student('Hana Safira', 'X-H');
     $this->hanaUser = F::user($this->hana);
 });
 
@@ -79,7 +79,7 @@ it('holds the student again before Usulkan lomba once the last talent is deleted
 });
 
 it('lets a kelas XI or XII student who chose a talent open Usulkan lomba (D-153)', function (): void {
-    foreach (['XI-2', 'XII-1'] as $kelas) {
+    foreach (['XI-B', 'XII-A'] as $kelas) {
         $student = F::student('Siswa '.$kelas, $kelas);
         $this->actingAs(F::user($student))->get(route('siswa.lomba.usulkan'))->assertOk()->assertSee('Data lomba');
     }

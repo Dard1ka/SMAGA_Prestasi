@@ -19,7 +19,7 @@ use Spatie\Activitylog\Models\Activity;
  * - auth events: Failed (login failure), Lockout (blocked attempt), Login (success);
  * - OTP abuse: an OtpCode whose `attempts` reaches 3 (`security.otp_failed`) or the maximum (`security.otp_exhausted`);
  * - audited Admin/account actions: every activity row of the account/auth/security/import/user logs and the
- *   events listed in AUDITED_EVENT_PREFIXES (resets, archive/disable, role changes, Kepsek replacement, consent,
+ *   events listed in AUDITED_EVENT_PREFIXES (resets, archive/disable, role changes, Kepsek replacement,
  *   signature, settings, …) → `security.audit.<event>` with ids only (never the properties: reasons/notes);
  * - forward(): any message logged elsewhere whose text starts with `security.` (W1-C's lockout, OTP test mode,
  *   ambiguous identifier, initial password on an active account, …) is copied to the `security` channel.
@@ -30,9 +30,12 @@ final class SecurityEventSubscriber
     /** activity_log.log_name values that are always security relevant. */
     public const AUDITED_LOGS = ['account', 'auth', 'security', 'import', 'user'];
 
-    /** activity_log.event prefixes that are security relevant in any log (B5: role.change_*, archive date, …). */
+    /**
+     * activity_log.event prefixes that are security relevant in any log (B5: role.change_*, archive date, …).
+     * `student.consent` left with D-162 (20 Okt 2026): nothing writes a consent event any more.
+     */
     public const AUDITED_EVENT_PREFIXES = [
-        'account.', 'principal.', 'student.consent', 'student.import', 'student.archive', 'signature.', 'settings.',
+        'account.', 'principal.', 'student.import', 'student.archive', 'signature.', 'settings.',
         'two_factor.', 'archive.', 'role.', 'role_change.', 'weight.published', 'letter_template.', 'security.',
     ];
 

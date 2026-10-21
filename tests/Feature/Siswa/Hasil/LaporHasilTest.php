@@ -33,29 +33,36 @@ beforeEach(function (): void {
 
 afterEach(fn () => F::resetToday());
 
-it('renders the mobile page for the ketua with the request to report and the riset fields', function (): void {
+// UX2 (the lead, 2026-10-20): one place to report. The old page address opens the yellow card of Lomba saya.
+it('sends the old report page to the open card of Lomba saya', function (): void {
     $this->actingAs($this->nadia->user)
         ->get(route('siswa.lapor', $this->wice))
+        ->assertRedirect(route('siswa.lomba-saya.show', ['registration' => $this->wice, 'lapor' => 1]));
+});
+
+it('opens the report form inside Lomba saya for the ketua with the request to report and the riset fields', function (): void {
+    $this->actingAs($this->nadia->user)
+        ->get(route('siswa.lomba-saya.show', ['registration' => $this->wice, 'lapor' => 1]))
         ->assertOk()
-        ->assertSee('<title>Laporkan hasil · SMAGA Talent Hub</title>', false)
-        ->assertSee('WICE 2026 · Riset · Tim 2 orang')
         ->assertSee('Segera laporkan hasil lombamu.')
         ->assertDontSee('Batas')
         ->assertSee('Hasil yang diraih')
         ->assertSee('Penghargaan khusus')
         ->assertSee('(final setelah diverifikasi)', false)
         ->assertSee('Khusus lomba riset')
-        ->assertSee('Kirim laporan')
-        ->assertSee(route('siswa.lomba-saya.show', $this->wice), false);
+        ->assertSee('Kirim laporan');
 });
 
 it('refuses members, outsiders, staff and guests', function (): void {
-    $this->actingAs($this->dimas->user)
-        ->get(route('siswa.lapor', $this->wice))
-        ->assertRedirect(route('siswa.lomba-saya.show', $this->wice));
+    $open = route('siswa.lomba-saya.show', ['registration' => $this->wice, 'lapor' => 1]);
 
-    $this->actingAs(F::student('Rizky Maulana', 'XI-1')->user)->get(route('siswa.lapor', $this->wice))->assertNotFound();
-    $this->actingAs(F::staff(RoleName::Kesiswaan, 'Staf lain'))->get(route('siswa.lapor', $this->wice))->assertForbidden();
+    // A member sees the card without the form: only the ketua reports.
+    $this->actingAs($this->dimas->user)->get($open)->assertOk()
+        ->assertSee('Ketua tim mengirim laporan hasil untuk seluruh tim.')
+        ->assertDontSee('Kirim laporan');
+
+    $this->actingAs(F::student('Rizky Maulana', 'XI-A')->user)->get($open)->assertNotFound();
+    $this->actingAs(F::staff(RoleName::Kesiswaan, 'Staf lain'))->get($open)->assertForbidden();
     auth()->logout();
     $this->get(route('siswa.lapor', $this->wice))->assertRedirect(route('login'));
 });
@@ -117,7 +124,7 @@ it('shows Indonesian errors and keeps the status when fields are missing', funct
 });
 
 it('hides the riset section for other bidang and caps photos at five', function (): void {
-    $o2sn = F::registration(F::student('Yoga Pratama', 'XII-5'), competition: F::competition(['name' => 'O2SN Kota Semarang 2026', 'bidang' => Bidang::Olahraga]));
+    $o2sn = F::registration(F::student('Yoga Pratama', 'XII-E'), competition: F::competition(['name' => 'O2SN Kota Semarang 2026', 'bidang' => Bidang::Olahraga]));
 
     Livewire::actingAs($o2sn->leader->user)
         ->test(LaporHasil::class, ['registration' => $o2sn])

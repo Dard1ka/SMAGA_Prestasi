@@ -21,7 +21,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  *
  * - show():   GET /berkas/{file} (`files.show`), logged in + activated (+ staff 2FA), FilePolicy::view.
  * - publik(): GET /berkas/publik/{file} (`files.public`), guests too, FilePolicy::viewPublic only
- *             (verified certificates with publish consent while Admin enables public certificates), never
+ *             (verified certificates of named students while Admin enables public certificates), never
  *             indexed (`X-Robots-Tag: noindex, nofollow`, QA9).
  * - cover():  GET /berkas/sampul/{file} (`files.cover`), logged in + activated (+ staff 2FA), only a File with
  *             purpose `cover` and FilePolicy::view (the lomba it belongs to: published, or an usulan for its

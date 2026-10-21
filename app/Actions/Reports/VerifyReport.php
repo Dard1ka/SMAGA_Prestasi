@@ -158,7 +158,7 @@ final class VerifyReport
             $user = $achievement->student?->user;
 
             if ($user !== null && $user->canLogIn()) {
-                $user->notify(ReportVerified::for($achievement, $decider));
+                $user->notify(ReportVerified::for($achievement, $decider, $report->note));
             }
         }
 

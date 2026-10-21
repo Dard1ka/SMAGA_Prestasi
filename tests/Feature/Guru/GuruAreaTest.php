@@ -42,9 +42,9 @@ beforeEach(function (): void {
     $this->retno = GuruFixtures::guru('Retno Wulandari, S.Pd.');
     $this->hendra = GuruFixtures::guru('Hendra Kusuma, S.Pd., M.Si.');
 
-    $this->nadia = GuruFixtures::student('Nadia Putri Anindya', 'XI-4');
-    $this->dimas = GuruFixtures::student('Dimas Arya Nugroho', 'XI-4');
-    $this->raka = GuruFixtures::student('Raka Pradipta', 'XII-2');
+    $this->nadia = GuruFixtures::student('Nadia Putri Anindya', 'XI-D');
+    $this->dimas = GuruFixtures::student('Dimas Arya Nugroho', 'XI-D');
+    $this->raka = GuruFixtures::student('Raka Pradipta', 'XII-B');
 
     $this->wice = KesiswaanFixtures::competition(['name' => 'WICE 2026']);
     $this->nsif = KesiswaanFixtures::competition(['name' => 'NSIF 2026']);
@@ -76,7 +76,7 @@ it('answers 404 for a registration the guru does not mentor', function (): void 
     $this->actingAs($this->retno)->get(route('guru.binaan.show', $this->other))->assertNotFound();
     $this->actingAs($this->hendra)->get(route('guru.binaan.show', $this->mine))->assertNotFound();
 
-    $unassigned = GuruFixtures::registration(null, GuruFixtures::student('Hana Safira', 'X-8'));
+    $unassigned = GuruFixtures::registration(null, GuruFixtures::student('Hana Safira', 'X-H'));
     $this->actingAs($this->retno)->get(route('guru.binaan.show', $unassigned))->assertNotFound();
 
     $this->actingAs($this->retno)->get('/guru/binaan/bukan-ulid')->assertNotFound();
@@ -109,8 +109,8 @@ it('keeps gurus out of the Kesiswaan database prestasi', function (): void {
 // Siswa binaan ------------------------------------------------------------------------------------
 
 it('lists only the own binaan with status and stats', function (): void {
-    GuruFixtures::talent($this->retno, GuruFixtures::student('Aurelia Maharani', 'X-3'));
-    GuruFixtures::talent($this->hendra, GuruFixtures::student('Fajar Ramadhan', 'XII-1'));
+    GuruFixtures::talent($this->retno, GuruFixtures::student('Aurelia Maharani', 'X-C'));
+    GuruFixtures::talent($this->hendra, GuruFixtures::student('Fajar Ramadhan', 'XII-A'));
 
     Livewire::actingAs($this->retno)->test(Binaan::class)
         ->assertSee('WICE 2026')
@@ -128,7 +128,7 @@ it('lists only the own binaan with status and stats', function (): void {
 
 it('shows the note for the guru pembina in the Talenta tab and never a stage', function (): void {
     $kesiswaan = KesiswaanFixtures::staff(RoleName::Kesiswaan, 'Ibu Dwi Rahayu');
-    $application = GuruFixtures::talent($this->retno, GuruFixtures::student('Aurelia Maharani', 'X-3'));
+    $application = GuruFixtures::talent($this->retno, GuruFixtures::student('Aurelia Maharani', 'X-C'));
     $application->forceFill(['student_note' => 'Catatan lama untuk siswa.'])->save();
 
     app(UpdateTalentAssessment::class)->handle($kesiswaan, $application, ['mentor_id' => $this->retno->getKey(), 'note' => 'Dampingi latihan soal tiap Kamis.']);
@@ -149,7 +149,7 @@ it('shows the note for the guru pembina in the Talenta tab and never a stage', f
 });
 
 it('separates finished registrations and searches by student or lomba', function (): void {
-    $done = GuruFixtures::registration($this->retno, GuruFixtures::student('Citra Ayu Lestari', 'XI-2'), RegistrationStatus::Selesai,
+    $done = GuruFixtures::registration($this->retno, GuruFixtures::student('Citra Ayu Lestari', 'XI-B'), RegistrationStatus::Selesai,
         competition: KesiswaanFixtures::competition(['name' => 'FLS3N Kota 2026']));
 
     Livewire::actingAs($this->retno)->test(Binaan::class)
@@ -236,7 +236,7 @@ it('lists only the published catalog for a guru', function (): void {
 });
 
 it('opens the detail drawer for a visible lomba and 404 for an invisible one', function (): void {
-    GuruFixtures::registration($this->retno, GuruFixtures::student('Bima Satria Wicaksono', 'XII-4'), competition: $this->nsif);
+    GuruFixtures::registration($this->retno, GuruFixtures::student('Bima Satria Wicaksono', 'XII-D'), competition: $this->nsif);
     $foreign = Competition::factory()->create(['name' => 'Usulan Pak Hendra']);
     $foreign->forceFill(['submitted_by' => $this->hendra->getKey()])->save();
 

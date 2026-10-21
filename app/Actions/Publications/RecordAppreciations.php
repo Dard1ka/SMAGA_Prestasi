@@ -24,8 +24,9 @@ use Illuminate\Validation\ValidationException;
  * and one audit entry per achievement, all in one transaction: all or nothing, so a row that may not go on the
  * event stops the whole click and nobody is told about half a list.
  *
- * The rules per achievement are the ones RecordAppreciation always had: verified, the student gave publish
- * consent, not on this event yet, and on no other event (one achievement, one open event: M2-B, Q2-10).
+ * The rules per achievement are the ones RecordAppreciation always had: verified, the student may be named
+ * (NamedStudent: not deleted, account not disabled; the consent check is gone since D-162), not on this event yet,
+ * and on no other event (one achievement, one open event: M2-B, Q2-10).
  *
  * After commit each student who can log in gets AppreciationScheduled, one per achievement as before. The guru
  * pembimbing gets ONE BinaanAppreciationNotice per call that names every binaan of this click (the hand test of
@@ -42,6 +43,9 @@ final class RecordAppreciations
     public const MAX_MESSAGE = 'Maksimal 30 prestasi sekali masuk.';
 
     public const DUPLICATE_MESSAGE = 'Prestasi ini sudah ada di daftar acara tersebut.';
+
+    /** A student NamedStudent leaves out (disabled or deleted account) is never put on an event (D-162). */
+    public const INACTIVE_MESSAGE = 'Akun siswa ini nonaktif, jadi prestasinya tidak bisa dimasukkan ke acara apresiasi.';
 
     /**
      * @param  iterable<Achievement>  $achievements  the same achievement named twice counts once
@@ -65,15 +69,15 @@ final class RecordAppreciations
             throw ValidationException::withMessages(['achievement' => self::MAX_MESSAGE]);
         }
 
-        $achievements->loadMissing('student');
+        $achievements->loadMissing('student.user');
 
         foreach ($achievements as $achievement) {
             if ($achievement->verified_at === null) {
                 throw ValidationException::withMessages(['achievement' => 'Prestasi ini belum terverifikasi.']);
             }
 
-            if ($achievement->student?->publish_consent !== true) {
-                throw ValidationException::withMessages(['achievement' => 'Siswa belum memberi izin publikasi.']);
+            if (! NamedStudent::allows($achievement->student)) {
+                throw ValidationException::withMessages(['achievement' => self::INACTIVE_MESSAGE]);
             }
         }
 

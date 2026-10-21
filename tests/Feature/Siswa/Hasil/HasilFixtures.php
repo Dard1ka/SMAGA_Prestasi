@@ -45,7 +45,7 @@ final class HasilFixtures
      * student outside kelas X gets one ("Lainnya (Membaca)", TalentGate::pass). Kelas X students stay without one, so the
      * gate tests keep testing the gate; `talent: false` gives a student of any class no talent (the talent tests).
      */
-    public static function student(string $name = 'Nadia Putri Anindya', string $classroom = 'XI-4', bool $talent = true): Student
+    public static function student(string $name = 'Nadia Putri Anindya', string $classroom = 'XI-D', bool $talent = true): Student
     {
         $user = User::factory()->create(['name' => $name])->fresh();
         $user->forceFill([

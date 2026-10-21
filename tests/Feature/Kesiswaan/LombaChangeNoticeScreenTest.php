@@ -58,9 +58,9 @@ const LCN_HINT = 'siswa sedang terdaftar di lomba ini. Perubahan tanggal, tempat
 function lcnScreenTeam(RegistrationStatus $status = RegistrationStatus::MenungguKonfirmasi, array $lomba = []): array
 {
     $guru = F::staff(RoleName::Guru, 'Pak Hendra Kusuma');
-    $ketua = F::student('Raka Pradipta', 'XII-2');
-    $confirmed = F::student('Nadia Putri Anindya', 'XI-4');
-    $invited = F::student('Hana Safira', 'X-8');
+    $ketua = F::student('Raka Pradipta', 'XII-B');
+    $confirmed = F::student('Nadia Putri Anindya', 'XI-D');
+    $invited = F::student('Hana Safira', 'X-H');
     TalentGate::pass($invited); // D-144: a kelas X student opens the siswa pages once she has a talent
 
     $competition = C::lomba($lomba);
@@ -143,7 +143,7 @@ it('names only the students when the change is the team\'s own matter', function
 it('names only the guru pembimbing when no student account can be told', function (): void {
     Notification::fake();
     $guru = F::staff(RoleName::Guru, 'Pak Hendra Kusuma');
-    $ketua = F::student('Raka Pradipta', 'XII-2');
+    $ketua = F::student('Raka Pradipta', 'XII-B');
     $ketua->user->forceFill(['status' => UserStatus::Disabled])->save();
     $competition = C::lomba();
     C::registration($competition, RegistrationStatus::SuratTerbit, $ketua, $guru, RegistrationType::Individu);
@@ -182,7 +182,7 @@ it('says "tanpa email" in the toast when the change reached more people than the
     $competition = C::lomba();
 
     for ($i = 1; $i <= CompetitionChange::MAIL_LIMIT; $i++) {
-        C::registration($competition, RegistrationStatus::Disetujui, F::student('Siswa Contoh '.$i, 'X-1'), $guru, RegistrationType::Individu);
+        C::registration($competition, RegistrationStatus::Disetujui, F::student('Siswa Contoh '.$i, 'X-A'), $guru, RegistrationType::Individu);
     }
 
     Livewire::actingAs($this->kesiswaan)->test(Form::class)
@@ -198,7 +198,7 @@ it('says "tanpa email" in the toast when the change reached more people than the
 it('tells nobody while the lomba waits in the queue, also through "Simpan & publikasikan"', function (): void {
     Notification::fake();
     $submitter = F::staff(RoleName::Guru, 'Bu Retno Wulandari');
-    $ketua = F::student('Raka Pradipta', 'XII-2');
+    $ketua = F::student('Raka Pradipta', 'XII-B');
     $competition = Competition::factory()->create([
         ...F::form(['registration_opens_at' => '2026-09-15 00:00:00', 'registration_closes_at' => '2026-10-20 23:59:59']),
         'name' => 'Lomba Esai Fiktif 2026', 'submitted_by' => $submitter->getKey(),
@@ -252,12 +252,12 @@ it('sends nothing and shows the field error when the drawer save is refused', fu
 it('says at the top of "Ubah lomba" how many registered students a change is told to', function (): void {
     $team = lcnScreenTeam();
     // Not counted: a member who declined, and registrations that no longer rely on the lomba's data.
-    C::member($team['registration'], F::student('Rizky Maulana', 'XI-1'), 'declined');
-    C::registration($team['competition'], RegistrationStatus::MenungguLaporan, F::student('Dimas Arya Saputra', 'XI-2'));
-    C::registration($team['competition'], RegistrationStatus::Selesai, F::student('Salsabila Azzahra', 'XI-3'));
-    C::registration($team['competition'], RegistrationStatus::Dibatalkan, F::student('Bagas Wicaksono', 'XI-5'));
+    C::member($team['registration'], F::student('Rizky Maulana', 'XI-A'), 'declined');
+    C::registration($team['competition'], RegistrationStatus::MenungguLaporan, F::student('Dimas Arya Saputra', 'XI-B'));
+    C::registration($team['competition'], RegistrationStatus::Selesai, F::student('Salsabila Azzahra', 'XI-C'));
+    C::registration($team['competition'], RegistrationStatus::Dibatalkan, F::student('Bagas Wicaksono', 'XI-E'));
     // Counted: another registration that is still on its way to the lomba.
-    C::registration($team['competition'], RegistrationStatus::Berlangsung, F::student('Citra Lestari', 'XI-6'));
+    C::registration($team['competition'], RegistrationStatus::Berlangsung, F::student('Citra Lestari', 'XI-F'));
 
     expect(CompetitionChange::attachedStudents($team['competition']))->toBe(4);
 
@@ -410,7 +410,7 @@ it('sends bell rows only, no mail at all, above the mail limit', function (): vo
     $competition = C::lomba();
 
     for ($i = 1; $i <= CompetitionChange::MAIL_LIMIT; $i++) {
-        C::registration($competition, RegistrationStatus::Disetujui, F::student('Siswa Contoh '.$i, 'X-1'), $guru, RegistrationType::Individu);
+        C::registration($competition, RegistrationStatus::Disetujui, F::student('Siswa Contoh '.$i, 'X-A'), $guru, RegistrationType::Individu);
     }
 
     app(UpdateCompetition::class)->handle($this->kesiswaan, $competition, C::input($competition, ['mode' => 'daring']));

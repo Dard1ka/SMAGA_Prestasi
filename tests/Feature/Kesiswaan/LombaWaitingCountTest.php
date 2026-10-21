@@ -31,8 +31,8 @@ beforeEach(function (): void {
     $this->guru = F::staff(RoleName::Guru, 'Retno Wulandari, S.Pd.');
     $this->kesiswaan = F::staff(RoleName::Kesiswaan, 'Dwi Rahayu');
     $this->nadiaUser = F::user(F::student());
-    $this->rizky = F::student('Rizky Maulana', 'XI-1');
-    $this->hana = F::student('Hana Safira', 'XI-2');
+    $this->rizky = F::student('Rizky Maulana', 'XI-A');
+    $this->hana = F::student('Hana Safira', 'XI-B');
 });
 
 /** @return array{0: int, 1: string} the catalog count of the lomba and the "Pendaftar 30 hari" tile */

@@ -6,6 +6,7 @@ use App\Actions\Publications\CompleteAppreciationEvent;
 use App\Actions\Publications\CreateAppreciationEvent;
 use App\Actions\Publications\DeleteAppreciationEvent;
 use App\Actions\Publications\RecordAppreciation;
+use App\Actions\Publications\RecordAppreciations;
 use App\Actions\Publications\ReleaseAppreciation;
 use App\Enums\AppreciationStatus;
 use App\Enums\RoleName;
@@ -116,7 +117,7 @@ it('refuses a duplicate appreciation', function (): void {
     expect(Appreciation::query()->count())->toBe(1);
 });
 
-it('refuses past events, unverified achievements and students without consent', function (): void {
+it('refuses past events, unverified achievements and students with a disabled account', function (): void {
     $past = HumasFixtures::event('Upacara lalu', now()->subDays(3)->toDateString());
     expect(fn () => app(RecordAppreciation::class)->handle($this->humas, $past, HumasFixtures::achievement()))
         ->toThrow(ValidationException::class, 'Acara apresiasi ini sudah lewat.');
@@ -124,11 +125,20 @@ it('refuses past events, unverified achievements and students without consent', 
     $event = HumasFixtures::event();
     expect(fn () => app(RecordAppreciation::class)->handle($this->humas, $event, HumasFixtures::achievement(verified: false)))
         ->toThrow(ValidationException::class, 'Prestasi ini belum terverifikasi.');
-    expect(fn () => app(RecordAppreciation::class)->handle($this->humas, $event, HumasFixtures::achievement(['publish_consent' => false])))
-        ->toThrow(ValidationException::class, 'Siswa belum memberi izin publikasi.');
+    expect(fn () => app(RecordAppreciation::class)->handle($this->humas, $event, HumasFixtures::achievement(disabled: true)))
+        ->toThrow(ValidationException::class, RecordAppreciations::INACTIVE_MESSAGE);
 
     expect(Appreciation::query()->count())->toBe(0);
     Notification::assertNothingSent();
+});
+
+it('puts a student whose old consent columns are false on an event (D-162)', function (): void {
+    $achievement = HumasFixtures::achievement(['publish_consent' => false, 'photo_consent' => false]);
+
+    $row = app(RecordAppreciation::class)->handle($this->humas, HumasFixtures::event(), $achievement);
+
+    expect($row->exists)->toBeTrue()
+        ->and(Appreciation::query()->count())->toBe(1);
 });
 
 it('refuses roles without appreciation.manage to record', function (): void {

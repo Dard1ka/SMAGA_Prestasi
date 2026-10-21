@@ -52,7 +52,7 @@
                 </div>
                 <x-sth.button variant="quiet" size="sm" href="{{ route('admin.pengaturan', ['tab' => 'pengguna']) }}">Ganti pejabat</x-sth.button>
             </div>
-            <form wire:submit="saveSigner" class="grid gap-4 md:grid-cols-3" novalidate>
+            <form wire:submit="saveSigner" class="grid grid-cols-1 gap-4 md:grid-cols-3" novalidate>
                 <x-sth.input wire:model="signerName" label="Nama" class="md:col-span-3" autocomplete="off" />
                 <x-sth.input wire:model="signerRank" label="Pangkat/Golongan" autocomplete="off" />
                 <x-sth.input wire:model="signerNip" label="NIP" inputmode="numeric" autocomplete="off" />
@@ -72,7 +72,7 @@
                     Kode: {seq} nomor urut, {roman_month} bulan Romawi, {year} tahun.
                 </p>
             </div>
-            <form wire:submit="saveFormats" class="grid gap-4 md:grid-cols-2" novalidate>
+            <form wire:submit="saveFormats" class="grid grid-cols-1 gap-4 md:grid-cols-2" novalidate>
                 <div class="flex flex-col gap-1.5">
                     <x-sth.input wire:model.live.debounce.400ms="formatSiswa" label="Surat tugas siswa" autocomplete="off" class="num" />
                     <p class="text-sm muted">Tampil sebagai: <span class="num font-semibold text-ink">{{ $exampleSiswa ?? '–' }}</span></p>

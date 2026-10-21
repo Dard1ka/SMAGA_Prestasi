@@ -181,6 +181,8 @@ final class Keamanan extends Component
             'testMode' => VerifyOtpCode::testModeActive(),
             'sessionsAvailable' => ListUserSessions::available(),
             'sessions' => $sessions->handle($user, session()->getId(), request()->userAgent(), request()->ip()),
+            // No 2FA section at all while 2FA does not exist in the app (STH_STAFF_2FA=false).
+            'showTwoFactor' => $isStaff && EnsureStaffTwoFactor::featureEnabled(),
             'twoFactorConfirmed' => $user->two_factor_confirmed_at !== null,
             'twoFactorUrl' => $isStaff && Route::has('two-factor.setup') ? route('two-factor.setup') : null,
         ]);

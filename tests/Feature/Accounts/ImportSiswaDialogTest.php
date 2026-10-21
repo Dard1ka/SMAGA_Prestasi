@@ -27,7 +27,7 @@ beforeEach(function (): void {
     F::boot();
     Queue::fake();
     $this->withoutVite();
-    Classroom::factory()->create(['name' => 'X-1', 'level' => 10]);
+    Classroom::factory()->create(['name' => 'X-A', 'level' => 10]);
     $this->kesiswaan = F::staff(RoleName::Kesiswaan);
 });
 
@@ -35,8 +35,8 @@ function d128ImportFile(): UploadedFile
 {
     return UploadedFile::fake()->createWithContent('data-siswa.csv', implode("\n", [
         'Nama lengkap,NIS,NISN,Tanggal lahir,Kelas saat pendaftaran,No HP',
-        'Aurelia Maharani,226227031,0101234557,12-05-2011,X-1,',
-        'Hana Safira,226227088,0103456714,03-01-2011,X-1,',
+        'Aurelia Maharani,226227031,0101234557,12-05-2011,X-A,',
+        'Hana Safira,226227088,0103456714,03-01-2011,X-A,',
     ])."\n");
 }
 
@@ -199,7 +199,7 @@ it('keeps every other role away from the import and its question (D-128)', funct
         Livewire::actingAs(F::staff($role, 'Staf '.$role->value))->test(ImportSiswa::class)->assertForbidden();
     }
 
-    Livewire::actingAs(F::student('Raka Pradipta', 'XII-2')->user)->test(ImportSiswa::class)->assertForbidden();
+    Livewire::actingAs(F::student('Raka Pradipta', 'XII-B')->user)->test(ImportSiswa::class)->assertForbidden();
 });
 
 it('lists the NISN, not the NIS, in the preview and in "baris perlu dicek" (D-137)', function (): void {

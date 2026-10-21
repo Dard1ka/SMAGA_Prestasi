@@ -4,15 +4,13 @@ declare(strict_types=1);
 
 namespace App\Policies;
 
-use App\Enums\Permission;
 use App\Enums\RoleName;
 use App\Models\Student;
 use App\Models\User;
 
 /**
- * Student records. Deny by default; only the abilities below exist. Consent flags (photo_consent,
- * publish_consent, D-16, SECURITY §3m-7) are changed by holders of `student.update` (Admin) through
- * App\Actions\Students\UpdateConsent, never by the student.
+ * Student records. Deny by default; only the abilities below exist. The consent flags and `updateConsent` are gone
+ * since D-162 (20 Okt 2026): every student may be named and every photo may be used.
  */
 final class StudentPolicy
 {
@@ -20,11 +18,6 @@ final class StudentPolicy
     public function before(User $actor): ?bool
     {
         return $actor->canLogIn() ? null : false;
-    }
-
-    public function updateConsent(User $actor, Student $student): bool
-    {
-        return ! $student->trashed() && $actor->checkPermissionTo(Permission::StudentUpdate->value);
     }
 
     /** The student's own No HP (D-149, UpdateStudentPhone): only the account the record belongs to. */

@@ -77,7 +77,7 @@ it('never prints a report deadline, days left or "Terlambat" to the student', fu
         ->assertDontSee('Batas')->assertDontSee('hari lagi')->assertDontSee('Lewat batas')
         ->assertDontSee('Terlambat')->assertDontSee('ditandai terlambat');
 
-    $this->actingAs($this->ketuaUser)->get(route('siswa.lapor', $this->registration))
+    $this->actingAs($this->ketuaUser)->get(route('siswa.lomba-saya.show', ['registration' => $this->registration, 'lapor' => 1]))
         ->assertOk()
         ->assertSee('Segera laporkan hasil lombamu.')
         ->assertDontSee('Batas')->assertDontSee('terlambat');
@@ -145,7 +145,10 @@ it('asks for the report on the student home without a date', function (): void {
 
     Livewire::actingAs($this->ketuaUser)->test(Beranda::class)
         ->assertSee('Segera laporkan hasil lombamu.')
-        ->assertDontSee('terlambat')->assertDontSee('batas 8 Nov');
+        ->assertDontSee('terlambat')->assertDontSee('batas 8 Nov')
+        // UX2: the button opens the yellow card of Lomba saya, not a page of its own.
+        ->assertSeeHtml('href="'.route('siswa.lomba-saya.show', ['registration' => $this->registration, 'lapor' => 1]).'#lapor-judul"')
+        ->assertDontSeeHtml('/lapor"');
 });
 
 it('counts "Belum lapor > 14 hari" on the school dashboard', function (): void {

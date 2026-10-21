@@ -77,7 +77,7 @@
     </div>
 
     @if ($omitted > 0)
-        <p class="muted mt8">{{ $omitted }} prestasi tidak dicantumkan karena siswanya belum memberi izin publikasi atau akunnya nonaktif.</p>
+        <p class="muted mt8">{{ $omitted }} prestasi tidak dicantumkan karena akun siswanya nonaktif.</p>
     @endif
 </body>
 </html>

@@ -1,5 +1,5 @@
 {{-- Apresiasi (Humas + Kesiswaan). Data is prepared in App\Livewire\Humas\Apresiasi. --}}
-<div class="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px] xl:items-start">
+<div class="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_360px] xl:items-start">
     <div class="flex min-w-0 flex-col gap-5">
         @if ($overdue !== [])
             <section aria-labelledby="apr-konfirmasi" class="flex flex-col gap-3">

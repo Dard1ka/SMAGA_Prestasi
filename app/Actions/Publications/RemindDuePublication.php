@@ -28,8 +28,8 @@ use Illuminate\Support\Facades\Notification;
  * student. "Jadwalkan ulang" (SchedulePublication) empties `reminded_at`, so a new time gets its own reminder.
  *
  * Re-checked under lockForUpdate(): still terjadwal, due, not reminded yet and still eligible (verified achievement
- * + a student who may be named, PublicationPolicy::eligible; QA10: a disabled or deleted student is skipped like one
- * without consent, so nobody is mailed the name); otherwise skipped (null). A row without a stored channel is
+ * + a student who may be named, PublicationPolicy::eligible; QA10: a disabled or deleted student is skipped, so
+ * nobody is mailed the name); otherwise skipped (null). A row without a stored channel is
  * reminded too: the reminder needs none, and PublishPublication still asks for one. When no Humas account can log
  * in at that moment the row is stamped all the same (exactly once per schedule); it stays visible as "Lewat jadwal"
  * on Humas › Jadwal and in the sidebar count. Audited `publication.reminded` with by = scheduler.

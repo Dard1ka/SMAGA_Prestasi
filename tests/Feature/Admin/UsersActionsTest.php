@@ -140,7 +140,7 @@ it('counts staff resets towards the K10 alert of more than 10 resets per Admin a
     $second = A::admin(['name' => 'Ibu Ratna Sari', 'username' => 'operator2']);
 
     foreach (Student::factory()->count(10)->create() as $student) {
-        app(ResetStudentAccount::class)->handle($this->admin, User::query()->findOrFail($student->user_id), 'Reset massal uji.');
+        app(ResetStudentAccount::class)->handle($this->admin, User::query()->findOrFail($student->user_id), 'Reset massal uji.', 'sementara8');
     }
 
     Notification::assertNotSentTo($second, AccountAlert::class);
@@ -285,18 +285,21 @@ it('resets a student account from the Pengguna tab with a reason', function (): 
         ->call('openStudent', 'siswa-reset')
         ->assertDispatched('sth-modal-open', id: 'siswa-reset')
         ->call('resetStudent')
-        ->assertHasErrors('studentReason')
+        ->assertHasErrors(['studentReason', 'studentPassword'])
         ->set('studentReason', 'Siswa datang ke TU.')
+        ->set('studentPassword', 'Sementara-26')
         ->call('resetStudent')
         ->assertHasNoErrors()
-        // B1 — K10: the random temporary password is shown once, then forgotten.
-        ->assertDispatched('sth-modal-open', id: 'siswa-sandi')
-        ->assertSet('issuedPassword', fn (?string $pw) => is_string($pw) && strlen($pw) === 12 && Hash::check($pw, $student->user->fresh()->password))
-        ->call('forgetIssuedPassword')
-        ->assertSet('issuedPassword', null);
+        // Lead, 2026-10-21: the Admin typed the password, so nothing is shown again; the field is emptied.
+        ->assertSet('studentPassword', '')
+        ->assertNotDispatched('sth-modal-open', id: 'siswa-sandi')
+        ->assertDispatched('sth-modal-close', id: 'siswa-reset')
+        ->assertDispatched('sth-toast', message: 'Akun direset dan email dilepas. Siswa masuk dengan NISN dan kata sandi sementara dalam 72 jam, lalu menghubungkan email dan membuat kata sandi baru.');
 
-    expect($student->user->fresh()->status)->toBe(UserStatus::PendingActivation)
-        ->and($student->user->fresh()->email)->toBeNull();
+    $user = $student->user->fresh();
+    expect(Hash::check('Sementara-26', $user->password))->toBeTrue()
+        ->and($user->status)->toBe(UserStatus::PendingActivation)
+        ->and($user->email)->toBeNull();
 });
 
 it('keeps the target ids locked against tampering', function (): void {

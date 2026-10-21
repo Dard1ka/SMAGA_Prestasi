@@ -932,7 +932,7 @@ document.addEventListener('click', async (event) => {
     if (!(target instanceof HTMLElement)) return;
 
     try {
-        await navigator.clipboard.writeText(target.innerText);
+        await navigator.clipboard.writeText(target.innerText.trim());
         showToast('Data disalin.', 'success');
     } catch {
         selectContents(target);

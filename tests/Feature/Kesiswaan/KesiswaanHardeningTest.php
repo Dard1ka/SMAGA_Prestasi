@@ -55,7 +55,7 @@ function kesiswaanHardeningApplications(int $count): void
     DB::table('talent_branches')->insert($branches);
 
     for ($s = 1; count($applications) < $count; $s++) {
-        $studentId = F::student('Siswa Uji '.$s, 'X-8')->getKey();
+        $studentId = F::student('Siswa Uji '.$s, 'X-H')->getKey();
 
         foreach (array_slice($branchIds, 0, $count - count($applications)) as $branchId) {
             $applications[] = ['id' => Str::lower((string) Str::ulid()), 'student_id' => $studentId, 'talent_type_id' => $typeId, 'talent_branch_id' => $branchId, 'status' => 'terdaftar', 'created_at' => $now, 'updated_at' => $now];
@@ -165,9 +165,9 @@ it('asks for the password again before the talent export', function (): void {
 
 it('downloads the talent export after a recent password confirmation and logs every filter', function (): void {
     session()->put('auth.password_confirmed_at', time());
-    $hana = F::student('Hana Safira', 'X-8');
+    $hana = F::student('Hana Safira', 'X-H');
     F::application($hana);
-    F::application(F::student('Aurelia Maharani', 'X-3'), branch: 'Kimia');
+    F::application(F::student('Aurelia Maharani', 'X-C'), branch: 'Kimia');
 
     Livewire::actingAs($this->kesiswaan)->test(Talenta::class)
         ->call('setJenis', 'osn')
