@@ -27,7 +27,7 @@ it('wraps a long word in the head of a lomba page', function (): void {
 it('wraps a long lomba name on a card of the Humas queue instead of cutting it', function (): void {
     $card = [
         'id' => '01pub', 'title' => QA7_WORD, 'headline' => 'Juara 1 · Nasional', 'student' => 'Nadia Putri Anindya',
-        'class' => 'XI-4', 'mentor' => 'Pembimbing Pak Hendra', 'when' => null, 'photo' => true, 'bidang' => 'riset',
+        'class' => 'XI-D', 'mentor' => 'Pembimbing Pak Hendra', 'when' => null, 'photo' => true, 'bidang' => 'riset',
         'seed' => '01abc', 'selected' => false, 'overdue' => false,
     ];
 

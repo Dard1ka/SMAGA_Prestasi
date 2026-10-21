@@ -15,8 +15,8 @@ use Livewire\Component;
 
 /**
  * Tab "Halaman publik" (W2-D addition to UI-MAP #24): search-engine indexing of the aggregate public pages and
- * certificate links for students with publish consent. Both off by default until the school confirms the
- * parental consent process (D-16, U-04, SECURITY §3m-7). Student pages always stay noindex.
+ * certificate links (every team member named; no consent since D-162). Both off by default (D-38, D-39,
+ * SECURITY §3m-7). Student pages always stay noindex.
  */
 final class Publik extends Component
 {

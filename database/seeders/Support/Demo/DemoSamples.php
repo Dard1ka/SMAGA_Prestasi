@@ -33,7 +33,7 @@ final class DemoSamples
             DemoResearchReport::BIOPLASTIC_TITLE,
             null,
             'Lomba Karya Tulis Ilmiah Remaja Jawa Tengah 2026',
-            [['name' => 'Keisha Larasati', 'nis' => '225226166', 'class' => 'XI-6']],
+            [['name' => 'Keisha Larasati', 'nis' => '225226166', 'class' => 'XI-F']],
             'Retno Wulandari, S.Pd.',
             CarbonImmutable::parse('2026-09-10'),
         );
@@ -42,8 +42,8 @@ final class DemoSamples
             'Penelitian contoh (fiktif): perbandingan tiga cara penyiraman kebun sekolah.',
             'KRENOVA Kota Semarang 2026',
             [
-                ['name' => 'Nadia Putri Anindya', 'nis' => '225226201', 'class' => 'XI-4'],
-                ['name' => 'Dimas Arya Nugroho', 'nis' => '225226204', 'class' => 'XI-4'],
+                ['name' => 'Nadia Putri Anindya', 'nis' => '225226201', 'class' => 'XI-D'],
+                ['name' => 'Dimas Arya Nugroho', 'nis' => '225226204', 'class' => 'XI-D'],
             ],
             'Retno Wulandari, S.Pd.',
             CarbonImmutable::parse('2026-02-17'),

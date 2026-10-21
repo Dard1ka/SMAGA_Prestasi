@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Livewire\Siswa;
 
+use App\Actions\Publications\NamedStudent;
 use App\Domain\Archive\SchoolYear;
 use App\Domain\Leaderboard\Ranker;
 use App\Domain\Leaderboard\RankingScope;
@@ -24,13 +25,13 @@ use Livewire\Component;
 
 /**
  * Siswa · Peringkat (UI-MAP §3 sidebar "Peringkat", backlog #2, owner B4). The cumulative ranking of the
- * public page — PublicAchievements::ranking(), so the same consent rules apply: other students' names only
- * with publish consent — restricted to ACTIVE students (RankingScope::Active, no alumni choice here), so the
+ * public page — PublicAchievements::ranking(), so the same naming rule applies (NamedStudent; no consent since
+ * D-162) — restricted to ACTIVE students (RankingScope::Active, no alumni choice here), so the
  * "Kamu" row carries the same rank as Beranda, Portofolio and the public student page (PersonalRank, D-37).
  * Modes siswa/kelas, filters bidang and angkatan (only the years of active students are offered).
  *
- * The student's own row is found without exposing anyone's id: by the random public slug when the student
- * consented, otherwise by rank + points + count + the anonymous label (rows that match all of these are
+ * The student's own row is found without exposing anyone's id: by the random public slug when the student is
+ * named, otherwise by rank + points + count + the anonymous label (rows that match all of these are
  * indistinguishable). The own rank under a filter comes from the same Ranker over the same active set.
  */
 #[Title('Peringkat')]
@@ -148,7 +149,8 @@ final class Peringkat extends Component
             return null;
         }
 
-        $slug = $student->publish_consent
+        $named = NamedStudent::allows($student);
+        $slug = $named
             ? Student::query()->whereKey($student->getKey())->value('public_slug')
             : null;
 
@@ -160,13 +162,13 @@ final class Peringkat extends Component
             }
         }
 
-        $label = $student->publish_consent ? (string) $student->user?->name : $this->anonymousLabel($student);
+        $label = $named ? (string) $student->user?->name : $this->anonymousLabel($student);
 
         foreach ($rows as $index => $row) {
             if ($row['rank'] === $standing['rank']
                 && $row['count'] === $standing['count']
                 && bccomp((string) $row['points'], $standing['points'], 2) === 0
-                && $row['named'] === (bool) $student->publish_consent
+                && $row['named'] === $named
                 && $row['name'] === $label) {
                 return $index;
             }

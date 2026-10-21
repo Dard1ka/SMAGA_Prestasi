@@ -33,7 +33,7 @@ function humasSchedulePublication(Publication $publication, array $overrides = [
 {
     $args = array_merge([
         'actor' => test()->humas,
-        'caption' => 'Selamat kepada Nadia Putri Anindya (XI-4).',
+        'caption' => 'Selamat kepada Nadia Putri Anindya (XI-D).',
         'channels' => ['instagram', 'website'],
         'at' => CarbonImmutable::now()->addDay()->setTime(9, 0),
     ], $overrides);
@@ -52,7 +52,7 @@ it('schedules a ready publication', function (): void {
     $fresh = $publication->fresh();
     expect($fresh->status)->toBe(PublicationStatus::Terjadwal)
         ->and($fresh->channels)->toBe(['instagram', 'website'])
-        ->and($fresh->caption)->toBe('Selamat kepada Nadia Putri Anindya (XI-4).')
+        ->and($fresh->caption)->toBe('Selamat kepada Nadia Putri Anindya (XI-D).')
         ->and($fresh->scheduled_at->equalTo($at))->toBeTrue()
         ->and((int) $fresh->created_by)->toBe((int) $this->humas->getKey())
         ->and($fresh->published_at)->toBeNull();
@@ -87,8 +87,8 @@ it('refuses to schedule a published publication', function (): void {
     expect(fn () => humasSchedulePublication($publication))->toThrow(AuthorizationException::class);
 });
 
-it('refuses to schedule without publish consent', function (): void {
-    $publication = HumasFixtures::publication(['publish_consent' => false]);
+it('refuses to schedule for a disabled account', function (): void {
+    $publication = HumasFixtures::publication(disabled: true);
 
     expect(fn () => humasSchedulePublication($publication))->toThrow(AuthorizationException::class);
     expect($publication->fresh()->status)->toBe(PublicationStatus::Siap);
@@ -173,9 +173,9 @@ it('refuses a stale model that was published meanwhile', function (): void {
         ->toThrow(ValidationException::class, 'Publikasi ini sudah dipublikasikan.');
 });
 
-it('refuses to publish without publish consent or channels', function (): void {
-    $noConsent = HumasFixtures::publication(['publish_consent' => false]);
-    expect(fn () => app(PublishPublication::class)->handle($this->humas, $noConsent, null, ['instagram']))->toThrow(AuthorizationException::class);
+it('refuses to publish for a disabled account or without channels', function (): void {
+    $inactive = HumasFixtures::publication(disabled: true);
+    expect(fn () => app(PublishPublication::class)->handle($this->humas, $inactive, null, ['instagram']))->toThrow(AuthorizationException::class);
 
     $noChannel = HumasFixtures::publication(studentName: 'Raka Pradipta');
     expect(fn () => app(PublishPublication::class)->handle($this->humas, $noChannel))->toThrow(ValidationException::class);

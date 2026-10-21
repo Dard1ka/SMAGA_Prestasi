@@ -24,15 +24,15 @@ beforeEach(function (): void {
     F::boot();
     Queue::fake();
     $this->withoutVite();
-    Classroom::factory()->create(['name' => 'X-1', 'level' => 10]);
+    Classroom::factory()->create(['name' => 'X-A', 'level' => 10]);
 });
 
 function qa9ImportFile(): UploadedFile
 {
     return UploadedFile::fake()->createWithContent('data-siswa.csv', implode("\n", [
         'Nama lengkap,NIS,NISN,Tanggal lahir,Kelas saat pendaftaran,No HP',
-        'Aurelia Maharani,226227031,0101234557,12-05-2011,X-1,',
-        'Hana Safira,226227088,0103456714,03-01-2011,X-1,',
+        'Aurelia Maharani,226227031,0101234557,12-05-2011,X-A,',
+        'Hana Safira,226227088,0103456714,03-01-2011,X-A,',
     ])."\n");
 }
 

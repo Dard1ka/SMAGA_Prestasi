@@ -28,16 +28,11 @@
                 <x-sth.icon name="calendar" :size="14" class="mt-px" /><span>{{ $card['when'] }}</span>
             </p>
         @endif
-        <div class="mt-1.5 flex flex-wrap items-center gap-2">
-            {{-- D-122: the scheduled time passed, Humas has not pressed "Tandai dipublikasikan" yet. --}}
-            @if ($card['overdue'])
+        {{-- D-122: the scheduled time passed, Humas has not pressed "Tandai dipublikasikan" yet. --}}
+        @if ($card['overdue'])
+            <div class="mt-1.5 flex flex-wrap items-center gap-2">
                 <x-sth.chip tone="orange" size="sm">Lewat jadwal</x-sth.chip>
-            @endif
-            @if ($card['photo'])
-                <x-sth.chip tone="green" size="sm">Izin foto ada</x-sth.chip>
-            @else
-                <x-sth.chip tone="gray" size="sm">Tanpa foto</x-sth.chip>
-            @endif
-        </div>
+            </div>
+        @endif
     </div>
 </article>

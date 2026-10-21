@@ -17,7 +17,7 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * Internal achievement data for the Kepala Sekolah screens and the period report (backlog #6, owner B5).
- * Internal = every verified achievement with the student's real name (no consent gate, unlike
+ * Internal = every verified achievement with the student's real name (also of disabled accounts, unlike
  * Publik\Data\PublicAchievements) — but never NIS, NISN, phone, email or birth date.
  *
  * rows() returns one plain array per verified achievement (portable SQL, grouped in PHP like Sekolah\Dashboard);
@@ -182,7 +182,7 @@ final class ExportPrestasiData
         ];
     }
 
-    /** "XI-4" → "XI-0004" so XI-10 sorts after XI-9. */
+    /** Digits padded ("XI-4" → "XI-0004") so a numbered name sorts naturally; lettered classes (D-165) keep their order. */
     private static function naturalKey(string $value): string
     {
         return (string) preg_replace_callback('/\d+/', fn (array $m): string => str_pad($m[0], 4, '0', STR_PAD_LEFT), $value);

@@ -5,22 +5,17 @@
 @php($formId = $inline ? 'lapor-form-inline' : 'lapor-form')
 @php($h = $inline ? 'h4' : 'h2')
 <div class="flex flex-col gap-4">
-    @if (! $inline && $deadline)
-        <p @class(['m-0 inline-flex items-center gap-2 text-sm font-semibold', 'text-orange' => ! ($deadline['overdue'] && $marksLate), 'text-red' => $deadline['overdue'] && $marksLate])>
+    @if (! $inline)
+        {{-- D-151: no deadline, only the request. --}}
+        <p class="m-0 inline-flex items-center gap-2 text-sm font-semibold text-orange">
             <x-sth.icon name="clock" :size="18" />
-            @if (! $deadline['overdue'])
-                {{ 'Batas '.$deadline['dueText'].' ('.$deadline['days'].' hari setelah final).' }}
-            @elseif ($marksLate)
-                {{ 'Batas '.$deadline['dueText'].' sudah lewat. Laporan tetap diterima, tetapi ditandai terlambat.' }}
-            @else
-                {{ 'Batas '.$deadline['dueText'].' sudah lewat, tetapi laporan pertama dikirim tepat waktu, jadi revisi ini tidak ditandai terlambat.' }}
-            @endif
+            {{ $prompt }}
         </p>
     @endif
 
     @if ($revision)
         <x-sth.alert tone="warning" title="Perlu revisi">
-            {{ $revision->note ?: 'Kesiswaan meminta kamu memperbaiki laporan.' }}
+            {{ $revision->note ?: 'Sekolah meminta kamu memperbaiki laporan.' }}
             File yang tidak kamu ganti tetap dipakai.
         </x-sth.alert>
     @endif
@@ -31,7 +26,7 @@
             <{{ $h }} id="{{ $formId }}-hasil" class="title-card">Hasil yang diraih</{{ $h }}>
             <x-sth.radio-pick wire:model.live="hasil" label="Hasil yang diraih" hide-label :options="$resultOptions" :columns="$inline ? 5 : 2" :phone-columns="2" size="sm" />
 
-            <div class="flex flex-col gap-2">
+            <div class="flex min-w-0 flex-col gap-2">
                 <p class="label m-0">Perkiraan poin <span class="muted font-medium">(final setelah diverifikasi)</span></p>
                 <x-sth.rumus-poin
                     :tingkat="$base?->levelWeight"
@@ -49,8 +44,8 @@
         <section aria-labelledby="{{ $formId }}-bukti" @class(['flex flex-col gap-4', 'card p-5' => ! $inline])>
             <{{ $h }} id="{{ $formId }}-bukti" class="title-card">Bukti</{{ $h }}>
 
-            <div class="grid gap-4 @if ($inline) lg:grid-cols-2 @endif">
-                <div class="flex flex-col gap-2">
+            <div class="grid grid-cols-1 gap-4 @if ($inline) lg:grid-cols-2 @endif">
+                <div class="flex min-w-0 flex-col gap-2">
                     @if ($sertifikat)
                         <span class="label">Sertifikat/piagam</span>
                         @include('livewire.siswa.lomba-saya.partials.upload-row', ['name' => $sertifikat->getClientOriginalName(), 'size' => $sertifikat->getSize(), 'remove' => "removeFile('sertifikat')", 'removeLabel' => 'Hapus sertifikat'])
@@ -66,7 +61,7 @@
                     @endif
                 </div>
 
-                <div class="flex flex-col gap-2">
+                <div class="flex min-w-0 flex-col gap-2">
                     <span class="label">Foto dokumentasi <span class="muted font-medium">· <span class="num">{{ count($foto) }}</span>/{{ \App\Actions\Reports\SubmitReport::MAX_PHOTOS }}</span></span>
                     @foreach ($foto as $i => $photo)
                         <div wire:key="foto-{{ $i }}-{{ $photo->getFilename() }}">
@@ -85,7 +80,7 @@
                 </div>
             </div>
 
-            <div class="flex flex-col gap-2">
+            <div class="flex min-w-0 flex-col gap-2">
                 @if ($pengumuman)
                     <span class="label">Pengumuman resmi</span>
                     @include('livewire.siswa.lomba-saya.partials.upload-row', ['name' => $pengumuman->getClientOriginalName(), 'size' => $pengumuman->getSize(), 'remove' => "removeFile('pengumuman')", 'removeLabel' => 'Hapus pengumuman'])
@@ -107,7 +102,7 @@
                 <x-sth.textarea wire:model.live.debounce.500ms="abstrak" id="{{ $formId }}-abstrak" label="Abstrak" rows="5"
                     hint="{{ $abstractWords }}/{{ \App\Actions\Reports\SubmitReport::MAX_ABSTRACT_WORDS }} kata" />
 
-                <div class="flex flex-col gap-2">
+                <div class="flex min-w-0 flex-col gap-2">
                     @if ($laporan)
                         <span class="label">Laporan penelitian</span>
                         @include('livewire.siswa.lomba-saya.partials.upload-row', ['name' => $laporan->getClientOriginalName(), 'size' => $laporan->getSize(), 'remove' => "removeFile('laporan')", 'removeLabel' => 'Hapus laporan penelitian'])
@@ -121,8 +116,8 @@
                     @endisset
                 </div>
 
-                <div class="grid gap-4 sm:grid-cols-2">
-                    <div class="flex flex-col gap-2">
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div class="flex min-w-0 flex-col gap-2">
                         @if ($artikel)
                             <span class="label">Artikel ilmiah</span>
                             @include('livewire.siswa.lomba-saya.partials.upload-row', ['name' => $artikel->getClientOriginalName(), 'size' => $artikel->getSize(), 'remove' => "removeFile('artikel')", 'removeLabel' => 'Hapus artikel'])
@@ -132,7 +127,7 @@
                                 hint="PDF · maks. 10 MB" accept=".pdf" icon="file" optional />
                         @endif
                     </div>
-                    <div class="flex flex-col gap-2">
+                    <div class="flex min-w-0 flex-col gap-2">
                         @if ($poster)
                             <span class="label">Poster</span>
                             @include('livewire.siswa.lomba-saya.partials.upload-row', ['name' => $poster->getClientOriginalName(), 'size' => $poster->getSize(), 'remove' => "removeFile('poster')", 'removeLabel' => 'Hapus poster'])
@@ -158,7 +153,7 @@
     @if (! $inline)
         <x-slot:action>
             <x-sth.button type="submit" form="lapor-form" size="lg" block>Kirim laporan</x-sth.button>
-            <p class="muted m-0 text-center text-xs">Kesiswaan akan memverifikasi laporanmu.</p>
+            <p class="muted m-0 text-center text-xs">Sekolah akan memverifikasi laporanmu.</p>
         </x-slot:action>
     @endif
 </div>

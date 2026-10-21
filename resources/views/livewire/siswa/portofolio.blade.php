@@ -33,7 +33,7 @@
         </div>
     </x-sth.card>
 
-    <div class="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
+    <div class="grid grid-cols-1 items-start gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
         <div class="@container flex min-w-0 flex-col gap-4">
             <x-sth.tabs panels id="porto" label="Bagian portofolio" active="prestasi" :items="[
                 ['key' => 'prestasi', 'label' => 'Prestasi', 'count' => $achievementCount],
@@ -44,7 +44,7 @@
                 <h2 class="sr-only">Prestasi terverifikasi</h2>
                 @if ($achievements === [])
                     <x-sth.empty-state icon="award" title="Belum ada prestasi terverifikasi">
-                        Prestasi muncul di sini setelah laporan hasilmu diverifikasi Kesiswaan.
+                        Prestasi muncul di sini setelah laporan hasilmu diverifikasi sekolah.
                     </x-sth.empty-state>
                 @else
                     {{-- Capsules like the lomba cards: the cover of the lomba stands on the left (3:4), the prestasi
@@ -76,6 +76,13 @@
                                             <x-sth.chip tone="gold" class="num">{{ $item['points'] }} poin</x-sth.chip>
                                             <span class="muted num text-xs">{{ $item['formula'] }}</span>
                                         </div>
+                                        {{-- D-160: the appreciation and the publication by Humas, the facts the notices link here for. --}}
+                                        @if ($item['appreciation'])
+                                            <p class="m-0 flex items-start gap-1.5 text-sm [overflow-wrap:anywhere]"><x-sth.icon name="award" :size="16" class="mt-0.5 shrink-0 text-gold" />{{ $item['appreciation'] }}</p>
+                                        @endif
+                                        @if ($item['published'])
+                                            <p class="m-0 flex items-start gap-1.5 text-sm"><x-sth.icon name="check" :size="16" class="mt-0.5 shrink-0 text-green" />{{ $item['published'] }}</p>
+                                        @endif
                                         @if ($item['certificateUrl'])
                                             {{-- With a preview the click opens the popup (<x-sth.preview>); the href stays the download. --}}
                                             <a href="{{ $item['certificateUrl'] }}" class="flex items-center gap-3 rounded-tile border border-line p-2.5 text-ink no-underline hover:bg-hover"
@@ -131,11 +138,11 @@
 
         <x-sth.card as="aside" aria-labelledby="talenta-judul" class="flex flex-col gap-4">
             <div class="flex items-center justify-between gap-2">
-                <h2 id="talenta-judul" class="title-card">Profil talenta</h2>
+                <h2 id="talenta-judul" class="title-card">Talenta saya</h2>
                 <x-sth.chip class="num">{{ count($talents) }} talenta</x-sth.chip>
             </div>
             @if ($talents === [])
-                <p class="muted m-0 text-sm">Belum ada talenta. Daftar penjaringan talenta di Profil talenta.</p>
+                <p class="muted m-0 text-sm">Belum ada talenta. Tambah talenta di Profil saya, tab Talenta saya.</p>
             @else
                 <ul class="m-0 flex list-none flex-col gap-3 p-0" aria-label="Talenta pilihanmu">
                     @foreach ($talents as $talent)
@@ -145,13 +152,17 @@
                             @endif
                             <div class="flex min-w-0 flex-col gap-1">
                                 <span class="flex flex-wrap items-center gap-2">
-                                    <span class="display text-md font-bold">{{ $talent['title'] }}</span>
+                                    {{-- D-143: the student's own "Lainnya" text may be one long word (QA7). --}}
+                                    <span class="display min-w-0 text-md font-bold [overflow-wrap:anywhere]">{{ $talent['title'] }}</span>
                                     @if ($talent['bidang'])
                                         <x-sth.chip :bidang="$talent['bidang']" size="sm" />
+                                    @else
+                                        <x-sth.chip size="sm">Lainnya</x-sth.chip>
                                     @endif
                                 </span>
-                                <span><x-sth.chip :tone="$talent['status']->tone()" size="sm">{{ $talent['status']->label() }}</x-sth.chip></span>
-                                <span class="muted text-xs">{{ $talent['info'] }}</span>
+                                @if ($talent['info'] !== '')
+                                    <span class="muted text-xs">{{ $talent['info'] }}</span>
+                                @endif
                             </div>
                         </li>
                     @endforeach

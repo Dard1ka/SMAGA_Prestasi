@@ -51,7 +51,7 @@ final class AuthTestHelpers
             'nis' => self::NIS,
             'nisn' => self::NISN,
             'birth_date' => '2010-03-02',
-            'classroom_id' => Classroom::factory()->level(11)->create(['name' => 'XI-4'])->getKey(),
+            'classroom_id' => Classroom::factory()->level(11)->create(['name' => 'XI-D'])->getKey(),
             'import_school_year' => '2026/2027',
         ], $studentAttributes));
     }

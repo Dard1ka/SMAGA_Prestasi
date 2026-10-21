@@ -18,7 +18,7 @@ class ClassroomFactory extends Factory
     public function definition(): array
     {
         return [
-            'name' => 'X-'.fake()->unique()->numberBetween(100, 9999),
+            'name' => 'X-'.strtoupper(fake()->unique()->lexify('????')),
             'level' => 10,
             'active' => true,
         ];
@@ -34,7 +34,7 @@ class ClassroomFactory extends Factory
         };
 
         return $this->state(fn (array $attributes) => [
-            'name' => $prefix.'-'.fake()->unique()->numberBetween(100, 9999),
+            'name' => $prefix.'-'.strtoupper(fake()->unique()->lexify('????')),
             'level' => $level,
         ]);
     }

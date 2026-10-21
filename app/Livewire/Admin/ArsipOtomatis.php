@@ -32,7 +32,7 @@ use Spatie\Activitylog\Models\Activity;
  * audit log). Actions: change a student's archive date (ChangeArchiveDate) and restore an archived account
  * (UnarchiveStudent), both with a reason, audited, re-authorized in the Action and behind a password
  * confirmation from the last 15 minutes (SECURITY §3m-9 "unarchive"). No NIS/NISN in the lists; search by
- * name or an exact NIS/NISN.
+ * name or an exact NISN.
  */
 #[Title('Arsip otomatis')]
 // One search box per screen (D-90, backlog #60): this page has its own, so the top bar shows none.
@@ -227,7 +227,7 @@ final class ArsipOtomatis extends Component
 
     /**
      * The day each archived student's account was archived, for the column "Diarsipkan" here and in Admin ›
-     * Pengaturan › Batas & arsip (QA9): the date of its latest `account.archived` audit row. A manual archive (D-30)
+     * Pengaturan › Arsip akun (QA9): the date of its latest `account.archived` audit row. A manual archive (D-30)
      * keeps the planned `archive_at`, which may still lie in the future; that date itself stays as it is (the nightly
      * job and UnarchiveStudent read it). Without an audit row (older data) the archive date stands in.
      *
@@ -289,9 +289,9 @@ final class ArsipOtomatis extends Component
             return $query;
         }
 
-        // Exact NIS/NISN only (no prefix search, SECURITY §3m-3); otherwise the name.
-        if (preg_match('/^\d{9,10}$/', $term) === 1) {
-            return $query->where(fn (Builder $w) => $w->where('nis', $term)->orWhere('nisn', $term));
+        // Exact NISN only (no prefix search, SECURITY §3m-3); otherwise the name.
+        if (preg_match('/^\d{10}$/', $term) === 1) {
+            return $query->where('nisn', $term);
         }
 
         return $query->whereHas('user', fn (Builder $u) => $u->where('name', 'like', '%'.addcslashes($term, '%_\\').'%'));

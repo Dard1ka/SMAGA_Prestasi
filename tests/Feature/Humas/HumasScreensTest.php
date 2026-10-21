@@ -50,7 +50,7 @@ it('lists scheduled publications by date and upcoming appreciation events', func
         'scheduled_at' => now()->subDay(),
         'channels' => ['instagram'],
     ], studentName: 'Salsabila Kirana', competitionName: 'FLS3N Provinsi 2026');
-    HumasFixtures::publication(['publish_consent' => false], ['status' => PublicationStatus::Terjadwal, 'scheduled_at' => now()->addDay()], studentName: 'Fajar Ramadhan');
+    HumasFixtures::publication(publicationState: ['status' => PublicationStatus::Terjadwal, 'scheduled_at' => now()->addDay()], studentName: 'Fajar Ramadhan', disabled: true);
 
     $event = HumasFixtures::event();
     $appreciation = new Appreciation(['achievement_id' => $scheduled->achievement_id, 'appreciation_event_id' => $event->getKey()]);
@@ -116,8 +116,8 @@ it('shows the number of overdue publications on the menu item Jadwal, on every H
     foreach (['Nadia Putri Anindya' => now()->subDay(), 'Raka Pradipta' => now()->subMinutes(5), 'Salsabila Kirana' => now()->addDay()] as $name => $at) {
         HumasFixtures::publication(publicationState: ['status' => PublicationStatus::Terjadwal, 'scheduled_at' => $at, 'channels' => ['instagram']], studentName: $name);
     }
-    // Not counted: no publish consent (never named to Humas), still "siap", already published.
-    HumasFixtures::publication(['publish_consent' => false], ['status' => PublicationStatus::Terjadwal, 'scheduled_at' => now()->subDay()], studentName: 'Fajar Ramadhan');
+    // Not counted: a disabled account (never named to Humas), still "siap", already published.
+    HumasFixtures::publication(publicationState: ['status' => PublicationStatus::Terjadwal, 'scheduled_at' => now()->subDay()], studentName: 'Fajar Ramadhan', disabled: true);
     HumasFixtures::publication(studentName: 'Dimas Arya Nugroho');
     HumasFixtures::publication(publicationState: ['status' => PublicationStatus::Dipublikasikan, 'scheduled_at' => now()->subDays(3), 'published_at' => now()->subDays(2), 'channels' => ['website']], studentName: 'Keisha Larasati');
 
@@ -130,7 +130,7 @@ it('shows the number of overdue publications on the menu item Jadwal, on every H
     };
 
     expect(HumasQueries::overduePublications()->count())->toBe(2)
-        ->and(HumasQueries::badges($this->humas))->toBe(['humas.publikasi' => 1, 'humas.jadwal' => 2]);
+        ->and(HumasQueries::badges($this->humas))->toBe(['humas.publikasi' => 1, 'humas.jadwal' => 2, 'kesiswaan.verifikasi' => 0, 'humas.verifikasi' => 0]);
 
     // A page that passes no badges (Notifikasi) and the screens that pass their own show the same number.
     foreach (['notifikasi.index', 'humas.jadwal', 'humas.beranda', 'humas.arsip'] as $route) {
@@ -198,7 +198,7 @@ it('shows event form errors', function (): void {
 
 it('adds a verified achievement to an event and confirms a held event through the dialog', function (): void {
     $achievement = HumasFixtures::achievement();
-    HumasFixtures::achievement(['publish_consent' => false], studentName: 'Fajar Ramadhan');
+    HumasFixtures::achievement(studentName: 'Fajar Ramadhan', disabled: true);
     $event = HumasFixtures::event('Upacara hari ini', now()->toDateString());
 
     $component = Livewire::actingAs($this->humas)
@@ -208,9 +208,9 @@ it('adds a verified achievement to an event and confirms a held event through th
         ->assertDontSeeHtml("confirmComplete('".$event->getKey()."')")
         ->call('startAdding', $event->getKey())
         ->assertSet('addingEventId', $event->getKey())
-        // The picker (D-124) lists the one free achievement of a consenting student.
+        // The picker (D-124) lists the one free achievement of a student who may be named.
         ->assertViewHas('picker', fn (array $picker): bool => array_column($picker['rows'], 'id') === [$achievement->getKey()]
-            && $picker['rows'][0]['student'] === 'Nadia Putri Anindya' && $picker['rows'][0]['class'] === 'XI-4')
+            && $picker['rows'][0]['student'] === 'Nadia Putri Anindya' && $picker['rows'][0]['class'] === 'XI-D')
         ->assertSee('Nadia Putri Anindya')
         ->assertDontSee('Fajar Ramadhan')
         ->call('addAchievements')
@@ -461,7 +461,7 @@ it('releases one achievement from an event through the dialog and tells the stud
         ->assertSet('confirmRowId', $row->getKey())
         ->assertSet('confirmEventId', $event->getKey())
         ->assertSee('Lepas dari acara?')
-        ->assertSee('Nadia Putri Anindya (XI-4)')
+        ->assertSee('Nadia Putri Anindya (XI-D)')
         ->assertSee('Acaranya tetap ada. Siswanya diberi tahu.');
 
     // The button only opened the dialog.
@@ -567,7 +567,7 @@ it('works for Kesiswaan (appreciation.manage) and not for other roles', function
 it('lists published publications newest first with search', function (): void {
     HumasFixtures::publication(publicationState: ['status' => PublicationStatus::Dipublikasikan, 'published_at' => now()->subDays(9), 'channels' => ['instagram']], studentName: 'Rizky Maulana', competitionName: 'O2SN Kota 2026');
     HumasFixtures::publication(publicationState: ['status' => PublicationStatus::Dipublikasikan, 'published_at' => now()->subDays(2), 'channels' => ['instagram', 'website']], studentName: 'Nadia Putri Anindya', competitionName: 'KRENOVA Kota 2026');
-    HumasFixtures::publication(['publish_consent' => false], ['status' => PublicationStatus::Dipublikasikan, 'published_at' => now()->subDays(20)], studentName: 'Hana Lestari', competitionName: 'Kimia Jateng 2026');
+    HumasFixtures::publication(['publish_consent' => false], ['status' => PublicationStatus::Dipublikasikan, 'published_at' => now()->subDays(20)], studentName: 'Hana Lestari', competitionName: 'Kimia Jateng 2026'); // old column: ignored (D-162)
     HumasFixtures::publication(studentName: 'Raka Pradipta', competitionName: 'FIKSI 2026');
 
     Livewire::actingAs($this->humas)
@@ -575,7 +575,8 @@ it('lists published publications newest first with search', function (): void {
         ->assertOk()
         ->assertSeeInOrder(['KRENOVA Kota 2026', 'O2SN Kota 2026', 'Kimia Jateng 2026'])
         ->assertSee('Instagram, Website')
-        ->assertSee('Izin dicabut')
+        ->assertSee('Hana Lestari')
+        ->assertDontSee('Izin dicabut')
         ->assertDontSee('FIKSI 2026')
         ->set('q', 'rizky')
         ->assertSee('O2SN Kota 2026')
@@ -622,7 +623,7 @@ it('offers the achievement of an alumnus as "Alumni" instead of the last class',
             'headline' => 'Juara II Nasional',
             'competition' => 'OPSI 2026',
         ]])
-        ->assertDontSee('XI-4');
+        ->assertDontSee('XI-D');
 });
 
 // QA5 retest (2026-10-07, backlog #65): an empty "Buat acara" form names both missing fields ------------------

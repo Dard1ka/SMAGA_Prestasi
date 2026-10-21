@@ -5,10 +5,12 @@ declare(strict_types=1);
 use App\Http\Controllers\FileController;
 use App\Http\Controllers\LetterVerificationController;
 use App\Http\Controllers\NotificationCountController;
+use App\Http\Middleware\EnsureStaffTwoFactor;
 use App\Http\Middleware\PublicPageHeaders;
 use App\Livewire\Akun\BukanSaya;
 use App\Livewire\Akun\Keamanan;
 use App\Livewire\Akun\Notifikasi;
+use App\Livewire\Akun\Profil;
 use App\Livewire\Auth\Activation;
 use App\Livewire\Auth\ForgotPassword;
 use App\Livewire\Auth\TwoFactorSetup;
@@ -29,7 +31,7 @@ use Illuminate\Support\Facades\Route;
 */
 
 // --- W2-D: public pages (no login, D-16/D-31; throttle 60/min/IP, SECURITY §3m-7) ---
-// Data only through App\Livewire\Publik\Data\PublicAchievements (column allowlist, consent, cache).
+// Data only through App\Livewire\Publik\Data\PublicAchievements (column allowlist, named rule, cache).
 // PublicPageHeaders adds X-Robots-Tag: noindex unless Admin allowed indexing (student pages: always).
 // QA5 retest: every throttled route has its own counter (3rd parameter = key prefix). Unnamed `throttle:N,M`
 // limits share one counter per user or IP, so browsing public pages used up the QR letter check (429).
@@ -69,10 +71,13 @@ Route::middleware(['auth', 'active'])->group(function (): void {
     // until activation is done.
     Route::livewire('/aktivasi', Activation::class)->name('aktivasi');
 
-    // Staff TOTP setup; `staff.2fa` sends staff here until 2FA is confirmed.
-    Route::livewire('/akun/2fa', TwoFactorSetup::class)
-        ->middleware(['activated', 'password.confirm'])
-        ->name('two-factor.setup');
+    // Staff TOTP setup; `staff.2fa` sends staff here until 2FA is confirmed. Not registered (404) when 2FA does not
+    // exist (STH_STAFF_2FA=false, EnsureStaffTwoFactor::featureEnabled()).
+    if (EnsureStaffTwoFactor::featureEnabled()) {
+        Route::livewire('/akun/2fa', TwoFactorSetup::class)
+            ->middleware(['activated', 'password.confirm'])
+            ->name('two-factor.setup');
+    }
 
     // Fortify `home`: forwards each role to its area once wave 2 defines it; placeholder until then.
     Route::get('/beranda', function (Request $request) {
@@ -119,13 +124,15 @@ Route::middleware(['auth', 'active'])->group(function (): void {
         ->middleware(['activated', 'staff.2fa', 'throttle:240,1,berkas-sampul'])->name('files.cover');
 });
 
-// W2-A1: public certificate link (guests too) — FilePolicy::viewPublic only (consent + Admin switch), else 404.
+// W2-A1: public certificate link (guests too) — FilePolicy::viewPublic only (named members + Admin switch), else 404.
 Route::get('/berkas/publik/{file}', [FileController::class, 'publik'])
     ->middleware('throttle:30,1,berkas-publik')->name('files.public');
 
 // --- B1: Akun › Keamanan, Notifikasi (every role), K8 "Bukan saya?" (docs/dev-notes/B1.md, UI-MAP §2) ---
 // Keamanan/Notifikasi act only on the signed-in user (no ids in the URL). `staff.2fa` only affects staff.
 Route::middleware(['auth', 'active', 'activated', 'staff.2fa'])->group(function (): void {
+    // D-152: Profil saya (account menu, above Notifikasi) = the tabs Data diri (akun.profil) and Keamanan akun.
+    Route::livewire('/akun/profil', Profil::class)->name('akun.profil');
     Route::livewire('/akun/keamanan', Keamanan::class)->name('akun.keamanan');
     Route::livewire('/notifikasi', Notifikasi::class)->name('notifikasi.index');
 

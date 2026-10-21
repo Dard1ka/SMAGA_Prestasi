@@ -25,7 +25,7 @@ use LogicException;
 /**
  * Creates the prestasi rows of a verified report: one Achievement per confirmed member, each with the
  * FULL points (D-08), the weights snapshotted from $version, and one Humas publication row (`siap`) per
- * achievement. Every member gets a row; Humas screens filter by publish_consent (D-16).
+ * achievement. Every member gets a row; Humas screens show the members NamedStudent names (D-162: no consent).
  * Called by VerifyReport inside its transaction (the report and registration are locked there).
  */
 final class RecordAchievements

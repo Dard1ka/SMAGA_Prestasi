@@ -31,6 +31,14 @@
         <env name="MAIL_MAILER" value="array" force="true"/>
         <env name="QUEUE_CONNECTION" value="sync" force="true"/>
         <env name="SESSION_DRIVER" value="array" force="true"/>
+        <!-- The runtime switches keep their test defaults, also when a developer's .env turns them off (the test
+             process reads .env too). Tests of the "off" state boot their own app (tests/Support/ProcessEnv.php).
+             STH_REQUIRE_STAFF_2FA=true is what config/fortify.php gives every APP_ENV but local. -->
+        <env name="STH_STAFF_2FA" value="true" force="true"/>
+        <env name="STH_REQUIRE_STAFF_2FA" value="true" force="true"/>
+        <env name="STH_DEV_PAGES" value="true" force="true"/>
+        <!-- Empty on purpose: the tests use the built-in default of config/sth.php, never a developer .env value (D-138). -->
+        <env name="STH_INITIAL_STUDENT_PASSWORD" value="" force="true"/>
         <env name="PULSE_ENABLED" value="false"/>
         <env name="TELESCOPE_ENABLED" value="false"/>
         <env name="NIGHTWATCH_ENABLED" value="false"/>

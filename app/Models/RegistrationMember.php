@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Collection;
 
 /**
  * One student in a registration. Unique (registration_id, student_id).
@@ -60,6 +61,32 @@ class RegistrationMember extends Model
     public function isLeader(): bool
     {
         return $this->role === MemberRole::Ketua;
+    }
+
+    /**
+     * The one order of a team list, on every screen that shows one (Pendaftaran lomba panel, Lomba saya, Undangan tim,
+     * Guru › detail binaan; FS1): the ketua first, then by invitation time with "not invited yet" last (D-148: the
+     * members of a team that waits for its own lomba have no `invited_at`), then by name, then by id. Sorted in PHP on
+     * the loaded rows, never in SQL: MySQL puts NULL first in an ascending ORDER BY and leaves ties in no fixed order,
+     * so the same team read differently on two screens. The name needs `student.user` loaded.
+     *
+     * @template TCollection of Collection<array-key, RegistrationMember>
+     *
+     * @param  TCollection  $members
+     * @return TCollection
+     */
+    public static function inTeamOrder(Collection $members): Collection
+    {
+        return $members->sort(static fn (self $a, self $b): int => self::compareInTeam($a, $b))->values();
+    }
+
+    /** The comparison behind inTeamOrder(): negative when $a stands before $b. */
+    public static function compareInTeam(self $a, self $b): int
+    {
+        return [$a->isLeader() ? 0 : 1, $a->invited_at === null ? 1 : 0, $a->invited_at?->getTimestamp() ?? 0]
+            <=> [$b->isLeader() ? 0 : 1, $b->invited_at === null ? 1 : 0, $b->invited_at?->getTimestamp() ?? 0]
+            ?: strcasecmp((string) $a->student?->user?->name, (string) $b->student?->user?->name)
+            ?: strcmp((string) $a->getKey(), (string) $b->getKey());
     }
 
     public function isConfirmed(): bool

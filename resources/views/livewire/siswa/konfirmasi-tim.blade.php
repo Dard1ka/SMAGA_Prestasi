@@ -1,12 +1,13 @@
 {{-- Siswa · Undangan tim (confirm/decline). Data + rules: App\Livewire\Siswa\KonfirmasiTim. --}}
+{{-- The root element comes first, with no @if around it: Livewire puts wire:id on the first tag that starts a
+     line, and an @if before the root prints a marker in front of it (the id then lands on an inner element and
+     every button outside that element is dead). --}}
+<div class="mx-auto flex w-full max-w-[760px] flex-col gap-[18px]">
 @if ($withdrawn)
-{{-- QA9: the ketua withdrew this invitation; nothing of the team is shown any more. --}}
-<div class="mx-auto flex w-full max-w-[760px] flex-col gap-[18px]">
+    {{-- QA9: the ketua withdrew this invitation; nothing of the team is shown any more. --}}
     <x-sth.alert tone="warning" title="Undangan dibatalkan">{{ \App\Livewire\Siswa\KonfirmasiTim::WITHDRAWN }} Kamu tidak perlu menjawabnya lagi.</x-sth.alert>
-</div>
 @else
-@php($bidangKey = $competition->bidang?->cssKey() ?? 'sains')
-<div class="mx-auto flex w-full max-w-[760px] flex-col gap-[18px]">
+    @php($bidangKey = $competition->bidang?->cssKey() ?? 'sains')
     {{-- Same head as Detail lomba: poster on the left, the invitation, the name and the key facts beside it. --}}
     <x-sth.lomba-head :bidang="$bidangKey" :seed="$competition->getKey()" :poster="\App\Support\Sampul::poster($competition)" :facts="$facts"
                       alt="Poster {{ $competition->name }}" aria-labelledby="h-undangan">
@@ -30,16 +31,21 @@
         </div>
         <ul class="m-0 flex list-none flex-col gap-2 p-0">
             @foreach ($members as $member)
+                {{-- FS1 QA round 3 (BUG-N5): on a 390 px phone the name was cut to "Qa…" beside the two chips. The name
+                     wraps now, "Kamu" follows it or takes the next line, and the status chip moves under the name
+                     when the row is too narrow for both (12rem for the name first). --}}
                 <li wire:key="m-{{ $member['id'] }}" class="flex items-center gap-3 rounded-tile border border-line p-2.5">
                     <x-sth.avatar :name="$member['name']" size="sm" />
-                    <div class="flex min-w-0 flex-1 flex-col">
-                        <span class="flex items-center gap-2 font-semibold">
-                            <span class="ellip">{{ $member['name'] }}</span>
-                            @if ($member['me'])<x-sth.chip tone="blue" size="sm">Kamu</x-sth.chip>@endif
-                        </span>
-                        <span class="text-xs text-muted">{{ $member['role'] }} · {{ $member['kelas'] }}</span>
+                    <div class="flex min-w-0 flex-1 flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
+                        <div class="flex min-w-0 grow basis-48 flex-col">
+                            <span class="flex flex-wrap items-center gap-x-2 gap-y-1 font-semibold">
+                                <span class="min-w-0 [overflow-wrap:anywhere]">{{ $member['name'] }}</span>
+                                @if ($member['me'])<x-sth.chip tone="blue" size="sm">Kamu</x-sth.chip>@endif
+                            </span>
+                            <span class="text-xs text-muted">{{ $member['role'] }} · {{ $member['kelas'] }}</span>
+                        </div>
+                        <x-sth.chip :tone="$member['state'][1]" size="sm">{{ $member['state'][0] }}</x-sth.chip>
                     </div>
-                    <x-sth.chip :tone="$member['state'][1]" size="sm">{{ $member['state'][0] }}</x-sth.chip>
                 </li>
             @endforeach
         </ul>
@@ -53,7 +59,20 @@
     @if ($canRespond)
         <x-sth.card as="section" tone="warn" aria-labelledby="h-jawab" class="flex flex-col gap-3">
             <h2 id="h-jawab" class="title-card m-0">Ikut tim ini?</h2>
-            <p class="m-0 text-sm text-ink-2">Setelah semua anggota konfirmasi, pendaftaran diteruskan ke Kepala Sekolah. Hanya kamu yang bisa menjawab undangan ini.</p>
+            <p class="m-0 text-sm text-ink-2">Setelah semua anggota konfirmasi, pendaftaran diteruskan untuk persetujuan. Hanya kamu yang bisa menjawab undangan ini.</p>
+            {{-- D-149 (FS1 QA round 2): the anggota checks the own data (read-only, from the own account, like the ketua's
+                 Pendaftaran lomba panel) and the own No HP before joining. --}}
+            <section aria-labelledby="h-peserta" class="flex flex-col gap-3 rounded-tile border border-line bg-surface p-4">
+                <h3 id="h-peserta" class="title-card m-0">Data peserta</h3>
+                <dl class="m-0 grid grid-cols-[104px_minmax(0,1fr)] gap-x-3 gap-y-1.5 text-sm">
+                    @foreach ($peserta as $row)
+                        <dt class="text-muted">{{ $row['label'] }}</dt>
+                        <dd class="m-0 font-semibold [overflow-wrap:anywhere]">{{ $row['value'] }}</dd>
+                    @endforeach
+                </dl>
+                <p class="m-0 text-xs text-muted">Data salah? Hubungi Kesiswaan.</p>
+                <x-sth.input wire:model="phone" id="no-hp" type="tel" inputmode="tel" autocomplete="tel" label="No HP" hint="Contoh 081234567890." />
+            </section>
             <div class="flex flex-wrap gap-2">
                 <x-sth.button icon="check" wire:click="ikut" wire:loading.attr="disabled">Ikut tim</x-sth.button>
                 <x-sth.button variant="quiet" data-sth-open="tolak-undangan" aria-haspopup="dialog">Tolak</x-sth.button>
@@ -70,7 +89,7 @@
         </x-sth.modal>
     @elseif ($expired)
         {{-- QA10: expired at the deadline (or about to be), not declined by the student. --}}
-        <x-sth.alert tone="warning">Undangan ini sudah tidak berlaku karena batas pendaftaran lewat.</x-sth.alert>
+        <x-sth.alert tone="warning">Undangan ini sudah tidak berlaku karena {{ $expiredBy }} lewat.</x-sth.alert>
     @elseif ($mine?->declined_at)
         <x-sth.alert>Kamu sudah menolak undangan ini.</x-sth.alert>
     @elseif ($mine?->confirmed_at)
@@ -80,5 +99,5 @@
     @else
         <x-sth.alert tone="warning">Undangan ini sudah tidak berlaku.</x-sth.alert>
     @endif
-</div>
 @endif
+</div>

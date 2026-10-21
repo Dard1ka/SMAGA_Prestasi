@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace App\Livewire\Siswa\LombaSaya\Concerns;
 
-use App\Domain\Deadlines\ReportDeadline;
 use App\Domain\Points\PointBreakdown;
 use App\Domain\Points\PointCalculator;
 use App\Domain\Points\WeightTable;
 use App\Enums\ResultType;
 use App\Models\Competition;
+use App\Models\RegistrationMember;
 use App\Models\WeightVersion;
 use Carbon\CarbonImmutable;
 use DateTimeInterface;
@@ -21,11 +21,6 @@ use DateTimeInterface;
 trait ReportHelpers
 {
     private ?WeightTable $weightTableCache = null;
-
-    protected function reportDeadline(): ReportDeadline
-    {
-        return app(ReportDeadline::class);
-    }
 
     /** Estimated points for one member, or null when the lomba lacks a weight field. */
     protected function previewBreakdown(Competition $competition, ResultType|string|null $result): ?PointBreakdown
@@ -47,34 +42,22 @@ trait ReportHelpers
     }
 
     /**
-     * Deadline facts for a lomba: due date, days left and the chip text/tone used on cards.
-     *
-     * @return array{due: CarbonImmutable, days: int, dueText: string, daysLeft: int, overdue: bool, chip: string, tone: string}|null
+     * The line under a participant's name: "XI-B · Ketua" in a team, the class alone on an individu registration, which
+     * has no team roles (FS1 QA round 2, LOMBA-07: the sole participant is not a "Ketua"). Needs `student.classroom`.
      */
-    protected function deadlineInfo(Competition $competition): ?array
+    protected static function memberMeta(RegistrationMember $member, bool $team): string
     {
-        if ($competition->final_on === null) {
-            return null;
-        }
+        return trim(($member->student?->classroom?->name ?? '').($team ? ' · '.$member->role?->label() : ''), ' ·');
+    }
 
-        $deadline = $this->reportDeadline();
-        $due = $deadline->dueDate($competition->final_on);
-        $daysLeft = $deadline->daysLeft($competition->final_on, CarbonImmutable::today());
-        $dueText = self::shortDate($due);
-
-        return [
-            'due' => $due,
-            'days' => $deadline->days(),
-            'dueText' => self::longDate($due),
-            'daysLeft' => $daysLeft,
-            'overdue' => $daysLeft < 0,
-            'chip' => match (true) {
-                $daysLeft < 0 => 'Lewat batas '.$dueText,
-                $daysLeft === 0 => 'Batas hari ini',
-                default => 'Batas '.$dueText.' · '.$daysLeft.' hari lagi',
-            },
-            'tone' => $daysLeft < 0 ? 'red' : 'orange',
-        ];
+    /**
+     * The chip of a registration that waits for its report (D-151): no due date and no days left, only the request.
+     *
+     * @return array{chip: string, tone: string}
+     */
+    protected function reportChip(): array
+    {
+        return ['chip' => 'Segera laporkan', 'tone' => 'orange'];
     }
 
     protected static function shortDate(?DateTimeInterface $date): string

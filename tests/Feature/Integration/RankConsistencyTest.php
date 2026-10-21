@@ -57,10 +57,10 @@ it('shows demo Nadia as #14 everywhere and #15 only on the public ranking with a
 it('ignores alumni and disabled accounts for the personal rank', function (): void {
     $f = new PublikFixtures;
     $lomba = $f->lomba('OSN Nasional 2025', Bidang::Sains, Level::Nasional, '2025-09-10');
-    $alumni = $f->student('Ardiansyah Nur Hakim', 'XII-3', archived: true);
-    $raka = $f->student('Raka Pradipta', 'XII-2');
-    $nadia = $f->student('Nadia Putri Anindya', 'XI-4');
-    $dimas = $f->student('Dimas Arya Nugroho', 'XI-4');
+    $alumni = $f->student('Ardiansyah Nur Hakim', 'XII-C', archived: true);
+    $raka = $f->student('Raka Pradipta', 'XII-B');
+    $nadia = $f->student('Nadia Putri Anindya', 'XI-D');
+    $dimas = $f->student('Dimas Arya Nugroho', 'XI-D');
 
     $f->prestasi($alumni, $lomba, ResultType::Juara1);   // 80
     $f->prestasi($raka, $lomba, ResultType::Juara1);     // 80
@@ -74,5 +74,5 @@ it('ignores alumni and disabled accounts for the personal rank', function (): vo
         ->and($rank->rank($nadia))->toBe(2)
         ->and($rank->rank($alumni))->toBeNull()
         ->and($rank->rank($dimas))->toBeNull()
-        ->and($rank->summary($f->student('Hana Safira', 'X-8')))->toBe(['total' => '0.00', 'rank' => null, 'count' => 0]);
+        ->and($rank->summary($f->student('Hana Safira', 'X-H')))->toBe(['total' => '0.00', 'rank' => null, 'count' => 0]);
 });

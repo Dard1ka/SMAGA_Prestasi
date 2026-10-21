@@ -212,7 +212,7 @@ it('asks for a second "Simpan" when another account published the lomba while "P
 
     qa9LombaDecide($this, $competition, 'dipublikasikan');
     $guru = F::staff(RoleName::Guru, 'Pak Hendra Kusuma');
-    $ketua = F::student('Raka Pradipta', 'XII-2');
+    $ketua = F::student('Raka Pradipta', 'XII-B');
     C::registration($competition->fresh(), RegistrationStatus::MenungguKepsek, $ketua, $guru, RegistrationType::Individu);
 
     $component->set('form.location', 'Aula SMA Negeri 3 Semarang')
@@ -279,7 +279,7 @@ it('opens "Ubah lomba" on a published lomba right after a "Periksa lomba" drawer
 
 it('shows a corrected lomba name on the public pages right after the update (QA9)', function (): void {
     $competition = F::competition(['name' => 'Olimpiade Kimia Nasional Undip 2026']);
-    $report = F::pendingReport(F::student('Nadia Putri Anindya', 'XI-4'), [], ResultType::Juara1, null, $competition);
+    $report = F::pendingReport(F::student('Nadia Putri Anindya', 'XI-D'), [], ResultType::Juara1, null, $competition);
     app(VerifyReport::class)->handle($this->kesiswaan, $report, ResultType::Juara1, F::allChecks());
 
     expect(collect(app(PublicAchievements::class)->recent())->pluck('lomba')->all())->toBe(['Olimpiade Kimia Nasional Undip 2026']);

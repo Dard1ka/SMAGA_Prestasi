@@ -11,7 +11,10 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-/** Kelas: X-1…X-10, X-TAHFIDZ, X-OLIMP, XI-1…XI-12, XII-1…XII-12 (ClassroomSeeder). */
+/**
+ * Kelas: X-A…X-J, XI-A…XI-L, XII-A…XII-L (ClassroomSeeder; letters since D-165). The Admin adds, renames and deletes
+ * classes on Admin › Kelas (App\Actions\Classrooms, rules in App\Actions\Classrooms\ClassroomName).
+ */
 class Classroom extends Model
 {
     /** @use HasFactory<ClassroomFactory> */
@@ -45,13 +48,13 @@ class Classroom extends Model
         $query->where('active', true);
     }
 
-    /** Level order, then natural name order (X-2 before X-10, numbered before X-TAHFIDZ). @param Builder<Classroom> $query */
+    /** Level order, then shorter names first, then by name (X-A … X-J before a longer name such as X-IPA 1; an old numbered name X-2 before X-10). @param Builder<Classroom> $query */
     public function scopeOrdered(Builder $query): void
     {
         $query->orderBy('level')->orderByRaw('LENGTH(name)')->orderBy('name');
     }
 
-    /** "XI-4" → 11, "X-TAHFIDZ" → 10; null when the name has no valid prefix. */
+    /** "XI-D" → 11, "X-IPA 1" → 10; null when the name has no valid prefix. */
     public static function levelFromName(string $name): ?int
     {
         return match (strtoupper(strtok(trim($name), '-') ?: '')) {

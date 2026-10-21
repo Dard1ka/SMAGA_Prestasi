@@ -104,7 +104,7 @@
                             <span class="font-bold">{{ $detail['claim'] }}</span>
                         </div>
                         <div class="flex flex-col gap-0.5 rounded-tile border border-line p-3">
-                            <span class="label">Penetapan Kesiswaan</span>
+                            <span class="label">Penetapan sekolah</span>
                             <span class="font-bold">{{ $detail['resultLabel'] }}</span>
                             @if ($detail['changed'])<span class="text-xs font-bold text-orange">Diubah dari klaim</span>@endif
                         </div>
@@ -117,7 +117,7 @@
                         @if ($detail['points'] !== null)
                             <x-sth.rumus-poin :tingkat="$detail['wLevel']" :capaian="$detail['wResult']" :penyelenggara="$detail['wOrganizer']" :total="$detail['points']" result-label="Poin" />
                         @else
-                            <span class="text-sm text-ink-2">Tingkat atau kategori lomba belum diisi di katalog. Lengkapi dulu di Kelola lomba.</span>
+                            <span class="text-sm text-ink-2">{{ $detail['catalogGap'] }}</span>
                         @endif
                     </x-sth.card>
 
@@ -131,20 +131,20 @@
                         @error('checks')<p class="field-error m-0"><x-sth.icon name="alert" :size="16" />{{ $message }}</p>@enderror
                     </fieldset>
 
-                    <x-sth.textarea wire:model="note" label="Catatan untuk siswa" rows="3" hint="Wajib untuk minta revisi atau tolak." />
+                    <x-sth.textarea wire:model="note" label="Catatan untuk siswa" rows="3" hint="Wajib untuk minta revisi." />
 
                     @error('decision')<x-sth.alert tone="error">{{ $message }}</x-sth.alert>@enderror
 
                     @if ($detail['canDecide'])
                         <div class="flex flex-wrap items-center gap-2">
-                            <x-sth.button icon="check" wire:click="verify" wire:loading.attr="disabled" :disabled="$checkCount < 4">Verifikasi dan beri poin</x-sth.button>
+                            {{-- Never disabled by the ticks (the QA-04 pattern): a click right after the fourth tick carries it;
+                                 VerifyReport answers missing checks under the fieldset. --}}
+                            <x-sth.button icon="check" wire:click="verify" wire:loading.attr="disabled">Verifikasi dan beri poin</x-sth.button>
                             <x-sth.button variant="quiet" wire:click="requestRevision" wire:loading.attr="disabled">Minta revisi</x-sth.button>
-                            {{-- Opens the dialog at the end of this file: a rejected report cannot be taken back (D-128). --}}
-                            <x-sth.button variant="danger" icon="x" wire:click="askReject" wire:loading.attr="disabled" aria-haspopup="dialog">Tolak</x-sth.button>
                         </div>
                         <p class="m-0 text-xs text-muted">{{ $checkCount < 4 ? 'Lengkapi 4 pemeriksaan untuk memberi poin. ' : '' }}Prestasi terverifikasi otomatis masuk antrean Humas dan peringkat.</p>
                     @elseif ($detail['ownMentee'])
-                        <x-sth.alert tone="warning">Laporan binaan sendiri diverifikasi petugas Kesiswaan lain.</x-sth.alert>
+                        <x-sth.alert tone="warning">Laporan binaan sendiri diverifikasi petugas lain.</x-sth.alert>
                     @endif
                 @else
                     <div class="flex flex-col gap-1 rounded-tile border border-line p-3">
@@ -156,32 +156,4 @@
             </x-sth.card>
         @endif
     </section>
-
-    {{-- "Tolak" asks first (D-128): the registration ends without points and nothing takes it back. The line under
-         the title promises a notice only to the people who get one (D-109). A closed <dialog> takes no grid cell. --}}
-    <x-sth.modal :id="\App\Livewire\Kesiswaan\VerifikasiHasil::REJECT_DIALOG" title="Tolak laporan ini?" :description="$rejecting['notice'] ?? 'Siswa dan guru pembimbing langsung diberi tahu.'" size="sm">
-        <form id="tolak-laporan-form" wire:submit="reject" class="flex flex-col gap-3" novalidate>
-            @if ($rejecting)
-                <div class="rounded-tile bg-subtle px-3 py-2.5">
-                    <p class="m-0 font-semibold [overflow-wrap:anywhere]">{{ $rejecting['name'] }}</p>
-                    <p class="m-0 text-xs text-muted [overflow-wrap:anywhere]">{{ $rejecting['who'] }}</p>
-                </div>
-                <p class="m-0 text-md">
-                    {{ $rejecting['team'] ? 'Pendaftaran tim ini selesai tanpa poin untuk semua anggota.' : 'Pendaftaran ini selesai tanpa poin.' }} Keputusan ini tidak bisa diubah.
-                </p>
-                <div class="flex flex-col gap-1 rounded-tile border border-line p-3 text-sm">
-                    <span class="label">Alasan untuk siswa</span>
-                    <span class="whitespace-pre-line break-words">{{ $rejecting['note'] }}</span>
-                </div>
-            @else
-                <p class="m-0 text-md text-muted">Tidak ada laporan yang dipilih. Tutup lalu coba lagi.</p>
-            @endif
-        </form>
-        <x-slot:footer>
-            <x-sth.button variant="quiet" data-sth-close>Batal</x-sth.button>
-            @if ($rejecting)
-                <x-sth.button type="submit" form="tolak-laporan-form" variant="danger" icon="x" wire:loading.attr="disabled" wire:target="reject">Tolak laporan</x-sth.button>
-            @endif
-        </x-slot:footer>
-    </x-sth.modal>
 </div>

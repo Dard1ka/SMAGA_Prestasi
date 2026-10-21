@@ -36,9 +36,6 @@
                         @if ($row['class'])
                             <span class="block text-xs text-muted">{{ $row['class'] }}</span>
                         @endif
-                        @if ($row['consentWithdrawn'])
-                            <x-sth.chip tone="orange" size="sm" class="mt-1">Izin dicabut</x-sth.chip>
-                        @endif
                     </td>
                     <td><x-sth.chip tone="gold" size="sm">{{ $row['headline'] }}</x-sth.chip></td>
                     <td class="text-ink-2">{{ $row['channels'] }}</td>

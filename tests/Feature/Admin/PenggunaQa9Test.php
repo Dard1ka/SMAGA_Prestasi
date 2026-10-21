@@ -74,16 +74,18 @@ it('offers no reset for a student account that cannot log in and says why (QA9)'
     session(A::passwordConfirmed());
 
     Livewire::test(Pengguna::class)
-        ->set('studentQuery', H::NIS)
+        ->set('studentQuery', H::NISN)
         ->call('findStudent')
         ->assertDontSeeHtml("openStudent('siswa-reset')")
         ->assertSee($message)
         ->call('openStudent', 'siswa-reset')
         ->assertNotDispatched('sth-modal-open')
         ->assertDispatched('sth-toast', message: $message, tone: 'warning')
+        ->set('studentReason', 'Siswa datang ke TU.')
+        ->set('studentPassword', 'sementara8')
         ->call('resetStudent')
         ->assertNotDispatched('sth-modal-open')
-        ->assertSet('issuedPassword', null);
+        ->assertNotDispatched('sth-toast', tone: 'success');
 
     expect(Activity::query()->where('event', 'account.reset')->exists())->toBeFalse();
 })->with([
@@ -96,7 +98,7 @@ it('still offers the reset for a student who can log in (QA9)', function (): voi
     $this->actingAs($this->admin);
 
     Livewire::test(Pengguna::class)
-        ->set('studentQuery', H::NIS)
+        ->set('studentQuery', H::NISN)
         ->call('findStudent')
         ->assertSeeHtml("openStudent('siswa-reset')")
         ->assertDontSee('tidak bisa direset');
@@ -168,30 +170,4 @@ it('says the role is already held instead of claiming a change (QA9)', function 
         ->assertNoRedirect();
 
     expect(Activity::query()->where('event', 'account.role_changed')->exists())->toBeFalse();
-});
-
-// Item 11: the temporary password leaves the page however the dialog closes ------------------------------------
-
-it('forgets the temporary password whenever its dialog closes, with one toast (QA9)', function (): void {
-    H::activeStudent();
-    $this->actingAs($this->admin);
-    session(A::passwordConfirmed());
-
-    $screen = Livewire::test(Pengguna::class)
-        ->assertSeeHtml('data-sth-on-close="forgetIssuedPassword"')
-        ->set('studentQuery', H::NIS)
-        ->call('findStudent')
-        ->call('openStudent', 'siswa-reset')
-        ->set('studentReason', 'Siswa datang ke TU.')
-        ->call('resetStudent')
-        ->assertSet('issuedPassword', fn (?string $pw): bool => is_string($pw) && $pw !== '');
-
-    // "Sudah saya berikan", then the dialog's own close event calls the same method once more.
-    $screen->call('forgetIssuedPassword')
-        ->assertSet('issuedPassword', null)
-        ->assertDispatched('sth-toast', tone: 'success');
-
-    $screen->call('forgetIssuedPassword')
-        ->assertSet('issuedPassword', null)
-        ->assertNotDispatched('sth-toast');
 });

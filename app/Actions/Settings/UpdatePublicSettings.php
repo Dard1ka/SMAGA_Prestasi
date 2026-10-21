@@ -14,8 +14,8 @@ use Illuminate\Support\Facades\Gate;
 
 /**
  * Admin › Pengaturan › Halaman publik (`setting.manage`): allow search-engine indexing of the aggregate public
- * pages, and "Lihat sertifikat" links for students with publish consent. Both default off until the school
- * confirms the parental consent process (D-16, U-04, SECURITY §3m-7). Audited; public cache flushed.
+ * pages, and "Lihat sertifikat" links (every team member named; no consent since D-162). Both default off
+ * (D-38, D-39, SECURITY §3m-7). Audited; public cache flushed.
  */
 final class UpdatePublicSettings
 {

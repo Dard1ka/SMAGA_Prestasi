@@ -18,7 +18,7 @@ use Livewire\Livewire;
 use Tests\Feature\Auth\AuthTestHelpers as H;
 
 /*
-| QA10 item 1 (SECURITY K3: an active account is never locked on purpose by a classmate). Whoever knew a student's NIS
+| QA10 item 1 (SECURITY K3: an active account is never locked on purpose by a classmate). Whoever knew a student's NISN
 | could keep the account locked: the hourly limit per account counted every request, correct passwords included, and
 | the progressive lock was per account, so one wrong try an hour from anywhere kept the owner out. Now the blocking
 | limits are per account AND address and count failed passwords only; the per-account total only feeds the alerts.
@@ -47,7 +47,7 @@ function qa10AuthLogin(string $ip, string $identifier, string $password = H::PAS
 }
 
 /** $times wrong passwords from $ip, $spacing seconds apart (never faster than the per-minute limiter allows). */
-function qa10AuthFailFrom(string $ip, int $times, int $spacing, string $identifier = H::NIS): void
+function qa10AuthFailFrom(string $ip, int $times, int $spacing, string $identifier = H::NISN): void
 {
     foreach (range(1, $times) as $i) {
         qa10AuthLogin($ip, $identifier, QA10_AUTH_WRONG)->assertSessionHasErrors('identifier');
@@ -92,13 +92,13 @@ it('lets the owner in from another address while an attacker keeps failing, and 
     // 25 wrong passwords over almost seven hours: more than 20 real failures on the account.
     qa10AuthFailFrom(QA10_AUTH_ATTACKER_IP, 25, 16 * 60);
 
-    qa10AuthLogin(QA10_AUTH_OWNER_IP, H::NIS)->assertRedirect(route('home'));
+    qa10AuthLogin(QA10_AUTH_OWNER_IP, H::NISN)->assertRedirect(route('home'));
     $this->assertAuthenticatedAs($student->user);
 
     Auth::guard('web')->logout();
 
     // The attacker's own address stays limited, even with the right password.
-    qa10AuthAssertLimited(qa10AuthLogin(QA10_AUTH_ATTACKER_IP, H::NIS));
+    qa10AuthAssertLimited(qa10AuthLogin(QA10_AUTH_ATTACKER_IP, H::NISN));
 });
 
 it('still reports failures spread over many addresses to the security log, without locking the account (QA10)', function (): void {
@@ -106,7 +106,7 @@ it('still reports failures spread over many addresses to the security log, witho
     $student = H::activeStudent();
 
     foreach (range(1, 5) as $i) {
-        qa10AuthLogin('10.66.1.'.$i, H::NIS, QA10_AUTH_WRONG)->assertSessionHasErrors('identifier');
+        qa10AuthLogin('10.66.1.'.$i, H::NISN, QA10_AUTH_WRONG)->assertSessionHasErrors('identifier');
     }
 
     Log::shouldHaveReceived('warning')
@@ -114,14 +114,14 @@ it('still reports failures spread over many addresses to the security log, witho
             && $context['bucket'] === 'u:'.$student->user->getKey() && $context['failures'] === 5)
         ->once();
 
-    qa10AuthLogin(QA10_AUTH_OWNER_IP, H::NIS)->assertRedirect(route('home'));
+    qa10AuthLogin(QA10_AUTH_OWNER_IP, H::NISN)->assertRedirect(route('home'));
 });
 
 it('counts only failed passwords: correct logins never fill the hourly limit of an account (QA10)', function (): void {
     $student = H::activeStudent();
 
     foreach (range(1, 25) as $i) {
-        qa10AuthLogin(QA10_AUTH_OWNER_IP, $i % 2 === 0 ? H::NIS : H::NISN)->assertRedirect(route('home'));
+        qa10AuthLogin(QA10_AUTH_OWNER_IP, $i % 2 === 0 ? H::NISN : $student->user->email)->assertRedirect(route('home'));
         $this->assertAuthenticatedAs($student->user);
 
         Auth::guard('web')->logout();
@@ -134,11 +134,11 @@ it('unlocks the account after a reset with the code from the email (QA10)', func
 
     // Owner and attacker behind the same school address: 20 failures lock that address for an hour.
     qa10AuthFailFrom(QA10_AUTH_ATTACKER_IP, 20, 16 * 60);
-    qa10AuthAssertLimited(qa10AuthLogin(QA10_AUTH_ATTACKER_IP, H::NIS));
+    qa10AuthAssertLimited(qa10AuthLogin(QA10_AUTH_ATTACKER_IP, H::NISN));
 
     qa10AuthResetByCode(H::NISN, 'Hujan-bulan-juni-26');
 
-    qa10AuthLogin(QA10_AUTH_ATTACKER_IP, H::NIS, 'Hujan-bulan-juni-26')->assertRedirect(route('home'));
+    qa10AuthLogin(QA10_AUTH_ATTACKER_IP, H::NISN, 'Hujan-bulan-juni-26')->assertRedirect(route('home'));
     $this->assertAuthenticatedAs($student->user);
 });
 
@@ -148,11 +148,12 @@ it('clears the limits of every address of the account on an Admin reset (QA10)',
 
     // 20 tries within half an hour from one address: the hourly limit of that address is full.
     qa10AuthFailFrom(QA10_AUTH_ATTACKER_IP, 20, 61);
-    qa10AuthAssertLimited(qa10AuthLogin(QA10_AUTH_ATTACKER_IP, H::NIS));
+    qa10AuthAssertLimited(qa10AuthLogin(QA10_AUTH_ATTACKER_IP, H::NISN));
 
-    $temporary = app(ResetStudentAccount::class)->handle($admin, $student->user, 'Pemilik datang ke ruang TU dengan kartu pelajar.');
+    $temporary = 'sementara8';
+    app(ResetStudentAccount::class)->handle($admin, $student->user, 'Pemilik datang ke ruang TU dengan kartu pelajar.', $temporary);
 
-    qa10AuthLogin(QA10_AUTH_ATTACKER_IP, H::NIS, $temporary)->assertSessionHasNoErrors();
+    qa10AuthLogin(QA10_AUTH_ATTACKER_IP, H::NISN, $temporary)->assertSessionHasNoErrors();
     $this->assertAuthenticatedAs(User::query()->findOrFail($student->user->getKey()));
 });
 
@@ -164,7 +165,7 @@ it('clears the limits of every address of the account on an Admin reset (QA10)',
 function qa10AuthFailFromMany(int $count, string $prefix = '10.70'): void
 {
     foreach (range(1, $count) as $i) {
-        qa10AuthLogin($prefix.'.'.intdiv($i, 200).'.'.($i % 200 + 1), H::NIS, QA10_AUTH_WRONG)->assertSessionHasErrors('identifier');
+        qa10AuthLogin($prefix.'.'.intdiv($i, 200).'.'.($i % 200 + 1), H::NISN, QA10_AUTH_WRONG)->assertSessionHasErrors('identifier');
     }
 }
 
@@ -174,29 +175,29 @@ it('closes the account to unknown devices after 30 failed logins in a day from m
     qa10AuthFailFromMany(30);
 
     // A device and an address the account never used: refused, even with the right password.
-    qa10AuthAssertLimited(qa10AuthLogin('10.71.0.1', H::NIS));
+    qa10AuthAssertLimited(qa10AuthLogin('10.71.0.1', H::NISN));
 
     // "Lupa kata sandi" is the owner's way back on a new device.
     qa10AuthResetByCode(H::NISN, 'Hujan-bulan-juni-26');
 
-    qa10AuthLogin('10.71.0.2', H::NIS, 'Hujan-bulan-juni-26')->assertRedirect(route('home'));
+    qa10AuthLogin('10.71.0.2', H::NISN, 'Hujan-bulan-juni-26')->assertRedirect(route('home'));
     $this->assertAuthenticatedAs($student->user);
 });
 
 it('lets the owner in from a device that signed in before while the account is closed to others (QA10)', function (): void {
     $student = H::activeStudent();
 
-    $device = qa10AuthLogin(QA10_AUTH_OWNER_IP, H::NIS)->assertRedirect(route('home'))->getCookie('sth_device');
+    $device = qa10AuthLogin(QA10_AUTH_OWNER_IP, H::NISN)->assertRedirect(route('home'))->getCookie('sth_device');
     expect($device)->not->toBeNull()
         ->and($device->isHttpOnly())->toBeTrue();
     Auth::guard('web')->logout();
 
     qa10AuthFailFromMany(30);
-    qa10AuthAssertLimited(qa10AuthLogin('10.71.0.1', H::NIS));
+    qa10AuthAssertLimited(qa10AuthLogin('10.71.0.1', H::NISN));
 
     // The owner's device, from yet another address (a phone on mobile data).
     $this->withCookie('sth_device', (string) $device->getValue());
-    qa10AuthLogin('10.71.0.3', H::NIS)->assertRedirect(route('home'));
+    qa10AuthLogin('10.71.0.3', H::NISN)->assertRedirect(route('home'));
     $this->assertAuthenticatedAs($student->user);
 });
 
@@ -210,7 +211,7 @@ it('does not take a device of one account as known for another account (QA10)', 
     qa10AuthFailFromMany(30);
 
     $this->withCookie('sth_device', (string) $device?->getValue());
-    qa10AuthAssertLimited(qa10AuthLogin('10.71.0.4', H::NIS));
+    qa10AuthAssertLimited(qa10AuthLogin('10.71.0.4', H::NISN));
 });
 
 it('alerts the Admins once when an account reaches 30 failed logins in a day (QA10)', function (): void {
@@ -228,12 +229,12 @@ it('counts the addresses of one IPv6 /64 as one address (QA10)', function (): vo
     $student = H::activeStudent();
 
     foreach (range(1, 5) as $i) {
-        qa10AuthLogin('2001:db8:1:2::'.$i, H::NIS, QA10_AUTH_WRONG)->assertSessionHasErrors('identifier');
+        qa10AuthLogin('2001:db8:1:2::'.$i, H::NISN, QA10_AUTH_WRONG)->assertSessionHasErrors('identifier');
     }
 
-    qa10AuthAssertLimited(qa10AuthLogin('2001:db8:1:2::99', H::NIS));
+    qa10AuthAssertLimited(qa10AuthLogin('2001:db8:1:2::99', H::NISN));
 
     // Another /64 is another address.
-    qa10AuthLogin('2001:db8:1:3::1', H::NIS)->assertRedirect(route('home'));
+    qa10AuthLogin('2001:db8:1:3::1', H::NISN)->assertRedirect(route('home'));
     $this->assertAuthenticatedAs($student->user);
 });

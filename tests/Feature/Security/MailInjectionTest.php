@@ -99,14 +99,14 @@ function mailInjectionCase(string $kind, string $hostile): array
                 'leader_student_id' => $student->getKey(),
             ]), fn (Registration $registration) => $registration->forceFill(['principal_note' => $hostile])->save())),
         ],
-        'revisi laporan' => [F::user($student), ReportRevisionRequested::for(Report::factory()->create(), $hostile, $hostile)],
+        'revisi laporan' => [F::user($student), ReportRevisionRequested::for(Report::factory()->create(), $hostile, $hostile, 'Humas')],
         'surat dicabut' => [
             F::staff(RoleName::KepalaSekolah),
             new LetterRevokedNotice($hostile, 'Surat Tugas', '400.3.8/313/MRD/X/2026', '400.3.8/314/MRD/X/2026', $hostile, $hostile),
         ],
         'peringatan akun' => [
             F::staff(RoleName::Admin),
-            new AccountAlert('account.frozen', 'Akun dibekukan', [$hostile.' (XI-4) dibekukan setelah 10 kali gagal masuk.']),
+            new AccountAlert('account.frozen', 'Akun dibekukan', [$hostile.' (XI-D) dibekukan setelah 10 kali gagal masuk.']),
         ],
     };
 }
@@ -150,21 +150,21 @@ it('still renders the greeting, the lines, the action button and the fallback ad
     $html = (string) $mail->getHtmlBody();
     $text = (string) $mail->getTextBody();
 
-    expect($mail->getSubject())->toBe('Usulan lomba baru: '.$name)
+    expect($mail->getSubject())->toBe('Verifikasi usulan lomba: '.$name)
         ->and($html)->toMatch('~<h1[^>]*>Yth\. Hendra Kusuma, S\.Pd\., M\.Si\.,</h1>~')
-        ->and($html)->toMatch('~<a href="'.preg_quote(e($url), '~').'" class="button button-primary"[^>]*>Buka antrean</a>~')
+        ->and($html)->toMatch('~<a href="'.preg_quote(e($url), '~').'" class="button button-primary"[^>]*>Verifikasi usulan lomba</a>~')
         ->and($html)->toMatch('~<span class="break-all"[^>]*>'.preg_quote(e($url), '~').'</span>~')
         ->and(preg_match_all('~<a\b~i', $html))->toBe(1)
         ->and(mailInjectionTargets($html))->toBe([$url])
         ->and(substr_count($html, '<p'))->toBeGreaterThanOrEqual(4)
         ->and(mailInjectionVisible($html))->toContain('Nadia Putri Anindya mengusulkan '.$name.'. Periksa penyelenggara dan link-nya sebelum dipublikasikan.')
-        ->and(mailInjectionVisible($html))->toContain('Tombol "Buka antrean" tidak bisa dibuka? Salin alamat ini ke browser:'.$url)
+        ->and(mailInjectionVisible($html))->toContain('Tombol "Verifikasi usulan lomba" tidak bisa dibuka? Salin alamat ini ke browser:'.$url)
         ->and(mailInjectionVisible($html))->not->toContain('Jika tombol')
         ->and(explode("\n", $text)[0])->toBe('Yth. Hendra Kusuma, S.Pd., M.Si.,')
         ->and(preg_match('/^\s*#/m', $text))->toBe(0)
         ->and($text)->not->toContain('](')
         ->and($text)->toContain('Nadia Putri Anindya mengusulkan '.$name.'.')
-        ->and($text)->toContain('Buka antrean: '.$url);
+        ->and($text)->toContain('Verifikasi usulan lomba: '.$url);
 });
 
 it('keeps a signed action URL and punctuation in the texts intact', function (): void {
@@ -179,7 +179,7 @@ it('keeps a signed action URL and punctuation in the texts intact', function ():
         [new EmailBindingNotice(EmailBindingNotice::CHANGED_OLD, "Ma'ruf", 'n•••@gmail.com', $url, 7), "Halo Ma'ruf,", 'baru saja diganti ke n•••@gmail.com.'],
         [new PasswordWasReset, 'Halo Nadia,', 'baru saja diganti lewat "Lupa kata sandi". Semua perangkat sudah dikeluarkan.'],
         [new LetterRevokedNotice('Ibu Siti', 'Surat Tugas', '400.3.8/313/MRD/X/2026', '400.3.8.6/14/2026', 'OSN', 'Salah tulis'), 'Penggantinya: nomor 400.3.8.6/14/2026.', 'Ibu Siti mencabut Surat Tugas nomor 400.3.8/313/MRD/X/2026 (OSN).'],
-        [new RoleChangeNotice(RoleChangeNotice::REQUESTED, 'Raka', 'Sari', 'Tata Usaha', '3 Okt 2026, 09.00'), 'Raka meminta peran Sari diubah menjadi Tata Usaha.', 'Jika keliru, minta Admin membatalkannya.'], // QA10: the reader here is no Admin
+        [new RoleChangeNotice(RoleChangeNotice::APPLIED, 'Raka', "Ma'ruf", 'Tata Usaha'), "Peran Ma'ruf sekarang Tata Usaha.", 'Pengguna perlu login ulang.'], // an old request that applied (since 21 Okt 2026 nothing new waits)
         [new SignatureReplaced('Raka'), 'Raka meng-upload gambar tanda tangan + stempel baru.', 'Jika tanpa persetujuan Kepala Sekolah, hubungi Admin sekarang.'],
     ];
 

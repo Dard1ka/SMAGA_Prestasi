@@ -4,13 +4,17 @@ declare(strict_types=1);
 
 namespace App\Livewire\Siswa;
 
+use App\Actions\Publications\EventWhen;
+use App\Actions\Publications\RecordAppreciation;
 use App\Domain\Points\PointFormatter;
+use App\Enums\AppreciationStatus;
+use App\Enums\PublicationStatus;
 use App\Enums\RegistrationStatus;
 use App\Enums\ReportFileKind;
 use App\Enums\ReportStatus;
-use App\Enums\TalentStatus;
 use App\Http\Controllers\FileController;
 use App\Models\Achievement;
+use App\Models\Appreciation;
 use App\Models\Registration;
 use App\Models\Student;
 use App\Models\TalentApplication;
@@ -83,7 +87,7 @@ final class Portofolio extends Component
 
         $achievements = Achievement::query()
             ->where('student_id', $student->getKey())
-            ->with(['competition', 'report.files.file'])
+            ->with(['competition', 'report.files.file', 'publication', 'appreciations.event'])
             ->orderByDesc('points')
             ->orderByDesc('verified_at')
             ->get()
@@ -111,8 +115,8 @@ final class Portofolio extends Component
             'classroom' => $student->classroom?->name,
             'angkatan' => $student->grade12_start_date !== null ? $student->grade12_start_date->year - 2 : null,
             'activeUntil' => $student->archive_at?->locale('id')->translatedFormat('F Y'),
+            // D-142: every choice counts, whatever an old row says; "Lainnya" has no bidang (D-143) and drops out.
             'bidangMinat' => $talents
-                ->reject(fn (TalentApplication $t): bool => $t->status === TalentStatus::TidakLolos)
                 ->map(fn (TalentApplication $t) => $t->talentType?->bidang)
                 ->filter()
                 ->unique(fn ($b) => $b->value)
@@ -133,9 +137,8 @@ final class Portofolio extends Component
                 'href' => route('siswa.lomba-saya.show', $r),
             ])->all(),
             'talents' => $talents->map(fn (TalentApplication $t): array => [
-                'title' => $t->talentType?->code->label().($t->talentBranch ? ' · '.$t->talentBranch->name : ''),
+                'title' => $t->title(),
                 'bidang' => $t->talentType?->bidang,
-                'status' => $t->status,
                 'info' => $this->talentInfo($t),
             ])->all(),
             'talentUrl' => route('siswa.talenta'),
@@ -168,7 +171,26 @@ final class Portofolio extends Component
             'certificatePreview' => $certificate?->file !== null ? FileController::previewUrl($certificate->file) : null,
             'certificatePreviewType' => $certificate?->file !== null ? FileController::previewType($certificate->file) : null,
             'certificateName' => (string) $certificate?->file?->original_name,
+            // D-160: what Humas did with it, so the page the notices link to says it too (not only the bell row).
+            'appreciation' => self::appreciationLine($achievement),
+            'published' => $achievement->publication?->status === PublicationStatus::Dipublikasikan && $achievement->publication->published_at !== null
+                ? 'Dipublikasikan Humas '.$achievement->publication->published_at->locale('id')->translatedFormat('j M Y').'.'
+                : null,
         ];
+    }
+
+    /** D-160: "Dijadwalkan diapresiasi di Upacara Senin, Senin, 12 Oktober 2026, 07.00 WIB." / "Diapresiasi di …", or null. */
+    private static function appreciationLine(Achievement $achievement): ?string
+    {
+        $row = RecordAppreciation::blocking($achievement->appreciations->filter(fn (Appreciation $a): bool => $a->event !== null)->values());
+
+        if ($row === null) {
+            return null;
+        }
+
+        $done = $row->status === AppreciationStatus::Selesai || $row->event->isCompleted();
+
+        return ($done ? 'Diapresiasi di ' : 'Dijadwalkan diapresiasi di ').$row->event->name.', '.EventWhen::long($row->event).'.';
     }
 
     /**
@@ -192,16 +214,18 @@ final class Portofolio extends Component
         return app(PersonalRank::class)->rank($student);
     }
 
+    /** The guru pembina when Kesiswaan named one, else nothing (D-142: no stage text). */
     private function talentInfo(TalentApplication $application): string
     {
-        return match ($application->status) {
-            TalentStatus::Terdaftar => 'Menunggu pemetaan Kesiswaan',
-            TalentStatus::Pembinaan => $application->mentor !== null
-                ? 'Pembina '.trim(($application->mentor->staffProfile?->honorific ? $application->mentor->staffProfile->honorific.' ' : '').$application->mentor->name)
-                : 'Peserta pembinaan',
-            TalentStatus::TidakLolos => 'Belum lolos tahun ini',
-            default => 'Tahap '.$application->status->step().' dari 4',
-        };
+        $mentor = $application->mentor;
+
+        if ($mentor === null) {
+            return '';
+        }
+
+        $honorific = $mentor->staffProfile?->honorific;
+
+        return 'Guru pembina '.trim(($honorific ? $honorific.' ' : '').$mentor->name);
     }
 
     private function dateRange(?\DateTimeInterface $start, ?\DateTimeInterface $end): string

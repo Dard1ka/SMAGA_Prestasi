@@ -14,10 +14,10 @@ use DateTimeInterface;
  * its own tools. STH draws no flyer. Same source as the cards and the caption (AchievementFacts), plus cabang,
  * penyelenggara, bidang, the lomba dates, the research title and, for a team, every member with class.
  *
- * Consent (D-16, D-71, SECURITY §3m-7): this is data meant for publication, so a student without publish
- * consent is never named here, for any viewer. The achievement's own student becomes the neutral label of
- * AchievementFacts; a team member is left out of the list and only counted in a note. STH offers no photo;
- * the notes say who does not allow a photo to be used. Never NIS/NISN, birth date, phone, email or points.
+ * Every student is named (no consent since D-162, 20 Okt 2026) except one NamedStudent leaves out (disabled or
+ * deleted account): the achievement's own student then becomes the neutral label of AchievementFacts, a team member
+ * is left out of the list and only counted in a note. STH offers no photo. Never NIS/NISN, birth date, phone, email
+ * or points.
  */
 final readonly class FlyerData
 {
@@ -30,8 +30,8 @@ final readonly class FlyerData
 
     /**
      * `rows` is what "Salin data" copies, one fact per line ("Capaian: Juara II"); a row with `list` puts the
-     * label on its own line and then one value per line (the team). `notes` are the consent sentences for
-     * Humas, shown outside the copied block.
+     * label on its own line and then one value per line (the team). `notes` are sentences for Humas about who is
+     * left out, shown outside the copied block.
      *
      * @param  list<array{label: string, values: list<string>, list: bool}>  $rows
      * @param  list<string>  $notes
@@ -46,7 +46,7 @@ final readonly class FlyerData
         $achievement->loadMissing(self::RELATIONS);
 
         $facts = AchievementFacts::of($achievement);
-        $facts = $facts->publishConsent ? $facts : $facts->anonymous();
+        $facts = $facts->named ? $facts : $facts->anonymous();
 
         $report = $achievement->report;
         $registration = $report?->registration;
@@ -56,50 +56,37 @@ final readonly class FlyerData
         $notes = [];
         $team = $report?->achievements ?? collect();
         $named = [];
-        $noPhoto = [];
 
         if ($team->count() > 1) {
             // Ketua first, then by name.
             $leaderId = (string) $registration?->leader_student_id;
             $members = $team
                 ->map(fn (Achievement $member): ?Student => $member->student)
-                ->filter(fn (?Student $student): bool => $student?->publish_consent === true)
+                ->filter(fn (?Student $student): bool => NamedStudent::allows($student))
                 ->sortBy(fn (Student $student): string => ((string) $student->getKey() === $leaderId ? '0' : '1').mb_strtolower(self::nameOf($student)))
                 ->values();
 
             foreach ($members as $student) {
                 $class = self::clean($student->classroom?->name);
                 $named[] = self::nameOf($student).($class !== null ? ' ('.$class.')' : '');
-
-                if ($student->photo_consent !== true) {
-                    $noPhoto[] = self::nameOf($student);
-                }
             }
 
             $hidden = $team->count() - count($named);
 
             if ($hidden > 0) {
-                $notes[] = $hidden.' anggota tim tidak mengizinkan namanya dipublikasikan, jadi tidak ditampilkan di sini.';
+                $notes[] = $hidden.' anggota tim tidak ditampilkan karena akunnya nonaktif.';
             }
         }
 
         if ($named !== []) {
             $rows[] = ['label' => 'Anggota tim', 'values' => $named, 'list' => true];
-
-            if ($noPhoto !== []) {
-                $notes[] = 'Tidak mengizinkan fotonya dipakai: '.implode(', ', $noPhoto).'.';
-            }
         } else {
             // One student, or a team in which nobody may be named.
             $rows[] = self::row('Nama', $facts->studentName);
             $rows[] = self::row('Kelas', $facts->className);
 
-            if (! $facts->publishConsent) {
-                $notes[] = 'Siswa ini tidak mengizinkan namanya dipublikasikan.';
-            }
-
-            if (! $facts->photoConsent) {
-                $notes[] = 'Siswa ini tidak mengizinkan fotonya dipakai.';
+            if (! $facts->named && $team->count() <= 1) {
+                $notes[] = 'Akun siswa ini nonaktif, jadi namanya tidak ditampilkan.';
             }
         }
 

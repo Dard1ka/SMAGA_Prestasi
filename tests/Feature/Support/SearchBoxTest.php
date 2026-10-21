@@ -48,6 +48,8 @@ it('hides the top bar search on a page that has its own search box', function (R
     // D-124: "Tambah prestasi" on Apresiasi has a search box of its own (shared screen, two routes).
     'Humas apresiasi' => [RoleName::Humas, 'humas.apresiasi.index'],
     'Kesiswaan apresiasi' => [RoleName::Kesiswaan, 'kesiswaan.apresiasi.index'],
+    // D-156: Arsip foto searches lomba or student itself.
+    'Humas arsip foto' => [RoleName::Humas, 'humas.foto'],
 ]);
 
 it('keeps the top bar search on a page without a search box of its own', function (): void {

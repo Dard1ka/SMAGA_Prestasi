@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Actions\Registrations;
 
-use App\Domain\Deadlines\ReportDeadline;
 use App\Enums\RegistrationStatus;
 use App\Models\Competition;
 use App\Models\Registration;
@@ -14,7 +13,7 @@ use Illuminate\Database\Eloquent\Builder;
 /**
  * Tracker phase 5 "Laporan hasil": berlangsung → menunggu_laporan once today > competition.final_on
  * (ARCHITECTURE §6). System transition run by `sth:registrations:advance`. After commit the ketua
- * (the only member who can report) gets ReportWindowOpened with the D-25 due date.
+ * (the only member who can report) gets ReportWindowOpened: report now, no due date since D-151.
  */
 final class AwaitReport extends TimelineTransition
 {
@@ -51,7 +50,7 @@ final class AwaitReport extends TimelineTransition
         $user->notify(new ReportWindowOpened(
             (string) $registration->getKey(),
             (string) $registration->competition->name,
-            app(ReportDeadline::class)->dueDate($finalOn)->locale('id')->translatedFormat('j M Y'),
+            $registration->isTeam(),
         ));
     }
 }

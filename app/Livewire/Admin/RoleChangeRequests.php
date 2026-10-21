@@ -17,8 +17,8 @@ use Livewire\Attributes\On;
 use Livewire\Component;
 
 /**
- * "Perubahan peran menunggu" panel inside Admin › Pengguna & peran (backlog #13, owner B5): pending privileged
- * role changes with "Setujui" (a second Admin, not the requester, not the account itself) and "Batalkan"
+ * "Perubahan peran" panel inside Admin › Pengguna & peran (backlog #13, owner B5). Since 21 Okt 2026 every role change
+ * applies at once (ChangeStaffRole), so this panel only holds requests made before that day: pending ones with "Setujui" (a second Admin, not the requester, not the account itself) and "Batalkan"
  * (any Admin, reason required), plus the latest finished ones. Both actions re-authorize through
  * RoleChangeRequestPolicy inside the Actions and need a password confirmation from the last 15 minutes
  * (SECURITY §3m-9). Refreshes when the parent dispatches `role-change-requested`; dispatches `role-change-decided`

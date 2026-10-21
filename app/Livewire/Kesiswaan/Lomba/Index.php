@@ -119,9 +119,11 @@ class Index extends Component
         $this->clampLimit();
     }
 
+    /** "Tambah lomba": Admin only since D-145 (siswa propose through Usulkan lomba). */
     public function create(): void
     {
         $this->authorize('manage', Competition::class);
+        $this->authorize('create', Competition::class);
         $this->dispatch('lomba-form-open', id: null, mode: 'create');
     }
 
@@ -339,6 +341,8 @@ class Index extends Component
             'statusFilters' => ['' => 'Semua'] + CompetitionStatus::options(),
             'pastLomba' => $this->pastLomba(),
             'closingLomba' => $this->closingLomba(),
+            // "Tambah lomba" is Admin only (D-145): Kesiswaan checks and corrects, it never adds a lomba.
+            'canCreate' => Auth::user()?->can('create', Competition::class) ?? false,
             // One search box per screen (D-90, backlog #60): this page has its own, so the top bar shows none.
         ])->layoutData(['badges' => $this->kesiswaanBadges(), 'search' => false]);
     }
@@ -392,6 +396,8 @@ class Index extends Component
                 CompetitionStatus::Dipublikasikan->value, $now->toDateTimeString(),
                 CompetitionStatus::MenungguVerifikasi->value, CompetitionStatus::Dipublikasikan->value,
             ])
+            // FS1 (D-135): pending lomba oldest first.
+            ->orderByRaw('case when status = ? then created_at end', [CompetitionStatus::MenungguVerifikasi->value])
             ->orderByRaw('case when registration_closes_at is null then 1 else 0 end')
             ->orderBy('registration_closes_at')
             ->orderByDesc('created_at')
@@ -442,7 +448,9 @@ class Index extends Component
         return Competition::query()
             ->pendingVerification()
             ->with(['submitter.roles', 'submitter.student.classroom', 'juknisFile'])
-            ->oldest()
+            // UX2 (the lead, 2026-10-20): the verification queue lists the newest usulan first.
+            ->latest()
+            ->orderByDesc('id')
             ->get()
             ->map(function (Competition $c) use ($user): array {
                 $submitter = $c->submitter;
@@ -484,8 +492,20 @@ class Index extends Component
     }
 
     /**
+     * A member row a student knows about (FS1 fix wave): not an anggota of a team that waits for its lomba
+     * (`menunggu_lomba`, D-148) and was not invited yet (`invited_at` null), as every student screen hides them.
+     *
+     * @param  Builder<RegistrationMember>  $query  joined with `registrations`
+     */
+    private static function knownMember(Builder $query): void
+    {
+        $query->whereNotNull('registration_members.invited_at')
+            ->orWhere('registrations.status', '!=', RegistrationStatus::MenungguLomba->value);
+    }
+
+    /**
      * @param  list<string>  $competitionIds
-     * @return array<string, int> competition id → distinct students in live registrations
+     * @return array<string, int> competition id → distinct students in live registrations (knownMember())
      */
     private function studentCounts(array $competitionIds): array
     {
@@ -499,6 +519,7 @@ class Index extends Component
             ->whereNull('registrations.deleted_at')
             ->whereNotIn('registrations.status', [RegistrationStatus::Dibatalkan->value, RegistrationStatus::Ditolak->value])
             ->whereNull('registration_members.declined_at')
+            ->where(self::knownMember(...))
             ->groupBy('registrations.competition_id')
             ->selectRaw('registrations.competition_id as competition_id, count(distinct registration_members.student_id) as n')
             ->pluck('n', 'competition_id')
@@ -516,6 +537,7 @@ class Index extends Component
             ->whereNull('registrations.deleted_at')
             ->whereNotIn('registrations.status', [RegistrationStatus::Dibatalkan->value])
             ->whereNull('registration_members.declined_at')
+            ->where(self::knownMember(...))
             ->where('registrations.created_at', '>=', $now->subDays(30)->startOfDay()->toDateTimeString());
         $students = (clone $monthRegistrations)->distinct()->count('registration_members.student_id');
         $competitions = (clone $monthRegistrations)->distinct()->count('registrations.competition_id');
@@ -530,7 +552,7 @@ class Index extends Component
         return [
             ['icon' => 'trophy', 'tone' => 'blue', 'label' => 'Lomba aktif', 'value' => (string) $active, 'note' => 'pendaftaran dibuka', 'href' => null],
             ['icon' => 'users', 'tone' => 'green', 'label' => 'Pendaftar 30 hari', 'value' => (string) $students, 'note' => 'siswa di '.$competitions.' lomba', 'href' => null],
-            ['icon' => 'inbox', 'tone' => 'orange', 'label' => 'Menunggu verifikasi', 'value' => (string) $pending, 'note' => 'upload lomba', 'href' => route('kesiswaan.lomba.index', ['tab' => 'verifikasi'])],
+            ['icon' => 'inbox', 'tone' => 'orange', 'label' => 'Verifikasi usulan lomba', 'value' => (string) $pending, 'note' => 'menunggu diperiksa', 'href' => route('kesiswaan.lomba.index', ['tab' => 'verifikasi'])],
             ['icon' => 'clock', 'tone' => 'red', 'label' => 'Tutup minggu ini', 'value' => (string) $closingSoon->count(),
                 'note' => $next !== null ? mb_strimwidth($next->name, 0, 22, '…').' · '.self::shortDate($next->registration_closes_at, false) : 'tidak ada', 'href' => null],
         ];

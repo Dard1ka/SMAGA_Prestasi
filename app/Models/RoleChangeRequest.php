@@ -15,7 +15,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * Two ways to apply: a second Admin approves it (`approved_at`), or — created while the requester was the
  * only Admin — it applies by itself at `effective_at` (24 h) unless an Admin cancels it.
  *
- * Written only by App\Actions\Roles\{RequestRoleChange,ApproveRoleChange,CancelRoleChange,ApplyRoleChange}:
+ * Since 21 Okt 2026 (the lead) no new rows are written: every role change applies at once (ChangeStaffRole). Rows made
+ * before that day are still approved, cancelled or applied.
+ *
+ * Written only by App\Actions\Roles\{ApproveRoleChange,CancelRoleChange,ApplyRoleChange} (RequestRoleChange before):
  * nothing is mass-assignable, the Actions use forceFill().
  */
 class RoleChangeRequest extends Model

@@ -10,6 +10,7 @@ use App\Actions\Publications\FlyerData;
 use App\Actions\Publications\PublicationInput;
 use App\Actions\Publications\PublishPublication;
 use App\Actions\Publications\RecordAppreciation;
+use App\Actions\Publications\RecordAppreciations;
 use App\Actions\Publications\SchedulePublication;
 use App\Enums\AppreciationStatus;
 use App\Enums\PublicationChannel;
@@ -36,7 +37,8 @@ use Livewire\Component;
  * Humas · Antrean publikasi (UI-MAP #22, board Humas-Publikasi): 3-lane board (siap / terjadwal /
  * dipublikasikan) + panel "Siapkan publikasi" ("Data untuk flyer" with "Salin data", caption, channels,
  * schedule, publish, apresiasi). Humas designs the flyer in its own tools: STH draws none, it only hands
- * over the facts (FlyerData, M3-E). Only verified achievements whose student gave publish consent are listed.
+ * over the facts (FlyerData, M3-E). Only verified achievements whose student may be named are listed (NamedStudent:
+ * not disabled, not deleted; no consent since D-162).
  * `?pilih=<publication>` preselects a card (a warning toast when it left the visible queue, QA10; 404 for an unknown id).
  *
  * D-122 (lead, 2026-10-10): the schedule is only a reminder for Humas. A `terjadwal` card whose time has passed
@@ -44,6 +46,11 @@ use Livewire\Component;
  * becomes Dipublikasikan by itself and the student is told only then. That button asks first in the dialog
  * PUBLISH_DIALOG (askPublish() checks caption + channels and opens it, publish() is the confirm step), because it
  * cannot be undone and notifies the student.
+ *
+ * D-160 (the lead, 2026-10-19): a team has one card per member. "Tandai dipublikasikan" also publishes the teammates'
+ * cards that still wait (PublishPublication::teammates(); the dialog names them and says how many students are told),
+ * and "Masukkan ke acara apresiasi" puts the free teammates on the same event (RecordAppreciation::withTeammates()),
+ * so every member of the team hears about the post and the event, not only the one whose card was open.
  */
 #[Title('Publikasi prestasi')]
 #[Layout('layouts::app', ['subtitle' => 'Prestasi terverifikasi yang siap dibagikan.'])]
@@ -250,11 +257,17 @@ class Publikasi extends Component
         }
 
         $this->resetErrorBag();
-        // Only when someone was told (an alumnus or a disabled account is not; D-109).
-        $this->dispatch('sth-toast', message: 'Publikasi ditandai sudah terbit.'.(PublishPublication::notifiesStudent($publication) ? ' Siswa sudah diberi tahu.' : ''), tone: 'success');
+        // Read from what the Action published (D-160: the teammates' cards too); a notice is claimed only when someone
+        // was told (an alumnus or a disabled account is not; D-109).
+        $published = [$publication, ...$action->team];
+        $told = count(array_filter($published, fn (Publication $p): bool => PublishPublication::notifiesStudent($p)));
+        $message = count($published) === 1
+            ? 'Publikasi ditandai sudah terbit.'.($told > 0 ? ' Siswa sudah diberi tahu.' : '')
+            : 'Publikasi ditandai sudah terbit untuk '.count($published).' anggota tim.'.($told > 0 ? ' '.$told.' siswa sudah diberi tahu.' : '');
+        $this->dispatch('sth-toast', message: $message, tone: 'success');
     }
 
-    public function recordAppreciation(RecordAppreciation $action): void
+    public function recordAppreciation(RecordAppreciations $action): void
     {
         $publication = $this->selectedOrGone();
 
@@ -274,17 +287,25 @@ class Publikasi extends Component
             return;
         }
 
+        // D-160: the free teammates of the same report go on the event in the same click (one guru notice for all).
+        $achievements = RecordAppreciation::withTeammates($publication->achievement);
+
         try {
-            $action->handle($this->actor(), $event, $publication->achievement);
+            $rows = $action->handle($this->actor(), $event, $achievements);
         } catch (ValidationException $e) {
             $this->fail($e);
 
             return;
         }
 
+        $told = $rows->filter(fn (Appreciation $row): bool => RecordAppreciation::notifiesStudent($row->achievement))->count();
+        $message = $rows->count() === 1
+            ? 'Masuk daftar apresiasi.'.($told > 0 ? ' Siswa sudah diberi tahu.' : '')
+            : $rows->count().' anggota tim masuk daftar apresiasi.'.($told > 0 ? ' '.$told.' siswa sudah diberi tahu.' : '');
+
         $this->eventId = '';
         $this->resetErrorBag('eventId');
-        $this->dispatch('sth-toast', message: 'Masuk daftar apresiasi.'.(RecordAppreciation::notifiesStudent($publication->achievement) ? ' Siswa sudah diberi tahu.' : ''), tone: 'success');
+        $this->dispatch('sth-toast', message: $message, tone: 'success');
     }
 
     public function render(): View
@@ -381,7 +402,6 @@ class Publikasi extends Component
             'publishedOn' => $publication->published_at !== null ? 'Terbit '.HumasQueries::shortDate($publication->published_at) : null,
             // D-122: the scheduled time passed and Humas has not marked it as published yet (chip "Lewat jadwal").
             'overdue' => $publication->isOverdue(),
-            'photo' => $facts->photoConsent,
             // Cover band: the template drawing of the bidang, picked from the lomba id (<x-sth.sampul>).
             'bidang' => $cssKey,
             'seed' => (string) $publication->achievement?->competition_id,
@@ -452,6 +472,11 @@ class Publikasi extends Component
             'eventOptions' => $events->mapWithKeys(fn (AppreciationEvent $e): array => [
                 (string) $e->getKey() => $e->name.' · '.EventWhen::short($e),
             ])->all(),
+            // D-160: the teammates "Masukkan" takes along (free, verified, may be named).
+            'appreciationTeam' => $events->isEmpty() ? [] : RecordAppreciation::withTeammates($publication->achievement)
+                ->reject(fn ($a): bool => (string) $a->getKey() === (string) $publication->achievement_id)
+                ->map(fn ($a): string => AchievementFacts::of($a)->studentName)
+                ->values()->all(),
         ];
     }
 
@@ -501,7 +526,7 @@ class Publikasi extends Component
 
     /**
      * `?pilih=` from a link (PublicationDue mail, Jadwal, Arsip "Lihat"). QA10: a publication that left the queue since
-     * the link was made (consent withdrawn, the student disabled or deleted) gets the QA9 warning toast and the normal
+     * the link was made (the student disabled or deleted) gets the QA9 warning toast and the normal
      * first card instead of a full-screen 404; the toast names nobody. An id that is no publication at all stays a 404.
      */
     private function findLinked(string $id): ?Publication
@@ -519,8 +544,8 @@ class Publikasi extends Component
     }
 
     /**
-     * The selected publication, or null when it left the queue since the panel was drawn (QA9): Admin withdrew the
-     * student's publish consent (the row is no longer visible), and find() answered a full-screen 404. `selectedId` is
+     * The selected publication, or null when it left the queue since the panel was drawn (QA9): Admin disabled the
+     * student's account (the row is no longer visible), and find() answered a full-screen 404. `selectedId` is
      * #[Locked] and set only from the visible queue, so this says nothing about a row Humas never saw; the panel closes.
      */
     private function selectedOrGone(): ?Publication
@@ -571,7 +596,7 @@ class Publikasi extends Component
      * Texts of the dialog "Tandai sudah terbit?" for the card askPublish() asked about, or null while nothing is
      * asked. The channels are the ones on the form: what the dialog shows is what "Tandai dipublikasikan" saves.
      *
-     * @return array{name: string, who: string, channels: string, notice: string}|null
+     * @return array{name: string, who: string, channels: string, notice: string, team: list<string>}|null
      */
     private function publishing(?Publication $selected): ?array
     {
@@ -580,13 +605,21 @@ class Publikasi extends Component
         }
 
         $facts = AchievementFacts::of($selected->achievement);
+        // D-160: the teammates' cards that are published in the same step.
+        $team = PublishPublication::teammates($this->actor(), $selected);
+        $told = collect([$selected, ...$team->all()])->filter(fn (Publication $p): bool => PublishPublication::notifiesStudent($p))->count();
 
         return [
             'name' => $facts->competitionName,
             'who' => $facts->studentName.($facts->className !== null ? ' · '.$facts->className : '').' · '.$facts->headline(),
             'channels' => PublicationInput::channelLabels($this->channels),
             // Only when someone is told (an alumnus or a disabled account is not; D-109).
-            'notice' => PublishPublication::notifiesStudent($selected) ? self::NOTICE_TOLD : self::NOTICE_NOBODY,
+            'notice' => match (true) {
+                $told === 0 => self::NOTICE_NOBODY,
+                $team->isEmpty() => self::NOTICE_TOLD,
+                default => $told.' siswa langsung diberi tahu.',
+            },
+            'team' => $team->map(fn (Publication $p): string => AchievementFacts::of($p->achievement)->studentName)->values()->all(),
         ];
     }
 

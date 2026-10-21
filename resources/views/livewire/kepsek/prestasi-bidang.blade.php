@@ -20,7 +20,7 @@
         @endif
     </div>
 
-    <div class="grid items-start gap-5 lg:grid-cols-[260px_minmax(0,1fr)] xl:grid-cols-[260px_400px_minmax(0,1fr)]" wire:loading.class="opacity-70">
+    <div class="grid grid-cols-1 items-start gap-5 lg:grid-cols-[260px_minmax(0,1fr)] xl:grid-cols-[260px_400px_minmax(0,1fr)]" wire:loading.class="opacity-70">
         {{-- Level 1: bidang --}}
         <x-sth.card as="section" aria-labelledby="h-bidang" class="flex min-w-0 flex-col gap-3.5">
             <div class="flex items-baseline justify-between gap-2">

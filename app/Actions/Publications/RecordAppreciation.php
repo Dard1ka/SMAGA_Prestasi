@@ -11,11 +11,12 @@ use App\Models\AppreciationEvent;
 use App\Models\Registration;
 use App\Models\Report;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Puts ONE verified achievement (student with publish consent) on an upcoming appreciation event that is not
+ * Puts ONE verified achievement (student who may be named, NamedStudent) on an upcoming appreciation event that is not
  * yet confirmed as held: one `appreciations` row, status `dijadwalkan`, unique per achievement + event.
  * Audited; the student and the guru pembimbing (D-110) are notified after commit.
  *
@@ -40,6 +41,28 @@ final class RecordAppreciation
         $appreciation = $this->many->handle($actor, $event, [$achievement])->first();
 
         return $appreciation;
+    }
+
+    /**
+     * D-160: the achievement with its teammates (same report, one achievement per member) that may go on an event
+     * now: verified, may be named (NamedStudent, the rule of RecordAppreciations) and on no event yet. The Publikasi panel puts
+     * them on the event in one click, so every member is told, not only the one whose card was open.
+     *
+     * @return EloquentCollection<int, Achievement> the given achievement first, then its free teammates by id
+     */
+    public static function withTeammates(Achievement $achievement): EloquentCollection
+    {
+        $mates = $achievement->report_id === null ? new EloquentCollection : Achievement::query()
+            ->where('report_id', $achievement->report_id)
+            ->whereKeyNot($achievement->getKey())
+            ->whereNotNull('verified_at')
+            ->whereHas('student', fn ($q) => NamedStudent::constrain($q))
+            ->whereDoesntHave('appreciations')
+            ->with('student.user', 'competition')
+            ->orderBy('id')
+            ->get();
+
+        return new EloquentCollection([$achievement, ...$mates->all()]);
     }
 
     /**

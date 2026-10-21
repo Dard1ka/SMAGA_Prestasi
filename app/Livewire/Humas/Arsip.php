@@ -20,12 +20,12 @@ use Livewire\WithPagination;
 
 /**
  * Humas · Arsip (UI-MAP §4d): every published publication, newest first, 20 per page, search on
- * student or competition name. Rows whose student later withdrew publish consent stay listed (Humas has
- * to take the post down) and carry the chip "Izin dicabut": no student name or class (nor a match on the
- * name) unless the viewer has `student.view` (SECURITY §3i, §3m-7). No flyer column: STH makes no flyer
- * (M3-E); a file generated before that stays in `publications.flyer_file_id`, unlinked from this screen.
- * "Lihat" opens the publication in the panel of Antrean publikasi, where the caption and the data for the
- * flyer are; a row with withdrawn consent has no such link.
+ * student or competition name. A row whose student's account was later disabled or deleted (NamedStudent) stays
+ * listed without the student name or class (nor a match on the name) unless the viewer has `student.view`
+ * (SECURITY §3i). No flyer column: STH makes no flyer (M3-E); a file generated before that stays in
+ * `publications.flyer_file_id`, unlinked from this screen. "Lihat" opens the publication in the panel of Antrean
+ * publikasi, where the caption and the data for the flyer are; such a row has no link (the queue no longer holds it).
+ * No consent chip since D-162 (20 Okt 2026).
  */
 #[Title('Arsip publikasi')]
 #[Layout('layouts::app', ['subtitle' => 'Prestasi yang sudah dipublikasikan.'])]
@@ -82,10 +82,9 @@ class Arsip extends Component
                 'headline' => $facts->headline(),
                 'channels' => PublicationInput::channelLabels($p->channels) ?: '–',
                 'published' => HumasQueries::shortDate($p->published_at, true),
-                'consentWithdrawn' => ! $facts->publishConsent,
-                // "Lihat" opens the panel of this publication (caption, kanal, data untuk flyer; QA Q2-19). Not after
-                // a withdrawn consent: the queue no longer holds that publication (404), for any viewer.
-                'href' => $facts->publishConsent ? route('humas.beranda', ['pilih' => $p->getKey()]) : null,
+                // "Lihat" opens the panel of this publication (caption, kanal, data untuk flyer; QA Q2-19). Not for a
+                // student who may not be named any more: the queue no longer holds that publication, for any viewer.
+                'href' => $facts->named ? route('humas.beranda', ['pilih' => $p->getKey()]) : null,
             ];
         })->all();
 

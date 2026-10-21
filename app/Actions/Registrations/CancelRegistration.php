@@ -22,9 +22,17 @@ use Illuminate\Validation\ValidationException;
  * Other (not declined) members and the guru pembimbing are notified, and the Kepala Sekolah when the
  * registration was already waiting for their decision (lead, 2026-10-02). Everyone becomes free to register
  * for the lomba again.
+ * From `menunggu_lomba` (D-148) nobody is told: the anggota were never invited and the guru never heard of it (the
+ * D-134 reasoning), so a notice would be the first they hear of a registration that no longer exists.
  */
 final class CancelRegistration
 {
+    /**
+     * The statuses the ketua may cancel from (RegistrationPolicy::cancel). Checked again under the lock: the state
+     * machine also allows disetujui → dibatalkan, but only for Tata Usaha (D-155, CancelApprovedRegistration).
+     */
+    public const LEADER_STATUSES = [RegistrationStatus::MenungguLomba, RegistrationStatus::MenungguKonfirmasi, RegistrationStatus::MenungguKepsek];
+
     public function __construct(private readonly RegistrationStateMachine $machine) {}
 
     /** @throws ValidationException */
@@ -46,6 +54,10 @@ final class CancelRegistration
             $from = $locked->status;
 
             try {
+                if (! in_array($from, self::LEADER_STATUSES, true)) {
+                    throw new InvalidTransition($from->value, RegistrationStatus::Dibatalkan->value);
+                }
+
                 $this->machine->assertTransition($from, RegistrationStatus::Dibatalkan);
             } catch (InvalidTransition) {
                 throw ValidationException::withMessages(['registration' => 'Pendaftaran ini sudah tidak bisa dibatalkan.']);
@@ -62,6 +74,10 @@ final class CancelRegistration
 
             return [$locked, $from];
         });
+
+        if ($from === RegistrationStatus::MenungguLomba) {
+            return $locked;
+        }
 
         $others = User::query()->canLogIn()
             ->whereHas('student.memberships', fn ($m) => $m

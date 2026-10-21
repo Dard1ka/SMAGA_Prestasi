@@ -40,15 +40,15 @@ use Throwable;
  * capaian, tahun ajaran, penyelenggara, poin). Never NIS, NISN, phone, email, birth date, user id or
  * student ULID.
  *
- * Consent: a student's name (and the random `public_slug` link) only appears when
- * `students.publish_consent` is true; everyone else is "Siswa kelas XI" (or "Alumni") but still counts in
- * every aggregate. Disabled or deleted accounts count in the aggregates only (no name, no ranking row).
+ * Names: every student's name (and the random `public_slug` link) appears, the same rule as NamedStudent (no
+ * consent since D-162, 20 Okt 2026). Disabled or deleted accounts are the only anonymous ones ("Siswa kelas XI"):
+ * they count in the aggregates only (no name, no ranking row). Never a photo of a student.
  *
  * Alumni (archived accounts, D-29): their last class never leaves this class. `kelas` is null and
  * `kelas_label` says "Alumni" (lead, 2026-10-04); the ranking shows them only when asked (RankingScope).
  *
  * Results are cached for 10 minutes under keys prefixed with the version in `publik:version`;
- * call PublicAchievements::flush() after a verification, a consent change or a weight recalculation.
+ * call PublicAchievements::flush() after a verification, an account status change or a weight recalculation.
  */
 final class PublicAchievements
 {
@@ -59,9 +59,9 @@ final class PublicAchievements
     /**
      * Part of every cache key. Raise it when the arrays this class returns change shape (a new or removed key),
      * so results cached by the previous release are not handed to the new views after a deploy.
-     * 2 = `kelas_label`, no class for alumni (2026-10-04).
+     * 2 = `kelas_label`, no class for alumni (2026-10-04). 3 = names without consent (D-162, 2026-10-20).
      */
-    public const SHAPE = 2;
+    public const SHAPE = 3;
 
     public const SLUG_PATTERN = '/^[a-f0-9]{20}$/';
 
@@ -316,7 +316,7 @@ final class PublicAchievements
     }
 
     /**
-     * Prestasi per bidang, level 3 and /prestasi/siswa/{slug}: consenting students only (null → 404).
+     * Prestasi per bidang, level 3 and /prestasi/siswa/{slug}: named students only (null → 404).
      *
      * @return array<string, mixed>|null
      */
@@ -728,7 +728,7 @@ final class PublicAchievements
                     'achievements.result', 'achievements.level', 'achievements.weight_category',
                     'achievements.w_level', 'achievements.w_result', 'achievements.w_organizer', 'achievements.points',
                     'achievements.verified_at',
-                    'students.publish_consent as s_consent', 'students.public_slug as s_slug',
+                    'students.public_slug as s_slug',
                     'students.grade12_start_date as s_grade12', 'students.deleted_at as s_deleted',
                     'users.name as u_name', 'users.status as u_status', 'users.deleted_at as u_deleted',
                     'classrooms.name as c_name', 'classrooms.level as c_level',
@@ -768,7 +768,8 @@ final class PublicAchievements
             || $a->getAttribute('s_deleted') !== null
             || $a->getAttribute('u_deleted') !== null;
         $alumni = ! $inactive && $status === UserStatus::Archived;
-        $named = (bool) $a->getAttribute('s_consent') && ! $inactive;
+        // The NamedStudent rule on a joined row (D-162: no consent any more).
+        $named = ! $inactive;
         $levelNum = (int) $a->getAttribute('c_level');
         $roman = self::ROMAN[$levelNum] ?? null;
 
@@ -891,7 +892,7 @@ final class PublicAchievements
 
     /**
      * The certificate file id only when a guest may open it through `files.public` (FilePolicy::viewPublic:
-     * verified report, Admin switch on, publish consent of every team member); otherwise null (badge only).
+     * verified report, Admin switch on, every team member named); otherwise null (badge only).
      */
     private function publicCertificate(?string $fileId): ?string
     {
@@ -981,12 +982,11 @@ final class PublicAchievements
             ->count();
     }
 
-    /** Give consenting students with achievements a random URL key (SECURITY §3m-7: never NIS or an id). */
+    /** Give students with achievements a random URL key (SECURITY §3m-7: never NIS or an id). */
     private function assignMissingSlugs(): void
     {
         Student::query()
             ->select(['id'])
-            ->where('publish_consent', true)
             ->whereNull('public_slug')
             ->whereHas('achievements')
             ->get()

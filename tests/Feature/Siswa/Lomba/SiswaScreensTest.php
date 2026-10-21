@@ -30,8 +30,8 @@ beforeEach(function (): void {
     $this->withoutVite();
     $this->guru = F::staff(RoleName::Guru);
     $this->nadia = F::student();
-    $this->dimas = F::student('Dimas Arya Nugroho', 'XI-4');
-    $this->keisha = F::student('Keisha Larasati', 'XI-6');
+    $this->dimas = F::student('Dimas Arya Nugroho', 'XI-D');
+    $this->keisha = F::student('Keisha Larasati', 'XI-F');
     User::query()->whereKey([$this->nadia->user_id, $this->dimas->user_id, $this->keisha->user_id])->update(['tour_seen_at' => now()]);
 });
 
@@ -46,7 +46,7 @@ it('sends guests to login and blocks other roles from the siswa area', function 
 })->with(['siswa.beranda', 'siswa.lomba.index', 'siswa.lomba.show', 'siswa.bantuan']);
 
 it('sends a student who has not finished activation to aktivasi', function (): void {
-    $pending = F::student('Hana Safira', 'X-2', ['status' => UserStatus::PendingActivation, 'must_change_password' => true]);
+    $pending = F::student('Hana Safira', 'X-B', ['status' => UserStatus::PendingActivation, 'must_change_password' => true]);
 
     $this->actingAs(F::user($pending))->get(route('siswa.beranda'))->assertRedirect(route('aktivasi'));
 });
@@ -57,7 +57,7 @@ it('renders every W2-A1 siswa page', function (): void {
     $this->actingAs(F::user($this->nadia));
     $this->get(route('siswa.beranda'))->assertOk()->assertSee('Halo, Nadia');
     $this->get(route('siswa.lomba.index'))->assertOk()->assertSee($lomba->name)->assertSee('Usulkan lomba');
-    $this->get(route('siswa.lomba.show', $lomba))->assertOk()->assertSee('Daftar lomba')->assertSee('Kirim pendaftaran');
+    $this->get(route('siswa.lomba.show', $lomba))->assertOk()->assertSee('Pendaftaran lomba')->assertSee('Kirim pendaftaran');
     $this->get(route('siswa.bantuan'))->assertOk()->assertSee('Tour singkat menu');
 });
 
@@ -122,13 +122,14 @@ it('registers an individu entry from the panel', function (): void {
 
     Livewire::test(Form::class, ['competitionId' => $lomba->getKey()])
         ->set('mentorId', $this->guru->id)
+        ->set('phone', '081234567890')
         ->call('kirim')
         ->assertHasErrors(['setuju'])
         ->set('setuju', true)
         ->call('kirim')
         ->assertHasNoErrors()
         ->assertSee('Pendaftaran terkirim')
-        ->assertSee('Menunggu Kepala Sekolah');
+        ->assertSee('Menunggu persetujuan');
 
     expect(Registration::query()->sole()->status)->toBe(RegistrationStatus::MenungguKepsek);
 });
@@ -144,6 +145,7 @@ it('builds a team through the member search and sends invitations', function ():
         ->call('tambah', $this->dimas->getKey())
         ->set('mentorId', $this->guru->id)
         ->set('setuju', true)
+        ->set('phone', '081234567890')
         ->call('kirim')
         ->assertHasNoErrors()
         ->assertSee('Anggota konfirmasi')
@@ -154,9 +156,9 @@ it('builds a team through the member search and sends invitations', function ():
         ->and($registration->members()->where('student_id', $this->dimas->getKey())->exists())->toBeTrue();
 });
 
-it('returns only name and class from the member search, with exact NIS/NISN matching (SECURITY §3m-3)', function (): void {
+it('returns only name and class from the member search, with exact NISN matching (SECURITY §3m-3)', function (): void {
     $lomba = F::teamCompetition(3);
-    F::student('Dimas Alumni', 'XII-1', ['status' => UserStatus::Archived]);
+    F::student('Dimas Alumni', 'XII-A', ['status' => UserStatus::Archived]);
     $this->actingAs(F::user($this->nadia));
 
     $form = Livewire::test(Form::class, ['competitionId' => $lomba->getKey()]);
@@ -170,9 +172,10 @@ it('returns only name and class from the member search, with exact NIS/NISN matc
         ->and(array_keys($hasil[0]))->toBe(['id', 'name', 'kelas', 'busy', 'declined', 'pending'])
         ->and($hasil[0]['name'])->toBe('Dimas Arya Nugroho'); // archived student excluded
 
-    $form->set('q', substr($this->keisha->nis, 0, 5))->assertSet('hasil', []);
-    $form->set('q', $this->keisha->nis);
+    $form->set('q', substr($this->keisha->nisn, 0, 5))->assertSet('hasil', []);
+    $form->set('q', $this->keisha->nisn);
     expect($form->get('hasil')[0]['name'])->toBe('Keisha Larasati');
+    $form->set('q', $this->keisha->nis)->assertSet('hasil', []);
     $form->set('q', 'Nadia')->assertSet('hasil', []); // never yourself
 });
 
@@ -213,6 +216,7 @@ it('lets the invitee confirm on the invitation page and hides it from outsiders'
     $this->actingAs(F::user($this->dimas));
     Livewire::test(KonfirmasiTim::class, ['registration' => $registration])
         ->assertSee('Ikut tim ini?')
+        ->set('phone', '081234567891')
         ->call('ikut')
         ->assertRedirect(route('siswa.undangan.show', $registration));
 

@@ -18,7 +18,7 @@ uses(RefreshDatabase::class);
 beforeEach(function (): void {
     F::boot();
 
-    $this->nadia = F::student();
+    $this->nadia = F::student(talent: false);
     $this->save = app(SaveTalentProfile::class);
 });
 
@@ -67,7 +67,7 @@ it('rejects more than 4 interests, too long texts and a third certificate', func
 });
 
 it('ignores removal ids that are not the student\'s own certificates', function (): void {
-    $other = F::student('Dimas Arya Nugroho');
+    $other = F::student('Dimas Arya Nugroho', talent: false);
     $theirs = $this->save->handle($other->user, [], [F::pdf('milik-dimas.pdf')]);
 
     $mine = $this->save->handle($this->nadia->user, [], [], [$theirs->certificates->first()->getKey()]);

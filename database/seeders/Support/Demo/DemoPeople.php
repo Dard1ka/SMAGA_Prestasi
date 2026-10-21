@@ -26,7 +26,7 @@ final class DemoPeople
     public const PRINCIPAL = ['name' => 'Drs. Bambang Hartono, M.Pd.', 'rank' => 'Pembina Tk. I, IV/b', 'nip' => '-'];
 
     /** Used when a file has no usable owner. */
-    public const FALLBACK_STUDENT = ['name' => 'Nadia Putri Anindya', 'nis' => '225226201', 'class' => 'XI-4'];
+    public const FALLBACK_STUDENT = ['name' => 'Nadia Putri Anindya', 'nis' => '225226201', 'class' => 'XI-D'];
 
     public const FALLBACK_MENTOR = 'Retno Wulandari, S.Pd.';
 

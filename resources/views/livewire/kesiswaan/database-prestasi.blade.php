@@ -11,7 +11,7 @@
     <x-sth.card padding="none" class="flex min-w-0 flex-col">
         <div class="flex flex-col gap-3 border-b border-line p-4">
             <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                <x-sth.input type="search" wire:model.live.debounce.400ms="q" label="Siswa" icon="search" placeholder="Nama atau NIS" maxlength="100" />
+                <x-sth.input type="search" wire:model.live.debounce.400ms="q" label="Siswa" icon="search" placeholder="Nama atau NISN" maxlength="100" />
                 <x-sth.select wire:model.live="tahun" label="Tahun ajaran" placeholder="Semua tahun" :options="$options['tahun']" />
                 <x-sth.select wire:model.live="bidang" label="Bidang" placeholder="Semua bidang" :options="$options['bidang']" />
                 <x-sth.select wire:model.live="tingkat" label="Tingkat" placeholder="Semua tingkat" :options="$options['tingkat']" />
@@ -81,7 +81,7 @@
                                     <x-sth.avatar :name="$row['name']" size="sm" class="hidden sm:inline-flex" />
                                     <div class="flex min-w-0 flex-col">
                                         <span class="font-bold break-words">{{ $row['name'] }}</span>
-                                        <span class="text-xs text-muted">{{ $row['kelas'] }}@if ($row['nis']) · <span class="num">{{ $row['nis'] }}</span>@endif</span>
+                                        <span class="text-xs text-muted">{{ $row['kelas'] }}@if ($row['nisn']) · <span class="num">{{ $row['nisn'] }}</span>@endif</span>
                                     </div>
                                 </div>
                             </td>

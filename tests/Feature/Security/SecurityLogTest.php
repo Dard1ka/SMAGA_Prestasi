@@ -22,7 +22,7 @@ uses(RefreshDatabase::class);
 
 /*
  | Backlog #16: `security` log channel (daily, 90 days) fed by login failures/lockouts, OTP abuse, Admin
- | resets/archive/consent changes (activity rows) and every `security.*` message; OTP cleanup job.
+ | resets/archive changes (activity rows) and every `security.*` message; OTP cleanup job.
  */
 
 beforeEach(function (): void {
@@ -58,16 +58,16 @@ it('defines a daily security channel kept for 90 days (null while the test suite
         ->and($config['channels']['security'])->toMatchArray(['driver' => 'stack', 'channels' => ['null']]);
 });
 
-it('logs a failed login with the NIS, IP and never the password', function (): void {
+it('logs a failed login with the NISN, IP and never the password', function (): void {
     H::activeStudent();
 
-    $this->post(route('login.store'), ['identifier' => H::NIS, 'password' => 'salah-sekali-123'])->assertSessionHasErrors();
+    $this->post(route('login.store'), ['identifier' => H::NISN, 'password' => 'salah-sekali-123'])->assertSessionHasErrors();
 
     $records = b2SecurityRecordsNamed('security.login_failed');
 
     expect($records)->toHaveCount(1)
         ->and($records[0]['level'])->toBe('warning')
-        ->and($records[0]['context']['identifier'])->toBe(H::NIS)
+        ->and($records[0]['context']['identifier'])->toBe(H::NISN)
         ->and($records[0]['context']['ip'])->toBe('127.0.0.1')
         ->and(json_encode(b2SecurityRecords()))->not->toContain('salah-sekali-123');
 });
@@ -83,13 +83,14 @@ it('records a password typed into the identifier field only as a fingerprint', f
         ->and(json_encode(b2SecurityRecords()))->not->toContain($typed)
         ->and(SecurityEventSubscriber::identifier('Staf.TU@Example.test'))->toBe('staf.tu@example.test')
         ->and(SecurityEventSubscriber::identifier('0098765432'))->toBe('0098765432')
+        ->and(SecurityEventSubscriber::identifier('225226201'))->toStartWith('fp:')
         ->and(SecurityEventSubscriber::identifier('kesiswaan01'))->toStartWith('fp:');
 });
 
 it('logs a successful login', function (): void {
     $student = H::activeStudent();
 
-    $this->post(route('login.store'), ['identifier' => H::NIS, 'password' => H::PASSWORD]);
+    $this->post(route('login.store'), ['identifier' => H::NISN, 'password' => H::PASSWORD]);
 
     $records = b2SecurityRecordsNamed('security.login');
 
@@ -108,22 +109,22 @@ it('copies security.* messages of the default log (lockout, OTP test mode, …) 
         ->and(b2SecurityRecordsNamed('registration.created'))->toBe([]);
 });
 
-it('mirrors audited Admin actions (resets, archive, consent) with ids only, never the reason', function (): void {
+it('mirrors audited Admin actions (resets, archive dates) with ids only, never the reason', function (): void {
     $admin = H::staff(RoleName::Admin);
     $student = H::activeStudent();
 
     activity('account')->causedBy($admin)->performedOn($student->user)->event('account.reset')
         ->withProperties(['reason' => 'HP siswa hilang'])->log('account.reset');
-    activity('student')->causedBy($admin)->performedOn($student)->event('student.consent_updated')
-        ->withProperties(['note' => 'Surat orang tua'])->log('student.consent_updated');
+    activity('student')->causedBy($admin)->performedOn($student)->event('student.archive_date_changed')
+        ->withProperties(['note' => 'Surat orang tua'])->log('student.archive_date_changed');
     activity('registration')->causedBy($admin)->event('registration.created')->log('registration.created');
 
     $reset = b2SecurityRecordsNamed('security.audit.account.reset');
-    $consent = b2SecurityRecordsNamed('security.audit.student.consent_updated');
+    $archiveDate = b2SecurityRecordsNamed('security.audit.student.archive_date_changed');
 
     expect($reset)->toHaveCount(1)
         ->and($reset[0]['context'])->toMatchArray(['log' => 'account', 'causer_id' => $admin->getKey(), 'subject_type' => 'User', 'subject_id' => (string) $student->user_id])
-        ->and($consent)->toHaveCount(1)
+        ->and($archiveDate)->toHaveCount(1)
         ->and(b2SecurityRecordsNamed('security.audit.registration.created'))->toBe([])
         ->and(json_encode(b2SecurityRecords()))->not->toContain('HP siswa hilang')->not->toContain('Surat orang tua');
 });
@@ -213,18 +214,34 @@ it('schedules the OTP cleanup hourly and the audit seal + verify commands', func
         ->and($seal)->not->toBeNull();
 });
 
-it('treats account, role, archive, consent, settings and export events as security relevant', function (string $event, bool $audited): void {
+it('treats account, role, archive, settings and export events as security relevant', function (string $event, bool $audited): void {
     expect(SecurityEventSubscriber::isAuditedEvent($event))->toBe($audited);
 })->with([
     ['account.reset', true],
     ['account.unarchived', true],
     ['role.change_requested', true],
     ['student.archive_date_changed', true],
-    ['student.consent_updated', true],
+    // D-162: nothing writes a consent event any more.
+    ['student.consent_updated', false],
     ['signature.replaced', true],
     ['audit.exported', true],
     ['talent.exported', true],
     ['registration.created', false],
     ['report.verified', false],
     ['', false],
+]);
+
+it('never logs the initial password typed into the login field, only a fingerprint (CLAUDE.md rule 3)', function (string $typed): void {
+    $this->post(route('login.store'), ['identifier' => $typed, 'password' => 'x'])->assertSessionHasErrors();
+
+    expect(b2SecurityRecordsNamed('security.login_failed')[0]['context']['identifier'])->toStartWith('fp:')
+        ->and(json_encode(b2SecurityRecords()))->not->toContain($typed);
+})->with([
+    'the default' => ['12345'],
+    // Bound dataset: Pest resolves the closure after beforeEach, inside the test, so config() works here.
+    'a 10-digit value chosen by the school' => [function (): string {
+        config(['sth.initial_student_password' => '2026202620']);
+
+        return '2026202620';
+    }],
 ]);

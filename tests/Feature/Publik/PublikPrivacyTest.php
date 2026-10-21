@@ -27,11 +27,11 @@ beforeEach(function (): void {
     $this->travelTo(now()->setDate(2026, 10, 1)->setTime(10, 0));
 
     $this->f = new PublikFixtures;
-    $this->nadia = $this->f->student('Nadia Putri Anindya', 'XI-4', attributes: ['nis' => '225226201', 'nisn' => '0098765432']);
+    $this->nadia = $this->f->student('Nadia Putri Anindya', 'XI-D', attributes: ['nis' => '225226201', 'nisn' => '0098765432']);
     User::query()->whereKey($this->nadia->user_id)->update(['email' => 'nadia.anindya@sth.test']);
 
-    // Fictional student WITHOUT publish consent.
-    $this->bima = $this->f->student('Bima Satria Wicaksono', 'XI-5', consent: false, attributes: ['nis' => '225226777', 'nisn' => '0091234567']);
+    // Fictional student with a DISABLED account: since D-162 (no consent any more) the only kind that stays anonymous.
+    $this->bima = $this->f->student('Bima Satria Wicaksono', 'XI-E', disabled: true, attributes: ['nis' => '225226777', 'nisn' => '0091234567']);
     User::query()->whereKey($this->bima->user_id)->update(['email' => 'bima.wicaksono@sth.test']);
 
     $this->opsi = $this->f->lomba('OPSI 2026', Bidang::Riset, Level::Nasional, '2026-09-20');
@@ -61,13 +61,11 @@ function publikUrls(object $test): array
     ];
 }
 
-it('never shows the name of a student without publish consent, but counts them', function (): void {
+it('never shows the name of a disabled account, but counts it in the totals', function (): void {
     foreach (publikUrls($this) as $url) {
         $this->get($url)->assertOk()->assertDontSee('Bima Satria Wicaksono')->assertDontSee('Bima Satria');
     }
 
-    $this->get(route('public.prestasi', ['bidang' => 'riset']))->assertSee('Siswa kelas XI');
-    $this->get(route('public.peringkat'))->assertSee('Siswa kelas XI');
     $this->get(route('public.lomba.pemenang', $this->robotik->id))->assertSee('Siswa kelas XI');
 
     $overview = app(PublicAchievements::class)->overview();
@@ -75,10 +73,25 @@ it('never shows the name of a student without publish consent, but counts them',
         ->and($overview['students'])->toBe(2)
         ->and($overview['nasional'])->toBe(3);
 
-    // Kelas mode aggregates everybody of the class, named or not.
+    // A disabled account has no ranking row, in Kelas mode neither.
     $kelas = collect(app(PublicAchievements::class)->ranking('kelas'))->keyBy('kelas');
-    expect($kelas['XI-5']['points'])->toBe('148.00')
-        ->and($kelas['XI-5']['students'])->toBe(1);
+    expect($kelas->has('XI-E'))->toBeFalse()
+        ->and($kelas->has('XI-D'))->toBeTrue();
+});
+
+it('names every other student on every public page, whatever the old consent columns say (D-162)', function (): void {
+    Student::query()->whereKey($this->nadia->id)->update(['publish_consent' => false, 'photo_consent' => false]);
+    PublicAchievements::flush();
+
+    $this->get(route('public.peringkat'))->assertOk()->assertSee('Nadia Putri Anindya')->assertDontSee('Siswa kelas XI');
+    $this->get(route('public.lomba.pemenang', $this->opsi->id))->assertOk()->assertSee('Nadia Putri Anindya');
+    $this->get(route('public.prestasi', ['bidang' => 'riset']))->assertOk()->assertSee('Nadia Putri Anindya');
+    $this->get(route('public.prestasi.siswa', $this->slug))->assertOk()->assertSee('Nadia Putri Anindya')
+        // Public pages never show a photo of a student: initials only, no file of the student is linked.
+        ->assertDontSee('/berkas/', false);
+
+    $row = collect(app(PublicAchievements::class)->ranking('siswa'))->firstWhere('slug', $this->slug);
+    expect($row)->toMatchArray(['name' => 'Nadia Putri Anindya', 'named' => true, 'kelas' => 'XI-D']);
 });
 
 it('never shows NIS, NISN, email or internal ids in public HTML', function (): void {
@@ -101,7 +114,7 @@ it('keeps the Livewire snapshot free of data (filters only)', function (): void 
     expect(array_keys($snapshot['data'] ?? []))->toEqualCanonicalizing(['bidang', 'tahun', 'tingkat', 'siswa', 'limit']);
 });
 
-it('returns 404 for an unknown slug and for a student without consent', function (): void {
+it('returns 404 for an unknown slug and for a disabled account', function (): void {
     $this->get('/prestasi/siswa/'.str_repeat('a', 20))->assertNotFound();
     $this->get('/prestasi/siswa/NOT-A-SLUG')->assertNotFound();
 
@@ -120,18 +133,19 @@ it('returns 404 for a lomba without verified achievements', function (): void {
     $this->get('/prestasi/lomba/bukan-ulid')->assertNotFound();
 });
 
-it('hides a student once consent is withdrawn and the cache is flushed', function (): void {
+it('hides a student once the account is disabled and the cache is flushed', function (): void {
     $this->get(route('public.peringkat'))->assertSee('Nadia Putri Anindya');
 
-    $this->nadia->forceFill(['publish_consent' => false])->saveQuietly();
+    User::query()->whereKey($this->nadia->user_id)->update(['status' => UserStatus::Disabled->value]);
     PublicAchievements::flush();
 
-    $this->get(route('public.peringkat'))->assertDontSee('Nadia Putri Anindya')->assertSee('Siswa kelas XI');
+    $this->get(route('public.peringkat'))->assertDontSee('Nadia Putri Anindya');
+    $this->get(route('public.lomba.pemenang', $this->opsi->id))->assertDontSee('Nadia Putri Anindya')->assertSee('Siswa kelas XI');
     $this->get(route('public.prestasi.siswa', $this->slug))->assertNotFound();
 });
 
 it('shows alumni with the Alumni label and their rank including alumni', function (): void {
-    $ardi = $this->f->student('Ardiansyah Nur Hakim', 'XII-3', archived: true, attributes: ['grade12_start_date' => '2024-07-01']);
+    $ardi = $this->f->student('Ardiansyah Nur Hakim', 'XII-C', archived: true, attributes: ['grade12_start_date' => '2024-07-01']);
     $this->f->prestasi($ardi, $this->f->lomba('OSN Nasional 2024 Kimia', Bidang::Sains, Level::Nasional, '2024-10-05'), ResultType::Juara1);
     $slug = $this->f->slug($ardi);
 
@@ -140,12 +154,12 @@ it('shows alumni with the Alumni label and their rank including alumni', functio
         ->assertOk()
         ->assertSee('Alumni · lulus 2025')
         ->assertSee('termasuk alumni')
-        ->assertDontSee('XII-3')
+        ->assertDontSee('XII-C')
         ->assertDontSee('Kelas terakhir');
 });
 
-it('keeps an alumnus without publish consent anonymous in every ranking group', function (): void {
-    $tiara = $this->f->student('Tiara Anjani Lestari', 'XII-8', consent: false, archived: true, attributes: ['grade12_start_date' => '2024-07-01', 'nis' => '222223555', 'nisn' => '0077123456']);
+it('names an alumnus in every ranking group whatever the old consent column says, never with the last class (D-162)', function (): void {
+    $tiara = $this->f->student('Tiara Anjani Lestari', 'XII-H', archived: true, attributes: ['grade12_start_date' => '2024-07-01', 'nis' => '222223555', 'nisn' => '0077123456', 'publish_consent' => false]);
     $this->f->prestasi($tiara, $this->robotik, ResultType::Juara2);
     PublicAchievements::flush();
 
@@ -153,8 +167,8 @@ it('keeps an alumnus without publish consent anonymous in every ranking group', 
         $html = $this->get(route('public.peringkat', ['status' => $status]))
             ->assertOk()
             ->assertSee('Alumni')
-            ->assertDontSee('Tiara Anjani Lestari')
-            ->assertDontSee('XII-8')
+            ->assertSee('Tiara Anjani Lestari')
+            ->assertDontSee('XII-H')
             ->getContent();
 
         foreach (['222223555', '0077123456', (string) $tiara->id] as $secret) {
@@ -164,11 +178,12 @@ it('keeps an alumnus without publish consent anonymous in every ranking group', 
 
     $row = collect(app(PublicAchievements::class)->ranking('siswa', scope: RankingScope::Alumni))->sole();
 
-    expect($row)->toMatchArray(['name' => 'Alumni', 'named' => false, 'slug' => null, 'kelas' => null, 'kelas_label' => null, 'lulus' => null]);
+    expect($row)->toMatchArray(['name' => 'Tiara Anjani Lestari', 'named' => true, 'kelas' => null, 'kelas_label' => 'Alumni'])
+        ->and($row['slug'])->toMatch(PublicAchievements::SLUG_PATTERN);
 });
 
 it('keeps disabled accounts out of names and rankings but inside the totals', function (): void {
-    $gone = $this->f->student('Laras Wening Pangestu', 'XI-7');
+    $gone = $this->f->student('Laras Wening Pangestu', 'XI-G');
     $this->f->prestasi($gone, $this->robotik, ResultType::Finalis);
     User::query()->whereKey($gone->user_id)->update(['status' => UserStatus::Disabled->value]);
     PublicAchievements::flush();
@@ -212,8 +227,8 @@ it('links a certificate through files.public only when Admin allowed it and show
         ->assertDontSee(route('files.show', $file->file_id), false);
 });
 
-it('never links a team certificate when one member has no publish consent', function (): void {
-    // OPSI 2026: Nadia (consent) + Bima (no consent) share one report, so the certificate shows both names.
+it('never links a team certificate when one member\'s account is disabled', function (): void {
+    // OPSI 2026: Nadia + Bima (disabled) share one report, so the certificate shows both names.
     $file = publikCertificate($this->nadia, $this->opsi, [$this->nadia, $this->bima]);
     Setting::put(SettingKey::PublicCertificates, true);
     PublicAchievements::flush();
@@ -225,7 +240,27 @@ it('never links a team certificate when one member has no publish consent', func
         ->assertDontSee(route('files.public', $file->file_id), false);
 });
 
-it('assigns a random 20-hex slug only to consenting students', function (): void {
+it('links a team certificate of named members whatever the old consent columns say (D-162)', function (): void {
+    $dimas = $this->f->student('Dimas Arya Nugroho', 'XI-D', attributes: ['publish_consent' => false, 'photo_consent' => false]);
+    $lkti = $this->f->lomba('LKTI Nasional 2026', Bidang::Riset, Level::Nasional, '2026-08-20');
+    $this->f->prestasi($this->nadia, $lkti, ResultType::Juara1);
+    $this->f->prestasi($dimas, $lkti, ResultType::Juara1);
+    $file = publikCertificate($this->nadia, $lkti, [$this->nadia, $dimas]);
+    Setting::put(SettingKey::PublicCertificates, true);
+    PublicAchievements::flush();
+
+    $this->get(route('public.prestasi.siswa', $this->slug))
+        ->assertOk()
+        ->assertSee('Lihat sertifikat')
+        ->assertSee(route('files.public', $file->file_id), false);
+});
+
+it('assigns a random 20-hex slug to every student with achievements, but never links a disabled one', function (): void {
+    $bimaSlug = Student::query()->whereKey($this->bima->id)->value('public_slug');
+
     expect($this->slug)->toMatch('/^[a-f0-9]{20}$/')
-        ->and(Student::query()->whereKey($this->bima->id)->value('public_slug'))->toBeNull();
+        ->and($bimaSlug)->toMatch('/^[a-f0-9]{20}$/');
+
+    $this->get(route('public.prestasi.siswa', $bimaSlug))->assertNotFound();
+    $this->get(route('public.peringkat'))->assertDontSee($bimaSlug);
 });

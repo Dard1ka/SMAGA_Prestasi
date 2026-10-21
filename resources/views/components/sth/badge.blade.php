@@ -1,5 +1,5 @@
 {{--
-    Count pill. primary = sidebar badge (.badge, pushes itself right with margin-left:auto);
+    Count pill. primary = sidebar badge (.badge, red since D-136, pushes itself right with margin-left:auto);
     gray = tab/lane count (.cnt).
 
     <x-sth.badge>2</x-sth.badge>

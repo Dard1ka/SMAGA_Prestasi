@@ -21,7 +21,7 @@ use Tests\Feature\Humas\HumasFixtures;
 | D-124 (lead, 2026-10-10; hand test of 2026-10-09, finding 6-1: "bagian pilih prestasi terverifikasi tambahi search
 | bar jadi ga nyari scroll manual"): "Tambah prestasi" on Apresiasi is a picker: a search box (student or lomba
 | name), a list with a tick per achievement that comes in steps, one "Masukkan" for everything ticked. Who may be
-| picked did not change: verified, publish consent, on no event (D-97). The ticks come from the browser and are
+| picked did not change: verified, may be named (NamedStudent; no consent since D-162), on no event (D-97). The ticks come from the browser and are
 | never trusted. Fictional data only.
 */
 
@@ -63,7 +63,7 @@ it('replaces the long select with a search box and a list of ticks', function ()
         ->assertSeeHtml('id="cari-prestasi"')
         ->assertSee('Cari prestasi')
         ->assertSeeHtml('placeholder="Nama siswa atau nama lomba"')
-        ->assertSee('Hanya prestasi siswa yang punya izin publikasi dan belum masuk acara mana pun.')
+        ->assertSee('Hanya prestasi yang belum masuk acara mana pun. Siswa dengan akun nonaktif tidak ditampilkan.')
         ->assertSee('1 prestasi bisa dimasukkan.')
         ->assertSeeHtml('value="'.$nadia->getKey().'" wire:model="picked"')
         ->assertSeeHtml('wire:click="addAchievements"')
@@ -136,9 +136,9 @@ it('reads % and _ in the search as plain characters, not as wildcards', function
         ->assertSee('Tidak ada prestasi yang cocok.');
 })->with(['%', '_', '%%', 'N_dia', 'Rak%']);
 
-it('never finds a student without publish consent, by name or by lomba', function (): void {
+it('never finds a student with a disabled account, by name or by lomba', function (): void {
     em2Free('Nadia Putri Anindya');
-    HumasFixtures::achievement(['publish_consent' => false], studentName: 'Fajar Ramadhan', competitionName: 'Kimia Jateng 2026');
+    HumasFixtures::achievement(studentName: 'Fajar Ramadhan', competitionName: 'Kimia Jateng 2026', disabled: true);
 
     Livewire::actingAs($this->humas)
         ->test(Apresiasi::class)
@@ -150,6 +150,22 @@ it('never finds a student without publish consent, by name or by lomba', functio
         ->set('search', 'Kimia Jateng')
         ->assertViewHas('picker', fn (array $p): bool => $p['rows'] === [])
         ->assertDontSee('Kimia Jateng 2026');
+});
+
+it('lists a student whose old consent columns are false and puts them on the event (D-162)', function (): void {
+    $fajar = HumasFixtures::achievement(['publish_consent' => false, 'photo_consent' => false], studentName: 'Fajar Ramadhan');
+
+    Livewire::actingAs($this->humas)
+        ->test(Apresiasi::class)
+        ->call('startAdding', $this->event->getKey())
+        ->assertViewHas('picker', fn (array $p): bool => em2Names($p) === ['Fajar Ramadhan'])
+        ->assertSee('Hanya prestasi yang belum masuk acara mana pun. Siswa dengan akun nonaktif tidak ditampilkan.')
+        ->assertDontSee('izin publikasi')
+        ->set('picked', [$fajar->getKey()])
+        ->call('addAchievements')
+        ->assertHasNoErrors();
+
+    expect(Appreciation::query()->where('appreciation_event_id', $this->event->getKey())->sole()->achievement_id)->toBe($fajar->getKey());
 });
 
 it('does not find an achievement that is already on an event, open or confirmed', function (): void {
@@ -201,7 +217,7 @@ it('puts team mates next to each other in the list', function (): void {
             return count($names) === 3 && abs(array_search('Nadia Putri Anindya', $names, true) - array_search('Raka Pradipta', $names, true)) === 1;
         })
         ->set('search', 'OPSI')
-        ->assertViewHas('picker', fn (array $p): bool => count($p['rows']) === 2 && $p['rows'][1]['class'] === 'XII-2');
+        ->assertViewHas('picker', fn (array $p): bool => count($p['rows']) === 2 && $p['rows'][1]['class'] === 'XII-B');
 });
 
 // --- Steps (D-72) --------------------------------------------------------------------------------------------------
@@ -322,9 +338,9 @@ it('refuses ticks the screen never offered and writes nothing', function (Closur
     Notification::assertNotSentTo($nadia->student->user, AppreciationScheduled::class);
     Notification::assertSentTimes(BinaanAppreciationNotice::class, 0);
 })->with([
-    'a student without publish consent' => [fn ($humas, $nadia) => [
+    'a student with a disabled account' => [fn ($humas, $nadia) => [
         $nadia->getKey(),
-        HumasFixtures::achievement(['publish_consent' => false], studentName: 'Fajar Ramadhan')->getKey(),
+        HumasFixtures::achievement(studentName: 'Fajar Ramadhan', disabled: true)->getKey(),
     ]],
     'an achievement on another event' => [function ($humas, $nadia) {
         $taken = HumasFixtures::achievement(studentName: 'Raka Pradipta', competitionName: 'FIKSI 2026');
@@ -422,11 +438,11 @@ it('claims a notice in the toast only for the students who got one (QA8)', funct
 
     Notification::assertNotSentTo($bima->student->user, AppreciationScheduled::class);
 
-    // Nobody can be told: the toast claims nothing.
+    // Nobody can be told (two alumni; a disabled account cannot go on an event at all since D-162): the toast claims nothing.
     $keisha = em2Free('Keisha Larasati', 'FIKSI 2026');
     $dimas = HumasFixtures::teammate($keisha, 'Dimas Arya Nugroho');
     $keisha->student->user->forceFill(['status' => UserStatus::Archived])->save();
-    $dimas->student->user->forceFill(['status' => UserStatus::Disabled])->save();
+    $dimas->student->user->forceFill(['status' => UserStatus::Archived])->save();
 
     Livewire::actingAs($this->humas)
         ->test(Apresiasi::class)

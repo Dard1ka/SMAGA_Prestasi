@@ -7,7 +7,6 @@ use App\Actions\Reports\VerifyReport;
 use App\Actions\Roles\ApplyRoleChange;
 use App\Actions\Roles\ApproveRoleChange;
 use App\Actions\Roles\CancelRoleChange;
-use App\Actions\Roles\RequestRoleChange;
 use App\Actions\Users\ApplyPrincipalReplacement;
 use App\Actions\Users\RequestPrincipalReplacement;
 use App\Enums\RegistrationStatus;
@@ -91,28 +90,45 @@ it('links the letter notices to the screen that lists the current letters, not t
 
 // Humas: no notice about an empty queue (item 3) ------------------------------------------------------------------
 
-it('does not tell Humas about a verified report when no member may be named (QA10)', function (string $case): void {
+it('does not tell Humas about a verified report when no member may be named (QA10)', function (): void {
     K::boot();
     $humas = K::staff(RoleName::Humas, 'Mas Galih Prasetyo');
-    $leader = K::student('Nadia Putri Anindya', 'XI-4');
-    $member = K::student('Dimas Arya Nugroho', 'XI-4');
+    $leader = K::student('Nadia Putri Anindya', 'XI-D');
+    $member = K::student('Dimas Arya Nugroho', 'XI-D');
+    $report = K::pendingReport($leader, [$member], ResultType::Juara1);
+    $leader->user->forceFill(['status' => UserStatus::Disabled])->save();
+    $member->user->forceFill(['status' => UserStatus::Disabled])->save();
 
-    if ($case === 'consent of a disabled account') {
-        $leader->forceFill(['publish_consent' => true])->save();
-        $leader->user->forceFill(['status' => UserStatus::Disabled])->save();
-    }
-
-    app(VerifyReport::class)->handle(K::staff(RoleName::Kesiswaan), K::pendingReport($leader, [$member], ResultType::Juara1), ResultType::Juara1, K::allChecks());
+    app(VerifyReport::class)->handle(K::staff(RoleName::Kesiswaan), $report, ResultType::Juara1, K::allChecks());
 
     Notification::assertNotSentTo($humas, AchievementReadyForPublication::class);
-})->with(['nobody gave consent' => ['none'], 'consent of a disabled account' => ['consent of a disabled account']]);
+});
+
+it('tells Humas about every member that may be named, whatever the old consent columns say (D-162)', function (): void {
+    K::boot();
+    $humas = K::staff(RoleName::Humas, 'Mas Galih Prasetyo');
+    $leader = K::student('Nadia Putri Anindya', 'XI-D');
+    $leader->forceFill(['publish_consent' => false, 'photo_consent' => false])->save();
+    $report = K::pendingReport($leader, [K::student('Dimas Arya Nugroho', 'XI-D'), K::student('Keisha Larasati', 'XI-F')], ResultType::Juara1);
+
+    app(VerifyReport::class)->handle(K::staff(RoleName::Kesiswaan), $report, ResultType::Juara1, K::allChecks());
+
+    Notification::assertSentTo($humas, AchievementReadyForPublication::class, function (AchievementReadyForPublication $n) use ($humas): bool {
+        $body = qa10NoticeBody($n, $humas);
+
+        return str_starts_with($body, 'Tim 3 siswa meraih') && ! str_contains($body, 'persetujuan publikasi');
+    });
+});
 
 it('counts only the members Humas may name (QA10)', function (): void {
     K::boot();
     $humas = K::staff(RoleName::Humas, 'Mas Galih Prasetyo');
-    $leader = K::student('Nadia Putri Anindya', 'XI-4');
-    $leader->forceFill(['publish_consent' => true])->save();
-    $report = K::pendingReport($leader, [K::student('Dimas Arya Nugroho', 'XI-4'), K::student('Keisha Larasati', 'XI-6')], ResultType::Juara1);
+    $leader = K::student('Nadia Putri Anindya', 'XI-D');
+    $dimas = K::student('Dimas Arya Nugroho', 'XI-D');
+    $keisha = K::student('Keisha Larasati', 'XI-F');
+    $report = K::pendingReport($leader, [$dimas, $keisha], ResultType::Juara1);
+    $dimas->user->forceFill(['status' => UserStatus::Disabled])->save();
+    $keisha->user->forceFill(['status' => UserStatus::Disabled])->save();
 
     app(VerifyReport::class)->handle(K::staff(RoleName::Kesiswaan), $report, ResultType::Juara1, K::allChecks());
 
@@ -136,11 +152,10 @@ it('does not mail the letter revocation to an unverified Kepala Sekolah address,
 
 // Role changes: wording and recipients for the Kepala Sekolah (item 6) --------------------------------------------
 
-it('asks a non-Admin to have an Admin cancel, and tells an Admin where to cancel (QA10)', function (): void {
+it('asks a non-Admin to have an Admin cancel the Kepala Sekolah replacement, and tells an Admin where (QA10)', function (): void {
     $admin = A::admin();
     $kepsek = A::staff(RoleName::KepalaSekolah);
     $notices = [
-        new RoleChangeNotice(RoleChangeNotice::REQUESTED, 'Operator Sekolah', 'Pak Hendra Kusuma', 'Kesiswaan', '10 Oktober 2026 09:00'),
         new PrincipalReplacementNotice(PrincipalReplacementNotice::REQUESTED, 'Drs. Bambang Hartono, M.Pd.', 'Dra. Sri Wahyuni, M.Pd.', '10 Oktober 2026 09:00'),
     ];
 
@@ -158,7 +173,7 @@ it('tells the Kepala Sekolah how a delayed role change ended (QA10)', function (
     $admin = A::admin();
     $kepsek = A::staff(RoleName::KepalaSekolah);
     $guru = A::staff(RoleName::Guru, ['name' => 'Pak Hendra Kusuma']);
-    $request = app(RequestRoleChange::class)->handle($admin, $guru, RoleName::Kesiswaan, 'Kesiswaan baru.');
+    $request = A::legacyRoleRequest($admin, $guru, RoleName::Kesiswaan, 'Kesiswaan baru.', delay: true);
     expect($request->usesDelay())->toBeTrue();
 
     if ($end === 'applied') {
@@ -180,7 +195,7 @@ it('leaves the Kepala Sekolah out when a second Admin approves (no delay) (QA10 
     $admin = A::admin();
     $second = A::admin(['name' => 'Ibu Ratna Sari', 'username' => 'operator2']);
     $kepsek = A::staff(RoleName::KepalaSekolah);
-    $request = app(RequestRoleChange::class)->handle($admin, A::staff(RoleName::Guru), RoleName::Kesiswaan, 'Kesiswaan baru.');
+    $request = A::legacyRoleRequest($admin, A::staff(RoleName::Guru), RoleName::Kesiswaan, 'Kesiswaan baru.');
 
     app(ApproveRoleChange::class)->handle($second, $request);
 
@@ -205,8 +220,8 @@ it('tells the current Kepala Sekolah when the replacement cancels itself (QA10)'
 
 it('asks only the ketua to fix the report; the other members are told the ketua does it (QA10)', function (): void {
     K::boot();
-    $leader = K::student('Nadia Putri Anindya', 'XI-4');
-    $member = K::student('Dimas Arya Nugroho', 'XI-4');
+    $leader = K::student('Nadia Putri Anindya', 'XI-D');
+    $member = K::student('Dimas Arya Nugroho', 'XI-D');
     $report = K::pendingReport($leader, [$member]);
 
     app(RequestReportRevision::class)->handle(K::staff(RoleName::Kesiswaan), $report, 'Upload sertifikat yang terbaca');

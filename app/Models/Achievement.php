@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Actions\Publications\NamedStudent;
 use App\Domain\Archive\SchoolYear;
 use App\Enums\Bidang;
 use App\Enums\Level;
@@ -124,9 +125,13 @@ class Achievement extends Model
         ]));
     }
 
-    /** Only students with publish consent (public pages, D-16). @param Builder<Achievement> $query */
+    /**
+     * Only students who may be named (public pages, D-16): NamedStudent, no consent condition since D-162.
+     *
+     * @param  Builder<Achievement>  $query
+     */
     public function scopePublicVisible(Builder $query): void
     {
-        $query->whereHas('student', fn (Builder $s) => $s->where('publish_consent', true));
+        $query->whereHas('student', fn (Builder $s) => NamedStudent::constrain($s));
     }
 }

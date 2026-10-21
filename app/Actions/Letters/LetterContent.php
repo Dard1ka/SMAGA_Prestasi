@@ -19,7 +19,7 @@ use Error;
  *
  * Structure follows the school's own files (M1-A, lead 2026-10-04): the student letter is the Excel sheet
  * "ST_LOMBA … TIM" (one table NO | NAMA MURID | NIS | KELAS for the whole team, names in capitals, class as
- * "XI - 7", Hari / Tanggal / Pukul / Tempat rows), the guru letter is the Word file "ST PENGUKUHAN KEG OPSI"
+ * "XI - G", Hari / Tanggal / Pukul / Tempat rows), the guru letter is the Word file "ST PENGUKUHAN KEG OPSI"
  * (Surat Perintah Tugas + Lampiran). Signer name/rank/NIP come from settings, never hard-coded.
  */
 final readonly class LetterContent
@@ -29,7 +29,7 @@ final readonly class LetterContent
     public const CITY = 'Semarang';
 
     /**
-     * @param  list<array{no: int, name: string, nis: string, class: string}>  $students  as printed (capitals, "XI - 7")
+     * @param  list<array{no: int, name: string, nis: string, class: string}>  $students  as printed (capitals, "XI - G")
      * @param  array{name: string, rank: string, nip: string, position: string}|null  $mentor
      * @param  array{name: string, rank: string, nip: string}  $signer
      */
@@ -138,7 +138,7 @@ final readonly class LetterContent
         }
     }
 
-    /** "XI-7" → "XI - 7", the way the school's student letter writes a class. Other names stay as they are. */
+    /** "XI-G" → "XI - G", the way the school's student letter writes a class. Other names stay as they are. */
     public static function classLabel(string $name): string
     {
         $name = trim($name);
@@ -196,6 +196,21 @@ final readonly class LetterContent
         }
 
         return $text;
+    }
+
+    /**
+     * Student letter, "Dasar" number 2 (D-157): the invitation TU typed, without "Hal"; null when "Surat dari" is empty,
+     * and the letter then prints its one regulation text without numbers (D-154).
+     */
+    public function siswaInvitation(): ?string
+    {
+        if ($this->basisFrom === '') {
+            return null;
+        }
+
+        return 'Surat dari '.$this->basisFrom
+            .($this->basisNumber !== null ? ' Nomor '.$this->basisNumber : '')
+            .($this->basisDateText !== null ? ' Tanggal '.$this->basisDateText : '');
     }
 
     /** Guru letter, "Untuk" point 1 (worded as in the school's file, without a full stop). */

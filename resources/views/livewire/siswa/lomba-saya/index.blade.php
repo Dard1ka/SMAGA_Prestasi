@@ -1,5 +1,5 @@
 {{-- Lomba saya (UI-MAP #12, board Lomba-Saya). Data prepared in App\Livewire\Siswa\LombaSaya\Index; view only formats. --}}
-<div class="grid items-start gap-5 lg:grid-cols-[minmax(300px,380px)_minmax(0,1fr)]">
+<div class="grid grid-cols-1 items-start gap-5 lg:grid-cols-[minmax(300px,380px)_minmax(0,1fr)]">
     {{-- List: always on desktop; on phones only when no lomba was opened. --}}
     <section aria-label="Daftar pendaftaran lomba" @class(['flex min-w-0 flex-col gap-3', 'hidden lg:flex' => $explicit])>
         <nav class="seg seg-block" aria-label="Status lomba">
@@ -97,7 +97,7 @@
             {{-- Invitation (W2-A1 handles confirm/decline). --}}
             @if ($detail['pendingInvite'])
                 <x-sth.alert tone="warning" title="Kamu diundang ke tim ini">
-                    Konfirmasi ikut agar pendaftaran bisa dikirim ke Kepala Sekolah.
+                    Konfirmasi ikut agar pendaftaran bisa diteruskan untuk persetujuan.
                     @if ($detail['inviteUrl'])
                         <x-sth.link :href="$detail['inviteUrl']" icon-right="chevron-right">Lihat undangan</x-sth.link>
                     @endif

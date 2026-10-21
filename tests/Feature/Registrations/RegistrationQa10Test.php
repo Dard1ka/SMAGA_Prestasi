@@ -46,9 +46,9 @@ beforeEach(function (): void {
     $this->kesiswaan = F::staff(RoleName::Kesiswaan, 'Ibu Dwi Rahayu');
     $this->kepsek = F::staff(RoleName::KepalaSekolah, 'Kepala Sekolah Contoh');
     $this->nadia = F::student();
-    $this->dimas = F::student('Dimas Arya Nugroho', 'XI-4');
-    $this->keisha = F::student('Keisha Larasati', 'XI-6');
-    $this->rizky = F::student('Rizky Maulana', 'XI-1');
+    $this->dimas = F::student('Dimas Arya Nugroho', 'XI-D');
+    $this->keisha = F::student('Keisha Larasati', 'XI-F');
+    $this->rizky = F::student('Rizky Maulana', 'XI-A');
 });
 
 /** Nadia (ketua) registers a team with the given anggota invited. */

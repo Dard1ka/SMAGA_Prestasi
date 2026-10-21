@@ -1,7 +1,7 @@
 {{--
-    Public avatar: initials for students with publish consent, a neutral person icon otherwise (the
-    initials of an anonymous student are never derived from the name). Decorative: the name or label is
-    always written next to it.
+    Public avatar: initials for a named student, a neutral person icon for an anonymous one (a disabled or
+    deleted account; its initials are never derived from the name). Never a photo. Decorative: the name or
+    label is always written next to it.
 
     @include('livewire.publik.partials.avatar', ['person' => $row, 'size' => 'sm'])
     person: array with name + named (PublicAchievements) · size xs (28) | sm (32) | md (38) | lg (40) | xl (48)

@@ -12,7 +12,7 @@ return [
     |
     */
 
-    'failed' => 'NIS/NISN atau kata sandi salah.',
+    'failed' => 'NISN atau kata sandi salah.',
     'password' => 'Kata sandi salah.',
     'throttle' => 'Terlalu banyak percobaan. Coba lagi dalam :seconds detik.',
 

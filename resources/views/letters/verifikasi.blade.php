@@ -13,7 +13,7 @@
                         <p class="muted m-0 text-sm">Surat ini pernah diterbitkan, tetapi sudah dicabut dan tidak berlaku lagi.</p>
                     </div>
                 </div>
-                <dl class="m-0 grid gap-3 sm:grid-cols-[140px_1fr]">
+                <dl class="m-0 grid grid-cols-1 gap-3 sm:grid-cols-[140px_1fr]">
                     <dt class="text-sm font-semibold text-muted">Jenis surat</dt>
                     <dd class="m-0 text-sm font-semibold">{{ $letter->type->label() }}</dd>
                     <dt class="text-sm font-semibold text-muted">Nomor</dt>
@@ -42,7 +42,7 @@
                         <p class="muted m-0 text-sm">Surat ini diterbitkan melalui SMAGA Talent Hub.</p>
                     </div>
                 </div>
-                <dl class="m-0 grid gap-3 sm:grid-cols-[140px_1fr]">
+                <dl class="m-0 grid grid-cols-1 gap-3 sm:grid-cols-[140px_1fr]">
                     <dt class="text-sm font-semibold text-muted">Jenis surat</dt>
                     <dd class="m-0 text-sm font-semibold">{{ $letter->type->label() }}</dd>
                     <dt class="text-sm font-semibold text-muted">Nomor</dt>

@@ -1,162 +1,33 @@
 {{-- Status aktivasi (K9, K2; UI-MAP §4a/§5). Data prepared in App\Livewire\Akun\StatusAktivasi + App\Actions\Accounts\ActivationReport. --}}
+{{-- D-159: the tiles and the two "Perlu perhatian" boxes share the first row; one segmented choice shows "Per kelas" or
+     "Daftar siswa" at the full width, 10 rows first, so the page needs no long scroll and the list no sideways scroll. --}}
 <div class="flex flex-col gap-[22px]">
     @include('livewire.partials.resume-download')
-    <section aria-label="Ringkasan aktivasi" class="grid auto-rows-fr grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
-        <x-sth.stat-tile icon="check-circle" tone="green" label="Sudah aktif" :value="(string) $totals['aktif']" note="akun siswa" />
-        <x-sth.stat-tile icon="clock" tone="gray" label="Belum aktivasi" :value="(string) $totals['belum']" note="masih dalam jendela" />
-        <x-sth.stat-tile icon="alert" tone="orange" label="Kedaluwarsa" :value="(string) $totals['kedaluwarsa']" note="perlu dibuka ulang" zero="hide" />
-        <x-sth.stat-tile icon="lock" tone="red" label="Dibekukan" :value="(string) $totals['dibekukan']" note="gagal masuk atau dilaporkan" zero="hide" />
-    </section>
+    @php
+        $number = fn (int $n): string => number_format($n, 0, ',', '.');
+    @endphp
 
-    <div class="grid grid-cols-1 items-start gap-[22px] xl:grid-cols-[minmax(0,1fr)_360px]">
-        <div class="flex min-w-0 flex-col gap-[22px]">
-            {{-- Per kelas --}}
-            <section aria-labelledby="h-per-kelas" class="flex flex-col gap-3">
-                <x-sth.page-header id="h-per-kelas" title="Per kelas" subtitle="Tekan Lihat untuk membuka daftar siswa kelas itu." />
-                @if ($summary->isEmpty())
-                    <x-sth.empty-state icon="users" title="Belum ada siswa">Impor data siswa dulu.</x-sth.empty-state>
-                @else
-                    <x-sth.table caption="Status aktivasi per kelas, {{ $summary->count() }} kelas" fixed>
-                        <x-slot:head>
-                            <th scope="col" class="w-28">Kelas</th>
-                            <th scope="col" class="w-16">Siswa</th>
-                            <th scope="col" class="w-16">Aktif</th>
-                            <th scope="col" class="w-16">Belum</th>
-                            <th scope="col" class="w-24">Kedaluwarsa</th>
-                            <th scope="col" class="w-24">Dibekukan</th>
-                            <th scope="col" class="w-36">Aktif (%)</th>
-                            <th scope="col" class="w-24"><span class="sr-only">Aksi</span></th>
-                        </x-slot:head>
-                        @foreach ($summary as $class)
-                            <tr wire:key="kelas-{{ $class['classroomId'] ?? 'none' }}" @class(['bg-primary-wash' => $kelas !== '' && $kelas === $class['classroomId']])>
-                                <td class="font-bold">{{ $class['classroom'] }}</td>
-                                <td class="num">{{ $class['total'] }}</td>
-                                <td class="num">{{ $class['counts']['aktif'] }}</td>
-                                <td class="num">{{ $class['counts']['belum'] }}</td>
-                                <td class="num">{{ $class['counts']['kedaluwarsa'] }}</td>
-                                <td class="num">{{ $class['counts']['dibekukan'] }}</td>
-                                <td>
-                                    <div class="flex items-center gap-2">
-                                        <span class="h-1.5 w-16 overflow-hidden rounded-full bg-track" aria-hidden="true">
-                                            <span class="block h-full rounded-full bg-green w-pct-{{ max(0, min(100, $class['activePct'])) }}"></span>
-                                        </span>
-                                        <span class="num text-xs">{{ $class['activePct'] }}%</span>
-                                    </div>
-                                </td>
-                                <td>
-                                    @if ($class['classroomId'])
-                                        <x-sth.button variant="quiet" size="sm" aria-haspopup="dialog" wire:click="showClass('{{ $class['classroomId'] }}')">Lihat<span class="sr-only"> siswa kelas {{ $class['classroom'] }}</span></x-sth.button>
-                                    @endif
-                                </td>
-                            </tr>
-                        @endforeach
-                    </x-sth.table>
-                @endif
-            </section>
+    {{-- UX2 (the lead, 2026-10-20): the counts are compact rows (stat-tile layout="row") stacked next to the two
+         boxes, so no tile is stretched to the height of the boxes. --}}
+    <div class="grid grid-cols-1 gap-4 xl:grid-cols-2 xl:gap-[22px]">
+        <section aria-label="Ringkasan aktivasi" class="grid auto-rows-fr grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-1">
+            <x-sth.stat-tile layout="row" icon="check-circle" tone="green" label="Sudah aktif" :value="$number($totals['aktif'])" note="akun siswa" />
+            <x-sth.stat-tile layout="row" icon="clock" tone="gray" label="Belum aktivasi" :value="$number($totals['belum'])" note="masih dalam jendela" />
+            <x-sth.stat-tile layout="row" icon="alert" tone="orange" label="Kedaluwarsa" :value="$number($totals['kedaluwarsa'])" note="perlu dibuka ulang" zero="hide" />
+            <x-sth.stat-tile layout="row" icon="lock" tone="red" label="Dibekukan" :value="$number($totals['dibekukan'])" note="gagal masuk atau dilaporkan" zero="hide" />
+        </section>
 
-            {{-- Daftar siswa: lookups across classes + CSV. One class at a time is the dialog behind "Lihat". --}}
-            <section aria-labelledby="h-siswa" class="flex flex-col gap-3">
-                <x-sth.page-header id="h-siswa" title="Daftar siswa" subtitle="Cari siswa di semua kelas.">
-                    <x-slot:actions>
-                        <x-sth.button variant="quiet" size="sm" icon="download" wire:click="export" wire:loading.attr="disabled" wire:target="export">Download CSV</x-sth.button>
-                    </x-slot:actions>
-                </x-sth.page-header>
-
-                <x-sth.card padding="none" class="flex min-w-0 flex-col">
-                    <div class="flex flex-col gap-3 border-b border-line p-4">
-                        <div class="seg flex-wrap" role="group" aria-label="Status">
-                            <button type="button" class="seg-btn" wire:click="setStatus('')" aria-pressed="{{ $status === '' ? 'true' : 'false' }}">Semua</button>
-                            @foreach ($states as $key => $meta)
-                                <button type="button" class="seg-btn" wire:click="setStatus('{{ $key }}')" aria-pressed="{{ $status === $key ? 'true' : 'false' }}">
-                                    {{ $meta['label'] }} <span class="cnt">{{ $totals[$key] }}</span>
-                                </button>
-                            @endforeach
-                        </div>
-                        <div class="grid grid-cols-1 gap-3 md:grid-cols-[220px_minmax(0,1fr)_auto] md:items-end">
-                            <x-sth.select wire:model.live="daftarKelas" label="Kelas" size="sm" placeholder="Semua kelas" :options="$classes" />
-                            <x-sth.input type="search" wire:model.live.debounce.400ms="q" label="Cari" icon="search" placeholder="Nama, atau NIS/NISN lengkap" />
-                            @if ($filtersActive)
-                                <x-sth.button variant="quiet" size="sm" wire:click="resetFilters">Hapus filter</x-sth.button>
-                            @endif
-                        </div>
-                    </div>
-
-                    <p class="m-0 border-b border-line bg-subtle px-4 py-2.5 text-sm text-muted" aria-live="polite">
-                        {{ $filteredCount }} siswa{{ $hasMore ? ', '.$rows->count().' tampil' : '' }}. Email dan NIS ditampilkan tersamar.
-                    </p>
-
-                    @if ($rows->isEmpty())
-                        <div class="p-4">
-                            <x-sth.empty-state icon="search" title="Tidak ada siswa yang cocok" :card="false">Ubah filter atau kata kunci.</x-sth.empty-state>
-                        </div>
-                    @else
-                        <x-sth.table caption="Daftar status aktivasi siswa" :card="false">
-                            <x-slot:head>
-                                <th scope="col" class="min-w-56">Siswa</th>
-                                <th scope="col" class="min-w-32">Status</th>
-                                <th scope="col" class="min-w-40">Email</th>
-                                <th scope="col" class="min-w-36">Aktivasi</th>
-                                <th scope="col" class="min-w-36">Login terakhir</th>
-                                <th scope="col" class="min-w-44">Catatan</th>
-                                <th scope="col" class="min-w-40"><span class="sr-only">Aksi</span></th>
-                            </x-slot:head>
-                            @foreach ($rows as $row)
-                                <tr wire:key="siswa-{{ $row['userId'] }}">
-                                    <td>
-                                        <div class="flex min-w-0 items-center gap-2.5">
-                                            <x-sth.avatar :name="$row['name']" size="sm" />
-                                            <div class="flex min-w-0 flex-col">
-                                                <span class="ellip font-bold">{{ $row['name'] }}</span>
-                                                <span class="text-xs text-muted">{{ $row['classroom'] }} · <span class="num">{{ $row['nis'] }}</span></span>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <x-sth.chip :tone="$row['tone']" size="sm">{{ $row['stateLabel'] }}</x-sth.chip>
-                                        @if ($row['expiresAt'] && $row['state'] === 'belum')
-                                            <span class="mt-1 block text-xs text-muted">s.d. {{ $row['expiresAt']->translatedFormat('j M H:i') }}</span>
-                                        @endif
-                                    </td>
-                                    <td class="text-sm">{{ $row['email'] ?? '–' }}</td>
-                                    <td class="num text-sm">{{ $row['activatedAt']?->translatedFormat('j M Y H:i') ?? '–' }}</td>
-                                    <td class="num text-sm">{{ $row['lastLoginAt']?->translatedFormat('j M Y H:i') ?? '–' }}</td>
-                                    <td class="text-xs">
-                                        @forelse ($row['flags'] as $flag)
-                                            <x-sth.chip tone="orange" size="sm" class="h-auto min-h-6 py-0.5 whitespace-normal">{{ $flag }}</x-sth.chip>
-                                        @empty
-                                            <span class="text-muted">–</span>
-                                        @endforelse
-                                    </td>
-                                    <td>
-                                        @if ($row['action'] === 'buka')
-                                            <x-sth.button variant="soft" size="sm" wire:click="openReopen({{ $row['userId'] }})">Buka ulang</x-sth.button>
-                                        @elseif ($row['action'] === 'cair')
-                                            <x-sth.button variant="soft" size="sm" wire:click="openUnfreeze({{ $row['userId'] }})">Buka pembekuan</x-sth.button>
-                                        @elseif ($row['action'] === 'admin')
-                                            <span class="text-xs text-muted">Hubungi Admin</span>
-                                        @endif
-                                    </td>
-                                </tr>
-                            @endforeach
-                        </x-sth.table>
-                        @if ($hasMore)
-                            <div class="flex justify-center p-4">
-                                <x-sth.button variant="quiet" size="sm" wire:click="showMore">Tampilkan lebih banyak</x-sth.button>
-                            </div>
-                        @endif
-                    @endif
-                </x-sth.card>
-            </section>
-        </div>
-
-        <aside class="flex flex-col gap-[22px]" aria-label="Perlu perhatian">
-            <x-sth.card as="section" aria-labelledby="h-beku" class="flex flex-col gap-3">
-                <x-sth.page-header id="h-beku" title="Akun dibekukan" :level="3" />
+        <aside class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:flex xl:flex-col" aria-label="Perlu perhatian">
+            <x-sth.card as="section" aria-labelledby="h-beku" class="flex min-w-0 flex-col gap-3 xl:flex-1">
+                <div class="flex items-center justify-between gap-2">
+                    <h2 id="h-beku" class="title-card m-0">Akun dibekukan</h2>
+                    <span class="cnt">{{ $frozenCount }}</span>
+                </div>
                 @forelse ($frozen as $account)
-                    <div wire:key="beku-{{ $account['id'] }}" class="flex items-start gap-3">
+                    <div wire:key="beku-{{ $account['id'] }}" class="flex items-center gap-3">
                         <x-sth.avatar :name="$account['name']" size="sm" />
                         <div class="flex min-w-0 flex-1 flex-col">
-                            <span class="ellip font-bold">{{ $account['name'] }}</span>
+                            <span class="font-bold [overflow-wrap:anywhere]">{{ $account['name'] }}</span>
                             <span class="text-xs text-muted">
                                 {{ $account['where'] }} · {{ $account['reason'] === 'not_me' ? 'laporan "Bukan saya"' : 'gagal masuk 10 kali' }}
                                 @if ($account['since']) · {{ $account['since']->translatedFormat('j M H:i') }}@endif
@@ -171,38 +42,204 @@
                 @empty
                     <p class="m-0 text-sm text-muted">Tidak ada akun yang dibekukan.</p>
                 @endforelse
+                @if ($frozenCount > $frozen->count())
+                    <x-sth.button variant="quiet" size="sm" icon="chevron-down" class="self-start" wire:click="showMoreFrozen">Tampilkan lebih banyak ({{ $frozenCount - $frozen->count() }} lagi)</x-sth.button>
+                @endif
             </x-sth.card>
 
-            <x-sth.card as="section" aria-labelledby="h-k7" class="flex flex-col gap-3">
-                <x-sth.page-header id="h-k7" title="Kata sandi awal dicoba di akun aktif" :level="3" subtitle="7 hari terakhir. Bisa berarti pemilik asli terkunci." />
+            <x-sth.card as="section" aria-labelledby="h-k7" class="flex min-w-0 flex-col gap-3 xl:flex-1">
+                <div class="flex items-start justify-between gap-2">
+                    <div class="flex min-w-0 flex-col gap-0.5">
+                        <h2 id="h-k7" class="title-card m-0">Kata sandi awal dicoba di akun aktif</h2>
+                        <p class="m-0 text-xs text-muted">7 hari terakhir. Bisa berarti pemilik asli terkunci.</p>
+                    </div>
+                    <span class="cnt">{{ $k7Count }}</span>
+                </div>
                 @forelse ($k7 as $i => $alert)
-                    <p wire:key="k7-{{ $i }}" class="m-0 text-sm">
+                    <p wire:key="k7-{{ $i }}" class="m-0 text-sm [overflow-wrap:anywhere]">
                         <span class="font-bold">{{ $alert['name'] }}</span>
                         <span class="text-muted">{{ $alert['classroom'] ? '· '.$alert['classroom'] : '' }} · {{ $alert['at']->translatedFormat('j M H:i') }}</span>
                     </p>
                 @empty
                     <p class="m-0 text-sm text-muted">Tidak ada.</p>
                 @endforelse
+                @if ($k7Count > $k7->count())
+                    <x-sth.button variant="quiet" size="sm" icon="chevron-down" class="self-start" wire:click="showMoreK7">Tampilkan lebih banyak ({{ $k7Count - $k7->count() }} lagi)</x-sth.button>
+                @endif
             </x-sth.card>
-
-            @if ($canSetWindow)
-                <x-sth.card as="section" aria-labelledby="h-jendela" class="flex flex-col gap-3">
-                    <x-sth.page-header id="h-jendela" title="Jendela aktivasi" :level="3" subtitle="Lama kata sandi awal berlaku setelah impor. Sekarang {{ $currentWindow }} hari." />
-                    <form wire:submit="saveWindow" class="flex items-end gap-2" novalidate>
-                        <x-sth.input wire:model="windowDays" type="number" inputmode="numeric" min="1" max="30" label="Hari (1–30)" class="w-32" />
-                        <x-sth.button type="submit" variant="soft" size="sm" wire:loading.attr="disabled" wire:target="saveWindow">Simpan</x-sth.button>
-                    </form>
-                    <p class="m-0 text-xs text-muted">Berlaku untuk impor berikutnya. Siswa yang sudah diimpor: pakai "Buka ulang" (72 jam).</p>
-                </x-sth.card>
-            @endif
         </aside>
     </div>
+
+    <section aria-label="Tabel aktivasi" class="flex flex-col gap-3">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+            <div class="seg max-sm:grid max-sm:w-full max-sm:auto-cols-fr max-sm:grid-flow-col" role="tablist" aria-label="Pilih tabel">
+                <button type="button" role="tab" id="tab-aktivasi-kelas" aria-controls="panel-aktivasi" wire:key="tab-aktivasi-kelas"
+                        aria-selected="{{ $tampil === 'kelas' ? 'true' : 'false' }}" @class(['seg-btn', 'seg-on' => $tampil === 'kelas']) wire:click="setView('kelas')">
+                    Per kelas <span class="cnt">{{ $number($classCount) }}</span>
+                </button>
+                <button type="button" role="tab" id="tab-aktivasi-siswa" aria-controls="panel-aktivasi" wire:key="tab-aktivasi-siswa"
+                        aria-selected="{{ $tampil === 'siswa' ? 'true' : 'false' }}" @class(['seg-btn', 'seg-on' => $tampil === 'siswa']) wire:click="setView('siswa')">
+                    Daftar siswa <span class="cnt">{{ $number(array_sum($totals)) }}</span>
+                </button>
+            </div>
+            @if ($tampil === 'siswa')
+                <x-sth.button variant="quiet" size="sm" icon="download" wire:click="export" wire:loading.attr="disabled" wire:target="export">Download CSV</x-sth.button>
+            @endif
+        </div>
+
+        <div id="panel-aktivasi" role="tabpanel" aria-labelledby="tab-aktivasi-{{ $tampil }}" class="flex min-w-0 flex-col gap-3">
+            @if ($tampil === 'kelas')
+                <p class="m-0 text-sm text-muted">Tekan Lihat untuk membuka daftar siswa kelas itu.</p>
+                @if ($summary->isEmpty())
+                    <x-sth.empty-state icon="users" title="Belum ada siswa">Impor data siswa dulu.</x-sth.empty-state>
+                @else
+                    <x-sth.card padding="none" class="flex min-w-0 flex-col">
+                        <x-sth.table caption="Status aktivasi per kelas, {{ $classCount }} kelas" :card="false" fixed table-class="min-w-[720px]">
+                            <x-slot:head>
+                                <th scope="col" class="w-28">Kelas</th>
+                                <th scope="col" class="w-20">Siswa</th>
+                                <th scope="col" class="w-20">Aktif</th>
+                                <th scope="col" class="w-20">Belum</th>
+                                <th scope="col" class="w-28">Kedaluwarsa</th>
+                                <th scope="col" class="w-28">Dibekukan</th>
+                                <th scope="col" class="w-40">Aktif (%)</th>
+                                <th scope="col" class="w-28"><span class="sr-only">Aksi</span></th>
+                            </x-slot:head>
+                            @foreach ($summary as $class)
+                                <tr wire:key="kelas-{{ $class['classroomId'] ?? 'none' }}" @class(['bg-primary-wash' => $kelas !== '' && $kelas === $class['classroomId']])>
+                                    <td class="font-bold">{{ $class['classroom'] }}</td>
+                                    <td class="num">{{ $class['total'] }}</td>
+                                    <td class="num">{{ $class['counts']['aktif'] }}</td>
+                                    <td class="num">{{ $class['counts']['belum'] }}</td>
+                                    <td class="num">{{ $class['counts']['kedaluwarsa'] }}</td>
+                                    <td class="num">{{ $class['counts']['dibekukan'] }}</td>
+                                    <td>
+                                        <div class="flex items-center gap-2">
+                                            <span class="h-1.5 w-16 overflow-hidden rounded-full bg-track" aria-hidden="true">
+                                                <span class="block h-full rounded-full bg-green w-pct-{{ max(0, min(100, $class['activePct'])) }}"></span>
+                                            </span>
+                                            <span class="num text-xs">{{ $class['activePct'] }}%</span>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        @if ($class['classroomId'])
+                                            <x-sth.button variant="quiet" size="sm" aria-haspopup="dialog" wire:click="showClass('{{ $class['classroomId'] }}')">Lihat<span class="sr-only"> siswa kelas {{ $class['classroom'] }}</span></x-sth.button>
+                                        @endif
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </x-sth.table>
+                        <div class="flex flex-wrap items-center justify-between gap-3 border-t border-line px-4 py-3">
+                            <span class="num text-xs text-muted" aria-live="polite">Menampilkan {{ $summary->count() }} dari {{ $classCount }} kelas</span>
+                            @if ($classCount > $summary->count())
+                                <x-sth.button variant="quiet" size="sm" icon="chevron-down" wire:click="showMoreClasses">Tampilkan lebih banyak</x-sth.button>
+                            @endif
+                        </div>
+                    </x-sth.card>
+                @endif
+            @else
+                <p class="m-0 text-xs text-muted">Buka di Excel lewat Data › Dari Teks/CSV dan atur kolom NISN sebagai Teks agar angka 0 di depan tetap ada.</p>
+
+                <x-sth.card padding="none" class="flex min-w-0 flex-col">
+                    <div class="flex flex-col gap-3 border-b border-line p-4">
+                        <div class="seg flex-wrap" role="group" aria-label="Status">
+                            <button type="button" class="seg-btn" wire:click="setStatus('')" aria-pressed="{{ $status === '' ? 'true' : 'false' }}">Semua</button>
+                            @foreach ($states as $key => $meta)
+                                <button type="button" class="seg-btn" wire:click="setStatus('{{ $key }}')" aria-pressed="{{ $status === $key ? 'true' : 'false' }}">
+                                    {{ $meta['label'] }} <span class="cnt">{{ $totals[$key] }}</span>
+                                </button>
+                            @endforeach
+                        </div>
+                        <div class="grid grid-cols-1 gap-3 md:grid-cols-[220px_minmax(0,1fr)_auto] md:items-end">
+                            <x-sth.select wire:model.live="daftarKelas" label="Kelas" size="sm" placeholder="Semua kelas" :options="$classes" />
+                            <x-sth.input type="search" wire:model.live.debounce.400ms="q" label="Cari" icon="search" placeholder="Nama atau NISN lengkap" />
+                            @if ($filtersActive)
+                                <x-sth.button variant="quiet" size="sm" wire:click="resetFilters">Hapus filter</x-sth.button>
+                            @endif
+                        </div>
+                    </div>
+
+                    @if ($rows->isEmpty())
+                        <div class="p-4">
+                            <x-sth.empty-state icon="search" title="Tidak ada siswa yang cocok" :card="false">Ubah filter atau kata kunci.</x-sth.empty-state>
+                        </div>
+                    @else
+                        {{-- Five columns so the list fits the page from 1280 px without sideways scrolling (D-159): flags sit
+                             under the status, activation and last login share a cell. On a phone it scrolls inside the card. --}}
+                        <x-sth.table caption="Daftar status aktivasi siswa" :card="false" table-class="min-w-[760px]">
+                            <x-slot:head>
+                                <th scope="col" class="min-w-52">Siswa</th>
+                                <th scope="col" class="min-w-36">Status</th>
+                                <th scope="col" class="min-w-40">Email</th>
+                                <th scope="col" class="min-w-44">Aktivasi dan login terakhir</th>
+                                <th scope="col" class="w-36"><span class="sr-only">Aksi</span></th>
+                            </x-slot:head>
+                            @foreach ($rows as $row)
+                                <tr wire:key="siswa-{{ $row['userId'] }}">
+                                    <td>
+                                        <div class="flex min-w-0 items-center gap-2.5">
+                                            <x-sth.avatar :name="$row['name']" size="sm" />
+                                            <div class="flex min-w-0 flex-col">
+                                                <span class="font-bold [overflow-wrap:anywhere]">{{ $row['name'] }}</span>
+                                                <span class="text-xs text-muted">{{ $row['classroom'] }} · <span class="num">{{ $row['nisn'] }}</span></span>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <x-sth.chip :tone="$row['tone']" size="sm">{{ $row['stateLabel'] }}</x-sth.chip>
+                                        @if ($row['expiresAt'] && $row['state'] === 'belum')
+                                            <span class="mt-1 block text-xs text-muted">s.d. {{ $row['expiresAt']->translatedFormat('j M H:i') }}</span>
+                                        @endif
+                                        @foreach ($row['flags'] as $flag)
+                                            <x-sth.chip tone="orange" size="sm" class="mt-1 h-auto min-h-6 py-0.5 whitespace-normal">{{ $flag }}</x-sth.chip>
+                                        @endforeach
+                                    </td>
+                                    <td class="text-sm [overflow-wrap:anywhere]">{{ $row['email'] ?? '–' }}</td>
+                                    <td class="text-xs">
+                                        <span class="block"><span class="text-muted">Aktivasi</span> <span class="num">{{ $row['activatedAt']?->translatedFormat('j M Y H:i') ?? '–' }}</span></span>
+                                        <span class="block"><span class="text-muted">Login</span> <span class="num">{{ $row['lastLoginAt']?->translatedFormat('j M Y H:i') ?? '–' }}</span></span>
+                                    </td>
+                                    <td>
+                                        @if ($row['action'] === 'buka')
+                                            <x-sth.button variant="soft" size="sm" wire:click="openReopen({{ $row['userId'] }})">Buka ulang</x-sth.button>
+                                        @elseif ($row['action'] === 'cair')
+                                            <x-sth.button variant="soft" size="sm" wire:click="openUnfreeze({{ $row['userId'] }})">Buka pembekuan</x-sth.button>
+                                        @elseif ($row['action'] === 'admin')
+                                            <span class="text-xs text-muted">Hubungi Admin</span>
+                                        @endif
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </x-sth.table>
+                    @endif
+
+                    <div class="flex flex-wrap items-center justify-between gap-3 border-t border-line px-4 py-3">
+                        <span class="num text-xs text-muted" aria-live="polite">Menampilkan {{ $number($rows->count()) }} dari {{ $number($filteredCount) }} siswa. Email ditampilkan tersamar.</span>
+                        @if ($hasMore)
+                            <x-sth.button variant="quiet" size="sm" icon="chevron-down" wire:click="showMore">Tampilkan lebih banyak</x-sth.button>
+                        @endif
+                    </div>
+                </x-sth.card>
+            @endif
+        </div>
+    </section>
+
+    @if ($canSetWindow)
+        <x-sth.card as="section" aria-labelledby="h-jendela" class="flex flex-col gap-3">
+            <x-sth.page-header id="h-jendela" title="Jendela aktivasi" :level="3" subtitle="Lama kata sandi awal berlaku setelah impor. Sekarang {{ $currentWindow }} hari." />
+            <form wire:submit="saveWindow" class="flex flex-wrap items-end gap-2" novalidate>
+                <x-sth.input wire:model="windowDays" type="number" inputmode="numeric" min="1" max="30" label="Hari (1–30)" class="w-32" />
+                <x-sth.button type="submit" variant="soft" size="sm" wire:loading.attr="disabled" wire:target="saveWindow">Simpan</x-sth.button>
+            </form>
+            <p class="m-0 text-xs text-muted">Berlaku untuk impor berikutnya. Siswa yang sudah diimpor: pakai "Buka ulang" (72 jam).</p>
+        </x-sth.card>
+    @endif
 
     {{-- Students of one class ("Lihat"). Opened by showClass(), or on page load with ?kelas=<id>. --}}
     {{-- on-close: X, Esc and a click outside reset ?kelas= too, not only "Tutup" (QA5 retest, #63). --}}
     <x-sth.modal id="aktivasi-kelas" size="lg" :open="$openClassOnLoad" on-close="closeClass"
         :title="$classDialog ? 'Kelas '.$classDialog['name'] : 'Status aktivasi kelas'"
-        description="Email dan NIS ditampilkan tersamar.">
+        description="Email ditampilkan tersamar.">
         @if ($classDialog)
             <div class="flex flex-col gap-3">
                 <div class="seg flex-wrap self-start" role="group" aria-label="Status siswa kelas {{ $classDialog['name'] }}">
@@ -221,9 +258,9 @@
                     <x-sth.empty-state icon="users" title="Tidak ada siswa dengan status ini" :card="false">Pilih status lain.</x-sth.empty-state>
                 @else
                     <x-sth.table caption="Status aktivasi siswa kelas {{ $classDialog['name'] }}" class="overflow-hidden rounded-tile border border-line" :card="false">
-                        {{-- Four columns so the table fits the 760px dialog without sideways scrolling: NIS and email sit under the name. --}}
+                        {{-- Four columns so the table fits the 760px dialog without sideways scrolling: NISN and email sit under the name. --}}
                         <x-slot:head>
-                            <th scope="col" class="min-w-44">Siswa, NIS, email</th>
+                            <th scope="col" class="min-w-44">Siswa, NISN, email</th>
                             <th scope="col" class="min-w-28">Status</th>
                             <th scope="col" class="min-w-40">Aktivasi dan login terakhir</th>
                             <th scope="col" class="min-w-24"><span class="sr-only">Aksi</span></th>
@@ -233,7 +270,7 @@
                                 <td>
                                     <div class="flex min-w-0 flex-col">
                                         <span class="font-bold">{{ $row['name'] }}</span>
-                                        <span class="text-xs text-muted">NIS <span class="num">{{ $row['nis'] }}</span></span>
+                                        <span class="text-xs text-muted">NISN <span class="num">{{ $row['nisn'] }}</span></span>
                                         <span class="text-xs text-muted">{{ $row['email'] ?? 'Belum ada email' }}</span>
                                     </div>
                                 </td>
@@ -278,9 +315,10 @@
     </x-sth.modal>
 
     {{-- "Buka ulang" says what it will do before the click; the date comes from ReopenActivationWindow::deadlineAfter(). --}}
+    @php($unfreezeNote = 'Pastikan identitas pemilik akun sudah dicek tatap muka. Jika akun dibekukan lewat "Bukan saya?", pakai Reset kata sandi di Pengguna & peran: email yang terhubung ikut dilepas.')
     <x-sth.modal id="aktivasi-aksi" :title="$action === 'cair' ? 'Buka pembekuan akun?' : 'Buka ulang aktivasi?'" size="sm"
         :description="$action === 'cair'
-            ? 'Pastikan identitas pemilik akun sudah dicek tatap muka. Jika email akun mencurigakan, pakai Reset kata sandi & email di Pengguna & peran.'
+            ? $unfreezeNote
             : 'Kata sandi awal atau sementara siswa bisa dipakai lagi. Pastikan siswa siap aktivasi.'">
         <form id="aktivasi-aksi-form" wire:submit="submitAction" class="flex flex-col gap-4" novalidate>
             @if ($target)

@@ -5,7 +5,7 @@
 --}}
 @php
     $people = [
-        'siswa' => ['name' => 'Nadia Putri Anindya', 'meta' => 'Siswa · XI-4', 'badges' => ['siswa.lomba-saya' => 2]],
+        'siswa' => ['name' => 'Nadia Putri Anindya', 'meta' => 'Siswa · XI-D', 'badges' => ['siswa.lomba-saya' => 2]],
         'guru' => ['name' => 'Pak Hendra Kusuma, S.Pd., M.Si.', 'meta' => 'Guru Pembimbing', 'badges' => []],
         'kesiswaan' => ['name' => 'Ibu Dwi Rahayu', 'meta' => 'Kesiswaan', 'badges' => ['kesiswaan.usulan' => 3, 'kesiswaan.verifikasi' => 4]],
         'kepala_sekolah' => ['name' => 'Drs. Bambang Hartono, M.Pd.', 'meta' => 'Kepala Sekolah', 'badges' => ['kepsek.persetujuan' => 5]],
@@ -48,7 +48,7 @@
         ['title' => 'OSN Tingkat Kota Semarang 2026', 'sub' => 'Puspresnas · Kategori A · Individu', 'bidang' => 'sains', 'tingkat' => 'Kota/Kab', 'batas' => '8 Okt 2026', 'soon' => null, 'count' => 12, 'status' => ['green', 'check', 'Dipublikasikan']],
         ['title' => 'O2SN Kota Semarang 2026 · Bulu tangkis', 'sub' => 'Puspresnas · Kategori A · Individu', 'bidang' => 'olahraga', 'tingkat' => 'Kota/Kab', 'batas' => '9 Okt 2026', 'soon' => null, 'count' => 4, 'status' => ['green', 'check', 'Dipublikasikan']],
         ['title' => 'Lomba Peneliti Belia (LPB) 2026', 'sub' => 'Center for Young Scientists · Kategori C · Tim maks 3', 'bidang' => 'riset', 'tingkat' => 'Nasional', 'batas' => '10 Okt 2026', 'soon' => null, 'count' => 5, 'status' => ['green', 'check', 'Dipublikasikan']],
-        ['title' => 'Kompetisi Robotik Pelajar Jateng 2026', 'sub' => 'Usulan Bima Satria Wicaksono · XII-7', 'bidang' => 'riset', 'tingkat' => 'Provinsi', 'batas' => '–', 'soon' => null, 'count' => 0, 'status' => ['gray', 'clock', 'Menunggu verifikasi']],
+        ['title' => 'Kompetisi Robotik Pelajar Jateng 2026', 'sub' => 'Usulan Bima Satria Wicaksono · XII-G', 'bidang' => 'riset', 'tingkat' => 'Provinsi', 'batas' => '–', 'soon' => null, 'count' => 0, 'status' => ['gray', 'clock', 'Menunggu verifikasi']],
     ];
 
     $sections = ['warna' => 'Warna', 'tombol' => 'Tombol', 'ikon' => 'Ikon', 'chip' => 'Chip', 'kartu' => 'Kartu', 'form' => 'Formulir',
@@ -92,7 +92,7 @@
                     </div>
                 </div>
             @endforeach
-            <div class="grid gap-3 border-t border-line pt-4 sm:grid-cols-2">
+            <div class="grid grid-cols-1 gap-3 border-t border-line pt-4 sm:grid-cols-2">
                 <div class="flex flex-col gap-1">
                     <p class="title-page">Judul halaman 28/700 (24 di ponsel)</p>
                     <p class="title-section">Judul bagian 20/700</p>
@@ -160,9 +160,9 @@
         <x-sth.card class="flex flex-col gap-4">
             <div class="flex flex-wrap items-center gap-2">
                 <x-sth.chip tone="green" icon="check">Disetujui</x-sth.chip>
-                <x-sth.chip tone="orange" icon="clock">Menunggu laporan · batas 8 Nov</x-sth.chip>
+                <x-sth.chip tone="orange" icon="clock">Segera laporkan</x-sth.chip>
                 <x-sth.chip tone="red" icon="x">Ditolak</x-sth.chip>
-                <x-sth.chip tone="gray" icon="clock">Menunggu Kepala Sekolah</x-sth.chip>
+                <x-sth.chip tone="gray" icon="clock">Menunggu persetujuan</x-sth.chip>
                 <x-sth.chip tone="blue" icon="info">Nomor surat diproses</x-sth.chip>
                 <x-sth.chip tone="gold" class="num">+68 poin</x-sth.chip>
                 <x-sth.chip tone="gray" size="sm">Alumni</x-sth.chip>
@@ -239,7 +239,7 @@
                     <x-sth.bidang-tile bidang="riset" />
                     <div class="flex min-w-0 flex-col items-start gap-1">
                         <h3 class="title-card"><a class="ttl-link" href="#kartu">WICE 2026</a> <span class="font-sans text-xs font-medium text-muted">· Internasional · Tim 3</span></h3>
-                        <x-sth.chip tone="orange" icon="clock" size="sm">Menunggu laporan · batas 8 Nov</x-sth.chip>
+                        <x-sth.chip tone="orange" icon="clock" size="sm">Segera laporkan</x-sth.chip>
                     </div>
                 </div>
                 <x-sth.tracker :phase="5" state="action" compact />
@@ -259,7 +259,7 @@
                 <div class="flex min-w-0 flex-1 flex-col gap-0.5">
                     <x-sth.chip tone="orange" size="sm" class="self-start">Perlu tindakan</x-sth.chip>
                     <p class="m-0 text-base leading-tight font-bold">WICE 2026 · laporan hasil</p>
-                    <p class="num m-0 text-sm font-semibold text-orange">Batas 8 Nov 2026 · 39 hari lagi</p>
+                    <p class="m-0 text-sm font-semibold text-orange">Segera laporkan hasil lombamu.</p>
                 </div>
             </x-sth.card>
         </div>
@@ -271,7 +271,7 @@
         <x-sth.card class="grid grid-cols-1 gap-5 lg:grid-cols-2">
             <x-sth.input name="demo_nama" label="Nama lomba" placeholder="Contoh: OSN Tingkat Kota Semarang 2026" hint="Tulis tanpa singkatan." />
             <x-sth.input name="demo_web" type="url" label="Website resmi" placeholder="https://" optional icon="link" />
-            <x-sth.input name="demo_nis" label="NIS / NISN" inputmode="numeric" autocomplete="off" size="lg" placeholder="Ketik NIS atau NISN" />
+            <x-sth.input name="demo_nis" label="NISN" inputmode="numeric" autocomplete="off" size="lg" placeholder="Ketik NISN" />
             <x-sth.input name="demo_sandi" type="password" label="Kata sandi" revealable autocomplete="off" size="lg" placeholder="Ketik kata sandi" />
             <x-sth.input name="demo_email" type="email" label="Email" value="n•••@gmail" error="Format email belum benar." />
             <x-sth.select name="demo_guru" label="Guru pembimbing" value="hendra" :options="[
@@ -394,7 +394,7 @@
         <x-sth.card padding="sm" class="flex flex-wrap items-center justify-between gap-3">
             <x-sth.tabs panels id="demo-kelola" variant="pill" label="Daftar lomba" active="katalog" :items="[
                 ['key' => 'katalog', 'label' => 'Katalog', 'count' => 8],
-                ['key' => 'usulan', 'label' => 'Usulan lomba', 'count' => 3],
+                ['key' => 'usulan', 'label' => 'Verifikasi usulan lomba', 'count' => 3],
             ]" />
             <x-sth.tab-panel tabs="demo-kelola" name="katalog" active class="text-xs text-muted">Urut dari batas daftar terdekat</x-sth.tab-panel>
             <x-sth.tab-panel tabs="demo-kelola" name="usulan" class="text-xs text-muted">Semua upload menunggu verifikasi</x-sth.tab-panel>
@@ -407,17 +407,17 @@
         <x-sth.card class="flex flex-col gap-6">
             <div class="flex flex-col gap-3">
                 <span class="label">WICE 2026 · tahap 5, perlu tindakan</span>
-                <x-sth.tracker :phase="5" state="action" :dates="['2 Sep', '5 Sep', '8 Sep', '21–24 Sep', 'Batas 8 Nov', '']" />
+                <x-sth.tracker :phase="5" state="action" :dates="['2 Sep', '5 Sep', '8 Sep', '21–24 Sep', '', '']" />
             </div>
             <div class="flex flex-col gap-3">
                 <span class="label">LPB 2026 · tahap 2</span>
-                <x-sth.tracker :phase="2" :dates="[1 => '29 Sep', 2 => 'Menunggu Kepala Sekolah', 4 => '17 Okt']" />
+                <x-sth.tracker :phase="2" :dates="[1 => '29 Sep', 2 => 'Menunggu persetujuan', 4 => '17 Okt']" />
             </div>
             <div class="flex flex-col gap-3">
                 <span class="label">OPSI 2026 · selesai</span>
                 <x-sth.tracker :phase="6" state="done" :dates="['6 Jul', '8 Jul', '10 Jul', '4–7 Agu', '12 Agu', '15 Agu']" />
             </div>
-            <div class="grid gap-6 border-t border-line pt-5 sm:grid-cols-3">
+            <div class="grid grid-cols-1 gap-6 border-t border-line pt-5 sm:grid-cols-3">
                 <x-sth.tracker :phase="5" state="action" compact />
                 <x-sth.tracker :phase="2" compact />
                 <x-sth.tracker :phase="6" state="done" compact />
@@ -486,11 +486,11 @@
                 <p class="title-page m-0 text-xl @min-[460px]:text-2xl @min-[640px]:text-3xl">National Science and Invention Fair (NSIF) 2026</p>
                 <p class="m-0 text-sm text-muted">Penyelenggara swasta · Kategori D</p>
             </x-sth.lomba-head>
-            <div class="grid gap-3 lg:grid-cols-2">
+            <div class="grid grid-cols-1 gap-3 lg:grid-cols-2">
                 <x-sth.alert>Baru pertama masuk? Kamu akan diminta mengganti kata sandi dan menghubungkan email.</x-sth.alert>
-                <x-sth.alert tone="success">Pendaftaran terkirim. Menunggu persetujuan Kepala Sekolah.</x-sth.alert>
+                <x-sth.alert tone="success">Pendaftaran terkirim. Menunggu persetujuan sekolah.</x-sth.alert>
                 <x-sth.alert tone="warning" title="Perlu tindakan">Laporkan hasil WICE 2026 sebelum 8 Nov 2026.</x-sth.alert>
-                <x-sth.alert tone="error">NIS/NISN atau kata sandi salah.</x-sth.alert>
+                <x-sth.alert tone="error">NISN atau kata sandi salah.</x-sth.alert>
             </div>
             <p class="note"><x-sth.icon name="users" :size="18" />Setiap anggota tim mendapat poin penuh.</p>
         </x-sth.card>
@@ -508,7 +508,7 @@
             <div class="flex flex-col items-start gap-2.5">
                 <x-sth.toast>Lomba dipublikasikan.</x-sth.toast>
                 <x-sth.toast tone="info">Nomor surat 400.3.8/312/MRD/IX/2026 tersimpan.</x-sth.toast>
-                <x-sth.toast tone="warning">Batas laporan WICE 2026 tinggal 7 hari.</x-sth.toast>
+                <x-sth.toast tone="warning">Laporan WICE 2026 ditunggu. Segera laporkan hasil lombamu.</x-sth.toast>
                 <x-sth.toast tone="error">Nomor surat sudah dipakai.</x-sth.toast>
             </div>
         </x-sth.card>

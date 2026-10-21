@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Livewire\Siswa\Lomba;
 
-use App\Domain\Deadlines\ReportDeadline;
 use App\Domain\Points\PointCalculator;
 use App\Domain\Points\WeightTable;
 use App\Enums\Participation;
@@ -15,7 +14,7 @@ use App\Models\Competition;
 use App\Models\WeightVersion;
 use App\Rules\ExternalUrl;
 use App\Support\Sampul;
-use Carbon\CarbonImmutable;
+use App\Support\StaffRoleLabel;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Layout;
@@ -47,7 +46,8 @@ class Detail extends Component
 
     public function render(): View
     {
-        $competition = Competition::query()->with(['juknisFile', 'coverFile'])->findOrFail($this->competitionId);
+        // verifier.roles: the chip "Diverifikasi …" and a rejected usulan name the role that decided (StaffRoleLabel::forLomba()).
+        $competition = Competition::query()->with(['juknisFile', 'coverFile', 'verifier.roles'])->findOrFail($this->competitionId);
         abort_unless(Gate::inspect('view', $competition)->allowed(), 404);
 
         $registrants = LombaPresenter::registrants([$competition->getKey()])[$competition->getKey()] ?? [];
@@ -57,11 +57,15 @@ class Detail extends Component
             'competition' => $competition,
             'window' => $window,
             'notice' => LombaPresenter::unpublishedNotice($competition),
+            // The chip of a published lomba names who verified it: Kesiswaan or Admin, Kesiswaan when unknown.
+            'verifiedBy' => StaffRoleLabel::forLomba($competition->verifier),
             'registrants' => $registrants,
             'facts' => $this->facts($competition),
             'syarat' => $this->syarat($competition),
             'jadwal' => $this->jadwal($competition),
             'rumus' => $this->rumus($competition),
+            // "(tiap anggota tim dapat poin penuh)" only where a team may register (FS1 QA: not on an individu lomba).
+            'teamLomba' => $competition->participation !== null && $competition->participation !== Participation::Individu,
             'links' => $this->links($competition),
             'penyelenggara' => LombaPresenter::penyelenggara($competition),
             'paragraphs' => $this->paragraphs($competition->description),
@@ -98,10 +102,11 @@ class Detail extends Component
     private function facts(Competition $competition): array
     {
         return [
-            ['icon' => 'clock', 'label' => 'Batas daftar', 'value' => LombaPresenter::date($competition->registration_closes_at)],
-            ['icon' => 'calendar', 'label' => 'Tanggal lomba', 'value' => LombaPresenter::tanggal($competition)],
+            // D-147: the three periods are named the same on every read screen.
+            ['icon' => 'clock', 'label' => 'Pendaftaran', 'value' => LombaPresenter::pendaftaran($competition) ?? 'Menyusul'],
+            ['icon' => 'calendar', 'label' => 'Pelaksanaan', 'value' => LombaPresenter::tanggal($competition)],
             ['icon' => 'trophy', 'label' => 'Tingkat', 'value' => $competition->level?->label() ?? 'Menyusul'],
-            ['icon' => 'pin', 'label' => 'Pelaksanaan', 'value' => LombaPresenter::tempat($competition)],
+            ['icon' => 'pin', 'label' => 'Tempat', 'value' => LombaPresenter::tempat($competition)],
             ['icon' => 'users', 'label' => 'Peserta', 'value' => match ($competition->participation) {
                 Participation::Tim => $competition->max_team_size ? 'Tim, maks '.$competition->max_team_size : 'Tim',
                 Participation::Keduanya => $competition->max_team_size ? 'Individu atau tim (maks '.$competition->max_team_size.')' : 'Individu atau tim',
@@ -126,49 +131,34 @@ class Detail extends Component
             },
             'Didampingi satu guru pembimbing.',
             $competition->participation === Participation::Individu ? null : 'Setiap anggota tim mengonfirmasi lewat akunnya sendiri.',
-            'Pendaftaran perlu persetujuan Kepala Sekolah sebelum surat tugas dibuat.',
+            'Pendaftaran perlu persetujuan sekolah sebelum surat tugas dibuat.',
             $competition->juknis_file_id !== null ? 'Persyaratan lengkap ada di juknis (tab Dokumen).' : null,
         ]));
     }
 
-    /** @return list<array{date: string, label: string, chip: ?string, tone: string}> */
+    /**
+     * The Jadwal tab (D-147): Pendaftaran, Pelaksanaan and Laporan hasil. No report deadline (D-151) and no "N hari
+     * lagi" chips: the registration window chip stays on the head (LombaPresenter::window()). Empty when no date is set.
+     *
+     * @return list<array{label: string, value: string}>
+     */
     private function jadwal(Competition $competition): array
     {
-        $deadline = app(ReportDeadline::class);
-        $deadlineDays = $deadline->days();
-        $final = $competition->final_on ?? $competition->starts_on;
+        $pendaftaran = LombaPresenter::pendaftaran($competition);
+        $pelaksanaan = LombaPresenter::range($competition->starts_on, $competition->final_on);
 
-        $rows = array_values(array_filter([
-            $competition->registration_opens_at ? [$competition->registration_opens_at, 'Pendaftaran dibuka'] : null,
-            $competition->registration_closes_at ? [$competition->registration_closes_at, 'Batas pendaftaran'] : null,
-            $competition->starts_on ? [$competition->starts_on, 'Lomba dimulai'] : null,
-            $competition->final_on && (! $competition->starts_on || ! $competition->final_on->isSameDay($competition->starts_on))
-                ? [$competition->final_on, 'Final dan pengumuman'] : null,
-            $final ? [$deadline->dueDate($final), "Batas laporan hasil ({$deadlineDays} hari setelah final)"] : null,
-        ]));
+        if ($pendaftaran === null && $pelaksanaan === null) {
+            return [];
+        }
 
-        $today = CarbonImmutable::today();
-        $nextMarked = false;
-
-        return array_map(function (array $row) use ($today, &$nextMarked): array {
-            [$date, $label] = $row;
-            $days = LombaPresenter::daysUntil($date, $today);
-
-            if ($days < 0) {
-                return ['date' => LombaPresenter::date($date), 'label' => $label, 'chip' => 'Selesai', 'tone' => 'green'];
-            }
-
-            if (! $nextMarked) {
-                $nextMarked = true;
-
-                return ['date' => LombaPresenter::date($date), 'label' => $label, 'chip' => $days === 0 ? 'Hari ini' : "{$days} hari lagi", 'tone' => 'blue'];
-            }
-
-            return ['date' => LombaPresenter::date($date), 'label' => $label, 'chip' => null, 'tone' => 'gray'];
-        }, $rows);
+        return [
+            ['label' => 'Pendaftaran', 'value' => $pendaftaran ?? 'Menyusul'],
+            ['label' => 'Pelaksanaan', 'value' => $pelaksanaan ?? 'Menyusul'],
+            ['label' => 'Laporan hasil', 'value' => LombaPresenter::REPORT_LINE],
+        ];
     }
 
-    /** Points if the team wins Juara I, from the active weight version (display only, D-08). */
+    /** Points for Juara I, from the active weight version (display only, D-08). */
     private function rumus(Competition $competition): ?array
     {
         if ($competition->level === null || $competition->weight_category === null) {
@@ -192,8 +182,8 @@ class Detail extends Component
         $safe = fn (?string $url): bool => is_string($url) && ExternalUrl::passes($url);
 
         return array_values(array_filter([
-            $safe($competition->registration_url) ? ['label' => 'Link registrasi resmi', 'note' => 'Daftar juga di situs penyelenggara bila juknis memintanya.', 'url' => $competition->registration_url, 'host' => ExternalUrl::host($competition->registration_url)] : null,
-            $safe($competition->website_url) ? ['label' => 'Website resmi', 'note' => 'Info terbaru dari penyelenggara.', 'url' => $competition->website_url, 'host' => ExternalUrl::host($competition->website_url)] : null,
+            $safe($competition->registration_url) ? ['label' => 'Link registrasi', 'note' => 'Daftar juga di situs penyelenggara bila juknis memintanya.', 'url' => $competition->registration_url, 'host' => ExternalUrl::host($competition->registration_url)] : null,
+            $safe($competition->website_url) ? ['label' => 'Link resmi', 'note' => 'Info terbaru dari penyelenggara.', 'url' => $competition->website_url, 'host' => ExternalUrl::host($competition->website_url)] : null,
         ]));
     }
 

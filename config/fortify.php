@@ -10,6 +10,9 @@ use Laravel\Fortify\Features;
 | accounts come from the student import / Admin, and password recovery uses a 6-digit OTP (Livewire).
 */
 
+// STH_STAFF_2FA (default true): false = TOTP 2FA does not exist in the app at all (read once, used twice below).
+$staffTwoFactor = (bool) env('STH_STAFF_2FA', true);
+
 return [
 
     'guard' => 'web',
@@ -48,12 +51,13 @@ return [
         'timeout' => 60000,
     ],
 
-    'features' => [
+    // Without the feature Fortify registers no `two-factor.*` route and no /two-factor-challenge (STH_STAFF_2FA).
+    'features' => $staffTwoFactor ? [
         Features::twoFactorAuthentication([
             'confirm' => true,
             'confirmPassword' => true,
         ]),
-    ],
+    ] : [],
 
     /*
     |--------------------------------------------------------------------------
@@ -62,9 +66,17 @@ return [
     | otp_test_mode: accept any 6 digits as OTP. Effective ONLY when APP_ENV=local AND this flag is true
     |   (App\Actions\Accounts\VerifyOtpCode::testModeActive()). AppServiceProvider refuses to boot when it is
     |   true outside local/testing (docs/SECURITY.md §3b, D-15).
-    | require_staff_2fa: staff roles (everything except siswa) must confirm TOTP 2FA before entering their area.
+    | staff_2fa: TOTP 2FA exists at all (env STH_STAFF_2FA, default true = the security baseline, SECURITY §3a). False,
+    |   for every account: no Fortify 2FA routes, no /two-factor-challenge, no /akun/2fa (404), a login never asks for a
+    |   code (also for an account with a confirmed secret), `staff.2fa` lets everyone through whatever
+    |   require_staff_2fa says, and no screen mentions 2FA. Read through EnsureStaffTwoFactor::featureEnabled().
+    |   Routes are registered at boot: after a change, reload.bat.
+    | require_staff_2fa: staff roles (everything except siswa) must confirm TOTP 2FA before entering their area. Only
+    |   read while staff_2fa is true.
     */
     'sth' => [
+        'staff_2fa' => $staffTwoFactor,
+
         'otp_test_mode' => (bool) env('STH_OTP_TEST_MODE', false),
 
         // Default: on everywhere except APP_ENV=local (set STH_REQUIRE_STAFF_2FA=true locally to try the flow).

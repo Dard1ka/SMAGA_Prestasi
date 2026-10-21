@@ -46,7 +46,7 @@ final class UserPolicy
             && ! $target->hasRole(RoleName::KepalaSekolah->value);
     }
 
-    /** Student "Reset kata sandi & email" and staff temporary password. */
+    /** Student "Reset kata sandi" (D-158: the password only) and staff temporary password. */
     public function resetPassword(User $actor, User $target): bool
     {
         return $actor->checkPermissionTo(Permission::UserResetPassword->value) && ! $actor->is($target);

@@ -113,14 +113,13 @@ class Jadwal extends Component
                 'items' => $event->appreciations
                     ->filter(fn (Appreciation $a): bool => $a->achievement !== null)
                     ->map(function (Appreciation $a) use ($user): array {
-                        // Consent withdrawn after the row was added: no name/class without `student.view`.
+                        // Account disabled or deleted after the row was added: no name/class without `student.view`.
                         $facts = AchievementFacts::of($a->achievement)->visibleTo($user);
 
                         return [
                             'id' => (string) $a->getKey(),
                             'student' => $facts->studentName.($facts->className !== null ? ' · '.$facts->className : ''),
                             'headline' => $facts->headline().' · '.$facts->competitionName,
-                            'consentWithdrawn' => ! $facts->publishConsent,
                             'done' => $a->status === AppreciationStatus::Selesai,
                         ];
                     })

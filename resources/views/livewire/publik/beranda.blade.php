@@ -28,13 +28,13 @@
             note="Tahun ajaran berjalan" />
     </section>
 
-    <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px] xl:grid-cols-[minmax(0,1fr)_400px]">
+    <div class="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_380px] xl:grid-cols-[minmax(0,1fr)_400px]">
         {{-- Per bidang + per tahun ajaran --}}
         <x-sth.card as="section" aria-labelledby="h-bidang" class="flex min-w-0 flex-col gap-4 p-[22px]">
             {{-- No "Lihat siswa per bidang" link: the four tiles below go there. --}}
             <x-sth.page-header id="h-bidang" title="Prestasi per bidang" />
 
-            <div class="grid gap-6 xl:grid-cols-[minmax(0,400px)_minmax(0,1fr)] xl:gap-7">
+            <div class="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,400px)_minmax(0,1fr)] xl:gap-7">
                 {{-- auto-rows-fr + h-full: the four tiles are always the same size, also when a name takes two lines. --}}
                 <ul class="m-0 grid auto-rows-fr list-none grid-cols-1 content-start gap-3 p-0 min-[420px]:grid-cols-2">
                     @foreach ($overview['bidang'] as $b)
@@ -156,7 +156,7 @@
         @if ($recent === [])
             <x-sth.empty-state icon="award" title="Belum ada prestasi terverifikasi">Prestasi tampil di sini setelah diverifikasi sekolah.</x-sth.empty-state>
         @else
-            <ul class="m-0 grid list-none gap-4 p-0 md:grid-cols-2 xl:grid-cols-3 xl:gap-6">
+            <ul class="m-0 grid grid-cols-1 list-none gap-4 p-0 md:grid-cols-2 xl:grid-cols-3 xl:gap-6">
                 @foreach ($recent as $card)
                     <li wire:key="recent-{{ $loop->index }}">
                         <article class="card flex h-full flex-col overflow-hidden">

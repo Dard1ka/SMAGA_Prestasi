@@ -87,7 +87,7 @@
                         @if ($imported['invalid'] > 0)
                             {{ $imported['invalid'] }} baris ditolak dan belum diimpor. Perbaiki lalu upload ulang.
                         @elseif ($imported['created'] > 0)
-                            Siswa baru bisa masuk dengan NIS atau NISN dan kata sandi awal dari sekolah.
+                            Siswa baru bisa masuk dengan NISN dan kata sandi awal dari sekolah.
                         @else
                             Data kelas sudah sesuai dengan file.
                         @endif
@@ -112,7 +112,7 @@
                     <p class="m-0 text-xs text-muted">{{ $sanitizedCount }} baris berisi sel yang diawali = + - @. Karakter itu dibuang (tanda "Sel dibersihkan"); periksa datanya sebelum mengimpor.</p>
                 @endif
 
-                <div class="seg self-start" role="group" aria-label="Tampilkan baris">
+                <div class="seg flex-wrap self-start" role="group" aria-label="Tampilkan baris">
                     <button type="button" class="seg-btn" wire:click="$set('filter', 'all')" aria-pressed="{{ $filter === 'all' ? 'true' : 'false' }}">Semua baris</button>
                     <button type="button" class="seg-btn" wire:click="$set('filter', 'bad')" aria-pressed="{{ $filter === 'bad' ? 'true' : 'false' }}">Ditolak · {{ $invalidCount }}</button>
                     <button type="button" class="seg-btn" wire:click="$set('filter', 'notes')" aria-pressed="{{ $filter === 'notes' ? 'true' : 'false' }}">Ada catatan · {{ $notedCount }}</button>
@@ -124,8 +124,8 @@
                     <x-sth.table caption="Preview {{ count($list) }} dari {{ $listTotal }} baris" caption-visible :card="false">
                         <x-slot:head>
                             <th scope="col" class="w-14">Baris</th>
-                            <th scope="col">Nama</th>
-                            <th scope="col">NIS</th>
+                            <th scope="col" class="min-w-48">Nama</th>
+                            <th scope="col">NISN</th>
                             <th scope="col">Kelas</th>
                             <th scope="col">Angkatan</th>
                             <th scope="col">Kelas XII mulai</th>
@@ -136,7 +136,7 @@
                             <tr wire:key="row-{{ $row['row'] }}" @class(['bg-red-bg' => $row['errors'] !== []])>
                                 <td class="num">{{ $row['row'] }}</td>
                                 <td class="font-bold">{{ $row['name'] ?? '–' }}</td>
-                                <td class="num">{{ $row['nis'] ?? '–' }}</td>
+                                <td class="num">{{ $row['nisn'] ?? '–' }}</td>
                                 <td>{{ $row['kelas'] ?? '–' }}</td>
                                 <td class="num">{{ $row['angkatan'] ?? '–' }}</td>
                                 <td>{{ $row['grade12'] }}</td>
@@ -161,7 +161,7 @@
 
                 <div class="flex flex-col gap-1 text-xs text-muted">
                     <span>Arsip otomatis = {{ $archiveMonths }} bulan setelah awal kelas XII. Akun yang diarsipkan tidak bisa masuk.</span>
-                    <span>Kata sandi awal hanya dibuat untuk siswa baru, otomatis sesuai pola sekolah. Kata sandi siswa lama tidak berubah.</span>
+                    <span>Kata sandi awal hanya dibuat untuk siswa baru, sama untuk semua siswa baru dan wajib diganti saat aktivasi. Kata sandi siswa lama tidak berubah.</span>
                 </div>
 
                 @error('file')<x-sth.alert tone="error">{{ $message }}</x-sth.alert>@enderror

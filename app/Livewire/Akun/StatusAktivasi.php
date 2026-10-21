@@ -31,8 +31,9 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
  * Status aktivasi (`kesiswaan.aktivasi.index`, `admin.aktivasi.index`; docs/UI-MAP.md §4a/§5, SECURITY K9/K2,
- * B1): per-class activation report (counts, activation time, last login, masked email/NIS, automatic flags),
- * filters (kelas, status, nama/NIS), formula-safe CSV export (password confirmed in the last 15 min, audited),
+ * B1): per-class activation report (counts, activation time, last login, NISN in full since D-137, masked email,
+ * automatic flags), filters (kelas, status, nama/NISN), formula-safe CSV export (password confirmed in the last 15
+ * min, audited; it carries the NISN in full too),
  * K2 "Buka ulang aktivasi" (72 h, reason, Kesiswaan + Admin), Admin "Buka pembekuan" and the K1 window length
  * (Admin), K7 alerts. Every action re-authorizes; the target id is #[Locked] and set only by open*().
  *
@@ -40,6 +41,12 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  * students (status tabs, steps of 40, the same row actions) instead of filtering the list at the bottom of
  * the page. `?kelas=<classroom id>` opens the page with that dialog. The list at the bottom stays for
  * cross-class lookups and the CSV; its class filter is `?kelas_daftar=`.
+ *
+ * D-159 (the lead, 2026-10-19): the page no longer scrolls through both tables. On top the stat tiles stand next to
+ * the two boxes "Akun dibekukan" and "Kata sandi awal dicoba di akun aktif" (each BOX rows, then "Tampilkan lebih
+ * banyak"); below, one segmented choice "Per kelas" | "Daftar siswa" (`?tampil=siswa`) shows one table at the full
+ * width, PREVIEW rows first and STEP more per "Tampilkan lebih banyak", with "Menampilkan X dari Y". The list keeps
+ * its status tabs, class filter, search and CSV. A list filter in the address, or a change of one, opens the list.
  */
 #[Title('Status aktivasi')]
 // One search box per screen (D-90, backlog #60): this page has its own, so the top bar shows none.
@@ -48,10 +55,27 @@ final class StatusAktivasi extends Component
 {
     use RequiresRecentPassword;
 
-    /** Rows per step: one full class fits; 100 rows made the first page about 300 kB. */
+    /** Rows per step in the class dialog: one full class fits; 100 rows made the first page about 300 kB. */
     public const PAGE = 40;
 
     public const MAX = 1000;
+
+    /** D-159: rows of "Per kelas" and "Daftar siswa" before the first "Tampilkan lebih banyak", and the step after. */
+    public const PREVIEW = 10;
+
+    public const STEP = 20;
+
+    /** D-159: rows of the two boxes on top before their "Tampilkan lebih banyak", and their step. */
+    public const BOX = 3;
+
+    public const BOX_STEP = 10;
+
+    /** Frozen accounts and K7 alerts the boxes can list at most (both queries stop at 50). */
+    public const BOX_MAX = 50;
+
+    public const VIEW_CLASSES = 'kelas';
+
+    public const VIEW_STUDENTS = 'siswa';
 
     public const ACTION_REOPEN = 'buka';
 
@@ -79,8 +103,21 @@ final class StatusAktivasi extends Component
     #[Url(as: 'q', except: '')]
     public string $q = '';
 
+    /** D-159: which table stands below the summary, "Per kelas" or "Daftar siswa". */
+    #[Url(as: 'tampil', except: self::VIEW_CLASSES)]
+    public string $tampil = self::VIEW_CLASSES;
+
     #[Locked]
-    public int $limit = self::PAGE;
+    public int $limit = self::PREVIEW;
+
+    #[Locked]
+    public int $classLimit = self::PREVIEW;
+
+    #[Locked]
+    public int $frozenLimit = self::BOX;
+
+    #[Locked]
+    public int $k7Limit = self::BOX;
 
     /** True only in the request that mounts the page with `?kelas=`: the dialog is rendered open. */
     private bool $openClassOnLoad = false;
@@ -110,6 +147,13 @@ final class StatusAktivasi extends Component
             $this->status = '';
         }
 
+        // A list filter in the address (a link, the way back from the password page) means the list (D-159).
+        $listFiltered = $this->status !== '' || trim($this->q) !== '' || $this->daftarKelas !== '';
+
+        if ($listFiltered || $this->tampil !== self::VIEW_STUDENTS) {
+            $this->tampil = $listFiltered ? self::VIEW_STUDENTS : self::VIEW_CLASSES;
+        }
+
         // `?kelas=` opens the class dialog; an unknown or empty class is dropped.
         $this->openClassOnLoad = self::knownClass($this->kelas);
 
@@ -121,8 +165,13 @@ final class StatusAktivasi extends Component
     public function updated(string $property): void
     {
         if (in_array($property, ['daftarKelas', 'status', 'q'], true)) {
-            $this->limit = self::PAGE;
+            $this->limit = self::PREVIEW;
+            $this->tampil = self::VIEW_STUDENTS;
             $this->forgetClass();
+        }
+
+        if ($property === 'tampil' && $this->tampil !== self::VIEW_STUDENTS) {
+            $this->tampil = self::VIEW_CLASSES;
         }
 
         // The address changed under the page (browser history): follow it.
@@ -139,23 +188,49 @@ final class StatusAktivasi extends Component
         }
     }
 
+    /** D-159: the segmented choice between the two tables. */
+    public function setView(string $view): void
+    {
+        $this->tampil = $view === self::VIEW_STUDENTS ? self::VIEW_STUDENTS : self::VIEW_CLASSES;
+        $this->forgetClass();
+    }
+
     public function setStatus(string $status): void
     {
         $this->status = array_key_exists($status, AccountControls::STATES) ? $status : '';
-        $this->limit = self::PAGE;
+        $this->limit = self::PREVIEW;
+        $this->tampil = self::VIEW_STUDENTS;
         $this->forgetClass();
     }
 
     public function resetFilters(): void
     {
         $this->reset('daftarKelas', 'status', 'q');
-        $this->limit = self::PAGE;
+        $this->limit = self::PREVIEW;
         $this->forgetClass();
     }
 
     public function showMore(): void
     {
-        $this->limit += self::PAGE;
+        $this->limit += self::STEP;
+        $this->forgetClass();
+    }
+
+    public function showMoreClasses(): void
+    {
+        $this->classLimit += self::STEP;
+        $this->forgetClass();
+    }
+
+    public function showMoreFrozen(): void
+    {
+        $this->frozenLimit += self::BOX_STEP;
+        $this->forgetClass();
+    }
+
+    public function showMoreK7(): void
+    {
+        $this->k7Limit += self::BOX_STEP;
         $this->forgetClass();
     }
 
@@ -273,8 +348,9 @@ final class StatusAktivasi extends Component
     public function export(ActivationReport $report, AdminRecipients $recipients): ?StreamedResponse
     {
         Gate::authorize(Permission::StudentView->value);
-        // The CSV belongs to the list at the bottom: coming back from the password page must not reopen a dialog.
+        // The CSV belongs to the list: coming back from the password page must not reopen a dialog, and shows the list.
         $this->forgetClass();
+        $this->tampil = self::VIEW_STUDENTS;
 
         if (! $this->passwordRecentlyConfirmed('export')) {
             return null;
@@ -305,7 +381,10 @@ final class StatusAktivasi extends Component
 
     public function render(ActivationReport $report): View
     {
-        $this->limit = max(self::PAGE, min(self::MAX, $this->limit));
+        $this->limit = max(self::PREVIEW, min(self::MAX, $this->limit));
+        $this->classLimit = max(self::PREVIEW, min(self::MAX, $this->classLimit));
+        $this->frozenLimit = max(self::BOX, min(self::BOX_MAX, $this->frozenLimit));
+        $this->k7Limit = max(self::BOX, min(self::BOX_MAX, $this->k7Limit));
         $all = $report->rows();
         $filtered = $report->rows($this->daftarKelas ?: null, $this->status ?: null, $this->q);
         $isAdmin = Gate::allows(Permission::UserResetPassword->value);
@@ -314,9 +393,14 @@ final class StatusAktivasi extends Component
             ? User::query()->with('student.classroom:id,name')->find($this->targetId, ['id', 'name', 'initial_password_expires_at', 'frozen_at'])
             : null;
 
+        $summary = $report->summary($all);
+        $frozen = $this->frozenAccounts($isAdmin);
+        $k7 = $report->initialPasswordAlerts();
+
         return view('livewire.akun.status-aktivasi', [
             'totals' => ActivationReport::totals($all),
-            'summary' => $report->summary($all),
+            'summary' => $summary->take($this->classLimit),
+            'classCount' => $summary->count(),
             'classDialog' => $this->classDialog($all, $canReopen, $isAdmin),
             'openClassOnLoad' => $this->openClassOnLoad && $this->kelas !== '',
             'rows' => $filtered->take($this->limit)->map(fn (array $row): array => $row + [
@@ -326,10 +410,12 @@ final class StatusAktivasi extends Component
             'hasMore' => $filtered->count() > $this->limit,
             'classes' => ActivationReport::classOptions()->all(),
             'states' => AccountControls::STATES,
-            'frozen' => $this->frozenAccounts($isAdmin)->map(fn (array $account): array => $account + [
+            'frozen' => $frozen->take($this->frozenLimit)->map(fn (array $account): array => $account + [
                 'action' => self::rowAction(AccountControls::STATE_FROZEN, $account['reason'], $account['student'], $canReopen, $isAdmin),
             ]),
-            'k7' => $report->initialPasswordAlerts(),
+            'frozenCount' => $frozen->count(),
+            'k7' => $k7->take($this->k7Limit),
+            'k7Count' => $k7->count(),
             'canReopen' => $canReopen,
             'canUnfreeze' => $isAdmin,
             'canSetWindow' => Gate::allows(Permission::SettingManage->value),
@@ -419,7 +505,7 @@ final class StatusAktivasi extends Component
             ->when(! $includeStaff, fn ($q) => $q->whereHas('student'))
             ->with('student.classroom:id,name')
             ->orderByDesc('frozen_at')
-            ->limit(50)
+            ->limit(self::BOX_MAX)
             ->get(['id', 'name', 'status', 'frozen_at', 'frozen_reason'])
             ->map(fn (User $u): array => [
                 'id' => (int) $u->getKey(),
@@ -510,7 +596,7 @@ final class StatusAktivasi extends Component
     protected function returnUrl(): string
     {
         // `kelas` is only set while the class dialog is in use (e.g. Admin "Buka pembekuan" from a dialog row).
-        $query = array_filter(['kelas' => $this->kelas, 'kelas_daftar' => $this->daftarKelas, 'status' => $this->status, 'q' => $this->q]);
+        $query = array_filter(['kelas' => $this->kelas, 'tampil' => $this->tampil === self::VIEW_STUDENTS ? self::VIEW_STUDENTS : '', 'kelas_daftar' => $this->daftarKelas, 'status' => $this->status, 'q' => $this->q]);
 
         return $this->returnTo.($query !== [] ? '?'.http_build_query($query) : '');
     }

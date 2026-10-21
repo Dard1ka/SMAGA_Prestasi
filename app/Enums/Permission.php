@@ -12,7 +12,7 @@ namespace App\Enums;
 enum Permission: string
 {
     // Competition catalog (D-02, D-04, D-27)
-    case CompetitionCreate = 'competition.create';          // any role; always lands in menunggu_verifikasi
+    case CompetitionCreate = 'competition.create';          // siswa (usulan) + Admin only (D-145); always lands in menunggu_verifikasi
     case CompetitionVerify = 'competition.verify';          // publish / reject queue items
     case CompetitionUpdate = 'competition.update';          // edit catalog incl. tingkat/kategori/status ajang
     case CompetitionClose = 'competition.close';
@@ -20,7 +20,7 @@ enum Permission: string
 
     // Registrations (D-03, D-05)
     case RegistrationCreate = 'registration.create';        // siswa registers individu/tim
-    case RegistrationApprove = 'registration.approve';      // Kepala Sekolah only (D-01: not Admin)
+    case RegistrationApprove = 'registration.approve';      // Kepala Sekolah or Tata Usaha (D-150; D-01: not Admin)
     case RegistrationViewAll = 'registration.view_all';
 
     // Surat tugas (D-06)
@@ -51,6 +51,7 @@ enum Permission: string
     case UserResetPassword = 'user.reset_password';
     case UserArchive = 'user.archive';                      // manual disable/archive (D-30)
     case UserReplacePrincipal = 'user.replace_principal';   // D-01
+    case ClassroomManage = 'classroom.manage';              // kelola kelas: tambah, ganti nama, hapus (Admin only, Admin › Kelas)
 
     // Settings
     case WeightManage = 'weight.manage';

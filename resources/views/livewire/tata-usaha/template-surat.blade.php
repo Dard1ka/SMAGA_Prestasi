@@ -1,5 +1,5 @@
 {{-- Tata Usaha · Template surat (UI-MAP §4c, backlog #7, B5). Plain-text fields only; the preview uses the TU preview partials. --}}
-<div class="grid items-start gap-[22px] xl:grid-cols-[minmax(0,1fr)_minmax(0,560px)]">
+<div class="grid grid-cols-1 items-start gap-[22px] xl:grid-cols-[minmax(0,1fr)_minmax(0,560px)]">
     <div class="flex min-w-0 flex-col gap-[22px]">
         <x-sth.card as="section" aria-labelledby="h-template-versi" class="flex flex-col gap-3">
             <div class="flex flex-wrap items-center justify-between gap-3">

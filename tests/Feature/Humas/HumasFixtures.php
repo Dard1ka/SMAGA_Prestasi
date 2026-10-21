@@ -31,8 +31,9 @@ use Illuminate\Support\Str;
 use Tests\Feature\Auth\AuthTestHelpers;
 
 /**
- * Fictional Humas fixtures (DESIGN-SPEC-v2 §5 names only): a verified achievement of a consenting
- * student with a mentor, plus its publication row.
+ * Fictional Humas fixtures (DESIGN-SPEC-v2 §5 names only): a verified achievement of a student with a mentor,
+ * plus its publication row. Since D-162 every student may be named; `disabled: true` gives the one kind of
+ * student NamedStudent leaves out (a disabled account).
  */
 final class HumasFixtures
 {
@@ -42,7 +43,7 @@ final class HumasFixtures
     }
 
     /**
-     * @param  array<string, mixed>  $studentState  e.g. ['publish_consent' => false]
+     * @param  array<string, mixed>  $studentState  extra students columns
      * @param  array<string, mixed>  $publicationState  status / scheduled_at / published_at / channels / caption
      */
     public static function publication(
@@ -52,8 +53,9 @@ final class HumasFixtures
         string $competitionName = 'OPSI 2026',
         bool $verified = true,
         bool $withEmail = true,
+        bool $disabled = false,
     ): Publication {
-        $achievement = self::achievement($studentState, $studentName, $competitionName, $verified, $withEmail);
+        $achievement = self::achievement($studentState, $studentName, $competitionName, $verified, $withEmail, $disabled);
 
         $publication = new Publication(['achievement_id' => $achievement->getKey()]);
         $publication->forceFill(array_merge([
@@ -74,11 +76,12 @@ final class HumasFixtures
         string $competitionName = 'OPSI 2026',
         bool $verified = true,
         bool $withEmail = true,
+        bool $disabled = false,
     ): Achievement {
-        $classroom = Classroom::query()->firstWhere('name', 'XI-4')
-            ?? Classroom::factory()->level(11)->create(['name' => 'XI-4']);
+        $classroom = Classroom::query()->firstWhere('name', 'XI-D')
+            ?? Classroom::factory()->level(11)->create(['name' => 'XI-D']);
 
-        $user = User::factory()->create([
+        $user = ($disabled ? User::factory()->disabled() : User::factory())->create([
             'name' => $studentName,
             'email' => $withEmail ? fake()->unique()->safeEmail() : null,
         ]);
@@ -86,8 +89,6 @@ final class HumasFixtures
         $student = Student::factory()->create(array_merge([
             'user_id' => $user->getKey(),
             'classroom_id' => $classroom->getKey(),
-            'photo_consent' => true,
-            'publish_consent' => true,
         ], $studentState));
 
         $mentor = User::factory()->staff(RoleName::Guru)->create(['name' => 'Retno Wulandari, S.Pd.']);
@@ -134,9 +135,9 @@ final class HumasFixtures
      * One more confirmed member on the report of $of (a team win): own student, own achievement row with the
      * same lomba, capaian and tingkat (D-08: every member gets a row).
      *
-     * @param  array<string, mixed>  $studentState  e.g. ['publish_consent' => false]
+     * @param  array<string, mixed>  $studentState  extra students columns
      */
-    public static function teammate(Achievement $of, string $studentName, string $className = 'XII-2', array $studentState = []): Achievement
+    public static function teammate(Achievement $of, string $studentName, string $className = 'XII-B', array $studentState = [], bool $disabled = false): Achievement
     {
         $classroom = Classroom::query()->firstWhere('name', $className)
             ?? Classroom::factory()->level(match (true) {
@@ -146,10 +147,8 @@ final class HumasFixtures
             })->create(['name' => $className]);
 
         $student = Student::factory()->create(array_merge([
-            'user_id' => User::factory()->create(['name' => $studentName])->getKey(),
+            'user_id' => ($disabled ? User::factory()->disabled() : User::factory())->create(['name' => $studentName])->getKey(),
             'classroom_id' => $classroom->getKey(),
-            'photo_consent' => true,
-            'publish_consent' => true,
         ], $studentState));
 
         RegistrationMember::factory()->create([

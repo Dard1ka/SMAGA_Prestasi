@@ -25,14 +25,15 @@ use Livewire\Attributes\Title;
 use Livewire\Component;
 
 /**
- * Akun › Keamanan (`akun.keamanan`, every role, docs/UI-MAP.md §2, B1): change password (current password
+ * Akun › Keamanan (`akun.keamanan`, every role, docs/UI-MAP.md §2, B1; since D-152 the tab "Keamanan akun" of
+ * Profil saya, titled "Profil saya", next to the tab Data diri of Akun\Profil): change password (current password
  * required; students PasswordPolicy(10), staff Password::defaults(); after a change the session id is renewed and
  * the old session row deleted, a refused attempt changes nothing), change the bound email (password + OTP to
  * the new address, K8 notices to old + new), list/sign out other devices, and for staff the 2FA status with a
  * link to /akun/2fa. Holds no rules: everything goes through App\Actions\Accounts\*. Always acts on the signed-in
  * user only (no ids from the client except the HMAC session key, which is matched server-side).
  */
-#[Title('Keamanan akun')]
+#[Title('Profil saya')]
 #[Layout('layouts::app', ['subtitle' => 'Kata sandi, email, dan perangkat yang masuk.'])]
 final class Keamanan extends Component
 {
@@ -170,6 +171,8 @@ final class Keamanan extends Component
 
         return view('livewire.akun.keamanan', [
             'user' => $user,
+            // D-152: this page is the tab "Keamanan akun" of Profil saya.
+            'tabs' => Profil::tabs($user),
             'isStaff' => $isStaff,
             'passwordHint' => $setPassword->hint($user),
             'passwordChangedAt' => AccountControls::date($user, 'password_changed_at'),
@@ -178,6 +181,8 @@ final class Keamanan extends Component
             'testMode' => VerifyOtpCode::testModeActive(),
             'sessionsAvailable' => ListUserSessions::available(),
             'sessions' => $sessions->handle($user, session()->getId(), request()->userAgent(), request()->ip()),
+            // No 2FA section at all while 2FA does not exist in the app (STH_STAFF_2FA=false).
+            'showTwoFactor' => $isStaff && EnsureStaffTwoFactor::featureEnabled(),
             'twoFactorConfirmed' => $user->two_factor_confirmed_at !== null,
             'twoFactorUrl' => $isStaff && Route::has('two-factor.setup') ? route('two-factor.setup') : null,
         ]);

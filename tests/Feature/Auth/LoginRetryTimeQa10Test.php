@@ -78,17 +78,17 @@ function qa10AuthWalkThroughLocks(string $identifier, string $right): void
 it('shows the real time of the lock on every refusal, counting down and rising only at a new step (QA10)', function (): void {
     $student = H::activeStudent();
 
-    qa10AuthWalkThroughLocks(H::NIS, H::PASSWORD);
+    qa10AuthWalkThroughLocks(H::NISN, H::PASSWORD);
 
     // The lock is over: the right password gets in at once.
-    qa10AuthRetryLogin(H::NIS, H::PASSWORD)->assertRedirect(route('home'));
+    qa10AuthRetryLogin(H::NISN, H::PASSWORD)->assertRedirect(route('home'));
     $this->assertAuthenticatedAs($student->user);
 });
 
 it('answers an identifier without an account with the same times (QA10)', function (): void {
     qa10AuthWalkThroughLocks('999888777', H::PASSWORD);
 
-    expect(qa10AuthRetryShown(qa10AuthRetryLogin('999888777', H::PASSWORD)))->toBe('NIS/NISN atau kata sandi salah.');
+    expect(qa10AuthRetryShown(qa10AuthRetryLogin('999888777', H::PASSWORD)))->toBe('NISN atau kata sandi salah.');
 });
 
 it('still shows the seconds of the per-minute limit when no lock holds (QA10)', function (): void {
@@ -97,14 +97,14 @@ it('still shows the seconds of the per-minute limit when no lock holds (QA10)', 
 
     foreach (range(0, 4) as $second) {
         $this->travelTo(now()->setTimestamp($start + $second));
-        qa10AuthRetryLogin(H::NIS, H::PASSWORD)->assertRedirect(route('home'));
+        qa10AuthRetryLogin(H::NISN, H::PASSWORD)->assertRedirect(route('home'));
         Auth::guard('web')->logout();
     }
 
     $this->travelTo(now()->setTimestamp($start + 10));
-    expect(qa10AuthRetryShown(qa10AuthRetryLogin(H::NIS, H::PASSWORD)))->toBe(AppServiceProvider::retryMessage(50));
+    expect(qa10AuthRetryShown(qa10AuthRetryLogin(H::NISN, H::PASSWORD)))->toBe(AppServiceProvider::retryMessage(50));
 
     $this->travelTo(now()->setTimestamp($start + 60));
-    qa10AuthRetryLogin(H::NIS, H::PASSWORD)->assertRedirect(route('home'));
+    qa10AuthRetryLogin(H::NISN, H::PASSWORD)->assertRedirect(route('home'));
     $this->assertAuthenticatedAs($student->user);
 });

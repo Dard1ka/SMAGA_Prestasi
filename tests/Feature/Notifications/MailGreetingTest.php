@@ -34,6 +34,7 @@ use App\Notifications\Registrations\InvitationWithdrawn;
 use App\Notifications\Registrations\MemberResponded;
 use App\Notifications\Registrations\RegistrationAwaitingPrincipal;
 use App\Notifications\Registrations\RegistrationCancelled;
+use App\Notifications\Registrations\RegistrationCancelledBySchool;
 use App\Notifications\Registrations\TeamInvitation;
 use App\Notifications\Reports\ReportReminder;
 use App\Notifications\Reports\ReportSubmitted;
@@ -87,9 +88,10 @@ function mailGreetingCases(): array
     $competition = F::teamCompetition(3, ['name' => 'Lomba Karya Tulis Ilmiah Nasional 2026']);
     $registration = Registration::factory()->team()->create([
         'competition_id' => $competition->getKey(),
-        'leader_student_id' => F::student('Raka Aditya Pratama', 'XI-2')->getKey(),
+        'leader_student_id' => F::student('Raka Aditya Pratama', 'XI-B')->getKey(),
     ]);
     $registrationId = (string) $registration->getKey();
+    $decider = User::factory()->create(['name' => 'Sri Handayani']);
     $report = Report::factory()->create();
     $signed = 'http://127.0.0.1:8080/akun/bukan-saya/01jabc?expires=1790000000&signature=0123abcd';
     $when = 'Senin, 12 Oktober 2026 pukul 07.00 WIB';
@@ -98,7 +100,7 @@ function mailGreetingCases(): array
 
     return [
         // Whoever receives it
-        [$fixed(new AccountAlert('account.frozen', 'Akun dibekukan', ['Nadia Putri Anindya (XI-4) dibekukan setelah 10 kali gagal masuk.'])), 'akun'],
+        [$fixed(new AccountAlert('account.frozen', 'Akun dibekukan', ['Nadia Putri Anindya (XI-D) dibekukan setelah 10 kali gagal masuk.'])), 'akun'],
         [$fixed(SecurityNotice::passwordChanged()), 'akun'],
         [$fixed(new PasswordWasReset), 'akun'],
         [$fixed(new SignatureReplaced('Raka')), 'akun'], // AdminNotice family
@@ -106,13 +108,13 @@ function mailGreetingCases(): array
         [$fixed(CompetitionPublished::for($competition, true)), 'akun'], // Notice family
         [$fixed(new CompetitionSubmitted($competition, 'Nadia Putri Anindya')), 'akun'],
         [$fixed(new PublicationDue('01jpub', 'Nadia Putri Anindya', 'Juara II', 'OPSI 2026', 'Instagram', '12 Okt 2026, 09.00')), 'akun'],
-        [$fixed(new ReportSubmitted('01jrep', 'OPSI 2026', 'Nadia Putri Anindya', 'Juara II', false, false)), 'akun'],
+        [$fixed(new ReportSubmitted('01jrep', 'OPSI 2026', 'Nadia Putri Anindya', 'Juara II', false)), 'akun'],
         // The Action passes the greeting of the account owner: the mail itself goes to a bare address.
         [fn (User $to): BaseNotification => new EmailBindingNotice(EmailBindingNotice::BOUND, (string) FirstName::of($to->name), 'n•••@gmail.com', $signed, 7, MailGreeting::for($to)), 'akun'],
 
         // Always students
-        [$fixed(new ReportReminder($registrationId, 'OPSI 2026', '8 Nov 2026', 3)), 'siswa'],
-        [$fixed(new ReportWindowOpened($registrationId, 'OPSI 2026', '8 Nov 2026')), 'siswa'],
+        [$fixed(new ReportReminder($registrationId, 'OPSI 2026', 3)), 'siswa'],
+        [$fixed(new ReportWindowOpened($registrationId, 'OPSI 2026')), 'siswa'],
         [$fixed(CompetitionChanged::for($competition, $registrationId, ['Babak final sekarang 20 November 2026.'])), 'siswa'],
         [$fixed(new AchievementPublished('01jpub', '01jach', 'OPSI 2026', 'Juara II', 'Instagram')), 'siswa'],
         [$fixed(new AppreciationScheduled('01japp', 'Upacara Senin', $when, 'OPSI 2026', 'Juara II')), 'siswa'],
@@ -123,6 +125,7 @@ function mailGreetingCases(): array
         [$fixed(new InvitationWithdrawn($registration)), 'siswa'],
         [$fixed(new InvitationsExpired($registration, 1, true, 2)), 'siswa'],
         [$fixed(RegistrationCancelled::for($registration, 'siswa')), 'siswa'],
+        [$fixed(RegistrationCancelledBySchool::for($registration, 'siswa', $decider, 'Lomba diundur penyelenggara')), 'siswa'],
         [$fixed(RegistrationApproved::for($registration, 'siswa')), 'siswa'],
         [$fixed(RegistrationRejected::for($registration, 'siswa')), 'siswa'],
         [$fixed(LettersIssued::for($registration, 'siswa')), 'siswa'],
@@ -135,7 +138,10 @@ function mailGreetingCases(): array
         [$fixed(new RegistrationAwaitingPrincipal($registration)), 'staf'],
         [$fixed(RegistrationCancelled::for($registration, 'guru')), 'staf'],
         [$fixed(RegistrationCancelled::for($registration, 'kepsek')), 'staf'],
+        [$fixed(RegistrationCancelledBySchool::for($registration, 'guru', $decider, 'Lomba diundur penyelenggara')), 'staf'],
+        [$fixed(RegistrationCancelledBySchool::for($registration, 'pemutus', $decider, 'Lomba diundur penyelenggara')), 'staf'],
         [$fixed(RegistrationApproved::for($registration, 'guru')), 'staf'],
+        [$fixed(RegistrationApproved::for($registration, 'guru', true, 'Bu Retno Wulandari, S.Pd.')), 'staf'],
         [$fixed(RegistrationApproved::for($registration, 'tu')), 'staf'],
         [$fixed(RegistrationRejected::for($registration, 'guru')), 'staf'],
         [$fixed(LettersIssued::for($registration, 'guru')), 'staf'],
@@ -206,7 +212,7 @@ it('keeps a name on one line', function (): void {
 
 it('works for accounts that were loaded together (strict models forbid lazy loading)', function (): void {
     F::student('Nadia Putri Anindya');
-    F::student('Dimas Arya Saputra', 'XI-4');
+    F::student('Dimas Arya Saputra', 'XI-D');
     F::staff(RoleName::KepalaSekolah, MAIL_GREETING_KEPSEK);
     F::staff(RoleName::Kesiswaan, 'Siti Rahmawati, S.Pd.');
 
@@ -266,9 +272,11 @@ it('covers every toMail() in app/Notifications with the matrix above', function 
         }
     }
 
-    // A new notification with a toMail() of its own belongs in mailGreetingCases().
+    // A new notification with a toMail() of its own belongs in mailGreetingCases(). The floor only proves the scan
+    // found the classes: 42 since FS1-E (D-142) deleted the four talent stage notices (TalentStageChanged,
+    // TalentApplicationRejected, TalentApplicationRestored, TalentReviewRequested).
     expect($missing)->toBe([])
-        ->and($concrete)->toBeGreaterThanOrEqual(46);
+        ->and($concrete)->toBeGreaterThanOrEqual(42);
 });
 
 it('builds no greeting by hand and sets no sign-off anywhere', function (): void {

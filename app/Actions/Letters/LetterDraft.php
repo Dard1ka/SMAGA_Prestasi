@@ -12,9 +12,9 @@ use Carbon\CarbonImmutable;
 
 /**
  * What Tata Usaha types for ONE letter (M1-A, lead 2026-10-04: every letter has its own form and its own
- * data, the two letters of a registration may differ): the complete number, the letter date, the "Dasar"
- * (surat dari / nomor / tanggal, plus "hal" on the guru letter) and the "Pelaksanaan" (hari, tanggal, pukul,
- * tempat). Who is in the letter (members, guru pembimbing, lomba name, signer) always comes from the
+ * data, the two letters of a registration may differ): the complete number, the letter date, the invitation under
+ * "Dasar" (surat dari / nomor / tanggal, plus "hal" on the guru letter; optional on the student letter, D-157) and the
+ * "Pelaksanaan" (hari, tanggal, pukul, tempat). Who is in the letter (members, guru pembimbing, lomba name, signer) always comes from the
  * database, never from this draft (SECURITY §3g).
  */
 final readonly class LetterDraft
@@ -81,7 +81,9 @@ final readonly class LetterDraft
 
     /**
      * Form values of an issued letter (what it printed). Letters issued before M1-A have "Hari, tanggal" in
-     * one column and no "Surat dari": those are split / taken from the lomba.
+     * one column and no "Surat dari": those are split / taken from the lomba. A letter that kept what it printed
+     * (`letters.printed`) and has no "Surat dari" printed none, so its correction starts without one too (D-157: a
+     * student letter without the invitation).
      *
      * @return array{nomor: string, tanggalSurat: string, dasarDari: string, dasarNomor: string, dasarTanggal: string, dasarHal: string, hari: string, tanggal: string, pukul: string, tempat: string}
      */
@@ -90,6 +92,8 @@ final readonly class LetterDraft
         $defaults = self::defaults($registration);
         $day = trim((string) $letter->schedule_day);
         $date = trim((string) $letter->schedule_date);
+        $from = trim((string) $letter->basis_from) !== '' ? (string) $letter->basis_from
+            : (LetterContent::fromArray($letter->printed['content'] ?? null) !== null ? '' : $defaults['dasarDari']);
 
         if ($date === '' && str_contains($day, ',')) {
             [$day, $date] = array_map(trim(...), explode(',', $day, 2));
@@ -98,7 +102,7 @@ final readonly class LetterDraft
         return [
             'nomor' => (string) $letter->full_number,
             'tanggalSurat' => $letter->issued_on->format('Y-m-d'),
-            'dasarDari' => trim((string) $letter->basis_from) !== '' ? (string) $letter->basis_from : $defaults['dasarDari'],
+            'dasarDari' => $from,
             'dasarNomor' => (string) $letter->basis_number,
             'dasarTanggal' => $letter->basis_date?->format('Y-m-d') ?? '',
             'dasarHal' => trim((string) $letter->basis_subject) !== '' ? (string) $letter->basis_subject : self::DEFAULT_SUBJECT,
@@ -111,6 +115,16 @@ final readonly class LetterDraft
 
     /** Does this letter type print the "Hal" of the invitation? Only the Surat Perintah Tugas does. */
     public static function usesSubject(LetterType $type): bool
+    {
+        return $type === LetterType::Guru;
+    }
+
+    /**
+     * Must this letter type name the invitation ("Surat dari" required)? Only the Surat Perintah Tugas. The student
+     * letter prints it as "Dasar" number 2 when TU leaves "Surat dari" filled (D-157), after the regulation text of the
+     * TU letter template (D-154); emptied, the letter has that one Dasar.
+     */
+    public static function requiresInvitation(LetterType $type): bool
     {
         return $type === LetterType::Guru;
     }

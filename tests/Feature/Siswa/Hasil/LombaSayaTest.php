@@ -33,7 +33,7 @@ beforeEach(function (): void {
 
     $this->nadia = F::student();
     $this->dimas = F::student('Dimas Arya Nugroho');
-    $this->keisha = F::student('Keisha Larasati', 'XI-6');
+    $this->keisha = F::student('Keisha Larasati', 'XI-F');
     $this->mentor = F::staff(RoleName::Guru, 'Retno Wulandari, S.Pd.');
 
     $this->wice = F::registration($this->nadia, RegistrationStatus::MenungguLaporan, members: [$this->dimas, $this->keisha], mentor: $this->mentor);
@@ -44,7 +44,7 @@ beforeEach(function (): void {
 
 afterEach(fn () => F::resetToday());
 
-it('lists running and finished lomba and opens the first one with the 6-phase tracker and deadline', function (): void {
+it('lists running and finished lomba and opens the first one with the 6-phase tracker and the report request (D-151)', function (): void {
     $opsi = F::registration($this->nadia, RegistrationStatus::Selesai, F::competition(['name' => 'OPSI 2026', 'final_on' => '2026-08-07', 'starts_on' => '2026-08-04']));
 
     $this->actingAs($this->nadia->user)
@@ -54,12 +54,12 @@ it('lists running and finished lomba and opens the first one with the 6-phase tr
         ->assertSee('WICE 2026')
         ->assertSee('LPB 2026')
         ->assertDontSee('OPSI 2026')
-        ->assertSee('Batas 8 Nov · 38 hari lagi')
+        ->assertSee('Segera laporkan')
         ->assertSee('aria-label="Jejak prestasi"', false)
         ->assertSee('Laporkan hasil')
         ->assertSee('Setiap anggota tim mendapat poin penuh.')
         ->assertSee('Retno Wulandari, S.Pd.')
-        ->assertSee(route('siswa.lapor', $this->wice), false);
+        ->assertSeeHtml('wire:click="openLapor"');
 
     $this->actingAs($this->nadia->user)
         ->get(route('siswa.lomba-saya.index', ['tab' => 'selesai']))
@@ -75,11 +75,11 @@ it('shows a member (not ketua) the report card without the send button', functio
         ->get(route('siswa.lomba-saya.show', $this->wice))
         ->assertOk()
         ->assertSee('Ketua tim mengirim laporan hasil untuk seluruh tim.')
-        ->assertDontSee(route('siswa.lapor', $this->wice), false);
+        ->assertDontSeeHtml('wire:click="openLapor"');
 });
 
 it('answers 404 for someone else\'s registration and hides declined invitations', function (): void {
-    $rizky = F::student('Rizky Maulana', 'XI-1');
+    $rizky = F::student('Rizky Maulana', 'XI-A');
 
     $this->actingAs($rizky->user)->get(route('siswa.lomba-saya.show', $this->wice))->assertNotFound();
 

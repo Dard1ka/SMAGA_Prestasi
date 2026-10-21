@@ -41,10 +41,10 @@ beforeEach(function (): void {
     $this->agus = KesiswaanFixtures::staff(RoleName::Guru, 'Agus Setiawan, S.Or.');
 
     // Kelas XI in 2026/2027 → angkatan 2025; XII → 2024 (grade12_start_date from the student factory).
-    $this->nadia = KesiswaanFixtures::student('Nadia Putri Anindya', 'XI-4', '225226201');
-    $this->dimas = KesiswaanFixtures::student('Dimas Arya Nugroho', 'XI-4', '225226202');
-    $this->raka = KesiswaanFixtures::student('Raka Pradipta', 'XII-2', '224225101');
-    $this->fajar = KesiswaanFixtures::student('Fajar Ramadhan', 'XII-1', '224225102');
+    $this->nadia = KesiswaanFixtures::student('Nadia Putri Anindya', 'XI-D', '225226201', '0098765432');
+    $this->dimas = KesiswaanFixtures::student('Dimas Arya Nugroho', 'XI-D', '225226202', '0098765433');
+    $this->raka = KesiswaanFixtures::student('Raka Pradipta', 'XII-B', '224225101', '0094225101');
+    $this->fajar = KesiswaanFixtures::student('Fajar Ramadhan', 'XII-A', '224225102', '0094225102');
 
     $wice = $f->lomba('WICE 2026', Bidang::Riset, Level::Nasional, '2026-09-24', [
         'organizer_type' => OrganizerType::PerusahaanSwasta, 'event_status' => EventStatus::NonPemerintah]);
@@ -91,12 +91,12 @@ it('grants the database and the export through the policy', function (): void {
 
 // List, totals, filters -----------------------------------------------------------------------------
 
-it('lists every verified achievement with totals and a masked NIS', function (): void {
+it('lists every verified achievement with totals and the NISN in full (D-137)', function (): void {
     Livewire::actingAs($this->kesiswaan)->test(DatabasePrestasi::class)
         ->assertSee('Nadia Putri Anindya')
         ->assertSee('Dimas Arya Nugroho')
         ->assertSee('OPSI 2025')
-        ->assertSee('2252•••01')
+        ->assertSee('0098765432')
         ->assertDontSee('225226201')
         ->assertViewHas('totals', fn (array $t): bool => $t === ['count' => '4', 'students' => '4', 'points' => '246', 'podium' => '3']);
 });
@@ -110,7 +110,8 @@ it('applies every filter', function (array $input, int $expected): void {
     'tahun ajaran' => [['tahun' => '2025/2026'], 2],
     'tahun ajaran (lalu)' => [['tahun' => '2024/2025'], 0],
     'siswa nama' => [['q' => 'nadia'], 1],
-    'siswa NIS' => [['q' => '224225102'], 1],
+    'siswa NISN' => [['q' => '0094225102'], 1],
+    'siswa NIS (only stored)' => [['q' => '224225102'], 0],
     'kelas' => [['kelas' => fn ($t) => (string) $t->nadia->classroom_id], 2],
     'angkatan' => [['angkatan' => '2025'], 2],
     'bidang' => [['bidang' => 'riset'], 3],
@@ -206,7 +207,7 @@ it('downloads the filtered list as Excel after a recent password confirmation', 
         ->and($log->properties['large'])->toBeFalse();
 });
 
-it('writes a watermarked, formula-safe sheet without NISN', function (): void {
+it('writes a watermarked, formula-safe sheet with the NISN instead of the NIS (D-137)', function (): void {
     $this->nadia->user->forceFill(['name' => '=HYPERLINK("http://x","klik")'])->save();
     $evil = $this->f->lomba('@SUM(1+1)', Bidang::Sains, Level::Kota, '2026-02-01');
     $this->f->prestasi([$this->raka], $evil, ResultType::Peserta);
@@ -231,13 +232,45 @@ it('writes a watermarked, formula-safe sheet without NISN', function (): void {
         ->and($rows[0][0])->toBe('Database prestasi SMAGA Talent Hub')
         ->and($rows[1][0])->toContain('Diekspor oleh Ibu Dwi Rahayu')
         ->and($rows[2][0])->toBe('Filter: semua prestasi terverifikasi')
-        ->and($header)->toContain('NIS')
-        ->and($header)->not->toContain('NISN')
+        ->and($header)->toContain('NISN')
+        ->and($header)->not->toContain('NIS')
         ->and($cells)->toContain('\'=HYPERLINK("http://x","klik")')
         ->and($cells)->toContain('\'@SUM(1+1)')
-        ->and($cells)->toContain('225226201')
-        ->and($cells->contains(fn (string $v): bool => str_contains($v, (string) $this->nadia->nisn)))->toBeFalse()
+        ->and($cells)->toContain('0098765432')
+        ->and($cells)->not->toContain('225226201')
         ->and($sheet)->not->toContain('<f>');
+});
+
+it('writes the sheet without Kategori, with the total right under Poin (FS1 §2.4, D-135)', function (): void {
+    $file = app(ExportAchievements::class)->handle($this->kesiswaan, AchievementFilters::fromInput([]));
+
+    try {
+        $rows = collect(SimpleExcelReader::create($file->path)->noHeaderRow()->getRows()->all());
+    } finally {
+        @unlink($file->path);
+    }
+
+    $header = $rows->first(fn (array $row): bool => ($row[0] ?? null) === 'No');
+    $raka = $rows->first(fn (array $row): bool => ($row[1] ?? null) === 'Raka Pradipta');
+    $total = $rows->first(fn (array $row): bool => ($row[1] ?? null) === 'Total poin');
+
+    expect($header)->toBe([
+        'No', 'Nama', 'NISN', 'Kelas', 'Angkatan', 'Status akun', 'Lomba', 'Penyelenggara', 'Jenis penyelenggara',
+        'Status ajang', 'Bidang', 'Tingkat', 'Capaian', 'Peserta', 'Pembimbing', 'Tahun ajaran',
+        'Tanggal final', 'Bobot tingkat', 'Bobot capaian', 'Bobot penyelenggara', 'Poin', 'Diverifikasi', 'Verifikator',
+    ])
+        ->and(array_search('Poin', $header, true))->toBe(20)
+        ->and($raka[9])->toBe('Puspresnas')   // Status ajang follows Jenis penyelenggara directly
+        ->and($raka[19])->toBe('1,00')        // Bobot penyelenggara stays
+        ->and((float) $raka[20])->toBe(80.0)
+        ->and($total)->toHaveCount(21)
+        ->and((float) $total[20])->toBe(246.0);
+
+    // The detail drawer may keep the category (spec §2.4); same call as the drawer test at line 162.
+    $achievement = Achievement::query()->where('student_id', $this->raka->getKey())->firstOrFail();
+    Livewire::actingAs($this->kesiswaan)->test(DatabasePrestasi::class)
+        ->call('showDetail', (string) $achievement->getKey())
+        ->assertSee('Kategori A');
 });
 
 it('refuses the export without achievement.export', function (): void {

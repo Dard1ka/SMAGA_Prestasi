@@ -12,13 +12,14 @@
 
     <x-sth.card as="section" aria-label="Jejak prestasi" class="flex flex-col gap-4">
         <x-sth.tracker :status="$status" :dates="$trackerDates" />
-        @if ($deadline && $revising)
-            <x-sth.alert :tone="$deadline['overdue'] ? 'error' : 'warning'" title="Laporan perlu direvisi">
-                Ketua tim memperbaiki laporan dari akunnya. Catatan Kesiswaan ada di Laporan hasil. Batas lapor {{ $deadline['dueText'] }}.
+        {{-- D-151: no report deadline, so no date and no "Terlambat". --}}
+        @if ($awaitingReport && $revising)
+            <x-sth.alert tone="warning" title="Laporan perlu direvisi">
+                {{ $reporter }} memperbaiki laporan dari akunnya. Catatan {{ $report['decider'] }} ada di Laporan hasil.
             </x-sth.alert>
-        @elseif ($deadline)
-            <x-sth.alert :tone="$deadline['overdue'] ? 'error' : 'warning'" title="Laporan hasil belum dikirim">
-                Batas lapor {{ $deadline['dueText'] }}. Ketua tim mengirim laporan dari akunnya.
+        @elseif ($awaitingReport)
+            <x-sth.alert tone="warning" title="Laporan hasil belum dikirim">
+                {{ $reporter }} mengirim laporan dari akunnya.
             </x-sth.alert>
         @endif
     </x-sth.card>
@@ -35,7 +36,6 @@
                 @else
                     <div class="flex flex-wrap items-center gap-2">
                         <x-sth.chip :tone="$report['tone']">{{ $report['status'] }}</x-sth.chip>
-                        @if ($report['late'])<x-sth.chip tone="orange" icon="clock">Terlambat</x-sth.chip>@endif
                     </div>
                     <dl class="m-0 grid grid-cols-1 gap-3 sm:grid-cols-3">
                         <div class="flex flex-col gap-0.5">
@@ -52,7 +52,7 @@
                         </div>
                     </dl>
                     @if ($report['note'])
-                        <x-sth.alert tone="warning" title="Catatan Kesiswaan">{{ $report['note'] }}</x-sth.alert>
+                        <x-sth.alert tone="warning" title="Catatan {{ $report['decider'] }}">{{ $report['note'] }}</x-sth.alert>
                     @endif
                     @if ($report['files'] !== [])
                         <ul class="m-0 flex list-none flex-col gap-2 p-0" aria-label="Lampiran laporan">
@@ -111,7 +111,9 @@
                                 <span class="ellip font-bold">{{ $member['name'] }}</span>
                                 <span class="text-xs text-muted">{{ $member['meta'] }}</span>
                             </span>
-                            <x-sth.chip :tone="$member['state'][1]" size="sm">{{ $member['state'][0] }}</x-sth.chip>
+                            @if ($member['state'])
+                                <x-sth.chip :tone="$member['state'][1]" size="sm">{{ $member['state'][0] }}</x-sth.chip>
+                            @endif
                         </li>
                     @endforeach
                 </ul>

@@ -12,8 +12,9 @@
    (`D:\real_project\SMAGA_Prestasi\SMAGA\`); never copy names, NIS/NISN, birth dates, signatures or
    photos from them. Seeds, tests and screenshots use the fictional set in
    `docs/design/DESIGN-SPEC-v2.md` §5 only.
-3. **Never display or log the initial password pattern.** Only `App\Domain\Accounts\InitialPassword`
-   builds it, only to hash it at import or Admin reset.
+3. **Never display or log the initial student password** (D-138: the config value
+   `sth.initial_student_password`, env `STH_INITIAL_STUDENT_PASSWORD`). Only `App\Domain\Accounts\InitialPassword::make()`
+   returns it, only to hash it at import and in the local demo seed.
 4. **Uploads only via `App\Domain\Files`** onto the private disk; downloads only through the
    policy-checked controller; never fetch user-supplied URLs.
 5. **A Policy for every model**, deny by default, `visibleTo()` scopes, 404 for other people's data;
@@ -26,7 +27,7 @@
 10. Tests (Pest) for every rule, Action, Policy and route; Pint clean before hand-off.
 11. **No `git commit`/`push`/branch changes unless the user asks.** Edit only files your area owns
     (`CLAUDE.md` §11); write your hand-off note to `docs/dev-notes/<ID>.md`.
-12. Never reintroduce superseded decisions: password `sm4g4_DDMMYY` (D-24), report deadline 45 days
+12. Never reintroduce superseded decisions: login by NIS, "Lewati" at activation, a birth-date initial password (D-24, D-137, D-138), report deadline 45 days
     after the final (D-25), all lomba uploads verified by Kesiswaan (D-27), alumni cannot log in
     (D-29), Admin separate from Kepala Sekolah (D-01), each team member full points and
     Semifinalis/Penghargaan khusus 0,30 (D-08). Log: `docs/DECISIONS.md`.

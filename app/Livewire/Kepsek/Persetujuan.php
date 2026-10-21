@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Livewire\Kepsek;
 
 use App\Actions\Registrations\ApproveRegistration;
+use App\Actions\Registrations\MentorChoice;
 use App\Actions\Registrations\RejectRegistration;
 use App\Enums\Bidang;
 use App\Enums\RegistrationStatus;
@@ -12,6 +13,8 @@ use App\Models\Competition;
 use App\Models\Registration;
 use App\Models\RegistrationMember;
 use App\Models\User;
+use App\Support\ApprovalQueue;
+use App\Support\StaffRoleLabel;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Contracts\View\View;
@@ -29,7 +32,13 @@ use Livewire\Component;
  * Kepala Sekolah · Persetujuan (mockup Kepsek-Persetujuan, UI-MAP #19). Queue of registrations waiting for
  * the principal, bidang filter, bulk approve (one authorized Action call per row), per-row approve and reject
  * (reason required). Rows decided in this visit stay visible with their result until the page reloads.
+ * Tata Usaha decides too and opens this screen under tu.persetujuan.index (D-150, ApprovalQueue); the
+ * first of two approvers decides, the second gets the stale toast (decidedElsewhere()).
  * Admin never reaches this screen (route role + RegistrationPolicy::viewApprovalQueue, D-01).
+ *
+ * D-132 (lead, 2026-10-11): "Ganti guru" on a waiting row opens the dialog MENTOR_DIALOG, where the Kepala Sekolah
+ * approves the row with another guru pembimbing than the student chose (askMentor() → approveWithMentor(), one call of
+ * ApproveRegistration with the new guru). "Setujui" and "Setujui terpilih" keep the student's choice.
  */
 #[Title('Persetujuan lomba')]
 class Persetujuan extends Component
@@ -69,6 +78,51 @@ class Persetujuan extends Component
 
     /** "Setujui terpilih" asks first and lists the ticked rows (QA6, Q1-10): one click approved a whole page. */
     public const BULK_DIALOG = 'setujui-terpilih';
+
+    /** "Ganti guru" on a waiting row: approve it with another guru pembimbing than the student chose (D-132). */
+    public const MENTOR_DIALOG = 'ganti-pembimbing';
+
+    /** The waiting row the open "Ganti guru" dialog asks about; set only by askMentor(). */
+    #[Locked]
+    public ?string $mentorFor = null;
+
+    /** The guru picked in that dialog (a user id; ApproveRegistration checks it again). */
+    public string $mentorChoice = '';
+
+    /** @var array<string, string> registration ULID → name of the guru replaced during this visit ('' = there was none) */
+    #[Locked]
+    public array $replaced = [];
+
+    /**
+     * The line under the title and the first sentence of the "Setujui terpilih" dialog name who acts after the approval.
+     * A staff screen never speaks of its own reader in the third person (D-119): the Kepala Sekolah reads that Tata
+     * Usaha makes the surat tugas, Tata Usaha (who approves too, D-150) reads the same step without its own name and
+     * without a pronoun. The reader is the account, as for its address (ApprovalQueue::routeName()).
+     */
+    public const SUBTITLE = 'Setujui pendaftaran agar Tata Usaha bisa membuat surat tugas.';
+
+    public const SUBTITLE_TU = 'Setujui pendaftaran, lalu buat surat tugasnya.';
+
+    public const LETTERS_NEXT = 'Tata Usaha langsung bisa membuat surat tugasnya.';
+
+    public const LETTERS_NEXT_TU = 'Surat tugasnya langsung bisa dibuat.';
+
+    /**
+     * Where an approved row goes, by the same reader rule (FS1): the Kepala Sekolah reads "antrean TU", Tata Usaha reads
+     * its own queue, the surat tugas, never "TU" in the third person. QUEUED ends both approval toasts, QUEUED_CHIP is the
+     * chip of a row decided during this visit, MENTOR_NOTE is the first sentence of the "Ganti guru" dialog.
+     */
+    public const QUEUED = 'Masuk antrean TU.';
+
+    public const QUEUED_TU = 'Masuk antrean surat tugas.';
+
+    public const QUEUED_CHIP = 'Disetujui · masuk antrean TU';
+
+    public const QUEUED_CHIP_TU = 'Disetujui · masuk antrean surat';
+
+    public const MENTOR_NOTE = 'Pendaftaran langsung disetujui dan masuk antrean TU.';
+
+    public const MENTOR_NOTE_TU = 'Pendaftaran langsung disetujui dan masuk antrean surat tugas.';
 
     /** Rows on screen (clamped to STEP…MAX in visibleQuery()). */
     public int $limit = self::STEP;
@@ -125,7 +179,111 @@ class Persetujuan extends Component
         $this->recent[$registration->getKey()] = 'ok';
         $this->selected = array_values(array_diff($this->selected, [$registration->getKey()]));
         $this->closeReject();
-        $this->dispatch('sth-toast', message: 'Pendaftaran disetujui. Masuk antrean TU.', tone: 'success');
+        $this->dispatch('sth-toast', message: 'Pendaftaran disetujui. '.($this->readerIsTu() ? self::QUEUED_TU : self::QUEUED), tone: 'success');
+    }
+
+    /**
+     * "Ganti guru" on a waiting row (D-132): opens the dialog. Nothing changes and nobody is told before
+     * approveWithMentor().
+     */
+    public function askMentor(string $id): void
+    {
+        $this->mentorFor = null;
+        $this->mentorChoice = '';
+        $registration = $this->findVisible($id);
+
+        if ($this->decidedElsewhere($registration)) {
+            return;
+        }
+
+        Gate::authorize('changeMentor', $registration);
+
+        $this->closeReject();
+        $this->mentorFor = (string) $registration->getKey();
+        $this->dispatch('sth-modal-open', id: self::MENTOR_DIALOG);
+    }
+
+    /**
+     * "Setujui dengan guru ini" in the dialog: one decision, the approval and the new guru together (D-132). Without
+     * a dialog opened by askMentor() there is nothing to confirm: it returns without a word (never a 404), so a second
+     * click that arrives after the approval went through does not put an error page over it (D-128).
+     */
+    public function approveWithMentor(ApproveRegistration $approve): void
+    {
+        if ($this->mentorFor === null) {
+            return;
+        }
+
+        $this->resetErrorBag();
+        $registration = $this->findVisible($this->mentorFor);
+
+        if ($this->decidedElsewhere($registration)) {
+            $this->closeMentorDialog();
+
+            return;
+        }
+
+        if (trim($this->mentorChoice) === '') {
+            $this->addError('mentorChoice', 'Pilih guru pembimbing pengganti.');
+
+            return;
+        }
+
+        $formerId = $registration->mentor_id !== null ? (int) $registration->mentor_id : null;
+        $former = MentorChoice::name($registration->mentor()->with('staffProfile')->first());
+
+        try {
+            $approve->handle($this->user(), $registration, null, $this->mentorChoice);
+        } catch (ValidationException $e) {
+            $errors = $e->errors();
+
+            if (isset($errors['mentor'])) {
+                // The guru left the list since the dialog opened (account switched off, role changed): pick again.
+                $this->mentorChoice = '';
+                $this->addError('mentorChoice', (string) $errors['mentor'][0]);
+
+                return;
+            }
+
+            $this->closeMentorDialog();
+            $this->dispatch('sth-toast', message: (string) collect($errors)->flatten()->first(), tone: 'error');
+
+            return;
+        }
+
+        $id = (string) $registration->getKey();
+        // What the Action wrote, not what the dialog asked for: the same guru again is a plain approval.
+        $changed = $registration->mentor_id !== null && (int) $registration->mentor_id !== $formerId;
+        $appointed = $changed ? MentorChoice::name($registration->mentor()->with('staffProfile')->first()) : null;
+
+        $this->recent[$id] = 'ok';
+        $this->selected = array_values(array_diff($this->selected, [$id]));
+        $this->closeMentorDialog();
+
+        if ($appointed !== null) {
+            $this->replaced[$id] = (string) $former;
+        }
+
+        $queued = $this->readerIsTu() ? self::QUEUED_TU : self::QUEUED;
+        $this->dispatch('sth-toast', message: $appointed !== null
+            ? 'Pendaftaran disetujui dengan guru pembimbing '.MentorChoice::closing($appointed).' '.$queued
+            : 'Pendaftaran disetujui. '.$queued, tone: 'success');
+    }
+
+    /**
+     * Tata Usaha reads this screen (D-150), so its lines speak of the surat tugas, not of "Tata Usaha" (D-119). The
+     * reader is the account, as for its address: an account that is Kepala Sekolah too reads the Kepala Sekolah's lines.
+     */
+    private function readerIsTu(): bool
+    {
+        return ApprovalQueue::routeName($this->user()) === ApprovalQueue::TU;
+    }
+
+    private function closeMentorDialog(): void
+    {
+        $this->mentorFor = null;
+        $this->mentorChoice = '';
+        $this->dispatch('sth-modal-close', id: self::MENTOR_DIALOG);
     }
 
     public function approveSelected(ApproveRegistration $approve): void
@@ -250,6 +408,7 @@ class Persetujuan extends Component
 
         // The sidebar is rendered once per page load: tell it the queue size after every approve/reject (app.js).
         $this->dispatch('sth-badges', badges: ['kepsek.persetujuan' => $waiting]);
+        $readerIsTu = $this->readerIsTu();
 
         return view('livewire.kepsek.persetujuan', [
             'rows' => $rows,
@@ -261,10 +420,63 @@ class Persetujuan extends Component
             'bidangOptions' => ['' => 'Semua bidang'] + Bidang::options(),
             'summary' => $this->summary($waiting),
             'upcoming' => $this->upcoming(),
+            'mentorDialog' => $this->mentorDialog($rows),
+            // Rows decided during this visit were decided by this account: "Ditetapkan <peran>" (D-150).
+            'deciderRole' => StaffRoleLabel::forDecision($this->user()),
+            'bulkNote' => ($readerIsTu ? self::LETTERS_NEXT_TU : self::LETTERS_NEXT).' Persetujuan tidak bisa dibatalkan dari layar ini.',
+            'mentorNote' => ($readerIsTu ? self::MENTOR_NOTE_TU : self::MENTOR_NOTE).' Persetujuan tidak bisa dibatalkan dari layar ini.',
+            'queuedChip' => $readerIsTu ? self::QUEUED_CHIP_TU : self::QUEUED_CHIP,
         ])->layoutData([
-            'subtitle' => 'Setujui pendaftaran agar Tata Usaha bisa membuat surat tugas.',
+            'subtitle' => $readerIsTu ? self::SUBTITLE_TU : self::SUBTITLE,
             'badges' => ['kepsek.persetujuan' => $waiting],
         ]);
+    }
+
+    /**
+     * Texts and the pick list of the "Ganti guru" dialog, or null while nothing is asked about a row that still
+     * waits (D-132). The sentences promise a notice only to the people who get one (D-109).
+     *
+     * @param  Collection<int, Registration>  $rows
+     * @return array{title: string, who: string, current: ?string, options: array<int, string>, notices: list<string>}|null
+     */
+    private function mentorDialog(Collection $rows): ?array
+    {
+        if ($this->mentorFor === null) {
+            return null;
+        }
+
+        /** @var Registration|null $registration */
+        $registration = $rows->firstWhere('id', $this->mentorFor);
+
+        if ($registration === null || $registration->status !== RegistrationStatus::MenungguKepsek || isset($this->recent[$this->mentorFor])) {
+            return null;
+        }
+
+        $names = $registration->members->map(fn (RegistrationMember $m): string => (string) ($m->student?->user?->name ?? 'Siswa'));
+        $current = $registration->mentor;
+        ['told' => $told, 'of' => $of] = RejectRegistration::studentsTold($registration);
+
+        return [
+            'title' => (string) $registration->competition?->name.($registration->branch ? ' · '.$registration->branch : ''),
+            'who' => $names->count() > 1 ? 'Tim '.$names->count().' siswa: '.$names->implode(', ') : (string) $names->first(),
+            'current' => MentorChoice::name($current),
+            // Every other guru: not the one the row has, and not this account itself (a Kepala Sekolah who also
+            // holds the guru role gets no notice of their own click, so the sentence below would not hold for it).
+            'options' => MentorChoice::options(...array_values(array_filter([
+                $current !== null ? (int) $current->getKey() : null,
+                (int) $this->user()->getKey(),
+            ]))),
+            // Who is told: the students and the new guru. The guru the student chose is not: that account never heard
+            // it had been chosen (D-134), so the dialog says nothing about it.
+            'notices' => [
+                match (true) {
+                    $told === 0 => 'Akun siswa tidak aktif, jadi siswa tidak menerima notifikasi.',
+                    $told < $of => 'Siswa yang akunnya aktif diberi tahu bahwa pendaftarannya disetujui dan siapa guru pembimbingnya.',
+                    default => 'Siswa diberi tahu bahwa pendaftarannya disetujui dan siapa guru pembimbingnya.',
+                },
+                'Guru pengganti diberi tahu bahwa ia ditetapkan sebagai guru pembimbing.',
+            ],
+        ];
     }
 
     /** @return Collection<int, Registration> */
@@ -282,8 +494,8 @@ class Persetujuan extends Component
     }
 
     /**
-     * The rows on screen: waiting (or decided during this visit), oldest first, at most $limit. A long queue made
-     * the page several hundred kB, so the rest comes with "Tampilkan lebih banyak".
+     * The rows on screen: waiting (or decided during this visit), newest first (the lead, 2026-10-19), at most
+     * $limit. A long queue made the page several hundred kB, so the rest comes with "Tampilkan lebih banyak".
      *
      * @return Builder<Registration>
      */
@@ -297,8 +509,8 @@ class Persetujuan extends Component
                 ->where('status', RegistrationStatus::MenungguKepsek)
                 ->when($recent !== [], fn (Builder $q) => $q->orWhereIn('id', $recent)))
         )
-            ->orderBy('created_at')
-            ->orderBy('id')
+            ->orderByDesc('created_at')
+            ->orderByDesc('id')
             ->limit($this->limit);
     }
 
@@ -349,9 +561,9 @@ class Persetujuan extends Component
     }
 
     /**
-     * The ketua cancelled the row or the Kepala Sekolah decided it on another device since this screen showed it
-     * (QA9): findVisible() answered a full-screen 404 and the reason never showed. Say so; the next render drops the
-     * row from the list.
+     * The ketua cancelled the row, or an approver (Kepala Sekolah or Tata Usaha, D-150) decided it on another device,
+     * since this screen showed it (QA9): findVisible() answered a full-screen 404 and the reason never showed. Say so;
+     * the next render drops the row from the list.
      */
     private function decidedElsewhere(Registration $registration): bool
     {

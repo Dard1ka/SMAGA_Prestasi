@@ -82,7 +82,7 @@ it('sends the first page after login to the beranda when it is not this user\'s 
     $missing = '/berkas/01HZZZZZZZZZZZZZZZZZZZZZZZ';
 
     $this->get($missing)->assertRedirect(route('login'));
-    $this->from('/login')->post('/login', ['identifier' => H::NIS, 'password' => H::PASSWORD])->assertRedirect($missing);
+    $this->from('/login')->post('/login', ['identifier' => H::NISN, 'password' => H::PASSWORD])->assertRedirect($missing);
 
     $this->get($missing)->assertRedirect(route('home'));
     $this->assertAuthenticatedAs($student->user);

@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Actions\Publications\PublishPublication;
 use App\Actions\Publications\RemindDuePublication;
 use App\Actions\Publications\SchedulePublication;
+use App\Enums\FilePurpose;
 use App\Enums\PublicationStatus;
 use App\Enums\RoleName;
 use App\Enums\UserStatus;
@@ -61,7 +62,6 @@ function em2HideStudent(Publication $publication, string $state): void
     $user = $student->user()->firstOrFail();
 
     match ($state) {
-        'consent withdrawn' => $student->forceFill(['publish_consent' => false])->save(),
         'disabled' => $user->forceFill(['status' => UserStatus::Disabled])->save(),
         'deleted account' => $user->delete(),
         'deleted student' => $student->delete(),
@@ -163,13 +163,12 @@ it('skips a student who may not be named and mails nobody', function (string $st
 
     Notification::assertNothingSent();
 })->with([
-    'consent withdrawn' => ['consent withdrawn'],
     'disabled account' => ['disabled'],
     'deleted account' => ['deleted account'],
     'deleted student record' => ['deleted student'],
 ]);
 
-it('still reminds for an alumnus with consent, and the row stays scheduled', function (): void {
+it('still reminds for an alumnus, and the row stays scheduled', function (): void {
     $publication = em2Scheduled();
     $alumnus = $publication->achievement->student->user;
     $alumnus->forceFill(['status' => UserStatus::Archived])->save();
@@ -395,7 +394,7 @@ it('creates no file when reminding and leaves a flyer from before M3-E on the pr
     expect($publication->fresh()->status)->toBe(PublicationStatus::Terjadwal)
         ->and($publication->fresh()->flyer_file_id)->toBe($flyer->getKey())
         ->and($flyer->fresh()->disk)->toBe('local')
-        ->and(File::query()->count())->toBe(1)
+        ->and(File::query()->whereNot('purpose', FilePurpose::Juknis)->count())->toBe(1)
         ->and(Storage::disk('local')->allFiles())->toBe([$flyer->path])
         ->and(Storage::disk('public')->allFiles())->toBe([]);
 });

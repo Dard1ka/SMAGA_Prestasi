@@ -106,11 +106,11 @@ final readonly class AchievementFilters
 
         if ($this->q !== null) {
             $like = '%'.addcslashes($this->q, '%_\\').'%';
-            $nis = ctype_digit($this->q) ? $this->q : null;
+            $nisn = ctype_digit($this->q) ? $this->q : null;
 
             $query->whereHas('student', fn (Builder $s) => $s->where(fn (Builder $w) => $w
                 ->whereHas('user', fn (Builder $u) => $u->where('name', 'like', $like))
-                ->when($nis !== null, fn (Builder $n) => $n->orWhere('nis', $nis))));
+                ->when($nisn !== null, fn (Builder $n) => $n->orWhere('nisn', $nisn))));
         }
 
         if ($this->kelas !== null) {
@@ -157,7 +157,7 @@ final readonly class AchievementFilters
         return $query;
     }
 
-    /** @return array<string, string> active filters as raw values (URL / audit log), never names or NIS lists */
+    /** @return array<string, string> active filters as raw values (URL / audit log), never names or NISN lists */
     public function toArray(): array
     {
         return array_filter([

@@ -37,9 +37,9 @@ it('seeds reference data idempotently and without demo data outside local', func
     $this->seed(DatabaseSeeder::class);
     $this->seed(DatabaseSeeder::class);
 
-    expect(Classroom::query()->count())->toBe(36)
-        ->and(TalentType::query()->count())->toBe(6)
-        ->and(TalentBranch::query()->count())->toBe(35)
+    expect(Classroom::query()->count())->toBe(34)
+        ->and(TalentType::query()->count())->toBe(7)
+        ->and(TalentBranch::query()->count())->toBe(40)
         ->and(WeightVersion::query()->count())->toBe(1)
         ->and(WeightValue::query()->count())->toBe(20)
         ->and(Role::query()->count())->toBe(7)
@@ -58,7 +58,7 @@ it('seeds the settings defaults and never the initial-password pattern', functio
         ->and(Setting::get(SettingKey::LetterFormatSiswa))->toBe('400.3.8/{seq}/MRD/{roman_month}/{year}')
         ->and(Setting::query()->find(SettingKey::PublicIndexing->value)?->value)->toBeFalse()
         ->and(Setting::query()->find(SettingKey::PublicCertificates->value)?->value)->toBeFalse()
-        ->and(Setting::query()->pluck('value')->implode(' '))->not->toContain(InitialPassword::PREFIX);
+        ->and(Setting::query()->pluck('value')->implode(' '))->not->toContain(InitialPassword::LEGACY_PREFIX);
 });
 
 it('registers the dummy signature image on the private disk', function () {
@@ -82,6 +82,7 @@ it('maps talent types to bidang (D-22)', function () {
         ->and($bidang[TalentTypeCode::Fls3n->value])->toBe(Bidang::SeniBudaya)
         ->and($bidang[TalentTypeCode::Debat->value])->toBe(Bidang::SeniBudaya)
         ->and($bidang[TalentTypeCode::O2sn->value])->toBe(Bidang::Olahraga)
+        ->and($bidang[TalentTypeCode::Lainnya->value])->toBeNull()
         ->and(TalentBranch::query()->where('name', 'Kreativitas Musik Tradisional')->value('team_size'))->toBe(5);
 });
 
@@ -94,7 +95,20 @@ it('gives Admin every permission except approving registrations (D-01)', functio
     expect($admin->hasPermissionTo(PermissionName::StudentImport->value))->toBeTrue()
         ->and($admin->hasPermissionTo(PermissionName::RegistrationApprove->value))->toBeFalse()
         ->and($kepsek->hasPermissionTo(PermissionName::RegistrationApprove->value))->toBeTrue()
+        // D-150: Tata Usaha approves too.
+        ->and(Role::findByName(RoleName::TataUsaha->value, 'web')->hasPermissionTo(PermissionName::RegistrationApprove->value))->toBeTrue()
         ->and(Role::findByName(RoleName::Kesiswaan->value, 'web')->hasPermissionTo(PermissionName::StudentImport->value))->toBeTrue();
+});
+
+it('lets Humas verify reports next to Kesiswaan and Admin (D-139)', function () {
+    $this->seed(DatabaseSeeder::class);
+
+    foreach ([RoleName::Humas, RoleName::Kesiswaan, RoleName::Admin] as $role) {
+        expect(Role::findByName($role->value, 'web')->hasPermissionTo(PermissionName::ReportVerify->value))->toBeTrue($role->value);
+    }
+    foreach ([RoleName::Siswa, RoleName::Guru, RoleName::KepalaSekolah, RoleName::TataUsaha] as $role) {
+        expect(Role::findByName($role->value, 'web')->hasPermissionTo(PermissionName::ReportVerify->value))->toBeFalse($role->value);
+    }
 });
 
 it('builds the local demo data set with the spec leaderboard and queues', function () {
@@ -126,7 +140,7 @@ it('builds the local demo data set with the spec leaderboard and queues', functi
         ->and(Letter::lastSequence(LetterType::Guru, 2026))->toBe(1680)
         ->and($nadia->nis)->toBe('225226201')
         ->and($nadia->user->must_change_password)->toBeTrue()
-        ->and(Hash::check(app(InitialPassword::class)->make($nadia->birth_date), $nadia->user->password))->toBeTrue()
+        ->and(Hash::check(app(InitialPassword::class)->make(), $nadia->user->password))->toBeTrue()
         ->and(User::query()->where('username', 'operator')->first()->hasRole(RoleName::Admin->value))->toBeTrue();
 
     // D-125: a demo organizer of the type "Lainnya" carries the typed kind; every other type has none.

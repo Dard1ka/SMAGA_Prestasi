@@ -52,6 +52,7 @@ const LCN_PRE_LOMBA = ['menunggu_konfirmasi', 'menunggu_kepsek', 'disetujui', 's
 const LCN_NAMES = [
     'Raka Pradipta', 'Nadia Putri Anindya', 'Hana Safira', 'Rizky Maulana', 'Dimas Arya Saputra',
     'Salsabila Azzahra', 'Bagas Wicaksono', 'Citra Lestari', 'Fajar Nugroho', 'Intan Permatasari',
+    'Sekar Ayu Lestari',
 ];
 
 /** The one notice of that class the user got (fails on none or several: one notice per save per person). */
@@ -70,7 +71,7 @@ function lcnEveryStatus(Competition $competition, ?User $mentor = null): array
     $leaders = [];
 
     foreach (RegistrationStatus::cases() as $i => $status) {
-        $leaders[$status->value] = F::student(LCN_NAMES[$i], 'XI-'.($i + 1));
+        $leaders[$status->value] = F::student(LCN_NAMES[$i], 'XI-'.chr(65 + $i));
         C::registration($competition, $status, $leaders[$status->value], $mentor);
     }
 
@@ -87,7 +88,7 @@ function lcnToldStatuses(array $leaders): array
 
 it('tells the ketua and, for what a guru relies on, the guru pembimbing when one fact changes', function (array $change, string $fact, string $sentence, bool $mentorTold): void {
     $guru = F::staff(RoleName::Guru, 'Pak Hendra Kusuma');
-    $ketua = F::student('Raka Pradipta', 'XII-2');
+    $ketua = F::student('Raka Pradipta', 'XII-B');
     $competition = C::lomba();
     $registration = C::registration($competition, RegistrationStatus::MenungguKonfirmasi, $ketua, $guru);
 
@@ -141,13 +142,13 @@ it('tells the ketua and, for what a guru relies on, the guru pembimbing when one
     'peserta jadi tim' => [['participation' => 'tim'], 'participants', 'Peserta sekarang Tim, maks 3.', false],
     'link registrasi diganti' => [['registration_url' => 'https://example.org/nsif/daftar-baru'], 'registration_url', 'Link registrasi diganti.', true],
     'link registrasi dihapus' => [['registration_url' => ''], 'registration_url', 'Link registrasi dihapus.', true],
-    'website diganti' => [['website_url' => 'https://example.org/nsif-2026'], 'website_url', 'Website resmi diganti.', true],
-    'website dihapus' => [['website_url' => null], 'website_url', 'Website resmi dihapus.', true],
+    'website diganti' => [['website_url' => 'https://example.org/nsif-2026'], 'website_url', 'Link resmi diganti.', true],
+    'website dihapus' => [['website_url' => null], 'website_url', 'Link resmi dihapus.', true],
 ]);
 
 it('tells about a new juknis, and never about a new cover', function (): void {
     $guru = F::staff(RoleName::Guru, 'Pak Hendra Kusuma');
-    $ketua = F::student('Raka Pradipta', 'XII-2');
+    $ketua = F::student('Raka Pradipta', 'XII-B');
     $competition = C::lomba();
     C::registration($competition, RegistrationStatus::SuratTerbit, $ketua, $guru);
 
@@ -171,7 +172,7 @@ it('says "Individu" for a lomba that takes single participants only', function (
 
 it('lists every changed fact in one notice per person', function (): void {
     $guru = F::staff(RoleName::Guru, 'Pak Hendra Kusuma');
-    $ketua = F::student('Raka Pradipta', 'XII-2');
+    $ketua = F::student('Raka Pradipta', 'XII-B');
     $competition = C::lomba();
     C::registration($competition, RegistrationStatus::MenungguKonfirmasi, $ketua, $guru);
 
@@ -191,12 +192,29 @@ it('lists every changed fact in one notice per person', function (): void {
     ])->and(C::auditRows())->toBe([['changed' => ['deadline', 'mode', 'location', 'participants'], 'students' => 1, 'mentors' => 1, 'mail' => true]]);
 });
 
+it('names the answer window of a team resumed late instead of the new deadline (FS1 fix wave, D-148)', function (): void {
+    $resumed = F::student('Raka Pradipta', 'XII-B');
+    $shortGrace = F::student('Nadia Putri Anindya', 'XI-D');
+    $plain = F::student('Hana Safira', 'XI-C');
+    $competition = C::lomba();
+    C::registration($competition, RegistrationStatus::MenungguKonfirmasi, $resumed)->forceFill(['answer_until' => '2026-10-12 09:00:00'])->save();
+    C::registration($competition, RegistrationStatus::MenungguKonfirmasi, $shortGrace)->forceFill(['answer_until' => '2026-10-08 09:00:00'])->save();
+    C::registration($competition, RegistrationStatus::MenungguKonfirmasi, $plain);
+
+    app(UpdateCompetition::class)->handle($this->kesiswaan, $competition, C::input($competition, ['registration_closes_at' => '2026-10-09']));
+
+    // The 3-day window of the resumed team ends after the new deadline: its invitations stay valid until then.
+    expect(lcnNotice($resumed->user)->lines)->toBe(['Batas daftar sekarang 9 Okt 2026. Undangan tim yang belum dijawab berlaku sampai 12 Okt 2026, 09.00.'])
+        ->and(lcnNotice($shortGrace->user)->lines)->toBe(['Batas daftar sekarang 9 Okt 2026. Undangan tim yang belum dijawab tidak berlaku lagi setelah tanggal itu.'])
+        ->and(lcnNotice($plain->user)->lines)->toBe(['Batas daftar sekarang 9 Okt 2026. Undangan tim yang belum dijawab tidak berlaku lagi setelah tanggal itu.']);
+});
+
 // What is not a fact ---------------------------------------------------------------------------------------------
 
 it('sends nothing and writes no facts row when no fact changed', function (array $change): void {
     $guru = F::staff(RoleName::Guru, 'Pak Hendra Kusuma');
     $competition = C::lomba();
-    C::registration($competition, RegistrationStatus::MenungguKonfirmasi, F::student('Raka Pradipta', 'XII-2'), $guru);
+    C::registration($competition, RegistrationStatus::MenungguKonfirmasi, F::student('Raka Pradipta', 'XII-B'), $guru);
 
     app(UpdateCompetition::class)->handle($this->kesiswaan, $competition, C::input($competition, $change));
 
@@ -219,7 +237,7 @@ it('sends nothing and writes no facts row when no fact changed', function (array
 
 it('keeps a change of tingkat, kategori or status ajang to its own audit event', function (): void {
     $competition = C::lomba();
-    C::registration($competition, RegistrationStatus::Disetujui, F::student('Raka Pradipta', 'XII-2'), F::staff(RoleName::Guru, 'Pak Hendra Kusuma'));
+    C::registration($competition, RegistrationStatus::Disetujui, F::student('Raka Pradipta', 'XII-B'), F::staff(RoleName::Guru, 'Pak Hendra Kusuma'));
 
     app(UpdateCompetition::class)->handle($this->kesiswaan, $competition, C::input($competition, [
         'level' => 'provinsi', 'weight_category' => 'B', 'event_status' => 'pemerintah_non_puspresnas',
@@ -232,7 +250,7 @@ it('keeps a change of tingkat, kategori or status ajang to its own audit event',
 
 it('does not count the default guru pembimbing as a fact', function (): void {
     $competition = C::lomba();
-    C::registration($competition, RegistrationStatus::Disetujui, F::student('Raka Pradipta', 'XII-2'));
+    C::registration($competition, RegistrationStatus::Disetujui, F::student('Raka Pradipta', 'XII-B'));
 
     app(UpdateCompetition::class)->handle($this->kesiswaan, $competition, C::input($competition, [
         'default_mentor_id' => F::staff(RoleName::Guru, 'Pak Hendra Kusuma')->getKey(),
@@ -246,12 +264,12 @@ it('compares the deadline by day and ignores a team size left on an individu lom
     // Old rows: a deadline stored with another time of day, a "Maks anggota" left on an individu lomba. The save
     // rewrites both columns (23:59:59, null) although nothing a student relies on changed.
     $competition = C::lomba(['registration_closes_at' => '2026-10-20 12:00:00']);
-    C::registration($competition, RegistrationStatus::MenungguKonfirmasi, F::student('Raka Pradipta', 'XII-2'));
+    C::registration($competition, RegistrationStatus::MenungguKonfirmasi, F::student('Raka Pradipta', 'XII-B'));
 
     app(UpdateCompetition::class)->handle($this->kesiswaan, $competition, C::input($competition));
 
     $individu = C::lomba(['name' => 'Olimpiade Kimia Fiktif 2026', 'participation' => Participation::Individu, 'max_team_size' => 3]);
-    C::registration($individu, RegistrationStatus::MenungguKonfirmasi, F::student('Hana Safira', 'X-8'), null, RegistrationType::Individu);
+    C::registration($individu, RegistrationStatus::MenungguKonfirmasi, F::student('Hana Safira', 'X-H'), null, RegistrationType::Individu);
 
     app(UpdateCompetition::class)->handle($this->kesiswaan, $individu, C::input($individu));
 
@@ -263,7 +281,7 @@ it('compares the deadline by day and ignores a team size left on an individu lom
 });
 
 it('tells again, with the value as it is now, when a later save puts the old value back', function (): void {
-    $ketua = F::student('Raka Pradipta', 'XII-2');
+    $ketua = F::student('Raka Pradipta', 'XII-B');
     $competition = C::lomba();
     C::registration($competition, RegistrationStatus::MenungguKepsek, $ketua);
     $update = app(UpdateCompetition::class);
@@ -312,26 +330,27 @@ it('gives each registration only the sentences of the facts it relies on', funct
         ->and(lcnNotice($leaders['berlangsung']->user)->lines)->toBe(['Tempat sekarang Aula SMA Negeri 3 Semarang.']);
 });
 
-it('tells a registration that waits for its report about a new final date, with the report deadline of the settings', function (): void {
+it('tells a registration that waits for its report about a new final date', function (): void {
+    // D-151: no report deadline any more, also when the old setting is changed.
     Setting::put(SettingKey::ReportDeadlineDays, 30);
 
     $guru = F::staff(RoleName::Guru, 'Pak Hendra Kusuma');
-    $waiting = F::student('Raka Pradipta', 'XII-2');
-    $running = F::student('Hana Safira', 'X-8');
+    $waiting = F::student('Raka Pradipta', 'XII-B');
+    $running = F::student('Hana Safira', 'X-H');
     $competition = C::lomba();
     $registration = C::registration($competition, RegistrationStatus::MenungguLaporan, $waiting, $guru);
     C::registration($competition, RegistrationStatus::Berlangsung, $running);
 
     app(UpdateCompetition::class)->handle($this->kesiswaan, $competition, C::input($competition, ['final_on' => '2026-11-10']));
 
-    expect(lcnNotice($waiting->user)->lines)->toBe(['Tanggal final sekarang 10 Nov 2026, batas laporan hasil 10 Des 2026.'])
+    expect(lcnNotice($waiting->user)->lines)->toBe(['Tanggal selesai sekarang 10 Nov 2026.'])
         ->and(lcnNotice($running->user)->lines)->toBe(['Tanggal lomba sekarang 7–10 Nov 2026.'])
-        ->and(lcnNotice($guru, BinaanCompetitionChanged::class)->lines)->toBe(['Tanggal final sekarang 10 Nov 2026, batas laporan hasil 10 Des 2026.'])
+        ->and(lcnNotice($guru, BinaanCompetitionChanged::class)->lines)->toBe(['Tanggal selesai sekarang 10 Nov 2026.'])
         ->and(lcnNotice($guru, BinaanCompetitionChanged::class)->url())->toBe(route('guru.binaan.show', ['registration' => $registration->getKey()]));
 });
 
 it('does not tell a registration that waits for its report when only the start date moved', function (): void {
-    $waiting = F::student('Raka Pradipta', 'XII-2');
+    $waiting = F::student('Raka Pradipta', 'XII-B');
     $competition = C::lomba();
     C::registration($competition, RegistrationStatus::MenungguLaporan, $waiting, F::staff(RoleName::Guru, 'Pak Hendra Kusuma'));
 
@@ -345,11 +364,11 @@ it('does not tell a registration that waits for its report when only the start d
 
 it('tells the ketua, the confirmed and the still-invited member of a team, never the member who declined', function (): void {
     $guru = F::staff(RoleName::Guru, 'Pak Hendra Kusuma');
-    $ketua = F::student('Raka Pradipta', 'XII-2');
-    $confirmed = F::student('Nadia Putri Anindya', 'XI-4');
-    $invited = F::student('Hana Safira', 'X-8');
-    $declined = F::student('Rizky Maulana', 'XI-1');
-    $outsider = F::student('Dimas Arya Saputra', 'XI-2');
+    $ketua = F::student('Raka Pradipta', 'XII-B');
+    $confirmed = F::student('Nadia Putri Anindya', 'XI-D');
+    $invited = F::student('Hana Safira', 'X-H');
+    $declined = F::student('Rizky Maulana', 'XI-A');
+    $outsider = F::student('Dimas Arya Saputra', 'XI-B');
 
     $competition = C::lomba();
     $registration = C::registration($competition, RegistrationStatus::MenungguKonfirmasi, $ketua, $guru);
@@ -373,10 +392,10 @@ it('skips accounts that cannot log in, and never tells the account that made the
     // The actor also holds the guru role and mentors one registration.
     $this->kesiswaan->assignRole(RoleName::Guru->value);
 
-    $active = F::student('Raka Pradipta', 'XII-2');
-    $pending = F::student('Nadia Putri Anindya', 'XI-4');
-    $disabled = F::student('Hana Safira', 'X-8');
-    $archived = F::student('Rizky Maulana', 'XI-1');
+    $active = F::student('Raka Pradipta', 'XII-B');
+    $pending = F::student('Nadia Putri Anindya', 'XI-D');
+    $disabled = F::student('Hana Safira', 'X-H');
+    $archived = F::student('Rizky Maulana', 'XI-A');
 
     $pending->user->forceFill(['status' => UserStatus::PendingActivation, 'email' => null, 'email_verified_at' => null])->save();
     $disabled->user->forceFill(['status' => UserStatus::Disabled])->save();
@@ -408,9 +427,9 @@ it('skips a guru pembimbing who is no longer a guru or cannot log in', function 
     $active = F::staff(RoleName::Guru, 'Pak Bambang Sutrisno');
 
     $competition = C::lomba();
-    C::registration($competition, RegistrationStatus::Disetujui, F::student('Raka Pradipta', 'XII-2'), $moved);
-    C::registration($competition, RegistrationStatus::SuratTerbit, F::student('Nadia Putri Anindya', 'XI-4'), $disabled);
-    C::registration($competition, RegistrationStatus::Berlangsung, F::student('Hana Safira', 'X-8'), $active);
+    C::registration($competition, RegistrationStatus::Disetujui, F::student('Raka Pradipta', 'XII-B'), $moved);
+    C::registration($competition, RegistrationStatus::SuratTerbit, F::student('Nadia Putri Anindya', 'XI-D'), $disabled);
+    C::registration($competition, RegistrationStatus::Berlangsung, F::student('Hana Safira', 'X-H'), $active);
 
     app(UpdateCompetition::class)->handle($this->kesiswaan, $competition, C::input($competition, ['mode' => 'daring']));
 
@@ -424,10 +443,10 @@ it('skips a guru pembimbing who is no longer a guru or cannot log in', function 
 it('sends one notice to a guru who mentors several registrations of the lomba', function (): void {
     $guru = F::staff(RoleName::Guru, 'Pak Hendra Kusuma');
     $competition = C::lomba();
-    C::registration($competition, RegistrationStatus::MenungguKepsek, F::student('Raka Pradipta', 'XII-2'), $guru);
-    C::registration($competition, RegistrationStatus::SuratTerbit, F::student('Nadia Putri Anindya', 'XI-4'), $guru);
+    C::registration($competition, RegistrationStatus::MenungguKepsek, F::student('Raka Pradipta', 'XII-B'), $guru);
+    C::registration($competition, RegistrationStatus::SuratTerbit, F::student('Nadia Putri Anindya', 'XI-D'), $guru);
     // Not counted: this binaan no longer relies on the place.
-    C::registration($competition, RegistrationStatus::Selesai, F::student('Hana Safira', 'X-8'), $guru);
+    C::registration($competition, RegistrationStatus::Selesai, F::student('Hana Safira', 'X-H'), $guru);
 
     app(UpdateCompetition::class)->handle($this->kesiswaan, $competition, C::input($competition, ['location' => 'Aula SMA Negeri 3 Semarang']));
 
@@ -448,7 +467,7 @@ it('sends mail and bell up to the limit, and only the bell above it', function (
     $students = [];
 
     for ($i = 1; $i < CompetitionChange::MAIL_LIMIT; $i++) {
-        $students[] = $student = F::student('Siswa Contoh '.$i, 'X-1');
+        $students[] = $student = F::student('Siswa Contoh '.$i, 'X-A');
         C::registration($competition, RegistrationStatus::Disetujui, $student, $guru, RegistrationType::Individu);
     }
 
@@ -458,7 +477,7 @@ it('sends mail and bell up to the limit, and only the bell above it', function (
     Notification::assertSentTo($students[0]->user, CompetitionChanged::class, fn (CompetitionChanged $n, array $channels): bool => $channels === ['mail', 'database']);
     Notification::assertSentTo($guru, BinaanCompetitionChanged::class, fn (BinaanCompetitionChanged $n, array $channels): bool => $channels === ['mail', 'database']);
 
-    $students[] = $last = F::student('Siswa Contoh '.CompetitionChange::MAIL_LIMIT, 'X-1');
+    $students[] = $last = F::student('Siswa Contoh '.CompetitionChange::MAIL_LIMIT, 'X-A');
     C::registration($competition, RegistrationStatus::Disetujui, $last, $guru, RegistrationType::Individu);
 
     app(UpdateCompetition::class)->handle($this->kesiswaan, $competition, C::input($competition, ['location' => 'Kota Semarang']));
@@ -479,7 +498,7 @@ it('sends mail and bell up to the limit, and only the bell above it', function (
 // Never --------------------------------------------------------------------------------------------------------
 
 it('stays silent for a lomba that is not published', function (): void {
-    $ketua = F::student('Raka Pradipta', 'XII-2');
+    $ketua = F::student('Raka Pradipta', 'XII-B');
     $competition = Competition::factory()->create([...F::form([
         'registration_opens_at' => '2026-09-15 00:00:00', 'registration_closes_at' => '2026-10-20 23:59:59',
     ]), 'name' => 'Lomba Esai Fiktif 2026'])->fresh();
@@ -512,7 +531,7 @@ it('writes the facts row with zero counts when nobody is attached to the lomba',
 
 it('keeps names, account ids and addresses out of the facts row', function (): void {
     $guru = F::staff(RoleName::Guru, 'Pak Hendra Kusuma');
-    $ketua = F::student('Raka Pradipta', 'XII-2');
+    $ketua = F::student('Raka Pradipta', 'XII-B');
     $competition = C::lomba();
     C::registration($competition, RegistrationStatus::Disetujui, $ketua, $guru);
 
@@ -530,7 +549,7 @@ it('keeps names, account ids and addresses out of the facts row', function (): v
 
 it('sends nothing when the save is refused', function (array $change, string $field, string $message): void {
     $competition = C::lomba();
-    $registration = C::registration($competition, RegistrationStatus::MenungguKonfirmasi, F::student('Raka Pradipta', 'XII-2'), F::staff(RoleName::Guru, 'Pak Hendra Kusuma'));
+    $registration = C::registration($competition, RegistrationStatus::MenungguKonfirmasi, F::student('Raka Pradipta', 'XII-B'), F::staff(RoleName::Guru, 'Pak Hendra Kusuma'));
 
     try {
         // Every case also changes the place, which would be told if the save went through.
@@ -554,7 +573,7 @@ it('sends nothing when the save is refused', function (array $change, string $fi
 ]);
 
 it('sends nothing and keeps no facts row when the save fails after the row was written', function (): void {
-    $ketua = F::student('Raka Pradipta', 'XII-2');
+    $ketua = F::student('Raka Pradipta', 'XII-B');
     $competition = C::lomba();
     C::registration($competition, RegistrationStatus::Disetujui, $ketua, F::staff(RoleName::Guru, 'Pak Hendra Kusuma'));
 
@@ -576,9 +595,9 @@ it('sends nothing and keeps no facts row when the save fails after the row was w
 
 it('refuses every other role, sends nothing and writes nothing', function (RoleName $role): void {
     $competition = C::lomba();
-    C::registration($competition, RegistrationStatus::MenungguKonfirmasi, F::student('Raka Pradipta', 'XII-2'));
+    C::registration($competition, RegistrationStatus::MenungguKonfirmasi, F::student('Raka Pradipta', 'XII-B'));
 
-    $actor = $role === RoleName::Siswa ? F::student('Nadia Putri Anindya', 'XI-4')->user : F::staff($role, 'Akun Contoh');
+    $actor = $role === RoleName::Siswa ? F::student('Nadia Putri Anindya', 'XI-D')->user : F::staff($role, 'Akun Contoh');
 
     expect(fn () => app(UpdateCompetition::class)->handle($actor, $competition, C::input($competition, ['location' => 'Aula SMA Negeri 3 Semarang'])))
         ->toThrow(AuthorizationException::class);
@@ -597,7 +616,7 @@ it('refuses every other role, sends nothing and writes nothing', function (RoleN
 
 it('lets the Admin change a published lomba with the same notices', function (): void {
     $admin = F::staff(RoleName::Admin, 'Operator STH');
-    $ketua = F::student('Raka Pradipta', 'XII-2');
+    $ketua = F::student('Raka Pradipta', 'XII-B');
     $competition = C::lomba();
     C::registration($competition, RegistrationStatus::Disetujui, $ketua);
 

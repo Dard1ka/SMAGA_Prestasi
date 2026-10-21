@@ -24,6 +24,11 @@ use Illuminate\Validation\ValidationException;
  * is skipped and the list renumbers; the invitation always comes last). A template saved before M1-A keeps its
  * values; fields it does not have (`kop_6`, `guru_basis_1…3`) use the built-in text.
  *
+ * D-154 (lead, 2026-10-16, the school's printed student letter): the student letter's "Dasar" is one regulation
+ * text (`siswa_dasar`, replaced every budget year like the guru texts), no longer "Surat dari {penyelenggara}" with
+ * the invitation's Nomor and Tanggal (`siswa_basis`). A saved template without `siswa_dasar` takes the built-in
+ * text; a letter printed with `siswa_basis` keeps it in $oldSiswaBasis, so its preview still shows what it printed.
+ *
  * Version 0 = the built-in defaults below (no row yet, or the seeded null row); every saved change is a new version
  * (UpdateLetterTemplate, audited `letter_template.updated` with a full snapshot of the values).
  */
@@ -34,9 +39,11 @@ final readonly class LetterTemplate
     /** code => meaning (shown to TU). */
     public const PLACEHOLDERS = [
         '{sekolah}' => 'nama sekolah',
-        '{penyelenggara}' => 'isi "Surat dari" yang diketik saat membuat surat',
         '{tahun_ajaran}' => 'tahun pelajaran surat',
     ];
+
+    /** The student letter's Dasar before D-154 (field `siswa_basis`), kept for the preview of letters printed with it. */
+    private const OLD_SISWA_BASIS = 'siswa_basis';
 
     private const GURU_BASIS_HINT = 'Peraturan yang berlaku tahun ini. Boleh kosong: nomor berikutnya naik. Surat undangan selalu jadi nomor terakhir.';
 
@@ -55,7 +62,7 @@ final readonly class LetterTemplate
         'school_name' => ['Nama sekolah di isi surat', 100, true, [], 'SMA Negeri 3 Semarang', 'Dipakai untuk kode {sekolah}.'],
         'city' => ['Tempat surat', 60, true, [], 'Semarang', 'Tertulis sebelum tanggal surat.'],
         'signer_title' => ['Jabatan penandatangan', 60, true, [], 'Kepala Sekolah', 'Di atas tanda tangan.'],
-        'siswa_basis' => ['Surat siswa: Dasar', 200, true, ['{penyelenggara}', '{sekolah}'], 'Surat dari {penyelenggara}', 'Nomor dan tanggal surat undangan ditulis TU saat membuat surat.'],
+        'siswa_dasar' => ['Surat siswa: Dasar', 600, true, ['{sekolah}', '{tahun_ajaran}'], 'Peraturan Menteri Pendidikan Dasar dan Menengah Republik Indonesia Nomor 8 Tahun 2026 Hal : Penggunaan Dana BOS Kinerja bagi sekolah yang memiliki prestasi', 'Peraturan yang berlaku tahun ini. Tertulis di surat siswa sesudah "Dasar :".'],
         'siswa_intro' => ['Surat siswa: kalimat pembuka', 200, true, ['{sekolah}'], 'Kepala {sekolah} memberikan tugas kepada :', ''],
         'siswa_closing' => ['Surat siswa: kalimat penutup', 500, true, ['{sekolah}'], 'Demikian surat tugas ini dibuat dan diberikan kepada yang bersangkutan untuk dapat dilaksanakan sebagaimana mestinya dengan penuh tanggung jawab.', ''],
         'guru_basis_1' => ['Surat guru: Dasar nomor 1', 600, false, ['{sekolah}', '{tahun_ajaran}'], 'Peraturan Daerah Provinsi Jawa Tengah Nomor 11 Tahun 2025 tentang Anggaran Pendapatan Daerah dan Belanja Daerah Tahun Anggaran 2026 (Lembaran Daerah Provinsi Jawa Tengah Tahun 2025 Nomor 11, Tambahan Lembaran Provinsi Jawa Tengah Nomor 173) (tanggal 30 Desember 2025);', self::GURU_BASIS_HINT],
@@ -67,12 +74,14 @@ final readonly class LetterTemplate
 
     /**
      * @param  array<string, string>  $values  every key of FIELDS
+     * @param  string|null  $oldSiswaBasis  only from fromArray(): the `siswa_basis` text of a letter printed before D-154
      */
     public function __construct(
         public int $version,
         public array $values,
         public ?string $updatedAt = null,
         public ?string $updatedByName = null,
+        public ?string $oldSiswaBasis = null,
     ) {}
 
     /** @return array<string, string> */
@@ -105,7 +114,12 @@ final readonly class LetterTemplate
             return null;
         }
 
-        return new self($data['version'], self::merge($data['values']));
+        $values = $data['values'];
+        $old = ! array_key_exists('siswa_dasar', $values) && is_string($values[self::OLD_SISWA_BASIS] ?? null)
+            ? self::clean($values[self::OLD_SISWA_BASIS])
+            : null;
+
+        return new self($data['version'], self::merge($values), oldSiswaBasis: $old);
     }
 
     /** An unsaved draft (TU preview): same merge, no validation. */
@@ -150,6 +164,12 @@ final readonly class LetterTemplate
         return $values;
     }
 
+    /** Name of a field for TU (version history); the old student Dasar of saved versions before D-154 too. */
+    public static function label(string $field): string
+    {
+        return self::FIELDS[$field][0] ?? ($field === self::OLD_SISWA_BASIS ? self::FIELDS['siswa_dasar'][0] : $field);
+    }
+
     public function get(string $field): string
     {
         return $this->values[$field] ?? (self::FIELDS[$field][4] ?? '');
@@ -182,10 +202,19 @@ final readonly class LetterTemplate
         return $this->get('signer_title');
     }
 
-    /** @param string $from what Tata Usaha typed as "Surat dari" (prefilled with the penyelenggara) */
-    public function siswaBasis(string $from): string
+    /** The student letter's "Dasar" (D-154): the regulation text of the template. */
+    public function siswaDasar(string $schoolYear): string
     {
-        return $this->fill('siswa_basis', ['{penyelenggara}' => $from]);
+        return $this->fill('siswa_dasar', ['{tahun_ajaran}' => $schoolYear]);
+    }
+
+    /**
+     * A letter printed before D-154: its first Dasar row ("Surat dari <what TU typed>"), shown above its Nomor and
+     * Tanggal rows in the preview. Null for every other template.
+     */
+    public function oldSiswaBasis(string $from): ?string
+    {
+        return $this->oldSiswaBasis === null ? null : strtr($this->oldSiswaBasis, ['{sekolah}' => $this->school(), '{penyelenggara}' => $from]);
     }
 
     public function siswaIntro(): string

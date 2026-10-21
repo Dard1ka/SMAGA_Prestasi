@@ -1,17 +1,8 @@
-{{-- Tab "Batas & arsip" (Admin-Pengaturan.dc.html; 45 days after the final per D-25, not the mockup's 30). --}}
+{{-- Tab "Arsip akun" (key `batas`; "Batas & arsip" until FS1 QA). D-151: a laporan hasil has no deadline, so the tab only sets the archive. --}}
 <section aria-labelledby="h-batas" class="flex flex-col gap-5">
-    <x-sth.page-header id="h-batas" title="Batas & arsip" subtitle="Batas laporan hasil dan kapan akun siswa diarsipkan." />
+    <x-sth.page-header id="h-batas" title="Arsip akun" subtitle="Kapan akun siswa diarsipkan." />
 
-    <form wire:submit="save" class="grid gap-4 md:grid-cols-2" novalidate>
-        <x-sth.card as="section" aria-labelledby="h-batas-laporan" class="flex flex-col gap-3">
-            <h3 id="h-batas-laporan" class="title-card">Batas laporan hasil</h3>
-            <x-sth.input wire:model.live.debounce.400ms="reportDeadlineDays" type="number" min="1" max="365" inputmode="numeric"
-                         label="Hari setelah tanggal final" hint="Default 45 hari. Laporan lewat batas tampil di dashboard sekolah." />
-            @if ($deadlineExample)
-                <p class="text-sm muted">Contoh: {{ $deadlineExample }}</p>
-            @endif
-        </x-sth.card>
-
+    <form wire:submit="save" class="grid grid-cols-1 gap-4 md:grid-cols-2" novalidate>
         <x-sth.card as="section" aria-labelledby="h-batas-arsip" class="flex flex-col gap-3">
             <h3 id="h-batas-arsip" class="title-card">Arsip otomatis</h3>
             <x-sth.input wire:model.live.debounce.400ms="archiveMonths" type="number" min="1" max="120" inputmode="numeric"
@@ -22,7 +13,7 @@
         </x-sth.card>
 
         <div class="flex justify-end md:col-span-2">
-            <x-sth.button type="submit" wire:loading.attr="disabled" wire:target="save">Simpan batas</x-sth.button>
+            <x-sth.button type="submit" wire:loading.attr="disabled" wire:target="save">Simpan</x-sth.button>
         </div>
     </form>
 

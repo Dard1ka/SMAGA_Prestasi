@@ -72,8 +72,8 @@ use RuntimeException;
  *
  * - Staff sign in with their username (kesiswaan, kepsek, tu, humas, operator, retno.w, hendra.k, maya.a,
  *   agus.s) and the dev-only password "password".
- * - Students sign in with NIS or NISN; their password is the initial password built by
- *   App\Domain\Accounts\InitialPassword from the seeded birth date (must_change_password = true).
+ * - Students sign in with their NISN; their password is the initial password of App\Domain\Accounts\InitialPassword
+ *   (config `sth.initial_student_password`, D-138; must_change_password = true).
  * - Leaderboard totals match the spec (Raka 312 … Nadia 104 = #14 of active students).
  */
 final class DemoSeeder extends Seeder
@@ -94,30 +94,30 @@ final class DemoSeeder extends Seeder
         'agus' => ['Agus Setiawan, S.Or.', 'agus.s', RoleName::Guru, 'Pak', 'Guru pembina Olahraga', null],
     ];
 
-    /** key => [name, class, NIS, NISN, birth date, photo consent, alumni] — NIS pattern 22<yy><yy+1>NNN. Public: see STAFF. */
+    /** key => [name, class, NIS, NISN, birth date, alumni] — NIS pattern 22<yy><yy+1>NNN. Public: see STAFF. */
     public const STUDENTS = [
-        'nadia' => ['Nadia Putri Anindya', 'XI-4', '225226201', '0098765432', '2009-03-02', true, false],
-        'dimas' => ['Dimas Arya Nugroho', 'XI-4', '225226204', '0093417728', '2009-07-19', false, false],
-        'keisha' => ['Keisha Larasati', 'XI-6', '225226166', '0095263014', '2009-11-08', false, false],
-        'raka' => ['Raka Pradipta', 'XII-2', '224225108', '0087315529', '2008-05-14', true, false],
-        'salsabila' => ['Salsabila Kirana', 'XI-5', '225226157', '0094128806', '2009-09-23', false, false],
-        'bima' => ['Bima Satria Wicaksono', 'XII-7', '224225219', '0086650213', '2008-12-01', false, false],
-        'aurelia' => ['Aurelia Maharani', 'X-3', '226227031', '0101482657', '2010-04-11', true, false],
-        'fajar' => ['Fajar Ramadhan', 'XII-1', '224225012', '0085902347', '2008-10-05', false, false],
-        'citra' => ['Citra Ayu Lestari', 'XI-2', '225226073', '0096604581', '2009-06-17', false, false],
-        'yoga' => ['Yoga Pratama', 'XII-5', '224225147', '0088123906', '2008-02-27', false, false],
-        'hana' => ['Hana Safira', 'X-8', '226227088', '0103519214', '2010-08-30', false, false],
-        'rizky' => ['Rizky Maulana', 'XI-1', '225226118', '0092745530', '2009-01-12', false, false],
-        'farhan' => ['Farhan Aditya', 'XI-3', '225226092', '0097381145', '2009-05-04', false, false],
-        'laras' => ['Laras Wening Pangestu', 'XI-7', '225226181', '0091836627', '2009-10-21', false, false],
-        'galuh' => ['Galuh Prameswari', 'XII-4', '224225066', '0084471935', '2008-07-09', false, false],
-        'bayu' => ['Bayu Anggara', 'XII-6', '224225031', '0089254410', '2008-03-15', false, false],
-        'galang' => ['Galang Putra Mahendra', 'X-TAHFIDZ', '226227004', '0102736486', '2010-12-03', false, false],
+        'nadia' => ['Nadia Putri Anindya', 'XI-D', '225226201', '0098765432', '2009-03-02', false],
+        'dimas' => ['Dimas Arya Nugroho', 'XI-D', '225226204', '0093417728', '2009-07-19', false],
+        'keisha' => ['Keisha Larasati', 'XI-F', '225226166', '0095263014', '2009-11-08', false],
+        'raka' => ['Raka Pradipta', 'XII-B', '224225108', '0087315529', '2008-05-14', false],
+        'salsabila' => ['Salsabila Kirana', 'XI-E', '225226157', '0094128806', '2009-09-23', false],
+        'bima' => ['Bima Satria Wicaksono', 'XII-G', '224225219', '0086650213', '2008-12-01', false],
+        'aurelia' => ['Aurelia Maharani', 'X-C', '226227031', '0101482657', '2010-04-11', false],
+        'fajar' => ['Fajar Ramadhan', 'XII-A', '224225012', '0085902347', '2008-10-05', false],
+        'citra' => ['Citra Ayu Lestari', 'XI-B', '225226073', '0096604581', '2009-06-17', false],
+        'yoga' => ['Yoga Pratama', 'XII-E', '224225147', '0088123906', '2008-02-27', false],
+        'hana' => ['Hana Safira', 'X-H', '226227088', '0103519214', '2010-08-30', false],
+        'rizky' => ['Rizky Maulana', 'XI-A', '225226118', '0092745530', '2009-01-12', false],
+        'farhan' => ['Farhan Aditya', 'XI-C', '225226092', '0097381145', '2009-05-04', false],
+        'laras' => ['Laras Wening Pangestu', 'XI-G', '225226181', '0091836627', '2009-10-21', false],
+        'galuh' => ['Galuh Prameswari', 'XII-D', '224225066', '0084471935', '2008-07-09', false],
+        'bayu' => ['Bayu Anggara', 'XII-F', '224225031', '0089254410', '2008-03-15', false],
+        'galang' => ['Galang Putra Mahendra', 'X-A', '226227004', '0102736486', '2010-12-03', false],
         // Alumni: angkatan 2022, kelas XII from July 2024, archived 1 January 2026.
-        'ardiansyah' => ['Ardiansyah Nur Hakim', 'XII-3', '222223041', '0067219043', '2006-09-18', false, true],
-        'tiara' => ['Tiara Anjani Lestari', 'XII-8', '222223187', '0065508172', '2006-11-25', false, true],
-        'putri' => ['Putri Maharani Kusuma', 'XII-1', '222223112', '0066341809', '2006-04-02', false, true],
-        'bagas' => ['Bagas Wirayudha', 'XII-5', '222223009', '0064792251', '2006-08-07', false, true],
+        'ardiansyah' => ['Ardiansyah Nur Hakim', 'XII-C', '222223041', '0067219043', '2006-09-18', true],
+        'tiara' => ['Tiara Anjani Lestari', 'XII-H', '222223187', '0065508172', '2006-11-25', true],
+        'putri' => ['Putri Maharani Kusuma', 'XII-A', '222223112', '0066341809', '2006-04-02', true],
+        'bagas' => ['Bagas Wirayudha', 'XII-E', '222223009', '0064792251', '2006-08-07', true],
     ];
 
     /**
@@ -211,6 +211,8 @@ final class DemoSeeder extends Seeder
         'popda26' => ['Popda Kota Semarang 2026', 'olahraga', 'kota', 'dispora', '2026-09-12', '2026-09-12', 'Kota Semarang'],
         'taripelajar26' => ['Festival Tari Pelajar Semarang 2026', 'seni_budaya', 'kota', 'sanggar', '2026-09-05', '2026-09-05', 'Kota Semarang'],
         'wice26' => ['WICE 2026', 'riset', 'internasional', 'iysa', '2026-09-21', '2026-09-24', 'SEGi University, Kuala Lumpur', 'luring', 'tim', 3],
+        // Nadia and Raka as a team: the lomba is over, only the laporan hasil is left.
+        'lctmipa26' => ['LCT MIPA Kota Semarang 2026', 'sains', 'kota', 'disdikkota', '2026-10-03', '2026-10-03', 'Kota Semarang', 'luring', 'tim', 3],
     ];
 
     /**
@@ -430,7 +432,7 @@ final class DemoSeeder extends Seeder
         $initialPassword = app(InitialPassword::class);
         $graduation = app(GraduationCalculator::class);
 
-        foreach (self::STUDENTS as $key => [$name, $class, $nis, $nisn, $birthDate, $photoConsent, $alumni]) {
+        foreach (self::STUDENTS as $key => [$name, $class, $nis, $nisn, $birthDate, $alumni]) {
             $importYear = $alumni ? '2024/2025' : '2026/2027';
             $dates = $graduation->calculate((int) Classroom::levelFromName($class), $importYear);
 
@@ -438,7 +440,7 @@ final class DemoSeeder extends Seeder
                 'name' => $name,
                 'email' => null,
                 // Hashed by the model cast; the plain value is never stored or printed.
-                'password' => $initialPassword->make($birthDate),
+                'password' => $initialPassword->make(),
                 'status' => $alumni ? UserStatus::Archived : UserStatus::PendingActivation,
                 'must_change_password' => ! $alumni,
             ]);
@@ -454,8 +456,6 @@ final class DemoSeeder extends Seeder
                 'grade12_start_date' => $dates->grade12StartDate->format('Y-m-d'),
                 'archive_at' => $dates->archiveAt->format('Y-m-d'),
                 'phone' => null,
-                'photo_consent' => $photoConsent,
-                'publish_consent' => true,
             ]);
         }
     }
@@ -563,7 +563,8 @@ final class DemoSeeder extends Seeder
             // Seven of the eight carry a cover (the list is DemoCoverArt::POSTERS); KRENOVA 2027 shows a card without one.
             $cover = DemoCoverArt::fileNameFor($name);
 
-            $this->competitions[$key] = Competition::query()->create([
+            // Status, verifier and weights are not fillable (CLAUDE §3.6): forceFill, like the Actions.
+            $this->competitions[$key] = tap((new Competition)->forceFill([
                 'name' => $name,
                 'description' => 'Info lomba contoh untuk pengembangan (data fiktif). Baca juknis untuk syarat lengkap.',
                 'bidang' => Bidang::from($bidang),
@@ -591,7 +592,7 @@ final class DemoSeeder extends Seeder
                 'verified_by' => $kesiswaan->getKey(),
                 'verified_at' => min($opens, '2026-09-25').' 08:00:00',
                 'created_at' => min($opens, '2026-09-25').' 07:30:00',
-            ]);
+            ]))->save();
         }
     }
 
@@ -607,7 +608,7 @@ final class DemoSeeder extends Seeder
         foreach ($proposals as [$name, $bidang, $organizer, $url, $brochure, $studentKey, $createdAt]) {
             $userId = $this->students[$studentKey]->user_id;
 
-            Competition::query()->create([
+            tap((new Competition)->forceFill([
                 'name' => $name,
                 'bidang' => Bidang::from($bidang),
                 'organizer_name' => $organizer,
@@ -617,7 +618,7 @@ final class DemoSeeder extends Seeder
                 'submitted_by' => $userId,
                 'created_at' => $createdAt,
                 'updated_at' => $createdAt,
-            ]);
+            ]))->save();
         }
     }
 
@@ -631,6 +632,15 @@ final class DemoSeeder extends Seeder
             'updated' => CarbonImmutable::parse('2026-09-25 01:00'),
         ]);
         $this->issueLetters($wice, 312, 1680, '2026-09-08', 'wice26');
+
+        // Nadia b: LCT MIPA 2026 with Raka — letters issued 4 Sep (numbers below WICE's, so the last numbers of the
+        // year stay 312 / 1680), the lomba was on 3 Oct: the ketua only has to report the result (not riset, so the
+        // report is the result and a certificate).
+        $lct = $this->registration('lctmipa26', ['nadia', 'raka'], 'hendra', RegistrationStatus::MenungguLaporan, CarbonImmutable::parse('2026-08-31 09:20'), [
+            'approved' => CarbonImmutable::parse('2026-09-02 10:00'),
+            'updated' => CarbonImmutable::parse('2026-10-04 01:00'),
+        ]);
+        $this->issueLetters($lct, 305, 1664, '2026-09-04', 'lctmipa26');
 
         // Kepala Sekolah queue (5), all registered 29 Sep.
         $this->registration('lpb26', ['nadia', 'dimas'], 'retno', RegistrationStatus::MenungguKepsek, CarbonImmutable::parse('2026-09-29 09:12'));
@@ -740,7 +750,10 @@ final class DemoSeeder extends Seeder
         return $registration;
     }
 
-    /** Both letters of a registration; they answer the invitation DemoLetterBasis gives the lomba's demo key (QA5). */
+    /**
+     * Both letters of a registration; they answer the invitation DemoLetterBasis gives the lomba's demo key (QA5). The
+     * student letter prints it as "Dasar" number 2 after the template's regulation text (D-157).
+     */
     private function issueLetters(Registration $registration, int $siswaSequence, int $guruSequence, string $issuedOn, string $slug): void
     {
         $issued = CarbonImmutable::parse($issuedOn.' 10:00');
@@ -792,7 +805,7 @@ final class DemoSeeder extends Seeder
         $starts = CarbonImmutable::parse($startsOn);
         $kesiswaan = $this->staff['kesiswaan']->getKey();
 
-        return $this->competitions[$key] = Competition::query()->create([
+        return $this->competitions[$key] = tap((new Competition)->forceFill([
             'name' => $name,
             'bidang' => Bidang::from($bidang),
             'organizer_name' => $organizerName,
@@ -815,7 +828,7 @@ final class DemoSeeder extends Seeder
             'verified_at' => $starts->subDays(36)->setTime(8, 0),
             'created_at' => $starts->subDays(36)->setTime(7, 30),
             'updated_at' => $starts->addDays(1),
-        ]);
+        ]))->save();
     }
 
     // Humas ----------------------------------------------------------------------------------
@@ -885,37 +898,43 @@ final class DemoSeeder extends Seeder
         $types = TalentType::query()->get()->keyBy(fn (TalentType $type) => $type->code->value);
         $branches = TalentBranch::query()->get()->groupBy('talent_type_id');
 
-        // [student, type, branch, status, mentor, assessment on, evidence file, submitted on] — mockup-v2-notes/T2.md
+        // [student, type, branch, guru pembina, evidence file, submitted on, "Lainnya" text] — mockup-v2-notes/T2.md.
+        // D-142: no stages any more; every row is Terdaftar and the guru pembina is optional. D-143: Keisha's own talent.
+        // Every kelas X student of the demo (Aurelia, Hana, Galang) has a choice, so the D-144 gate lets them through.
         $applications = [
-            ['nadia', 'riset', 'OPSI', TalentStatus::Pembinaan, 'retno', null, 'sertifikat-opsi-2026.pdf', '2026-09-16'],
-            ['nadia', 'osn', 'Kimia', TalentStatus::Terdaftar, null, null, null, '2026-09-29'],
-            ['hana', 'osn', 'Biologi', TalentStatus::Pemetaan, 'hendra', '2026-10-07', 'sertifikat-osn-smp-biologi-2025.pdf', '2026-09-17'],
-            ['rizky', 'osn', 'Kimia', TalentStatus::Seleksi, 'hendra', '2026-10-05', 'sertifikat-okn-undip-2026.pdf', '2026-09-16'],
-            ['salsabila', 'fls3n', 'Baca Puisi', TalentStatus::Pembinaan, 'maya', null, 'sertifikat-fls3n-prov-2026.pdf', '2026-09-16'],
-            ['citra', 'fls3n', 'Tari Kreasi', TalentStatus::Pemetaan, 'maya', '2026-10-09', 'sertifikat-festival-tari-2026.pdf', '2026-09-21'],
-            ['fajar', 'o2sn', 'Pencak Silat', TalentStatus::Pembinaan, 'agus', null, 'piagam-o2sn-prov-2026.pdf', '2026-09-16'],
-            ['aurelia', 'debat', 'Debat Bahasa Indonesia (LDBI)', TalentStatus::Seleksi, 'maya', '2026-10-06', null, '2026-09-18'],
-            ['galang', 'olpain', null, TalentStatus::Terdaftar, null, null, 'sertifikat-olimpiade-pai-smp-2025.pdf', '2026-09-28'],
-            ['bima', 'riset', 'FIKSI', TalentStatus::Seleksi, 'retno', '2026-10-08', 'sertifikat-robotik-nasional-2025.pdf', '2026-09-17'],
+            ['nadia', 'riset', 'OPSI', 'retno', 'sertifikat-opsi-2026.pdf', '2026-09-16', null],
+            ['nadia', 'osn', 'Kimia', null, null, '2026-09-29', null],
+            ['hana', 'osn', 'Biologi', 'hendra', 'sertifikat-osn-smp-biologi-2025.pdf', '2026-09-17', null],
+            ['rizky', 'osn', 'Kimia', 'hendra', 'sertifikat-okn-undip-2026.pdf', '2026-09-16', null],
+            ['salsabila', 'fls3n', 'Baca Puisi', 'maya', 'sertifikat-fls3n-prov-2026.pdf', '2026-09-16', null],
+            ['citra', 'fls3n', 'Tari Kreasi', 'maya', 'sertifikat-festival-tari-2026.pdf', '2026-09-21', null],
+            ['fajar', 'o2sn', 'Pencak Silat', 'agus', 'piagam-o2sn-prov-2026.pdf', '2026-09-16', null],
+            ['aurelia', 'debat', 'Debat Bahasa Indonesia (LDBI)', 'maya', null, '2026-09-18', null],
+            ['galang', 'olpain', null, null, 'sertifikat-olimpiade-pai-smp-2025.pdf', '2026-09-28', null],
+            ['bima', 'riset', 'FIKSI', 'retno', 'sertifikat-robotik-nasional-2025.pdf', '2026-09-17', null],
+            ['keisha', 'lainnya', null, null, null, '2026-09-30', 'Kaligrafi'],
         ];
 
-        foreach ($applications as [$studentKey, $code, $branchName, $status, $mentor, $assessmentOn, $evidence, $submittedOn]) {
+        foreach ($applications as [$studentKey, $code, $branchName, $mentor, $evidence, $submittedOn, $otherText]) {
             $type = $types[TalentTypeCode::from($code)->value];
             $branch = $branchName === null ? null : $branches[$type->getKey()]->firstWhere('name', $branchName)
                 ?? throw new RuntimeException("Cabang talenta tidak ditemukan: {$code} / {$branchName}");
             $student = $this->students[$studentKey];
 
-            TalentApplication::query()->create([
+            // `other_text`, `status` and `mentor_id` are not mass-assignable (app/Actions/Talent only).
+            $application = new TalentApplication([
                 'student_id' => $student->getKey(),
                 'talent_type_id' => $type->getKey(),
                 'talent_branch_id' => $branch?->getKey(),
                 'evidence_file_id' => $evidence === null ? null : DemoFiles::pdf($evidence, FilePurpose::TalentEvidence, $student->user_id)->getKey(),
-                'status' => $status,
+            ]);
+            $application->forceFill([
+                'status' => TalentStatus::Terdaftar,
                 'mentor_id' => $mentor === null ? null : $this->staff[$mentor]->getKey(),
-                'assessment_on' => $assessmentOn,
+                'other_text' => $otherText,
                 'created_at' => $submittedOn.' 18:00:00',
                 'updated_at' => $submittedOn.' 18:00:00',
-            ]);
+            ])->save();
         }
 
         // Riwayat talenta: [interests, skills, organizations, junior-high achievements]

@@ -164,8 +164,13 @@ function qa5AuditEventKeys(): array
             array_push($keys, ...$quoted[1]);
         }
 
-        preg_match_all("/const EVENT_[A-Z_]+ = '([a-z_]+\.[a-z_.]+)'/", $code, $constants);
+        // EVENT_FOO and AUDIT_EVENT constants (PrintAppreciationList).
+        preg_match_all("/const [A-Z_]*EVENT[A-Z_]* = '([a-z_]+\.[a-z_.]+)'/", $code, $constants);
         array_push($keys, ...$constants[1]);
+
+        // A private audit($actor, $subject, 'event.key', …) helper (ResumeWaitingRegistrations, FS1 fix wave).
+        preg_match_all("/->audit\([^;]*?'([a-z_]+\.[a-z_.]+)'/s", $code, $helpers);
+        array_push($keys, ...$helpers[1]);
     }
 
     // Built at runtime from a variable: SetNewPassword's reasons, FileController, SchedulePublication, the scheduled
@@ -195,4 +200,28 @@ it('never prints an event key twice when a row has no label', function (): void 
         ->assertSee('Siswa mendaftar talenta')
         ->assertSee('Berkas di-download')
         ->assertDontSee('file.downloaded file.downloaded');
+});
+
+it('labels the events FS1 added and the talent delete of D-142 (FS1 fix wave)', function (): void {
+    expect(qa5AuditEventKeys())->toContain('registration.resumed', 'appreciation.list_printed', 'registration.cancelled');
+
+    activity('registration')->causedBy($this->admin)->event('registration.resumed')->log('registration.resumed');
+    activity('talent')->causedBy($this->admin)->event('talent.cancelled')->log('talent.cancelled');
+
+    $this->actingAs($this->admin)->get(route('admin.audit.index'))
+        ->assertOk()
+        ->assertSee('Pendaftaran dilanjutkan setelah lomba dipublikasikan')
+        ->assertSee('Pilihan talenta dihapus siswa')
+        ->assertDontSee('Pilihan talenta dibatalkan siswa');
+});
+
+it('labels a guru change at an approval without naming one deciding role (D-150, FS1 B3 review)', function (): void {
+    $kepsek = A::staff(RoleName::KepalaSekolah, ['name' => 'Drs. Bambang Hartono, M.Pd.']);
+    activity('registration')->causedBy($kepsek)->event('registration.mentor_changed')
+        ->withProperties(['from' => 11, 'to' => 12])->log('registration.mentor_changed');
+
+    $this->actingAs($this->admin)->get(route('admin.audit.index'))
+        ->assertOk()
+        ->assertSee('Guru pembimbing diganti saat persetujuan')
+        ->assertDontSee('Guru pembimbing diganti Kepala Sekolah');
 });

@@ -11,7 +11,7 @@
                 <x-sth.button variant="soft" size="sm" icon="download" wire:click="export" wire:loading.attr="disabled" wire:target="export">Download CSV</x-sth.button>
             </span>
         </div>
-        <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
             <x-sth.select wire:model.live="pelaku" label="Pelaku" :options="$actorOptions" />
             <x-sth.select wire:model.live="peristiwa" label="Peristiwa" :options="$eventOptions" />
             <x-sth.select wire:model.live="subjek" label="Subjek" placeholder="Semua subjek" :options="$subjectOptions" />

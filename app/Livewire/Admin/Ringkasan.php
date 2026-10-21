@@ -5,9 +5,10 @@ declare(strict_types=1);
 namespace App\Livewire\Admin;
 
 use App\Actions\Accounts\VerifyOtpCode;
-use App\Enums\RoleName;
+use App\Actions\Registrations\CreateRegistration;
 use App\Enums\SettingKey;
 use App\Enums\UserStatus;
+use App\Http\Middleware\EnsureStaffTwoFactor;
 use App\Models\PrincipalReplacement;
 use App\Models\Setting;
 use App\Models\Student;
@@ -23,8 +24,8 @@ use Spatie\Activitylog\Models\Activity;
 
 /**
  * Admin "Status sistem" (route admin.ringkasan, W2-D addition; the Admin landing admin.beranda is the shared
- * Sekolah\Dashboard, UI-MAP #20): account counts, things that block the school's flow (no signature, no
- * Kepala Sekolah, staff without 2FA, OTP test mode), quick links and the latest Admin audit entries.
+ * Sekolah\Dashboard, UI-MAP #20): account counts, things that block the school's flow (no signature, nobody who
+ * may approve a registration, staff without 2FA, OTP test mode), quick links and the latest Admin audit entries.
  * Aggregate queries only.
  */
 #[Title('Status sistem')]
@@ -53,7 +54,7 @@ final class Ringkasan extends Component
         'principal.applied' => 'Kepala Sekolah diganti',
         'weight.published' => 'Bobot poin diubah',
         'weight.recomputed' => 'Poin dihitung ulang',
-        'settings.limits_updated' => 'Batas & arsip diubah',
+        'settings.limits_updated' => 'Arsip akun diubah',
         'settings.signer_updated' => 'Penandatangan diubah',
         'settings.letter_formats_updated' => 'Format nomor surat diubah',
         'settings.public_updated' => 'Halaman publik diubah',
@@ -69,14 +70,19 @@ final class Ringkasan extends Component
     public function render(): View
     {
         $today = CarbonImmutable::today();
-        $staffWithout2fa = User::query()->staff()->canLogIn()->whereNull('two_factor_confirmed_at')->count();
+        // Nothing about 2FA while it does not exist in the app (STH_STAFF_2FA=false).
+        $staffWithout2fa = EnsureStaffTwoFactor::featureEnabled()
+            ? User::query()->staff()->canLogIn()->whereNull('two_factor_confirmed_at')->count()
+            : 0;
 
         $attention = array_values(array_filter([
             Setting::get(SettingKey::SignatureFileId) === null
                 ? ['tone' => 'warning', 'text' => 'Belum ada tanda tangan + stempel. TU belum bisa membuat surat tugas.', 'href' => route('admin.pengaturan', ['tab' => 'surat']), 'link' => 'Upload tanda tangan']
                 : null,
-            User::query()->role(RoleName::KepalaSekolah->value)->canLogIn()->doesntExist()
-                ? ['tone' => 'warning', 'text' => 'Belum ada akun Kepala Sekolah. Pendaftaran lomba tidak bisa disetujui.', 'href' => route('admin.pengaturan', ['tab' => 'pengguna']), 'link' => 'Tetapkan Kepala Sekolah']
+            // D-150: Kepala Sekolah or Tata Usaha approves, so only nobody who may approve blocks registrations. A missing
+            // Kepala Sekolah account alone is shown where it matters, next to the letter signer (Pengaturan › Surat).
+            CreateRegistration::principals()->isEmpty()
+                ? ['tone' => 'warning', 'text' => 'Belum ada akun Kepala Sekolah atau Tata Usaha yang aktif. Pendaftaran lomba tidak bisa disetujui.', 'href' => route('admin.pengaturan', ['tab' => 'pengguna']), 'link' => 'Tetapkan Kepala Sekolah']
                 : null,
             ($pending = PrincipalReplacement::query()->pending()->with('toUser:id,name')->first()) !== null
                 ? ['tone' => 'info', 'text' => 'Penggantian Kepala Sekolah ke '.$pending->toUser?->name.' berlaku '.$pending->effective_at->translatedFormat('j M Y H:i').'.', 'href' => route('admin.pengaturan', ['tab' => 'pengguna']), 'link' => 'Lihat']

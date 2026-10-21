@@ -2,9 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Actions\Talent\RejectTalentApplication;
-use App\Actions\Talent\RestoreTalentApplication;
-use App\Enums\CompetitionStatus;
+use App\Actions\Talent\UpdateTalentAssessment;
 use App\Enums\FilePurpose;
 use App\Enums\LetterType;
 use App\Enums\RegistrationStatus;
@@ -15,7 +13,6 @@ use App\Enums\RoleName;
 use App\Livewire\Guru\Binaan;
 use App\Livewire\Guru\BinaanDetail;
 use App\Livewire\Guru\Lomba;
-use App\Livewire\Lomba\UsulanForm;
 use App\Models\Competition;
 use App\Models\File;
 use App\Models\Letter;
@@ -25,7 +22,6 @@ use App\Models\ReportFile;
 use App\Models\User;
 use App\Support\Navigation;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Notification;
 use Livewire\Livewire;
 use Tests\Feature\Guru\GuruFixtures;
@@ -46,9 +42,9 @@ beforeEach(function (): void {
     $this->retno = GuruFixtures::guru('Retno Wulandari, S.Pd.');
     $this->hendra = GuruFixtures::guru('Hendra Kusuma, S.Pd., M.Si.');
 
-    $this->nadia = GuruFixtures::student('Nadia Putri Anindya', 'XI-4');
-    $this->dimas = GuruFixtures::student('Dimas Arya Nugroho', 'XI-4');
-    $this->raka = GuruFixtures::student('Raka Pradipta', 'XII-2');
+    $this->nadia = GuruFixtures::student('Nadia Putri Anindya', 'XI-D');
+    $this->dimas = GuruFixtures::student('Dimas Arya Nugroho', 'XI-D');
+    $this->raka = GuruFixtures::student('Raka Pradipta', 'XII-B');
 
     $this->wice = KesiswaanFixtures::competition(['name' => 'WICE 2026']);
     $this->nsif = KesiswaanFixtures::competition(['name' => 'NSIF 2026']);
@@ -80,7 +76,7 @@ it('answers 404 for a registration the guru does not mentor', function (): void 
     $this->actingAs($this->retno)->get(route('guru.binaan.show', $this->other))->assertNotFound();
     $this->actingAs($this->hendra)->get(route('guru.binaan.show', $this->mine))->assertNotFound();
 
-    $unassigned = GuruFixtures::registration(null, GuruFixtures::student('Hana Safira', 'X-8'));
+    $unassigned = GuruFixtures::registration(null, GuruFixtures::student('Hana Safira', 'X-H'));
     $this->actingAs($this->retno)->get(route('guru.binaan.show', $unassigned))->assertNotFound();
 
     $this->actingAs($this->retno)->get('/guru/binaan/bukan-ulid')->assertNotFound();
@@ -113,8 +109,8 @@ it('keeps gurus out of the Kesiswaan database prestasi', function (): void {
 // Siswa binaan ------------------------------------------------------------------------------------
 
 it('lists only the own binaan with status and stats', function (): void {
-    GuruFixtures::talent($this->retno, GuruFixtures::student('Aurelia Maharani', 'X-3'));
-    GuruFixtures::talent($this->hendra, GuruFixtures::student('Fajar Ramadhan', 'XII-1'));
+    GuruFixtures::talent($this->retno, GuruFixtures::student('Aurelia Maharani', 'X-C'));
+    GuruFixtures::talent($this->hendra, GuruFixtures::student('Fajar Ramadhan', 'XII-A'));
 
     Livewire::actingAs($this->retno)->test(Binaan::class)
         ->assertSee('WICE 2026')
@@ -126,33 +122,24 @@ it('lists only the own binaan with status and stats', function (): void {
         ->assertViewHas('counts', fn (array $c): bool => $c['siswa'] === 3 && $c['aktif'] === 1 && $c['laporan'] === 1 && $c['talenta'] === 1)
         ->call('setTab', 'talenta')
         ->assertSee('Aurelia Maharani')
-        ->assertSee('Seleksi/asesmen')
+        ->assertDontSee('Seleksi/asesmen')
         ->assertDontSee('Fajar Ramadhan');
 });
 
-it('shows the note for the guru pembina in the Talenta tab, never the note for the student, and a restored choice in its stage', function (): void {
+it('shows the note for the guru pembina in the Talenta tab and never a stage', function (): void {
     $kesiswaan = KesiswaanFixtures::staff(RoleName::Kesiswaan, 'Ibu Dwi Rahayu');
-    $application = GuruFixtures::talent($this->retno, GuruFixtures::student('Aurelia Maharani', 'X-3'));
+    $application = GuruFixtures::talent($this->retno, GuruFixtures::student('Aurelia Maharani', 'X-C'));
+    $application->forceFill(['student_note' => 'Catatan lama untuk siswa.'])->save();
 
-    app(RejectTalentApplication::class)->handle($kesiswaan, $application, 'Catatan yang hanya untuk siswa.', ['note' => 'Dampingi latihan soal tiap Kamis.']);
+    app(UpdateTalentAssessment::class)->handle($kesiswaan, $application, ['mentor_id' => $this->retno->getKey(), 'note' => 'Dampingi latihan soal tiap Kamis.']);
 
     Livewire::actingAs($this->retno)->test(Binaan::class)
         ->call('setTab', 'talenta')
         ->assertSee('Aurelia Maharani')
-        ->assertSee('Tidak lolos')
         ->assertSee('Catatan untuk pembina:')
         ->assertSee('Dampingi latihan soal tiap Kamis.')
-        ->assertDontSee('Catatan yang hanya untuk siswa.');
-
-    app(RestoreTalentApplication::class)->handle($kesiswaan, $application->fresh(), 'Dibuka lagi untukmu.');
-
-    Livewire::actingAs($this->retno)->test(Binaan::class)
-        ->call('setTab', 'talenta')
-        ->assertSee('Aurelia Maharani')
-        ->assertSee('Seleksi/asesmen')
-        ->assertDontSee('Tidak lolos')
-        ->assertSee('Dampingi latihan soal tiap Kamis.')
-        ->assertDontSee('Dibuka lagi untukmu.')
+        ->assertDontSee('Catatan lama untuk siswa.')
+        ->assertDontSee('Tahap')
         ->assertViewHas('counts', fn (array $c): bool => $c['talenta'] === 1);
 
     // Still only the assigned pembina.
@@ -162,7 +149,7 @@ it('shows the note for the guru pembina in the Talenta tab, never the note for t
 });
 
 it('separates finished registrations and searches by student or lomba', function (): void {
-    $done = GuruFixtures::registration($this->retno, GuruFixtures::student('Citra Ayu Lestari', 'XI-2'), RegistrationStatus::Selesai,
+    $done = GuruFixtures::registration($this->retno, GuruFixtures::student('Citra Ayu Lestari', 'XI-B'), RegistrationStatus::Selesai,
         competition: KesiswaanFixtures::competition(['name' => 'FLS3N Kota 2026']));
 
     Livewire::actingAs($this->retno)->test(Binaan::class)
@@ -230,31 +217,26 @@ it('shows surat tugas to the mentor only after TU sent them', function (): void 
 
 // Lomba ---------------------------------------------------------------------------------------------
 
-it('lists the published catalog and only the own uploads with their status', function (): void {
+it('lists only the published catalog for a guru', function (): void {
+    // D-145: a guru no longer uploads lomba info, so there is no "Upload saya" tab; an old upload stays in the database.
     $pending = Competition::factory()->create(['name' => 'Lomba Esai Guru 2026']);
     $pending->forceFill(['submitted_by' => $this->retno->getKey()])->save();
-    $rejected = Competition::factory()->create(['name' => 'Lomba Poster Lama']);
-    $rejected->forceFill(['submitted_by' => $this->retno->getKey(), 'status' => CompetitionStatus::Ditolak, 'verification_note' => 'Sudah lewat.', 'verified_at' => now()])->save();
-    $foreign = Competition::factory()->create(['name' => 'Usulan Pak Hendra']);
-    $foreign->forceFill(['submitted_by' => $this->hendra->getKey()])->save();
 
     Livewire::actingAs($this->retno)->test(Lomba::class)
         ->assertSee('WICE 2026')
         ->assertSee('NSIF 2026')
         ->assertDontSee('Lomba Esai Guru 2026')
-        ->assertDontSee('Usulan Pak Hendra')
-        ->call('setTab', 'unggahan')
-        ->assertSee('Lomba Esai Guru 2026')
-        ->assertSee('Menunggu verifikasi')
-        ->assertSee('Lomba Poster Lama')
-        ->assertSee('Sudah lewat.')
-        ->assertDontSee('Usulan Pak Hendra')
-        ->assertDontSee('WICE 2026')
-        ->assertViewHas('counts', fn (array $c): bool => $c['unggahan'] === 2 && $c['menunggu'] === 1);
+        ->assertDontSee('Upload saya')
+        ->assertDontSee('Upload info lomba');
+
+    // The old upload still opens in the drawer for the guru who sent it (CompetitionPolicy::view).
+    $this->actingAs($this->retno)->get(route('guru.lomba.index', ['lihat' => $pending->getKey()]))
+        ->assertOk()
+        ->assertSee('Lomba Esai Guru 2026');
 });
 
 it('opens the detail drawer for a visible lomba and 404 for an invisible one', function (): void {
-    GuruFixtures::registration($this->retno, GuruFixtures::student('Bima Satria Wicaksono', 'XII-4'), competition: $this->nsif);
+    GuruFixtures::registration($this->retno, GuruFixtures::student('Bima Satria Wicaksono', 'XII-D'), competition: $this->nsif);
     $foreign = Competition::factory()->create(['name' => 'Usulan Pak Hendra']);
     $foreign->forceFill(['submitted_by' => $this->hendra->getKey()])->save();
 
@@ -265,57 +247,6 @@ it('opens the detail drawer for a visible lomba and 404 for an invisible one', f
 
     $this->actingAs($this->retno)->get(route('guru.lomba.index', ['lihat' => $foreign->getKey()]))->assertNotFound();
     $this->actingAs($this->retno)->get(route('guru.lomba.index', ['lihat' => 'xyz']))->assertNotFound();
-});
-
-it('uploads lomba info through the shared usulan form into the verification queue', function (): void {
-    // The sheet is shared with the siswa usulan, so a guru owes the same evidence.
-    Livewire::actingAs($this->retno)->test(UsulanForm::class)
-        ->set('name', 'Olimpiade Guru Penggerak 2026')
-        ->set('organizer_name', 'Dinas Pendidikan')
-        ->call('kirim')
-        ->assertHasErrors(['website_url' => 'required', 'brosur' => 'required'])
-        ->set('website_url', 'https://olimpiade.example.id')
-        ->set('brosur', UploadedFile::fake()->createWithContent('juknis.pdf', "%PDF-1.4\n1 0 obj << /Type /Catalog >> endobj\ntrailer << /Root 1 0 R >>\n%%EOF"))
-        ->call('kirim')
-        ->assertHasNoErrors()
-        ->assertDispatched('usulan-terkirim');
-
-    $competition = Competition::query()->where('name', 'Olimpiade Guru Penggerak 2026')->firstOrFail();
-
-    expect($competition->status)->toBe(CompetitionStatus::MenungguVerifikasi)
-        ->and((int) $competition->submitted_by)->toBe($this->retno->getKey());
-
-    Livewire::actingAs($this->retno)->test(Lomba::class)
-        ->dispatch('usulan-terkirim')
-        ->assertSet('tab', 'unggahan')
-        ->assertSee('Olimpiade Guru Penggerak 2026');
-});
-
-it('names the upload sheet like the button that opens it, not "Usulkan lomba"', function (): void {
-    // One name per thing: the guru presses "Upload info lomba", so the shared sheet says that too.
-    $this->actingAs($this->retno)->get(route('guru.lomba.index'))
-        ->assertOk()
-        ->assertSee('Upload info lomba')
-        ->assertSee('Kirim info lomba')
-        ->assertDontSee('Usulkan lomba')
-        ->assertDontSee('Kirim usulan');
-
-    Livewire::actingAs($this->retno)->test(UsulanForm::class, ['upload' => true])
-        ->set('name', 'Lomba Karya Tulis Guru 2026')
-        ->set('organizer_name', 'Dinas Pendidikan')
-        ->set('website_url', 'https://lkt.example.id')
-        ->set('brosur', UploadedFile::fake()->createWithContent('juknis.pdf', "%PDF-1.4\n1 0 obj << /Type /Catalog >> endobj\ntrailer << /Root 1 0 R >>\n%%EOF"))
-        ->call('kirim')
-        ->assertHasNoErrors()
-        ->assertSee('Info lomba terkirim')
-        ->assertSee('Upload lagi')
-        ->assertDontSee('Usulan terkirim')
-        // "Upload lagi" empties the form and keeps the wording of the page.
-        ->call('ulang')
-        ->assertSet('sent', false)
-        ->assertSet('upload', true)
-        ->assertSee('Kirim info lomba')
-        ->assertDontSee('Kirim usulan');
 });
 
 it('enables the guru menu items and the topbar search', function (): void {

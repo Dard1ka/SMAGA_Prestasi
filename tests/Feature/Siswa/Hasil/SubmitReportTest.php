@@ -12,6 +12,7 @@ use App\Enums\ReportFileKind;
 use App\Enums\ReportStatus;
 use App\Enums\ResultType;
 use App\Enums\RoleName;
+use App\Enums\UserStatus;
 use App\Models\File;
 use App\Models\Report;
 use App\Notifications\Reports\ReportSubmitted;
@@ -36,6 +37,8 @@ beforeEach(function (): void {
     $this->nadia = F::student();
     $this->dimas = F::student('Dimas Arya Nugroho');
     $this->registration = F::registration($this->nadia, members: [$this->dimas]);
+    // The lomba of the registration carries its juknis (D-147); the checks below count what a report adds.
+    $this->filesBefore = File::query()->count();
 });
 
 afterEach(fn () => F::resetToday());
@@ -69,8 +72,9 @@ it('lets the ketua send the report: laporan_dikirim, files on the private disk, 
         ->and($report->files()->where('kind', ReportFileKind::Pengumuman)->count())->toBe(1)
         ->and($report->files()->where('kind', ReportFileKind::LaporanRiset)->count())->toBe(1);
 
-    $files = File::query()->get();
-    expect($files)->toHaveCount(5);
+    $files = File::query()->where('purpose', FilePurpose::ReportEvidence)->get();
+    expect($files)->toHaveCount(5)
+        ->and(File::query()->count())->toBe($this->filesBefore + 5);
     $files->each(function (File $file): void {
         expect($file->purpose)->toBe(FilePurpose::ReportEvidence)
             ->and($file->disk)->toBe('local')
@@ -83,32 +87,25 @@ it('lets the ketua send the report: laporan_dikirim, files on the private disk, 
         ->and(Activity::query()->where('event', 'registration.laporan_dikirim')->exists())->toBeTrue();
 
     Notification::assertSentTo($this->kesiswaan, ReportSubmitted::class, function (ReportSubmitted $n, array $channels): bool {
-        return $n->competitionName === 'WICE 2026' && $n->leaderName === 'Nadia Putri Anindya' && ! $n->late
+        return $n->competitionName === 'WICE 2026' && $n->leaderName === 'Nadia Putri Anindya'
             && $channels === ['mail', 'database'] && $n instanceof ShouldQueue;
     });
 });
 
-it('accepts a late report but flags it (D-25: final 24 Sep + 45 days = 8 Nov 2026)', function (): void {
-    F::today('2026-11-08');
-    $onTime = app(SubmitReport::class)->handle($this->nadia->user, $this->registration, w2a2ReportData());
-    expect($onTime->late)->toBeFalse();
+it('accepts a report long after the final and never marks it late (D-151)', function (): void {
+    F::today('2027-01-15'); // months after the final of 24 Sep 2026
+    $report = app(SubmitReport::class)->handle($this->nadia->user, $this->registration, w2a2ReportData());
 
-    $other = F::student('Keisha Larasati', 'XI-6');
-    $lateRegistration = F::registration($other);
-    F::today('2026-11-09');
-
-    $late = app(SubmitReport::class)->handle($other->user, $lateRegistration, w2a2ReportData());
-
-    expect($late->late)->toBeTrue()
-        ->and($lateRegistration->fresh()->status)->toBe(RegistrationStatus::LaporanDikirim);
-    Notification::assertSentTo($this->kesiswaan, ReportSubmitted::class, fn (ReportSubmitted $n): bool => $n->late);
+    expect($report->fresh()->late)->toBeFalse()
+        ->and($this->registration->fresh()->status)->toBe(RegistrationStatus::LaporanDikirim);
+    Notification::assertSentTo($this->kesiswaan, ReportSubmitted::class, fn (ReportSubmitted $n): bool => ! str_contains((string) $n->toArray($this->kesiswaan)['body'], 'batas waktu'));
 });
 
 it('only lets the ketua submit, and only while the registration waits for the report', function (): void {
     expect(fn () => app(SubmitReport::class)->handle($this->dimas->user, $this->registration, w2a2ReportData()))
         ->toThrow(AuthorizationException::class);
 
-    $outsider = F::student('Rizky Maulana', 'XI-1');
+    $outsider = F::student('Rizky Maulana', 'XI-A');
     expect(fn () => app(SubmitReport::class)->handle($outsider->user, $this->registration, w2a2ReportData()))
         ->toThrow(AuthorizationException::class)
         ->and(fn () => app(SubmitReport::class)->handle($this->kesiswaan, $this->registration, w2a2ReportData()))
@@ -122,7 +119,7 @@ it('only lets the ketua submit, and only while the registration waits for the re
     }
 
     expect(Report::query()->count())->toBe(0)
-        ->and(File::query()->count())->toBe(0);
+        ->and(File::query()->count())->toBe($this->filesBefore);
 });
 
 it('requires the authenticity statement, a certificate and at least one photo', function (): void {
@@ -142,7 +139,7 @@ it('requires the authenticity statement, a certificate and at least one photo', 
     ])))->toThrow(ValidationException::class);
 
     expect($this->registration->fresh()->status)->toBe(RegistrationStatus::MenungguLaporan)
-        ->and(File::query()->count())->toBe(0);
+        ->and(File::query()->count())->toBe($this->filesBefore);
 });
 
 it('requires title, abstract (max 250 words) and the research report only for riset lomba', function (): void {
@@ -158,7 +155,7 @@ it('requires title, abstract (max 250 words) and the research report only for ri
     }
 
     $olahraga = F::competition(['name' => 'O2SN Kota Semarang 2026', 'bidang' => Bidang::Olahraga]);
-    $individual = F::registration(F::student('Yoga Pratama', 'XII-5'), competition: $olahraga);
+    $individual = F::registration(F::student('Yoga Pratama', 'XII-E'), competition: $olahraga);
     $leader = $individual->leader->user;
 
     $report = app(SubmitReport::class)->handle($leader, $individual, w2a2ReportData([
@@ -188,7 +185,7 @@ it('refuses a PDF with active content and a fake image, storing nothing', functi
     expect(fn () => app(SubmitReport::class)->handle($this->nadia->user, $this->registration, w2a2ReportData(['photos' => [$notImage]])))
         ->toThrow(ValidationException::class);
 
-    expect(File::query()->count())->toBe(0)
+    expect(File::query()->count())->toBe($this->filesBefore)
         ->and(Storage::disk('local')->allFiles('lampiran'))->toBe([])
         ->and($this->registration->fresh()->status)->toBe(RegistrationStatus::MenungguLaporan);
 });
@@ -236,11 +233,24 @@ it('keeps a report that came on time on time when it is sent again after a revis
     expect($again->late)->toBeFalse();
 });
 
-it('keeps a late report late when it is sent again after a revision request (QA8)', function (): void {
-    F::today('2026-11-09');
-    $report = app(SubmitReport::class)->handle($this->nadia->user, $this->registration, w2a2ReportData());
-    app(RequestReportRevision::class)->handle($this->kesiswaan, $report->fresh(), 'Sertifikat buram, kirim ulang.');
-    $again = app(SubmitReport::class)->handle($this->nadia->user, $this->registration->fresh(), w2a2ReportData());
+it('tells Kesiswaan and Humas about a new report, each with the link of the own area (D-139)', function (): void {
+    $humas = F::staff(RoleName::Humas, 'Mas Galih Prasetyo');
+    $both = F::staff(RoleName::Kesiswaan, 'Ibu Ratna Sari');
+    $both->assignRole(RoleName::Humas->value);
+    $frozen = F::staff(RoleName::Humas, 'Bu Fitri Handayani');
+    $frozen->forceFill(['status' => UserStatus::Disabled])->save();
+    $guru = F::staff(RoleName::Guru, 'Pak Hendra Kusuma');
 
-    expect($again->late)->toBeTrue();
+    app(SubmitReport::class)->handle($this->nadia->user, $this->registration, w2a2ReportData());
+
+    Notification::assertSentToTimes($this->kesiswaan, ReportSubmitted::class, 1);
+    Notification::assertSentToTimes($humas, ReportSubmitted::class, 1);
+    Notification::assertSentToTimes($both, ReportSubmitted::class, 1);
+    Notification::assertNothingSentTo($frozen);
+    Notification::assertNothingSentTo($guru);
+    Notification::assertSentTo($humas, ReportSubmitted::class, fn (ReportSubmitted $n): bool => $n->toArray($humas)['url'] === route('humas.verifikasi.index')
+        && $n->toMail($humas)->actionUrl === route('humas.verifikasi.index')
+        && $n->toMail($humas)->actionText === 'Buka verifikasi hasil');
+    Notification::assertSentTo($this->kesiswaan, ReportSubmitted::class, fn (ReportSubmitted $n): bool => $n->toArray($this->kesiswaan)['url'] === route('kesiswaan.verifikasi.index'));
+    Notification::assertSentTo($both, ReportSubmitted::class, fn (ReportSubmitted $n): bool => $n->toArray($both)['url'] === route('kesiswaan.verifikasi.index'));
 });

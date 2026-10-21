@@ -2,9 +2,9 @@
     Jejak Prestasi tracker, 6 phases (DESIGN-SPEC-v2 §4): Daftar · Persetujuan · Surat tugas · Lomba ·
     Laporan hasil · Poin & apresiasi. Phases before `phase` are done, after it upcoming.
 
-    Full (Lomba saya detail):
+    Full (Lomba saya detail; phase 5 shows the day the report was sent, there is no report deadline, D-151):
     <x-sth.tracker :phase="5" state="action"
-        :dates="[1 => '29 Agu', 2 => '5 Sep', 3 => '8 Sep', 4 => '21–24 Sep', 5 => 'Batas 24 Okt']" />
+        :dates="[1 => '29 Agu', 2 => '5 Sep', 3 => '8 Sep', 4 => '21–24 Sep']" />
     Compact (cards: 6 segments + "Tahap 5 dari 6 · Laporan hasil"):
     <x-sth.tracker :phase="2" compact />
 

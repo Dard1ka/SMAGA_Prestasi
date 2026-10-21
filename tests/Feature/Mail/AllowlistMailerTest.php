@@ -53,6 +53,17 @@ function allowlistSend(string|array $to, ?string $cc = null): void
     });
 }
 
+it('delivers to every address that can exist when the list is a single star, never to a fictional one (D-130)', function (): void {
+    allowlistMailers('*');
+
+    allowlistSend('siapa.saja@gmail.com');
+    allowlistSend('nadia@sth.test');
+    allowlistSend(['guru.uji@gmail.com', 'humas@sth.test']);
+
+    expect(allowlistGot('uji-kirim')->all())->toBe(['siapa.saja@gmail.com'])
+        ->and(allowlistGot('uji-tangkap'))->toHaveCount(2);
+});
+
 it('delivers a mail for a listed address and keeps every other mail in the catcher', function (): void {
     allowlistMailers('tim.uji@example.test, tim.uji+*@example.test');
 
@@ -192,4 +203,36 @@ it('says in sth:mail-test that an unlisted address only reaches Mailpit', functi
 
     expect(allowlistGot('uji-tangkap')->all())->toBe(['nadia@sth.test'])
         ->and(allowlistGot('uji-kirim'))->toHaveCount(0);
+});
+
+it('says in sth:mail-test that the list is open, and keeps a fictional address in Mailpit (D-130)', function (): void {
+    allowlistMailers('*');
+    config(['mail.default' => 'allowlist']);
+
+    $this->artisan('sth:mail-test', ['to' => 'siapa.saja@gmail.com'])
+        ->expectsOutputToContain('STH_MAIL_ALLOWLIST terbuka: email dikirim sungguhan lewat mailer uji-kirim.')
+        ->expectsOutputToContain('STH_MAIL_ALLOWLIST berisi *: semua alamat nyata dikirim keluar, hanya alamat fiktif yang ditahan.')
+        ->assertSuccessful();
+
+    $this->artisan('sth:mail-test', ['to' => 'nadia@sth.test'])
+        ->expectsOutputToContain('Alamat ini fiktif (misalnya @sth.test): email hanya masuk Mailpit, tidak dikirim keluar.')
+        ->assertSuccessful();
+
+    expect(allowlistGot('uji-kirim')->all())->toBe(['siapa.saja@gmail.com'])
+        ->and(allowlistGot('uji-tangkap')->all())->toBe(['nadia@sth.test']);
+});
+
+it('keeps the list closed and says so when the star stands next to a broken entry', function (): void {
+    // A slip for "nama+*@gmail.com": the star must not turn it into "everybody".
+    allowlistMailers('* @gmail.com');
+    config(['mail.default' => 'allowlist']);
+
+    $this->artisan('sth:mail-test', ['to' => 'siapa.saja@gmail.com'])
+        ->expectsOutputToContain('Alamat ini tidak ada di STH_MAIL_ALLOWLIST: email hanya masuk Mailpit, tidak dikirim keluar.')
+        ->expectsOutputToContain('Entri STH_MAIL_ALLOWLIST yang diabaikan: @gmail.com')
+        ->expectsOutputToContain('Tanda * (buka untuk semua alamat) tidak dipakai, karena ada entri lain yang diabaikan. Perbaiki entri itu dulu.')
+        ->assertSuccessful();
+
+    expect(allowlistGot('uji-kirim'))->toHaveCount(0)
+        ->and(allowlistGot('uji-tangkap')->all())->toBe(['siapa.saja@gmail.com']);
 });

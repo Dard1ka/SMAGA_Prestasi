@@ -101,7 +101,7 @@ final class ConfirmMembership
             throw ValidationException::withMessages(['registration' => 'Undangan ini sudah tidak berlaku.']);
         }
 
-        if (! RegistrationPolicy::teamWindowOpen($locked->competition)) {
+        if (! RegistrationPolicy::teamWindowOpen($locked)) {
             throw ValidationException::withMessages(['registration' => 'Batas pendaftaran sudah lewat.']);
         }
 

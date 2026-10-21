@@ -76,7 +76,7 @@ it('answers 404 to a student on every two-factor management route, even after co
 it('stops the takeover: a login with the school password cannot enrol TOTP before activation', function (): void {
     $student = H::pendingStudent();
 
-    $this->from('/login')->post('/login', ['identifier' => H::NIS, 'password' => H::PASSWORD])->assertRedirect(route('aktivasi'));
+    $this->from('/login')->post('/login', ['identifier' => H::NISN, 'password' => H::PASSWORD])->assertRedirect(route('aktivasi'));
     $this->postJson(route('password.confirm.store'), ['password' => H::PASSWORD])->assertSuccessful();
 
     $this->postJson(route('two-factor.enable'))->assertNotFound();
@@ -154,7 +154,8 @@ it('removes TOTP from a student account on the Admin reset (K10)', function (): 
     $user = h1Student('pending');
     $user->forceFill(h1StaleTotp())->save();
 
-    $temporary = app(ResetStudentAccount::class)->handle(H::staff(RoleName::Admin), $user, 'Siswa tertahan di verifikasi dua langkah.');
+    $temporary = 'sementara8';
+    app(ResetStudentAccount::class)->handle(H::staff(RoleName::Admin), $user, 'Siswa tertahan di verifikasi dua langkah.', $temporary);
 
     $user->refresh();
     expect($user->two_factor_secret)->toBeNull()
@@ -162,14 +163,14 @@ it('removes TOTP from a student account on the Admin reset (K10)', function (): 
         ->and($user->two_factor_confirmed_at)->toBeNull()
         ->and(Activity::query()->where('event', 'account.reset')->sole()->properties['two_factor_removed'])->toBeTrue();
 
-    $this->from('/login')->post('/login', ['identifier' => H::NIS, 'password' => $temporary])->assertRedirect(route('aktivasi'));
+    $this->from('/login')->post('/login', ['identifier' => H::NISN, 'password' => $temporary])->assertRedirect(route('aktivasi'));
     $this->assertAuthenticatedAs($user);
 });
 
 it('records in the reset audit entry that there was no TOTP to remove', function (): void {
     config(['session.driver' => 'database']);
 
-    app(ResetStudentAccount::class)->handle(H::staff(RoleName::Admin), h1Student('activated'), 'Lupa kata sandi dan email.');
+    app(ResetStudentAccount::class)->handle(H::staff(RoleName::Admin), h1Student('activated'), 'Lupa kata sandi dan email.', 'sementara8');
 
     expect(Activity::query()->where('event', 'account.reset')->sole()->properties['two_factor_removed'])->toBeFalse();
 });
@@ -178,7 +179,7 @@ it('never sends a student to the TOTP challenge at login, even with a leftover s
     $user = h1Student($account);
     $user->forceFill(h1StaleTotp())->save();
 
-    $this->from('/login')->post('/login', ['identifier' => H::NIS, 'password' => H::PASSWORD])->assertRedirect(route($target));
+    $this->from('/login')->post('/login', ['identifier' => H::NISN, 'password' => H::PASSWORD])->assertRedirect(route($target));
 
     $this->assertAuthenticatedAs($user);
 })->with([['pending', 'aktivasi'], ['activated', 'home']]);
@@ -186,7 +187,7 @@ it('never sends a student to the TOTP challenge at login, even with a leftover s
 it('still checks the password of a student with a leftover secret', function (): void {
     h1Student('activated')->forceFill(h1StaleTotp())->save();
 
-    $this->from('/login')->post('/login', ['identifier' => H::NIS, 'password' => 'salah-sekali-123'])
+    $this->from('/login')->post('/login', ['identifier' => H::NISN, 'password' => 'salah-sekali-123'])
         ->assertSessionHasErrors(['identifier' => AuthenticateUser::GENERIC_ERROR]);
 
     $this->assertGuest();

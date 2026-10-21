@@ -1,7 +1,7 @@
 # SMAGA Talent Hub — DESIGN SPEC v3 ("Tinta dan Sampul")
 
 Decision: `docs/DECISIONS.md` D-117…D-119 (7 Oct 2026); added on 10 Oct 2026 (EM2): the confirmation dialog pattern
-(§4, D-128) and the mail template (§9, D-129, *sementara*). This file **replaces the look** of
+(§4, D-128) and the mail template (§9, D-129, *sementara*); 12 Oct 2026 (FS1): count badges red (D-136). This file **replaces the look** of
 `DESIGN-SPEC-v2.md`: its §2 (visual direction), the values of §3 (helmet) and the appearance of the §4
 components. Everything else in v2 stays valid: the product flow (§1), the component list and contracts
 (§4, `docs/dev-notes/W1-D.md`), the fictional data set (§5) and the icons (§6). The v2 mockups
@@ -28,7 +28,8 @@ white cards with text only is tiring to look at. So:
 
 1. **Colour carries meaning only.** Status (green done, orange needs action, red rejected, blue in
    progress, gray waiting), gold for points and medals, the four bidang colours. The frame itself (menu,
-   buttons, headings) is ink navy and neutral gray.
+   buttons, headings) is ink navy and neutral gray. *12 Oct 2026 (D-136):* count badges (sidebar, bell) are red:
+   something waits to be read or checked. Tab and lane counts (`.cnt`) stay gray, the unread row marker stays navy.
 2. **One typeface, a fixed scale.** Public Sans 400/500/600/700. Sizes: 13 · 14 · 15 · 16 · 18 · 20 · 24 ·
    28 · 36 · 44 (`text-xs` … `text-5xl`, see §3). **Nothing on screen is smaller than 13 px.** No
    `text-[Npx]` in a view. The one exception is the scaled paper preview of a letter
@@ -99,7 +100,8 @@ only kept so old class names do not break.
   frame, which is why the frame is ink. The file is a small raster picture (class `.brand-mark`): not larger than
   about 56 px until the school gives a vector file. Never redraw or recolour it.
 - **Sidebar**: current item = tinted row with bold ink text. Section labels in sentence case. No button
-  above the menu. Count badges are ink navy.
+  above the menu. Count badges are ink navy. *12 Oct 2026 (D-136): red #B42318, white text.* A long item name wraps to
+  two lines (FS1, D-135).
 - **Tables** `.tbl`: head 13/600, cells 15, row padding 12. A `fixed` table gets a floor
   (`table-class="min-w-[720px]"`), so it scrolls inside its card on phones instead of squeezing a column.
 - **Forms**: inputs 46 px, radius 6, 16 px text at every width, border `line-input`. Pick tiles and segmented

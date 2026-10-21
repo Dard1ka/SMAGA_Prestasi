@@ -33,12 +33,12 @@ use Spatie\Activitylog\Models\Activity;
 /**
  * Apresiasi (UI-MAP §4d; shared: humas.apresiasi.index and kesiswaan.apresiasi.index). Authorized by
  * `appreciation.manage` through AppreciationEventPolicy, never by role. Create an event, put verified
- * achievements (student with publish consent) on an upcoming event, confirm that an event was held
- * ("Tandai sudah dilaksanakan") or delete one that was created by mistake or cancelled ("Hapus acara");
- * both sit behind the confirmation dialog `apresiasi-konfirmasi` (M1-E, lead 2026-10-04). A confirmed event
- * moves to "Sudah dilaksanakan" and can no longer be changed or deleted. A row whose student later withdrew
- * consent stays with the chip "Izin dicabut"; its name and class are shown only to a viewer with
- * `student.view` (Kesiswaan, Admin), Humas sees "Siswa kelas XI" (SECURITY §3i, §3m-7).
+ * achievements (student who may be named: NamedStudent, no consent since D-162) on an upcoming event, confirm that
+ * an event was held ("Tandai sudah dilaksanakan") or delete one that was created by mistake or cancelled ("Hapus
+ * acara"); both sit behind the confirmation dialog `apresiasi-konfirmasi` (M1-E, lead 2026-10-04). A confirmed event
+ * moves to "Sudah dilaksanakan" and can no longer be changed or deleted. A row whose student's account was later
+ * disabled or deleted stays; its name and class are shown only to a viewer with `student.view` (Kesiswaan, Admin),
+ * Humas sees "Siswa kelas XI" (SECURITY §3i).
  *
  * M2-B (QA 2026-10-05, Q2-10): one achievement sits on one open event only, so "Tambah prestasi" offers only
  * achievements that are on no event, and every scheduled row of an open event has "Lepas dari acara"
@@ -78,7 +78,7 @@ class Apresiasi extends Component
 
     public const PICK_MAX_MESSAGE = RecordAppreciations::MAX_MESSAGE;
 
-    /** A ticked achievement left the list since it was drawn: consent withdrawn, or another event took it. */
+    /** A ticked achievement left the list since it was drawn: the account was disabled, or another event took it. */
     public const PICK_STALE_MESSAGE = 'Sebagian prestasi yang dipilih sudah tidak bisa dimasukkan. Daftar sudah diperbarui, pilih lagi.';
 
     public const CONFIRM_DIALOG = 'apresiasi-konfirmasi';
@@ -198,7 +198,7 @@ class Apresiasi extends Component
 
     /**
      * "Masukkan": every ticked achievement goes on the event in one RecordAppreciations call. The ticks come from
-     * the browser, so each id is loaded again through freeAchievements() (verified, publish consent, on no event);
+     * the browser, so each id is loaded again through freeAchievements() (verified, may be named, on no event);
      * when one of them is no longer there nothing is written and the list says so.
      */
     public function addAchievements(RecordAppreciations $action): void
@@ -241,7 +241,7 @@ class Apresiasi extends Component
         $achievements = self::listed($this->freeAchievements()->whereKey($ids))->get();
 
         if ($achievements->count() < count($ids)) {
-            // A forged id, a consent withdrawn or another event that took the achievement meanwhile.
+            // A forged id, an account disabled or another event that took the achievement meanwhile.
             $this->picked = $achievements->modelKeys();
             $this->addError('picked', self::PICK_STALE_MESSAGE);
 
@@ -491,10 +491,13 @@ class Apresiasi extends Component
             'completeNote' => $canUpdate ? self::completeNote($blocker, $event, $isUpcoming) : null,
             // Rows already `selesai` are a record too (DeleteAppreciationEvent refuses them).
             'canDelete' => $scheduled === $rows->count() && $user->can('delete', $event),
+            // D-141: the printable list of the students who may be named, for any event that holds prestasi.
+            'canPrint' => $rows->isNotEmpty() && $user->can('printList', $event),
+            'printUrl' => route('apresiasi.cetak', $event),
             'completedNote' => $completed ? self::completedNote($event) : null,
             'items' => $rows
                 ->map(function (Appreciation $a) use ($user, $completed, $canUpdate): array {
-                    // Consent withdrawn after the row was added: no name/class without `student.view`.
+                    // Account disabled or deleted after the row was added: no name/class without `student.view`.
                     $facts = AchievementFacts::of($a->achievement)->visibleTo($user);
 
                     return [
@@ -503,7 +506,6 @@ class Apresiasi extends Component
                         'class' => $facts->className,
                         'headline' => $facts->headline(),
                         'competition' => $facts->competitionName,
-                        'consentWithdrawn' => ! $facts->publishConsent,
                         'status' => $a->status === AppreciationStatus::Selesai ? ['green', 'Sudah diapresiasi'] : ['blue', 'Dijadwalkan'],
                         // Same rule as AppreciationPolicy::delete(), from what this list already loaded.
                         'canRelease' => $canUpdate && ! $completed && $a->status === AppreciationStatus::Dijadwalkan,
@@ -567,7 +569,7 @@ class Apresiasi extends Component
             'name' => $event->name,
             'date' => EventWhen::long($event),
             'count' => $count,
-            // The row a release is about, as the list shows it (no name without consent or `student.view`).
+            // The row a release is about, as the list shows it (no name of an inactive account without `student.view`).
             'row' => $release ? $this->releasing() : null,
             'text' => match (true) {
                 $release => 'Prestasi ini dilepas dari acara dan bisa dimasukkan ke acara lain. Acaranya tetap ada. Siswanya diberi tahu.',
@@ -578,7 +580,7 @@ class Apresiasi extends Component
         ];
     }
 
-    /** "Raka Pradipta (XI-4) · Juara II Nasional · FIKSI 2026" for the row in the "Lepas dari acara" dialog. */
+    /** "Raka Pradipta (XI-D) · Juara II Nasional · FIKSI 2026" for the row in the "Lepas dari acara" dialog. */
     private function releasing(): ?string
     {
         $relations = array_map(fn (string $r): string => 'achievement.'.$r, AchievementFacts::RELATIONS);
@@ -610,7 +612,7 @@ class Apresiasi extends Component
     }
 
     /**
-     * Achievements that are free for an event: verified, with publish consent, and on no event at all. One
+     * Achievements that are free for an event: verified, of a student who may be named, and on no event at all. One
      * that is scheduled elsewhere or was already appreciated is not offered (RecordAppreciations would refuse
      * it; M2-B, Q2-10); "Lepas dari acara" or "Hapus acara" brings it back.
      *
@@ -661,7 +663,7 @@ class Apresiasi extends Component
         $total = (clone $matches)->count();
         $rows = self::listed($matches)->limit($this->pickLimit)->get();
 
-        // A tick whose achievement is no longer free (another event took it, consent withdrawn) has no row any
+        // A tick whose achievement is no longer free (another event took it, the account disabled) has no row any
         // more, but it stays in $picked on purpose: "Masukkan" then says that the list changed and writes
         // nothing, instead of quietly adding fewer achievements than were ticked.
         $outside = array_values(array_diff($this->pickedIds(), $rows->modelKeys()));
@@ -689,8 +691,8 @@ class Apresiasi extends Component
     }
 
     /**
-     * One row of the picker: "Nadia Putri Anindya · XI-4" over "Juara II Nasional · OPSI 2026". Only students
-     * with publish consent reach this list, so the name is shown.
+     * One row of the picker: "Nadia Putri Anindya · XI-D" over "Juara II Nasional · OPSI 2026". Only students
+     * who may be named (NamedStudent) reach this list, so the name is shown.
      *
      * @return array{id: string, student: string, class: string|null, headline: string, competition: string}
      */

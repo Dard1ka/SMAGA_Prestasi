@@ -21,7 +21,7 @@
         @if ($tab !== 'riwayat')
             <div class="flex flex-wrap items-end gap-3">
                 <x-sth.input type="search" wire:model.live.debounce.400ms="q" label="Cari siswa" hide-label icon="search"
-                             placeholder="Nama, atau NIS/NISN lengkap" class="w-full sm:w-80" />
+                             placeholder="Nama atau NISN lengkap" class="w-full sm:w-80" />
                 @if ($tab === 'segera')
                     <x-sth.select wire:model.live="hari" label="Rentang" hide-label size="sm" :options="$windowOptions" class="w-36" />
                 @endif
@@ -101,7 +101,7 @@
                 <p class="m-0 text-sm muted">Prestasi alumni tetap tampil di peringkat dan halaman publik.</p>
             @endif
         @else
-            <div class="grid gap-[22px] xl:grid-cols-3">
+            <div class="grid grid-cols-1 gap-[22px] xl:grid-cols-3">
                 <x-sth.card as="section" aria-labelledby="h-arsip-run" class="flex flex-col gap-3">
                     <div class="flex flex-col gap-1">
                         <h2 id="h-arsip-run" class="title-card">Arsip otomatis</h2>

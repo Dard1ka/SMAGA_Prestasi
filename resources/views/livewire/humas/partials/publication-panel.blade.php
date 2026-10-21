@@ -108,6 +108,10 @@
                 <x-sth.select wire:model="eventId" label="Masukkan ke acara apresiasi" placeholder="Pilih acara" :options="$panel['eventOptions']" class="min-w-0 flex-1" />
                 <x-sth.button type="submit" variant="soft" wire:loading.attr="disabled" wire:target="recordAppreciation">Masukkan</x-sth.button>
             </form>
+            @if ($panel['appreciationTeam'] !== [])
+                {{-- D-160: the free teammates go on the same event in the same click. --}}
+                <p class="m-0 text-xs text-muted [overflow-wrap:anywhere]">Anggota tim lain ikut dimasukkan: {{ implode(', ', $panel['appreciationTeam']) }}.</p>
+            @endif
         @elseif ($panel['appreciations'] === [])
             <p class="m-0 text-xs text-muted">
                 Belum ada acara apresiasi mendatang.

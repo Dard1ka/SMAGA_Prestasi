@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Route;
 use Livewire\Mechanisms\HandleRequests\EndpointResolver;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Tests\Feature\Kesiswaan\KesiswaanFixtures as F;
+use Tests\Support\TalentGate;
 
 uses(RefreshDatabase::class);
 
@@ -135,6 +136,7 @@ it('renders Livewire screens of several roles without unsafe-eval', function (st
 
 it('renders student and public Livewire pages without unsafe-eval, loading the CSP build', function (string $routeName, bool $asStudent): void {
     $student = F::student('Nadia Putri Anindya');
+    TalentGate::pass($student); // D-153: else the talent gate holds every siswa page
     $response = $asStudent ? $this->actingAs($student->user)->get(route($routeName)) : $this->get(route($routeName));
 
     $response->assertOk();

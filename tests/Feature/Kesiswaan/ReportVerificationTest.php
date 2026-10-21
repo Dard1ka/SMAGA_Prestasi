@@ -41,11 +41,10 @@ beforeEach(function (): void {
 });
 
 it('verifies a team report: full points for every member, snapshot, selesai, Humas queue, notifications', function (): void {
-    $leader = F::student('Nadia Putri Anindya', 'XI-4');
-    $dimas = F::student('Dimas Arya Nugroho', 'XI-4');
-    $keisha = F::student('Keisha Larasati', 'XI-6');
-    // QA10: Humas is told only when the queue shows someone (a member with publish consent).
-    $leader->forceFill(['publish_consent' => true])->save();
+    $leader = F::student('Nadia Putri Anindya', 'XI-D');
+    $dimas = F::student('Dimas Arya Nugroho', 'XI-D');
+    $keisha = F::student('Keisha Larasati', 'XI-F');
+    // QA10: Humas is told only when the queue shows someone (a member who may be named; no consent since D-162).
     $report = F::pendingReport($leader, [$dimas, $keisha], ResultType::Juara3);
     $version = WeightVersion::active();
 
@@ -110,8 +109,8 @@ it('requires all four checks', function (): void {
 });
 
 it('skips members who declined or never confirmed', function (): void {
-    $leader = F::student('Nadia Putri Anindya', 'XI-4');
-    $report = F::pendingReport($leader, [F::student('Dimas Arya Nugroho', 'XI-4')]);
+    $leader = F::student('Nadia Putri Anindya', 'XI-D');
+    $report = F::pendingReport($leader, [F::student('Dimas Arya Nugroho', 'XI-D')]);
     RegistrationMember::query()->where('student_id', '!=', $leader->getKey())->update(['confirmed_at' => null]);
 
     expect(app(VerifyReport::class)->handle($this->kesiswaan, $report, ResultType::Juara3, F::allChecks()))->toHaveCount(1);
@@ -129,14 +128,15 @@ it('never lets the guru pembimbing verify own binaan, even with Kesiswaan rights
     expect(app(VerifyReport::class)->handle($other, $report, ResultType::Juara3, F::allChecks()))->toHaveCount(1);
 });
 
-it('denies verification to siswa, guru, kepsek, tu and humas; allows admin', function (): void {
+it('denies verification to siswa, guru, kepsek and tu; allows admin and humas (D-139)', function (): void {
     $report = F::pendingReport();
 
-    foreach ([F::student('Raka Pradipta', 'XII-2')->user, F::staff(RoleName::Guru, 'Pak Hendra'), F::staff(RoleName::KepalaSekolah, 'Kepala'), F::staff(RoleName::TataUsaha, 'TU'), $this->humas] as $user) {
+    foreach ([F::student('Raka Pradipta', 'XII-B')->user, F::staff(RoleName::Guru, 'Pak Hendra'), F::staff(RoleName::KepalaSekolah, 'Kepala'), F::staff(RoleName::TataUsaha, 'TU')] as $user) {
         expect(fn () => app(VerifyReport::class)->handle($user, $report, ResultType::Juara3, F::allChecks()))->toThrow(AuthorizationException::class);
     }
 
-    expect(app(VerifyReport::class)->handle(F::staff(RoleName::Admin, 'Operator STH'), $report, ResultType::Juara3, F::allChecks()))->toHaveCount(1);
+    expect(app(VerifyReport::class)->handle(F::staff(RoleName::Admin, 'Operator STH'), $report, ResultType::Juara3, F::allChecks()))->toHaveCount(1)
+        ->and(app(VerifyReport::class)->handle($this->humas, F::pendingReport(F::student('Bima Satria Wicaksono', 'XI-D')), ResultType::Juara3, F::allChecks()))->toHaveCount(1);
 });
 
 it('cannot decide the same report twice', function (): void {
@@ -184,7 +184,7 @@ it('rejects with a reason: no points, registration ends', function (): void {
 });
 
 it('flushes the public page cache after a verification (W3-A)', function (): void {
-    $report = F::pendingReport(F::student('Nadia Putri Anindya', 'XI-4'), [], ResultType::Juara1);
+    $report = F::pendingReport(F::student('Nadia Putri Anindya', 'XI-D'), [], ResultType::Juara1);
     $version = (int) Cache::get(PublicAchievements::VERSION_KEY, 1);
 
     app(VerifyReport::class)->handle($this->kesiswaan, $report, ResultType::Juara1, F::allChecks());
@@ -196,7 +196,7 @@ it('flushes the public page cache after a verification (W3-A)', function (): voi
 
 it('tells the guru pembimbing about every decision on a binaan report', function (string $decision, string $title, string $body): void {
     $guru = F::staff(RoleName::Guru, 'Retno Wulandari, S.Pd.');
-    $report = F::pendingReport(F::student('Nadia Putri Anindya', 'XI-4'), [], ResultType::Juara2, $guru);
+    $report = F::pendingReport(F::student('Nadia Putri Anindya', 'XI-D'), [], ResultType::Juara2, $guru);
 
     match ($decision) {
         'verified' => app(VerifyReport::class)->handle($this->kesiswaan, $report, ResultType::Juara2, F::allChecks()),
@@ -229,3 +229,22 @@ it('tells no guru when the report has no pembimbing or the guru cannot log in', 
     Notification::assertNothingSentTo($frozen);
     Notification::assertSentTimes(BinaanReportDecided::class, 0);
 });
+
+it('names the role that decided in the notices to the team and the guru (D-139)', function (RoleName $role, string $label): void {
+    $decider = F::staff($role, 'Petugas '.$role->label());
+    $guru = F::staff(RoleName::Guru, 'Retno Wulandari, S.Pd.');
+    $nadia = F::student('Nadia Putri Anindya', 'XI-D');
+    $raka = F::student('Raka Pradipta', 'XII-B');
+
+    app(VerifyReport::class)->handle($decider, F::pendingReport($nadia, [], ResultType::Juara2, $guru), ResultType::Juara2, F::allChecks());
+    app(RequestReportRevision::class)->handle($decider, F::pendingReport($raka, mentor: $guru), 'Sertifikat belum terbaca.');
+
+    Notification::assertSentTo($nadia->user, ReportVerified::class, fn (ReportVerified $n): bool => str_contains($n->body, 'sudah diverifikasi '.$label.'. Kamu mendapat'));
+    Notification::assertSentTo($raka->user, ReportRevisionRequested::class, fn (ReportRevisionRequested $n): bool => $n->body === 'Catatan '.$label.': Sertifikat belum terbaca.');
+    Notification::assertSentTo($guru, BinaanReportDecided::class, fn (BinaanReportDecided $n): bool => $n->kind === 'report.binaan_revision'
+        && str_contains($n->body, 'Catatan '.$label.': Sertifikat belum terbaca.'));
+})->with([
+    'kesiswaan' => [RoleName::Kesiswaan, 'Kesiswaan'],
+    'humas' => [RoleName::Humas, 'Humas'],
+    'admin' => [RoleName::Admin, 'Admin'],
+]);

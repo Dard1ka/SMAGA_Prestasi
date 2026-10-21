@@ -12,7 +12,7 @@ use Livewire\Component;
 
 /**
  * Publik · Prestasi seorang siswa (UI-MAP #2a): `/prestasi/siswa/{slug}` with the random public_slug.
- * Only students with publish consent; anything else is a 404. Always noindex (SECURITY §3m-7).
+ * Only named students (not a disabled or deleted account); anything else is a 404. Always noindex (SECURITY §3m-7).
  */
 final class PrestasiSiswa extends Component
 {

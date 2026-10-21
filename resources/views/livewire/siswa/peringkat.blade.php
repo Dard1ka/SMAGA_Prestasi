@@ -62,7 +62,7 @@
                 Ganti bidang atau angkatan.
             </x-sth.empty-state>
         @else
-            <ol class="m-0 grid list-none gap-4 p-0 sm:grid-cols-3" aria-label="{{ $caption }}, tiga teratas">
+            <ol class="m-0 grid grid-cols-1 list-none gap-4 p-0 sm:grid-cols-3" aria-label="{{ $caption }}, tiga teratas">
                 @foreach ($top as $row)
                     <li wire:key="top-{{ $isSiswa ? 's' : 'k' }}-{{ $row['position'] }}">
                         <article @class(['card flex h-full min-w-0 flex-col p-[18px]', 'border-primary ring-2 ring-primary' => $row['me']])>

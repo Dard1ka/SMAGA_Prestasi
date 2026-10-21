@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Support;
 
+use App\Http\Middleware\EnsureTalentChosen;
+use App\Models\User;
 use Closure;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
@@ -36,6 +38,7 @@ final class Navigation
         'kepsek.persetujuan',
         'tu.surat',
         'humas.publikasi',
+        'humas.verifikasi',
         'humas.jadwal',
     ];
 
@@ -169,15 +172,33 @@ final class Navigation
             $sections[$best[0]]['items'][$best[1]]['current'] = true;
         }
 
+        // D-144 (FS1 QA), D-153: a student without a talent is held on Profil saya › Talenta saya. The menus that would
+        // only bring that student back there are shown locked, so a tap no longer seems to do nothing.
+        $gated = $role === 'siswa' && $user instanceof User && EnsureTalentChosen::applies($user);
+
+        if ($gated) {
+            foreach ($sections as $s => $section) {
+                foreach ($section['items'] as $i => $item) {
+                    $sections[$s]['items'][$i]['locked'] = self::heldByTalentGate($item['route']);
+                }
+            }
+        }
+
         return [
             'role' => $role,
             'roleLabel' => self::roleLabel($role),
             'homeUrl' => self::homeUrl($role),
             'search' => self::search($definition['search']),
             'sections' => $sections,
-            'tabbar' => $role === 'siswa' ? self::tabbar($currentRoute, $active, $preview) : [],
+            'tabbar' => $role === 'siswa' ? self::tabbar($currentRoute, $active, $preview, $gated) : [],
             'user' => self::userCard($user, $role),
         ];
+    }
+
+    /** Does the talent gate (EnsureTalentChosen) send this menu route back to Talenta saya? */
+    private static function heldByTalentGate(?string $route): bool
+    {
+        return $route !== null && ! in_array($route, EnsureTalentChosen::EXEMPT_ROUTES, true);
     }
 
     /**
@@ -185,7 +206,7 @@ final class Navigation
      *
      * @return list<array<string, mixed>>
      */
-    public static function tabbar(?string $currentRoute = null, ?string $active = null, bool $preview = false): array
+    public static function tabbar(?string $currentRoute = null, ?string $active = null, bool $preview = false, bool $gated = false): array
     {
         $currentRoute ??= Route::currentRouteName();
         $defs = [
@@ -208,6 +229,22 @@ final class Navigation
 
         if ($max > 0) {
             $items[array_search($max, $scores, true)]['current'] = true;
+        }
+
+        // D-144 (FS1 QA), D-153: while a student must pick a talent, the tab that holds Talenta saya leads there and
+        // the other tabs are locked (see for()). FS1 QA round 2: it then carries the name and icon of the page it
+        // opens, "Talenta saya" (one name per menu, D-119), because the menu drawer shows Portofolio locked meanwhile.
+        if ($gated) {
+            foreach ($items as $i => $item) {
+                if ($item['key'] === 'profil' && Route::has('siswa.talenta')) {
+                    $items[$i]['href'] = route('siswa.talenta');
+                    $items[$i]['route'] = 'siswa.talenta';
+                    $items[$i]['label'] = 'Talenta saya';
+                    $items[$i]['icon'] = 'user';
+                } else {
+                    $items[$i]['locked'] = self::heldByTalentGate($item['route']);
+                }
+            }
         }
 
         return $items;
@@ -286,7 +323,9 @@ final class Navigation
         $cariLomba = ['key' => 'cari-lomba', 'label' => 'Cari lomba', 'icon' => 'search', 'route' => ['siswa.lomba.index', 'siswa.katalog'], 'match' => ['siswa.lomba.*', 'siswa.katalog*']];
         $kelolaLomba = ['key' => 'kelola-lomba', 'label' => 'Kelola lomba', 'icon' => 'trophy', 'route' => ['kesiswaan.lomba.index', 'kesiswaan.lomba'], 'match' => ['kesiswaan.lomba.*']];
         $notifikasi = ['key' => 'notifikasi', 'label' => 'Notifikasi', 'icon' => 'bell', 'route' => ['notifikasi.index']];
-        $keamanan = ['key' => 'keamanan', 'label' => 'Keamanan akun', 'icon' => 'lock', 'route' => ['akun.keamanan']];
+        // D-152: Profil saya = the tabs Data diri (akun.profil) and Keamanan akun (akun.keamanan); D-153 adds a
+        // student's Talenta saya (siswa.talenta), which used to be the menu item "Profil talenta".
+        $profil = ['key' => 'profil-saya', 'label' => 'Profil saya', 'icon' => 'user', 'route' => ['akun.profil'], 'match' => ['akun.profil', 'akun.keamanan', 'siswa.talenta', 'siswa.profil-talenta']];
 
         return [
             'siswa' => [
@@ -300,10 +339,10 @@ final class Navigation
                         ['key' => 'peringkat', 'label' => 'Peringkat', 'icon' => 'bars', 'route' => ['siswa.peringkat', 'peringkat', 'public.peringkat']],
                     ]],
                     ['label' => 'Akun', 'items' => [
-                        ['key' => 'profil-talenta', 'label' => 'Profil talenta', 'icon' => 'user', 'route' => ['siswa.talenta', 'siswa.profil-talenta']],
                         // B1/W4: account pages of every role (staff reach them from the avatar menu and the bell).
+                        // D-153: Profil talenta is the tab Talenta saya of Profil saya, no longer an item of its own.
+                        $profil,
                         $notifikasi,
-                        $keamanan,
                         ['key' => 'bantuan', 'label' => 'Bantuan', 'icon' => 'help', 'route' => ['siswa.bantuan', 'bantuan']],
                     ]],
                 ],
@@ -324,12 +363,12 @@ final class Navigation
                         ['key' => 'beranda', 'label' => 'Beranda', 'icon' => 'home', 'route' => ['kesiswaan.beranda']],
                         $kelolaLomba,
                         // D-27: this queue lists every pending lomba upload (siswa, guru, staf).
-                        ['key' => 'usulan', 'label' => 'Usulan lomba', 'icon' => 'inbox', 'route' => [['kesiswaan.lomba.index', ['tab' => 'verifikasi']], 'kesiswaan.usulan'], 'match' => ['kesiswaan.usulan*'], 'query' => ['tab' => 'verifikasi'], 'badge' => 'kesiswaan.usulan'],
+                        ['key' => 'usulan', 'label' => 'Verifikasi usulan lomba', 'icon' => 'inbox', 'route' => [['kesiswaan.lomba.index', ['tab' => 'verifikasi']], 'kesiswaan.usulan'], 'match' => ['kesiswaan.usulan*'], 'query' => ['tab' => 'verifikasi'], 'badge' => 'kesiswaan.usulan'],
                         ['key' => 'verifikasi', 'label' => 'Verifikasi hasil', 'icon' => 'shield', 'route' => ['kesiswaan.verifikasi.index', 'kesiswaan.verifikasi'], 'match' => ['kesiswaan.verifikasi*'], 'badge' => 'kesiswaan.verifikasi'],
                     ]],
                     ['label' => 'Data', 'items' => [
                         ['key' => 'prestasi', 'label' => 'Database prestasi', 'icon' => 'database', 'route' => ['kesiswaan.prestasi.index', 'kesiswaan.prestasi']],
-                        ['key' => 'talenta', 'label' => 'Talenta siswa', 'icon' => 'users', 'route' => ['kesiswaan.talenta.index', 'kesiswaan.talenta']],
+                        ['key' => 'talenta', 'label' => 'Database talenta siswa', 'icon' => 'users', 'route' => ['kesiswaan.talenta.index', 'kesiswaan.talenta']],
                         ['key' => 'apresiasi', 'label' => 'Apresiasi', 'icon' => 'award', 'route' => ['kesiswaan.apresiasi.index', 'kesiswaan.apresiasi']],
                         // D-26: Kesiswaan may import students too.
                         ['key' => 'import', 'label' => 'Import siswa', 'icon' => 'upload', 'route' => ['kesiswaan.import']],
@@ -343,7 +382,8 @@ final class Navigation
                 'sections' => [
                     ['label' => 'Menu', 'items' => [
                         ['key' => 'dashboard', 'label' => 'Dashboard', 'icon' => 'bars', 'route' => ['kepsek.beranda', 'kepsek.dashboard']],
-                        ['key' => 'persetujuan', 'label' => 'Persetujuan', 'icon' => 'check-circle', 'route' => ['kepsek.persetujuan.index', 'kepsek.persetujuan'], 'match' => ['kepsek.persetujuan*'], 'badge' => 'kepsek.persetujuan'],
+                        // D-119: one name for the screen in both approver menus and as its title (Tata Usaha: D-150).
+                        ['key' => 'persetujuan', 'label' => 'Persetujuan lomba', 'icon' => 'check-circle', 'route' => ['kepsek.persetujuan.index', 'kepsek.persetujuan'], 'match' => ['kepsek.persetujuan*'], 'badge' => 'kepsek.persetujuan'],
                         ['key' => 'prestasi', 'label' => 'Prestasi per bidang', 'icon' => 'chart-pie', 'route' => ['kepsek.prestasi', 'public.prestasi', 'prestasi']],
                         // B5 (SECURITY §3m-5): every letter generated in the principal's name, revocations included.
                         ['key' => 'surat', 'label' => 'Surat atas nama saya', 'icon' => 'mail', 'route' => ['kepsek.surat.index'], 'match' => ['kepsek.surat*']],
@@ -358,6 +398,8 @@ final class Navigation
                 'sections' => [
                     ['label' => 'Menu', 'items' => [
                         ['key' => 'surat', 'label' => 'Antrean surat', 'icon' => 'mail', 'route' => ['tu.beranda', 'tu.surat.index', 'tu.surat'], 'match' => ['tu.surat.*'], 'badge' => 'tu.surat'],
+                        // D-150: Tata Usaha approves registrations too (the Kepala Sekolah's screen, its count).
+                        ['key' => 'persetujuan', 'label' => 'Persetujuan lomba', 'icon' => 'check-circle', 'route' => ['tu.persetujuan.index'], 'match' => ['tu.persetujuan*'], 'badge' => 'kepsek.persetujuan'],
                         ['key' => 'arsip', 'label' => 'Arsip surat', 'icon' => 'folder', 'route' => ['tu.surat.arsip', 'tu.arsip']],
                         ['key' => 'template', 'label' => 'Template surat', 'icon' => 'file', 'route' => ['tu.surat.template', 'tu.template']],
                     ]],
@@ -368,20 +410,27 @@ final class Navigation
                 'sections' => [
                     ['label' => 'Menu', 'items' => [
                         ['key' => 'publikasi', 'label' => 'Antrean publikasi', 'icon' => 'megaphone', 'route' => ['humas.beranda', 'humas.publikasi.index', 'humas.publikasi'], 'match' => ['humas.publikasi*'], 'badge' => 'humas.publikasi'],
+                        ['key' => 'verifikasi', 'label' => 'Verifikasi hasil', 'icon' => 'shield', 'route' => ['humas.verifikasi.index'], 'match' => ['humas.verifikasi*'], 'badge' => 'humas.verifikasi'],
                         ['key' => 'jadwal', 'label' => 'Jadwal', 'icon' => 'calendar', 'route' => ['humas.jadwal'], 'badge' => 'humas.jadwal'],
                         ['key' => 'apresiasi', 'label' => 'Apresiasi', 'icon' => 'award', 'route' => ['humas.apresiasi.index', 'humas.apresiasi']],
                         ['key' => 'arsip', 'label' => 'Arsip', 'icon' => 'folder', 'route' => ['humas.arsip']],
+                        // D-156: the photos of verified laporan hasil, for the flyer Humas designs itself.
+                        ['key' => 'foto', 'label' => 'Arsip foto', 'icon' => 'image', 'route' => ['humas.foto']],
                     ]],
                 ],
             ],
             'admin' => [
-                'search' => ['placeholder' => 'Cari nama, NIS, atau NISN', 'route' => ['admin.pengguna.index', 'admin.pengguna']],
+                'search' => ['placeholder' => 'Cari nama atau NISN', 'route' => ['admin.pengguna.index', 'admin.pengguna']],
                 'sections' => [
                     ['label' => 'Menu', 'items' => [
                         ['key' => 'dashboard', 'label' => 'Dashboard', 'icon' => 'bars', 'route' => ['admin.beranda', 'admin.dashboard']],
                         ['key' => 'kelola-lomba', 'label' => 'Kelola lomba', 'icon' => 'trophy', 'route' => ['kesiswaan.lomba.index', 'admin.lomba'], 'match' => ['kesiswaan.lomba.*', 'admin.lomba*']],
                     ]],
                     ['label' => 'Data', 'items' => [
+                        // FS1 (D-135): same screen as Kesiswaan, allowed by role:kesiswaan|admin.
+                        ['key' => 'prestasi', 'label' => 'Database prestasi', 'icon' => 'database', 'route' => ['kesiswaan.prestasi.index'], 'match' => ['kesiswaan.prestasi*']],
+                        // Admin\Kelas: the classes the import may put students into (add, rename, delete).
+                        ['key' => 'kelas', 'label' => 'Kelas', 'icon' => 'folder', 'route' => ['admin.kelas.index'], 'match' => ['admin.kelas*']],
                         ['key' => 'import', 'label' => 'Import siswa', 'icon' => 'upload', 'route' => ['admin.import']],
                         ['key' => 'pengguna', 'label' => 'Pengguna & peran', 'icon' => 'users', 'route' => ['admin.pengguna.index', 'admin.pengguna'], 'match' => ['admin.pengguna*']],
                         // B1 (K9/K2/K1): activation report + activation window setting.
@@ -480,6 +529,8 @@ final class Navigation
             'href' => $url ?? '#',
             'current' => false,
             'disabled' => $url === null && ! $preview,
+            // Held by the kelas X talent gate (D-144); set by for() / tabbar() for such a student only.
+            'locked' => false,
             'badge' => $badge !== null && (int) $badge > 0 ? (int) $badge : null,
             // The sidebar prints this as data-sth-badge so the browser event `sth-badges` can update the count in place.
             'badgeKey' => isset($def['badge']) ? (string) $def['badge'] : null,
@@ -582,7 +633,7 @@ final class Navigation
     }
 
     /**
-     * Class name for the siswa user card ("Siswa · XI-4"). Loads the relation explicitly so strict
+     * Class name for the siswa user card ("Siswa · XI-D"). Loads the relation explicitly so strict
      * mode (no lazy loading) is respected; returns null while the relation does not exist yet.
      *
      * @param  object|array<string, mixed>|null  $user

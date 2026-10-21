@@ -15,7 +15,6 @@ use App\Livewire\Auth\Activation;
 use App\Mail\OtpCodeMail;
 use App\Models\OtpCode;
 use App\Models\User;
-use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -29,7 +28,7 @@ use Tests\Feature\Auth\AuthTestHelpers as H;
 
 /*
 | First-login activation, order of the lead's decision of 2026-10-04 (M1-B): 1 bind email → 2 six-digit code →
-| 3 password, where a student may keep the current password ("Lewati") and staff must change theirs.
+| 3 password, which every account must replace (D-138).
 | Fictional data only.
 */
 
@@ -83,15 +82,22 @@ function m1bToCodeStep(User $user, string $email = M1B_EMAIL): array
     return [$component, m1bMailedCode($email)];
 }
 
-/** Runs steps 1 + 2 and returns the component at step 3 (the password step). */
+/** D-152: a student passes "Data diri" (birth date of the import, a fictional No HP) and reaches the password step. */
+function m1bPassProfile(Testable $component): Testable
+{
+    return $component->assertSet('step', Activation::STEP_PROFILE)
+        ->set('phone', '081234567890')
+        ->call('saveProfile')
+        ->assertHasNoErrors()
+        ->assertSet('step', Activation::STEP_PASSWORD);
+}
+
+/** Runs steps 1 + 2 and, for a student, "Data diri" (D-152); returns the component at the password step. */
 function m1bToPasswordStep(User $user, string $email = M1B_EMAIL): Testable
 {
     [$component, $code] = m1bToCodeStep($user, $email);
 
-    return $component->set('code', $code)
-        ->call('verifyCode')
-        ->assertHasNoErrors()
-        ->assertSet('step', Activation::STEP_PASSWORD);
+    return m1bPassProfile($component->set('code', $code)->call('verifyCode')->assertHasNoErrors());
 }
 
 function m1bEvent(string $event): ?Activity
@@ -104,7 +110,8 @@ function m1bEvent(string $event): ?Activity
 it('binds the email first and keeps the account pending until the password step', function (): void {
     $user = H::pendingStudent()->user;
 
-    m1bToPasswordStep($user)->assertSee('Langkah 3 dari 3')->assertSee('Lewati, pakai kata sandi sekarang');
+    // D-152: a student has four steps, Data diri before the password.
+    m1bToPasswordStep($user)->assertSee('Langkah 4 dari 4')->assertSee('Buat kata sandi baru');
 
     $user->refresh();
     expect($user->email)->toBe(M1B_EMAIL)
@@ -120,44 +127,33 @@ it('binds the email first and keeps the account pending until the password step'
     $this->get(route('home'))->assertRedirect(route('aktivasi'));
 });
 
-it('lets a student skip the password change: the stored password stays and the skip is audited', function (): void {
+it('offers no skip at the password step: a student replaces the password from school (D-138)', function (): void {
+    m1bToPasswordStep(H::pendingStudent()->user)
+        ->assertSee('Buat kata sandi baru')
+        ->assertSee('Ganti kata sandi dari sekolah dengan kata sandi milikmu sendiri.')
+        ->assertDontSee('Lewati, pakai kata sandi sekarang')
+        ->assertDontSeeHtml('wire:click="keepPassword"');
+
+    expect(method_exists(Activation::class, 'keepPassword'))->toBeFalse()
+        ->and(method_exists(CompleteActivation::class, 'keepPassword'))->toBeFalse()
+        ->and(method_exists(CompleteActivation::class, 'mayKeepPassword'))->toBeFalse();
+});
+
+it('makes an account imported before D-138 (old pattern) choose a new password too', function (): void {
     $user = H::pendingStudent()->user;
-    $user->forceFill(['initial_password_expires_at' => now()->addDays(3), 'failed_activation_attempts' => 4])->saveQuietly();
-    $hash = $user->fresh()->password;
+    $user->forceFill(['password' => Hash::make('sm4g4_020310'), 'initial_password_expires_at' => now()->addDays(3)])->save();
 
-    m1bToPasswordStep($user)
-        ->call('keepPassword')
-        ->assertHasNoErrors()
-        ->assertSet('step', Activation::STEP_DONE)
-        ->assertSet('passwordChanged', false)
-        ->assertSee('Kata sandi tetap, tidak diganti')
-        ->call('start')
-        ->assertRedirect(route('siswa.tour'));
+    $this->from('/login')->post('/login', ['identifier' => H::NISN, 'password' => 'sm4g4_020310'])->assertRedirect(route('aktivasi'));
 
-    $user->refresh();
-    expect($user->status)->toBe(UserStatus::Active)
-        ->and($user->must_change_password)->toBeFalse()
-        ->and($user->password)->toBe($hash)
-        ->and(Hash::check(H::PASSWORD, $user->password))->toBeTrue()
-        ->and($user->password_changed_at)->toBeNull() // "still uses the password from school"
-        ->and(AccountControls::date($user, 'activated_at'))->not->toBeNull()
-        ->and(AccountControls::date($user, 'initial_password_expires_at'))->toBeNull()
-        ->and(AccountControls::failedAttempts($user))->toBe(0)
-        ->and(app(DetermineActivationStep::class)($user))->toBeNull();
+    m1bToPasswordStep($user->fresh())
+        ->assertDontSee('Lewati, pakai kata sandi sekarang')
+        ->set('password', 'sm4g4_020310xyz')->set('password_confirmation', 'sm4g4_020310xyz')
+        ->call('savePassword')->assertHasErrors('password')
+        ->set('password', M1B_NEW_PASSWORD)->set('password_confirmation', M1B_NEW_PASSWORD)
+        ->call('savePassword')->assertHasNoErrors()->assertSet('step', Activation::STEP_DONE);
 
-    $kept = m1bEvent(CompleteActivation::EVENT_PASSWORD_KEPT);
-    expect($kept)->not->toBeNull()
-        ->and($kept->subject_id)->toBe((string) $user->getKey())
-        ->and($kept->causer_id)->toBe($user->getKey())
-        // Only the fact is recorded: no password material, not even a hash.
-        ->and(collect($kept->properties)->isEmpty())->toBeTrue()
-        ->and(json_encode(Activity::query()->get(['description', 'event', 'properties']), JSON_UNESCAPED_SLASHES))->not->toContain($hash)
-        ->and(m1bEvent(CompleteActivation::EVENT_ACTIVATED)->properties['password_changed'])->toBeFalse()
-        ->and(m1bEvent(CompleteActivation::EVENT_PASSWORD_CHANGED))->toBeNull();
-
-    // The kept password logs the student in afterwards.
-    auth()->logout();
-    $this->from('/login')->post('/login', ['identifier' => H::NIS, 'password' => H::PASSWORD])->assertRedirect(route('home'));
+    expect($user->fresh()->status)->toBe(UserStatus::Active)
+        ->and($user->fresh()->password_changed_at)->not->toBeNull();
 });
 
 it('lets a student choose a new password at step 3', function (): void {
@@ -172,7 +168,6 @@ it('lets a student choose a new password at step 3', function (): void {
         ->call('savePassword')
         ->assertHasNoErrors()
         ->assertSet('step', Activation::STEP_DONE)
-        ->assertSet('passwordChanged', true)
         ->assertSet('password', '')
         ->assertSee('Kata sandi baru tersimpan')
         ->call('start')
@@ -259,9 +254,10 @@ it('activates a student in OTP test mode (local only) and lands on the tour plac
     $component->assertSee('Mode uji: kode apa pun diterima.')
         ->set('code', '000000')
         ->call('verifyCode')
-        ->assertHasNoErrors()
-        ->assertSet('step', Activation::STEP_PASSWORD)
-        ->call('keepPassword')
+        ->assertHasNoErrors();
+
+    m1bPassProfile($component)
+        ->set('password', M1B_NEW_PASSWORD)->set('password_confirmation', M1B_NEW_PASSWORD)->call('savePassword')
         ->assertSet('step', Activation::STEP_DONE)
         ->call('start')
         ->assertRedirect(route('siswa.tour'));
@@ -285,7 +281,7 @@ it('rejects an arbitrary code when test mode is off, accepts the mailed code onc
     $component->set('code', $wrong)->call('verifyCode')->assertHasErrors('code')->assertSet('step', Activation::STEP_CODE);
     expect($user->fresh()->email)->toBeNull();
 
-    $component->set('code', $code)->call('verifyCode')->assertHasNoErrors()->assertSet('step', Activation::STEP_PASSWORD);
+    $component->set('code', $code)->call('verifyCode')->assertHasNoErrors()->assertSet('step', Activation::STEP_PROFILE);
 
     expect($user->fresh()->email_verified_at)->not->toBeNull();
 
@@ -362,7 +358,7 @@ it('lets the student go back and fix a mistyped email, within the OTP limits', f
         $component->set('code', $firstCode)->call('verifyCode')->assertHasErrors('code');
     }
 
-    $component->set('code', $secondCode)->call('verifyCode')->assertHasNoErrors()->assertSet('step', Activation::STEP_PASSWORD);
+    $component->set('code', $secondCode)->call('verifyCode')->assertHasNoErrors()->assertSet('step', Activation::STEP_PROFILE);
 
     expect($user->fresh()->email)->toBe(M1B_EMAIL);
 });
@@ -391,8 +387,6 @@ it('does not let a tampered client reach the password step before the email is v
         ->set('password', M1B_NEW_PASSWORD)
         ->set('password_confirmation', M1B_NEW_PASSWORD)
         ->call('savePassword')
-        ->assertSet('step', Activation::STEP_EMAIL)
-        ->call('keepPassword')
         ->assertSet('step', Activation::STEP_EMAIL);
 
     $user->refresh();
@@ -402,8 +396,7 @@ it('does not let a tampered client reach the password step before the email is v
         ->and(Activity::query()->whereIn('event', [CompleteActivation::EVENT_PASSWORD_KEPT, CompleteActivation::EVENT_ACTIVATED])->count())->toBe(0);
 
     // The Actions refuse as well, whoever calls them.
-    expect(fn () => app(CompleteActivation::class)->keepPassword($user))->toThrow(ValidationException::class)
-        ->and(fn () => app(CompleteActivation::class)->changePassword($user, M1B_NEW_PASSWORD, M1B_NEW_PASSWORD))->toThrow(ValidationException::class)
+    expect(fn () => app(CompleteActivation::class)->changePassword($user, M1B_NEW_PASSWORD, M1B_NEW_PASSWORD))->toThrow(ValidationException::class)
         ->and($user->fresh()->status)->toBe(UserStatus::PendingActivation);
 });
 
@@ -439,16 +432,25 @@ it('resumes at the right step when the student left in the middle', function ():
         ->assertSet('sentTo', 'n•••@example.test')
         ->set('code', $code)
         ->call('verifyCode')
-        ->assertSet('step', Activation::STEP_PASSWORD);
+        ->assertSet('step', Activation::STEP_PROFILE);
 
-    // Left after the code → the next login goes to the password step, not back to the email.
+    // Left after the code → the next login goes to Data diri (D-152), not back to the email.
     auth()->logout();
-    $this->from('/login')->post('/login', ['identifier' => H::NIS, 'password' => H::PASSWORD])->assertRedirect(route('aktivasi'));
+    $this->from('/login')->post('/login', ['identifier' => H::NISN, 'password' => H::PASSWORD])->assertRedirect(route('aktivasi'));
+
+    Livewire::test(Activation::class)
+        ->assertSet('step', Activation::STEP_PROFILE)
+        ->assertSee('Langkah 3 dari 4')
+        ->assertSet('birth_date', '2010-03-02');
+
+    // Left after Data diri → the next visit goes to the password step.
+    m1bPassProfile(Livewire::test(Activation::class))
+        ->assertSee('Langkah 4 dari 4');
 
     Livewire::test(Activation::class)
         ->assertSet('step', Activation::STEP_PASSWORD)
-        ->assertSee('Langkah 3 dari 3')
-        ->call('keepPassword')
+        ->assertSee('Langkah 4 dari 4')
+        ->set('password', M1B_NEW_PASSWORD)->set('password_confirmation', M1B_NEW_PASSWORD)->call('savePassword')
         ->assertSet('step', Activation::STEP_DONE);
 
     expect($user->fresh()->status)->toBe(UserStatus::Active);
@@ -471,27 +473,29 @@ it('sends activated users away from the activation screen', function (): void {
 
 // M2-A (QA 2026-10-05, Q2-02): the temporary password of an Admin reset was shown on the Admin's screen, so the
 // student must replace it. Only the school password of the import may be kept.
-it('makes a student replace the temporary password of an Admin reset: same order, no skip', function (): void {
+// The lead on 2026-10-21: "Reset kata sandi & email" removes the email, so the student binds an own address again
+// (email → code → password); the Data diri stays confirmed, so that step is skipped.
+it('makes a student activate again after an Admin reset: email, code, password, no Data diri, no skip', function (): void {
     config(['session.driver' => 'database']);
 
-    $user = H::activeStudent()->user;
-    $temporary = app(ResetStudentAccount::class)->handle(H::staff(RoleName::Admin), $user, 'Siswa lupa kata sandi dan email.');
+    $student = H::activeStudent();
+    $student->forceFill(['phone' => '081298765432', 'profile_confirmed_at' => now()->subMonth()])->save();
+    $user = $student->user;
+    $temporary = 'sementara8';
+    app(ResetStudentAccount::class)->handle(H::staff(RoleName::Admin), $user, 'Siswa datang ke TU, akun diambil alih.', $temporary);
 
-    expect(CompleteActivation::hasTemporaryPassword($user->fresh()))->toBeTrue()
-        ->and(CompleteActivation::mayKeepPassword($user->fresh()))->toBeFalse();
+    expect(CompleteActivation::hasTemporaryPassword($user->fresh()))->toBeTrue();
 
-    $this->from('/login')->post('/login', ['identifier' => H::NIS, 'password' => $temporary])->assertRedirect(route('aktivasi'));
+    $this->from('/login')->post('/login', ['identifier' => H::NISN, 'password' => $temporary])->assertRedirect(route('aktivasi'));
 
-    $component = m1bToPasswordStep($user->fresh())
+    [$component, $code] = m1bToCodeStep($user->fresh());
+    $component->set('code', $code)
+        ->call('verifyCode')
+        ->assertHasNoErrors()
+        ->assertSet('step', Activation::STEP_PASSWORD)
         ->assertSee('Buat kata sandi baru')
         ->assertSee('Ganti kata sandi sementara dari Admin.')
         ->assertDontSee('Lewati, pakai kata sandi sekarang');
-
-    // Forbidden: the button is gone, and a hand-made call is refused by the screen and by the Action.
-    $component->call('keepPassword')->assertForbidden();
-
-    expect(fn () => app(CompleteActivation::class)->keepPassword($user->fresh()))
-        ->toThrow(AuthorizationException::class, CompleteActivation::MSG_MUST_CHANGE);
 
     // Typing the temporary password again as the "new" one would be a hidden keep.
     Livewire::test(Activation::class)
@@ -504,6 +508,9 @@ it('makes a student replace the temporary password of an Admin reset: same order
 
     $user->refresh();
     expect($user->status)->toBe(UserStatus::PendingActivation)
+        ->and($user->email)->toBe(M1B_EMAIL)
+        ->and($student->fresh()->profile_confirmed_at)->not->toBeNull()
+        ->and($student->fresh()->phone)->toBe('081298765432')
         ->and($user->must_change_password)->toBeTrue()
         ->and(CompleteActivation::hasTemporaryPassword($user))->toBeTrue()
         ->and(m1bEvent(CompleteActivation::EVENT_PASSWORD_KEPT))->toBeNull()
@@ -515,7 +522,7 @@ it('makes a student replace the temporary password of an Admin reset: same order
         ->call('savePassword')
         ->assertHasNoErrors()
         ->assertSet('step', Activation::STEP_DONE)
-        ->assertSet('passwordChanged', true);
+        ->assertSee('Kata sandi baru tersimpan');
 
     $user->refresh();
     expect($user->status)->toBe(UserStatus::Active)
@@ -527,31 +534,6 @@ it('makes a student replace the temporary password of an Admin reset: same order
         ->and(json_encode(Activity::query()->get(['description', 'event', 'properties'])))->not->toContain($temporary);
 });
 
-it('still lets a student keep the school password of the import, and refuses once a reset has landed', function (): void {
-    $user = H::pendingStudent()->user;
-    $user->forceFill(['email' => M1B_EMAIL, 'email_verified_at' => now()])->saveQuietly();
-    $loadedBeforeTheReset = $user->fresh();
-
-    expect(CompleteActivation::hasTemporaryPassword($loadedBeforeTheReset))->toBeFalse()
-        ->and(CompleteActivation::mayKeepPassword($loadedBeforeTheReset))->toBeTrue();
-
-    // An Admin reset lands while the student still has the password step open in another tab: the Action looks
-    // at the stored row, not at the copy the screen loaded earlier.
-    DB::table('users')->where('id', $user->getKey())->update(['temporary_password_issued_at' => now()]);
-
-    expect(fn () => app(CompleteActivation::class)->keepPassword($loadedBeforeTheReset))
-        ->toThrow(AuthorizationException::class, CompleteActivation::MSG_MUST_CHANGE)
-        ->and($user->fresh()->status)->toBe(UserStatus::PendingActivation)
-        ->and(m1bEvent(CompleteActivation::EVENT_PASSWORD_KEPT))->toBeNull();
-
-    // Without the mark the school password may be kept as before.
-    DB::table('users')->where('id', $user->getKey())->update(['temporary_password_issued_at' => null]);
-    app(CompleteActivation::class)->keepPassword($user->fresh());
-
-    expect($user->fresh()->status)->toBe(UserStatus::Active)
-        ->and(m1bEvent(CompleteActivation::EVENT_PASSWORD_KEPT))->not->toBeNull();
-});
-
 // M2-A (QA 2026-10-05, Q1-03 / Q2-07): a renewed session id leaves no old row behind, and a refused attempt
 // renews nothing.
 it('deletes the old session row when the id is renewed, so no ghost device stays and the old id is dead', function (): void {
@@ -559,7 +541,7 @@ it('deletes the old session row when the id is renewed, so no ghost device stays
 
     $user = H::pendingStudent()->user;
 
-    $this->from('/login')->post('/login', ['identifier' => H::NIS, 'password' => H::PASSWORD])->assertRedirect(route('aktivasi'));
+    $this->from('/login')->post('/login', ['identifier' => H::NISN, 'password' => H::PASSWORD])->assertRedirect(route('aktivasi'));
 
     $atLogin = session()->getId();
     expect(H::sessionCount($user))->toBe(1)
@@ -570,7 +552,7 @@ it('deletes the old session row when the id is renewed, so no ghost device stays
     expect(session()->getId())->toBe($atLogin);
 
     // Step 2: the id is renewed and the row of the old id is gone.
-    $component->set('code', $code)->call('verifyCode')->assertSet('step', Activation::STEP_PASSWORD);
+    $component->set('code', $code)->call('verifyCode')->assertSet('step', Activation::STEP_PROFILE);
 
     $afterCode = session()->getId();
     expect($afterCode)->not->toBe($atLogin)
@@ -579,7 +561,11 @@ it('deletes the old session row when the id is renewed, so no ghost device stays
     session()->save(); // what StartSession does when the request ends (Livewire tests skip the middleware)
     expect(H::sessionCount($user))->toBe(1);
 
-    // Step 3, refused passwords: same id, no extra row.
+    // Data diri (D-152) changes no credential: the id stays.
+    m1bPassProfile($component);
+    expect(session()->getId())->toBe($afterCode);
+
+    // Password step, refused passwords: same id, no extra row.
     foreach (['Abc12345', 'password123', 'nadia'.H::NIS] as $refused) {
         $component->set('password', $refused)->set('password_confirmation', $refused)->call('savePassword')->assertHasErrors('password');
     }
@@ -587,8 +573,8 @@ it('deletes the old session row when the id is renewed, so no ghost device stays
     expect(session()->getId())->toBe($afterCode)
         ->and(H::sessionCount($user))->toBe(1);
 
-    // Step 3, "Lewati": renewed once more, again without a leftover.
-    $component->call('keepPassword')->assertSet('step', Activation::STEP_DONE);
+    // Step 3, a new password: renewed once more, again without a leftover.
+    $component->set('password', M1B_NEW_PASSWORD)->set('password_confirmation', M1B_NEW_PASSWORD)->call('savePassword')->assertSet('step', Activation::STEP_DONE);
 
     $afterActivation = session()->getId();
     expect($afterActivation)->not->toBe($afterCode)
@@ -607,14 +593,13 @@ it('renews the session after a new password at step 3 and signs every other devi
     $user = H::pendingStudent()->user;
     $user->forceFill(['email' => M1B_EMAIL, 'email_verified_at' => now()])->saveQuietly();
 
-    $this->from('/login')->post('/login', ['identifier' => H::NIS, 'password' => H::PASSWORD])->assertRedirect(route('aktivasi'));
+    $this->from('/login')->post('/login', ['identifier' => H::NISN, 'password' => H::PASSWORD])->assertRedirect(route('aktivasi'));
 
     $before = session()->getId();
     H::fakeSessions($user, 2);
     expect(H::sessionCount($user))->toBe(3);
 
-    Livewire::test(Activation::class)
-        ->assertSet('step', Activation::STEP_PASSWORD)
+    m1bPassProfile(Livewire::test(Activation::class))
         ->set('password', M1B_NEW_PASSWORD)
         ->set('password_confirmation', M1B_NEW_PASSWORD)
         ->call('savePassword')
@@ -631,7 +616,7 @@ it('renews the session after a new password at step 3 and signs every other devi
         ->and(H::userBehindSession($before))->toBeNull();
 });
 
-it('finishes after the code for an account that had already chosen its password in the old order', function (): void {
+it('finishes after the code and Data diri for an account that had already chosen its password in the old order', function (): void {
     $user = H::pendingStudent()->user;
     $user->forceFill([
         'password' => Hash::make(M1B_NEW_PASSWORD),
@@ -641,11 +626,19 @@ it('finishes after the code for an account that had already chosen its password 
 
     [$component, $code] = m1bToCodeStep($user->fresh());
 
+    // D-152: the code no longer finishes a student whose Data diri is open; saving it does.
     $component->set('code', $code)
         ->call('verifyCode')
         ->assertHasNoErrors()
+        ->assertSet('step', Activation::STEP_PROFILE);
+
+    expect($user->fresh()->status)->toBe(UserStatus::PendingActivation);
+
+    $component->set('phone', '081234567890')
+        ->call('saveProfile')
+        ->assertHasNoErrors()
         ->assertSet('step', Activation::STEP_DONE)
-        ->assertSet('passwordChanged', true);
+        ->assertSee('Kata sandi baru tersimpan');
 
     expect($user->fresh()->status)->toBe(UserStatus::Active)
         ->and(m1bEvent(CompleteActivation::EVENT_ACTIVATED)->properties['password_changed'])->toBeTrue();
@@ -724,18 +717,12 @@ it('makes staff change the temporary password: same order, no skip', function ()
         ->assertHasNoErrors()
         ->assertSet('step', Activation::STEP_PASSWORD)
         ->assertSee('Buat kata sandi baru')
+        ->assertSee('Ganti kata sandi sementara dari Admin.')
+        ->assertDontSee('milikmu')
         ->assertDontSee('Lewati, pakai kata sandi sekarang')
         // M2-A (QA Q2-05): staff read their own rules, not the student's NIS/NISN.
         ->assertSee('Jangan pakai nama, nama pengguna, email, atau kata yang mudah ditebak.')
         ->assertDontSee('NIS/NISN');
-
-    // Forbidden: a staff account cannot keep the password an Admin typed.
-    $component->call('keepPassword')->assertForbidden();
-
-    expect(fn () => app(CompleteActivation::class)->keepPassword($staff))->toThrow(AuthorizationException::class)
-        ->and($staff->fresh()->status)->toBe(UserStatus::PendingActivation)
-        ->and($staff->fresh()->must_change_password)->toBeTrue()
-        ->and(m1bEvent(CompleteActivation::EVENT_PASSWORD_KEPT))->toBeNull();
 
     Livewire::test(Activation::class)
         ->assertSet('step', Activation::STEP_PASSWORD)
@@ -815,7 +802,24 @@ it('offers "Keluar" while the activation is open, not on the finished screen', f
 
     m1bToPasswordStep($user)
         ->assertSee('Salah akun?')
-        ->call('keepPassword')
+        ->set('password', M1B_NEW_PASSWORD)->set('password_confirmation', M1B_NEW_PASSWORD)->call('savePassword')
         ->assertSet('step', Activation::STEP_DONE)
         ->assertDontSee('Salah akun?');
+});
+
+it('refuses the initial password from school as the new password, also a long one set by the school (D-138)', function (): void {
+    config(['sth.initial_student_password' => 'Pelangi-Rindang-88']);
+    $component = m1bToPasswordStep(H::pendingStudent()->user)
+        ->set('password', 'pelangi rindang 88')
+        ->set('password_confirmation', 'pelangi rindang 88')
+        ->call('savePassword')
+        ->assertHasErrors('password')
+        ->assertSet('step', Activation::STEP_PASSWORD);
+
+    expect($component->errors()->get('password'))->toBe([PasswordPolicy::MSG_INITIAL_PATTERN]);
+});
+
+it('ends every activation with "Kata sandi baru tersimpan": no kept-password ending since D-138 (FS1 fix wave)', function (): void {
+    expect(property_exists(Activation::class, 'passwordChanged'))->toBeFalse()
+        ->and((string) file_get_contents(resource_path('views/livewire/auth/activation.blade.php')))->not->toContain('Kata sandi tetap');
 });

@@ -38,8 +38,8 @@ it('sends the login page with no-store, also when the form comes back with an er
 
     H::pendingStudent();
 
-    m2aAssertNotStored($this->from('/login')->post('/login', ['identifier' => H::NIS, 'password' => 'salah-sekali-123'])->assertRedirect('/login'));
-    m2aAssertNotStored($this->from('/login')->post('/login', ['identifier' => H::NIS, 'password' => H::PASSWORD])->assertRedirect(route('aktivasi')));
+    m2aAssertNotStored($this->from('/login')->post('/login', ['identifier' => H::NISN, 'password' => 'salah-sekali-123'])->assertRedirect('/login'));
+    m2aAssertNotStored($this->from('/login')->post('/login', ['identifier' => H::NISN, 'password' => H::PASSWORD])->assertRedirect(route('aktivasi')));
 });
 
 it('sends the activation page with no-store', function (): void {

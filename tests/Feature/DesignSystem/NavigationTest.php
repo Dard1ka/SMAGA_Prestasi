@@ -7,6 +7,7 @@ use App\Livewire\Siswa\TurMenu;
 use App\Support\Navigation;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Str;
 
 /*
 | App\Support\Navigation (W1-D): menus per role, current item, disabled items, role choice, initials.
@@ -32,11 +33,12 @@ afterEach(function (): void {
 });
 
 it('builds the siswa menu from the spec with disabled items for missing routes', function (): void {
-    $nav = Navigation::for(['name' => 'Nadia Putri Anindya', 'meta' => 'Siswa · XI-4'], 'siswa', ['siswa.lomba-saya' => 2], 'none');
+    $nav = Navigation::for(['name' => 'Nadia Putri Anindya', 'meta' => 'Siswa · XI-D'], 'siswa', ['siswa.lomba-saya' => 2], 'none');
     $items = sthNavItems($nav);
 
     expect(array_column($nav['sections'], 'label'))->toBe(['Menu', 'Akun'])
-        ->and(array_keys($items))->toBe(['beranda', 'cari-lomba', 'lomba-saya', 'portofolio', 'peringkat', 'profil-talenta', 'notifikasi', 'keamanan', 'bantuan'])
+        // D-152: Profil saya (tabs Data diri + Keamanan akun) above Notifikasi.
+        ->and(array_keys($items))->toBe(['beranda', 'cari-lomba', 'lomba-saya', 'portofolio', 'peringkat', 'profil-saya', 'notifikasi', 'bantuan'])
         // Wave 2 created real routes: an item is disabled exactly while its route is missing.
         ->and($items['beranda']['disabled'])->toBe(! Route::has('siswa.beranda'))
         ->and($items['beranda']['href'])->toBe(Route::has('siswa.beranda') ? route('siswa.beranda') : '#')
@@ -47,7 +49,7 @@ it('builds the siswa menu from the spec with disabled items for missing routes',
         ->and(array_column($nav['tabbar'], 'label'))->toBe(['Beranda', 'Lomba', 'Lomba saya', 'Peringkat', 'Portofolio'])
         ->and($items['lomba-saya']['label'])->toBe('Lomba saya')
         ->and($items['portofolio']['label'])->toBe('Portofolio')
-        ->and($nav['user'])->toBe(['name' => 'Nadia Putri Anindya', 'meta' => 'Siswa · XI-4', 'initials' => 'NA']);
+        ->and($nav['user'])->toBe(['name' => 'Nadia Putri Anindya', 'meta' => 'Siswa · XI-D', 'initials' => 'NA']);
 });
 
 it('draws the tab replicas of the mobile menu tour with the tab bar labels', function (): void {
@@ -129,12 +131,12 @@ it('links the backlog screens from the role menus (W4)', function (string $role,
             ->and($items[$key]['disabled'])->toBeFalse();
     }
 })->with([
-    'siswa' => ['siswa', ['peringkat' => 'siswa.peringkat', 'notifikasi' => 'notifikasi.index', 'keamanan' => 'akun.keamanan']],
+    'siswa' => ['siswa', ['peringkat' => 'siswa.peringkat', 'notifikasi' => 'notifikasi.index', 'profil-saya' => 'akun.profil']],
     'guru' => ['guru', ['binaan' => 'guru.beranda', 'lomba' => 'guru.lomba.index']],
     'kesiswaan' => ['kesiswaan', ['prestasi' => 'kesiswaan.prestasi.index', 'aktivasi' => 'kesiswaan.aktivasi.index']],
     'kepala sekolah' => ['kepala_sekolah', ['prestasi' => 'kepsek.prestasi', 'surat' => 'kepsek.surat.index', 'laporan' => 'kepsek.laporan']],
     'tata usaha' => ['tata_usaha', ['template' => 'tu.surat.template']],
-    'admin' => ['admin', ['aktivasi' => 'admin.aktivasi.index', 'arsip' => 'admin.arsip.index', 'audit' => 'admin.audit.index']],
+    'admin' => ['admin', ['prestasi' => 'kesiswaan.prestasi.index', 'aktivasi' => 'admin.aktivasi.index', 'arsip' => 'admin.arsip.index', 'audit' => 'admin.audit.index']],
 ]);
 
 it('marks the backlog screens current on their own routes', function (string $role, string $route, string $key): void {
@@ -144,28 +146,35 @@ it('marks the backlog screens current on their own routes', function (string $ro
         ->and(collect($items)->where('current', true))->toHaveCount(1);
 })->with([
     ['kesiswaan', 'kesiswaan.aktivasi.index', 'aktivasi'],
+    ['admin', 'kesiswaan.prestasi.index', 'prestasi'],
     ['admin', 'admin.aktivasi.index', 'aktivasi'],
     ['admin', 'admin.arsip.index', 'arsip'],
     ['admin', 'admin.audit.index', 'audit'],
     ['kepala_sekolah', 'kepsek.surat.index', 'surat'],
-    ['siswa', 'akun.keamanan', 'keamanan'],
+    // D-152: both tabs of Profil saya mark the one menu item.
+    ['siswa', 'akun.profil', 'profil-saya'],
+    ['siswa', 'akun.keamanan', 'profil-saya'],
     ['siswa', 'notifikasi.index', 'notifikasi'],
 ]);
 
-it('puts Notifikasi and Keamanan akun in the avatar menu of every role', function (): void {
+it('puts Profil saya above Notifikasi in the avatar menu of every role, Keamanan akun only as its tab (D-152)', function (): void {
     $html = Blade::render('<x-sth.topbar :nav="$nav" title="Beranda" />', [
         'nav' => Navigation::for(['name' => 'Ibu Dwi Rahayu', 'roles' => ['kesiswaan']], 'kesiswaan', [], 'none'),
     ]);
+    $menu = Str::of($html)->after('id="sth-user-menu"')->before('Keluar')->toString();
 
-    expect($html)->toContain('href="'.route('notifikasi.index').'"')
-        ->and($html)->toContain('href="'.route('akun.keamanan').'"')
-        ->and($html)->toContain('Keamanan akun');
+    expect(strpos($menu, 'href="'.route('akun.profil').'"'))->toBeInt()
+        ->and(strpos($menu, 'href="'.route('notifikasi.index').'"'))->toBeInt()
+        ->and(strpos($menu, 'href="'.route('akun.profil').'"'))->toBeLessThan(strpos($menu, 'href="'.route('notifikasi.index').'"'))
+        ->and($menu)->toContain('Profil saya')
+        ->and($html)->not->toContain('href="'.route('akun.keamanan').'"')
+        ->and($html)->not->toContain('Keamanan akun');
 });
 
 it('leaves the phone search icon out when a tab already opens that page', function (): void {
     // One way to each place: below lg the siswa tab "Lomba" is Cari lomba. Staff have no tab bar and keep the icon.
     $render = fn (array $nav): string => Blade::render('<x-sth.topbar :nav="$nav" title="Beranda" />', ['nav' => $nav]);
-    $siswa = $render(Navigation::for(['name' => 'Nadia Putri Anindya', 'meta' => 'Siswa · XI-4'], 'siswa', [], 'none'));
+    $siswa = $render(Navigation::for(['name' => 'Nadia Putri Anindya', 'meta' => 'Siswa · XI-D'], 'siswa', [], 'none'));
     $staff = $render(Navigation::for(['name' => 'Ibu Dwi Rahayu', 'roles' => ['kesiswaan']], 'kesiswaan', [], 'none'));
 
     expect($siswa)->toContain('id="cari-atas"') // the text box of lg and up stays

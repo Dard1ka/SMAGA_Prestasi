@@ -9,12 +9,13 @@ declare(strict_types=1);
  *
  * Nothing is faked: the script never calls notify() itself. It only arranges time where a human would wait
  * (competition dates moved into the past before the timeline commands; a real sleep for the 60 s OTP cooldown).
- * Every mail body is also scanned for data that must never be mailed (initial password pattern, full NIS/NISN,
+ * Every mail body is also scanned for data that must never be mailed (initial password and its old pattern, every NIS/NISN,
  * birth dates, the passwords typed in this run) and for a broken template (empty part, unrendered Blade, HTML
  * entities shown literally).
  *
- * Steps: 0 setup (second Humas) · 1 import + activation · 2 lomba uploads + verification (incl. a lomba name and a
- * note written as Markdown: no link or image may reach the HTML part) · 3 registration (team, invitations,
+ * Steps: 0 setup (second Humas) · 1 import + activation · 2 lomba usulan by students (the whole lomba + its juknis,
+ * D-145/D-147; a guru may no longer send one), the Admin's lomba + verification (incl. a lomba name and a note written
+ * as Markdown: no link or image may reach the HTML part) · 3 registration (team, invitations,
  * individual, decline, cancel before and after the team reached the Kepala Sekolah) · 4 Kepala Sekolah (approve,
  * reject: the guru pembimbing is told too) · 5 Tata Usaha letters + corrections · 6 timeline commands ·
  * 7 laporan hasil + verification · 8 Humas (a scheduled publication only reminds Humas at its time; the student is
@@ -56,6 +57,7 @@ use App\Actions\Letters\LetterDraft;
 use App\Actions\Letters\RevokeLetter;
 use App\Actions\Letters\SendLetters;
 use App\Actions\Publications\CreateAppreciationEvent;
+use App\Actions\Publications\NamedStudent;
 use App\Actions\Publications\PublishPublication;
 use App\Actions\Publications\RecordAppreciation;
 use App\Actions\Publications\RemindDuePublication;
@@ -76,9 +78,9 @@ use App\Actions\Roles\RequestRoleChange;
 use App\Actions\Settings\PublishWeightVersion;
 use App\Actions\Settings\ReplaceSignatureImage;
 use App\Actions\Talent\ApplyTalent;
-use App\Actions\Talent\MoveTalentStage;
-use App\Actions\Talent\RejectTalentApplication;
+use App\Actions\Talent\CancelTalentApplication;
 use App\Actions\Talent\SaveTalentProfile;
+use App\Actions\Talent\UpdateTalentAssessment;
 use App\Actions\Templates\LetterTemplate;
 use App\Actions\Templates\UpdateLetterTemplate;
 use App\Actions\Users\CreateStaffAccount;
@@ -90,10 +92,10 @@ use App\Enums\PublicationStatus;
 use App\Enums\RegistrationType;
 use App\Enums\ResultType;
 use App\Enums\RoleName;
-use App\Enums\TalentStatus;
 use App\Enums\TalentTypeCode;
 use App\Jobs\RemindDuePublications;
 use App\Models\Achievement;
+use App\Models\AppreciationEvent;
 use App\Models\Competition;
 use App\Models\Letter;
 use App\Models\Publication;
@@ -107,6 +109,7 @@ use App\Models\User;
 use App\Models\WeightVersion;
 use App\Notifications\Publications\PublicationDue;
 use Carbon\CarbonImmutable;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Contracts\Http\Kernel as HttpKernel;
 use Illuminate\Http\Request;
@@ -469,7 +472,7 @@ final class EmailScenario
 
         $this->out();
         $this->out(sprintf(
-            'LEAK SCAN: %d mails (subject + text + HTML) × %d strings (initial password pattern, every NIS/NISN, birth dates, passwords typed in this run); control phrase found in %d/%d mails.',
+            'LEAK SCAN: %d mails (subject + text + HTML) × %d strings (initial password and its old pattern, every NIS/NISN, birth dates, passwords typed in this run); control phrase found in %d/%d mails.',
             $this->scanned,
             $this->needleCount,
             $this->controlHits,
@@ -519,7 +522,8 @@ final class EmailScenario
     private function needles(): array
     {
         $needles = [
-            'initial password pattern' => [InitialPassword::PREFIX, rtrim(InitialPassword::PREFIX, '_')],
+            'initial password' => [app(InitialPassword::class)->make()],
+            'initial password, old pattern' => [InitialPassword::LEGACY_PREFIX, rtrim(InitialPassword::LEGACY_PREFIX, '_')],
             'a password typed in this run' => $this->secrets,
             'full NIS/NISN' => [],
             'birth date' => [],
@@ -539,6 +543,22 @@ final class EmailScenario
         }
 
         return $needles;
+    }
+
+    /**
+     * Does $value occur in the (lower-cased) mail text? The initial password only counts as a whole token: it is
+     * a short number, and a 6-digit OTP code that happens to contain it is not a leak. Every other label is a
+     * plain substring match.
+     */
+    private function found(string $label, string $haystack, string $value): bool
+    {
+        $value = mb_strtolower($value);
+
+        if ($label === 'initial password') {
+            return preg_match('/(?<![\p{L}\p{N}])'.preg_quote($value, '/').'(?![\p{L}\p{N}])/u', $haystack) === 1;
+        }
+
+        return str_contains($haystack, $value);
     }
 
     /**
@@ -567,7 +587,7 @@ final class EmailScenario
 
         foreach ($needles as $label => $values) {
             foreach ($values as $value) {
-                if ($value !== '' && str_contains($haystack, mb_strtolower($value))) {
+                if ($value !== '' && $this->found($label, $haystack, $value)) {
                     $line = sprintf('[%s] "%s" to %s contains %s', $step, $message['subject'], implode(', ', $message['to']), $label);
                     $this->leaks[] = $line;
                     $this->out('    => LEAK: '.$line);
@@ -611,10 +631,10 @@ $students = [
 
 $importCsv = implode("\n", [
     'Nama lengkap,NIS,NISN,Tanggal lahir,Kelas',
-    'Sekar Ayu Pramesti,226227201,0109900001,14-02-2011,X-1',
-    'Wulan Kusumaningrum,226227202,0109900002,23-08-2010,X-2',
-    'Bintang Mahardika,226227203,0109900003,05-11-2010,X-3',
-    "Ma'ruf Hidayat,226227204,0109900004,19-06-2010,X-4",
+    'Sekar Ayu Pramesti,226227201,0109900001,14-02-2011,X-A',
+    'Wulan Kusumaningrum,226227202,0109900002,23-08-2010,X-B',
+    'Bintang Mahardika,226227203,0109900003,05-11-2010,X-C',
+    "Ma'ruf Hidayat,226227204,0109900004,19-06-2010,X-D",
 ])."\n";
 
 /**
@@ -703,7 +723,7 @@ $startActivation = function (string $key) use ($siswa, $mail): void {
 
 /**
  * Activation steps 2 + 3: the code read from the mail binds the email (CompleteActivation::bindEmail), then the
- * student chooses a new password (changePassword; "Lewati" would be keepPassword). Step 3 sends no mail.
+ * student chooses a new password (changePassword; every account replaces its password, D-138). Step 3 sends no mail.
  */
 $finishActivation = function (string $key) use ($siswa, $mail, $scenario, $newPassword, $passwords): bool {
     $code = $scenario->codeFromMail($mail($key), 'Kode verifikasi email');
@@ -716,6 +736,9 @@ $finishActivation = function (string $key) use ($siswa, $mail, $scenario, $newPa
 
     $genuine = hash_equals((string) $otp->code_hash, VerifyOtpCode::hash($user->getKey(), CompleteActivation::PURPOSE, (string) $otp->email, $code));
     app(CompleteActivation::class)->bindEmail($user, $otp);
+
+    // D-152: a student confirms birth date + No HP before the password (fictional number; no mail is sent).
+    app(CompleteActivation::class)->confirmProfile($user, $user->student->birth_date->format('Y-m-d'), '081234567890');
 
     $password = $newPassword($user);
     app(CompleteActivation::class)->changePassword($user, $password, $password);
@@ -770,7 +793,7 @@ $scenario->clearMailbox();
 // 0. Setup: a second Humas account, so "every Humas" is more than one mailbox
 // =================================================================================================================
 
-$scenario->step('0a', 'Setup: Admin creates a second Humas account, fitri.h (CreateStaffAccount, role given at once)', function () use ($staff, $scenario): void {
+$scenario->step('0a', 'Setup: Admin creates a second Humas account, fitri.h (the role applies at once since 21 Okt 2026)', function () use ($staff, $scenario): void {
     $password = app(GenerateTemporaryPassword::class)->handle().'-'.random_int(1000, 9999);
     $scenario->secret($password);
 
@@ -860,19 +883,58 @@ $scenario->step('1e', 'A student whose name has an apostrophe (Ma\'ruf) activate
 // 2. Lomba uploads + Kesiswaan verification
 // =================================================================================================================
 
-$scenario->step('2a', 'Guru (retno.w) uploads a lomba with a brochure (SubmitCompetition)', function () use ($state, $staff, $lomba, $pdf): void {
-    $state['l1'] = app(SubmitCompetition::class)->handle($staff('retno.w'), [
+/**
+ * A complete usulan as Siswa › Usulkan lomba sends it (CompetitionFields::toAttributes() shape, D-145): kategori bobot and
+ * status ajang are not in it, SubmitCompetition computes them from the jenis penyelenggara (D-146).
+ */
+$usulan = fn (array $fields): array => array_merge([
+    'description' => 'Usulan siswa (data fiktif untuk skenario E2E).',
+    'bidang' => 'sains',
+    'level' => 'nasional',
+    'organizer_type' => 'organisasi_profesi',
+    'organizer_type_other' => null,
+    'puspresnas' => false,
+    'mode' => 'luring',
+    'location' => 'Kota Semarang',
+    'registration_opens_at' => $today->subDay()->format('Y-m-d'),
+    'registration_closes_at' => $today->addDays(7)->format('Y-m-d'),
+    'starts_on' => $today->addDays(14)->format('Y-m-d'),
+    'final_on' => $today->addDays(15)->format('Y-m-d'),
+    'participation' => 'keduanya',
+    'max_team_size' => 3,
+    'registration_url' => null,
+], $fields);
+
+$scenario->step('2a', 'Student (Wulan) proposes a lomba with every field and its brochure (SubmitCompetition, D-145): the weight comes from the jenis penyelenggara (D-146); a guru may no longer send one', function () use ($state, $staff, $siswa, $lomba, $pdf, $usulan, $scenario): void {
+    $input = $usulan([
         'name' => $lomba['l1'],
         'organizer_name' => 'Himpunan Sains Pelajar Nusantara',
         'website_url' => 'https://example.org/lomba/ospn-2026',
-        'description' => 'Usulan dari guru pembina (data fiktif untuk skenario E2E).',
-    ], $pdf('brosur-ospn-2026.pdf'))->getKey();
+    ]);
+
+    // D-145: only siswa and Admin create a lomba.
+    try {
+        app(SubmitCompetition::class)->handle($staff('retno.w'), $input, $pdf('brosur-dari-guru.pdf'));
+        $scenario->problem('2a', 'a guru could still send a lomba');
+    } catch (AuthorizationException) {
+        $scenario->note('guru (retno.w) refused: yes');
+    }
+
+    $competition = app(SubmitCompetition::class)->handle($siswa('wulan'), $input, $pdf('brosur-ospn-2026.pdf'));
+    $state['l1'] = $competition->getKey();
+
+    $weight = $competition->weight_category?->value.' · '.$competition->event_status?->value;
+    $scenario->note('kategori bobot from the map (organisasi profesi → C · non_pemerintah): '.$weight);
+
+    if ($weight !== 'C · non_pemerintah') {
+        $scenario->problem('2a', 'unexpected computed weight: '.$weight);
+    }
 }, [
-    [$at('kesiswaan'), 'Usulan lomba baru: '.$lomba['l1']],
-    [$at('operator'), 'Usulan lomba baru: '.$lomba['l1']],
+    [$at('kesiswaan'), 'Verifikasi usulan lomba: '.$lomba['l1']],
+    [$at('operator'), 'Verifikasi usulan lomba: '.$lomba['l1']],
 ]);
 
-$scenario->step('2b', 'Kesiswaan completes the lomba data and publishes it (UpdateCompetition + VerifyCompetition)', function () use ($state, $staff, $lomba, $today): void {
+$scenario->step('2b', 'Kesiswaan checks the lomba, picks the default guru pembimbing and publishes it (UpdateCompetition + VerifyCompetition)', function () use ($state, $staff, $lomba, $today): void {
     $competition = Competition::query()->findOrFail($state['l1']);
 
     app(UpdateCompetition::class)->handle($staff('kesiswaan'), $competition, [
@@ -880,7 +942,7 @@ $scenario->step('2b', 'Kesiswaan completes the lomba data and publishes it (Upda
         'description' => 'Olimpiade sains pelajar tingkat nasional (data fiktif untuk skenario E2E).',
         'bidang' => 'sains',
         'organizer_name' => 'Himpunan Sains Pelajar Nusantara',
-        'organizer_type' => 'yayasan_lembaga',
+        'organizer_type' => 'organisasi_profesi',
         'weight_category' => 'C',
         'event_status' => 'non_pemerintah',
         'level' => 'nasional',
@@ -898,17 +960,21 @@ $scenario->step('2b', 'Kesiswaan completes the lomba data and publishes it (Upda
     ]);
 
     app(VerifyCompetition::class)->handle($staff('kesiswaan'), $competition->refresh(), CompetitionStatus::Dipublikasikan);
-}, [[$at('retno.w'), 'Lomba dipublikasikan: '.$lomba['l1']]]);
+}, [[$mail('wulan'), 'Lomba dipublikasikan: '.$lomba['l1']]]);
 
-$scenario->step('2c', 'Student (Galuh) proposes a lomba (SubmitCompetition)', function () use ($state, $siswa, $lomba): void {
-    $state['l2'] = app(SubmitCompetition::class)->handle($siswa('galuh'), [
+$scenario->step('2c', 'Student (Galuh) proposes a lomba with every field and its invitation (SubmitCompetition)', function () use ($state, $siswa, $lomba, $pdf, $usulan): void {
+    $state['l2'] = app(SubmitCompetition::class)->handle($siswa('galuh'), $usulan([
         'name' => $lomba['l2'],
         'organizer_name' => 'Panitia Cerdas Cermat Fiktif',
+        'organizer_type' => 'lainnya',
+        'organizer_type_other' => 'Panitia antarkelas',
+        'level' => 'sekolah',
+        'participation' => 'tim',
         'website_url' => 'https://example.org/lomba/cerdas-cermat',
-    ])->getKey();
+    ]), $pdf('undangan-cerdas-cermat.pdf'))->getKey();
 }, [
-    [$at('kesiswaan'), 'Usulan lomba baru: '.$lomba['l2']],
-    [$at('operator'), 'Usulan lomba baru: '.$lomba['l2']],
+    [$at('kesiswaan'), 'Verifikasi usulan lomba: '.$lomba['l2']],
+    [$at('operator'), 'Verifikasi usulan lomba: '.$lomba['l2']],
 ]);
 
 $scenario->step('2d', 'Kesiswaan rejects the proposal with a note (VerifyCompetition: ditolak)', function () use ($state, $staff): void {
@@ -920,7 +986,7 @@ $scenario->step('2d', 'Kesiswaan rejects the proposal with a note (VerifyCompeti
     );
 }, [[$mail('galuh'), 'Lomba tidak dipublikasikan: '.$lomba['l2']]]);
 
-$scenario->step('2e', 'Admin adds a lomba with the full form (CreateCompetition): lands in the verification queue', function () use ($state, $staff, $lomba, $today, $scenario): void {
+$scenario->step('2e', 'Admin adds a lomba with the full form and its juknis (CreateCompetition, D-147): lands in the verification queue', function () use ($state, $staff, $lomba, $today, $scenario, $pdf): void {
     $competition = app(CreateCompetition::class)->handle($staff('operator'), [
         'name' => $lomba['l3'],
         'bidang' => 'riset',
@@ -936,10 +1002,10 @@ $scenario->step('2e', 'Admin adds a lomba with the full form (CreateCompetition)
         'final_on' => $today->addDays(30)->format('Y-m-d'),
         'location' => 'Daring',
         'participation' => 'individu',
-    ]);
+    ], $pdf('juknis-festival-inovasi-2026.pdf'));
     $state['l3'] = $competition->getKey();
     $scenario->note('status after create: '.$competition->status->value.' (the other verifiers are told; the Admin who added it is not)');
-}, [[$at('kesiswaan'), 'Usulan lomba baru: '.$lomba['l3']]]);
+}, [[$at('kesiswaan'), 'Verifikasi usulan lomba: '.$lomba['l3']]]);
 
 $scenario->step('2f', 'Kesiswaan publishes the Admin\'s lomba (VerifyCompetition)', function () use ($state, $staff): void {
     app(VerifyCompetition::class)->handle($staff('kesiswaan'), Competition::query()->findOrFail($state['l3']), CompetitionStatus::Dipublikasikan);
@@ -968,33 +1034,38 @@ $assertPlain = function (string $step, array $message, string $typed) use ($scen
     }
 };
 
-$scenario->step('2g', 'Guru proposes a lomba whose NAME is Markdown (a link + an image): mails must show it as plain text; a name with a web address is refused', function () use ($state, $staff, $hostileName, $scenario, $assertPlain, $at): void {
+$scenario->step('2g', 'Student (Sekar) proposes a lomba whose NAME is Markdown (a link + an image): mails must show it as plain text; a name with a web address is refused', function () use ($state, $siswa, $hostileName, $scenario, $assertPlain, $at, $pdf, $usulan): void {
     // D-76: a web address in the name never gets as far as a mail.
     try {
-        app(SubmitCompetition::class)->handle($staff('retno.w'), ['name' => 'Lomba Sains, daftar ulang di www.situs-palsu.example']);
+        app(SubmitCompetition::class)->handle($siswa('sekar'), $usulan([
+            'name' => 'Lomba Sains, daftar ulang di www.situs-palsu.example',
+            'organizer_name' => 'Panitia Fiktif',
+            'website_url' => 'https://example.org/lomba/sains',
+        ]), $pdf('brosur-lomba-sains.pdf'));
         $scenario->problem('2g', 'a lomba name with a web address was accepted');
     } catch (ValidationException $e) {
         $scenario->note('name with a web address refused: "'.(string) ($e->errors()['name'][0] ?? '?').'"');
     }
 
-    $state['l4'] = app(SubmitCompetition::class)->handle($staff('retno.w'), [
+    $state['l4'] = app(SubmitCompetition::class)->handle($siswa('sekar'), $usulan([
         'name' => $hostileName,
         'organizer_name' => 'Panitia Fiktif',
-    ])->getKey();
+        'website_url' => 'https://example.org/lomba/fiktif',
+    ]), $pdf('brosur-lomba-fiktif.pdf'))->getKey();
 
-    $message = $scenario->newest($at('kesiswaan'), 'Usulan lomba baru: '.$hostileName);
+    $message = $scenario->newest($at('kesiswaan'), 'Verifikasi usulan lomba: '.$hostileName);
     $scenario->note('subject shows the literal name: yes (matched below)');
     $assertPlain('2g', $message, $hostileName);
 }, [
-    [$at('kesiswaan'), 'Usulan lomba baru: '.$hostileName],
-    [$at('operator'), 'Usulan lomba baru: '.$hostileName],
+    [$at('kesiswaan'), 'Verifikasi usulan lomba: '.$hostileName],
+    [$at('operator'), 'Verifikasi usulan lomba: '.$hostileName],
 ]);
 
-$scenario->step('2h', 'Kesiswaan rejects it with a NOTE written as Markdown (VerifyCompetition: ditolak)', function () use ($state, $staff, $hostileName, $hostileNote, $scenario, $assertPlain, $at): void {
+$scenario->step('2h', 'Kesiswaan rejects it with a NOTE written as Markdown (VerifyCompetition: ditolak)', function () use ($state, $staff, $hostileName, $hostileNote, $scenario, $assertPlain, $mail): void {
     app(VerifyCompetition::class)->handle($staff('kesiswaan'), Competition::query()->findOrFail($state['l4']), CompetitionStatus::Ditolak, $hostileNote);
 
-    $assertPlain('2h', $scenario->newest($at('retno.w'), 'Lomba tidak dipublikasikan: '.$hostileName), $hostileNote);
-}, [[$at('retno.w'), 'Lomba tidak dipublikasikan: '.$hostileName]]);
+    $assertPlain('2h', $scenario->newest($mail('sekar'), 'Lomba tidak dipublikasikan: '.$hostileName), $hostileNote);
+}, [[$mail('sekar'), 'Lomba tidak dipublikasikan: '.$hostileName]]);
 
 // =================================================================================================================
 // 3. Registration: team, invitations, individual, decline, cancel
@@ -1029,6 +1100,7 @@ $scenario->step('3c', 'Laras accepts (ConfirmMembership): team complete, goes to
 }, [
     [$mail('galuh'), 'Anggota ikut tim: '.$lomba['l1']],
     [$at('kepsek'), 'Pendaftaran lomba menunggu persetujuan'],
+    [$at('tu'), 'Pendaftaran lomba menunggu persetujuan'], // D-150: Tata Usaha approves too
 ]);
 
 $scenario->step('3d', 'Galang registers a second TEAM and invites Sekar (CreateRegistration)', function () use ($state, $siswa, $staff, $studentId, $l1): void {
@@ -1061,11 +1133,11 @@ $scenario->step('3g', 'Galang (ketua) cancels the team while it still waits for 
 
 $scenario->step('3h', 'Sekar registers INDIVIDUALLY (CreateRegistration): straight to the Kepala Sekolah', function () use ($state, $siswa, $staff, $l1): void {
     $state['r3'] = app(CreateRegistration::class)->handle($siswa('sekar'), $l1(), RegistrationType::Individu, [], (int) $staff('hendra.k')->getKey())->getKey();
-}, [[$at('kepsek'), 'Pendaftaran lomba menunggu persetujuan']]);
+}, [[$at('kepsek'), 'Pendaftaran lomba menunggu persetujuan'], [$at('tu'), 'Pendaftaran lomba menunggu persetujuan']]);
 
 $scenario->step('3i', 'Wulan registers INDIVIDUALLY (CreateRegistration)', function () use ($state, $siswa, $staff, $l1): void {
     $state['r4'] = app(CreateRegistration::class)->handle($siswa('wulan'), $l1(), RegistrationType::Individu, [], (int) $staff('hendra.k')->getKey())->getKey();
-}, [[$at('kepsek'), 'Pendaftaran lomba menunggu persetujuan']]);
+}, [[$at('kepsek'), 'Pendaftaran lomba menunggu persetujuan'], [$at('tu'), 'Pendaftaran lomba menunggu persetujuan']]);
 
 $scenario->step('3j', 'Galang registers a new TEAM with Ma\'ruf, who accepts: the team now waits for the Kepala Sekolah (CreateRegistration + ConfirmMembership)', function () use ($state, $siswa, $staff, $studentId, $l1, $scenario): void {
     $created = app(CreateRegistration::class)->handle($siswa('galang'), $l1(), RegistrationType::Tim, [$studentId('maruf')], (int) $staff('hendra.k')->getKey());
@@ -1078,17 +1150,21 @@ $scenario->step('3j', 'Galang registers a new TEAM with Ma\'ruf, who accepts: th
     [$mail('maruf'), 'Undangan tim: '.$lomba['l1']],
     [$mail('galang'), 'Anggota ikut tim: '.$lomba['l1']],
     [$at('kepsek'), 'Pendaftaran lomba menunggu persetujuan'],
+    [$at('tu'), 'Pendaftaran lomba menunggu persetujuan'],
 ]);
 
 $scenario->step('3k', 'Galang (ketua) cancels the team that already waits for approval (CancelRegistration): member + guru + Kepala Sekolah', function () use ($siswa, $registration, $scenario, $state, $at, $lomba): void {
     $result = app(CancelRegistration::class)->handle($siswa('galang'), $registration('r5'));
     $scenario->note('registration status: '.$result->status->value.' (it was menunggu_kepsek: the Kepala Sekolah had been asked to decide)');
     $scenario->assertRendered('3k', $at('kepsek'), 'Pendaftaran lomba dibatalkan', 'Yth. Drs. Bambang Hartono, M.Pd.,', 'Galang Putra Mahendra membatalkan pendaftaran '.$lomba['l1'].' (tim). Pendaftaran ini tidak perlu diputuskan lagi.', 'Buka persetujuan', '/kepsek/persetujuan');
+    // D-150: Tata Usaha is an approver too and opens its own address.
+    $scenario->assertRendered('3k', $at('tu'), 'Pendaftaran lomba dibatalkan', 'Yth. Sri Handayani,', 'Pendaftaran ini tidak perlu diputuskan lagi.', 'Buka persetujuan', '/tu/persetujuan');
     $scenario->assertRendered('3k', $at('hendra.k'), 'Pendaftaran binaan dibatalkan', 'Yth. Hendra Kusuma, S.Pd., M.Si.,', 'Galang Putra Mahendra membatalkan pendaftaran binaan di '.$lomba['l1'].'.', 'Lihat pendaftaran', '/guru/binaan/'.$state['r5']);
 }, [
     [$mail('maruf'), 'Pendaftaran dibatalkan: '.$lomba['l1']],
     [$at('hendra.k'), 'Pendaftaran binaan dibatalkan'],
     [$at('kepsek'), 'Pendaftaran lomba dibatalkan'],
+    [$at('tu'), 'Pendaftaran lomba dibatalkan'],
 ]);
 
 // =================================================================================================================
@@ -1248,8 +1324,8 @@ $moveLombaDates = function (int $finalDaysAgo) use ($state, $today): void {
 $statuses = fn (): string => 'team: '.Registration::query()->whereKey($state['r1'])->value('status')->value
     .', Wulan: '.Registration::query()->whereKey($state['r4'])->value('status')->value;
 
-$scenario->step('6a', 'Lomba is over (dates moved 31 days back) → `sth:registrations:advance`', function () use ($moveLombaDates, $scenario, $statuses): void {
-    $moveLombaDates(31);
+$scenario->step('6a', 'Lomba is over (final moved to yesterday) → `sth:registrations:advance`', function () use ($moveLombaDates, $scenario, $statuses): void {
+    $moveLombaDates(1);
     Artisan::call('sth:registrations:advance');
     $scenario->note('command output: '.trim(Artisan::output()));
     $scenario->note('registration status → '.$statuses());
@@ -1261,20 +1337,22 @@ $scenario->step('6a', 'Lomba is over (dates moved 31 days back) → `sth:registr
 $reminderSays = fn (string $phrase): string => 'reminder to Galuh says "'.$phrase.'": '
     .(str_contains($scenario->textOf($mail('galuh'), 'Laporan '.$lomba['l1'].' ditunggu'), $phrase) ? 'yes' : 'NO');
 
-$scenario->step('6b', '`sth:reports:remind`, 14 days before the deadline (final + 45 days)', function () use ($scenario, $reminderSays): void {
+// D-151: no report deadline; reminders 3 and 14 days after the final.
+$scenario->step('6b', '`sth:reports:remind`, 3 days after the final (final date moved to 3 days ago)', function () use ($moveLombaDates, $scenario, $reminderSays): void {
+    $moveLombaDates(3);
     Artisan::call('sth:reports:remind');
     $scenario->note('command output: '.trim(Artisan::output()));
-    $scenario->note($reminderSays('14 hari lagi'));
+    $scenario->note($reminderSays('sudah selesai'));
 }, [
     [$mail('galuh'), 'Laporan '.$lomba['l1'].' ditunggu'],
     [$mail('wulan'), 'Laporan '.$lomba['l1'].' ditunggu'],
 ]);
 
-$scenario->step('6c', '`sth:reports:remind`, 3 days before the deadline (final date moved to 42 days ago)', function () use ($moveLombaDates, $scenario, $reminderSays): void {
-    $moveLombaDates(42);
+$scenario->step('6c', '`sth:reports:remind`, 14 days after the final (final date moved to 14 days ago)', function () use ($moveLombaDates, $scenario, $reminderSays): void {
+    $moveLombaDates(14);
     Artisan::call('sth:reports:remind');
     $scenario->note('command output: '.trim(Artisan::output()));
-    $scenario->note($reminderSays('3 hari lagi'));
+    $scenario->note($reminderSays('sudah selesai'));
 }, [
     [$mail('galuh'), 'Laporan '.$lomba['l1'].' ditunggu'],
     [$mail('wulan'), 'Laporan '.$lomba['l1'].' ditunggu'],
@@ -1298,7 +1376,15 @@ $scenario->step('7a', 'Galuh (ketua) submits the laporan hasil with certificate 
         certificate: $pdf('sertifikat-ospn-2026.pdf'),
         photos: [$png('dokumentasi-ospn-1.png')],
     ));
-}, [[$at('kesiswaan'), 'Laporan hasil baru: '.$lomba['l1']]]);
+}, [
+    [$at('kesiswaan'), 'Laporan hasil baru: '.$lomba['l1']],
+    [$at('humas'), 'Laporan hasil baru: '.$lomba['l1']],
+    ['fitri.h@sth.test', 'Laporan hasil baru: '.$lomba['l1']],
+    // D-160: the ketua gets a receipt, the other members hear that the ketua sent it (ReportSent).
+    [$mail('galuh'), 'Laporan hasil terkirim: '.$lomba['l1']],
+    [$mail('bayu'), 'Laporan hasil dikirim: '.$lomba['l1']],
+    [$mail('laras'), 'Laporan hasil dikirim: '.$lomba['l1']],
+]);
 
 $scenario->step('7b', 'Kesiswaan asks for a revision (RequestReportRevision)', function () use ($staff, $report): void {
     app(RequestReportRevision::class)->handle($staff('kesiswaan'), $report('r1'), 'Sertifikat kurang jelas, upload ulang hasil pindai yang terbaca.');
@@ -1317,7 +1403,15 @@ $scenario->step('7c', 'Galuh sends the corrected report (SubmitReport again)', f
         authentic: true,
         certificate: $pdf('sertifikat-ospn-2026-pindai-ulang.pdf'),
     ));
-}, [[$at('kesiswaan'), 'Laporan hasil diperbaiki: '.$lomba['l1']]]);
+}, [
+    [$at('kesiswaan'), 'Laporan hasil diperbaiki: '.$lomba['l1']],
+    [$at('humas'), 'Laporan hasil diperbaiki: '.$lomba['l1']],
+    ['fitri.h@sth.test', 'Laporan hasil diperbaiki: '.$lomba['l1']],
+    // D-160: after "Minta revisi" the members also learn that the corrected report went out.
+    [$mail('galuh'), 'Perbaikan laporan terkirim: '.$lomba['l1']],
+    [$mail('bayu'), 'Laporan hasil diperbaiki: '.$lomba['l1']],
+    [$mail('laras'), 'Laporan hasil diperbaiki: '.$lomba['l1']],
+]);
 
 $scenario->step('7d', 'Kesiswaan verifies the result (VerifyReport): points for every member, Humas queue', function () use ($state, $staff, $report, $scenario, $mail, $lomba): void {
     $achievements = app(VerifyReport::class)->handle($staff('kesiswaan'), $report('r1'), ResultType::Juara2, array_keys(VerifyReport::CHECKS));
@@ -1346,7 +1440,12 @@ $scenario->step('7e', 'Wulan submits her laporan hasil (SubmitReport)', function
         certificate: $pdf('sertifikat-ospn-wulan.pdf'),
         photos: [$png('dokumentasi-ospn-wulan.png')],
     ));
-}, [[$at('kesiswaan'), 'Laporan hasil baru: '.$lomba['l1']]]);
+}, [
+    [$at('kesiswaan'), 'Laporan hasil baru: '.$lomba['l1']],
+    [$at('humas'), 'Laporan hasil baru: '.$lomba['l1']],
+    ['fitri.h@sth.test', 'Laporan hasil baru: '.$lomba['l1']],
+    [$mail('wulan'), 'Laporan hasil terkirim: '.$lomba['l1']],
+]);
 
 $scenario->step('7f', 'Kesiswaan rejects Wulan\'s report (RejectReport)', function () use ($staff, $report, $scenario, $state): void {
     app(RejectReport::class)->handle($staff('kesiswaan'), $report('r4'), 'Sertifikat tidak memuat nama peserta dan tidak cocok dengan pengumuman panitia.');
@@ -1361,26 +1460,10 @@ $achievementOf = fn (string $key): Achievement => Achievement::query()
     ->whereKey($state['achievements'] ?? [])->where('student_id', $studentId($key))->firstOrFail();
 $publicationOf = fn (string $key): Publication => Publication::query()->where('achievement_id', $achievementOf($key)->getKey())->firstOrFail();
 
-$scenario->step('8a', 'Humas publishes Galuh\'s achievement (PublishPublication)', function () use ($staff, $publicationOf): void {
-    app(PublishPublication::class)->handle(
-        $staff('humas'),
-        $publicationOf('galuh'),
-        'Selamat kepada tim SMAGA, Juara 2 Olimpiade Sains Pelajar Nusantara 2026!',
-        ['instagram', 'website'],
-    );
-}, [[$mail('galuh'), 'Prestasimu sudah dipublikasikan']]);
-
-$scenario->step('8b', 'Humas schedules an apresiasi for Galuh (CreateAppreciationEvent + RecordAppreciation)', function () use ($staff, $achievementOf, $today): void {
-    // D-123: an event has a start time; the student's mail says "… pada <hari, tanggal> pukul 07.00 WIB".
-    $event = app(CreateAppreciationEvent::class)->handle($staff('humas'), 'Upacara apresiasi prestasi (E2E)', $today->addDays(10)->format('Y-m-d'), '07:00');
-    app(RecordAppreciation::class)->handle($staff('humas'), $event, $achievementOf('galuh'));
-    // D-124 / D-110: the guru pembimbing gets one notice for the binaan of this "Masukkan".
-}, [[$mail('galuh'), 'Kamu masuk daftar apresiasi'], [$at('hendra.k'), 'Binaan masuk daftar apresiasi']]);
-
 // D-122 (lead, 2026-10-10): the schedule is only a reminder. The job mails Humas and nobody else; the row stays
-// terjadwal, and the student is mailed in step 8d, when Humas marks the publication as published.
-$scenario->step('8c', 'Humas schedules Bayu\'s publication for "now" (SchedulePublication); the scheduler job RemindDuePublications runs: Humas is reminded, the student is NOT mailed', function () use ($state, $staff, $publicationOf, $scenario): void {
-    app(SchedulePublication::class)->handle($staff('humas'), $publicationOf('bayu'), 'Selamat kepada Bayu, Juara 2 Olimpiade Sains Pelajar Nusantara 2026!', ['instagram'], now());
+// terjadwal, and the students are mailed in step 8b, when Humas marks the publication as published.
+$scenario->step('8a', 'Humas schedules Bayu\'s publication for "now" (SchedulePublication); the scheduler job RemindDuePublications runs: Humas is reminded, the student is NOT mailed', function () use ($state, $staff, $publicationOf, $scenario): void {
+    app(SchedulePublication::class)->handle($staff('humas'), $publicationOf('bayu'), 'Selamat kepada tim SMAGA, Juara 2 Olimpiade Sains Pelajar Nusantara 2026!', ['instagram'], now());
 
     // Everything whose reminder is due now: Bayu's row (the seeded demo rows with a past time count as reminded).
     $due = RemindDuePublication::due(CarbonImmutable::now())->get();
@@ -1398,17 +1481,31 @@ $scenario->step('8c', 'Humas schedules Bayu\'s publication for "now" (SchedulePu
     RemindDuePublications::dispatch();
 }, fn (): array => (array) $state['due']);
 
-$scenario->step('8d', 'Humas presses "Tandai dipublikasikan" for Bayu (PublishPublication): only now the status changes and the student is mailed', function () use ($staff, $publicationOf, $scenario): void {
+$scenario->step('8b', 'Humas presses "Tandai dipublikasikan" for Bayu (PublishPublication): only now the status changes; the teammates\' waiting cards are published with it and every member is mailed (D-160)', function () use ($staff, $publicationOf, $scenario): void {
     $publication = $publicationOf('bayu');
     $scenario->note(sprintf('after the reminder: status=%s, reminded_at=%s, published_at=%s', $publication->status->value, $publication->reminded_at === null ? 'null' : 'set', $publication->published_at === null ? 'null' : 'set'));
 
     if ($publication->status !== PublicationStatus::Terjadwal || $publication->reminded_at === null || $publication->published_at !== null) {
-        $scenario->problem('8d', 'the reminder job must leave the publication terjadwal (reminded, not published)');
+        $scenario->problem('8b', 'the reminder job must leave the publication terjadwal (reminded, not published)');
     }
 
-    app(PublishPublication::class)->handle($staff('humas'), $publication);
-    $scenario->note('after the button: status='.$publicationOf('bayu')->status->value);
-}, [[$mail('bayu'), 'Prestasimu sudah dipublikasikan']]);
+    $action = app(PublishPublication::class);
+    $action->handle($staff('humas'), $publication);
+    $scenario->note(sprintf('after the button: Bayu %s, Galuh %s, Laras %s; published together: %d card(s)', $publicationOf('bayu')->status->value, $publicationOf('galuh')->status->value, $publicationOf('laras')->status->value, count($action->team)));
+}, [
+    [$mail('bayu'), 'Prestasimu sudah dipublikasikan'],
+    [$mail('galuh'), 'Prestasimu sudah dipublikasikan'],
+    [$mail('laras'), 'Prestasimu sudah dipublikasikan'],
+]);
+
+$scenario->step('8c', 'Humas schedules an apresiasi for Galuh (CreateAppreciationEvent + RecordAppreciation)', function () use ($state, $staff, $achievementOf, $today): void {
+    // D-123: an event has a start time; the student's mail says "… pada <hari, tanggal> pukul 07.00 WIB".
+    $event = app(CreateAppreciationEvent::class)->handle($staff('humas'), 'Upacara apresiasi prestasi (E2E)', $today->addDays(10)->format('Y-m-d'), '07:00');
+    $state['event'] = $event->getKey();
+    app(RecordAppreciation::class)->handle($staff('humas'), $event, $achievementOf('galuh'));
+    // D-124 / D-110: the guru pembimbing gets one notice for the binaan of this "Masukkan". The Publikasi panel puts
+    // the free teammates on the event in the same click (D-160, a Livewire test covers it); the Action takes one row.
+}, [[$mail('galuh'), 'Kamu masuk daftar apresiasi'], [$at('hendra.k'), 'Binaan masuk daftar apresiasi']]);
 
 // =================================================================================================================
 // 9. Talent
@@ -1436,17 +1533,18 @@ $scenario->step('9a', 'Bayu fills in his talent profile and picks two talents (S
     $scenario->note('applied: '.$debatBranch->name.' and FLS3N '.$fls3nBranch->name.' (the Actions send no notification to Kesiswaan)');
 });
 
-$scenario->step('9b', 'Kesiswaan moves the first choice to the next stage (MoveTalentStage: terdaftar → pemetaan)', function () use ($state, $staff, $today): void {
-    app(MoveTalentStage::class)->handle($staff('kesiswaan'), TalentApplication::query()->findOrFail($state['talent_a']), TalentStatus::Pemetaan, [
+$scenario->step('9b', 'Kesiswaan sets a guru pembina for the first choice (UpdateTalentAssessment), nobody is mailed', function () use ($state, $staff): void {
+    app(UpdateTalentAssessment::class)->handle($staff('kesiswaan'), TalentApplication::query()->findOrFail($state['talent_a']), [
         'mentor_id' => $staff('maya.a')->getKey(),
-        'assessment_on' => $today->addDays(7)->format('Y-m-d'),
         'note' => null,
     ]);
-}, [[$mail('bayu'), 'Tahap talenta berubah: Debat Bahasa Indonesia (LDBI)']]); // the type is not repeated ("Debat Debat …")
+}, []); // D-142: no stages, no notice about a talent
 
-$scenario->step('9c', 'Kesiswaan marks the second choice "tidak lolos" (RejectTalentApplication)', function () use ($state, $staff): void {
-    app(RejectTalentApplication::class)->handle($staff('kesiswaan'), TalentApplication::query()->findOrFail($state['talent_b']), 'Kuota pembinaan cabang ini sudah penuh. Coba lagi semester depan.');
-}, [[$mail('bayu'), 'Hasil seleksi talenta: FLS3N Baca Puisi']]);
+$scenario->step('9c', 'Bayu adds a Lainnya talent and deletes FLS3N (ApplyTalent with other text + CancelTalentApplication), nobody is mailed', function () use ($state, $siswa): void {
+    $lainnya = TalentType::query()->get()->firstOrFail(fn (TalentType $t): bool => $t->code === TalentTypeCode::Lainnya);
+    app(ApplyTalent::class)->handle($siswa('bayu'), $lainnya, null, null, 'Kaligrafi');
+    app(CancelTalentApplication::class)->handle($siswa('bayu'), TalentApplication::query()->findOrFail($state['talent_b']));
+}, []);
 
 // =================================================================================================================
 // 10. Account + Admin events
@@ -1488,14 +1586,14 @@ $scenario->step('10c', 'Laras types the code: email changed (VerifyOtpCode + Cha
     [$newLarasEmail, 'Email ini sekarang dipakai di SMAGA Talent Hub'],
 ]);
 
-$scenario->step('10d', 'Bayu forgot his password: asks for a reset code with his NIS (RequestPasswordResetCode)', function () use ($students): void {
-    app(RequestPasswordResetCode::class)->handle($students['bayu'][0]);
+$scenario->step('10d', 'Bayu forgot his password: asks for a reset code with his NISN (RequestPasswordResetCode)', function () use ($students): void {
+    app(RequestPasswordResetCode::class)->handle(Student::query()->where('nis', $students['bayu'][0])->value('nisn'));
 }, [[$mail('bayu'), 'Kode atur ulang kata sandi']]);
 
 $scenario->step('10e', 'Bayu types the code + a new password (ResetPasswordWithCode)', function () use ($students, $siswa, $mail, $newPassword, $passwords, $scenario): void {
     $code = $scenario->codeFromMail($mail('bayu'), 'Kode atur ulang kata sandi');
     $new = $newPassword($siswa('bayu'));
-    app(ResetPasswordWithCode::class)->handle($students['bayu'][0], $code, $new, $new);
+    app(ResetPasswordWithCode::class)->handle(Student::query()->where('nis', $students['bayu'][0])->value('nisn'), $code, $new, $new);
     $passwords['bayu'] = $new;
 }, [[$mail('bayu'), 'Kata sandi sudah diganti']]);
 
@@ -1518,9 +1616,9 @@ $scenario->step('10f', 'Admin creates a staff account with a normal role, guru (
     ]);
 }, [[$at('operator'), 'Akun staf baru dibuat']]);
 
-$scenario->knownAs('rina.k@sth.test', 'staf_baru'); // no role until the request applies
+$scenario->knownAs('rina.k@sth.test', RoleName::TataUsaha->value); // the role applies at once since 21 Okt 2026
 
-$scenario->step('10g', 'Admin creates a staff account with a privileged role, Tata Usaha (CreateStaffAccount → role request, 24 h delay: only one Admin)', function () use ($staff, $temporaryPassword): void {
+$scenario->step('10g', 'Admin creates a staff account with a privileged role, Tata Usaha (CreateStaffAccount: the role applies at once since 21 Okt 2026)', function () use ($staff, $temporaryPassword): void {
     app(CreateStaffAccount::class)->handle($staff('operator'), [
         'name' => 'Rina Kartikasari',
         'username' => 'rina.k',
@@ -1530,11 +1628,7 @@ $scenario->step('10g', 'Admin creates a staff account with a privileged role, Ta
         'honorific' => 'Bu',
         'position' => 'Staf Tata Usaha',
     ]);
-}, [
-    [$at('operator'), 'Akun staf baru menunggu persetujuan peran'],
-    ['rina.k@sth.test', 'Akun staf baru menunggu persetujuan peran'],
-    [$at('kepsek'), 'Akun staf baru menunggu persetujuan peran'],
-]);
+}, [[$at('operator'), 'Akun staf baru dibuat']]);
 
 $scenario->step('10h', 'Admin resets a staff account, guru agus.s (ResetStaffAccount)', function () use ($staff, $temporaryPassword, $scenario, $at): void {
     app(ResetStaffAccount::class)->handle($staff('operator'), $staff('agus.s'), $temporaryPassword(), 'Lupa kata sandi dan ponsel 2FA hilang (skenario E2E).');
@@ -1551,12 +1645,13 @@ $scenario->step('10h', 'Admin resets a staff account, guru agus.s (ResetStaffAcc
     [$at('agus.s'), 'Akun staf direset'],
 ]);
 
-$scenario->step('10i', 'Admin requests a role change, guru maya.a → Kesiswaan (RequestRoleChange, 24 h delay: only one Admin)', function () use ($staff): void {
-    app(RequestRoleChange::class)->handle($staff('operator'), $staff('maya.a'), RoleName::Kesiswaan, 'Membantu tugas Kesiswaan (skenario E2E).');
+// Tata Usaha, not Kesiswaan: since 21 Okt 2026 the change applies at once, and a new Kesiswaan account would also get
+// the freeze alert of 10m (every Kesiswaan). No later step mails every Tata Usaha account.
+$scenario->step('10i', 'Admin changes a role, guru maya.a → Tata Usaha (RequestRoleChange: applies at once since 21 Okt 2026)', function () use ($staff): void {
+    app(RequestRoleChange::class)->handle($staff('operator'), $staff('maya.a'), RoleName::TataUsaha, 'Membantu tugas Tata Usaha (skenario E2E).');
 }, [
-    [$at('operator'), 'Perubahan peran menunggu persetujuan'],
-    [$at('maya.a'), 'Perubahan peran menunggu persetujuan'],
-    [$at('kepsek'), 'Perubahan peran menunggu persetujuan'],
+    [$at('operator'), 'Peran akun staf diubah'],
+    [$at('maya.a'), 'Peran akun staf diubah'],
 ]);
 
 $scenario->step('10j', 'Admin publishes a new weight version (PublishWeightVersion)', function () use ($staff, $scenario, $at): void {
@@ -1619,15 +1714,16 @@ $scenario->step('10n', '"Bukan saya?": the link in the notice to Laras\'s OLD ad
 
 // Laras is frozen now and her owner disputed the new address: that address must not get any mail (D-68).
 
-$scenario->step('10o', 'Frozen account: Humas publishes Laras\'s achievement (PublishPublication): NO mail to the disputed address', function () use ($staff, $siswa, $publicationOf, $scenario, $newLarasEmail): void {
+$scenario->step('10o', 'Frozen account: Humas puts Laras\'s achievement on the apresiasi event (RecordAppreciation): NO mail to the disputed address', function () use ($state, $staff, $siswa, $achievementOf, $scenario, $newLarasEmail): void {
     $user = $siswa('laras');
     $scenario->note(sprintf('Laras: status=%s, frozen_reason=%s, bound email = the disputed new address: %s', $user->status->value, (string) $user->frozen_reason, $user->email === $newLarasEmail ? 'yes' : 'no'));
 
     $before = $user->notifications()->count();
-    app(PublishPublication::class)->handle($staff('humas'), $publicationOf('laras'), 'Selamat kepada tim SMAGA, Juara 2 Olimpiade Sains Pelajar Nusantara 2026!', ['website']);
+    // Her publication went out with the team in step 8b (D-160), so the notice here is the appreciation one.
+    app(RecordAppreciation::class)->handle($staff('humas'), AppreciationEvent::query()->findOrFail($state['event']), $achievementOf('laras'));
     $scenario->drain();
     $scenario->note('in-app (bell) notifications stored for her in this step: '.($siswa('laras')->notifications()->count() - $before).' (the mail channel is skipped, the bell is kept)');
-}); // nothing expected: any mail that arrives is UNEXPECTED and fails the run
+}, [[$at('hendra.k'), 'Binaan masuk daftar apresiasi']]); // no mail to Laras: one that arrives is UNEXPECTED and fails the run
 
 $scenario->step('10p', 'Frozen account: "Lupa kata sandi" (RequestPasswordResetCode + ResetPasswordWithCode): NO code, reset refused', function () use ($students, $siswa, $newPassword, $scenario): void {
     $user = $siswa('laras');
@@ -1635,7 +1731,7 @@ $scenario->step('10p', 'Frozen account: "Lupa kata sandi" (RequestPasswordResetC
     $codes = fn (): int => $user->otpCodes()->where('purpose', RequestPasswordResetCode::PURPOSE)->count();
     $before = $codes();
 
-    app(RequestPasswordResetCode::class)->handle($students['laras'][0]);
+    app(RequestPasswordResetCode::class)->handle(Student::query()->where('nis', $students['laras'][0])->value('nisn'));
     $scenario->note('reset codes issued for her: '.($codes() - $before));
 
     if ($codes() !== $before) {
@@ -1645,7 +1741,7 @@ $scenario->step('10p', 'Frozen account: "Lupa kata sandi" (RequestPasswordResetC
     $new = $newPassword($user);
 
     try {
-        app(ResetPasswordWithCode::class)->handle($students['laras'][0], '123456', $new, $new);
+        app(ResetPasswordWithCode::class)->handle(Student::query()->where('nis', $students['laras'][0])->value('nisn'), '123456', $new, $new);
         $scenario->problem('10p', 'ResetPasswordWithCode succeeded for a frozen account');
     } catch (ValidationException $e) {
         $scenario->note('ResetPasswordWithCode refused: '.json_encode($e->errors(), JSON_UNESCAPED_UNICODE));
@@ -1687,7 +1783,7 @@ $scenario->step('11a', 'Production rule: a scheduled publication becomes due →
     $publication = Publication::query()
         ->where('status', PublicationStatus::Siap)
         ->whereHas('achievement', fn ($a) => $a->whereNotNull('verified_at')
-            ->whereHas('student', fn ($s) => $s->where('publish_consent', true)->whereHas('user', fn ($u) => $u->whereNull('email'))))
+            ->whereHas('student', fn ($s) => NamedStudent::constrain($s)->whereHas('user', fn ($u) => $u->whereNull('email'))))
         ->orderBy('id')
         ->firstOrFail();
 

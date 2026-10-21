@@ -22,7 +22,7 @@
         </div>
     </x-sth.card>
 
-    <div class="grid gap-5 lg:grid-cols-2">
+    <div class="grid grid-cols-1 gap-5 lg:grid-cols-2">
         @foreach ($winners['groups'] as $group)
             <x-sth.card as="section" aria-labelledby="h-cap-{{ $loop->index }}" class="flex min-w-0 flex-col gap-3" wire:key="grp-{{ $group['result'] }}">
                 <div class="flex flex-wrap items-center justify-between gap-2">
@@ -32,7 +32,7 @@
                     </div>
                     <x-sth.chip tone="gold" class="num">{{ $group['points_label'] }} poin per siswa</x-sth.chip>
                 </div>
-                <ul class="m-0 grid list-none gap-1.5 p-0 sm:grid-cols-2">
+                <ul class="m-0 grid grid-cols-1 list-none gap-1.5 p-0 sm:grid-cols-2">
                     @foreach ($group['people'] as $person)
                         <li class="flex min-h-12 min-w-0 items-center gap-2.5 rounded-control px-2 py-1.5 hover:bg-page">
                             @include('livewire.publik.partials.avatar', ['person' => $person, 'size' => 'sm'])
@@ -54,5 +54,5 @@
             </x-sth.card>
         @endforeach
     </div>
-    <p class="m-0 text-xs text-muted">Anggota tim masing-masing mendapat poin penuh. Nama siswa tampil bila ada persetujuan publikasi.</p>
+    <p class="m-0 text-xs text-muted">Anggota tim masing-masing mendapat poin penuh.</p>
 </div>

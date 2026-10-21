@@ -14,6 +14,9 @@ use InvalidArgumentException;
  * Returns short Indonesian messages; an empty list means the password is acceptable.
  * The HIBP `uncompromised()` check stays in the Laravel validation layer.
  *
+ * D-138: MSG_INITIAL_PATTERN covers the initial password of D-138 (the password equals it after normalising, so a
+ * longer password that merely contains the value passes) and the old `sm4g4` pattern (contained).
+ *
  * M2-A (QA of 2026-10-05, Q1-02 and Q2-05):
  * - Own account names: the username and the part of the email before the "@" are refused, whole and in pieces of
  *   4+ characters, like NIS/NISN and the name already were. Staff have no NIS, so this is their identity check.
@@ -49,7 +52,7 @@ final class PasswordPolicy
 
     public const MSG_TOO_COMMON = 'Kata sandi ini terlalu mudah ditebak.';
 
-    /** Normalised form of InitialPassword::PREFIX. */
+    /** Normalised form of InitialPassword::LEGACY_PREFIX. */
     private const INITIAL_PATTERN = 'sm4g4';
 
     private const SCHOOL_WORDS = ['smaga', 'sman3'];
@@ -98,11 +101,16 @@ final class PasswordPolicy
     /** Letters a password needs besides the common words and patterns it contains. */
     private const MIN_OTHER_LETTERS = 5;
 
-    public function __construct(private readonly int $minLength = self::DEFAULT_MIN_LENGTH)
+    /** Normalised initial password (D-138); '' = none to refuse. */
+    private readonly string $initialPassword;
+
+    public function __construct(private readonly int $minLength = self::DEFAULT_MIN_LENGTH, ?string $initialPassword = null)
     {
         if ($minLength < 1 || $minLength > self::MAX_LENGTH) {
             throw new InvalidArgumentException('Panjang minimal kata sandi harus 1–64.');
         }
+
+        $this->initialPassword = self::normalize((string) $initialPassword);
     }
 
     public function minLength(): int
@@ -136,7 +144,7 @@ final class PasswordPolicy
             $errors[] = self::MSG_LETTERS_AND_DIGITS;
         }
 
-        if (str_contains($normalized, self::INITIAL_PATTERN)) {
+        if (str_contains($normalized, self::INITIAL_PATTERN) || ($this->initialPassword !== '' && $normalized === $this->initialPassword)) {
             $errors[] = self::MSG_INITIAL_PATTERN;
         }
 

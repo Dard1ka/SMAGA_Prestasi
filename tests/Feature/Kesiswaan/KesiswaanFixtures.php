@@ -52,7 +52,7 @@ final class KesiswaanFixtures
         return AuthTestHelpers::staff($role, ['name' => $name, 'email' => str($name)->slug().'.'.$role->value.'@example.test']);
     }
 
-    public static function student(string $name = 'Rizky Maulana', string $classroom = 'XI-1', ?string $nis = null): Student
+    public static function student(string $name = 'Rizky Maulana', string $classroom = 'XI-A', ?string $nis = null, ?string $nisn = null): Student
     {
         $user = User::factory()->create(['name' => $name])->fresh();
         $user->forceFill(['status' => UserStatus::Active, 'must_change_password' => false, 'password_changed_at' => now()])->save();
@@ -64,6 +64,7 @@ final class KesiswaanFixtures
             'user_id' => $user->getKey(),
             'classroom_id' => $room->getKey(),
             'nis' => $nis,
+            'nisn' => $nisn,
         ]))->fresh(['user']);
     }
 
@@ -107,6 +108,28 @@ final class KesiswaanFixtures
             'website_url' => 'https://example.org/nsif',
             'registration_url' => 'https://example.org/nsif/daftar',
         ], $overrides);
+    }
+
+    /**
+     * Form input as the properties of the shared CompetitionFields form ("form.name" => …), for Livewire `set()` on the
+     * Kelola lomba drawer or Siswa › Usulkan lomba. Two different dates switch "Durasi lomba" to more than one day.
+     *
+     * @param  array<string, mixed>  $input
+     * @return array<string, mixed>
+     */
+    public static function fields(array $input): array
+    {
+        $fields = [];
+
+        if (($input['starts_on'] ?? null) !== null && ($input['starts_on'] ?? null) !== ($input['final_on'] ?? null)) {
+            $fields['form.duration'] = 'lebih_dari_satu_hari';
+        }
+
+        foreach ($input as $key => $value) {
+            $fields['form.'.$key] = $value;
+        }
+
+        return $fields;
     }
 
     /**
@@ -165,7 +188,7 @@ final class KesiswaanFixtures
             ?? TalentBranch::factory()->create(['talent_type_id' => $type->getKey(), 'name' => $branch]);
 
         return TalentApplication::factory()->status($status)->create([
-            'student_id' => ($student ?? self::student('Hana Safira', 'X-8'))->getKey(),
+            'student_id' => ($student ?? self::student('Hana Safira', 'X-H'))->getKey(),
             'talent_type_id' => $type->getKey(),
             'talent_branch_id' => $branchModel->getKey(),
         ])->fresh();

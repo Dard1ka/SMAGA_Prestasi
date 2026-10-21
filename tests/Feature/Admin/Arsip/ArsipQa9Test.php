@@ -35,13 +35,13 @@ beforeEach(function (): void {
     $this->withoutVite();
     $this->travelTo('2029-12-01 09:00:00');
     $this->admin = A::admin();
-    Classroom::factory()->level(12)->create(['name' => 'XII-2']);
+    Classroom::factory()->level(12)->create(['name' => 'XII-B']);
 });
 
 function qa9ArsipStudent(string $archiveAt, UserStatus $status = UserStatus::Active, string $name = 'Raka Aditya Pratama'): Student
 {
     $student = Student::factory()->activated()->create([
-        'classroom_id' => Classroom::query()->where('name', 'XII-2')->value('id'),
+        'classroom_id' => Classroom::query()->where('name', 'XII-B')->value('id'),
         'grade12_start_date' => '2028-07-01',
         'archive_at' => $archiveAt,
     ]);
@@ -54,7 +54,7 @@ function qa9ArsipStudent(string $archiveAt, UserStatus $status = UserStatus::Act
 
 it('leaves a disabled student disabled and hidden when the archive date passes (QA9)', function (): void {
     $f = new PublikFixtures;
-    $laras = $f->student('Laras Wening Pangestu', 'XII-5', attributes: ['archive_at' => '2029-11-30', 'grade12_start_date' => '2028-07-01']);
+    $laras = $f->student('Laras Wening Pangestu', 'XII-E', attributes: ['archive_at' => '2029-11-30', 'grade12_start_date' => '2028-07-01']);
     $f->prestasi($laras, $f->lomba('OSN Nasional 2029 Kimia', Bidang::Sains, Level::Nasional, '2029-10-05'), ResultType::Juara1);
     $laras->forceFill(['public_slug' => str_repeat('c', 20)])->saveQuietly();
     User::query()->whereKey($laras->user_id)->update(['status' => UserStatus::Disabled->value]);

@@ -19,7 +19,7 @@ use Livewire\Attributes\Title;
 use Livewire\Component;
 
 /**
- * Guest "Lupa kata sandi" (docs/SECURITY.md §3b): 1 NIS/NISN, the student's own email once activation is
+ * Guest "Lupa kata sandi" (docs/SECURITY.md §3b): 1 NISN, the student's own email once activation is
  * finished, or a staff username/email → same message whether or not the account exists → 2 six-digit code from
  * the bound email + new password. Rate limited per account and client address, and per address (ResetCodeLimits,
  * QA10); the code belongs to this browser's session (OtpRequester), and IssueOtpCode / VerifyOtpCode add the daily

@@ -15,6 +15,9 @@ use Illuminate\Support\Str;
  * The public-safe facts of one achievement that Humas may show (SECURITY §3m-7): name, class, capaian,
  * lomba, tingkat, pembimbing. Never NIS/NISN, birth date, phone or email. Used by the Humas screens,
  * the caption suggestion and FlyerData ("Data untuk flyer") so all three say the same thing.
+ *
+ * `named` = the student may be named (NamedStudent: not deleted, account not disabled; an alumnus stays named). The
+ * consent flags are gone since D-162 (20 Okt 2026): every other student is named for every viewer.
  */
 final readonly class AchievementFacts
 {
@@ -26,8 +29,7 @@ final readonly class AchievementFacts
         public string $competitionName,
         public ?string $mentorShort,
         public ?string $mentorFull,
-        public bool $photoConsent,
-        public bool $publishConsent,
+        public bool $named,
         public ?Bidang $bidang,
         public string $neutralName = 'Siswa',
     ) {}
@@ -59,28 +61,27 @@ final readonly class AchievementFacts
             competitionName: trim((string) ($competition?->name ?? 'Lomba')),
             mentorShort: self::mentorName($mentor, withDegree: false),
             mentorFull: self::mentorName($mentor, withDegree: true),
-            photoConsent: (bool) ($student?->photo_consent ?? false),
-            publishConsent: (bool) ($student?->publish_consent ?? false),
+            named: NamedStudent::allows($student),
             bidang: $competition?->bidang,
             neutralName: self::neutralNameOf($student),
         );
     }
 
     /**
-     * The facts $viewer may see. Without publish consent only `student.view` (Kesiswaan, Admin) keeps the
-     * student's name and class; everyone else (Humas) gets the neutral label of the public pages, no class
-     * and no photo (SECURITY §3i, §3m-7). `publishConsent` stays false so screens can show "Izin dicabut".
+     * The facts $viewer may see. A student who may not be named (disabled or deleted account) keeps name and class
+     * only for `student.view` (Kesiswaan, Admin); everyone else (Humas) gets the neutral label of the public pages
+     * and no class (SECURITY §3i).
      */
     public function visibleTo(User $viewer): self
     {
-        if ($this->publishConsent || $viewer->can(Permission::StudentView->value)) {
+        if ($this->named || $viewer->can(Permission::StudentView->value)) {
             return $this;
         }
 
         return $this->anonymous();
     }
 
-    /** The same achievement without its student: neutral label, no class, no photo, `publishConsent` false. */
+    /** The same achievement without its student: neutral label, no class, `named` false. */
     public function anonymous(): self
     {
         return new self(
@@ -91,8 +92,7 @@ final readonly class AchievementFacts
             competitionName: $this->competitionName,
             mentorShort: $this->mentorShort,
             mentorFull: $this->mentorFull,
-            photoConsent: false,
-            publishConsent: false,
+            named: false,
             bidang: $this->bidang,
             neutralName: $this->neutralName,
         );
@@ -115,7 +115,7 @@ final readonly class AchievementFacts
         return 'Selamat kepada '.$who.', '.$what.'.'.$thanks."\n#SMAGASpectacular #SMAN3Semarang";
     }
 
-    /** "Siswa kelas XI", "Alumni" or "Siswa": the label PublicAchievements uses for a student without consent. */
+    /** "Siswa kelas XI", "Alumni" or "Siswa": the label PublicAchievements uses for a student who may not be named. */
     private static function neutralNameOf(?Student $student): string
     {
         if ($student?->user?->isArchived() === true) {

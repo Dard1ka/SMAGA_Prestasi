@@ -1,8 +1,8 @@
 {{--
     One row of "Siswa berprestasi" (Prestasi per bidang, level 2). The caller wraps it in a <button>
-    (consenting student, opens level 3) or a plain <div> (anonymous "Siswa kelas XI").
+    (named student, opens level 3) or a plain <div> (anonymous "Siswa kelas XI": a disabled or deleted account).
     s: PublicAchievements::studentsInBidang() row. A named alumnus has the chip "Alumni" and no class line
-    (`kelas` is null for alumni); an anonymous alumnus is already labelled "Alumni".
+    (`kelas` is null for alumni).
 --}}
 @include('livewire.publik.partials.avatar', ['person' => $s, 'size' => 'lg'])
 <span class="flex min-w-0 flex-1 flex-col gap-1.5">

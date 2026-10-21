@@ -7,7 +7,7 @@
     @enderror
 
     <form id="bobot-form" wire:submit="save" class="flex flex-col gap-5" novalidate>
-        <div class="grid gap-4 xl:grid-cols-3">
+        <div class="grid grid-cols-1 gap-4 xl:grid-cols-3">
             @foreach ($rows as $group => $section)
                 <x-sth.card as="section" padding="none" class="min-w-0 overflow-hidden" aria-labelledby="h-bobot-{{ $group }}">
                     <h3 id="h-bobot-{{ $group }}" class="title-card px-5 pt-4 pb-3">{{ $section['title'] }}</h3>

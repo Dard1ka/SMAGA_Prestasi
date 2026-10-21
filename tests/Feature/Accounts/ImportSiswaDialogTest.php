@@ -10,6 +10,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Queue;
 use Livewire\Livewire;
+use Spatie\SimpleExcel\SimpleExcelReader;
 use Tests\Feature\Admin\AdminTestHelpers as A;
 use Tests\Feature\Kesiswaan\KesiswaanFixtures as F;
 
@@ -26,7 +27,7 @@ beforeEach(function (): void {
     F::boot();
     Queue::fake();
     $this->withoutVite();
-    Classroom::factory()->create(['name' => 'X-1', 'level' => 10]);
+    Classroom::factory()->create(['name' => 'X-A', 'level' => 10]);
     $this->kesiswaan = F::staff(RoleName::Kesiswaan);
 });
 
@@ -34,8 +35,8 @@ function d128ImportFile(): UploadedFile
 {
     return UploadedFile::fake()->createWithContent('data-siswa.csv', implode("\n", [
         'Nama lengkap,NIS,NISN,Tanggal lahir,Kelas saat pendaftaran,No HP',
-        'Aurelia Maharani,226227031,0101234557,12-05-2011,X-1,',
-        'Hana Safira,226227088,0103456714,03-01-2011,X-1,',
+        'Aurelia Maharani,226227031,0101234557,12-05-2011,X-A,',
+        'Hana Safira,226227088,0103456714,03-01-2011,X-A,',
     ])."\n");
 }
 
@@ -198,5 +199,25 @@ it('keeps every other role away from the import and its question (D-128)', funct
         Livewire::actingAs(F::staff($role, 'Staf '.$role->value))->test(ImportSiswa::class)->assertForbidden();
     }
 
-    Livewire::actingAs(F::student('Raka Pradipta', 'XII-2')->user)->test(ImportSiswa::class)->assertForbidden();
+    Livewire::actingAs(F::student('Raka Pradipta', 'XII-B')->user)->test(ImportSiswa::class)->assertForbidden();
+});
+
+it('lists the NISN, not the NIS, in the preview and in "baris perlu dicek" (D-137)', function (): void {
+    session(A::passwordConfirmed());
+    $file = UploadedFile::fake()->createWithContent('data-siswa.csv', implode("\n", [
+        'Nama lengkap,NIS,NISN,Tanggal lahir,Kelas saat pendaftaran,No HP',
+        'Aurelia Maharani,226227031,0101234557,12-05-2011,XIII-9,',
+    ])."\n");
+
+    $component = Livewire::actingAs($this->kesiswaan)->test(ImportSiswa::class)
+        ->set('schoolYear', '2026/2027')->set('file', $file)
+        ->assertSeeHtml('<th scope="col">NISN</th>')
+        ->assertSee('0101234557')->assertDontSee('226227031');
+
+    $path = tempnam(sys_get_temp_dir(), 'sth').'.xlsx';
+    file_put_contents($path, base64_decode((string) $component->call('downloadInvalid')->effects['download']['content']));
+    $reader = SimpleExcelReader::create($path);
+    expect($reader->getHeaders())->toBe(['Baris', 'Nama lengkap', 'NISN', 'Kelas', 'Status', 'Keterangan'])
+        ->and((string) $reader->getRows()->first()['NISN'])->toBe('0101234557');
+    @unlink($path);
 });

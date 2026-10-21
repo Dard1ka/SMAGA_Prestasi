@@ -11,7 +11,7 @@
 <div class="flex flex-col gap-5">
     <x-sth.page-header :level="1" title="Peringkat prestasi" subtitle="Akumulasi poin dari semua lomba yang sudah diverifikasi." />
 
-    <div class="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_400px] xl:grid-cols-[minmax(0,1fr)_456px]">
+    <div class="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_400px] xl:grid-cols-[minmax(0,1fr)_456px]">
         <div class="flex min-w-0 flex-col gap-4">
             <div class="flex flex-wrap items-center gap-3">
                 <div class="seg seg-solid border border-line-input bg-surface" role="group" aria-label="Tampilan peringkat">
@@ -39,7 +39,7 @@
                 @if ($total === 0)
                     <x-sth.empty-state icon="bars" title="Belum ada data untuk filter ini.">{{ $noun === 'alumni' ? 'Ganti bidang atau angkatan, atau pilih Semua.' : 'Ganti bidang atau angkatan.' }}</x-sth.empty-state>
                 @else
-                    <ol class="m-0 grid list-none gap-4 p-0 sm:grid-cols-3" aria-label="{{ $caption }}, tiga teratas">
+                    <ol class="m-0 grid grid-cols-1 list-none gap-4 p-0 sm:grid-cols-3" aria-label="{{ $caption }}, tiga teratas">
                         @foreach ($top as $row)
                             <li wire:key="top-{{ $mode }}-{{ $row['position'] }}">
                                 {{-- One row: medal (gold, silver, bronze) + who; below a line: points left, count right. --}}
@@ -168,7 +168,7 @@
                 </table>
             @endforeach
 
-            <div class="grid gap-5 sm:grid-cols-2">
+            <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
                 @foreach ([['Bobot tingkat', 'Tingkat', $weights['levels']], ['Bobot penyelenggara', 'Kategori', $weights['organizers']]] as [$tableCaption, $column, $items])
                     <table class="w-full border-collapse text-xs">
                         <caption class="pb-1.5 text-left text-sm font-bold text-ink">{{ $tableCaption }}</caption>

@@ -20,10 +20,11 @@
         <x-sth.stat-tile icon="award" tone="gold" label="Prestasi terverifikasi" :value="number_format($kpi['prestasi'], 0, ',', '.')" :note="$kpi['prestasiNote']" />
         <x-sth.stat-tile icon="users" tone="blue" label="Siswa berprestasi" :value="number_format($kpi['siswa'], 0, ',', '.')" note="Minimal 1 prestasi terverifikasi" />
         <x-sth.stat-tile icon="check-circle" tone="orange" label="Menunggu persetujuan" :value="$kpi['menunggu']" :note="$approvalUrl ? 'Tinjau pendaftaran' : 'Pendaftaran siswa'" :href="$approvalUrl" />
-        <x-sth.stat-tile icon="clock" tone="red" label="Laporan lewat batas" :value="$kpi['lewat']" :note="'Lewat '.$kpi['deadlineDays'].' hari setelah final'" />
+        {{-- D-151: no report deadline; counts reports still missing more than 14 days after the lomba. --}}
+        <x-sth.stat-tile icon="clock" tone="red" label="Belum lapor > 14 hari" :value="$kpi['lewat']" note="Lomba selesai lebih dari 14 hari lalu" />
     </div>
 
-    <div class="grid gap-[22px] xl:grid-cols-3">
+    <div class="grid grid-cols-1 gap-[22px] xl:grid-cols-3">
         <x-sth.card as="section" class="flex flex-col gap-4 xl:col-span-2" aria-labelledby="per-tahun-title">
             <div class="flex flex-col gap-1">
                 <h2 id="per-tahun-title" class="title-card">
@@ -37,7 +38,7 @@
             </div>
 
             @if ($perYear['years'] === [])
-                <x-sth.empty-state icon="bars" :card="false" title="Belum ada prestasi terverifikasi">Grafik muncul setelah Kesiswaan memverifikasi laporan hasil.</x-sth.empty-state>
+                <x-sth.empty-state icon="bars" :card="false" title="Belum ada prestasi terverifikasi">Grafik muncul setelah sekolah memverifikasi laporan hasil.</x-sth.empty-state>
             @else
                 <ul class="m-0 flex list-none flex-wrap gap-x-4 gap-y-1 p-0 text-xs font-semibold" aria-label="Keterangan warna">
                     @foreach (\App\Livewire\Sekolah\Dashboard::CHART_ORDER as $bidang)
@@ -144,7 +145,7 @@
         </x-sth.card>
     </div>
 
-    <div class="grid gap-[22px] xl:grid-cols-3">
+    <div class="grid grid-cols-1 gap-[22px] xl:grid-cols-3">
         <x-sth.card as="section" class="flex flex-col gap-4" aria-labelledby="per-tingkat-title">
             <div class="flex flex-col gap-1">
                 <h2 id="per-tingkat-title" class="title-card">{{ $perLevel['nationalUp'] }} prestasi nasional ke atas</h2>

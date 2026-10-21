@@ -28,14 +28,14 @@ beforeEach(function (): void {
     $this->withoutVite();
     $this->travelTo('2029-12-01 09:00:00');
     $this->admin = A::admin();
-    $this->class = Classroom::factory()->level(12)->create(['name' => 'XII-2']);
+    $this->class = Classroom::factory()->level(12)->create(['name' => 'XII-B']);
 });
 
 function b5ArsipStudent(string $archiveAt, bool $archived = false, array $user = []): Student
 {
     $factory = $archived ? Student::factory()->archived() : Student::factory()->activated();
     $student = $factory->create([
-        'classroom_id' => Classroom::query()->where('name', 'XII-2')->value('id'),
+        'classroom_id' => Classroom::query()->where('name', 'XII-B')->value('id'),
         'grade12_start_date' => '2028-07-01',
         'archive_at' => $archiveAt,
     ]);
@@ -221,4 +221,12 @@ it('names the archive months the Admin set in the page subtitle (QA8)', function
         ->assertOk()
         ->assertSee('Akun siswa diarsipkan 24 bulan setelah mulai kelas XII.')
         ->assertDontSee('18 bulan');
+});
+
+it('searches the archive overview by name or exact NISN, not by NIS (D-137)', function (): void {
+    $soon = b5ArsipStudent('2029-12-20', user: ['name' => 'Raka Aditya Pratama']);
+
+    Livewire::actingAs($this->admin)->test(ArsipOtomatis::class)
+        ->set('q', $soon->nisn)->assertSee('Raka Aditya Pratama')
+        ->set('q', $soon->nis)->assertDontSee('Raka Aditya Pratama');
 });

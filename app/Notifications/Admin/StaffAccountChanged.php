@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Notifications\Admin;
 
+use App\Http\Middleware\EnsureStaffTwoFactor;
+
 /**
  * Alert to every Admin (and the affected staff member) when a staff account is created, gets a new role or is
  * reset by an Admin (SECURITY §3m-9 "Alert: perubahan peran").
@@ -44,8 +46,13 @@ final class StaffAccountChanged extends AdminNotice
         return match ($this->event) {
             self::CREATED => ["{$this->actorName} membuat akun {$this->targetName} dengan peran {$this->roleLabel}."],
             self::ROLE_CHANGED => ["{$this->actorName} mengubah peran {$this->targetName} menjadi {$this->roleLabel}."],
-            // A name may end with a degree ("…, S.Or."): no second full stop.
-            default => ["{$this->actorName} mereset kata sandi dan verifikasi dua langkah akun ".rtrim($this->targetName, '.').'.', 'Jika reset ini tidak diminta, hubungi Admin sekarang.'],
+            // A name may end with a degree ("…, S.Or."): no second full stop. No 2FA words while 2FA does not exist
+            // in the app (STH_STAFF_2FA=false).
+            default => [
+                $this->actorName.(EnsureStaffTwoFactor::featureEnabled() ? ' mereset kata sandi dan verifikasi dua langkah akun ' : ' mereset kata sandi akun ')
+                    .rtrim($this->targetName, '.').'.',
+                'Jika reset ini tidak diminta, hubungi Admin sekarang.',
+            ],
         };
     }
 }

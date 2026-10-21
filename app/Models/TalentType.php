@@ -13,7 +13,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-/** Jenis talenta (OSN, Riset, FLS3N, O2SN, OLPAIN, Debat) → bidang (D-22). */
+/** Jenis talenta (OSN, Riset, FLS3N, O2SN, OLPAIN, Debat, Lainnya) → bidang (D-22; Lainnya: null, D-143). */
 class TalentType extends Model
 {
     /** @use HasFactory<TalentTypeFactory> */

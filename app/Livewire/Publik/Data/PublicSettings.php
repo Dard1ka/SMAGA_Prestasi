@@ -11,9 +11,9 @@ use App\Models\Setting;
  * Admin switches for the public pages (tab "Halaman publik" in Admin › Pengaturan), stored in `settings`
  * under SettingKey::PublicIndexing / SettingKey::PublicCertificates (both default false, SettingSeeder).
  *
- * - public_indexing: search engines may index the aggregate public pages. Off until the school confirms
- *   the parental consent process (D-16, U-04). Student pages are always noindex.
- * - public_certificates: show a "Lihat sertifikat" link for students with publish consent. Off by default:
+ * - public_indexing: search engines may index the aggregate public pages. Off by default (D-38). Student
+ *   pages are always noindex.
+ * - public_certificates: show a "Lihat sertifikat" link when every team member is named. Off by default:
  *   certificates often carry NISN/birth date (SECURITY §3m-7); the badge "Terverifikasi" is shown instead.
  */
 final class PublicSettings

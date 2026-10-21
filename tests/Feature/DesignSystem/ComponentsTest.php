@@ -64,13 +64,13 @@ it('renders status and bidang chips with text, accepting the Bidang enum', funct
 });
 
 it('renders the full tracker with done, action and upcoming phases', function (): void {
-    $view = $this->blade('<x-sth.tracker :phase="5" state="action" :dates="[5 => \'Batas 8 Nov\']" />');
+    $view = $this->blade('<x-sth.tracker :phase="5" state="action" :dates="[4 => \'21–24 Sep\']" />');
 
     $view->assertSee('class="trk-step s-done"', false)
         ->assertSee('class="trk-step s-act"', false)
         ->assertSee('aria-current="step"', false)
         ->assertSee('class="trk-step s-up"', false)
-        ->assertSee('Batas 8 Nov')
+        ->assertSee('21–24 Sep')
         ->assertSee('tahap saat ini, perlu tindakan')
         ->assertSeeInOrder(['Daftar', 'Persetujuan', 'Surat tugas', 'Lomba', 'Laporan hasil', 'Poin &amp; apresiasi'], false);
 });
@@ -184,7 +184,7 @@ it('renders a native dialog with a labelled title and a close button', function 
 // QA5 retest (2026-10-07, backlog #63): a dialog whose state lives on the server resets it however it is closed --
 
 it('tells the page when a dialog with on-close is closed, by any button, Esc or a click outside', function (): void {
-    $this->blade('<x-sth.modal id="kelas" title="Kelas X-1" on-close="closeClass">Isi</x-sth.modal>')
+    $this->blade('<x-sth.modal id="kelas" title="Kelas X-A" on-close="closeClass">Isi</x-sth.modal>')
         ->assertSee('data-sth-on-close="closeClass"', false);
 
     $this->blade('<x-sth.modal id="usul" title="Usulkan lomba">Isi</x-sth.modal>')
@@ -211,13 +211,24 @@ it('serves the local showcase pages without inline styles or inline handlers (CS
         ->not->toMatch('/\son[a-z]+="/i');
 })->with([
     'app shell, siswa' => ['/_dev/components', 'Nadia Putri Anindya'],
-    'app shell, kesiswaan' => ['/_dev/components?role=kesiswaan', 'Usulan lomba'],
+    'app shell, kesiswaan' => ['/_dev/components?role=kesiswaan', 'Verifikasi usulan lomba'],
     'app shell, kepala sekolah' => ['/_dev/components?role=kepala_sekolah', 'Persetujuan'],
     'public' => ['/_dev/components/public', 'Prestasi siswa SMAGA, dalam satu tempat.'],
-    'auth split' => ['/_dev/components/auth', 'Pakai NIS atau NISN dan kata sandi dari sekolah.'],
+    'auth split' => ['/_dev/components/auth', 'Pakai NISN dan kata sandi dari sekolah.'],
     'auth simple' => ['/_dev/components/auth?variant=simple', 'Ganti kata sandi'],
     'mobile' => ['/_dev/components/mobile', 'Laporkan hasil'],
 ]);
+
+it('shows no report deadline in the local showcase, only the request to report (D-151)', function (string $uri): void {
+    Route::middleware('web')->group(base_path('routes/dev.php'));
+    Route::getRoutes()->refreshNameLookups();
+
+    $this->get($uri)->assertOk()
+        ->assertSee('Segera laporkan')
+        ->assertDontSee('Batas laporan')
+        ->assertDontSee('atas 8 Nov')
+        ->assertDontSee('hari setelah lomba');
+})->with(['app shell' => '/_dev/components', 'mobile' => '/_dev/components/mobile']);
 
 it('shows flashed toasts from the session', function (): void {
     Route::middleware('web')->group(base_path('routes/dev.php'));

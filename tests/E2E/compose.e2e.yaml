@@ -44,6 +44,7 @@ services:
       CI: ${CI:-}
       E2E_BASE_URL: http://web
       E2E_STUDENT_NIS: "225226201"
+      E2E_STUDENT_NISN: "0098765432"
       E2E_STUDENT_PASSWORD: *e2e-password
       npm_config_update_notifier: "false"
     volumes:

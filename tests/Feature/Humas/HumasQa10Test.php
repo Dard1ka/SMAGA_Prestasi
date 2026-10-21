@@ -18,13 +18,13 @@ use Tests\Feature\Auth\AuthTestHelpers;
 use Tests\Feature\Humas\HumasFixtures;
 
 /*
- * QA10: the Humas side follows the "named" rule of the public pages (QA9: publish consent, student and account not
+ * QA10: the Humas side follows the "named" rule of the public pages (QA9: student and account not
  * deleted, account not disabled; an alumnus stays named). Before, the auto-publish job published a disabled student's
  * scheduled card and mailed every Humas "upload sekarang" with the name, while the public pages hid that student
  * (D-30). The `?pilih=` link of that mail answered a full-screen 404 once the card left the queue. Fictional data only.
  *
  * EM2 (lead, 2026-10-10; D-122): the job no longer publishes, it only reminds Humas (RemindDuePublication). The named
- * rule is unchanged: no reminder with the name of a hidden student; an alumnus with consent is still reminded about.
+ * rule is unchanged: no reminder with the name of a hidden student; an alumnus is still reminded about (D-162: no consent).
  */
 
 uses(RefreshDatabase::class);
@@ -35,7 +35,7 @@ beforeEach(function (): void {
     $this->humas = HumasFixtures::humas();
 });
 
-/** A due terjadwal publication of a consenting student. */
+/** A due terjadwal publication of a student who may be named. */
 function qa10NoticeScheduled(string $name = 'Nadia Putri Anindya'): Publication
 {
     return HumasFixtures::publication([], [
@@ -89,7 +89,7 @@ it('keeps a hidden student out of the Humas queue and the badge (QA10)', functio
         ->assertDontSee('Fajar Ramadhan');
 })->with(['disabled account' => ['disabled'], 'deleted account' => ['deleted account']]);
 
-it('still reminds Humas about an alumnus with consent (QA10 guard)', function (): void {
+it('still reminds Humas about an alumnus (QA10 guard)', function (): void {
     $publication = qa10NoticeScheduled();
     $publication->achievement->student->user->forceFill(['status' => UserStatus::Archived])->save();
 
@@ -104,7 +104,7 @@ it('still reminds Humas about an alumnus with consent (QA10 guard)', function ()
 it('answers an old ?pilih= link of a card that left the queue with a warning toast, not a 404 (QA10)', function (): void {
     $other = HumasFixtures::publication(studentName: 'Raka Pradipta', competitionName: 'FIKSI 2026');
     $gone = HumasFixtures::publication(studentName: 'Fajar Ramadhan', competitionName: 'OPSI 2026');
-    $gone->achievement->student->forceFill(['publish_consent' => false])->save();
+    $gone->achievement->student->user->forceFill(['status' => UserStatus::Disabled])->save();
 
     Livewire::withQueryParams(['pilih' => $gone->getKey()])
         ->actingAs($this->humas)

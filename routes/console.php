@@ -18,7 +18,7 @@ Artisan::command('inspire', function () {
 // skipped that job until the next day; every job is idempotent and far shorter than an hour.
 
 // --- W2-A2: registration timeline + report reminders (docs/dev-notes/W2-A2.md) ---
-// surat_terbit → berlangsung → menunggu_laporan (idempotent, audited), then reminders 14 and 3 days before the D-25 due date.
+// surat_terbit → berlangsung → menunggu_laporan (idempotent, audited), then reminders 3 and 14 days after the final (D-151).
 Schedule::command('sth:registrations:advance')
     ->dailyAt('00:15')
     ->timezone('Asia/Jakarta')
@@ -91,6 +91,7 @@ Schedule::job(new PruneExpiredCache)
 
 // --- B5/W4: delayed privileged role changes (docs/dev-notes/B5.md, backlog #13 / #27) ---
 // Requests made while only one Admin existed apply 24 h later unless cancelled (idempotent; approvals apply at once).
+// Since 21 Okt 2026 role changes apply at once and nothing new waits: this only finishes requests made before that day.
 Schedule::call(fn () => app(ApplyRoleChange::class)->applyDue())
     ->name('sth:peran-tertunda')
     ->everyFiveMinutes()

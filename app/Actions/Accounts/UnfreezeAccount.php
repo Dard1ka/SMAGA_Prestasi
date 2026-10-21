@@ -17,7 +17,8 @@ use Illuminate\Validation\ValidationException;
  * after the Admin checked the owner's identity. Counter reset; an account that still has to change an
  * initial/temporary password gets at least 72 more hours (a later deadline stays, QA9). Admin only
  * (`user.reset_password`), never on the Admin's own account, reason required, audited (`account.unfrozen`). When
- * the email itself is suspect, use "Reset kata sandi & email" (ResetStudentAccount) instead.
+ * the email itself is suspect (a "Bukan saya?" freeze), use "Reset kata sandi & email" (ResetStudentAccount) instead: it
+ * always removes the email (lead, 21 Okt 2026).
  */
 final class UnfreezeAccount
 {

@@ -48,10 +48,10 @@ beforeEach(function (): void {
     $this->guru = F::staff(RoleName::Guru);
     $this->kepsek = F::staff(RoleName::KepalaSekolah, 'Kepala Sekolah Contoh');
     $this->nadia = F::student();
-    $this->dimas = F::student('Dimas Arya Nugroho', 'XI-4');
-    $this->keisha = F::student('Keisha Larasati', 'XI-6');
-    $this->rizky = F::student('Rizky Maulana', 'XI-1');
-    $this->hana = F::student('Hana Safira', 'X-3');
+    $this->dimas = F::student('Dimas Arya Nugroho', 'XI-D');
+    $this->keisha = F::student('Keisha Larasati', 'XI-F');
+    $this->rizky = F::student('Rizky Maulana', 'XI-A');
+    $this->hana = F::student('Hana Safira', 'X-C');
 });
 
 /** Team registration of Nadia (ketua) with the given anggota invited. */
@@ -319,7 +319,7 @@ it('withdraws only an open invitation, only for the ketua, only while the team w
 });
 
 it('withdraws from the registration panel and marks a student who has not activated yet', function (): void {
-    F::student('Laras Wening Pangestu', 'XI-2', ['status' => UserStatus::PendingActivation]);
+    F::student('Laras Wening Pangestu', 'XI-B', ['status' => UserStatus::PendingActivation]);
     $lomba = F::teamCompetition(3);
     $registration = b3Team($this, $lomba, [$this->dimas]);
 

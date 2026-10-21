@@ -51,7 +51,9 @@ it('starts at version 0 with the built-in texts', function (): void {
 
     expect($template->version)->toBe(0)
         ->and($template->siswaIntro())->toBe('Kepala SMA Negeri 3 Semarang memberikan tugas kepada :')
-        ->and($template->siswaBasis('Puspresnas'))->toBe('Surat dari Puspresnas')
+        // D-154: the student letter's Dasar is the regulation text of the school's printed letter.
+        ->and($template->siswaDasar('2026/2027'))->toBe('Peraturan Menteri Pendidikan Dasar dan Menengah Republik Indonesia Nomor 8 Tahun 2026 Hal : Penggunaan Dana BOS Kinerja bagi sekolah yang memiliki prestasi')
+        ->and($template->oldSiswaBasis('Puspresnas'))->toBeNull()
         ->and($template->kopTitleLines())->toHaveCount(3)
         // M1-A: the kop and the guru letter's "Dasar" are the texts of the school's own files.
         ->and($template->kopDetailLines())->toBe([
@@ -95,6 +97,33 @@ it('keeps a template saved before M1-A and uses the built-in text for fields it 
         ->and($template->values)->not->toHaveKey('guru_basis');
 });
 
+it('gives a template saved before D-154 the school\'s Dasar, and a letter printed with the old one its old rows', function (): void {
+    // TU saved the old built-in "Surat dari {penyelenggara}" (field `siswa_basis`) before 2026-10-16.
+    Setting::put(LetterTemplate::SETTING_KEY, [
+        'version' => 2,
+        'values' => array_merge(array_diff_key(LetterTemplate::defaults(), ['siswa_dasar' => true]), ['siswa_basis' => 'Surat dari {penyelenggara}']),
+    ]);
+
+    $current = LetterTemplate::current();
+
+    expect($current->version)->toBe(2)
+        ->and($current->siswaDasar('2026/2027'))->toStartWith('Peraturan Menteri Pendidikan Dasar dan Menengah')
+        ->and($current->values)->not->toHaveKey('siswa_basis')
+        // new letters never print the old rows
+        ->and($current->oldSiswaBasis('Panitia NSIF 2026'))->toBeNull();
+
+    // A letter printed with it keeps what it printed (D-108); one printed after D-154 does not.
+    $old = LetterTemplate::fromArray(['version' => 2, 'values' => ['siswa_basis' => "Surat dari\n{penyelenggara} untuk {sekolah}"]]);
+    $new = LetterTemplate::fromArray(['version' => 3, 'values' => LetterTemplate::defaults()]);
+
+    expect($old->oldSiswaBasis('Panitia NSIF 2026'))->toBe('Surat dari Panitia NSIF 2026 untuk SMA Negeri 3 Semarang')
+        ->and($new->oldSiswaBasis('Panitia NSIF 2026'))->toBeNull()
+        // the version history still names the old field
+        ->and(LetterTemplate::label('siswa_basis'))->toBe('Surat siswa: Dasar')
+        ->and(LetterTemplate::label('city'))->toBe('Tempat surat')
+        ->and(LetterTemplate::PLACEHOLDERS)->not->toHaveKey('{penyelenggara}');
+});
+
 it('validates required fields, lengths and allowed codes; Blade-like text is just an unknown code', function (array $override, string $field): void {
     try {
         LetterTemplate::validate(b5TemplateInput($override));
@@ -110,6 +139,10 @@ it('validates required fields, lengths and allowed codes; Blade-like text is jus
     'blade echo' => [['siswa_closing' => 'Demikian {{ 7*7 }}'], 'siswa_closing'],
     'unclosed code' => [['guru_basis_1' => 'Program kerja {sekolah'], 'guru_basis_1'],
     'too long regulation text' => [['guru_basis_2' => str_repeat('a', 601)], 'guru_basis_2'],
+    // D-154: the student Dasar is required, names no invitation and is as long as a regulation text may be
+    'empty student Dasar' => [['siswa_dasar' => ' '], 'siswa_dasar'],
+    'invitation code in the student Dasar' => [['siswa_dasar' => 'Surat dari {penyelenggara}'], 'siswa_dasar'],
+    'too long student Dasar' => [['siswa_dasar' => str_repeat('a', 601)], 'siswa_dasar'],
 ]);
 
 it('accepts empty regulation texts (the school may have fewer than three)', function (): void {

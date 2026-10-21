@@ -39,14 +39,20 @@ final class PublikFixtures
     }
 
     /**
+     * D-162: every student is named on the public pages; only a disabled (or deleted) account is anonymous.
+     *
      * @param  array<string, mixed>  $attributes  extra students columns (nis, nisn, grade12_start_date, …)
      */
-    public function student(string $name, string $kelas = 'XI-4', bool $consent = true, bool $archived = false, array $attributes = []): Student
+    public function student(string $name, string $kelas = 'XI-D', bool $disabled = false, bool $archived = false, array $attributes = []): Student
     {
-        $user = ($archived ? User::factory()->archived() : User::factory())->create(['name' => $name]);
+        $factory = match (true) {
+            $disabled => User::factory()->disabled(),
+            $archived => User::factory()->archived(),
+            default => User::factory(),
+        };
+        $user = $factory->create(['name' => $name]);
 
         return Student::factory()
-            ->state(['publish_consent' => $consent, 'photo_consent' => $consent])
             ->create(['user_id' => $user->id, 'classroom_id' => $this->classroom($kelas)->id, ...$attributes]);
     }
 
@@ -67,7 +73,7 @@ final class PublikFixtures
         ]);
     }
 
-    /** The random public slug (assigned lazily by PublicAchievements for consenting students). */
+    /** The random public slug (assigned lazily by PublicAchievements for students with achievements). */
     public function slug(Student $student): ?string
     {
         PublicAchievements::flush();

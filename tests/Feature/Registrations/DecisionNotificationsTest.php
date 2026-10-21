@@ -35,7 +35,7 @@ beforeEach(function (): void {
     $this->kepsek = F::staff(RoleName::KepalaSekolah, 'Drs. Bambang Hartono, M.Pd.');
     $this->admin = F::staff(RoleName::Admin, 'Operator STH');
     $this->nadia = F::student();
-    $this->dimas = F::student('Dimas Arya Nugroho', 'XI-4');
+    $this->dimas = F::student('Dimas Arya Nugroho', 'XI-D');
 });
 
 /** Team of Nadia (ketua) + Dimas, guided by the guru; $confirmed = Dimas accepted, so it waits for the Kepala Sekolah. */
@@ -122,7 +122,7 @@ it('keeps the rejection wording for the members and gives the guru a bell entry'
 
     expect($mail['subject'])->toBe('Pendaftaran lomba tidak disetujui')
         ->and($mail['greeting'])->toBe('Halo Nadia,')
-        ->and($mail['lines'])->toBe(['Kepala Sekolah tidak menyetujui pendaftaranmu di '.$lomba.'.', 'Alasan: Kuota sekolah sudah penuh.'])
+        ->and($mail['lines'])->toBe(['Pendaftaranmu di '.$lomba.' tidak disetujui Kepala Sekolah.', 'Alasan: Kuota sekolah sudah penuh.'])
         ->and($mail['url'])->toBe(route('siswa.lomba-saya.show', ['registration' => $registration->getKey()]))
         ->and($siswa->toArray(F::user($this->nadia)))->toMatchArray([
             'type' => 'registration.rejected',

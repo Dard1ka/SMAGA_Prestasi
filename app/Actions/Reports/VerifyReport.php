@@ -20,6 +20,7 @@ use App\Models\WeightVersion;
 use App\Notifications\Verification\AchievementReadyForPublication;
 use App\Notifications\Verification\BinaanReportDecided;
 use App\Notifications\Verification\ReportVerified;
+use App\Support\StaffRoleLabel;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -120,7 +121,7 @@ final class VerifyReport
         // New verified achievements change the public pages (W2-D request): drop the cached results.
         PublicAchievements::flush();
 
-        $this->notify($lockedReport, $achievements);
+        $this->notify($lockedReport, $achievements, StaffRoleLabel::forDecision($actor));
 
         return $achievements;
     }
@@ -149,7 +150,7 @@ final class VerifyReport
     }
 
     /** @param Collection<int, Achievement> $achievements */
-    private function notify(Report $report, Collection $achievements): void
+    private function notify(Report $report, Collection $achievements, string $decider): void
     {
         $achievements->load(['student.user', 'competition']);
 
@@ -157,7 +158,7 @@ final class VerifyReport
             $user = $achievement->student?->user;
 
             if ($user !== null && $user->canLogIn()) {
-                $user->notify(ReportVerified::for($achievement));
+                $user->notify(ReportVerified::for($achievement, $decider, $report->note));
             }
         }
 

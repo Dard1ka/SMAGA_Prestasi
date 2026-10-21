@@ -18,10 +18,10 @@ beforeEach(function (): void {
     $this->travelTo(now()->setDate(2026, 10, 1)->setTime(10, 0));
 
     $f = $this->f = new PublikFixtures;
-    $this->raka = $f->student('Raka Pradipta', 'XII-2');
-    $this->keisha = $f->student('Keisha Larasati', 'XI-6');
-    $this->citra = $f->student('Citra Ayu Lestari', 'XI-2');
-    $this->fajar = $f->student('Fajar Ramadhan', 'XII-1');
+    $this->raka = $f->student('Raka Pradipta', 'XII-B');
+    $this->keisha = $f->student('Keisha Larasati', 'XI-F');
+    $this->citra = $f->student('Citra Ayu Lestari', 'XI-B');
+    $this->fajar = $f->student('Fajar Ramadhan', 'XII-A');
 
     // Riset has the most achievements → default bidang.
     $f->prestasi($this->raka, $f->lomba('FIKSI 2026', Bidang::Riset, Level::Nasional, '2026-09-01'), ResultType::Juara1);

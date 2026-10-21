@@ -62,14 +62,23 @@ it('denies a disabled Humas account', function (): void {
         ->and($humas->can('viewAny', AppreciationEvent::class))->toBeFalse();
 });
 
-it('blocks changes when the student has no publish consent', function (): void {
+it('blocks changes when the student\'s account is disabled', function (): void {
     $humas = HumasFixtures::humas();
-    $publication = HumasFixtures::publication(['publish_consent' => false]);
+    $publication = HumasFixtures::publication(disabled: true);
 
     expect($humas->can('view', $publication))->toBeTrue()
         ->and($humas->can('update', $publication))->toBeFalse()
         ->and($humas->can('schedule', $publication))->toBeFalse()
         ->and($humas->can('publish', $publication))->toBeFalse();
+});
+
+it('allows changes whatever the old consent columns say (D-162)', function (): void {
+    $humas = HumasFixtures::humas();
+    $publication = HumasFixtures::publication(['publish_consent' => false, 'photo_consent' => false]);
+
+    expect($humas->can('update', $publication))->toBeTrue()
+        ->and($humas->can('schedule', $publication))->toBeTrue()
+        ->and($humas->can('publish', $publication))->toBeTrue();
 });
 
 it('blocks changes when the achievement is not verified', function (): void {

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Notifications\Reports;
 
+use App\Domain\Deadlines\ReportFollowUp;
 use App\Notifications\Support\MailGreeting;
 use App\Notifications\Support\PlainMailMessage;
 use Illuminate\Bus\Queueable;
@@ -13,18 +14,28 @@ use Illuminate\Notifications\Notification;
 use Illuminate\Support\Facades\Route;
 
 /**
- * To the ketua: the laporan hasil is due soon (sth:reports:remind, 14 and 3 days before final_on + 45, D-25).
+ * To the ketua: the laporan hasil is still missing (sth:reports:remind, 3 and 14 days after final_on, D-151). There
+ * is no deadline any more, so the reminder only asks to report now.
+ *
+ * A reminder queued before D-151 carries `dueOn` + `daysLeft` instead of `daysAfterFinal`. The day count is a plain
+ * property with a default, so such a payload still unserializes and is sent with today's wording:
+ * SerializesModels::__unserialize() sets only the properties this class declares and skips the two old keys (no
+ * dynamic property, no deprecation; ReportReminderAfterFinalTest).
  */
 class ReportReminder extends Notification implements ShouldQueue
 {
     use Queueable;
 
+    /** Days between final_on and this reminder (ReportFollowUp::REMINDER_DAYS); 0 on a reminder queued before D-151. */
+    public int $daysAfterFinal = 0;
+
     public function __construct(
         public readonly string $registrationId,
         public readonly string $competitionName,
-        public readonly string $dueOn,
-        public readonly int $daysLeft,
-    ) {}
+        int $daysAfterFinal,
+    ) {
+        $this->daysAfterFinal = $daysAfterFinal;
+    }
 
     /** @return list<string> */
     public function via(object $notifiable): array
@@ -59,7 +70,7 @@ class ReportReminder extends Notification implements ShouldQueue
             'body' => $this->body(),
             'url' => $this->url(),
             'registration_id' => $this->registrationId,
-            'days_left' => $this->daysLeft,
+            'days_after_final' => $this->daysAfterFinal,
         ];
     }
 
@@ -70,9 +81,7 @@ class ReportReminder extends Notification implements ShouldQueue
 
     private function body(): string
     {
-        $left = $this->daysLeft === 0 ? 'hari ini' : $this->daysLeft.' hari lagi';
-
-        return 'Batas laporan hasil '.$this->dueOn.' ('.$left.'). Upload sertifikat dan foto dokumentasi.';
+        return 'Lomba '.$this->competitionName.' sudah selesai. '.rtrim(ReportFollowUp::PROMPT, '.').': upload sertifikat dan foto dokumentasi.';
     }
 
     private function url(): ?string

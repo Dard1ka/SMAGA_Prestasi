@@ -24,6 +24,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
 use Tests\Feature\Auth\AuthTestHelpers;
+use Tests\Support\TalentGate;
 
 /**
  * Fixtures for tests/Feature/Siswa/Hasil and tests/Feature/Siswa/Talenta (W2-A2). Fictional data only
@@ -39,7 +40,12 @@ final class HasilFixtures
     }
 
     /** Active, activated student (DB-fresh model, strict-mode safe). */
-    public static function student(string $name = 'Nadia Putri Anindya', string $classroom = 'XI-4'): Student
+    /**
+     * An active student. D-153: an active student has chosen a talent (else the talent gate holds every siswa page), so a
+     * student outside kelas X gets one ("Lainnya (Membaca)", TalentGate::pass). Kelas X students stay without one, so the
+     * gate tests keep testing the gate; `talent: false` gives a student of any class no talent (the talent tests).
+     */
+    public static function student(string $name = 'Nadia Putri Anindya', string $classroom = 'XI-D', bool $talent = true): Student
     {
         $user = User::factory()->create(['name' => $name])->fresh();
         $user->forceFill([
@@ -53,6 +59,10 @@ final class HasilFixtures
             ?? Classroom::factory()->level((int) Classroom::levelFromName($classroom))->create(['name' => $classroom]);
 
         $student = Student::factory()->create(['user_id' => $user->getKey(), 'classroom_id' => $room->getKey()]);
+
+        if ($talent && (int) $room->level !== 10) {
+            TalentGate::pass($student);
+        }
 
         return $student->fresh(['user']);
     }

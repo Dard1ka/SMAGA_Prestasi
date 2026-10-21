@@ -21,7 +21,7 @@ beforeEach(function (): void {
     config(['session.driver' => 'database']);
     Notification::fake();
     $this->travelTo('2030-01-01 01:00:00');
-    $this->class = Classroom::factory()->level(12)->create(['name' => 'XII-2']);
+    $this->class = Classroom::factory()->level(12)->create(['name' => 'XII-B']);
 });
 
 function sthStudentWithArchiveDate(string $archiveAt, bool $archived = false): Student
@@ -29,7 +29,7 @@ function sthStudentWithArchiveDate(string $archiveAt, bool $archived = false): S
     $factory = $archived ? Student::factory()->archived() : Student::factory()->activated();
 
     return $factory->create([
-        'classroom_id' => Classroom::query()->where('name', 'XII-2')->value('id'),
+        'classroom_id' => Classroom::query()->where('name', 'XII-B')->value('id'),
         'grade12_start_date' => '2028-07-01',
         'archive_at' => $archiveAt,
     ]);
@@ -77,7 +77,7 @@ it('refuses a login of an archived student (D-29)', function (): void {
 
     $this->artisan('sth:arsip-otomatis')->assertSuccessful();
 
-    $this->post(route('login.store'), ['identifier' => H::NIS, 'password' => H::PASSWORD])->assertSessionHasErrors();
+    $this->post(route('login.store'), ['identifier' => H::NISN, 'password' => H::PASSWORD])->assertSessionHasErrors();
     $this->assertGuest();
 });
 

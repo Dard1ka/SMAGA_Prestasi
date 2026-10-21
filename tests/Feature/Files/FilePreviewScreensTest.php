@@ -105,7 +105,7 @@ it('documents both hooks in app.js and keeps the frame free of sandbox and of ot
 
 it('opens every evidence file of Verifikasi hasil in the popup and keeps the download as href', function (): void {
     $kesiswaan = F::staff(RoleName::Kesiswaan);
-    $report = F::pendingReport(F::student('Rizky Maulana', 'XI-1'));
+    $report = F::pendingReport(F::student('Rizky Maulana', 'XI-A'));
     $pdf = File::factory()->create(['original_name' => 'sertifikat-okn-undip-2026.pdf', 'owner_user_id' => $report->submitted_by]);
     $photo = File::factory()->image()->create(['original_name' => 'foto-penyerahan-piala.jpg', 'owner_user_id' => $report->submitted_by]);
     ReportFile::factory()->create(['report_id' => $report->getKey(), 'file_id' => $pdf->getKey(), 'kind' => ReportFileKind::Sertifikat]);
@@ -133,7 +133,7 @@ it('opens every evidence file of Verifikasi hasil in the popup and keeps the dow
 
 it('offers a plain download on Verifikasi hasil for a file that has no preview', function (): void {
     $kesiswaan = F::staff(RoleName::Kesiswaan);
-    $report = F::pendingReport(F::student('Rizky Maulana', 'XI-1'));
+    $report = F::pendingReport(F::student('Rizky Maulana', 'XI-A'));
     $other = File::factory()->create(['original_name' => 'lampiran.bin', 'mime' => 'application/octet-stream', 'owner_user_id' => $report->submitted_by]);
     ReportFile::factory()->create(['report_id' => $report->getKey(), 'file_id' => $other->getKey(), 'kind' => ReportFileKind::Sertifikat]);
 
@@ -147,7 +147,7 @@ it('offers a plain download on Verifikasi hasil for a file that has no preview',
 
 it('opens the certificate of the Database prestasi drawer in the popup', function (): void {
     $kesiswaan = F::staff(RoleName::Kesiswaan);
-    $nadia = F::student('Nadia Putri Anindya', 'XI-4', '225226201');
+    $nadia = F::student('Nadia Putri Anindya', 'XI-D', '225226201');
     $fixtures = new PrestasiFixtures;
     [$achievement] = $fixtures->prestasi([$nadia], $fixtures->lomba('WICE 2026', Bidang::Riset), ResultType::Juara2);
     $certificate = File::factory()->create(['original_name' => 'sertifikat-wice-2026.pdf']);
@@ -167,7 +167,7 @@ it('opens the certificate of the Database prestasi drawer in the popup', functio
 it('opens the evidence and the sent letter of an own binaan in the popup, both links staying the download', function (): void {
     $retno = GuruFixtures::guru('Retno Wulandari, S.Pd.');
     $hendra = GuruFixtures::guru('Hendra Kusuma, S.Pd., M.Si.');
-    $nadia = GuruFixtures::student('Nadia Putri Anindya', 'XI-4');
+    $nadia = GuruFixtures::student('Nadia Putri Anindya', 'XI-D');
     $registration = GuruFixtures::registration($retno, $nadia, RegistrationStatus::MenungguLaporan, [], F::competition(['name' => 'WICE 2026']));
 
     $report = new Report(['registration_id' => $registration->getKey(), 'claimed_result' => ResultType::Juara2]);
@@ -202,8 +202,8 @@ it('opens the evidence and the sent letter of an own binaan in the popup, both l
 // Siswa › Portofolio --------------------------------------------------------------------------------
 
 it('opens the own certificate of Portofolio in the popup', function (): void {
-    $nadia = HasilFixtures::student('Nadia Putri Anindya', 'XI-4');
-    $raka = HasilFixtures::student('Raka Pradipta', 'XII-2');
+    $nadia = HasilFixtures::student('Nadia Putri Anindya', 'XI-D');
+    $raka = HasilFixtures::student('Raka Pradipta', 'XII-B');
     $certificate = File::factory()->create(['original_name' => 'sertifikat-opsi-2026.pdf', 'owner_user_id' => $nadia->user->getKey()]);
 
     $registration = HasilFixtures::registration($nadia, RegistrationStatus::Selesai, HasilFixtures::competition([

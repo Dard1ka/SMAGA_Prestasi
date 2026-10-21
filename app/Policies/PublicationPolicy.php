@@ -13,8 +13,8 @@ use App\Models\User;
 /**
  * Humas publication queue (UI-MAP #22). Deny by default. Everything needs `publication.manage` on an
  * account that can log in. Changing a publication additionally needs a verified achievement whose
- * student may be named (publish consent, D-16, SECURITY §3m-7; since QA10 also not deleted and not disabled,
- * NamedStudent); otherwise the row stays out of the queue.
+ * student may be named (NamedStudent: not deleted and not disabled, QA10; the consent condition is gone since
+ * D-162); otherwise the row stays out of the queue.
  */
 class PublicationPolicy
 {
@@ -51,7 +51,7 @@ class PublicationPolicy
 
     /**
      * Verified achievement + a student who may be named (QA10: the "named" rule of the public pages, NamedStudent:
-     * publish consent, student and account not deleted, account not disabled; an alumnus stays named).
+     * student and account not deleted, account not disabled; an alumnus stays named).
      */
     public static function eligible(Publication $publication): bool
     {

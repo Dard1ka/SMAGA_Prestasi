@@ -14,6 +14,8 @@
  |   window events: sth-modal-open / sth-modal-close {id} · sth-toast {message, tone, key?}
  |                  sth-toast-clear {key} — remove the toasts raised with that key (a failure that is over)
  |                  sth-form-invalid {form} — bring the first validation error into view
+ |                  sth-subtitle {text} — the line under the page title ([data-sth-subtitle], <x-sth.topbar>) of
+ |                      a screen whose tabs change without a page load (Cari lomba › Usulan saya)
  |                  sth-badges {badges: {key: count}} — update [data-sth-badge="key"]: the sidebar counts and the
  |                      bell of the top bar (key 'akun.notifikasi'). data-sth-badge-max="99" prints "99+" above it,
  |                      data-sth-count keeps the real number, and [data-sth-badge-label="key"] gets its aria-label
@@ -325,6 +327,16 @@ window.addEventListener('sth-toast-clear', (event) => {
     });
 });
 
+// The top bar belongs to the layout, which Livewire renders once per page load: a screen whose tabs change without a
+// page load sends the subtitle of the open tab (Siswa › Cari lomba: the catalog or "Usulan saya").
+window.addEventListener('sth-subtitle', (event) => {
+    const text = (event.detail || {}).text;
+    if (typeof text !== 'string' || text === '') return;
+    document.querySelectorAll('[data-sth-subtitle]').forEach((line) => {
+        line.textContent = text;
+    });
+});
+
 /* ---------------------------------------------------------------- form errors */
 
 /*
@@ -363,6 +375,36 @@ window.addEventListener('sth-form-invalid', (event) => {
     // Only if the markers somehow are not in yet, give the DOM one more turn. setTimeout still fires when
     // frames do not.
     window.setTimeout(() => revealFirstError(scope), 50);
+});
+
+/* ---------------------------------------------------------------- reveal a panel */
+
+/*
+ | A list with a detail panel beside it on a wide screen puts the panel below the list on a phone: a row's button then
+ | filled a panel far below the fold and nothing seemed to happen (FS1 QA, Database talenta siswa). A screen dispatches
+ | `sth-reveal {id}` after such a button; when the top of that element is not in the upper part of the window it is
+ | scrolled to the top and gets focus (it carries tabindex="-1"), so a screen reader starts reading there too. Beside
+ | the list and in view (a desktop), nothing moves.
+ */
+function revealPanel(id) {
+    const target = id ? document.getElementById(id) : null;
+    if (!target) return false;
+
+    const top = target.getBoundingClientRect().top;
+    if (top >= 0 && top <= window.innerHeight * 0.6) return true;
+
+    // 'instant' for the same reason as revealFirstError(): a smooth scroll does nothing in a tab that is not drawing.
+    target.scrollIntoView({ block: 'start', behavior: 'instant' });
+    target.focus({ preventScroll: true });
+
+    return true;
+}
+
+window.addEventListener('sth-reveal', (event) => {
+    const id = event.detail?.id;
+
+    // As with sth-form-invalid: Livewire has morphed the panel in by now; one more turn only if it has not.
+    if (!revealPanel(id)) window.setTimeout(() => revealPanel(id), 50);
 });
 
 /* ---------------------------------------------------------------- sidebar badges and the bell */
@@ -890,7 +932,7 @@ document.addEventListener('click', async (event) => {
     if (!(target instanceof HTMLElement)) return;
 
     try {
-        await navigator.clipboard.writeText(target.innerText);
+        await navigator.clipboard.writeText(target.innerText.trim());
         showToast('Data disalin.', 'success');
     } catch {
         selectContents(target);

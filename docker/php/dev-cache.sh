@@ -9,7 +9,13 @@
 #   3. php-fpm reloads (USR2), which empties opcache;
 #   4. a background warm-up compiles the PHP files php-fpm had loaded before the reload again
 #      (App\Support\Dev\OpcacheWarmup), so the first click after a reload is not a 5-7 s wait.
-#      /tmp/sth-cache/warmed appears when it is done. STH_NO_WARMUP=1 skips it.
+#      /tmp/sth-cache/warmed appears when it is done. STH_NO_WARMUP=1 skips it;
+#   5. the queue worker (service `queue`) is asked to restart after its current job (`queue:restart`), so a changed
+#      notification, mail or job class is not sent the old way until someone restarts it by hand. That command only
+#      stores a timestamp in the cache; the worker stops gracefully and compose starts it again. It never fails this
+#      script (no worker running: nothing happens; MySQL not up: a warning). `php artisan` reads the framework from the
+#      Windows drive without opcache (about 20 s), so in the `app` container it runs in the background like step 4;
+#      its outcome lands in /tmp/sth-cache/queue-restart.log.
 # The config cache is written with APP_CONFIG_CACHE set for this one command only, so it never lands in
 # bootstrap/cache/ where the test suite would find it.
 set -eu
@@ -63,7 +69,12 @@ fetch() {
 }
 
 # PID 1 is php-fpm in the `app` service. Anywhere else (a one-off `run` container) there is nothing to reload.
+fpm=0
 if [ -r /proc/1/comm ] && grep -q "php-fpm" /proc/1/comm; then
+    fpm=1
+fi
+
+if [ "$fpm" = "1" ]; then
     warm=1
     [ "${STH_NO_WARMUP:-}" = "1" ] && warm=0
 
@@ -93,4 +104,27 @@ if [ -r /proc/1/comm ] && grep -q "php-fpm" /proc/1/comm; then
         ) >/dev/null 2>&1 &
         echo "[sth-dev] warming up in the background (about 15 seconds)"
     fi
+fi
+
+# Step 5. The worker in `queue` is a long-running process with the code it started with. queue:restart writes a
+# timestamp to the cache store (CACHE_STORE=database in dev); a running worker exits after its current job and compose
+# starts it again (restart: unless-stopped). A worker started later ignores a timestamp older than itself.
+restart_queue() {
+    if php artisan queue:restart --no-interaction >/dev/null 2>&1; then
+        echo "[sth-dev] queue:restart sent: a running worker restarts after its current job"
+    else
+        echo "[sth-dev] WARNING: queue:restart failed (database not up?); run: docker compose restart queue" >&2
+    fi
+}
+
+if [ "$fpm" = "1" ]; then
+    # In the long-lived `app` container: in the background, so reload.bat stays about a second.
+    (
+        restart_queue
+        date
+    ) >"$CACHE_DIR/queue-restart.log" 2>&1 &
+    echo "[sth-dev] queue worker asked to restart in the background (about 20 seconds, $CACHE_DIR/queue-restart.log)"
+else
+    # A one-off container ends with this script and would take a background job with it.
+    restart_queue
 fi

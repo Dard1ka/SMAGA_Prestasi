@@ -1,4 +1,7 @@
-{{-- Akun › Keamanan (no board; UI-MAP §2). Data and rules in App\Livewire\Akun\Keamanan + App\Actions\Accounts\*. --}}
+{{-- Akun › Keamanan (no board; UI-MAP §2). Data and rules in App\Livewire\Akun\Keamanan + App\Actions\Accounts\*.
+     D-152: the tab "Keamanan akun" of Profil saya (tabs from Akun\Profil::tabs()). --}}
+<div class="flex flex-col gap-[22px]">
+<x-sth.tabs label="Profil saya" :items="$tabs" active="keamanan" />
 <div class="grid grid-cols-1 items-start gap-[22px] xl:grid-cols-2">
     <div class="flex flex-col gap-[22px]">
         {{-- Kata sandi --}}
@@ -100,8 +103,8 @@
             @endif
         </x-sth.card>
 
-        @if ($isStaff)
-            {{-- Verifikasi dua langkah (staf) --}}
+        @if ($showTwoFactor)
+            {{-- Verifikasi dua langkah (staf; absent while STH_STAFF_2FA=false) --}}
             <x-sth.card as="section" aria-labelledby="h-2fa" class="flex flex-col gap-4">
                 <x-sth.page-header id="h-2fa" title="Verifikasi dua langkah" subtitle="Kode dari aplikasi autentikator setiap kali masuk." />
                 <div class="flex flex-wrap items-center justify-between gap-3">
@@ -119,4 +122,5 @@
 
         <x-sth.alert title="Ada yang mencurigakan?">Jika ada perangkat atau perubahan yang tidak dikenal, ganti kata sandi lalu hubungi Admin atau Kesiswaan.</x-sth.alert>
     </div>
+</div>
 </div>

@@ -73,7 +73,7 @@ return [
             'replace_placeholders' => true,
         ],
 
-        // Security events (SECURITY §3l): logins, lockouts, OTP abuse, Admin resets, archive, consent, audit chain.
+        // Security events (SECURITY §3l): logins, lockouts, OTP abuse, Admin resets, archive, audit chain.
         // Written only through App\Support\Audit\SecurityLog (never passwords, OTPs, tokens or session ids).
         // The test suite (APP_ENV=testing) sends them to `null` so test runs never fill storage/logs.
         'security' => [

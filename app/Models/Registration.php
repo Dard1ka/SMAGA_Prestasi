@@ -7,6 +7,7 @@ namespace App\Models;
 use App\Enums\LetterType;
 use App\Enums\RegistrationStatus;
 use App\Enums\RegistrationType;
+use Carbon\CarbonImmutable;
 use Database\Factories\RegistrationFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
@@ -22,10 +23,13 @@ use Spatie\Activitylog\Support\LogOptions;
 
 /**
  * Pendaftaran (individu/tim). Status changes only in app/Actions/Registrations (ARCHITECTURE §6).
- * Not mass-assignable: status, principal_decision_by, principal_decided_at, principal_note, cancelled_at.
+ * Not mass-assignable: status, principal_decision_by, principal_decided_at, principal_note, cancelled_at, answer_until.
  */
 class Registration extends Model
 {
+    /** D-148: a team resumed after (or less than this many days before) "Pendaftaran ditutup" may answer this long. */
+    public const ANSWER_GRACE_DAYS = 3;
+
     /** @use HasFactory<RegistrationFactory> */
     use HasFactory, HasUlids, LogsActivity, SoftDeletes;
 
@@ -46,6 +50,7 @@ class Registration extends Model
             'status' => RegistrationStatus::class,
             'principal_decided_at' => 'immutable_datetime',
             'cancelled_at' => 'immutable_datetime',
+            'answer_until' => 'immutable_datetime',
         ];
     }
 
@@ -158,6 +163,23 @@ class Registration extends Model
         $query->whereIn('status', RegistrationStatus::nonFinal());
     }
 
+    /**
+     * D-148: registrations the guru pembimbing was ever told about (Siswa binaan, Guru › Lomba, detail binaan). One that
+     * still waits for its lomba (`menunggu_lomba`), or was cancelled while it waited (by its leader, or with the
+     * rejected lomba: audit `registration.cancelled` from `menunggu_lomba`), only its submitter ever heard of.
+     *
+     * @param  Builder<Registration>  $query
+     */
+    public function scopeKnownToMentor(Builder $query): void
+    {
+        $query->where('status', '!=', RegistrationStatus::MenungguLomba->value)
+            ->where(fn (Builder $q) => $q
+                ->where('status', '!=', RegistrationStatus::Dibatalkan->value)
+                ->orWhereDoesntHave('activitiesAsSubject', fn (Builder $audit) => $audit
+                    ->where('event', 'registration.cancelled')
+                    ->where('properties->from', RegistrationStatus::MenungguLomba->value)));
+    }
+
     /** Registrations where the student is a member (ketua or anggota). @param Builder<Registration> $query */
     public function scopeForStudent(Builder $query, Student|string $student): void
     {
@@ -176,5 +198,91 @@ class Registration extends Model
     public function isTeam(): bool
     {
         return $this->type === RegistrationType::Tim;
+    }
+
+    /**
+     * Until when the team's invitations may be answered, and the ketua may invite or withdraw (QA10 window): the later
+     * of the lomba's "Pendaftaran ditutup" and `answer_until` (the grace of a team resumed late, D-148); null when
+     * neither is set (no deadline: the invitations never expire). RegistrationPolicy and ExpirePendingInvitations read
+     * only this.
+     */
+    public function answersCloseAt(): ?CarbonImmutable
+    {
+        $competition = $this->relationLoaded('competition') && $this->competition !== null
+            ? $this->competition
+            : Competition::withTrashed()->find($this->competition_id);
+        $closes = $competition?->registration_closes_at;
+        $until = $this->answer_until;
+
+        if ($closes === null || $until === null) {
+            return $closes ?? $until;
+        }
+
+        return $until->greaterThan($closes) ? $until : $closes;
+    }
+
+    /**
+     * "15 Okt 2026, 09.00": until when the anggota of a team resumed late may answer (the grace, D-148), for the screens
+     * and the invitation; null for every other registration, whose answers close with "Pendaftaran ditutup".
+     */
+    public function graceText(): ?string
+    {
+        if ($this->answer_until === null) {
+            return null;
+        }
+
+        return $this->answersCloseAt()?->locale('id')->translatedFormat('j M Y, H.i');
+    }
+
+    /** D-148: cancelled because Kesiswaan rejected its lomba (ResumeWaitingRegistrations), not by its leader. */
+    public function cancelledWithLomba(): bool
+    {
+        return $this->status === RegistrationStatus::Dibatalkan
+            && $this->activitiesAsSubject()
+                ->where('event', 'registration.cancelled')
+                ->where('properties->reason', 'competition_rejected')
+                ->exists();
+    }
+
+    /**
+     * D-155: removed from the letter queue by Tata Usaha (CancelApprovedRegistration::REASON = 'letter_queue'): the
+     * reason and who did it, read from that audit row; null for every other registration.
+     *
+     * @return array{note: string, by: ?User}|null
+     */
+    public function letterQueueCancellation(): ?array
+    {
+        if ($this->status !== RegistrationStatus::Dibatalkan) {
+            return null;
+        }
+
+        $row = $this->activitiesAsSubject()
+            ->where('event', 'registration.cancelled')
+            ->where('properties->reason', 'letter_queue')
+            ->with('causer')
+            ->latest('id')
+            ->first();
+
+        if ($row === null) {
+            return null;
+        }
+
+        $causer = $row->causer;
+
+        return ['note' => (string) ($row->properties['note'] ?? ''), 'by' => $causer instanceof User ? $causer : null];
+    }
+
+    /** One registration of scopeKnownToMentor() (D-148). */
+    public function isKnownToMentor(): bool
+    {
+        if ($this->status === RegistrationStatus::MenungguLomba) {
+            return false;
+        }
+
+        return $this->status !== RegistrationStatus::Dibatalkan
+            || ! $this->activitiesAsSubject()
+                ->where('event', 'registration.cancelled')
+                ->where('properties->from', RegistrationStatus::MenungguLomba->value)
+                ->exists();
     }
 }

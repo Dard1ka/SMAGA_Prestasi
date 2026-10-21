@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Actions\Accounts;
 
 use App\Domain\Accounts\InitialPassword;
+use App\Domain\Accounts\PhoneNumber;
 use App\Domain\Archive\GraduationCalculator;
 use App\Domain\Archive\SchoolYear;
 use App\Enums\Permission;
@@ -36,14 +37,15 @@ use Throwable;
  *   = + - @ (and tab/CR/LF) stripped before validation (names must then consist of letters only). Rows where
  *   that happened carry `sanitized = true` in the report ("Sel dibersihkan", lead decision, backlog #19).
  * - A new row (neither number known): name ≤ 150, NIS 4–20 digits, NISN exactly 10 digits, birth date valid and
- *   age 13–21, class exists (active), phone ^(\+62|0)8\d{7,12}$, NIS/NISN unique within the file and against
- *   every existing student (a NIS may not equal another student's NISN either, because login accepts both).
- *   grade12_start_date / archive_at from GraduationCalculator; initial password from InitialPassword, hashed
+ *   age 13–21, class exists (active), phone ^(\+62|0)8\d{7,12}$, NIS and NISN each unique in their own column,
+ *   within the file and against existing students; the NIS is stored only (D-137), so it may equal another
+ *   student's NISN.
+ *   grade12_start_date / archive_at from GraduationCalculator; initial password from InitialPassword (config, D-138), hashed
  *   immediately, must_change_password = true. The plaintext is never stored, logged or returned.
  * - A row whose NIS AND NISN belong to one registered student is an UPDATE (M1-C, lead 2026-10-04: every school
  *   year Kesiswaan uploads all students with their current class). It moves the student to the class in the
  *   file and stores the phone number when the file has one; it never touches the name, the birth date, the
- *   password, the email, the status, the consent flags or the activation. A different name or birth date only
+ *   password, the email, the status or the activation. A different name or birth date only
  *   gives a note. Only one of the two numbers matching → the row is refused. An archived (alumni) account is
  *   skipped with a note; a deleted one is refused.
  * - Archive dates stay a function of class + school year: an update recomputes them with GraduationCalculator
@@ -291,7 +293,7 @@ final class ImportStudents
     private function validateRows(array $rows, SchoolYear $year): array
     {
         $classrooms = Classroom::query()->get();
-        $byName = $classrooms->keyBy(fn (Classroom $c): string => mb_strtoupper($c->name));
+        $byName = $classrooms->keyBy(fn (Classroom $c): string => mb_strtoupper(str_replace(' ', '', $c->name)));
         /** @var array<string, string> $classNames classroom id => name */
         $classNames = $classrooms->pluck('name', 'id')->all();
 
@@ -308,12 +310,17 @@ final class ImportStudents
 
         [$byNis, $byNisn] = $this->registeredStudents($clean);
 
-        // Occurrences inside the file (NIS and NISN share one namespace because login accepts both).
-        $seen = [];
+        // Occurrences inside the file, counted per column (the NIS is stored only, D-137).
+        $seenNis = [];
+        $seenNisn = [];
 
         foreach ($clean as $row) {
-            foreach (array_unique(array_filter([$row['nis'], $row['nisn']])) as $number) {
-                $seen[$number] = ($seen[$number] ?? 0) + 1;
+            if ($row['nis'] !== '') {
+                $seenNis[$row['nis']] = ($seenNis[$row['nis']] ?? 0) + 1;
+            }
+
+            if ($row['nisn'] !== '') {
+                $seenNisn[$row['nisn']] = ($seenNisn[$row['nisn']] ?? 0) + 1;
             }
         }
 
@@ -328,13 +335,13 @@ final class ImportStudents
 
             if (! $nisOk) {
                 $errors[] = 'NIS harus 4–20 angka.';
-            } elseif (($seen[$row['nis']] ?? 0) > 1) {
+            } elseif (($seenNis[$row['nis']] ?? 0) > 1) {
                 $errors[] = 'NIS dobel di file ini.';
             }
 
             if (! $nisnOk) {
                 $errors[] = 'NISN harus 10 angka (format sel sebagai teks).';
-            } elseif (($seen[$row['nisn']] ?? 0) > 1) {
+            } elseif (($seenNisn[$row['nisn']] ?? 0) > 1) {
                 $errors[] = 'NISN dobel di file ini.';
             }
 
@@ -355,15 +362,6 @@ final class ImportStudents
                     $errors[] = 'NIS sudah terdaftar dengan NISN lain.';
                 } elseif ($ownerOfNisn !== null) {
                     $errors[] = 'NISN sudah terdaftar dengan NIS lain.';
-                } else {
-                    // A new student: neither number may be another student's login number.
-                    if (isset($byNisn[$row['nis']])) {
-                        $errors[] = 'NIS sudah dipakai sebagai NISN siswa lain.';
-                    }
-
-                    if (isset($byNis[$row['nisn']])) {
-                        $errors[] = 'NISN sudah dipakai sebagai NIS siswa lain.';
-                    }
                 }
             }
 
@@ -425,8 +423,8 @@ final class ImportStudents
                     $errors[] = 'Kelas tidak ditemukan.';
                 }
 
-                if ($row['phone'] !== null && preg_match('/^(\+62|0)8\d{7,12}$/', $row['phone']) !== 1) {
-                    $errors[] = 'No HP tidak valid (contoh 0812…).';
+                if ($row['phone'] !== null && ! PhoneNumber::isValid($row['phone'])) {
+                    $errors[] = PhoneNumber::INVALID;
                 }
             }
 
@@ -490,6 +488,7 @@ final class ImportStudents
                     'row' => $row['line'],
                     'name' => $row['name'] !== '' ? $row['name'] : null,
                     'nis' => $row['nis'] !== '' ? $row['nis'] : null,
+                    'nisn' => $row['nisn'] !== '' ? $row['nisn'] : null,
                     'classroom' => $classroom?->name ?? ($row['classroom'] !== '' ? $row['classroom'] : null),
                     'errors' => $errors,
                     'grade12_start_date' => $dates?->grade12StartDate->format('Y-m-d'),
@@ -645,7 +644,7 @@ final class ImportStudents
         $user = new User;
         $user->forceFill([
             'name' => $data['name'],
-            'password' => Hash::make($this->initialPassword->make($data['birth_date'])),
+            'password' => Hash::make($this->initialPassword->make()),
             'status' => UserStatus::PendingActivation,
             'must_change_password' => true,
             // B1 — K1: the initial password works only during the activation window (setting, default 14 days).
@@ -671,7 +670,7 @@ final class ImportStudents
      * Move a registered student to the class of the file (row locked, compared again with what is stored now) and
      * keep the archive dates in line with class + school year. Only `classroom_id`, `import_school_year`,
      * `grade12_start_date`, `archive_at` and `phone` are ever written: never the account (name, password, email,
-     * status, activation) and never the consent flags.
+     * status, activation).
      *
      * @param  array<string, mixed>  $data  a validated MOVED / UNCHANGED row
      * @param  array<string, string>  $classNames  classroom id => name
@@ -759,7 +758,8 @@ final class ImportStudents
     private static function phone(mixed $value): ?string
     {
         $raw = trim((string) ($value instanceof DateTimeInterface ? '' : (is_float($value) ? sprintf('%.0f', $value) : $value)));
-        $compact = (string) preg_replace('/[\s.\-()]/', '', $raw);
+        // One rule with the student's own edit (D-149): separators dropped, "62…" → "+62…", "8…" → "08…".
+        $compact = PhoneNumber::normalize($raw);
 
         if ($compact === '') {
             return null;
@@ -770,15 +770,7 @@ final class ImportStudents
             return $compact;
         }
 
-        $compact = self::sanitize($compact);
-
-        if (preg_match('/^62\d+$/', $compact) === 1) {
-            return '+'.$compact;
-        }
-
-        if (preg_match('/^8\d+$/', $compact) === 1) {
-            return '0'.$compact; // numeric cell lost its leading zero
-        }
+        $compact = PhoneNumber::normalize(self::sanitize($compact));
 
         return $compact === '' ? null : $compact;
     }

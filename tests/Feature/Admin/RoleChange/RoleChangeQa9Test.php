@@ -5,7 +5,6 @@ declare(strict_types=1);
 use App\Actions\Roles\ApplyRoleChange;
 use App\Actions\Roles\ApproveRoleChange;
 use App\Actions\Roles\CancelRoleChange;
-use App\Actions\Roles\RequestRoleChange;
 use App\Actions\Users\ChangeStaffRole;
 use App\Enums\RoleName;
 use App\Livewire\Admin\Pengaturan\Pengguna;
@@ -21,7 +20,8 @@ use Tests\Feature\Admin\AdminTestHelpers as A;
 uses(RefreshDatabase::class);
 
 /*
- | QA9 (2026-10-09): the "Perubahan peran" panel inside Admin › Pengguna & peran. Fictional data only.
+ | QA9 (2026-10-09): the "Perubahan peran" panel inside Admin › Pengguna & peran, with requests made before 21 Okt 2026
+ | (A::legacyRoleRequest: since that day role changes apply at once). Fictional data only.
  */
 
 beforeEach(function (): void {
@@ -42,7 +42,7 @@ function qa9SecondAdmin(): User
 it('says so instead of a 403 when the request was cancelled before the approval (QA9)', function (): void {
     $second = qa9SecondAdmin();
     $guru = A::staff(RoleName::Guru, ['name' => 'Pak Agus Santoso']);
-    $request = app(RequestRoleChange::class)->handle($this->admin, $guru, RoleName::Kesiswaan, 'Ditugaskan di kesiswaan.');
+    $request = A::legacyRoleRequest($this->admin, $guru, RoleName::Kesiswaan, 'Ditugaskan di kesiswaan.');
     $this->actingAs($second);
     session(A::passwordConfirmed());
 
@@ -61,7 +61,7 @@ it('says so instead of a 403 when another Admin approved the request first (QA9)
     $second = qa9SecondAdmin();
     $third = A::admin(['name' => 'Pak Yusuf Hidayat', 'username' => 'operator3']);
     $guru = A::staff(RoleName::Guru, ['name' => 'Pak Agus Santoso']);
-    $request = app(RequestRoleChange::class)->handle($this->admin, $guru, RoleName::TataUsaha, 'Ditugaskan di TU.');
+    $request = A::legacyRoleRequest($this->admin, $guru, RoleName::TataUsaha, 'Ditugaskan di TU.');
     $this->actingAs($second);
     session(A::passwordConfirmed());
 
@@ -76,7 +76,7 @@ it('says so instead of a 403 when another Admin approved the request first (QA9)
 
 it('says so instead of a 403 when the request was cancelled before the cancel dialog opens (QA9)', function (): void {
     $guru = A::staff(RoleName::Guru);
-    $request = app(RequestRoleChange::class)->handle($this->admin, $guru, RoleName::TataUsaha, 'TU.');
+    $request = A::legacyRoleRequest($this->admin, $guru, RoleName::TataUsaha, 'TU.');
     $this->actingAs($this->admin);
     session(A::passwordConfirmed());
     $panel = Livewire::test(RoleChangeRequests::class);
@@ -90,7 +90,7 @@ it('says so instead of a 403 when the request was cancelled before the cancel di
 
 it('says so when the 24-hour change took effect while the cancel dialog was open (QA9)', function (): void {
     $guru = A::staff(RoleName::Guru);
-    $request = app(RequestRoleChange::class)->handle($this->admin, $guru, RoleName::TataUsaha, 'TU.');
+    $request = A::legacyRoleRequest($this->admin, $guru, RoleName::TataUsaha, 'TU.', delay: true);
     $this->actingAs($this->admin);
     session(A::passwordConfirmed());
 
@@ -114,7 +114,7 @@ it('says so when the 24-hour change took effect while the cancel dialog was open
 it('tells the staff table when a role change is approved (QA9)', function (): void {
     $second = qa9SecondAdmin();
     $guru = A::staff(RoleName::Guru, ['name' => 'Pak Agus Santoso']);
-    $request = app(RequestRoleChange::class)->handle($this->admin, $guru, RoleName::Kesiswaan, 'Ditugaskan di kesiswaan.');
+    $request = A::legacyRoleRequest($this->admin, $guru, RoleName::Kesiswaan, 'Ditugaskan di kesiswaan.');
     $this->actingAs($second);
     session(A::passwordConfirmed());
 
@@ -129,7 +129,7 @@ it('tells the staff table when a role change is approved (QA9)', function (): vo
 
 it('tells the staff table when a role change is cancelled (QA9)', function (): void {
     $guru = A::staff(RoleName::Guru, ['name' => 'Pak Agus Santoso']);
-    $request = app(RequestRoleChange::class)->handle($this->admin, $guru, RoleName::TataUsaha, 'TU.');
+    $request = A::legacyRoleRequest($this->admin, $guru, RoleName::TataUsaha, 'TU.');
     $this->actingAs($this->admin);
     session(A::passwordConfirmed());
 

@@ -6,7 +6,6 @@ namespace App\Actions\Registrations;
 
 use App\Enums\RegistrationStatus;
 use App\Enums\RegistrationType;
-use App\Models\Competition;
 use App\Models\Registration;
 use App\Notifications\Registrations\InvitationsExpired;
 use App\Notifications\Registrations\RegistrationAwaitingPrincipal;
@@ -18,7 +17,8 @@ use Spatie\Activitylog\Models\Activity;
 
 /**
  * Invitation expiry (B3, backlog #9): once the lomba's registration_closes_at has passed, open team
- * invitations can no longer be answered (RegistrationPolicy::teamWindowOpen, QA10), so the scheduler declines them
+ * invitations can no longer be answered (RegistrationPolicy::teamWindowOpen, QA10; a team resumed late keeps its own
+ * three days, `answer_until`, D-148: the moment is Registration::answersCloseAt()), so the scheduler declines them
  * (`declined_at` = now; audited `registration.invitations_expired`, by = scheduler). Then the D-36 rule
  * applies as for a manual decline: all remaining members confirmed and ≥ 2 people → `menunggu_kepsek`
  * (Kepala Sekolah notified); otherwise the team is invalid and stays `menunggu_konfirmasi`.
@@ -29,15 +29,28 @@ final class ExpirePendingInvitations
 {
     public function __construct(private readonly ConfirmMembership $confirm) {}
 
-    /** Team registrations still waiting for answers whose lomba closed registration before $now. @return Builder<Registration> */
+    /**
+     * Team registrations still waiting for answers whose answers closed before $now (Registration::answersCloseAt()):
+     * the lomba closed registration and the team has no later grace of its own (`answer_until`, D-148).
+     *
+     * @return Builder<Registration>
+     */
     public static function due(CarbonImmutable $now): Builder
     {
         return Registration::query()
             ->where('status', RegistrationStatus::MenungguKonfirmasi)
             ->where('type', RegistrationType::Tim)
-            ->whereHas('competition', fn (Builder $c) => $c->withTrashed()
-                ->whereNotNull('registration_closes_at')
-                ->where('registration_closes_at', '<', $now))
+            // The SQL form of answersCloseAt() < $now: no later grace, and a lomba deadline that passed (or no deadline
+            // at all next to a grace that passed).
+            ->where(fn (Builder $r) => $r
+                ->where(fn (Builder $closed) => $closed
+                    ->where(fn (Builder $g) => $g->whereNull('answer_until')->orWhere('answer_until', '<', $now))
+                    ->whereHas('competition', fn (Builder $c) => $c->withTrashed()
+                        ->whereNotNull('registration_closes_at')
+                        ->where('registration_closes_at', '<', $now)))
+                ->orWhere(fn (Builder $graceOnly) => $graceOnly
+                    ->where('answer_until', '<', $now)
+                    ->whereHas('competition', fn (Builder $c) => $c->withTrashed()->whereNull('registration_closes_at'))))
             ->whereHas('members', fn (Builder $m) => $m->whereNull('confirmed_at')->whereNull('declined_at'))
             ->orderBy('id');
     }
@@ -76,9 +89,9 @@ final class ExpirePendingInvitations
                 return null;
             }
 
-            $closesAt = Competition::withTrashed()->whereKey($locked->competition_id)->value('registration_closes_at');
+            $closesAt = $locked->answersCloseAt();
 
-            if ($closesAt === null || CarbonImmutable::parse($closesAt)->greaterThanOrEqualTo($now)) {
+            if ($closesAt === null || $closesAt->greaterThanOrEqualTo($now)) {
                 return null; // still open: invitees may answer
             }
 

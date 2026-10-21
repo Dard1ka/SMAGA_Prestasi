@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Domain\Files\PdfScanner;
 use App\Enums\FilePurpose;
+use App\Enums\LetterType;
 use App\Enums\ReportFileKind;
 use App\Enums\SettingKey;
 use App\Models\File;
@@ -95,8 +96,8 @@ it('keeps the tiny placeholder files when the demo data is seeded in the test su
 
     expect(DemoFiles::realistic())->toBeFalse()
         ->and(Env::get('APP_ENV'))->toBe('testing')
-        ->and($files)->toHaveCount(105) // 98 PDFs + the covers of 7 lomba (DemoCoversTest)
-        ->and($files->where('mime', 'application/pdf'))->toHaveCount(98)
+        ->and($files)->toHaveCount(107) // 100 PDFs + the covers of 7 lomba (DemoCoversTest)
+        ->and($files->where('mime', 'application/pdf'))->toHaveCount(100)
         ->and($files->max('size'))->toBeLessThan(2048)
         ->and($files->every(fn (File $f): bool => Storage::disk('local')->size($f->path) === $f->size))->toBeTrue();
 
@@ -153,8 +154,8 @@ it('works out the right document for every demo file from what it is attached to
         'piagam' => 19, // sports reports + the two files named piagam-…
         'poster' => 1,
         'sertifikat' => 60,
-        'surat_guru' => 4,
-        'surat_siswa' => 4,
+        'surat_guru' => 5,
+        'surat_siswa' => 5,
     ]);
 
     // A certificate a student uses twice (report evidence and talent evidence) is one document: one render, same bytes.
@@ -183,7 +184,7 @@ it('works out the right document for every demo file from what it is attached to
         ->and($smp->data['name'])->toBe('Hana Safira')
         ->and($smp->data['affiliation'])->toBe('Peserta jenjang SMP, Kota Semarang')
         ->and($report->data['title'])->toBe('Bioplastik dari limbah kulit pisang untuk kemasan jajanan sekolah')
-        ->and($report->data['authors'])->toBe([['name' => 'Keisha Larasati', 'nis' => '225226166', 'class' => 'XI-6']])
+        ->and($report->data['authors'])->toBe([['name' => 'Keisha Larasati', 'nis' => '225226166', 'class' => 'XI-F']])
         ->and($report->data['mentor'])->toBe('Retno Wulandari, S.Pd.')
         ->and($report->data['competition'])->toBe('Lomba Karya Tulis Ilmiah Remaja Jawa Tengah 2026')
         ->and($team->data['name'])->toBe('Yoga Pratama')
@@ -408,13 +409,13 @@ it('renders and scans every demo file of a full local seed (slow, STH_DEMO_FULL=
         $placeholder, $summary['total'], $realistic, $second, (int) round($summary['bytes'] / 1024), implode("\n", DemoFileRefresher::lines($summary)),
     ));
 
-    // 98 PDFs + the covers of 7 lomba.
-    expect($summary['total'])->toBe(105)
-        ->and(array_sum($summary['written']))->toBe(105)
+    // 100 PDFs + the covers of 7 lomba.
+    expect($summary['total'])->toBe(107)
+        ->and(array_sum($summary['written']))->toBe(107)
         ->and($summary['written'][DemoCoverArt::LABEL])->toBe(7)
         ->and($summary['skipped'])->toBe([])
         ->and($summary['general'])->toBe([])
-        ->and($again['unchanged'])->toBe(105)
+        ->and($again['unchanged'])->toBe(107)
         ->and($again['written'])->toBe([]);
 
     foreach (File::query()->where('path', 'like', 'demo/%')->get() as $file) {
@@ -439,12 +440,14 @@ it('renders and scans every demo file of a full local seed (slow, STH_DEMO_FULL=
 
 // QA5 (2026-10-07): a demo surat tugas names the invitation it answers ----------------------------------------
 
-it('gives every demo letter the number and date of the invitation it answers', function (): void {
+it('gives every demo letter the number and date of the invitation it answers, the student letter too (D-157)', function (): void {
     m3dSeedDemo();
 
     $letters = Letter::query()->whereHas('file', fn ($q) => $q->where('path', 'like', 'demo/%'))->get();
 
-    expect($letters)->not->toBeEmpty()
+    expect($letters->where('type', LetterType::Guru))->not->toBeEmpty()
+        // The student letter prints the invitation as "Dasar" number 2 (D-157).
+        ->and($letters->where('type', LetterType::Siswa))->not->toBeEmpty()
         ->and($letters->filter(fn (Letter $l): bool => blank($l->basis_number) || $l->basis_date === null))->toBeEmpty()
         // The invitation is older than the letter that answers it.
         ->and($letters->filter(fn (Letter $l): bool => $l->basis_date->gte($l->issued_on)))->toBeEmpty();
@@ -453,7 +456,7 @@ it('gives every demo letter the number and date of the invitation it answers', f
 it('fills the invitation of an older demo letter only with --lengkapi, and says when there is something to fill', function (): void {
     m3dSeedDemo();
 
-    $older = Letter::query()->whereHas('file', fn ($q) => $q->where('path', 'like', 'demo/%'))->orderBy('id')->firstOrFail();
+    $older = Letter::query()->where('type', LetterType::Guru)->whereHas('file', fn ($q) => $q->where('path', 'like', 'demo/%'))->orderBy('id')->firstOrFail();
     $number = $older->basis_number;
     $older->forceFill(['basis_number' => null, 'basis_date' => null])->save();
 
@@ -474,7 +477,7 @@ it('fills the invitation of an older demo letter only with --lengkapi, and says 
         ->and($older->fresh()->basis_date)->not->toBeNull();
 
     // A letter made by Tata Usaha (not in demo/) is never touched.
-    $real = Letter::query()->whereHas('file', fn ($q) => $q->where('path', 'like', 'demo/%'))->orderByDesc('id')->firstOrFail();
+    $real = Letter::query()->where('type', LetterType::Guru)->whereHas('file', fn ($q) => $q->where('path', 'like', 'demo/%'))->orderByDesc('id')->firstOrFail();
     $real->file->forceFill(['path' => 'surat/2026/buatan-tu.pdf'])->save();
     $real->forceFill(['basis_number' => null, 'basis_date' => null])->save();
 

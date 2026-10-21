@@ -35,8 +35,8 @@ beforeEach(function (): void {
     $this->guru = F::staff(RoleName::Guru);
     $this->kepsek = F::staff(RoleName::KepalaSekolah, 'Kepala Sekolah Contoh');
     $this->nadia = F::student();
-    $this->dimas = F::student('Dimas Arya Nugroho', 'XI-4');
-    $this->keisha = F::student('Keisha Larasati', 'XI-6');
+    $this->dimas = F::student('Dimas Arya Nugroho', 'XI-D');
+    $this->keisha = F::student('Keisha Larasati', 'XI-F');
 });
 
 /** Team registration of Nadia (ketua) with the given anggota invited. */
@@ -67,7 +67,7 @@ it('asks before it withdraws an invitation and changes nothing yet (D-128)', fun
         ->assertViewHas('withdrawing', ['name' => 'Dimas Arya Nugroho', 'ready' => false, 'notice' => 'Dimas Arya Nugroho langsung diberi tahu.'])
         ->assertSee('Batalkan undangan?')
         ->assertSee('Undangan untuk Dimas Arya Nugroho dibatalkan. Kamu bisa mengundangnya lagi selama tim masih menunggu konfirmasi.')
-        ->assertDontSee('langsung diteruskan ke Kepala Sekolah')
+        ->assertDontSee('langsung diteruskan untuk persetujuan')
         ->assertNotDispatched('pendaftaran-berubah');
 
     expect($registration->members()->where('student_id', $this->dimas->getKey())->exists())->toBeTrue()
@@ -83,14 +83,14 @@ it('says in the dialog that the team goes to the Kepala Sekolah at once when the
     Livewire::actingAs(F::user($this->nadia))->test(Form::class, ['competitionId' => $lomba->getKey()])
         ->call('askBatalkanUndangan', $this->dimas->getKey())
         ->assertViewHas('withdrawing', fn (array $withdrawing): bool => $withdrawing['ready'] === true)
-        ->assertSee('Undangan untuk Dimas Arya Nugroho dibatalkan. Anggota lain sudah konfirmasi, jadi pendaftaran langsung diteruskan ke Kepala Sekolah dan anggota tidak bisa ditambah lagi.')
+        ->assertSee('Undangan untuk Dimas Arya Nugroho dibatalkan. Anggota lain sudah konfirmasi, jadi pendaftaran langsung diteruskan untuk persetujuan dan anggota tidak bisa ditambah lagi.')
         ->assertDontSee('Kamu bisa mengundangnya lagi')
         ->call('batalkanUndangan')
         ->assertHasNoErrors()
         ->assertDispatched('sth-modal-close', id: 'batal-undangan')
         ->assertSet('withdrawingId', null)
         // The result names the hand-over, read from what the Action wrote.
-        ->assertDispatched('sth-toast', message: 'Undangan untuk Dimas Arya Nugroho dibatalkan. Pendaftaran diteruskan ke Kepala Sekolah.', tone: 'success')
+        ->assertDispatched('sth-toast', message: 'Undangan untuk Dimas Arya Nugroho dibatalkan. Pendaftaran diteruskan untuk persetujuan.', tone: 'success')
         ->assertDispatched('pendaftaran-berubah');
 
     expect($registration->members()->where('student_id', $this->dimas->getKey())->exists())->toBeFalse()
@@ -114,7 +114,7 @@ it('says that the team went to the Kepala Sekolah when another invitee confirmed
     // Keisha's answer made this withdrawal the last open step: the toast says what really happened.
     $form->call('batalkanUndangan')
         ->assertHasNoErrors()
-        ->assertDispatched('sth-toast', message: 'Undangan untuk Dimas Arya Nugroho dibatalkan. Pendaftaran diteruskan ke Kepala Sekolah.', tone: 'success')
+        ->assertDispatched('sth-toast', message: 'Undangan untuk Dimas Arya Nugroho dibatalkan. Pendaftaran diteruskan untuk persetujuan.', tone: 'success')
         ->assertDispatched('pendaftaran-berubah');
 
     expect($registration->members()->where('student_id', $this->dimas->getKey())->exists())->toBeFalse()
@@ -202,8 +202,8 @@ it('keeps the dialog state locked: the browser cannot name the invitation to wit
 
 it('opens no dialog for a row that is not an open invitation and names the reason (D-128)', function (): void {
     $lomba = F::teamCompetition(4);
-    $rizky = F::student('Rizky Maulana', 'XI-1');
-    $hana = F::student('Hana Safira', 'X-3');
+    $rizky = F::student('Rizky Maulana', 'XI-A');
+    $hana = F::student('Hana Safira', 'X-C');
     // Rizky has not answered, so the team keeps waiting and the ketua may still change it.
     $registration = d128Team($this, $lomba, [$this->dimas, $this->keisha, $rizky]);
     app(ConfirmMembership::class)->handle(F::user($this->dimas), $registration->fresh());
@@ -259,7 +259,7 @@ it('says what happened when the invitee answered while the dialog was open (D-12
     $form->call('batalkanUndangan')
         ->assertOk()
         ->assertHasErrors(['members'])
-        ->assertDispatched('sth-toast', message: 'Undangan tidak bisa dibatalkan lagi: tim sudah lengkap dan diteruskan ke Kepala Sekolah.', tone: 'warning')
+        ->assertDispatched('sth-toast', message: 'Undangan tidak bisa dibatalkan lagi: tim sudah lengkap dan diteruskan untuk persetujuan.', tone: 'warning')
         ->assertDontSeeHtml('aria-label="Batalkan undangan Dimas Arya Nugroho"')
         ->assertDispatched('sth-modal-close', id: 'batal-undangan')
         ->assertNotDispatched('pendaftaran-berubah');
@@ -281,7 +281,7 @@ it('says so in a toast when the × is pressed on a page older than the invitee\'
     $form->call('askBatalkanUndangan', $this->dimas->getKey())
         ->assertOk()
         ->assertHasErrors(['members'])
-        ->assertDispatched('sth-toast', message: 'Undangan tidak bisa dibatalkan lagi: tim sudah lengkap dan diteruskan ke Kepala Sekolah.', tone: 'warning')
+        ->assertDispatched('sth-toast', message: 'Undangan tidak bisa dibatalkan lagi: tim sudah lengkap dan diteruskan untuk persetujuan.', tone: 'warning')
         ->assertNotDispatched('sth-modal-open')
         ->assertSet('withdrawingId', null)
         ->assertNotDispatched('pendaftaran-berubah');

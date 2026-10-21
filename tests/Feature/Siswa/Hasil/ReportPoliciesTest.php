@@ -52,8 +52,9 @@ it('ReportPolicy::view: members who did not decline, the mentor and verifiers', 
         ->and($this->mentor->can('view', $report))->toBeTrue()
         ->and(F::staff(RoleName::Kesiswaan)->can('view', $report))->toBeTrue()
         ->and(F::staff(RoleName::Guru, 'Guru lain')->can('view', $report))->toBeFalse()
-        ->and(F::staff(RoleName::Humas)->can('view', $report))->toBeFalse()
-        ->and(F::student('Rizky Maulana', 'XI-1')->user->can('view', $report))->toBeFalse();
+        ->and(F::staff(RoleName::Humas)->can('view', $report))->toBeTrue()
+        ->and(F::staff(RoleName::TataUsaha)->can('view', $report))->toBeFalse()
+        ->and(F::student('Rizky Maulana', 'XI-A')->user->can('view', $report))->toBeFalse();
 
     $this->registration->members()->where('student_id', $this->dimas->getKey())->first()->forceFill(['declined_at' => now(), 'confirmed_at' => null])->save();
     expect($this->dimas->user->fresh()->can('view', $report))->toBeFalse();

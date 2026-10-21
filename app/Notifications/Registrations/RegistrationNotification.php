@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Notifications\Registrations;
 
 use App\Models\Registration;
+use App\Models\User;
+use App\Support\ApprovalQueue;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Notification;
@@ -47,6 +49,17 @@ abstract class RegistrationNotification extends Notification implements ShouldQu
     protected function leaderName(): string
     {
         return (string) $this->registration->loadMissing('leader.user')->leader?->user?->name;
+    }
+
+    /**
+     * The Persetujuan screen of an approver (D-150): Tata Usaha opens it under `tu.`, the Kepala Sekolah under
+     * `kepsek.` (ApprovalQueue). Anything that is not a user account gets the Kepala Sekolah's address.
+     */
+    protected static function approvalLink(object $notifiable): string
+    {
+        $queue = $notifiable instanceof User ? ApprovalQueue::routeName($notifiable) : ApprovalQueue::KEPSEK;
+
+        return self::link([$queue, 'kepsek.persetujuan.index', 'kepsek.beranda']);
     }
 
     /** First existing route (screens land in wave 2 in parallel), else the role landing. */

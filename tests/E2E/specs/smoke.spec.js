@@ -3,7 +3,7 @@
 // tests/E2E/support/prepare-student.php with E2E_STUDENT_PASSWORD, so the initial password is never used here.
 import { expect, test } from '@playwright/test';
 
-const nis = process.env.E2E_STUDENT_NIS ?? '225226201';
+const nisn = process.env.E2E_STUDENT_NISN ?? '0098765432';
 const password = process.env.E2E_STUDENT_PASSWORD ?? '';
 
 test('public home answers 200', async ({ page }) => {
@@ -17,8 +17,8 @@ test('demo student logs in, sees the beranda and logs out', async ({ page }) => 
     expect(password, 'E2E_STUDENT_PASSWORD must be set (see tests/E2E/compose.e2e.yaml)').not.toBe('');
 
     await page.goto('/login');
-    // One field for NIS, NISN or (after activation) the bound email; the smoke test logs in with the NIS.
-    await page.getByLabel('NIS, NISN, atau email').fill(nis);
+    // One field for the NISN or (after activation) the bound email; the smoke test logs in with the NISN.
+    await page.getByLabel('NISN atau email').fill(nisn);
     await page.getByLabel('Kata sandi', { exact: true }).fill(password);
     await page.getByRole('button', { name: 'Masuk', exact: true }).click();
 

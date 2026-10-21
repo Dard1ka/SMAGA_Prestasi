@@ -94,15 +94,15 @@ it('lets only user.manage create staff accounts', function (): void {
 });
 
 it('changes a staff role, revokes the sessions and audits it', function (): void {
-    $guru = A::staff(RoleName::Guru);
-    H::fakeSessions($guru, 2);
+    $humas = A::staff(RoleName::Humas);
+    H::fakeSessions($humas, 2);
 
-    app(ChangeStaffRole::class)->handle($this->admin, $guru, RoleName::Humas, 'Pindah tugas ke humas.');
+    app(ChangeStaffRole::class)->handle($this->admin, $humas, RoleName::Guru, 'Kembali mengajar.');
 
-    expect($guru->fresh()->getRoleNames()->all())->toBe([RoleName::Humas->value])
-        ->and(H::sessionCount($guru))->toBe(0)
-        ->and(Activity::query()->where('event', 'account.role_changed')->sole()->properties['from'])->toBe([RoleName::Guru->value]);
-    Notification::assertSentTo($guru, StaffAccountChanged::class);
+    expect($humas->fresh()->getRoleNames()->all())->toBe([RoleName::Guru->value])
+        ->and(H::sessionCount($humas))->toBe(0)
+        ->and(Activity::query()->where('event', 'account.role_changed')->sole()->properties['from'])->toBe([RoleName::Humas->value]);
+    Notification::assertSentTo($humas, StaffAccountChanged::class);
 });
 
 it('never changes roles of the Kepala Sekolah, students or yourself', function (): void {
@@ -140,7 +140,7 @@ it('counts staff resets towards the K10 alert of more than 10 resets per Admin a
     $second = A::admin(['name' => 'Ibu Ratna Sari', 'username' => 'operator2']);
 
     foreach (Student::factory()->count(10)->create() as $student) {
-        app(ResetStudentAccount::class)->handle($this->admin, User::query()->findOrFail($student->user_id), 'Reset massal uji.');
+        app(ResetStudentAccount::class)->handle($this->admin, User::query()->findOrFail($student->user_id), 'Reset massal uji.', 'sementara8');
     }
 
     Notification::assertNotSentTo($second, AccountAlert::class);
@@ -238,17 +238,17 @@ it('cancels a due replacement whose target is no longer eligible', function (): 
 
 // Screen --------------------------------------------------------------------------------------------
 
-it('creates staff and finds students by exact NIS/NISN on the Pengguna tab', function (): void {
+it('creates staff and finds students by exact NISN on the Pengguna tab', function (): void {
     $this->actingAs($this->admin);
     session(A::passwordConfirmed());
     $student = H::activeStudent();
 
     Livewire::test(Pengguna::class)
-        ->set('new', ['name' => 'Mas Galih Prasetyo', 'username' => 'galih.p', 'email' => '', 'role' => 'humas', 'honorific' => 'Mas', 'nip' => '', 'rank' => '', 'position' => '', 'password' => 'Sementara-2026!z', 'password_confirmation' => 'Sementara-2026!z'])
+        ->set('new', ['name' => 'Mas Galih Prasetyo', 'username' => 'galih.p', 'email' => '', 'role' => 'guru', 'honorific' => 'Mas', 'nip' => '', 'rank' => '', 'position' => '', 'password' => 'Sementara-2026!z', 'password_confirmation' => 'Sementara-2026!z'])
         ->call('createStaff')
         ->assertHasNoErrors()
         ->assertSee('Mas Galih Prasetyo')
-        ->set('studentQuery', substr(H::NIS, 0, 6))
+        ->set('studentQuery', substr(H::NISN, 0, 6))
         ->call('findStudent')
         ->assertHasErrors('studentQuery')
         ->set('studentQuery', H::NISN)
@@ -258,7 +258,7 @@ it('creates staff and finds students by exact NIS/NISN on the Pengguna tab', fun
         ->assertSee($student->user->name)
         ->assertDontSee(H::NIS);
 
-    expect(User::query()->where('username', 'galih.p')->sole()->hasRole('humas'))->toBeTrue();
+    expect(User::query()->where('username', 'galih.p')->sole()->hasRole('guru'))->toBeTrue();
 });
 
 it('shows field errors of the create form under the new.* inputs', function (): void {
@@ -280,23 +280,26 @@ it('resets a student account from the Pengguna tab with a reason', function (): 
     $student = H::activeStudent();
 
     Livewire::test(Pengguna::class)
-        ->set('studentQuery', H::NIS)
+        ->set('studentQuery', H::NISN)
         ->call('findStudent')
         ->call('openStudent', 'siswa-reset')
         ->assertDispatched('sth-modal-open', id: 'siswa-reset')
         ->call('resetStudent')
-        ->assertHasErrors('studentReason')
+        ->assertHasErrors(['studentReason', 'studentPassword'])
         ->set('studentReason', 'Siswa datang ke TU.')
+        ->set('studentPassword', 'Sementara-26')
         ->call('resetStudent')
         ->assertHasNoErrors()
-        // B1 — K10: the random temporary password is shown once, then forgotten.
-        ->assertDispatched('sth-modal-open', id: 'siswa-sandi')
-        ->assertSet('issuedPassword', fn (?string $pw) => is_string($pw) && strlen($pw) === 12 && Hash::check($pw, $student->user->fresh()->password))
-        ->call('forgetIssuedPassword')
-        ->assertSet('issuedPassword', null);
+        // Lead, 2026-10-21: the Admin typed the password, so nothing is shown again; the field is emptied.
+        ->assertSet('studentPassword', '')
+        ->assertNotDispatched('sth-modal-open', id: 'siswa-sandi')
+        ->assertDispatched('sth-modal-close', id: 'siswa-reset')
+        ->assertDispatched('sth-toast', message: 'Akun direset dan email dilepas. Siswa masuk dengan NISN dan kata sandi sementara dalam 72 jam, lalu menghubungkan email dan membuat kata sandi baru.');
 
-    expect($student->user->fresh()->status)->toBe(UserStatus::PendingActivation)
-        ->and($student->user->fresh()->email)->toBeNull();
+    $user = $student->user->fresh();
+    expect(Hash::check('Sementara-26', $user->password))->toBeTrue()
+        ->and($user->status)->toBe(UserStatus::PendingActivation)
+        ->and($user->email)->toBeNull();
 });
 
 it('keeps the target ids locked against tampering', function (): void {
@@ -374,4 +377,20 @@ it('clears the old errors of the create form once it passes', function (): void 
         ->set('new', ['name' => 'Mas Galih Prasetyo', 'username' => 'galih.p', 'email' => '', 'role' => 'humas', 'honorific' => 'Mas', 'nip' => '', 'rank' => '', 'position' => '', 'password' => 'Sementara-2026!z', 'password_confirmation' => 'Sementara-2026!z'])
         ->call('createStaff')
         ->assertHasNoErrors();
+});
+
+it('finds a student in Bantuan akun siswa by the 10-digit NISN only (D-137)', function (): void {
+    $this->actingAs($this->admin);
+    session(A::passwordConfirmed());
+    $student = H::activeStudent();
+
+    Livewire::test(Pengguna::class)
+        ->set('studentQuery', H::NIS)->call('findStudent')
+        ->assertHasErrors(['studentQuery' => 'Isi NISN (10 digit) lengkap.'])
+        ->assertSet('studentUserId', null)
+        ->set('studentQuery', H::NISN)->call('findStudent')
+        ->assertHasNoErrors()->assertSet('studentUserId', $student->user_id);
+
+    Livewire::withQueryParams(['q' => H::NIS])->test(Pengguna::class)->assertSet('studentUserId', null)->assertSet('search', H::NIS);
+    Livewire::withQueryParams(['q' => H::NISN])->test(Pengguna::class)->assertSet('studentUserId', $student->user_id);
 });

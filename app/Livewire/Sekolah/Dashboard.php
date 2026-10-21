@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Livewire\Sekolah;
 
 use App\Domain\Archive\SchoolYear;
-use App\Domain\Deadlines\ReportDeadline;
+use App\Domain\Deadlines\ReportFollowUp;
 use App\Domain\Leaderboard\RankedStudent;
 use App\Domain\Leaderboard\Ranker;
 use App\Domain\Points\PointFormatter;
@@ -65,9 +65,8 @@ class Dashboard extends Component
         $all = $this->achievementRows();
         $selected = $this->tahun === '' ? $all : $all->where('year', $this->tahun)->values();
 
-        $deadlineDays = app(ReportDeadline::class)->days();
         $waiting = Registration::query()->awaitingPrincipal()->count();
-        $overdue = $this->overdueReports($today, $deadlineDays);
+        $overdue = $this->overdueReports($today);
         $canApprove = Gate::allows('viewApprovalQueue', Registration::class) && Route::has('kepsek.persetujuan.index');
 
         return view('livewire.sekolah.dashboard', [
@@ -82,14 +81,13 @@ class Dashboard extends Component
                 'siswa' => $selected->pluck('student_id')->unique()->count(),
                 'menunggu' => $waiting,
                 'lewat' => $overdue,
-                'deadlineDays' => $deadlineDays,
             ],
             'approvalUrl' => $canApprove ? route('kepsek.persetujuan.index') : null,
             'perYear' => $this->perYear($all, $currentYear),
             'perBidang' => $this->perBidang($selected),
             'perLevel' => $this->perLevel($selected),
             'top' => $this->topStudents($all, $points),
-            'attention' => $this->attention($today, $waiting, $overdue, $deadlineDays, $canApprove),
+            'attention' => $this->attention($today, $waiting, $overdue, $canApprove),
             'prestasiRoute' => Route::has('public.prestasi') ? 'public.prestasi' : null,
             'peringkatUrl' => Route::has('public.peringkat') ? route('public.peringkat') : null,
             'laporanUrl' => Route::has('kepsek.laporan') ? route('kepsek.laporan') : null,
@@ -280,21 +278,21 @@ class Dashboard extends Component
     }
 
     /**
-     * "Laporan lewat batas … Siswa belum melaporkan hasil": registrations past the report deadline that never sent a
-     * report. A report sent (on time or late) and sent back for a revision is back in menunggu_laporan too, but its
-     * students did report, so it is not counted here (QA10).
+     * "Belum lapor > 14 hari" (D-151, ReportFollowUp::NOT_REPORTED_DAYS): registrations whose lomba ended more than 14
+     * days ago and that never sent a report. A report sent back for a revision is back in menunggu_laporan too, but
+     * its students did report, so it is not counted here (QA10).
      */
-    private function overdueReports(CarbonImmutable $today, int $deadlineDays): int
+    private function overdueReports(CarbonImmutable $today): int
     {
         return Registration::query()
             ->status(RegistrationStatus::MenungguLaporan)
-            ->whereHas('competition', fn ($q) => $q->withTrashed()->whereDate('final_on', '<', $today->subDays($deadlineDays)))
+            ->whereHas('competition', fn ($q) => $q->withTrashed()->whereDate('final_on', '<', $today->subDays(ReportFollowUp::NOT_REPORTED_DAYS)))
             ->whereDoesntHave('report')
             ->count();
     }
 
     /** @return list<array{title: string, note: string, tone: string, url: ?string}> */
-    private function attention(CarbonImmutable $today, int $waiting, int $overdue, int $deadlineDays, bool $canApprove): array
+    private function attention(CarbonImmutable $today, int $waiting, int $overdue, bool $canApprove): array
     {
         $items = [];
 
@@ -315,7 +313,7 @@ class Dashboard extends Component
 
         if ($overdue > 0) {
             $items[] = [
-                'title' => $overdue.' laporan lewat batas '.$deadlineDays.' hari',
+                'title' => $overdue.' laporan belum dikirim lebih dari '.ReportFollowUp::NOT_REPORTED_DAYS.' hari setelah lomba',
                 'note' => 'Siswa belum melaporkan hasil.',
                 'tone' => 'red',
                 'url' => null,
@@ -329,7 +327,7 @@ class Dashboard extends Component
 
         if ($staleProposals > 0) {
             $items[] = [
-                'title' => $staleProposals.' usulan lomba belum diperiksa',
+                'title' => 'Verifikasi usulan lomba: '.$staleProposals.' belum diperiksa',
                 'note' => 'Di Kesiswaan lebih dari 7 hari.',
                 'tone' => 'gray',
                 'url' => null,

@@ -1,5 +1,5 @@
 {{-- Admin › Pengaturan (mockup Admin-Pengaturan.dc.html): vertical tabs (links, ?tab=) + the active tab component. --}}
-<div class="grid gap-6 lg:grid-cols-[240px_minmax(0,1fr)]">
+<div class="grid grid-cols-1 gap-6 lg:grid-cols-[240px_minmax(0,1fr)]">
     <nav aria-label="Bagian pengaturan" class="-mx-4 overflow-x-auto px-4 lg:mx-0 lg:overflow-visible lg:px-0">
         <ul class="flex gap-2 lg:sticky lg:top-24 lg:flex-col lg:gap-1">
             @foreach ($tabs as $key => $item)

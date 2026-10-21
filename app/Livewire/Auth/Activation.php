@@ -11,9 +11,13 @@ use App\Actions\Accounts\SetNewPassword;
 use App\Actions\Accounts\VerifyOtpCode;
 use App\Actions\Fortify\LoginIdentifier;
 use App\Domain\Accounts\PasswordPolicy;
+use App\Domain\Accounts\StudentProfileInput;
 use App\Enums\RoleName;
+use App\Http\Middleware\EnsureTalentChosen;
+use App\Models\Student;
 use App\Models\User;
 use App\Providers\AppServiceProvider;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\Rule;
@@ -25,9 +29,9 @@ use Livewire\Component;
 
 /**
  * First-login activation (SECURITY §3a K4; order of the lead's decision of 2026-10-04): 1 bind email →
- * 2 six-digit code → 3 password → done. At step 3 a student chooses: a new password, or "Lewati" to keep the
- * school password; staff must set a new one (no skip), and so must a student whose account an Admin reset: that
- * temporary password was shown on the Admin's screen (M2-A, QA Q2-02). The same screen serves a restored account.
+ * 2 six-digit code → (students: 3 "Data diri", birth date + No HP, D-152) → password → done. At the password step
+ * every account replaces its password, students and staff alike (D-138; D-92 now holds for all): there is no
+ * "Lewati". The same screen serves a restored account.
  * The step shown is only a view hint: every action re-derives the real step from the database
  * (DetermineActivationStep), so a tampered client cannot skip a step. All state changes are in CompleteActivation.
  * The session id is renewed (and the old session row deleted) after the code and after the password step, never on
@@ -45,16 +49,15 @@ class Activation extends Component
 
     public const STEP_DONE = 4;
 
+    /** D-152: students only, between the code and the password ("Data diri"); shown as step 3 of 4. */
+    public const STEP_PROFILE = 5;
+
     #[Locked]
     public int $step = self::STEP_EMAIL;
 
     /** Masked address the code was sent to, later the bound address (n•••@gmail.com). */
     #[Locked]
     public ?string $sentTo = null;
-
-    /** Done screen only: a new password was stored (false = the student kept the current one). */
-    #[Locked]
-    public bool $passwordChanged = false;
 
     public string $email = '';
 
@@ -64,6 +67,11 @@ class Activation extends Component
 
     public string $password_confirmation = '';
 
+    /** D-152 "Data diri": `Y-m-d` from <input type="date">, pre-filled from the student record. */
+    public string $birth_date = '';
+
+    public string $phone = '';
+
     public function mount(DetermineActivationStep $activationStep, IssueOtpCode $otp): mixed
     {
         $user = $this->user();
@@ -71,6 +79,12 @@ class Activation extends Component
 
         if ($next === null) {
             return $this->redirectRoute('home');
+        }
+
+        if ($next === DetermineActivationStep::PROFILE) {
+            $this->toProfileStep($user);
+
+            return null;
         }
 
         if ($next === DetermineActivationStep::PASSWORD) {
@@ -197,15 +211,42 @@ class Activation extends Component
         $this->code = '';
         $this->sentTo = self::mask((string) $otpCode->email);
 
-        if ($activationStep($user) === DetermineActivationStep::PASSWORD) {
+        $next = $activationStep($user);
+
+        if ($next === DetermineActivationStep::PROFILE) {
+            $this->toProfileStep($user);
+
+            return;
+        }
+
+        if ($next === DetermineActivationStep::PASSWORD) {
             $this->step = self::STEP_PASSWORD;
 
             return;
         }
 
         // No password step left (the password was chosen before the email, in the old order).
-        $this->passwordChanged = true;
         $this->step = self::STEP_DONE;
+    }
+
+    /**
+     * "Data diri" (D-152): birth date + No HP, both required; the rules and the state change are in
+     * CompleteActivation::confirmProfile (errors on `birth_date` / `phone`, the names of these properties).
+     */
+    public function saveProfile(DetermineActivationStep $activationStep, CompleteActivation $complete): void
+    {
+        $this->resetErrorBag();
+
+        $user = $this->user();
+
+        if (! $this->isAt(DetermineActivationStep::PROFILE, $activationStep, $user)) {
+            return;
+        }
+
+        $complete->confirmProfile($user, $this->birth_date, $this->phone);
+
+        // A password chosen through "Lupa kata sandi" while activating leaves no password step: done here.
+        $this->step = $activationStep($user) === DetermineActivationStep::PASSWORD ? self::STEP_PASSWORD : self::STEP_DONE;
     }
 
     /** Step 3, "Ganti kata sandi": rules and the state change are in CompleteActivation::changePassword. */
@@ -231,31 +272,6 @@ class Activation extends Component
         session()->regenerate(true);
 
         $this->reset('password', 'password_confirmation');
-        $this->passwordChanged = true;
-        $this->step = self::STEP_DONE;
-    }
-
-    /**
-     * Step 3, "Lewati": only a student who still has the school password (403 for staff and for a student with the
-     * temporary password of an Admin reset, also re-checked in the Action).
-     */
-    public function keepPassword(DetermineActivationStep $activationStep, CompleteActivation $complete): void
-    {
-        $this->resetErrorBag();
-
-        $user = $this->user();
-
-        abort_unless(CompleteActivation::mayKeepPassword($user), 403);
-
-        if (! $this->isAt(DetermineActivationStep::PASSWORD, $activationStep, $user)) {
-            return;
-        }
-
-        $complete->keepPassword($user);
-        session()->regenerate(true);
-
-        $this->reset('password', 'password_confirmation');
-        $this->passwordChanged = false;
         $this->step = self::STEP_DONE;
     }
 
@@ -273,14 +289,26 @@ class Activation extends Component
     public function render(IssueOtpCode $otp, SetNewPassword $setPassword): mixed
     {
         $user = $this->user();
+        $isStudent = LoginIdentifier::isStudentAccount($user);
+        // D-152: students have four steps (Data diri before the password), staff three.
+        $steps = $isStudent
+            ? [self::STEP_EMAIL => 'Hubungkan email', self::STEP_CODE => 'Kode verifikasi', self::STEP_PROFILE => 'Data diri', self::STEP_PASSWORD => 'Kata sandi']
+            : [self::STEP_EMAIL => 'Hubungkan email', self::STEP_CODE => 'Kode verifikasi', self::STEP_PASSWORD => 'Kata sandi'];
+        $today = CarbonImmutable::today();
 
         return view('livewire.auth.activation', [
             'user' => $user,
+            'steps' => $steps,
+            'position' => array_search($this->step, array_keys($steps), true),
+            'birthDateMin' => $today->subYears(StudentProfileInput::MAX_AGE)->format('Y-m-d'),
+            'birthDateMax' => $today->subYears(StudentProfileInput::MIN_AGE)->format('Y-m-d'),
             'testMode' => VerifyOtpCode::testModeActive(),
             'resendIn' => $this->step === self::STEP_CODE ? $otp->secondsUntilResend($user, CompleteActivation::PURPOSE) : 0,
             'passwordHint' => $setPassword->hint($user),
-            'isStudent' => LoginIdentifier::isStudentAccount($user),
-            'canKeepPassword' => CompleteActivation::mayKeepPassword($user),
+            'isStudent' => $isStudent,
+            'temporaryPassword' => CompleteActivation::hasTemporaryPassword($user),
+            // D-144, D-153: a student without a talent is held on Talenta saya next, so the done screen says so.
+            'talentFirst' => $this->step === self::STEP_DONE && EnsureTalentChosen::applies($user),
         ]);
     }
 
@@ -347,6 +375,8 @@ class Activation extends Component
 
         if ($actual === null) {
             $this->redirectRoute('home');
+        } elseif ($actual === DetermineActivationStep::PROFILE) {
+            $this->toProfileStep($user);
         } elseif ($actual === DetermineActivationStep::PASSWORD) {
             $this->step = self::STEP_PASSWORD;
             $this->sentTo = self::mask((string) $user->email);
@@ -355,6 +385,23 @@ class Activation extends Component
         }
 
         return false;
+    }
+
+    /** Moves the view to "Data diri" and fills the fields from the student record (once; typed values stay). */
+    private function toProfileStep(User $user): void
+    {
+        $this->step = self::STEP_PROFILE;
+        $this->sentTo = self::mask((string) $user->email);
+
+        $student = Student::query()->where('user_id', $user->getKey())->first();
+
+        if ($this->birth_date === '') {
+            $this->birth_date = (string) $student?->birth_date?->format('Y-m-d');
+        }
+
+        if ($this->phone === '') {
+            $this->phone = (string) rescue(fn () => $student?->phone, null, false);
+        }
     }
 
     private function user(): User

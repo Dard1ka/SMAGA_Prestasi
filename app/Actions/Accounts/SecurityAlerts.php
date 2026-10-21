@@ -87,7 +87,7 @@ final class SecurityAlerts
         ));
     }
 
-    /** "Nadia Putri Anindya (XI-4)" for students, "Nama (staf)" otherwise. */
+    /** "Nadia Putri Anindya (XI-D)" for students, "Nama (staf)" otherwise. */
     public static function describe(User $user): string
     {
         $student = $user->student()->with('classroom:id,name')->first();

@@ -25,7 +25,7 @@ use Livewire\Component;
  * Kepala Sekolah · Prestasi per bidang (UI-MAP §4b `kepsek.prestasi`, backlog #6, owner B5): the internal
  * variant of the public drill-down (board Prestasi-Bidang) in the staff layout — level 1 bidang, level 2
  * students of the bidang, level 3 one student's verified achievements. Internal, so every student is named
- * (no consent gate, unlike PublicAchievements) and alumni/nonaktif get a chip; still no NIS/NISN anywhere.
+ * (also disabled accounts, unlike PublicAchievements) and alumni/nonaktif get a chip; still no NIS/NISN anywhere.
  * Data: App\Actions\Reports\ExportPrestasiData. `viewSchoolReport` (achievement.view_all + dashboard.view).
  */
 #[Title('Prestasi per bidang')]

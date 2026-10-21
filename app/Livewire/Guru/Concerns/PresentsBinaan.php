@@ -9,13 +9,12 @@ use App\Enums\ReportStatus;
 use App\Models\Registration;
 
 /**
- * Display helpers shared by Guru\Binaan and Guru\BinaanDetail (B4). Needs ReportHelpers::deadlineInfo()
- * (App\Livewire\Siswa\LombaSaya\Concerns\ReportHelpers) in the using class. Display only, no rules.
+ * Display helpers shared by Guru\Binaan and Guru\BinaanDetail (B4). Display only, no rules.
  */
 trait PresentsBinaan
 {
     /**
-     * Status chip text and tone as the student sees it (deadline, perlu revisi, laporan ditolak).
+     * Status chip text and tone (menunggu laporan without a date since D-151, perlu revisi, laporan ditolak).
      *
      * @return array{0: string, 1: string}
      */
@@ -29,9 +28,8 @@ trait PresentsBinaan
                 return ['Perlu revisi', 'orange'];
             }
 
-            $info = $registration->competition !== null ? $this->deadlineInfo($registration->competition) : null;
-
-            return $info !== null ? ['Menunggu laporan · '.$info['chip'], $info['tone']] : [$status->label(), $status->tone()];
+            // D-151: no deadline, no days left.
+            return ['Menunggu laporan', 'orange'];
         }
 
         if ($status === RegistrationStatus::LaporanDikirim) {

@@ -3,7 +3,7 @@
     colour is never the only signal.
 
     <x-sth.chip tone="green" icon="check">Disetujui</x-sth.chip>
-    <x-sth.chip tone="orange" icon="clock">Menunggu laporan · batas 24 Okt</x-sth.chip>
+    <x-sth.chip tone="orange" icon="clock">Segera laporkan</x-sth.chip>
     <x-sth.chip bidang="riset" />                      → "Riset" (label from the bidang)
     <x-sth.chip :bidang="$competition->bidang" icon />  → Bidang enum + its bidang icon
     <x-sth.chip tone="gold" class="num">#14</x-sth.chip>

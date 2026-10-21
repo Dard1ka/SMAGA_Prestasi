@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Actions\Reports;
 
-use App\Domain\Deadlines\ReportDeadline;
 use App\Domain\Files\InvalidUpload;
 use App\Domain\Files\StoreUpload;
 use App\Domain\Files\UploadRules;
@@ -15,15 +14,12 @@ use App\Enums\FilePurpose;
 use App\Enums\RegistrationStatus;
 use App\Enums\ReportFileKind;
 use App\Enums\ReportStatus;
-use App\Enums\RoleName;
-use App\Models\Competition;
 use App\Models\File;
 use App\Models\Registration;
 use App\Models\Report;
 use App\Models\User;
 use App\Notifications\Reports\ReportSubmitted;
-use Carbon\CarbonImmutable;
-use Illuminate\Database\Eloquent\Builder;
+use App\Notifications\Verification\ReportSent;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -35,8 +31,9 @@ use Throwable;
  * The ketua sends the laporan hasil (UI-MAP #12/#13, ARCHITECTURE §6):
  * menunggu_laporan → laporan_dikirim, report status `dikirim`. The same row is re-used after
  * "perlu revisi" (reports.registration_id is unique). Evidence goes through StoreUpload (private disk,
- * sniffed MIME, images re-encoded without EXIF). A report after final_on + report_deadline_days is still
- * accepted but flagged `late` (D-25). Kesiswaan is notified after commit (queued mail + database).
+ * sniffed MIME, images re-encoded without EXIF). D-151: a laporan hasil has no deadline, so a report is never
+ * flagged `late` any more (the column stays; a sent report always gets false). Kesiswaan and Humas are notified after
+ * commit (queued mail + database), and since D-160 the members too (ReportSent: a receipt for the ketua).
  *
  * Validation errors use the field names of the Livewire form (hasil, asli, sertifikat, foto, pengumuman,
  * judul, abstrak, laporan, artikel, poster).
@@ -64,22 +61,6 @@ final class SubmitReport
             'laporan', 'artikel' => new UploadRules(10 * self::MB, ['pdf']),
             default => new UploadRules(5 * self::MB), // sertifikat, pengumuman, poster: pdf/jpg/png/webp
         };
-    }
-
-    /**
-     * Is a report sent today marked "terlambat"? "Late" belongs to the first report (D-25): the answer to a revision
-     * request keeps the flag that report had, so a report sent on time is not late because Kesiswaan asked for a
-     * revision after the deadline (QA8). Anything else is late after `final_on` + `report_deadline_days`. The screens ask
-     * this before they say "ditandai terlambat".
-     */
-    public static function marksLate(Competition $competition, ?Report $report): bool
-    {
-        if ($report !== null && ! $report->trashed() && $report->status === ReportStatus::PerluRevisi) {
-            return (bool) $report->late;
-        }
-
-        return $competition->final_on !== null
-            && app(ReportDeadline::class)->isOverdue($competition->final_on, CarbonImmutable::today());
     }
 
     public static function wordCount(?string $text): int
@@ -115,7 +96,8 @@ final class SubmitReport
             throw $e;
         }
 
-        $this->notifyKesiswaan($report, $registration, $resubmitted);
+        $this->notifyVerifiers($report, $registration, $resubmitted);
+        $this->notifyMembers($report, $registration, $resubmitted);
 
         return $report;
     }
@@ -235,8 +217,6 @@ final class SubmitReport
             throw ValidationException::withMessages(['hasil' => $e->getMessage()]);
         }
 
-        $late = self::marksLate($registration->competition, $report);
-
         $report ??= new Report(['registration_id' => $locked->getKey()]);
 
         if ($report->trashed()) {
@@ -252,7 +232,8 @@ final class SubmitReport
             'status' => ReportStatus::Dikirim,
             'submitted_by' => $actor->getKey(),
             'submitted_at' => now(),
-            'late' => $late,
+            // D-151: no deadline, so a report is never late (also clears the flag of a report sent before D-151).
+            'late' => false,
             'final_result' => null,
             'verified_by' => null,
             'verified_at' => null,
@@ -281,7 +262,6 @@ final class SubmitReport
             ->withProperties([
                 'registration_id' => $locked->getKey(),
                 'claimed_result' => $data->result->value,
-                'late' => $late,
                 'resubmitted' => $report->wasRecentlyCreated === false,
                 'files' => array_map(count(...), $stored),
             ])
@@ -299,12 +279,9 @@ final class SubmitReport
         return $report->refresh();
     }
 
-    private function notifyKesiswaan(Report $report, Registration $registration, bool $resubmitted): void
+    private function notifyVerifiers(Report $report, Registration $registration, bool $resubmitted): void
     {
-        $recipients = User::query()
-            ->canLogIn()
-            ->whereHas('roles', fn (Builder $q) => $q->where('name', RoleName::Kesiswaan->value))
-            ->get();
+        $recipients = ReportVerifiers::recipients();
 
         if ($recipients->isEmpty()) {
             return;
@@ -314,6 +291,26 @@ final class SubmitReport
             $report,
             (string) $registration->competition->name,
             (string) ($registration->leader?->user?->name ?? 'Ketua tim'),
+            $resubmitted,
+        ));
+    }
+
+    /**
+     * D-160: the confirmed members who can log in hear that the report went out (the ketua as a receipt), the same
+     * members "Minta revisi" and the verification tell (RequestReportRevision::memberUsers()).
+     */
+    private function notifyMembers(Report $report, Registration $registration, bool $resubmitted): void
+    {
+        $members = RequestReportRevision::memberUsers($report);
+
+        if ($members === []) {
+            return;
+        }
+
+        Notification::send($members, ReportSent::for(
+            $report,
+            (string) $registration->competition->name,
+            $registration->leader?->user,
             $resubmitted,
         ));
     }

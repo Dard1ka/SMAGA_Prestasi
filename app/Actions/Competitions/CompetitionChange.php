@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Actions\Competitions;
 
-use App\Domain\Deadlines\ReportDeadline;
 use App\Enums\CompetitionStatus;
 use App\Enums\Participation;
 use App\Enums\RegistrationStatus;
@@ -136,22 +135,21 @@ final class CompetitionChange
 
     /**
      * The sentence of one changed fact, with the value as it is now. `$status` = the registration of the reader:
-     * one that waits for its report hears the final date and the report deadline that follows from it.
+     * one that waits for its report hears the new end date (no report deadline since D-151). `$registration` = that
+     * registration itself: a team resumed late keeps answering until its own window ends (D-148).
      */
-    public static function line(string $fact, Competition $competition, ?RegistrationStatus $status = null): string
+    public static function line(string $fact, Competition $competition, ?RegistrationStatus $status = null, ?Registration $registration = null): string
     {
         return match ($fact) {
-            'deadline' => 'Batas daftar sekarang '.self::day($competition->registration_closes_at)
-                .'. Undangan tim yang belum dijawab tidak berlaku lagi setelah tanggal itu.',
+            'deadline' => 'Batas daftar sekarang '.self::day($competition->registration_closes_at).'. '.self::answerWindow($competition, $registration),
             'dates' => $status === RegistrationStatus::MenungguLaporan && $competition->final_on !== null
-                ? 'Tanggal final sekarang '.self::day($competition->final_on).', batas laporan hasil '
-                    .self::day(app(ReportDeadline::class)->dueDate($competition->final_on)).'.'
+                ? 'Tanggal selesai sekarang '.self::day($competition->final_on).'.'
                 : 'Tanggal lomba sekarang '.self::dayRange($competition->starts_on, $competition->final_on).'.',
             'mode' => 'Pelaksanaan sekarang '.($competition->mode?->label() ?? 'belum diisi').'.',
             'location' => self::place($competition->location),
             'participants' => 'Peserta sekarang '.self::participants($competition).'.',
             'registration_url' => self::blankToNull($competition->registration_url) === null ? 'Link registrasi dihapus.' : 'Link registrasi diganti.',
-            'website_url' => self::blankToNull($competition->website_url) === null ? 'Website resmi dihapus.' : 'Website resmi diganti.',
+            'website_url' => self::blankToNull($competition->website_url) === null ? 'Link resmi dihapus.' : 'Link resmi diganti.',
             'juknis' => 'Juknis/brosur diganti.',
             default => '',
         };
@@ -220,7 +218,7 @@ final class CompetitionChange
                 $groups[] = [
                     'registration' => (string) $registration->getKey(),
                     'users' => $users,
-                    'lines' => array_map(fn (string $fact): string => self::line($fact, $competition, $registration->status), $own),
+                    'lines' => array_map(fn (string $fact): string => self::line($fact, $competition, $registration->status, $registration), $own),
                 ];
             }
 
@@ -334,6 +332,27 @@ final class CompetitionChange
             NoWebAddress::found($place) => 'Tempat diganti.',
             default => 'Tempat sekarang '.$place.'.',
         };
+    }
+
+    /**
+     * Until when the unanswered invitations of the reader's team stay valid. A team resumed late (D-148) has its own
+     * 3-day window (`answer_until`): when Registration::answersCloseAt() lies after the new deadline, the sentence
+     * names that moment (graceText()), since the expiry job does not expire those invitations at the deadline.
+     */
+    private static function answerWindow(Competition $competition, ?Registration $registration): string
+    {
+        $closes = $competition->registration_closes_at;
+
+        if ($registration !== null && $closes !== null && $registration->answer_until !== null) {
+            $registration->setRelation('competition', $competition);
+            $answersClose = $registration->answersCloseAt();
+
+            if ($answersClose !== null && $answersClose->greaterThan($closes)) {
+                return 'Undangan tim yang belum dijawab berlaku sampai '.$registration->graceText().'.';
+            }
+        }
+
+        return 'Undangan tim yang belum dijawab tidak berlaku lagi setelah tanggal itu.';
     }
 
     /** "Individu", "Tim, maks 3", "Individu atau tim (maks 3)". */

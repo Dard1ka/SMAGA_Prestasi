@@ -9,13 +9,15 @@
     <div class="flex flex-wrap items-center justify-between gap-3">
         <x-sth.tabs label="Daftar lomba" variant="pill" :active="$tab" :items="[
             ['key' => 'katalog', 'label' => 'Katalog', 'count' => $catalogCount, 'attributes' => ['wire:click' => 'setTab(\'katalog\')']],
-            ['key' => 'verifikasi', 'label' => 'Antrean verifikasi', 'count' => $pendingCount, 'attributes' => ['wire:click' => 'setTab(\'verifikasi\')']],
+            ['key' => 'verifikasi', 'label' => 'Verifikasi usulan lomba', 'count' => $pendingCount, 'attributes' => ['wire:click' => 'setTab(\'verifikasi\')']],
         ]" />
         <div class="flex w-full flex-wrap items-center gap-3 sm:w-auto">
             @if ($tab === 'katalog')
                 <x-sth.input type="search" wire:model.live.debounce.400ms="q" label="Cari lomba" hide-label icon="search" placeholder="Cari nama lomba atau penyelenggara" class="w-full sm:w-80" />
             @endif
-            <x-sth.button icon="plus" wire:click="create" aria-haspopup="dialog">Tambah lomba</x-sth.button>
+            @if ($canCreate)
+                <x-sth.button icon="plus" wire:click="create" aria-haspopup="dialog">Tambah lomba</x-sth.button>
+            @endif
         </div>
     </div>
 
@@ -28,7 +30,7 @@
 
         @if ($rows->isEmpty())
             <x-sth.empty-state icon="search" title="Belum ada lomba yang cocok">
-                Ubah filter atau tambah lomba baru.
+                {{ $canCreate ? 'Ubah filter atau tambah lomba baru.' : 'Ubah filter.' }}
             </x-sth.empty-state>
         @else
             <x-sth.table caption="Katalog lomba SMAGA, {{ $rows->count() }} lomba ditampilkan" fixed table-class="min-w-[880px]">
@@ -83,7 +85,8 @@
             @endif
         @endif
     @else
-        <x-sth.alert>Semua upload lomba, termasuk dari Kesiswaan sendiri, diperiksa di sini sebelum tampil di katalog.</x-sth.alert>
+        {{-- D-145: only students propose a lomba and Admin adds one; Kesiswaan checks every new one here. --}}
+        <x-sth.alert>Setiap lomba baru, dari usulan siswa atau dari Admin, diperiksa di sini sebelum tampil di katalog.</x-sth.alert>
 
         @if ($queue->isEmpty())
             <x-sth.empty-state icon="inbox" title="Antrean kosong">Tidak ada lomba yang menunggu verifikasi.</x-sth.empty-state>

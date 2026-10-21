@@ -26,6 +26,7 @@ dataset('humas routes', [
     'jadwal' => ['humas.jadwal'],
     'apresiasi' => ['humas.apresiasi.index'],
     'arsip' => ['humas.arsip'],
+    'verifikasi hasil' => ['humas.verifikasi.index'],
 ]);
 
 it('redirects guests to the login page', function (string $route): void {

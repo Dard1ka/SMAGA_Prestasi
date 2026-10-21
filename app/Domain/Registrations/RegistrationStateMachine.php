@@ -15,6 +15,8 @@ use InvalidArgumentException;
  */
 final class RegistrationStateMachine
 {
+    public const MENUNGGU_LOMBA = 'menunggu_lomba';
+
     public const MENUNGGU_KONFIRMASI = 'menunggu_konfirmasi';
 
     public const MENUNGGU_KEPSEK = 'menunggu_kepsek';
@@ -35,11 +37,18 @@ final class RegistrationStateMachine
 
     public const DIBATALKAN = 'dibatalkan';
 
-    /** menunggu_kepsek → dibatalkan: "leader cancels before the principal decides" (§6, mockup Lomba-Saya). */
+    /**
+     * menunggu_kepsek → dibatalkan: "leader cancels before the principal decides" (§6, mockup Lomba-Saya).
+     * menunggu_lomba (D-148): the submitter's registration for the own queued lomba; publishing it continues the
+     * registration (tim → menunggu_konfirmasi, individu → menunggu_kepsek), rejecting it or the leader cancels it.
+     * disetujui → dibatalkan (D-155): Tata Usaha removes an approved registration from the letter queue before the
+     * letters were sent (CancelApprovedRegistration); the leader never cancels from here (CancelRegistration).
+     */
     private const TRANSITIONS = [
+        self::MENUNGGU_LOMBA => [self::MENUNGGU_KONFIRMASI, self::MENUNGGU_KEPSEK, self::DIBATALKAN],
         self::MENUNGGU_KONFIRMASI => [self::MENUNGGU_KEPSEK, self::DIBATALKAN],
         self::MENUNGGU_KEPSEK => [self::DISETUJUI, self::DITOLAK, self::DIBATALKAN],
-        self::DISETUJUI => [self::SURAT_TERBIT],
+        self::DISETUJUI => [self::SURAT_TERBIT, self::DIBATALKAN],
         self::DITOLAK => [],
         self::SURAT_TERBIT => [self::BERLANGSUNG],
         self::BERLANGSUNG => [self::MENUNGGU_LAPORAN],
@@ -51,6 +60,7 @@ final class RegistrationStateMachine
 
     /** Tracker phases: 1 Daftar · 2 Persetujuan · 3 Surat tugas · 4 Lomba · 5 Laporan hasil · 6 Poin & apresiasi. */
     private const PHASES = [
+        self::MENUNGGU_LOMBA => 1,
         self::MENUNGGU_KONFIRMASI => 1,
         self::MENUNGGU_KEPSEK => 2,
         self::DITOLAK => 2,
