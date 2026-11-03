@@ -38,7 +38,12 @@ it('renders every public page with data', function (): void {
 
     $this->get(route('public.home'))
         ->assertOk()
-        ->assertSee('Prestasi siswa SMAGA, dalam satu tempat.')
+        // SV3 (lead, 2026-11-03): the hero names the system, the button to the achievements stays.
+        ->assertSee('SMAGA TALENT HUB (STH)')
+        ->assertSee('Talent Scouting, Competition &amp; Achievement Management System', false)
+        ->assertDontSee('Prestasi siswa SMAGA, dalam satu tempat.')
+        ->assertDontSee('Capaian lomba siswa yang sudah diverifikasi sekolah.')
+        ->assertSee('Lihat prestasi')
         ->assertSee('Prestasi terverifikasi')
         ->assertSee('Lomba diikuti 2026/2027')
         ->assertSee('Nadia Putri Anindya')

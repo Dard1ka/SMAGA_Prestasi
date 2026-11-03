@@ -213,7 +213,7 @@ it('serves the local showcase pages without inline styles or inline handlers (CS
     'app shell, siswa' => ['/_dev/components', 'Nadia Putri Anindya'],
     'app shell, kesiswaan' => ['/_dev/components?role=kesiswaan', 'Verifikasi usulan lomba'],
     'app shell, kepala sekolah' => ['/_dev/components?role=kepala_sekolah', 'Persetujuan'],
-    'public' => ['/_dev/components/public', 'Prestasi siswa SMAGA, dalam satu tempat.'],
+    'public' => ['/_dev/components/public', 'SMAGA TALENT HUB (STH)'],
     'auth split' => ['/_dev/components/auth', 'Pakai NISN dan kata sandi dari sekolah.'],
     'auth simple' => ['/_dev/components/auth?variant=simple', 'Ganti kata sandi'],
     'mobile' => ['/_dev/components/mobile', 'Laporkan hasil'],
