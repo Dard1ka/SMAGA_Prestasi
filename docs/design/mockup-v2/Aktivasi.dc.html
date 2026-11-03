@@ -1,0 +1,461 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Aktivasi akun · SMAGA Talent Hub</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Urbanist:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F4F5FB;font-family:"Plus Jakarta Sans",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;color:#151A33;-webkit-font-smoothing:antialiased}
+*{box-sizing:border-box}
+a{color:#3148D6}a:hover{color:#2638B0}
+h1,h2,h3,.display{font-family:"Urbanist","Plus Jakarta Sans",system-ui,sans-serif;letter-spacing:-0.01em}
+.page{background:radial-gradient(900px 320px at 88% -8%,#ECE8FF 0%,rgba(236,232,255,0) 70%),radial-gradient(760px 300px at 28% -14%,#E2F0FF 0%,rgba(226,240,255,0) 70%),#F4F5FB}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:44px;padding:0 18px;border-radius:12px;font:600 15px/1 "Plus Jakarta Sans",system-ui,sans-serif;border:1px solid transparent;cursor:pointer;text-decoration:none;white-space:nowrap}
+.btn-primary{background:#3148D6;color:#FFFFFF;box-shadow:0 8px 18px -10px rgba(49,72,214,.65)}
+.btn-primary:hover{background:#2638B0;color:#FFFFFF}
+.btn-quiet{background:#FFFFFF;color:#151A33;border-color:#DCDFEC}
+.btn-quiet:hover{background:#F4F5FB;color:#151A33}
+.btn-soft{background:#ECEFFF;color:#2A3CB8}
+.btn-soft:hover{background:#DFE4FF;color:#2A3CB8}
+.btn-danger{background:#FFFFFF;color:#B42318;border-color:#F3C4BE}
+.btn-danger:hover{background:#FDECEA;color:#B42318}
+.btn-sm{height:36px;padding:0 14px;font-size:14px;border-radius:10px}
+.btn:focus-visible,.nav:focus-visible,.input:focus-visible,.icon-btn:focus-visible,.tab:focus-visible,.pick:focus-visible{outline:3px solid #A9B6F5;outline-offset:2px}
+.icon-btn{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:12px;border:1px solid #E7E9F3;background:#FFFFFF;color:#4A5068;cursor:pointer;position:relative;text-decoration:none}
+.icon-btn:hover{background:#F4F5FB;color:#151A33}
+.dot{position:absolute;top:8px;right:9px;width:8px;height:8px;border-radius:999px;background:#3148D6;border:2px solid #FFFFFF}
+.card{background:#FFFFFF;border:1px solid #E7E9F3;border-radius:20px;box-shadow:0 1px 2px rgba(20,24,60,.04),0 10px 28px -18px rgba(20,24,60,.18)}
+.chip{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 10px;border-radius:999px;font-size:12.5px;font-weight:600;white-space:nowrap}
+.c-blue{background:#ECEFFF;color:#2A3CB8}
+.c-green{background:#E4F5EA;color:#1B6B45}
+.c-orange{background:#FFEEDD;color:#9A3F00}
+.c-red{background:#FDECEA;color:#B42318}
+.c-gray{background:#EEF0F6;color:#4A5068}
+.c-gold{background:#FFF3D1;color:#6B4E00}
+.c-glass{background:rgba(255,255,255,.82);color:#151A33}
+.b-sains{background:#E6F0FF;color:#1D56AD}
+.b-riset{background:#F0EBFF;color:#5534B8}
+.b-seni{background:#FDE8F0;color:#A61F54}
+.b-olahraga{background:#E0F4F8;color:#0B6577}
+.cover-sains{background:linear-gradient(135deg,#DCE9FF,#C3D8FF);color:#1D56AD}
+.cover-riset{background:linear-gradient(135deg,#EEE7FF,#D9CCFF);color:#5534B8}
+.cover-seni{background:linear-gradient(135deg,#FFE6EF,#FFCFE0);color:#A61F54}
+.cover-olahraga{background:linear-gradient(135deg,#DDF4F8,#BFE8F0);color:#0B6577}
+.label{font-size:13px;font-weight:600;color:#4A5068}
+.input{height:46px;width:100%;border:1px solid #DCDFEC;border-radius:12px;padding:0 14px;font:500 15px "Plus Jakarta Sans",system-ui,sans-serif;color:#151A33;background:#FFFFFF}
+.input::placeholder{color:#8A90A6}
+textarea.input{height:auto;padding:12px 14px;line-height:1.5;resize:vertical}
+.nav{display:flex;align-items:center;gap:12px;height:44px;padding:0 14px;border-radius:12px;color:#4A5068;text-decoration:none;font-size:14.5px;font-weight:600}
+.nav:hover{background:#F1F2FA;color:#151A33}
+.nav-on{background:#3148D6;color:#FFFFFF;box-shadow:0 8px 18px -10px rgba(49,72,214,.7)}
+.nav-on:hover{background:#2638B0;color:#FFFFFF}
+.nav-sec{font-size:11.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#8A90A6;padding:8px 14px 2px}
+.badge{margin-left:auto;min-width:22px;height:22px;padding:0 7px;border-radius:999px;background:#ECEFFF;color:#2A3CB8;font-size:12px;font-weight:700;display:inline-flex;align-items:center;justify-content:center}
+.nav-on .badge{background:#FFFFFF;color:#2A3CB8}
+.avatar{display:inline-flex;align-items:center;justify-content:center;border-radius:999px;background:#ECEFFF;color:#2A3CB8;font-weight:700;flex-shrink:0}
+.stack{display:flex}.stack .avatar{border:2px solid #FFFFFF;margin-left:-8px}.stack .avatar:first-child{margin-left:0}
+.pick{cursor:pointer;border:1px solid #DCDFEC;background:#FFFFFF;border-radius:14px;font:600 14.5px "Plus Jakarta Sans",system-ui,sans-serif;color:#151A33}
+.pick-on{border:2px solid #3148D6;background:#ECEFFF;color:#2A3CB8}
+.tabbar{position:absolute;left:0;right:0;bottom:0;height:80px;background:#FFFFFF;border-top:1px solid #E7E9F3;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));padding:8px 6px 16px}
+.tab{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:52px;border-radius:14px;color:#666C84;text-decoration:none;font-size:11.5px;font-weight:600}
+.tab-ic{width:48px;height:28px;border-radius:999px;display:flex;align-items:center;justify-content:center}
+.tab-on{color:#3148D6}.tab-on .tab-ic{background:#ECEFFF}
+.muted{color:#666C84}
+.num{font-variant-numeric:tabular-nums}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.seg{height:6px;border-radius:999px;background:#E3E6F2}
+.seg-on{background:#3148D6}
+.step-ic{width:52px;height:52px;border-radius:16px;background:#ECEFFF;color:#2A3CB8;display:inline-flex;align-items:center;justify-content:center}
+.m-input{height:50px;font-size:16px}
+.eye-btn{position:absolute;right:3px;top:3px;width:44px;height:44px;border-color:transparent}
+.rule-ic{width:22px;height:22px;border-radius:999px;border:1.5px solid #DCDFEC;background:#FFFFFF;color:#1B6B45;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
+.rule-ic-on{background:#E4F5EA;border-color:#E4F5EA}
+.otp{width:48px;height:56px;padding:0;text-align:center;font:800 24px "Urbanist","Plus Jakarta Sans",system-ui,sans-serif;color:#151A33}
+.err{display:flex;align-items:center;gap:8px;margin:0;font-size:14px;font-weight:600;color:#B42318}
+.bottom-cta{position:absolute;left:20px;right:20px;bottom:24px;height:52px;font-size:16px}
+.link-btn{display:inline-flex;align-items:center;height:44px;padding:0 6px;border:0;background:none;color:#3148D6;font:600 14.5px "Plus Jakarta Sans",system-ui,sans-serif;cursor:pointer}
+.link-btn:hover{color:#2638B0}
+.link-btn:focus-visible{outline:3px solid #A9B6F5;outline-offset:2px;border-radius:8px}
+</style>
+</helmet>
+<div class="page" style="width:390px;height:844px;position:relative;overflow:hidden;padding:22px 20px 24px">
+
+  <sc-if value="{{ showProgress }}" hint-placeholder-val="{{ true }}">
+    <div style="display:flex;align-items:center;gap:12px;min-height:44px">
+      <sc-if value="{{ showBack }}" hint-placeholder-val="{{ false }}">
+        <button type="button" class="icon-btn" aria-label="Kembali" onClick="{{ back }}" style="width:44px;height:44px;flex-shrink:0">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 6-6 6 6 6"></path></svg>
+        </button>
+      </sc-if>
+      <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:8px">
+        <div style="display:flex;align-items:center;justify-content:space-between;font-size:13px">
+          <span class="num" style="font-weight:700;color:#151A33">{{ progressText }}</span>
+          <span class="muted" style="font-weight:600">{{ stepName }}</span>
+        </div>
+        <div role="progressbar" aria-label="{{ progressText }}" aria-valuemin="1" aria-valuemax="3" aria-valuenow="{{ step }}" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px">
+          <sc-for list="{{ segs }}" as="sg" hint-placeholder-count="3">
+            <span class="{{ sg.cls }}"></span>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isS1 }}" hint-placeholder-val="{{ true }}">
+    <div style="display:flex;flex-direction:column;gap:18px;margin-top:22px">
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <span class="step-ic" aria-hidden="true">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 8 0v4"></path></svg>
+        </span>
+        <div>
+          <h1 style="margin:0;font-size:28px;font-weight:800;line-height:1.15">Buat kata sandi baru</h1>
+          <p class="muted" style="margin:6px 0 0;font-size:16px;line-height:1.5">Ganti kata sandi awal dari sekolah.</p>
+        </div>
+      </div>
+
+      <div class="card" style="padding:14px 16px;display:flex;align-items:center;gap:12px;border-radius:18px">
+        <span class="avatar" style="width:44px;height:44px;font-size:15px">NA</span>
+        <div style="min-width:0">
+          <div style="font-size:16px;font-weight:700;line-height:1.3">Nadia Putri Anindya</div>
+          <div class="muted num" style="font-size:13px">NIS 225226201 · XI-4</div>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <label class="label" for="akt-pw1" style="font-size:14px">Kata sandi baru</label>
+          <div style="position:relative">
+            <input id="akt-pw1" class="input m-input" type="{{ pw1Type }}" autocomplete="new-password" aria-describedby="akt-syarat" placeholder="Minimal 8 karakter" onChange="{{ checkPw }}" style="padding-right:54px">
+            <button type="button" class="icon-btn eye-btn" aria-label="Tampilkan kata sandi baru" aria-pressed="{{ lihat1Pressed }}" onClick="{{ toggle1 }}">
+              <sc-if value="{{ hide1 }}" hint-placeholder-val="{{ true }}">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+              </sc-if>
+              <sc-if value="{{ show1 }}" hint-placeholder-val="{{ false }}">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"></path><circle cx="12" cy="12" r="3"></circle><path d="M4 4l16 16"></path></svg>
+              </sc-if>
+            </button>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <label class="label" for="akt-pw2" style="font-size:14px">Ulangi kata sandi</label>
+          <div style="position:relative">
+            <input id="akt-pw2" class="input m-input" type="{{ pw2Type }}" autocomplete="new-password" placeholder="Ketik sekali lagi" onChange="{{ checkPw }}" style="padding-right:54px">
+            <button type="button" class="icon-btn eye-btn" aria-label="Tampilkan ulangan kata sandi" aria-pressed="{{ lihat2Pressed }}" onClick="{{ toggle2 }}">
+              <sc-if value="{{ hide2 }}" hint-placeholder-val="{{ true }}">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+              </sc-if>
+              <sc-if value="{{ show2 }}" hint-placeholder-val="{{ false }}">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"></path><circle cx="12" cy="12" r="3"></circle><path d="M4 4l16 16"></path></svg>
+              </sc-if>
+            </button>
+          </div>
+          <div aria-live="polite">
+            <sc-if value="{{ showSama }}" hint-placeholder-val="{{ false }}">
+              <span style="display:flex;align-items:center;gap:6px;font-size:13.5px;font-weight:600;color:#1B6B45">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"></path></svg>
+                Kata sandi sama
+              </span>
+            </sc-if>
+            <sc-if value="{{ showBeda }}" hint-placeholder-val="{{ false }}">
+              <span style="display:flex;align-items:center;gap:6px;font-size:13.5px;font-weight:600;color:#9A3F00">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 11v5M12 8h.01"></path></svg>
+                Belum sama
+              </span>
+            </sc-if>
+          </div>
+        </div>
+      </div>
+
+      <ul id="akt-syarat" aria-label="Syarat kata sandi" aria-live="polite" style="list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px">
+        <sc-for list="{{ rules }}" as="r" hint-placeholder-count="3">
+          <li style="display:flex;align-items:center;gap:10px;font-size:14.5px;font-weight:500;color:#4A5068">
+            <span class="{{ r.cls }}" aria-hidden="true">
+              <sc-if value="{{ r.met }}" hint-placeholder-val="{{ false }}">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"></path></svg>
+              </sc-if>
+            </span>
+            <span>{{ r.label }}</span>
+            <span class="sr-only">{{ r.sr }}</span>
+          </li>
+        </sc-for>
+      </ul>
+
+      <sc-if value="{{ err1 }}" hint-placeholder-val="{{ false }}">
+        <p class="err" role="alert">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 11v5M12 8h.01"></path></svg>
+          Penuhi semua syarat dan ulangi kata sandi yang sama.
+        </p>
+      </sc-if>
+    </div>
+    <button type="button" class="btn btn-primary bottom-cta" onClick="{{ next1 }}">Lanjut</button>
+  </sc-if>
+
+  <sc-if value="{{ isS2 }}" hint-placeholder-val="{{ false }}">
+    <div style="display:flex;flex-direction:column;gap:22px;margin-top:22px">
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <span class="step-ic" aria-hidden="true">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="m3 7 9 6 9-6"></path></svg>
+        </span>
+        <div>
+          <h1 style="margin:0;font-size:28px;font-weight:800;line-height:1.15">Hubungkan email</h1>
+          <p class="muted" style="margin:6px 0 0;font-size:16px;line-height:1.5">Untuk memulihkan akun kalau kamu lupa kata sandi.</p>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <label class="label" for="akt-email" style="font-size:14px">Email</label>
+        <input id="akt-email" class="input m-input" type="email" inputmode="email" autocomplete="email" placeholder="nama@email.com" aria-describedby="akt-email-info" onChange="{{ checkEmail }}">
+        <span id="akt-email-info" class="muted" style="font-size:13.5px">Kode verifikasi dikirim ke email ini.</span>
+      </div>
+      <sc-if value="{{ err2 }}" hint-placeholder-val="{{ false }}">
+        <p class="err" role="alert">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 11v5M12 8h.01"></path></svg>
+          Tulis alamat email yang benar.
+        </p>
+      </sc-if>
+    </div>
+    <button type="button" class="btn btn-primary bottom-cta" onClick="{{ next2 }}">Kirim kode</button>
+  </sc-if>
+
+  <sc-if value="{{ isS3 }}" hint-placeholder-val="{{ false }}">
+    <div style="display:flex;flex-direction:column;gap:22px;margin-top:22px">
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <span class="step-ic" aria-hidden="true">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 4 6v6c0 4.5 3.4 8.2 8 9 4.6-.8 8-4.5 8-9V6z"></path><path d="m8.5 12 2.5 2.5 4.5-5"></path></svg>
+        </span>
+        <div>
+          <h1 style="margin:0;font-size:28px;font-weight:800;line-height:1.15">Masukkan kode</h1>
+          <p class="muted" style="margin:6px 0 0;font-size:16px;line-height:1.5">Kode 6 angka dikirim ke <strong style="color:#151A33;font-weight:700">n•••@gmail.com</strong>.</p>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <div role="group" aria-label="Kode verifikasi 6 angka" style="display:flex;justify-content:space-between">
+          <input class="input otp" type="text" inputmode="numeric" autocomplete="one-time-code" aria-label="Digit 1" onChange="{{ otpInput }}" onKeyDown="{{ otpKey }}">
+          <input class="input otp" type="text" inputmode="numeric" autocomplete="off" aria-label="Digit 2" onChange="{{ otpInput }}" onKeyDown="{{ otpKey }}">
+          <input class="input otp" type="text" inputmode="numeric" autocomplete="off" aria-label="Digit 3" onChange="{{ otpInput }}" onKeyDown="{{ otpKey }}">
+          <input class="input otp" type="text" inputmode="numeric" autocomplete="off" aria-label="Digit 4" onChange="{{ otpInput }}" onKeyDown="{{ otpKey }}">
+          <input class="input otp" type="text" inputmode="numeric" autocomplete="off" aria-label="Digit 5" onChange="{{ otpInput }}" onKeyDown="{{ otpKey }}">
+          <input class="input otp" type="text" inputmode="numeric" autocomplete="off" aria-label="Digit 6" onChange="{{ otpInput }}" onKeyDown="{{ otpKey }}">
+        </div>
+        <span class="chip c-gray" style="align-self:flex-start">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 11v5M12 8h.01"></path></svg>
+          Mode uji: kode apa pun diterima
+        </span>
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <span class="muted num" style="font-size:14.5px;font-weight:500">Kirim ulang dalam 0:45</span>
+          <button type="button" class="link-btn" onClick="{{ gantiEmail }}">Ganti email</button>
+        </div>
+      </div>
+
+      <sc-if value="{{ err3 }}" hint-placeholder-val="{{ false }}">
+        <p class="err" role="alert">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 11v5M12 8h.01"></path></svg>
+          Isi keenam angka kodenya dulu.
+        </p>
+      </sc-if>
+    </div>
+    <button type="button" class="btn btn-primary bottom-cta" onClick="{{ verify }}">Verifikasi</button>
+  </sc-if>
+
+  <sc-if value="{{ isS4 }}" hint-placeholder-val="{{ false }}">
+    <div style="display:flex;flex-direction:column;align-items:center;text-align:center;margin-top:120px">
+      <span aria-hidden="true" style="width:96px;height:96px;border-radius:999px;background:#E4F5EA;display:inline-flex;align-items:center;justify-content:center">
+        <span style="width:64px;height:64px;border-radius:999px;background:#1B6B45;color:#FFFFFF;display:inline-flex;align-items:center;justify-content:center">
+          <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"></path></svg>
+        </span>
+      </span>
+      <h1 style="margin:26px 0 0;font-size:28px;font-weight:800;line-height:1.15">Akun kamu sudah aktif</h1>
+      <p class="muted" style="margin:8px 0 0;font-size:16px;line-height:1.5;max-width:300px">Sekarang kamu bisa daftar lomba dan pantau prestasimu.</p>
+
+      <div class="card" style="margin-top:28px;width:100%;padding:6px 16px;text-align:left;border-radius:18px">
+        <div style="display:flex;align-items:center;gap:12px;height:52px;border-bottom:1px solid #E7E9F3">
+          <span class="rule-ic rule-ic-on" aria-hidden="true">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"></path></svg>
+          </span>
+          <span style="font-size:15px;font-weight:600">Kata sandi baru tersimpan</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;height:52px">
+          <span class="rule-ic rule-ic-on" aria-hidden="true">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"></path></svg>
+          </span>
+          <span style="font-size:15px;font-weight:600">Email n•••@gmail.com terhubung</span>
+        </div>
+      </div>
+    </div>
+    <a class="btn btn-primary bottom-cta" href="Tur-Menu-Mobile.dc.html">Mulai</a>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = {
+      step: 1,
+      len8: false, mix: false, ulang: false, sama: false,
+      lihat1: false, lihat2: false, err1: false,
+      emailOk: false, err2: false,
+      otpFull: false, err3: false
+    };
+  }
+  renderVals() {
+    const s = this.state;
+    const step = s.step;
+    const names = ['', 'Kata sandi', 'Email', 'Verifikasi'];
+    const rule = (label, met) => ({
+      label: label,
+      met: met,
+      cls: met ? 'rule-ic rule-ic-on' : 'rule-ic',
+      sr: met ? '(terpenuhi)' : '(belum terpenuhi)'
+    });
+    const resetPw = { len8: false, mix: false, ulang: false, sama: false, lihat1: false, lihat2: false, err1: false };
+
+    const checkPw = (e) => {
+      const t = e && e.target;
+      let a = '';
+      let b = '';
+      let both = true;
+      try {
+        a = document.getElementById('akt-pw1').value || '';
+        b = document.getElementById('akt-pw2').value || '';
+      } catch (err) {
+        both = false;
+        a = t ? String(t.value || '') : '';
+      }
+      this.setState({
+        len8: a.length >= 8,
+        mix: /[A-Za-z]/.test(a) && /[0-9]/.test(a),
+        ulang: both ? b.length > 0 : false,
+        sama: both ? (b.length > 0 && a === b) : true,
+        err1: false
+      });
+    };
+
+    const checkEmail = (e) => {
+      const v = String((e && e.target && e.target.value) || '').trim();
+      this.setState({ emailOk: /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v), err2: false });
+    };
+
+    const countOtp = (t) => {
+      let filled = 0;
+      const g = t && t.parentElement;
+      if (g) {
+        const all = g.querySelectorAll('input');
+        for (let i = 0; i < all.length; i++) {
+          if (all[i].value) filled++;
+        }
+      }
+      return filled;
+    };
+
+    const otpInput = (e) => {
+      const t = e && e.target;
+      if (!t) return;
+      const digits = String(t.value || '').replace(/[^0-9]/g, '');
+      if (digits.length > 1) {
+        let el = t;
+        let last = t;
+        for (let i = 0; i < digits.length && el; i++) {
+          el.value = digits.charAt(i);
+          last = el;
+          el = el.nextElementSibling;
+        }
+        if (last && last.focus) last.focus();
+      } else {
+        t.value = digits;
+        const n = t.nextElementSibling;
+        if (digits && n && n.focus) n.focus();
+      }
+      this.setState({ otpFull: countOtp(t) === 6, err3: false });
+    };
+
+    const otpKey = (e) => {
+      const t = e && e.target;
+      if (t && e.key === 'Backspace' && !t.value) {
+        const p = t.previousElementSibling;
+        if (p && p.focus) p.focus();
+      }
+    };
+
+    return {
+      step: step,
+      progressText: 'Langkah ' + step + ' dari 3',
+      stepName: names[step] || '',
+      showProgress: step <= 3,
+      showBack: step === 2 || step === 3,
+      isS1: step === 1,
+      isS2: step === 2,
+      isS3: step === 3,
+      isS4: step === 4,
+      segs: [1, 2, 3].map((n) => ({ cls: n <= step ? 'seg seg-on' : 'seg' })),
+
+      rules: [
+        rule('Minimal 8 karakter', s.len8),
+        rule('Huruf dan angka', s.mix),
+        rule('Beda dari kata sandi awal', s.len8 && s.mix)
+      ],
+      showSama: s.ulang && s.sama,
+      showBeda: s.ulang && !s.sama,
+      pw1Type: s.lihat1 ? 'text' : 'password',
+      pw2Type: s.lihat2 ? 'text' : 'password',
+      lihat1Pressed: s.lihat1 ? 'true' : 'false',
+      lihat2Pressed: s.lihat2 ? 'true' : 'false',
+      show1: s.lihat1,
+      hide1: !s.lihat1,
+      show2: s.lihat2,
+      hide2: !s.lihat2,
+      toggle1: () => this.setState({ lihat1: !this.state.lihat1 }),
+      toggle2: () => this.setState({ lihat2: !this.state.lihat2 }),
+      checkPw: checkPw,
+      err1: s.err1,
+
+      checkEmail: checkEmail,
+      err2: s.err2,
+
+      otpInput: otpInput,
+      otpKey: otpKey,
+      err3: s.err3,
+
+      next1: () => {
+        const c = this.state;
+        if (c.len8 && c.mix && c.sama) {
+          this.setState({ step: 2, err1: false, emailOk: false, err2: false });
+        } else {
+          this.setState({ err1: true });
+        }
+      },
+      next2: () => {
+        if (this.state.emailOk) {
+          this.setState({ step: 3, err2: false, otpFull: false, err3: false });
+        } else {
+          this.setState({ err2: true });
+        }
+      },
+      verify: () => {
+        if (this.state.otpFull) {
+          this.setState({ step: 4, err3: false });
+        } else {
+          this.setState({ err3: true });
+        }
+      },
+      gantiEmail: () => this.setState({ step: 2, emailOk: false, err2: false, otpFull: false, err3: false }),
+      back: () => {
+        const cur = this.state.step;
+        if (cur === 2) {
+          this.setState(Object.assign({ step: 1 }, resetPw));
+        } else if (cur === 3) {
+          this.setState({ step: 2, emailOk: false, err2: false, otpFull: false, err3: false });
+        }
+      }
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,425 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Livewire\Auth;
+
+use App\Actions\Accounts\CompleteActivation;
+use App\Actions\Accounts\DetermineActivationStep;
+use App\Actions\Accounts\IssueOtpCode;
+use App\Actions\Accounts\SetNewPassword;
+use App\Actions\Accounts\VerifyOtpCode;
+use App\Actions\Fortify\LoginIdentifier;
+use App\Domain\Accounts\PasswordPolicy;
+use App\Domain\Accounts\StudentProfileInput;
+use App\Enums\RoleName;
+use App\Http\Middleware\EnsureTalentChosen;
+use App\Models\Student;
+use App\Models\User;
+use App\Providers\AppServiceProvider;
+use Carbon\CarbonImmutable;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
+use Livewire\Attributes\Layout;
+use Livewire\Attributes\Locked;
+use Livewire\Attributes\Title;
+use Livewire\Component;
+
+/**
+ * First-login activation (SECURITY §3a K4; order of the lead's decision of 2026-10-04): 1 bind email →
+ * 2 six-digit code → (students: 3 "Data diri", birth date + No HP, D-152) → password → done. At the password step
+ * every account replaces its password, students and staff alike (D-138; D-92 now holds for all): there is no
+ * "Lewati". The same screen serves a restored account.
+ * The step shown is only a view hint: every action re-derives the real step from the database
+ * (DetermineActivationStep), so a tampered client cannot skip a step. All state changes are in CompleteActivation.
+ * The session id is renewed (and the old session row deleted) after the code and after the password step, never on
+ * a refused attempt. The CSRF token stays: the open page keeps sending the one it was rendered with (SV1).
+ */
+#[Layout('layouts::auth', ['variant' => 'simple'])]
+#[Title('Aktivasi akun')]
+class Activation extends Component
+{
+    public const STEP_EMAIL = 1;
+
+    public const STEP_CODE = 2;
+
+    public const STEP_PASSWORD = 3;
+
+    public const STEP_DONE = 4;
+
+    /** D-152: students only, between the code and the password ("Data diri"); shown as step 3 of 4. */
+    public const STEP_PROFILE = 5;
+
+    #[Locked]
+    public int $step = self::STEP_EMAIL;
+
+    /** Masked address the code was sent to, later the bound address (n•••@gmail.com). */
+    #[Locked]
+    public ?string $sentTo = null;
+
+    public string $email = '';
+
+    public string $code = '';
+
+    public string $password = '';
+
+    public string $password_confirmation = '';
+
+    /** D-152 "Data diri": `Y-m-d` from <input type="date">, pre-filled from the student record. */
+    public string $birth_date = '';
+
+    public string $phone = '';
+
+    public function mount(DetermineActivationStep $activationStep, IssueOtpCode $otp): mixed
+    {
+        $user = $this->user();
+        $next = $activationStep($user);
+
+        if ($next === null) {
+            return $this->redirectRoute('home');
+        }
+
+        if ($next === DetermineActivationStep::PROFILE) {
+            $this->toProfileStep($user);
+
+            return null;
+        }
+
+        if ($next === DetermineActivationStep::PASSWORD) {
+            $this->step = self::STEP_PASSWORD;
+            $this->sentTo = self::mask((string) $user->email);
+
+            return null;
+        }
+
+        $pending = $otp->pendingEmail($user, CompleteActivation::PURPOSE);
+
+        if ($pending !== null) {
+            $this->step = self::STEP_CODE;
+            $this->sentTo = self::mask($pending);
+        } else {
+            $this->step = self::STEP_EMAIL;
+            // A staff address typed by the Admin (still unverified) is offered, never a student's (they have none).
+            $this->email = (string) $user->email;
+        }
+
+        return null;
+    }
+
+    public function sendCode(DetermineActivationStep $activationStep, IssueOtpCode $otp): void
+    {
+        $this->resetErrorBag();
+
+        $user = $this->user();
+
+        if (! $this->isAt(DetermineActivationStep::EMAIL, $activationStep, $user)) {
+            return;
+        }
+
+        $this->email = mb_strtolower(trim($this->email));
+
+        $this->validate([
+            'email' => ['required', 'string', 'max:254', 'email:rfc', Rule::unique('users', 'email')->ignore($user->getKey())],
+        ], self::messages());
+
+        if (! $this->sendTo($otp, $user, $this->email, 'email')) {
+            return;
+        }
+
+        $this->code = '';
+        $this->sentTo = self::mask($this->email);
+        $this->step = self::STEP_CODE;
+    }
+
+    public function resendCode(DetermineActivationStep $activationStep, IssueOtpCode $otp): void
+    {
+        $this->resetErrorBag();
+
+        $user = $this->user();
+
+        if (! $this->isAt(DetermineActivationStep::EMAIL, $activationStep, $user)) {
+            return;
+        }
+
+        $pending = $otp->pendingEmail($user, CompleteActivation::PURPOSE);
+
+        if ($pending === null) {
+            $this->step = self::STEP_EMAIL;
+
+            return;
+        }
+
+        if ($this->sendTo($otp, $user, $pending, 'code')) {
+            session()->flash('status', 'Kode baru sudah dikirim.');
+        }
+    }
+
+    /**
+     * Back from the code to the address (a mistyped email); a new code follows the usual OTP limits. The waiting code is
+     * ended (SV1, like Keamanan › "Batal ganti email"): else a reload came back to the code step of the old address, and
+     * the corrected address had to wait for the resend cooldown of a code nobody will type.
+     */
+    public function changeEmail(DetermineActivationStep $activationStep, IssueOtpCode $codes): void
+    {
+        $this->resetErrorBag();
+        $user = $this->user();
+
+        if (! $this->isAt(DetermineActivationStep::EMAIL, $activationStep, $user)) {
+            return;
+        }
+
+        $codes->cancel($user, CompleteActivation::PURPOSE);
+        $this->code = '';
+        $this->step = self::STEP_EMAIL;
+    }
+
+    public function verifyCode(DetermineActivationStep $activationStep, VerifyOtpCode $verify, CompleteActivation $complete): void
+    {
+        $this->resetErrorBag();
+
+        $user = $this->user();
+
+        if (! $this->isAt(DetermineActivationStep::EMAIL, $activationStep, $user)) {
+            return;
+        }
+
+        $this->validate(['code' => ['required', 'digits:6']], self::messages());
+
+        $key = 'otp-verify:'.$user->getKey();
+
+        if (RateLimiter::tooManyAttempts($key, 10)) {
+            throw ValidationException::withMessages(['code' => AppServiceProvider::retryMessage(RateLimiter::availableIn($key))]);
+        }
+
+        RateLimiter::hit($key, 60);
+
+        $otpCode = $verify->handle($user, CompleteActivation::PURPOSE, $this->code);
+
+        if ($otpCode === null) {
+            throw ValidationException::withMessages(['code' => 'Kode salah atau sudah kedaluwarsa.']);
+        }
+
+        try {
+            $complete->bindEmail($user, $otpCode);
+        } catch (ValidationException $e) {
+            $this->step = self::STEP_EMAIL;
+
+            throw $e;
+        }
+
+        // New session id for the bound account; the old row is deleted, so it is neither listed as a second
+        // device nor usable any more (QA Q1-03, D-93). migrate(), not regenerate(): regenerate() also replaces the
+        // CSRF token, and this page stays open with the old one in its meta tag, its Livewire script and its logout
+        // form, so its next request answered 419 where the browser sends no Sec-Fetch-Site header (plain http to an
+        // IP address, the school's server; SV1). The token was already renewed at login (Fortify), and it stays
+        // inside the same signed-in session, so keeping it opens no session fixation.
+        session()->migrate(true);
+        RateLimiter::clear($key);
+
+        $this->code = '';
+        $this->sentTo = self::mask((string) $otpCode->email);
+
+        $next = $activationStep($user);
+
+        if ($next === DetermineActivationStep::PROFILE) {
+            $this->toProfileStep($user);
+
+            return;
+        }
+
+        if ($next === DetermineActivationStep::PASSWORD) {
+            $this->step = self::STEP_PASSWORD;
+
+            return;
+        }
+
+        // No password step left (the password was chosen before the email, in the old order).
+        $this->step = self::STEP_DONE;
+    }
+
+    /**
+     * "Data diri" (D-152): birth date + No HP, both required; the rules and the state change are in
+     * CompleteActivation::confirmProfile (errors on `birth_date` / `phone`, the names of these properties).
+     */
+    public function saveProfile(DetermineActivationStep $activationStep, CompleteActivation $complete): void
+    {
+        $this->resetErrorBag();
+
+        $user = $this->user();
+
+        if (! $this->isAt(DetermineActivationStep::PROFILE, $activationStep, $user)) {
+            return;
+        }
+
+        $complete->confirmProfile($user, $this->birth_date, $this->phone);
+
+        // A password chosen through "Lupa kata sandi" while activating leaves no password step: done here.
+        $this->step = $activationStep($user) === DetermineActivationStep::PASSWORD ? self::STEP_PASSWORD : self::STEP_DONE;
+    }
+
+    /** Step 3, "Ganti kata sandi": rules and the state change are in CompleteActivation::changePassword. */
+    public function savePassword(DetermineActivationStep $activationStep, CompleteActivation $complete): void
+    {
+        $this->resetErrorBag();
+
+        $user = $this->user();
+
+        if (! $this->isAt(DetermineActivationStep::PASSWORD, $activationStep, $user)) {
+            return;
+        }
+
+        $this->validate(
+            ['password' => ['required', 'string', 'confirmed', 'max:'.PasswordPolicy::MAX_LENGTH]],
+            self::messages(),
+            ['password' => 'kata sandi'],
+        );
+
+        // A refused password throws here and leaves the session alone (QA Q2-07: every failed try used to add a
+        // "device"). Other devices are signed out by the Action; this one gets a new id once the password is stored,
+        // with the CSRF token the open page carries (migrate(), see verifyCode(); SV1).
+        $complete->changePassword($user, $this->password, $this->password_confirmation, session()->getId(), self::messages());
+        session()->migrate(true);
+
+        $this->reset('password', 'password_confirmation');
+        $this->step = self::STEP_DONE;
+    }
+
+    public function start(DetermineActivationStep $activationStep): mixed
+    {
+        $user = $this->user();
+
+        if ($activationStep($user) !== null) {
+            return $this->redirectRoute('aktivasi');
+        }
+
+        return $user->hasRole(RoleName::Siswa->value) ? $this->redirectRoute('siswa.tour') : $this->redirectRoute('home');
+    }
+
+    public function render(IssueOtpCode $otp, SetNewPassword $setPassword): mixed
+    {
+        $user = $this->user();
+        $isStudent = LoginIdentifier::isStudentAccount($user);
+        // D-152: students have four steps (Data diri before the password), staff three.
+        $steps = $isStudent
+            ? [self::STEP_EMAIL => 'Hubungkan email', self::STEP_CODE => 'Kode verifikasi', self::STEP_PROFILE => 'Data diri', self::STEP_PASSWORD => 'Kata sandi']
+            : [self::STEP_EMAIL => 'Hubungkan email', self::STEP_CODE => 'Kode verifikasi', self::STEP_PASSWORD => 'Kata sandi'];
+        $today = CarbonImmutable::today();
+
+        return view('livewire.auth.activation', [
+            'user' => $user,
+            'steps' => $steps,
+            'position' => array_search($this->step, array_keys($steps), true),
+            'birthDateMin' => $today->subYears(StudentProfileInput::MAX_AGE)->format('Y-m-d'),
+            'birthDateMax' => $today->subYears(StudentProfileInput::MIN_AGE)->format('Y-m-d'),
+            'testMode' => VerifyOtpCode::testModeActive(),
+            'resendIn' => $this->step === self::STEP_CODE ? $otp->secondsUntilResend($user, CompleteActivation::PURPOSE) : 0,
+            'passwordHint' => $setPassword->hint($user),
+            'isStudent' => $isStudent,
+            'temporaryPassword' => CompleteActivation::hasTemporaryPassword($user),
+            // D-144, D-153: a student without a talent is held on Talenta saya next, so the done screen says so.
+            'talentFirst' => $this->step === self::STEP_DONE && EnsureTalentChosen::applies($user),
+        ]);
+    }
+
+    /** Masks an address for display: nadia@example.com → n•••@example.com */
+    public static function mask(string $email): string
+    {
+        [$local, $domain] = array_pad(explode('@', $email, 2), 2, '');
+
+        return mb_substr($local, 0, 1).'•••@'.$domain;
+    }
+
+    /** @return array<string, string> */
+    public static function messages(): array
+    {
+        return [
+            'required' => 'Wajib diisi.',
+            'confirmed' => 'Kata sandi belum sama.',
+            'password.min' => 'Minimal :min karakter.',
+            'password.max' => 'Maksimal :max karakter.',
+            'email.email' => 'Tulis alamat email yang benar.',
+            'email.max' => 'Email terlalu panjang.',
+            'email.unique' => 'Email ini sudah dipakai akun lain.',
+            'code.digits' => 'Isi keenam angka kodenya.',
+        ];
+    }
+
+    private function sendTo(IssueOtpCode $otp, User $user, string $email, string $field): bool
+    {
+        $key = 'otp-send:'.$user->getKey();
+
+        if (RateLimiter::tooManyAttempts($key, 5)) {
+            $this->addError($field, AppServiceProvider::retryMessage(RateLimiter::availableIn($key)));
+
+            return false;
+        }
+
+        if (! $otp->handle($user, CompleteActivation::PURPOSE, $email)) {
+            $seconds = $otp->secondsUntilResend($user, CompleteActivation::PURPOSE);
+
+            // QA10: past the cooldown it is the hourly or daily limit of the account, which can last for hours.
+            $this->addError($field, $seconds > 60
+                ? AppServiceProvider::retryMessage($seconds)
+                : 'Tunggu '.$seconds.' detik sebelum kirim ulang.');
+
+            return false;
+        }
+
+        RateLimiter::hit($key, 3600);
+
+        return true;
+    }
+
+    /**
+     * True when the account really is at `$expected`. Otherwise nothing may be done: the view is moved to the real
+     * step (or home when the activation is already finished) and the action returns.
+     */
+    private function isAt(string $expected, DetermineActivationStep $activationStep, User $user): bool
+    {
+        $actual = $activationStep($user);
+
+        if ($actual === $expected) {
+            return true;
+        }
+
+        if ($actual === null) {
+            $this->redirectRoute('home');
+        } elseif ($actual === DetermineActivationStep::PROFILE) {
+            $this->toProfileStep($user);
+        } elseif ($actual === DetermineActivationStep::PASSWORD) {
+            $this->step = self::STEP_PASSWORD;
+            $this->sentTo = self::mask((string) $user->email);
+        } else {
+            $this->step = self::STEP_EMAIL;
+        }
+
+        return false;
+    }
+
+    /** Moves the view to "Data diri" and fills the fields from the student record (once; typed values stay). */
+    private function toProfileStep(User $user): void
+    {
+        $this->step = self::STEP_PROFILE;
+        $this->sentTo = self::mask((string) $user->email);
+
+        $student = Student::query()->where('user_id', $user->getKey())->first();
+
+        if ($this->birth_date === '') {
+            $this->birth_date = (string) $student?->birth_date?->format('Y-m-d');
+        }
+
+        if ($this->phone === '') {
+            $this->phone = (string) rescue(fn () => $student?->phone, null, false);
+        }
+    }
+
+    private function user(): User
+    {
+        /** @var User $user */
+        $user = Auth::user();
+
+        return $user;
+    }
+}

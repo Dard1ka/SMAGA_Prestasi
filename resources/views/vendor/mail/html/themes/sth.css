@@ -1,0 +1,271 @@
+/* SMAGA Talent Hub mail theme: "Tinta dan Sampul" (docs/design/DESIGN-SPEC-v3.md). Inlined into every notification
+   mail by Laravel's Markdown renderer (config/mail.php, 'markdown.theme' => 'sth'). No remote font, no image, no
+   gradient, no shadow; nothing under 13px. Colours: page #F3F5F8, surface #FFFFFF, line #DDE2E9, ink #141A2B,
+   muted #566072, primary #1B2A4E, link #1C4A9C, green #1B6B45, red #B42318.
+   The OTP mail (resources/views/auth/mail/otp-code.blade.php) repeats these values by hand: change both. */
+
+/* Base */
+
+body,
+body *:not(html):not(style):not(br):not(tr):not(code) {
+    box-sizing: border-box;
+    font-family: 'Public Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+}
+
+body {
+    -webkit-text-size-adjust: none;
+    background-color: #F3F5F8;
+    color: #141A2B;
+    height: 100%;
+    line-height: 1.5;
+    margin: 0;
+    padding: 0;
+    width: 100% !important;
+}
+
+a {
+    color: #1C4A9C;
+}
+
+/* Typography */
+
+h1 {
+    color: #141A2B;
+    font-size: 18px;
+    font-weight: 600;
+    line-height: 1.4;
+    margin: 0 0 16px;
+    text-align: left;
+}
+
+p,
+ul,
+ol {
+    color: #141A2B;
+    font-size: 16px;
+    line-height: 1.5;
+    margin: 0 0 16px;
+    text-align: left;
+}
+
+/* Layout */
+
+.wrapper {
+    -premailer-cellpadding: 0;
+    -premailer-cellspacing: 0;
+    -premailer-width: 100%;
+    background-color: #F3F5F8;
+    margin: 0;
+    padding: 24px 12px 0;
+    width: 100%;
+}
+
+.content {
+    -premailer-cellpadding: 0;
+    -premailer-cellspacing: 0;
+    -premailer-width: 100%;
+    margin: 0;
+    padding: 0;
+    width: 100%;
+}
+
+/* Header: the product name and the school, inside the card. Text only: no link, no image. */
+
+.header {
+    border-bottom: 1px solid #DDE2E9;
+    padding: 20px 32px 16px;
+    text-align: left;
+}
+
+.brand {
+    color: #1B2A4E;
+    font-size: 16px;
+    font-weight: 700;
+}
+
+.brand-sub {
+    color: #566072;
+    font-size: 13px;
+}
+
+/* Body */
+
+.body {
+    -premailer-cellpadding: 0;
+    -premailer-cellspacing: 0;
+    -premailer-width: 100%;
+    background-color: #F3F5F8;
+    margin: 0;
+    padding: 0;
+    width: 100%;
+}
+
+.inner-body {
+    -premailer-cellpadding: 0;
+    -premailer-cellspacing: 0;
+    -premailer-width: 570px;
+    background-color: #FFFFFF;
+    border: 1px solid #DDE2E9;
+    border-radius: 10px;
+    margin: 0 auto;
+    padding: 0;
+    width: 570px;
+}
+
+.content-cell {
+    max-width: 100vw;
+    padding: 24px 32px;
+}
+
+/* Fallback address under the button */
+
+.subcopy {
+    border-top: 1px solid #DDE2E9;
+    margin-top: 8px;
+    padding-top: 16px;
+}
+
+.subcopy p {
+    color: #566072;
+    font-size: 14px;
+    margin-bottom: 0;
+}
+
+/* Footer */
+
+.footer {
+    -premailer-cellpadding: 0;
+    -premailer-cellspacing: 0;
+    -premailer-width: 570px;
+    margin: 0 auto;
+    padding: 0;
+    text-align: center;
+    width: 570px;
+}
+
+.footer .content-cell {
+    padding: 16px 32px 24px;
+}
+
+.footer p {
+    color: #566072;
+    font-size: 13px;
+    margin: 0;
+    text-align: center;
+}
+
+/* Panel and table (Markdown mail components; no notification uses them yet) */
+
+.panel {
+    border-left: 3px solid #1B2A4E;
+    margin: 0 0 16px;
+}
+
+.panel-content {
+    background-color: #F3F5F8;
+    padding: 16px;
+}
+
+.panel-content p {
+    color: #141A2B;
+}
+
+.panel-item p:last-of-type {
+    margin-bottom: 0;
+    padding-bottom: 0;
+}
+
+.table table {
+    -premailer-cellpadding: 0;
+    -premailer-cellspacing: 0;
+    -premailer-width: 100%;
+    margin: 0 0 16px;
+    width: 100%;
+}
+
+.table th {
+    border-bottom: 1px solid #DDE2E9;
+    color: #566072;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 0 0 8px;
+    text-align: left;
+}
+
+.table td {
+    color: #141A2B;
+    font-size: 15px;
+    line-height: 1.5;
+    padding: 8px 0;
+}
+
+/* Buttons: 15/600, radius 6, at least 44px high (12 + 21 + 12) */
+
+.action {
+    -premailer-cellpadding: 0;
+    -premailer-cellspacing: 0;
+    -premailer-width: 100%;
+    float: unset;
+    margin: 8px auto 24px;
+    padding: 0;
+    text-align: left;
+    width: 100%;
+}
+
+.button {
+    -webkit-text-size-adjust: none;
+    border-radius: 6px;
+    color: #FFFFFF;
+    display: inline-block;
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 21px;
+    overflow: hidden;
+    text-align: center;
+    text-decoration: none;
+}
+
+.button-blue,
+.button-primary {
+    background-color: #1B2A4E;
+    border-bottom: 12px solid #1B2A4E;
+    border-left: 20px solid #1B2A4E;
+    border-right: 20px solid #1B2A4E;
+    border-top: 12px solid #1B2A4E;
+}
+
+.button-green,
+.button-success {
+    background-color: #1B6B45;
+    border-bottom: 12px solid #1B6B45;
+    border-left: 20px solid #1B6B45;
+    border-right: 20px solid #1B6B45;
+    border-top: 12px solid #1B6B45;
+}
+
+.button-red,
+.button-error {
+    background-color: #B42318;
+    border-bottom: 12px solid #B42318;
+    border-left: 20px solid #B42318;
+    border-right: 20px solid #B42318;
+    border-top: 12px solid #B42318;
+}
+
+/* Utilities */
+
+.break-all {
+    color: #141A2B;
+    word-break: break-all;
+}
+
+/* Inbox preview line: read by the mail client's list, not shown in the opened mail */
+
+.preheader {
+    display: none;
+    max-height: 0;
+    max-width: 0;
+    mso-hide: all;
+    opacity: 0;
+    overflow: hidden;
+}

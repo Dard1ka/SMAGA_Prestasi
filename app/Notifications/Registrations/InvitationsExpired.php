@@ -1,0 +1,61 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Notifications\Registrations;
+
+use App\Models\Registration;
+use App\Notifications\Support\MailGreeting;
+use App\Notifications\Support\PlainMailMessage;
+use Illuminate\Notifications\Messages\MailMessage;
+
+/**
+ * To the ketua when unanswered team invitations expired at the registration deadline (B3, backlog #9).
+ * `ready`: the remaining team (≥ 2, all confirmed) went on to approval (Kepala Sekolah or Tata Usaha, D-150); otherwise the team is
+ * too small (D-36) and the ketua should cancel the registration.
+ */
+class InvitationsExpired extends RegistrationNotification
+{
+    public function __construct(Registration $registration, public int $expired, public bool $ready, public int $team)
+    {
+        parent::__construct($registration);
+    }
+
+    public function toMail(object $notifiable): MailMessage
+    {
+        return (new PlainMailMessage)
+            ->subject(($this->ready ? 'Tim diteruskan untuk persetujuan: ' : 'Tim kurang anggota: ').$this->competitionName())
+            ->greeting(MailGreeting::student($notifiable))
+            ->line($this->message())
+            ->action('Lihat pendaftaran', $this->url());
+    }
+
+    /** @return array<string, mixed> */
+    public function toArray(object $notifiable): array
+    {
+        return [
+            'type' => 'registration.invitations_expired',
+            'registration_id' => $this->registration->getKey(),
+            'title' => $this->ready ? 'Tim diteruskan untuk persetujuan' : 'Tim kurang anggota',
+            'message' => $this->message(),
+            'url' => $this->url(),
+            'ready' => $this->ready,
+        ];
+    }
+
+    public function message(): string
+    {
+        // D-148: a team resumed late had its own three days (answer_until), not the registration deadline.
+        $until = $this->registration->answer_until !== null ? 'batas jawab' : 'batas pendaftaran';
+        $what = $this->expired.' undangan tim '.$this->competitionName().' tidak dijawab sampai '.$until.' dan sudah tidak berlaku.';
+
+        return $this->ready
+            ? $what.' Tim '.$this->team.' orang diteruskan untuk persetujuan.'
+            : $what.' Tim kurang dari 2 orang, jadi pendaftaran tidak bisa diteruskan. Batalkan pendaftaran ini di Lomba saya.';
+    }
+
+    private function url(): string
+    {
+        return self::link([['siswa.lomba-saya.show', ['registration' => $this->registration->getKey()]], 'siswa.lomba-saya.index']);
+    }
+}

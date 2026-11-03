@@ -1,0 +1,574 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Surat tugas · Tata Usaha</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Urbanist:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F4F5FB;font-family:"Plus Jakarta Sans",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;color:#151A33;-webkit-font-smoothing:antialiased}
+*{box-sizing:border-box}
+a{color:#3148D6}a:hover{color:#2638B0}
+h1,h2,h3,.display{font-family:"Urbanist","Plus Jakarta Sans",system-ui,sans-serif;letter-spacing:-0.01em}
+.page{background:radial-gradient(900px 320px at 88% -8%,#ECE8FF 0%,rgba(236,232,255,0) 70%),radial-gradient(760px 300px at 28% -14%,#E2F0FF 0%,rgba(226,240,255,0) 70%),#F4F5FB}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:44px;padding:0 18px;border-radius:12px;font:600 15px/1 "Plus Jakarta Sans",system-ui,sans-serif;border:1px solid transparent;cursor:pointer;text-decoration:none;white-space:nowrap}
+.btn-primary{background:#3148D6;color:#FFFFFF;box-shadow:0 8px 18px -10px rgba(49,72,214,.65)}
+.btn-primary:hover{background:#2638B0;color:#FFFFFF}
+.btn-quiet{background:#FFFFFF;color:#151A33;border-color:#DCDFEC}
+.btn-quiet:hover{background:#F4F5FB;color:#151A33}
+.btn-soft{background:#ECEFFF;color:#2A3CB8}
+.btn-soft:hover{background:#DFE4FF;color:#2A3CB8}
+.btn-danger{background:#FFFFFF;color:#B42318;border-color:#F3C4BE}
+.btn-danger:hover{background:#FDECEA;color:#B42318}
+.btn-sm{height:36px;padding:0 14px;font-size:14px;border-radius:10px}
+.btn:focus-visible,.nav:focus-visible,.input:focus-visible,.icon-btn:focus-visible,.tab:focus-visible,.pick:focus-visible{outline:3px solid #A9B6F5;outline-offset:2px}
+.icon-btn{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:12px;border:1px solid #E7E9F3;background:#FFFFFF;color:#4A5068;cursor:pointer;position:relative;text-decoration:none}
+.icon-btn:hover{background:#F4F5FB;color:#151A33}
+.dot{position:absolute;top:8px;right:9px;width:8px;height:8px;border-radius:999px;background:#3148D6;border:2px solid #FFFFFF}
+.card{background:#FFFFFF;border:1px solid #E7E9F3;border-radius:20px;box-shadow:0 1px 2px rgba(20,24,60,.04),0 10px 28px -18px rgba(20,24,60,.18)}
+.chip{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 10px;border-radius:999px;font-size:12.5px;font-weight:600;white-space:nowrap}
+.c-blue{background:#ECEFFF;color:#2A3CB8}
+.c-green{background:#E4F5EA;color:#1B6B45}
+.c-orange{background:#FFEEDD;color:#9A3F00}
+.c-red{background:#FDECEA;color:#B42318}
+.c-gray{background:#EEF0F6;color:#4A5068}
+.c-gold{background:#FFF3D1;color:#6B4E00}
+.c-glass{background:rgba(255,255,255,.82);color:#151A33}
+.b-sains{background:#E6F0FF;color:#1D56AD}
+.b-riset{background:#F0EBFF;color:#5534B8}
+.b-seni{background:#FDE8F0;color:#A61F54}
+.b-olahraga{background:#E0F4F8;color:#0B6577}
+.cover-sains{background:linear-gradient(135deg,#DCE9FF,#C3D8FF);color:#1D56AD}
+.cover-riset{background:linear-gradient(135deg,#EEE7FF,#D9CCFF);color:#5534B8}
+.cover-seni{background:linear-gradient(135deg,#FFE6EF,#FFCFE0);color:#A61F54}
+.cover-olahraga{background:linear-gradient(135deg,#DDF4F8,#BFE8F0);color:#0B6577}
+.label{font-size:13px;font-weight:600;color:#4A5068}
+.input{height:46px;width:100%;border:1px solid #DCDFEC;border-radius:12px;padding:0 14px;font:500 15px "Plus Jakarta Sans",system-ui,sans-serif;color:#151A33;background:#FFFFFF}
+.input::placeholder{color:#8A90A6}
+textarea.input{height:auto;padding:12px 14px;line-height:1.5;resize:vertical}
+.nav{display:flex;align-items:center;gap:12px;height:44px;padding:0 14px;border-radius:12px;color:#4A5068;text-decoration:none;font-size:14.5px;font-weight:600}
+.nav:hover{background:#F1F2FA;color:#151A33}
+.nav-on{background:#3148D6;color:#FFFFFF;box-shadow:0 8px 18px -10px rgba(49,72,214,.7)}
+.nav-on:hover{background:#2638B0;color:#FFFFFF}
+.nav-sec{font-size:11.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#8A90A6;padding:8px 14px 2px}
+.badge{margin-left:auto;min-width:22px;height:22px;padding:0 7px;border-radius:999px;background:#ECEFFF;color:#2A3CB8;font-size:12px;font-weight:700;display:inline-flex;align-items:center;justify-content:center}
+.nav-on .badge{background:#FFFFFF;color:#2A3CB8}
+.avatar{display:inline-flex;align-items:center;justify-content:center;border-radius:999px;background:#ECEFFF;color:#2A3CB8;font-weight:700;flex-shrink:0}
+.stack{display:flex}.stack .avatar{border:2px solid #FFFFFF;margin-left:-8px}.stack .avatar:first-child{margin-left:0}
+.pick{cursor:pointer;border:1px solid #DCDFEC;background:#FFFFFF;border-radius:14px;font:600 14.5px "Plus Jakarta Sans",system-ui,sans-serif;color:#151A33}
+.pick-on{border:2px solid #3148D6;background:#ECEFFF;color:#2A3CB8}
+.tabbar{position:absolute;left:0;right:0;bottom:0;height:80px;background:#FFFFFF;border-top:1px solid #E7E9F3;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));padding:8px 6px 16px}
+.tab{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:52px;border-radius:14px;color:#666C84;text-decoration:none;font-size:11.5px;font-weight:600}
+.tab-ic{width:48px;height:28px;border-radius:999px;display:flex;align-items:center;justify-content:center}
+.tab-on{color:#3148D6}.tab-on .tab-ic{background:#ECEFFF}
+.muted{color:#666C84}
+.num{font-variant-numeric:tabular-nums}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.qcard{width:100%;height:64px;padding:0 14px;display:flex;align-items:center;gap:12px;text-align:left;box-shadow:0 1px 2px rgba(20,24,60,.04)}
+.qcard:hover{border-color:#A9B6F5}
+.qtile{width:38px;height:38px;border-radius:12px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
+.fld{display:flex;flex-direction:column;gap:6px;min-width:0}
+.fld .label{line-height:17px}
+.in42{height:42px;font-size:14.5px;padding:0 12px}
+.compose{display:flex;align-items:stretch;height:44px;border:1px solid #DCDFEC;border-radius:12px;background:#FFFFFF;overflow:hidden}
+.compose:focus-within{outline:3px solid #A9B6F5;outline-offset:2px;border-color:#3148D6}
+.compose-err{border-color:#B42318;box-shadow:0 0 0 1px #B42318}
+.compose .affix{display:inline-flex;align-items:center;padding:0 12px;background:#F4F5FB;color:#4A5068;font-size:14.5px;font-weight:600;white-space:nowrap}
+.compose .affix:first-child{border-right:1px solid #E7E9F3}
+.compose .affix:last-child{border-left:1px solid #E7E9F3}
+.compose input{flex:1;min-width:0;border:0;outline:0;padding:0 12px;font:700 15px "Plus Jakarta Sans",system-ui,sans-serif;color:#151A33;background:transparent}
+.compose input::placeholder{color:#8A90A6;font-weight:500}
+.compose input:disabled{color:#4A5068}
+.input:disabled{background:#F4F5FB;color:#4A5068}
+.help{margin:0;display:flex;align-items:center;gap:6px;font-size:12.5px;line-height:16px;font-weight:500;color:#666C84}
+.help-err{color:#B42318;font-weight:600}
+.grp{border-top:1px solid #E7E9F3;padding-top:12px;display:flex;flex-direction:column;gap:8px}
+.grp-h{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:13px;line-height:17px}
+.seg{height:36px;padding:0 10px;border:0;border-radius:9px;background:transparent;color:#4A5068;font:600 12.5px/1 "Plus Jakarta Sans",system-ui,sans-serif;cursor:pointer;white-space:nowrap}
+.seg:hover{background:#F4F5FB;color:#151A33}
+.seg-on{background:#3148D6;color:#FFFFFF}
+.seg-on:hover{background:#2638B0;color:#FFFFFF}
+.seg:focus-visible{outline:3px solid #A9B6F5;outline-offset:2px}
+.frow{display:flex;align-items:center;gap:12px;height:44px;padding:0 4px 0 6px;border:1px solid #E7E9F3;border-radius:12px}
+.btn[disabled],.btn[disabled]:hover{background:#E3E6F2;color:#666C84;box-shadow:none;cursor:not-allowed}
+.paper{position:relative;width:560px;height:792px;flex-shrink:0;align-self:center;background:#FFFFFF;border-radius:4px;box-shadow:0 1px 2px rgba(20,24,60,.08),0 18px 38px -20px rgba(20,24,60,.38);overflow:hidden;padding:34px 44px 28px;font-family:"Times New Roman",Times,serif;font-size:12px;line-height:1.45;color:#151A33;display:flex;flex-direction:column}
+.wm{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) rotate(-32deg);font:800 88px/1 "Urbanist",sans-serif;letter-spacing:.14em;color:rgba(49,72,214,.07);white-space:nowrap;pointer-events:none;user-select:none}
+.kop{display:flex;align-items:center;gap:8px}
+.logo-ph{width:50px;height:60px;flex-shrink:0;border:1px dashed #8A90A6;border-radius:6px;display:flex;align-items:center;justify-content:center;text-align:center;font:600 11px/1.2 "Plus Jakarta Sans",sans-serif;color:#666C84;padding:4px}
+.rule2{height:5px;border-top:2.5px solid #151A33;border-bottom:1px solid #151A33;margin-top:8px}
+.kv{display:grid;grid-template-columns:62px 12px minmax(0,1fr)}
+.kv2{display:grid;grid-template-columns:86px 12px minmax(0,1fr)}
+.ol{display:grid;grid-template-columns:16px minmax(0,1fr)}
+.slot{background:#ECEFFF;color:#2A3CB8;border-radius:3px;padding:0 3px;font-weight:700}
+.slot-empty{display:inline-block;min-width:44px;padding:0 6px;border-radius:4px;background:#FFEEDD;color:#9A3F00;border:1px dashed #9A3F00;font:700 11px/15px "Plus Jakarta Sans",sans-serif;text-align:center;vertical-align:1px}
+.lt{border:1px solid #151A33;border-bottom:0;font-size:11.5px}
+.lt-row{display:grid;grid-template-columns:34px minmax(0,1fr) 100px 64px;border-bottom:1px solid #151A33}
+.lt-row5{grid-template-columns:28px minmax(0,1fr) 84px 96px 58px}
+.lt-row > span{padding:3px 7px;border-left:1px solid #151A33}
+.lt-row > span:first-child{border-left:0;text-align:center}
+.lt-head{font-weight:700;text-align:center;background:#F4F5FB}
+.ttd{width:150px;height:56px;border:1.5px dashed #8A90A6;border-radius:6px;display:flex;align-items:center;justify-content:center;gap:6px;font:600 11px/1.2 "Plus Jakarta Sans",sans-serif;color:#666C84;margin:4px 0}
+</style>
+</helmet>
+<div class="page" style="width:1440px;height:1100px;display:flex;overflow:hidden">
+  <aside style="width:264px;flex-shrink:0;background:#FFFFFF;border-right:1px solid #E7E9F3;padding:22px 16px;display:flex;flex-direction:column;gap:18px">
+    <div style="display:flex;align-items:center;gap:12px;padding:0 4px">
+      <span role="img" aria-label="Logo SMAGA Talent Hub" style="width:40px;height:40px;border-radius:12px;background:#3148D6;color:#FFFFFF;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 4 6v6c0 4.5 3.4 8.2 8 9 4.6-.8 8-4.5 8-9V6z"></path><path d="m8.5 12 2.5 2.5 4.5-5"></path></svg></span>
+      <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
+        <span class="display" style="font-size:17px;font-weight:800;line-height:1.15">SMAGA Talent Hub</span>
+        <span class="muted" style="font-size:12px;line-height:1.3">SMA Negeri 3 Semarang</span>
+      </div>
+    </div>
+    <nav aria-label="Menu utama" style="display:flex;flex-direction:column;gap:4px">
+      <div class="nav-sec">Menu</div>
+      <a class="nav nav-on" href="TU-Surat-Tugas.dc.html" aria-current="page"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="m3 7 9 6 9-6"></path></svg>Antrean surat<span class="badge num">{{ queueCount }}</span></a>
+      <a class="nav" href="#"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>Arsip surat</a>
+      <a class="nav" href="#"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"></path><path d="M14 3v5h5"></path></svg>Template surat</a>
+    </nav>
+    <div style="margin-top:auto;padding:12px;border-radius:16px;background:#F4F5FB;display:flex;align-items:center;gap:10px">
+      <span class="avatar" style="width:38px;height:38px;font-size:14px" aria-hidden="true">SH</span>
+      <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
+        <span style="font-size:14px;font-weight:700;line-height:1.3">Ibu Sri Handayani</span>
+        <span class="muted" style="font-size:12.5px;line-height:1.3">Tata Usaha</span>
+      </div>
+    </div>
+  </aside>
+
+  <main style="flex:1;min-width:0;padding:26px 36px;display:flex;flex-direction:column;gap:22px">
+    <header style="display:flex;align-items:center;justify-content:space-between;gap:24px">
+      <div style="display:flex;flex-direction:column;gap:4px;min-width:0">
+        <h1 style="margin:0;font-size:30px;font-weight:800;line-height:1.15">Surat tugas</h1>
+        <p class="muted" style="margin:0;font-size:15px">Pendaftaran yang sudah disetujui Kepala Sekolah.</p>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;flex-shrink:0">
+        <div style="position:relative;width:300px">
+          <label class="sr-only" for="cari-atas">Cari surat atau siswa</label>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="position:absolute;left:14px;top:13px;color:#8A90A6"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+          <input class="input" id="cari-atas" type="search" placeholder="Cari surat atau siswa" style="padding-left:44px">
+        </div>
+        <button class="icon-btn" type="button" aria-label="Notifikasi, 2 baru"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 16v-5a6 6 0 1 1 12 0v5l1.5 2h-15z"></path><path d="M10 20a2 2 0 0 0 4 0"></path></svg><span class="dot"></span></button>
+        <span class="avatar" role="img" aria-label="Ibu Sri Handayani" style="width:40px;height:40px;font-size:14px">SH</span>
+      </div>
+    </header>
+
+    <div role="group" aria-label="Antrean surat" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px">
+      <sc-for list="{{ queue }}" as="q" hint-placeholder-count="3">
+        <button type="button" class="{{ q.cls }}" aria-pressed="{{ q.on }}" onClick="{{ q.pick }}">
+          <span class="{{ q.tileCls }}">
+            <sc-if value="{{ q.isSeni }}" hint-placeholder-val="{{ false }}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a9 9 0 1 0 0 18c1.1 0 1.5-.8 1.5-1.6 0-1.3-1.2-1.6-1.2-2.9 0-.9.7-1.5 1.7-1.5H17a4 4 0 0 0 4-4c0-4.4-4-8-9-8z"></path><circle cx="7.5" cy="11" r="1"></circle><circle cx="10" cy="7" r="1"></circle><circle cx="15" cy="7.5" r="1"></circle></svg></sc-if>
+            <sc-if value="{{ q.isRiset }}" hint-placeholder-val="{{ true }}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6M10 21h4"></path><path d="M12 3a6 6 0 0 0-3.5 10.9c.6.4 1 1.1 1 1.8V16h5v-.3c0-.7.4-1.4 1-1.8A6 6 0 0 0 12 3z"></path></svg></sc-if>
+            <sc-if value="{{ q.isSains }}" hint-placeholder-val="{{ false }}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3h6M10 3v6l-5 9a2 2 0 0 0 1.7 3h10.6a2 2 0 0 0 1.7-3l-5-9V3"></path><path d="M7.5 15h9"></path></svg></sc-if>
+          </span>
+          <span style="display:flex;flex-direction:column;gap:3px;min-width:0;flex:1">
+            <span style="display:flex;align-items:baseline;gap:8px;min-width:0">
+              <span style="font-size:15px;font-weight:700;line-height:20px;white-space:nowrap">{{ q.title }}</span>
+              <span class="muted" style="font-size:13px;font-weight:500;line-height:20px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ q.meta }}</span>
+            </span>
+            <span style="display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;line-height:16px;color:#1B6B45"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="m8 12 3 3 5-6"></path></svg>{{ q.status }}</span>
+          </span>
+        </button>
+      </sc-for>
+    </div>
+
+    <div style="display:flex;gap:20px;flex:1;min-height:0">
+      <div style="width:494px;flex-shrink:0;display:flex;flex-direction:column;gap:16px">
+
+        <section class="card" aria-labelledby="s1-judul" style="padding:20px;display:flex;flex-direction:column;gap:12px">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;height:26px">
+            <h2 id="s1-judul" style="margin:0;font-size:18px;font-weight:700;line-height:24px">1. Isi nomor surat</h2>
+            <sc-if value="{{ lengkap }}" hint-placeholder-val="{{ false }}"><span class="chip c-green"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"></path></svg>Nomor lengkap</span></sc-if>
+            <sc-if value="{{ belumLengkap }}" hint-placeholder-val="{{ true }}"><span class="chip c-orange"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg>Wajib sebelum membuat PDF</span></sc-if>
+          </div>
+
+          <div class="fld">
+            <label class="label" for="no-siswa">Nomor surat siswa</label>
+            <div class="{{ siswaCls }}">
+              <span class="affix num">400.3.8/</span>
+              <input id="no-siswa" class="num" type="text" placeholder="313" value="{{ nomorSiswa }}" onChange="{{ onNomorSiswa }}" disabled="{{ locked }}" aria-invalid="{{ siswaDup }}" aria-describedby="no-siswa-help">
+              <span class="affix num">/MRD/X/2026</span>
+            </div>
+            <sc-if value="{{ siswaDup }}" hint-placeholder-val="{{ false }}"><p id="no-siswa-help" class="help help-err"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 11v5M12 8h.01"></path></svg>Nomor ini sudah dipakai.</p></sc-if>
+            <sc-if value="{{ siswaOk }}" hint-placeholder-val="{{ true }}"><p id="no-siswa-help" class="help num">Terakhir dipakai: 312</p></sc-if>
+          </div>
+
+          <div style="display:flex;gap:12px;align-items:flex-start">
+            <div class="fld" style="width:262px;flex-shrink:0">
+              <label class="label" for="no-guru">Nomor surat guru pendamping</label>
+              <div class="{{ guruCls }}">
+                <span class="affix num">400.3.8.6/</span>
+                <input id="no-guru" class="num" type="text" placeholder="1681" value="{{ nomorGuru }}" onChange="{{ onNomorGuru }}" disabled="{{ locked }}" aria-invalid="{{ guruDup }}" aria-describedby="no-guru-help">
+                <span class="affix num">/2026</span>
+              </div>
+              <sc-if value="{{ guruDup }}" hint-placeholder-val="{{ false }}"><p id="no-guru-help" class="help help-err"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 11v5M12 8h.01"></path></svg>Nomor ini sudah dipakai.</p></sc-if>
+              <sc-if value="{{ guruOk }}" hint-placeholder-val="{{ true }}"><p id="no-guru-help" class="help num">Terakhir dipakai: 1680</p></sc-if>
+            </div>
+            <div class="fld" style="flex:1">
+              <label class="label" for="tgl-surat">Tanggal surat</label>
+              <input class="input num" id="tgl-surat" type="date" value="{{ tglSurat }}" onChange="{{ onTglSurat }}" disabled="{{ locked }}" style="height:44px;font-size:14.5px;padding:0 12px">
+            </div>
+          </div>
+
+          <div class="grp">
+            <div class="grp-h"><span style="font-weight:700">Dasar</span><span class="muted" style="font-size:12.5px">Surat undangan dari {{ penyelenggara }}</span></div>
+            <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px">
+              <div class="fld">
+                <label class="label" for="und-no">Nomor surat undangan</label>
+                <input class="input in42" id="und-no" type="text" value="{{ undNo }}" onChange="{{ onUndNo }}" disabled="{{ locked }}">
+              </div>
+              <div class="fld">
+                <label class="label" for="und-tgl">Tanggal surat undangan</label>
+                <input class="input in42 num" id="und-tgl" type="date" value="{{ undTgl }}" onChange="{{ onUndTgl }}" disabled="{{ locked }}">
+              </div>
+            </div>
+          </div>
+
+          <div class="grp">
+            <div class="grp-h"><span style="font-weight:700">Pelaksanaan</span><span class="muted" style="font-size:12.5px">Diisi dari data lomba</span></div>
+            <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 12px">
+              <div class="fld">
+                <label class="label" for="pl-hari">Hari, tanggal</label>
+                <input class="input in42" id="pl-hari" type="text" value="{{ hariTgl }}" onChange="{{ onHariTgl }}" disabled="{{ locked }}">
+              </div>
+              <div class="fld">
+                <label class="label" for="pl-pukul">Pukul</label>
+                <input class="input in42" id="pl-pukul" type="text" value="{{ pukul }}" onChange="{{ onPukul }}" disabled="{{ locked }}">
+              </div>
+              <div class="fld" style="grid-column:1 / -1">
+                <label class="label" for="pl-tempat">Tempat</label>
+                <input class="input in42" id="pl-tempat" type="text" value="{{ tempat }}" onChange="{{ onTempat }}" disabled="{{ locked }}">
+              </div>
+            </div>
+          </div>
+
+          <div style="display:flex;align-items:center;gap:12px;height:48px;padding:0 8px 0 6px;border-radius:14px;background:#F4F5FB">
+            <span aria-hidden="true" style="width:50px;height:36px;flex-shrink:0;border:1.5px dashed #8A90A6;border-radius:8px;background:#FFFFFF;display:inline-flex;align-items:center;justify-content:center;color:#666C84"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"></rect><circle cx="9" cy="10" r="2"></circle><path d="m21 17-5-5-9 8"></path></svg></span>
+            <span style="display:flex;flex-direction:column;gap:1px;min-width:0;flex:1">
+              <span style="font-size:13.5px;font-weight:700;line-height:17px">ttd-stempel-kepsek.png</span>
+              <span class="muted" style="font-size:12.5px;line-height:16px">Dipasang otomatis di semua surat</span>
+            </span>
+            <a href="#" style="display:inline-flex;align-items:center;height:36px;padding:0 6px;border-radius:8px;font-size:13.5px;font-weight:600;white-space:nowrap">Ganti di Pengaturan</a>
+          </div>
+        </section>
+
+        <section class="card" aria-labelledby="s3-judul" style="margin-top:auto;padding:18px 20px;display:flex;flex-direction:column;gap:12px">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;height:26px">
+            <h2 id="s3-judul" style="margin:0;font-size:18px;font-weight:700;line-height:24px">3. Buat PDF</h2>
+            <sc-if value="{{ done }}" hint-placeholder-val="{{ false }}"><span class="chip c-green"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"></path></svg>2 PDF siap</span></sc-if>
+          </div>
+          <sc-if value="{{ notDone }}" hint-placeholder-val="{{ true }}">
+            <div style="display:flex;align-items:center;gap:14px">
+              <button type="button" class="btn btn-primary" disabled="{{ cannotGenerate }}" aria-describedby="s3-help" onClick="{{ generate }}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"></path><path d="M14 3v5h5"></path></svg>Buat 2 PDF</button>
+              <p id="s3-help" class="{{ s3HelpCls }}" style="font-size:13px;line-height:18px">{{ s3Help }}</p>
+            </div>
+          </sc-if>
+          <sc-if value="{{ done }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;flex-direction:column;gap:12px">
+              <ul aria-label="File PDF" style="list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px">
+                <sc-for list="{{ files }}" as="f" hint-placeholder-count="2">
+                  <li class="frow">
+                    <span aria-hidden="true" style="width:32px;height:32px;border-radius:10px;background:#ECEFFF;color:#2A3CB8;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"></path><path d="M14 3v5h5"></path></svg></span>
+                    <span style="display:flex;flex-direction:column;gap:1px;min-width:0;flex:1">
+                      <span style="font-size:13px;font-weight:600;line-height:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ f.name }}</span>
+                      <span class="muted" style="font-size:12px;line-height:15px">{{ f.meta }}</span>
+                    </span>
+                    <button type="button" class="btn btn-quiet btn-sm" aria-label="Unduh {{ f.name }}" style="padding:0 12px;gap:6px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v12M7 11l5 5 5-5M4 20h16"></path></svg>Unduh</button>
+                  </li>
+                </sc-for>
+              </ul>
+              <div style="display:flex;align-items:center;gap:14px;min-height:44px">
+                <sc-if value="{{ notSent }}" hint-placeholder-val="{{ true }}"><button type="button" class="btn btn-primary" onClick="{{ send }}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="m3 7 9 6 9-6"></path></svg>Kirim ke siswa dan guru</button></sc-if>
+                <sc-if value="{{ sent }}" hint-placeholder-val="{{ false }}"><span class="chip c-green" role="status" style="height:36px;padding:0 14px;font-size:13.5px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"></path></svg>{{ sentText }}</span></sc-if>
+                <p class="muted" style="margin:0;font-size:12.5px;line-height:17px">{{ sendNote }}</p>
+              </div>
+            </div>
+          </sc-if>
+        </section>
+      </div>
+
+      <section class="card" aria-labelledby="s2-judul" style="width:590px;flex-shrink:0;padding:14px;background:#EEF0F6;display:flex;flex-direction:column;gap:12px">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;height:44px;padding-left:4px">
+          <h2 id="s2-judul" style="margin:0;font-size:18px;font-weight:700;line-height:24px">2. Pratinjau</h2>
+          <div role="tablist" aria-label="Jenis surat" style="display:flex;gap:4px;padding:3px;background:#FFFFFF;border:1px solid #E7E9F3;border-radius:12px">
+            <button type="button" role="tab" id="tab-siswa" class="{{ tabSiswaCls }}" aria-selected="{{ isSiswa }}" aria-controls="pratinjau-surat" onClick="{{ showSiswa }}">Surat siswa ({{ tabSiswaNote }})</button>
+            <button type="button" role="tab" id="tab-guru" class="{{ tabGuruCls }}" aria-selected="{{ isGuru }}" aria-controls="pratinjau-surat" onClick="{{ showGuru }}">Surat guru pendamping</button>
+          </div>
+        </div>
+
+        <div id="pratinjau-surat" class="paper" role="tabpanel" aria-labelledby="{{ panelLabel }}">
+          <div class="wm" aria-hidden="true">PRATINJAU</div>
+          <div class="kop">
+            <div class="logo-ph">Logo Pemprov</div>
+            <div style="flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;text-align:center;gap:1px">
+              <span style="font-size:12.5px;line-height:1.3">PEMERINTAH PROVINSI JAWA TENGAH</span>
+              <span style="font-size:12.5px;line-height:1.3">DINAS PENDIDIKAN</span>
+              <span style="font-size:13px;line-height:1.3;font-weight:700">SEKOLAH MENENGAH ATAS NEGERI 3 SEMARANG</span>
+              <span style="font-size:11px;line-height:1.3">Jalan Pemuda Nomor 149, Kota Semarang, Jawa Tengah 50132</span>
+            </div>
+            <div class="logo-ph">Logo sekolah</div>
+          </div>
+          <div class="rule2"></div>
+
+          <sc-if value="{{ isSiswa }}" hint-placeholder-val="{{ true }}">
+            <div style="display:flex;flex-direction:column">
+              <div style="margin-top:16px;display:flex;flex-direction:column;align-items:center;gap:2px">
+                <span style="font-size:14px;font-weight:700;letter-spacing:.42em;word-spacing:.5em;padding-left:.42em;text-decoration:underline">SURAT TUGAS</span>
+                <span class="num">Nomor : 400.3.8/<sc-if value="{{ siswaFilled }}" hint-placeholder-val="{{ false }}"><span class="slot">{{ nomorSiswa }}</span></sc-if><sc-if value="{{ siswaEmpty }}" hint-placeholder-val="{{ true }}"><span class="slot-empty">nomor</span></sc-if>/MRD/X/2026</span>
+              </div>
+              <div class="kv" style="margin-top:14px">
+                <span>Dasar</span><span>:</span>
+                <div style="display:flex;flex-direction:column">
+                  <span>Surat dari {{ penyelenggara }}</span>
+                  <div class="kv" style="grid-template-columns:54px 12px minmax(0,1fr)">
+                    <span>Nomor</span><span>:</span><span>{{ undNoText }}</span>
+                    <span>Tanggal</span><span>:</span><span>{{ undTglText }}</span>
+                  </div>
+                </div>
+              </div>
+              <p style="margin:12px 0 6px">Kepala SMA Negeri 3 Semarang memberikan tugas kepada :</p>
+              <div class="lt" role="table" aria-label="Siswa yang ditugaskan">
+                <div class="lt-row lt-head" role="row"><span role="columnheader">NO</span><span role="columnheader">NAMA MURID</span><span role="columnheader">NIS</span><span role="columnheader">KELAS</span></div>
+                <sc-for list="{{ students }}" as="st" hint-placeholder-count="3">
+                  <div class="lt-row" role="row"><span role="cell">{{ st.no }}</span><span role="cell">{{ st.nama }}</span><span role="cell" class="num" style="text-align:center">{{ st.nis }}</span><span role="cell" style="text-align:center">{{ st.kelas }}</span></div>
+                </sc-for>
+              </div>
+              <p style="margin:12px 0 4px">untuk mengikuti Lomba {{ lomba }}, pada :</p>
+              <div class="kv2" style="padding-left:24px">
+                <span>Hari / Tanggal</span><span>:</span><span>{{ hariTanggalSiswa }}</span>
+                <span>Pukul</span><span>:</span><span>{{ pukulText }}</span>
+                <span>Tempat</span><span>:</span><span>{{ tempatText }}</span>
+              </div>
+              <p style="margin:12px 0 0;text-align:justify;text-indent:24px">Demikian surat tugas ini dibuat dan diberikan kepada yang bersangkutan untuk dapat dilaksanakan sebagaimana mestinya dengan penuh tanggung jawab.</p>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ isGuru }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;flex-direction:column">
+              <div style="margin-top:16px;display:flex;flex-direction:column;align-items:center;gap:2px">
+                <span style="font-size:14px;font-weight:700;letter-spacing:.06em;text-decoration:underline">SURAT PERINTAH TUGAS</span>
+                <span class="num">Nomor 400.3.8.6/<sc-if value="{{ guruFilled }}" hint-placeholder-val="{{ false }}"><span class="slot">{{ nomorGuru }}</span></sc-if><sc-if value="{{ guruEmpty }}" hint-placeholder-val="{{ true }}"><span class="slot-empty">nomor</span></sc-if>/2026</span>
+              </div>
+              <div class="kv" style="margin-top:14px">
+                <span>Dasar</span><span>:</span>
+                <div class="ol">
+                  <span>1.</span><span>Program kerja SMA Negeri 3 Semarang tahun pelajaran 2026/2027.</span>
+                  <span>2.</span><span>{{ guruDasar }}</span>
+                </div>
+              </div>
+              <p style="margin:12px 0;text-align:center;font-weight:700;letter-spacing:.08em">MEMERINTAHKAN:</p>
+              <div class="kv">
+                <span>Kepada</span><span>:</span><span>Nama/Pangkat/Gol/NIP/Jabatan : Terlampir</span>
+              </div>
+              <div class="kv" style="margin-top:8px">
+                <span>Untuk</span><span>:</span>
+                <div class="ol">
+                  <span>1.</span><span style="text-align:justify">{{ guruTugas }}</span>
+                  <span>2.</span><span>Melaporkan hasil pelaksanaan tugas kepada pejabat pemberi tugas.</span>
+                  <span>3.</span><span>Perintah ini dilaksanakan dengan penuh tanggung jawab.</span>
+                </div>
+              </div>
+            </div>
+          </sc-if>
+
+          <div style="align-self:flex-end;width:200px;margin-top:18px;display:flex;flex-direction:column">
+            <span>Semarang, {{ tglSuratText }}</span>
+            <span>Kepala Sekolah</span>
+            <div class="ttd"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"></rect><circle cx="9" cy="10" r="2"></circle><path d="m21 17-5-5-9 8"></path></svg>Tanda tangan + stempel</div>
+            <span style="font-weight:700;text-decoration:underline">[Nama Kepala Sekolah]</span>
+            <span>[Pangkat]</span>
+            <span>NIP [NIP]</span>
+          </div>
+
+          <sc-if value="{{ isGuru }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;flex-direction:column">
+              <div style="display:flex;align-items:center;gap:8px;margin:14px -44px 10px;font:600 11px/1 'Plus Jakarta Sans',sans-serif;color:#8A90A6"><span style="flex:1;height:0;border-top:1px dashed #C9CDDD"></span>Halaman 2<span style="flex:1;height:0;border-top:1px dashed #C9CDDD"></span></div>
+              <span style="font-weight:700">Lampiran</span>
+              <span class="num">Surat Perintah Tugas Nomor 400.3.8.6/<sc-if value="{{ guruFilled }}" hint-placeholder-val="{{ false }}"><span class="slot">{{ nomorGuru }}</span></sc-if><sc-if value="{{ guruEmpty }}" hint-placeholder-val="{{ true }}"><span class="slot-empty">nomor</span></sc-if>/2026</span>
+              <div class="lt" role="table" aria-label="Guru pendamping" style="margin-top:6px">
+                <div class="lt-row lt-row5 lt-head" role="row"><span role="columnheader">No</span><span role="columnheader">Nama</span><span role="columnheader">Pangkat/Gol</span><span role="columnheader">NIP</span><span role="columnheader">Jabatan</span></div>
+                <div class="lt-row lt-row5" role="row"><span role="cell">1</span><span role="cell">{{ pembimbing }}</span><span role="cell">[Pangkat]</span><span role="cell">[NIP]</span><span role="cell">Guru</span></div>
+              </div>
+            </div>
+          </sc-if>
+        </div>
+      </section>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1100}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    const base = { nomorSiswa: '', nomorGuru: '', tglSurat: '2026-09-30', done: false, sent: false };
+    this.state = {
+      sel: 'nsif',
+      tab: 'siswa',
+      forms: {
+        fls3n: Object.assign({}, base, { undNo: '421.5/0917/2026', undTgl: '2026-09-10', hariTgl: 'Selasa, 27 Oktober 2026', pukul: '07.30 WIB s.d. selesai', tempat: 'Kota Semarang' }),
+        nsif: Object.assign({}, base, { undNo: '017/PAN-NSIF/IX/2026', undTgl: '2026-09-15', hariTgl: 'Sabtu, 7 November 2026', pukul: '07.00 WIB s.d. selesai', tempat: 'Daring' }),
+        osn: Object.assign({}, base, { undNo: '421.5/0884/2026', undTgl: '2026-09-08', hariTgl: 'Rabu, 14 Oktober 2026', pukul: '07.00 WIB s.d. selesai', tempat: 'Kota Semarang' })
+      }
+    };
+  }
+
+  queueData() {
+    return [
+      { id: 'fls3n', title: 'FLS3N Kota 2026', meta: 'Baca puisi · 1 siswa', bidang: 'seni', slug: 'fls3n-2026',
+        lomba: 'FLS3N Tingkat Kota Semarang 2026 cabang baca puisi', lombaSingkat: 'FLS3N Kota Semarang 2026',
+        penyelenggara: 'Puspresnas', pembimbing: 'Maya Anggraini, S.Sn.',
+        students: [{ nama: 'Citra Ayu Lestari', nis: '225226219', kelas: 'XI-2' }] },
+      { id: 'nsif', title: 'NSIF 2026', meta: 'Tim 3 siswa', bidang: 'riset', slug: 'nsif-2026',
+        lomba: 'National Science and Invention Fair (NSIF) 2026', lombaSingkat: 'NSIF 2026',
+        penyelenggara: '[nama penyelenggara swasta]', pembimbing: 'Hendra Kusuma, S.Pd., M.Si.',
+        students: [
+          { nama: 'Raka Pradipta', nis: '225226108', kelas: 'XII-2' },
+          { nama: 'Bima Satria Wicaksono', nis: '225226131', kelas: 'XII-7' },
+          { nama: 'Yoga Pratama', nis: '225226147', kelas: 'XII-5' }
+        ] },
+      { id: 'osn', title: 'OSN Kota 2026', meta: '1 siswa', bidang: 'sains', slug: 'osn-2026',
+        lomba: 'OSN Tingkat Kota Semarang 2026', lombaSingkat: 'OSN Kota Semarang 2026',
+        penyelenggara: 'Puspresnas', pembimbing: 'Hendra Kusuma, S.Pd., M.Si.',
+        students: [{ nama: 'Aurelia Maharani', nis: '226227031', kelas: 'X-3' }] }
+    ];
+  }
+
+  upd(patch) {
+    const sel = this.state.sel;
+    const forms = Object.assign({}, this.state.forms);
+    forms[sel] = Object.assign({}, forms[sel], patch);
+    this.setState({ forms: forms });
+  }
+
+  renderVals() {
+    const Q = this.queueData();
+    const s = this.state;
+    const item = Q.filter((q) => q.id === s.sel)[0] || Q[1];
+    const f = s.forms[item.id];
+    const BULAN = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+    const fmt = (iso) => {
+      const p = String(iso || '').split('-');
+      if (p.length !== 3 || !p[0]) return '';
+      const m = parseInt(p[1], 10);
+      const d = parseInt(p[2], 10);
+      if (!m || !d || m > 12) return '';
+      return d + ' ' + BULAN[m - 1] + ' ' + p[0];
+    };
+    const digits = (v) => String(v || '').replace(/[^0-9]/g, '').slice(0, 4);
+    const field = (k) => (e) => { const patch = { done: false }; patch[k] = e.target.value; this.upd(patch); };
+
+    const ns = f.nomorSiswa;
+    const ng = f.nomorGuru;
+    const siswaDup = ns === '312';
+    const guruDup = ng === '1680';
+    const ready = !!ns && !!ng && !siswaDup && !guruDup;
+
+    const ht = String(f.hariTgl || '').trim();
+    const ci = ht.indexOf(',');
+    const hari = ci > 0 ? ht.slice(0, ci).trim() : '';
+    const tanggal = ci > 0 ? ht.slice(ci + 1).trim() : ht;
+    const tempat = String(f.tempat || '').trim();
+    const daring = /^daring$/i.test(tempat);
+    const n = item.students.length;
+    const sentCount = Q.filter((q) => s.forms[q.id].sent).length;
+
+    let s3Help = 'Isi kedua nomor surat dulu.';
+    let s3Err = false;
+    if (siswaDup || guruDup) { s3Help = 'Ganti nomor yang sudah dipakai.'; s3Err = true; }
+    else if (ready) { s3Help = 'Tanda tangan dan stempel ikut terpasang.'; }
+
+    return {
+      queueCount: 3 - sentCount,
+      queue: Q.map((q) => {
+        const on = q.id === s.sel;
+        return {
+          title: q.title,
+          meta: q.meta,
+          on: on,
+          cls: on ? 'pick pick-on qcard' : 'pick qcard',
+          tileCls: 'qtile b-' + q.bidang,
+          isSeni: q.bidang === 'seni',
+          isRiset: q.bidang === 'riset',
+          isSains: q.bidang === 'sains',
+          status: s.forms[q.id].sent ? 'Surat terkirim · 30 Sep' : 'Disetujui Kepala Sekolah · 30 Sep',
+          pick: () => this.setState({ sel: q.id })
+        };
+      }),
+
+      nomorSiswa: ns,
+      nomorGuru: ng,
+      siswaCls: siswaDup ? 'compose compose-err' : 'compose',
+      guruCls: guruDup ? 'compose compose-err' : 'compose',
+      siswaDup: siswaDup,
+      siswaOk: !siswaDup,
+      guruDup: guruDup,
+      guruOk: !guruDup,
+      onNomorSiswa: (e) => this.upd({ nomorSiswa: digits(e.target.value), done: false }),
+      onNomorGuru: (e) => this.upd({ nomorGuru: digits(e.target.value), done: false }),
+      tglSurat: f.tglSurat,
+      undNo: f.undNo,
+      undTgl: f.undTgl,
+      hariTgl: f.hariTgl,
+      pukul: f.pukul,
+      tempat: f.tempat,
+      onTglSurat: field('tglSurat'),
+      onUndNo: field('undNo'),
+      onUndTgl: field('undTgl'),
+      onHariTgl: field('hariTgl'),
+      onPukul: field('pukul'),
+      onTempat: field('tempat'),
+      locked: !!f.sent,
+      lengkap: ready,
+      belumLengkap: !ready,
+      penyelenggara: item.penyelenggara,
+
+      isSiswa: s.tab === 'siswa',
+      isGuru: s.tab === 'guru',
+      tabSiswaCls: s.tab === 'siswa' ? 'seg seg-on' : 'seg',
+      tabGuruCls: s.tab === 'guru' ? 'seg seg-on' : 'seg',
+      panelLabel: s.tab === 'guru' ? 'tab-guru' : 'tab-siswa',
+      showSiswa: () => this.setState({ tab: 'siswa' }),
+      showGuru: () => this.setState({ tab: 'guru' }),
+      tabSiswaNote: '1 surat · ' + n + ' siswa',
+
+      siswaFilled: !!ns,
+      siswaEmpty: !ns,
+      guruFilled: !!ng,
+      guruEmpty: !ng,
+      lomba: item.lomba,
+      undNoText: f.undNo || '[nomor surat undangan]',
+      undTglText: fmt(f.undTgl) || '[tanggal surat undangan]',
+      hariTanggalSiswa: hari ? hari + ' / ' + tanggal : (tanggal || '[hari / tanggal]'),
+      pukulText: f.pukul || '[pukul]',
+      tempatText: tempat || '[tempat]',
+      guruDasar: 'Surat dari ' + item.penyelenggara + ' Nomor ' + (f.undNo || '[nomor]') + ' tanggal ' + (fmt(f.undTgl) || '[tanggal]') + '.',
+      guruTugas: 'Melaksanakan tugas kegiatan mendampingi siswa Lomba ' + item.lombaSingkat + ' pada hari ' + (hari || '[hari]') + ' tanggal ' + (tanggal || '[tanggal]') + ', ' + (daring ? 'secara daring' : 'di ' + (tempat || '[tempat]')) + '.',
+      tglSuratText: fmt(f.tglSurat) || '[tanggal]',
+      students: item.students.map((st, i) => ({ no: i + 1, nama: st.nama, nis: st.nis, kelas: st.kelas })),
+      pembimbing: item.pembimbing,
+
+      done: !!f.done,
+      notDone: !f.done,
+      cannotGenerate: !ready,
+      s3Help: s3Help,
+      s3HelpCls: s3Err ? 'help help-err' : 'help',
+      generate: () => { if (ready) this.upd({ done: true }); },
+      files: [
+        { name: 'surat-tugas-siswa-' + item.slug + '.pdf', meta: '1 halaman · ' + n + ' siswa' },
+        { name: 'surat-perintah-tugas-guru-' + item.slug + '.pdf', meta: '2 halaman · dengan lampiran' }
+      ],
+      sent: !!f.sent,
+      notSent: !f.sent,
+      send: () => this.upd({ sent: true }),
+      sentText: 'Terkirim ke ' + n + ' siswa dan 1 guru',
+      sendNote: n > 1 ? 'Tiap anggota tim menerima surat yang sama.' : 'Siswa dan guru pembimbing menerima surat masing-masing.'
+    };
+  }
+}
+</script>
+</body>
+</html>

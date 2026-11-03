@@ -1,0 +1,592 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Prestasi per bidang · SMAGA Talent Hub</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Urbanist:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F4F5FB;font-family:"Plus Jakarta Sans",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;color:#151A33;-webkit-font-smoothing:antialiased}
+*{box-sizing:border-box}
+a{color:#3148D6}a:hover{color:#2638B0}
+h1,h2,h3,.display{font-family:"Urbanist","Plus Jakarta Sans",system-ui,sans-serif;letter-spacing:-0.01em}
+.page{background:radial-gradient(900px 320px at 88% -8%,#ECE8FF 0%,rgba(236,232,255,0) 70%),radial-gradient(760px 300px at 28% -14%,#E2F0FF 0%,rgba(226,240,255,0) 70%),#F4F5FB}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:44px;padding:0 18px;border-radius:12px;font:600 15px/1 "Plus Jakarta Sans",system-ui,sans-serif;border:1px solid transparent;cursor:pointer;text-decoration:none;white-space:nowrap}
+.btn-primary{background:#3148D6;color:#FFFFFF;box-shadow:0 8px 18px -10px rgba(49,72,214,.65)}
+.btn-primary:hover{background:#2638B0;color:#FFFFFF}
+.btn-quiet{background:#FFFFFF;color:#151A33;border-color:#DCDFEC}
+.btn-quiet:hover{background:#F4F5FB;color:#151A33}
+.btn-soft{background:#ECEFFF;color:#2A3CB8}
+.btn-soft:hover{background:#DFE4FF;color:#2A3CB8}
+.btn-danger{background:#FFFFFF;color:#B42318;border-color:#F3C4BE}
+.btn-danger:hover{background:#FDECEA;color:#B42318}
+.btn-sm{height:36px;padding:0 14px;font-size:14px;border-radius:10px}
+.btn:focus-visible,.nav:focus-visible,.input:focus-visible,.icon-btn:focus-visible,.tab:focus-visible,.pick:focus-visible{outline:3px solid #A9B6F5;outline-offset:2px}
+.icon-btn{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:12px;border:1px solid #E7E9F3;background:#FFFFFF;color:#4A5068;cursor:pointer;position:relative;text-decoration:none}
+.icon-btn:hover{background:#F4F5FB;color:#151A33}
+.dot{position:absolute;top:8px;right:9px;width:8px;height:8px;border-radius:999px;background:#3148D6;border:2px solid #FFFFFF}
+.card{background:#FFFFFF;border:1px solid #E7E9F3;border-radius:20px;box-shadow:0 1px 2px rgba(20,24,60,.04),0 10px 28px -18px rgba(20,24,60,.18)}
+.chip{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 10px;border-radius:999px;font-size:12.5px;font-weight:600;white-space:nowrap}
+.c-blue{background:#ECEFFF;color:#2A3CB8}
+.c-green{background:#E4F5EA;color:#1B6B45}
+.c-orange{background:#FFEEDD;color:#9A3F00}
+.c-red{background:#FDECEA;color:#B42318}
+.c-gray{background:#EEF0F6;color:#4A5068}
+.c-gold{background:#FFF3D1;color:#6B4E00}
+.c-glass{background:rgba(255,255,255,.82);color:#151A33}
+.b-sains{background:#E6F0FF;color:#1D56AD}
+.b-riset{background:#F0EBFF;color:#5534B8}
+.b-seni{background:#FDE8F0;color:#A61F54}
+.b-olahraga{background:#E0F4F8;color:#0B6577}
+.cover-sains{background:linear-gradient(135deg,#DCE9FF,#C3D8FF);color:#1D56AD}
+.cover-riset{background:linear-gradient(135deg,#EEE7FF,#D9CCFF);color:#5534B8}
+.cover-seni{background:linear-gradient(135deg,#FFE6EF,#FFCFE0);color:#A61F54}
+.cover-olahraga{background:linear-gradient(135deg,#DDF4F8,#BFE8F0);color:#0B6577}
+.label{font-size:13px;font-weight:600;color:#4A5068}
+.input{height:46px;width:100%;border:1px solid #DCDFEC;border-radius:12px;padding:0 14px;font:500 15px "Plus Jakarta Sans",system-ui,sans-serif;color:#151A33;background:#FFFFFF}
+.input::placeholder{color:#8A90A6}
+textarea.input{height:auto;padding:12px 14px;line-height:1.5;resize:vertical}
+.nav{display:flex;align-items:center;gap:12px;height:44px;padding:0 14px;border-radius:12px;color:#4A5068;text-decoration:none;font-size:14.5px;font-weight:600}
+.nav:hover{background:#F1F2FA;color:#151A33}
+.nav-on{background:#3148D6;color:#FFFFFF;box-shadow:0 8px 18px -10px rgba(49,72,214,.7)}
+.nav-on:hover{background:#2638B0;color:#FFFFFF}
+.nav-sec{font-size:11.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#8A90A6;padding:8px 14px 2px}
+.badge{margin-left:auto;min-width:22px;height:22px;padding:0 7px;border-radius:999px;background:#ECEFFF;color:#2A3CB8;font-size:12px;font-weight:700;display:inline-flex;align-items:center;justify-content:center}
+.nav-on .badge{background:#FFFFFF;color:#2A3CB8}
+.avatar{display:inline-flex;align-items:center;justify-content:center;border-radius:999px;background:#ECEFFF;color:#2A3CB8;font-weight:700;flex-shrink:0}
+.stack{display:flex}.stack .avatar{border:2px solid #FFFFFF;margin-left:-8px}.stack .avatar:first-child{margin-left:0}
+.pick{cursor:pointer;border:1px solid #DCDFEC;background:#FFFFFF;border-radius:14px;font:600 14.5px "Plus Jakarta Sans",system-ui,sans-serif;color:#151A33}
+.pick-on{border:2px solid #3148D6;background:#ECEFFF;color:#2A3CB8}
+.tabbar{position:absolute;left:0;right:0;bottom:0;height:80px;background:#FFFFFF;border-top:1px solid #E7E9F3;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));padding:8px 6px 16px}
+.tab{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:52px;border-radius:14px;color:#666C84;text-decoration:none;font-size:11.5px;font-weight:600}
+.tab-ic{width:48px;height:28px;border-radius:999px;display:flex;align-items:center;justify-content:center}
+.tab-on{color:#3148D6}.tab-on .tab-ic{background:#ECEFFF}
+.muted{color:#666C84}
+.num{font-variant-numeric:tabular-nums}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.pub-head{height:72px;flex-shrink:0;background:rgba(255,255,255,.9);border-bottom:1px solid #E7E9F3;padding:0 56px;display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center}
+.pub-nav{display:flex;align-self:stretch;gap:32px}
+.pub-link{display:flex;align-items:center;border-top:2px solid transparent;border-bottom:2px solid transparent;color:#4A5068;text-decoration:none;font-size:15px;font-weight:600}
+.pub-link:hover{color:#151A33}
+.pub-on{color:#151A33;border-bottom-color:#3148D6}
+.pub-link:focus-visible,.lnk:focus-visible,.st-row:focus-visible{outline:3px solid #A9B6F5;outline-offset:2px;border-radius:8px}
+.lnk{display:inline-flex;align-items:center;gap:4px;min-height:36px;font-size:14px;font-weight:600;text-decoration:none}
+.lnk:hover{text-decoration:underline}
+.sel{appearance:none;-webkit-appearance:none;height:44px;padding-right:40px;font-size:14.5px;cursor:pointer}
+.sel-ic{position:absolute;right:14px;top:12px;color:#666C84;pointer-events:none}
+.bd-btn{display:flex;align-items:center;gap:12px;width:100%;padding:12px;text-align:left;border:2px solid #E7E9F3;border-radius:16px}
+.bd-btn:hover{background:#F8F9FD}
+.bd-on-sains,.bd-on-sains:hover{border-color:#1D56AD;background:#E6F0FF}
+.bd-on-riset,.bd-on-riset:hover{border-color:#5534B8;background:#F0EBFF}
+.bd-on-seni,.bd-on-seni:hover{border-color:#A61F54;background:#FDE8F0}
+.bd-on-olahraga,.bd-on-olahraga:hover{border-color:#0B6577;background:#E0F4F8}
+.bd-ic{width:40px;height:40px;border-radius:12px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
+.meter{flex:1;height:6px;border-radius:999px;background:rgba(21,26,51,.08);overflow:hidden;display:block}
+.meter-fill{display:block;height:6px;border-radius:999px}
+.st-row{display:flex;align-items:center;gap:12px;width:100%;padding:10px 12px;border:2px solid transparent;border-radius:16px;background:#FFFFFF;text-align:left;cursor:pointer;font-family:inherit;color:#151A33}
+.st-row:hover{background:#F4F5FB}
+.st-on,.st-on:hover{border-color:#3148D6;background:#ECEFFF}
+.ach{display:grid;grid-template-columns:64px minmax(0,1fr) 150px;gap:14px;align-items:start;padding:10px 14px;border:1px solid #E7E9F3;border-radius:16px;background:#FFFFFF}
+.cert{width:64px;height:60px;border-radius:10px;border:1px dashed rgba(21,26,51,.22);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:12px;font-weight:600}
+.pt{display:inline-flex;align-items:baseline;gap:4px;padding:4px 10px;border-radius:10px;background:#FFF3D1;color:#6B4E00;font-size:12px;font-weight:700}
+.bar-v{display:block;width:40px;border-radius:10px 10px 4px 4px}
+</style>
+</helmet>
+<div class="page" style="width:1440px;height:1000px;display:flex;flex-direction:column;overflow:hidden">
+
+  <header class="pub-head">
+    <div style="display:flex;align-items:center;gap:12px">
+      <span role="img" aria-label="Logo SMAGA Talent Hub" style="width:36px;height:36px;border-radius:12px;background:#3148D6;color:#FFFFFF;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 4 6v6c0 4.5 3.4 8.2 8 9 4.6-.8 8-4.5 8-9V6z"></path><path d="m8.5 12 2.5 2.5 4.5-5"></path></svg></span>
+      <div style="display:flex;flex-direction:column;gap:1px">
+        <span class="display" style="font-size:17px;font-weight:800;line-height:1.15">SMAGA Talent Hub</span>
+        <span class="muted" style="font-size:12px;line-height:1.3">SMA Negeri 3 Semarang</span>
+      </div>
+    </div>
+    <nav class="pub-nav" aria-label="Navigasi publik">
+      <a class="pub-link" href="Main.dc.html">Beranda</a>
+      <a class="pub-link pub-on" href="Prestasi-Bidang.dc.html" aria-current="page">Prestasi</a>
+      <a class="pub-link" href="Peringkat.dc.html">Peringkat</a>
+    </nav>
+    <a class="btn btn-primary btn-sm" href="Masuk.dc.html" style="justify-self:end">Masuk</a>
+  </header>
+
+  <main style="flex:1;min-height:0;padding:24px 56px;display:flex;flex-direction:column;gap:20px">
+    <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:24px">
+      <div style="display:flex;flex-direction:column;gap:4px;min-width:0">
+        <h1 style="margin:0;font-size:32px;font-weight:800;line-height:1.15">Prestasi per bidang</h1>
+        <p class="muted" style="margin:0;font-size:15px">Pilih bidang, lalu siswa, untuk melihat lomba dan sertifikatnya.</p>
+      </div>
+      <div style="display:flex;align-items:flex-end;gap:12px;flex-shrink:0">
+        <div style="display:flex;flex-direction:column;gap:6px;width:200px">
+          <label class="label" for="f-tahun">Tahun ajaran</label>
+          <div style="position:relative">
+            <select class="input sel" id="f-tahun" value="{{ tahun }}" onChange="{{ onTahun }}">
+              <option value="semua">Semua tahun</option>
+              <option value="2026/2027">2026/2027</option>
+              <option value="2025/2026">2025/2026</option>
+              <option value="2024/2025">2024/2025</option>
+            </select>
+            <svg class="sel-ic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px;width:200px">
+          <label class="label" for="f-tingkat">Tingkat</label>
+          <div style="position:relative">
+            <select class="input sel" id="f-tingkat" value="{{ tingkat }}" onChange="{{ onTingkat }}">
+              <option value="semua">Semua tingkat</option>
+              <option value="Internasional">Internasional</option>
+              <option value="Nasional">Nasional</option>
+              <option value="Provinsi">Provinsi</option>
+              <option value="Kota/Kab">Kota/Kabupaten</option>
+            </select>
+            <svg class="sel-ic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="flex:1;min-height:0;display:grid;grid-template-columns:260px 410px minmax(0,1fr);gap:20px">
+
+      <section class="card" aria-labelledby="h-bidang" style="padding:20px;display:flex;flex-direction:column;gap:14px;min-height:0;overflow:hidden">
+        <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px">
+          <h2 id="h-bidang" style="margin:0;font-size:18px;font-weight:700">Bidang</h2>
+          <span class="muted num" style="font-size:13px;font-weight:600">{{ totalLabel }}</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <button type="button" class="{{ sains.cls }}" aria-pressed="{{ sains.pressed }}" onClick="{{ sains.pick }}">
+            <span class="bd-ic cover-sains"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3h6M10 3v6l-5 9a2 2 0 0 0 1.7 3h10.6a2 2 0 0 0 1.7-3l-5-9V3"></path><path d="M7.5 15h9"></path></svg></span>
+            <span style="display:flex;flex-direction:column;gap:8px;flex:1;min-width:0">
+              <span style="display:flex;align-items:baseline;justify-content:space-between;gap:8px">
+                <span style="font-size:15px;font-weight:700;color:#151A33">Sains</span>
+                <span class="display num" style="font-size:22px;font-weight:800;line-height:26px;color:#1D56AD">{{ sains.count }}<span class="sr-only"> prestasi</span></span>
+              </span>
+              <span style="display:flex;align-items:center;gap:8px">
+                <span class="meter"><span class="meter-fill" style="width:{{ sains.w }};background:#3D7BE0"></span></span>
+                <span class="num" style="font-size:12px;font-weight:600;color:#4A5068;width:32px;text-align:right">{{ sains.pct }}</span>
+              </span>
+            </span>
+          </button>
+          <button type="button" class="{{ riset.cls }}" aria-pressed="{{ riset.pressed }}" onClick="{{ riset.pick }}">
+            <span class="bd-ic cover-riset"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6M10 21h4"></path><path d="M12 3a6 6 0 0 0-3.5 10.9c.6.4 1 1.1 1 1.8V16h5v-.3c0-.7.4-1.4 1-1.8A6 6 0 0 0 12 3z"></path></svg></span>
+            <span style="display:flex;flex-direction:column;gap:8px;flex:1;min-width:0">
+              <span style="display:flex;align-items:baseline;justify-content:space-between;gap:8px">
+                <span style="font-size:15px;font-weight:700;color:#151A33">Riset</span>
+                <span class="display num" style="font-size:22px;font-weight:800;line-height:26px;color:#5534B8">{{ riset.count }}<span class="sr-only"> prestasi</span></span>
+              </span>
+              <span style="display:flex;align-items:center;gap:8px">
+                <span class="meter"><span class="meter-fill" style="width:{{ riset.w }};background:#7B5CE0"></span></span>
+                <span class="num" style="font-size:12px;font-weight:600;color:#4A5068;width:32px;text-align:right">{{ riset.pct }}</span>
+              </span>
+            </span>
+          </button>
+          <button type="button" class="{{ seni.cls }}" aria-pressed="{{ seni.pressed }}" onClick="{{ seni.pick }}">
+            <span class="bd-ic cover-seni"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a9 9 0 1 0 0 18c1.1 0 1.5-.8 1.5-1.6 0-1.3-1.2-1.6-1.2-2.9 0-.9.7-1.5 1.7-1.5H17a4 4 0 0 0 4-4c0-4.4-4-8-9-8z"></path><circle cx="7.5" cy="11" r="1"></circle><circle cx="10" cy="7" r="1"></circle><circle cx="15" cy="7.5" r="1"></circle></svg></span>
+            <span style="display:flex;flex-direction:column;gap:8px;flex:1;min-width:0">
+              <span style="display:flex;align-items:baseline;justify-content:space-between;gap:8px">
+                <span style="font-size:15px;font-weight:700;color:#151A33">Seni Budaya</span>
+                <span class="display num" style="font-size:22px;font-weight:800;line-height:26px;color:#A61F54">{{ seni.count }}<span class="sr-only"> prestasi</span></span>
+              </span>
+              <span style="display:flex;align-items:center;gap:8px">
+                <span class="meter"><span class="meter-fill" style="width:{{ seni.w }};background:#D6457E"></span></span>
+                <span class="num" style="font-size:12px;font-weight:600;color:#4A5068;width:32px;text-align:right">{{ seni.pct }}</span>
+              </span>
+            </span>
+          </button>
+          <button type="button" class="{{ olahraga.cls }}" aria-pressed="{{ olahraga.pressed }}" onClick="{{ olahraga.pick }}">
+            <span class="bd-ic cover-olahraga"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 3c2.5 2.5 3.5 5.5 3.5 9s-1 6.5-3.5 9M12 3C9.5 5.5 8.5 8.5 8.5 12s1 6.5 3.5 9M3.5 9h17M3.5 15h17"></path></svg></span>
+            <span style="display:flex;flex-direction:column;gap:8px;flex:1;min-width:0">
+              <span style="display:flex;align-items:baseline;justify-content:space-between;gap:8px">
+                <span style="font-size:15px;font-weight:700;color:#151A33">Olahraga</span>
+                <span class="display num" style="font-size:22px;font-weight:800;line-height:26px;color:#0B6577">{{ olahraga.count }}<span class="sr-only"> prestasi</span></span>
+              </span>
+              <span style="display:flex;align-items:center;gap:8px">
+                <span class="meter"><span class="meter-fill" style="width:{{ olahraga.w }};background:#1690A6"></span></span>
+                <span class="num" style="font-size:12px;font-weight:600;color:#4A5068;width:32px;text-align:right">{{ olahraga.pct }}</span>
+              </span>
+            </span>
+          </button>
+        </div>
+
+        <div style="height:1px;background:#E7E9F3;margin:4px 0"></div>
+
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+            <h3 style="margin:0;font-size:15.5px;font-weight:700">Perkembangan per tahun</h3>
+            <span class="{{ bChip }}">{{ bidangName }}</span>
+          </div>
+          <span class="muted" style="font-size:12.5px">{{ chartNote }}</span>
+          <div role="img" aria-label="{{ chartLabel }}" style="display:flex;flex-direction:column;gap:8px">
+            <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;height:176px;border-bottom:1px solid #DCDFEC">
+              <sc-for list="{{ years }}" as="y" hint-placeholder-count="3">
+                <div style="display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:6px">
+                  <span class="display num" style="font-size:16px;font-weight:800;line-height:20px">{{ y.val }}</span>
+                  <span class="bar-v" style="height:{{ y.h }};background:{{ y.color }};opacity:{{ y.op }}"></span>
+                </div>
+              </sc-for>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px">
+              <sc-for list="{{ years }}" as="y" hint-placeholder-count="3">
+                <div style="display:flex;flex-direction:column;align-items:center;gap:1px">
+                  <span class="num" style="font-size:12.5px;font-weight:700">{{ y.label }}</span>
+                  <span class="muted" style="font-size:12px">{{ y.note }}</span>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card" aria-labelledby="h-siswa" style="padding:20px;display:flex;flex-direction:column;gap:14px;min-height:0;overflow:hidden">
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <div style="display:flex;align-items:center;gap:10px">
+            <h2 id="h-siswa" style="margin:0;font-size:18px;font-weight:700">Siswa berprestasi</h2>
+            <span class="{{ bChip }}">{{ bidangName }}</span>
+          </div>
+          <span class="muted" style="font-size:13px">Urut menurut total poin</span>
+        </div>
+        <sc-if value="{{ hasRows }}" hint-placeholder-val="{{ true }}">
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <sc-for list="{{ rows }}" as="r" hint-placeholder-count="6">
+              <button type="button" class="{{ r.cls }}" aria-pressed="{{ r.pressed }}" onClick="{{ r.pick }}">
+                <span class="avatar" style="width:40px;height:40px;font-size:14px">{{ r.ini }}</span>
+                <span style="display:flex;flex-direction:column;gap:6px;flex:1;min-width:0">
+                  <span style="display:flex;align-items:center;gap:6px;min-width:0;height:22px">
+                    <span style="font-size:14.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0">{{ r.nama }}</span>
+                    <sc-if value="{{ r.alumni }}" hint-placeholder-val="{{ false }}">
+                      <span class="chip c-gray" style="height:22px;padding:0 7px;font-size:12px;flex-shrink:0">Alumni</span>
+                    </sc-if>
+                    <span class="num" style="margin-left:auto;font-size:12.5px;font-weight:600;color:#666C84;white-space:nowrap">{{ r.countLabel }}</span>
+                  </span>
+                  <span style="display:flex;align-items:center;gap:6px">
+                    <span style="width:44px;font-size:13px;font-weight:600;color:#4A5068">{{ r.kelas }}</span>
+                    <span class="chip c-gold">{{ r.best }}</span>
+                    <span class="chip c-gray">{{ r.bestTingkat }}</span>
+                  </span>
+                </span>
+              </button>
+            </sc-for>
+          </div>
+          <a class="lnk" href="#" style="align-self:flex-start">Lihat semua siswa {{ bidangName }}<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"></path></svg></a>
+        </sc-if>
+        <sc-if value="{{ noRows }}" hint-placeholder-val="{{ false }}">
+          <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;padding:24px">
+            <span style="width:52px;height:52px;border-radius:16px;background:#EEF0F6;color:#4A5068;display:inline-flex;align-items:center;justify-content:center"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg></span>
+            <p style="margin:0;font-size:15px;font-weight:700">Belum ada prestasi untuk filter ini.</p>
+            <p class="muted" style="margin:0;font-size:13.5px">Ganti tahun ajaran atau tingkat.</p>
+          </div>
+        </sc-if>
+      </section>
+
+      <section class="card" aria-label="Detail prestasi siswa" aria-live="polite" style="padding:20px 22px;display:flex;flex-direction:column;gap:12px;min-height:0;min-width:0;overflow:hidden">
+        <sc-if value="{{ noSiswa }}" hint-placeholder-val="{{ false }}">
+          <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;text-align:center;padding:40px">
+            <span style="width:64px;height:64px;border-radius:20px;background:#ECEFFF;color:#3148D6;display:inline-flex;align-items:center;justify-content:center"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"></circle><path d="M4 21a8 8 0 0 1 16 0"></path></svg></span>
+            <p class="display" style="margin:0;font-size:18px;font-weight:700;max-width:300px">Pilih siswa untuk melihat detail prestasinya</p>
+            <p class="muted" style="margin:0;font-size:14px;max-width:300px">Lomba, capaian, poin, dan sertifikat tampil di sini.</p>
+          </div>
+        </sc-if>
+        <sc-if value="{{ hasSiswa }}" hint-placeholder-val="{{ true }}">
+          <div style="display:flex;align-items:center;gap:16px">
+            <span class="avatar" style="width:54px;height:54px;font-size:18px">{{ sel.ini }}</span>
+            <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:6px">
+              <h2 style="margin:0;font-size:22px;font-weight:800;line-height:1.15">{{ sel.nama }}</h2>
+              <div style="display:flex;align-items:center;gap:8px">
+                <span style="font-size:14px;font-weight:600;color:#4A5068">{{ sel.kelas }}</span>
+                <sc-if value="{{ sel.alumni }}" hint-placeholder-val="{{ false }}">
+                  <span class="chip c-gray">{{ sel.lulusLabel }}</span>
+                </sc-if>
+              </div>
+            </div>
+            <div style="display:flex;gap:10px;flex-shrink:0">
+              <div style="width:112px;padding:10px 12px;border-radius:14px;background:#FFF3D1;color:#6B4E00;display:flex;flex-direction:column;gap:1px">
+                <span style="font-size:12px;font-weight:600">Total poin</span>
+                <span class="display num" style="font-size:24px;font-weight:800;line-height:28px">{{ sel.total }}</span>
+                <span style="font-size:12px">semua tahun</span>
+              </div>
+              <div style="width:120px;padding:10px 12px;border-radius:14px;background:#F4F5FB;display:flex;flex-direction:column;gap:1px">
+                <span class="muted" style="font-size:12px;font-weight:600">Peringkat</span>
+                <span class="display num" style="font-size:24px;font-weight:800;line-height:28px">{{ sel.rankVal }}</span>
+                <span class="muted" style="font-size:12px">{{ sel.rankNote }}</span>
+              </div>
+            </div>
+          </div>
+          <div style="height:1px;background:#E7E9F3"></div>
+          <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px">
+            <h3 style="margin:0;font-size:16px;font-weight:700">Lomba &amp; capaian</h3>
+            <span class="muted num" style="font-size:13px;font-weight:600">{{ sel.countLabel }}</span>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <sc-for list="{{ sel.items }}" as="a" hint-placeholder-count="5">
+              <article class="ach">
+                <div class="{{ a.cert }}" aria-hidden="true">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"></rect><circle cx="9" cy="10" r="2"></circle><path d="m21 17-5-5-9 8"></path></svg>
+                  <span>Sertifikat</span>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:4px;min-width:0">
+                  <h4 style="margin:0;font-size:15px;font-weight:700;line-height:20px">{{ a.lomba }}</h4>
+                  <span class="muted" style="font-size:13px;line-height:18px">{{ a.meta }}</span>
+                  <div style="display:flex;flex-wrap:wrap;gap:6px;padding-top:4px">
+                    <span class="chip c-gray">{{ a.tingkat }}</span>
+                    <span class="chip c-gold">{{ a.capaian }}</span>
+                    <span class="{{ a.bChip }}">{{ a.bidang }}</span>
+                  </div>
+                </div>
+                <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+                  <span class="pt"><span class="display num" style="font-size:20px;font-weight:800;line-height:22px">{{ a.poin }}</span>poin</span>
+                  <span class="muted num" style="font-size:12px;line-height:16px;white-space:nowrap">{{ a.rumus }}</span>
+                  <a class="lnk" href="#" style="font-size:13px">Lihat sertifikat<span class="sr-only"> {{ a.lomba }}</span></a>
+                </div>
+              </article>
+            </sc-for>
+          </div>
+        </sc-if>
+      </section>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1000}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { bidang: 'Riset', siswa: 'raka', tahun: 'semua', tingkat: 'semua' };
+  }
+  renderVals() {
+    const st = this.state;
+    const TV = { 'Internasional': 100, 'Nasional': 80, 'Provinsi': 60, 'Kota/Kab': 40, 'Sekolah': 20 };
+    const CV = { 'Juara I': 1, 'Medali emas': 1, 'Juara II': 0.85, 'Medali perak': 0.85, 'Juara III': 0.7, 'Medali perunggu': 0.7, 'Finalis': 0.5, 'Semifinalis': 0.3, 'Penghargaan khusus': 0.3, 'Peserta': 0.1 };
+    const PV = { A: 1, B: 0.8, C: 0.6, D: 0.4, E: 0.2 };
+    const dec = (x) => x.toFixed(2).replace('.', ',');
+    const YEARS = ['2024/2025', '2025/2026', '2026/2027'];
+    const NAMES = ['Sains', 'Riset', 'Seni Budaya', 'Olahraga'];
+    const BD = {
+      'Sains': { key: 'sains', total: 29, years: [10, 13, 6], ting: { 'Internasional': 3, 'Nasional': 6, 'Provinsi': 9, 'Kota/Kab': 11 }, color: '#3D7BE0' },
+      'Riset': { key: 'riset', total: 24, years: [8, 11, 5], ting: { 'Internasional': 4, 'Nasional': 7, 'Provinsi': 4, 'Kota/Kab': 9 }, color: '#7B5CE0' },
+      'Seni Budaya': { key: 'seni', total: 21, years: [7, 10, 4], ting: { 'Internasional': 1, 'Nasional': 5, 'Provinsi': 7, 'Kota/Kab': 8 }, color: '#D6457E' },
+      'Olahraga': { key: 'olahraga', total: 19, years: [6, 10, 3], ting: { 'Internasional': 1, 'Nasional': 3, 'Provinsi': 5, 'Kota/Kab': 10 }, color: '#1690A6' }
+    };
+    // [id, nama, kelas, inisial, lulus (alumni) atau null, prestasi: [lomba, cabang, penyelenggara, kategori, bidang, tingkat, capaian, tahun ajaran]]
+    const RAW = [
+      ['raka', 'Raka Pradipta', 'XII-2', 'RP', null, [
+        ['FIKSI 2026', '', 'Puspresnas', 'A', 'Riset', 'Nasional', 'Juara I', '2026/2027'],
+        ['OPSI 2025', '', 'Puspresnas', 'A', 'Riset', 'Nasional', 'Juara I', '2025/2026'],
+        ['Asian Young Researchers Contest 2025', '', 'Center for Young Scientists', 'C', 'Riset', 'Internasional', 'Medali emas', '2025/2026'],
+        ['OSN Provinsi Jateng 2024', 'Informatika', 'Puspresnas', 'A', 'Sains', 'Provinsi', 'Juara I', '2024/2025'],
+        ['KRENOVA Kota Semarang 2025', '', 'Pemerintah Kota Semarang', 'B', 'Riset', 'Kota/Kab', 'Juara I', '2024/2025']
+      ]],
+      ['salsa', 'Salsabila Kirana', 'XI-5', 'SK', null, [
+        ['FLS3N Nasional 2025', 'Monolog', 'Puspresnas', 'A', 'Seni Budaya', 'Nasional', 'Juara I', '2025/2026'],
+        ['Festival Film Pendek Pelajar 2026', '', 'Kementerian Kebudayaan', 'B', 'Seni Budaya', 'Nasional', 'Juara I', '2025/2026'],
+        ['FLS3N Provinsi Jateng 2026', 'Baca puisi', 'Puspresnas', 'A', 'Seni Budaya', 'Provinsi', 'Juara III', '2026/2027'],
+        ['LDBI Provinsi Jateng 2025', '', 'Puspresnas', 'A', 'Seni Budaya', 'Provinsi', 'Juara III', '2025/2026'],
+        ['LDBI Kota Semarang 2025', '', 'Puspresnas', 'A', 'Seni Budaya', 'Kota/Kab', 'Juara I', '2025/2026']
+      ]],
+      ['bima', 'Bima Satria Wicaksono', 'XII-7', 'BW', null, [
+        ['Kompetisi Robotik Nasional 2025', '', 'Kementerian Perindustrian', 'B', 'Riset', 'Nasional', 'Juara I', '2025/2026'],
+        ['O2SN Nasional 2025', 'Karate', 'Puspresnas', 'A', 'Olahraga', 'Nasional', 'Medali perunggu', '2025/2026'],
+        ['Kejurnas Karate Pelajar 2026', '', 'PB FORKI', 'C', 'Olahraga', 'Nasional', 'Medali emas', '2025/2026'],
+        ['WSEEC 2025', '', 'IYSA', 'D', 'Riset', 'Internasional', 'Medali emas', '2025/2026'],
+        ['KRENOVA Kota Semarang 2025', '', 'Pemerintah Kota Semarang', 'B', 'Riset', 'Kota/Kab', 'Juara I', '2024/2025']
+      ]],
+      ['aurel', 'Aurelia Maharani', 'X-3', 'AM', null, [
+        ['Kompetisi Biologi Nasional 2026', '', 'BRIN', 'B', 'Sains', 'Nasional', 'Juara I', '2026/2027'],
+        ['Olimpiade Sains Pelajar Jateng 2026', 'Biologi', 'Disdikbud Jateng', 'B', 'Sains', 'Provinsi', 'Juara I', '2026/2027'],
+        ['Olimpiade Biologi Jateng 2026', '', 'Universitas Diponegoro', 'C', 'Sains', 'Provinsi', 'Juara I', '2026/2027'],
+        ['Lomba Inovasi Pelajar Kota Semarang 2026', '', 'Pemerintah Kota Semarang', 'B', 'Riset', 'Kota/Kab', 'Juara I', '2026/2027'],
+        ['OSEBI 2026', '', 'Eduversal', 'D', 'Seni Budaya', 'Nasional', 'Finalis', '2026/2027']
+      ]],
+      ['fajar', 'Fajar Ramadhan', 'XII-1', 'FR', null, [
+        ['O2SN Provinsi Jateng 2026', 'Pencak silat', 'Puspresnas', 'A', 'Olahraga', 'Provinsi', 'Juara I', '2026/2027'],
+        ['O2SN Kota Semarang 2025', 'Pencak silat', 'Puspresnas', 'A', 'Olahraga', 'Kota/Kab', 'Juara I', '2025/2026'],
+        ['Kejuaraan Pencak Silat Pelajar Jateng 2025', '', 'IPSI Jawa Tengah', 'C', 'Olahraga', 'Provinsi', 'Juara I', '2025/2026'],
+        ['Popda Kota Semarang 2025', 'Pencak silat', 'Dispora Semarang', 'B', 'Olahraga', 'Kota/Kab', 'Juara I', '2025/2026'],
+        ['O2SN Kota Semarang 2024', 'Bulu tangkis', 'Puspresnas', 'A', 'Olahraga', 'Kota/Kab', 'Semifinalis', '2024/2025']
+      ]],
+      ['citra', 'Citra Ayu Lestari', 'XI-2', 'CL', null, [
+        ['Lomba Musikalisasi Puisi Nasional 2026', '', 'Badan Bahasa', 'B', 'Seni Budaya', 'Nasional', 'Juara I', '2025/2026'],
+        ['FLS3N Provinsi Jateng 2025', 'Baca puisi', 'Puspresnas', 'A', 'Seni Budaya', 'Provinsi', 'Juara I', '2025/2026'],
+        ['FLS3N Kota Semarang 2025', 'Baca puisi', 'Puspresnas', 'A', 'Seni Budaya', 'Kota/Kab', 'Juara I', '2025/2026']
+      ]],
+      ['yoga', 'Yoga Pratama', 'XII-5', 'YP', null, [
+        ['Lomba Peneliti Belia (LPB) 2025', '', 'Center for Young Scientists', 'C', 'Riset', 'Nasional', 'Juara I', '2025/2026'],
+        ['O2SN Kota Semarang 2024', 'Pencak silat', 'Puspresnas', 'A', 'Olahraga', 'Kota/Kab', 'Juara I', '2024/2025'],
+        ['NSIF 2025', '', 'Penyelenggara swasta', 'D', 'Riset', 'Nasional', 'Medali emas', '2025/2026'],
+        ['O2SN Provinsi Jateng 2024', 'Pencak silat', 'Puspresnas', 'A', 'Olahraga', 'Provinsi', 'Finalis', '2024/2025']
+      ]],
+      ['hana', 'Hana Safira', 'X-8', 'HS', null, [
+        ['Kompetisi Matematika Nasional UNNES 2026', '', 'Universitas Negeri Semarang', 'C', 'Sains', 'Nasional', 'Juara I', '2026/2027'],
+        ['Olimpiade Sains Pelajar Jateng 2026', 'Kimia', 'Disdikbud Jateng', 'B', 'Sains', 'Provinsi', 'Juara I', '2026/2027'],
+        ['Olimpiade Kimia Jateng 2026', '', 'Universitas Diponegoro', 'C', 'Sains', 'Provinsi', 'Juara I', '2026/2027']
+      ]],
+      ['rizky', 'Rizky Maulana', 'XI-1', 'RM', null, [
+        ['OSN Provinsi Jateng 2025', 'Fisika', 'Puspresnas', 'A', 'Sains', 'Provinsi', 'Juara II', '2025/2026'],
+        ['Olimpiade Fisika Jateng 2026', '', 'Himpunan Fisika Indonesia', 'C', 'Sains', 'Provinsi', 'Juara I', '2025/2026'],
+        ['O2SN Kota Semarang 2026', 'Atletik', 'Puspresnas', 'A', 'Olahraga', 'Kota/Kab', 'Juara II', '2026/2027']
+      ]],
+      ['keisha', 'Keisha Larasati', 'XI-6', 'KL', null, [
+        ['OPSI 2025', '', 'Puspresnas', 'A', 'Riset', 'Nasional', 'Juara II', '2025/2026'],
+        ['NSIF 2025', '', 'Penyelenggara swasta', 'D', 'Riset', 'Nasional', 'Medali emas', '2025/2026'],
+        ['Asian Young Researchers Contest 2025', '', 'Center for Young Scientists', 'C', 'Riset', 'Internasional', 'Semifinalis', '2025/2026']
+      ]],
+      ['dimas', 'Dimas Arya Nugroho', 'XI-4', 'DN', null, [
+        ['Lomba Peneliti Belia (LPB) 2025', '', 'Center for Young Scientists', 'C', 'Riset', 'Nasional', 'Juara I', '2025/2026'],
+        ['NSIF 2025', '', 'Penyelenggara swasta', 'D', 'Riset', 'Nasional', 'Medali emas', '2025/2026'],
+        ['Lomba Inovasi Pelajar Kota Semarang 2025', '', 'Pemerintah Kota Semarang', 'B', 'Riset', 'Kota/Kab', 'Juara I', '2025/2026']
+      ]],
+      ['farhan', 'Farhan Aditya', 'XI-3', 'FA', null, [
+        ['OSN Nasional 2025', 'Matematika', 'Puspresnas', 'A', 'Sains', 'Nasional', 'Medali perak', '2025/2026'],
+        ['OSN Provinsi Jateng 2025', 'Matematika', 'Puspresnas', 'A', 'Sains', 'Provinsi', 'Juara III', '2025/2026']
+      ]],
+      ['laras', 'Laras Wening Pangestu', 'XI-7', 'LP', null, [
+        ['FLS3N Provinsi Jateng 2025', 'Tari', 'Puspresnas', 'A', 'Seni Budaya', 'Provinsi', 'Juara I', '2025/2026'],
+        ['Festival Tari Pelajar Jateng 2026', '', 'Disdikbud Jateng', 'B', 'Seni Budaya', 'Provinsi', 'Juara I', '2025/2026']
+      ]],
+      ['nadia', 'Nadia Putri Anindya', 'XI-4', 'NA', null, [
+        ['OPSI 2026', '', 'Puspresnas', 'A', 'Riset', 'Nasional', 'Juara II', '2026/2027'],
+        ['KRENOVA Kota Semarang 2026', '', 'Pemerintah Kota Semarang', 'B', 'Riset', 'Kota/Kab', 'Juara I', '2025/2026'],
+        ['O2SN Kota Semarang 2026', 'Atletik', 'Puspresnas', 'A', 'Olahraga', 'Kota/Kab', 'Peserta', '2026/2027']
+      ]],
+      ['galuh', 'Galuh Prameswari', 'XII-4', 'GP', null, [
+        ['FLS3N Nasional 2024', 'Kriya', 'Puspresnas', 'A', 'Seni Budaya', 'Nasional', 'Juara III', '2024/2025'],
+        ['FLS3N Kota Semarang 2024', 'Kriya', 'Puspresnas', 'A', 'Seni Budaya', 'Kota/Kab', 'Juara I', '2024/2025']
+      ]],
+      ['bayu', 'Bayu Anggara', 'XII-6', 'BA', null, [
+        ['LDBI Kota Semarang 2024', '', 'Puspresnas', 'A', 'Seni Budaya', 'Kota/Kab', 'Juara I', '2024/2025'],
+        ['LDBI Provinsi Jateng 2024', '', 'Puspresnas', 'A', 'Seni Budaya', 'Provinsi', 'Finalis', '2024/2025'],
+        ['FLS3N Provinsi Jateng 2025', 'Teater', 'Puspresnas', 'A', 'Seni Budaya', 'Provinsi', 'Semifinalis', '2025/2026']
+      ]],
+      ['ardi', 'Ardiansyah Nur Hakim', 'XII-3', 'AH', '2025', [
+        ['OSN Nasional 2024', 'Kimia', 'Puspresnas', 'A', 'Sains', 'Nasional', 'Medali emas', '2024/2025'],
+        ['OSN Provinsi Jateng 2024', 'Kimia', 'Puspresnas', 'A', 'Sains', 'Provinsi', 'Juara I', '2024/2025'],
+        ['OSN Kota Semarang 2024', 'Kimia', 'Puspresnas', 'A', 'Sains', 'Kota/Kab', 'Juara I', '2024/2025'],
+        ['LCT MIPA Kota Semarang 2024', '', 'Disdik Kota Semarang', 'B', 'Sains', 'Kota/Kab', 'Juara I', '2024/2025'],
+        ['Olimpiade Kimia Nasional Undip 2024', '', 'Universitas Diponegoro', 'C', 'Sains', 'Nasional', 'Finalis', '2024/2025']
+      ]],
+      ['tiara', 'Tiara Anjani Lestari', 'XII-8', 'TL', '2025', [
+        ['O2SN Provinsi Jateng 2024', 'Atletik', 'Puspresnas', 'A', 'Olahraga', 'Provinsi', 'Medali emas', '2024/2025'],
+        ['O2SN Kota Semarang 2024', 'Atletik', 'Puspresnas', 'A', 'Olahraga', 'Kota/Kab', 'Medali perak', '2024/2025']
+      ]]
+    ];
+
+    const students = RAW.map((r) => {
+      const items = r[5].map((a) => {
+        const T = TV[a[5]];
+        const C = CV[a[6]];
+        const P = PV[a[3]];
+        const poin = Math.round(T * C * P);
+        const k = BD[a[4]].key;
+        return {
+          lomba: a[0], bidang: a[4], tingkat: a[5], capaian: a[6], tahun: a[7], poin: poin,
+          rumus: T + ' × ' + dec(C) + ' × ' + dec(P) + ' = ' + poin,
+          meta: (a[1] ? a[1] + ' · ' : '') + a[2] + ' (' + a[3] + ') · ' + a[7],
+          bChip: 'chip b-' + k,
+          cert: 'cert cover-' + k
+        };
+      }).sort((x, y) => y.poin - x.poin);
+      const total = items.reduce((s, x) => s + x.poin, 0);
+      return { id: r[0], nama: r[1], kelas: r[2], ini: r[3], lulus: r[4], items: items, total: total };
+    }).sort((a, b) => b.total - a.total);
+
+    const rankActive = {};
+    students.filter((x) => !x.lulus).forEach((x, i) => { rankActive[x.id] = i + 1; });
+    const rankAll = {};
+    students.forEach((x, i) => { rankAll[x.id] = i + 1; });
+
+    const yi = YEARS.indexOf(st.tahun);
+    const tg = st.tingkat;
+    const scaled = (v, d) => (tg === 'semua' ? v : Math.round(v * d.ting[tg] / d.total));
+    const count = (b) => {
+      const d = BD[b];
+      if (yi < 0 && tg === 'semua') return d.total;
+      if (yi < 0) return d.ting[tg];
+      return scaled(d.years[yi], d);
+    };
+    const counts = NAMES.map(count);
+    const sum = counts.reduce((s, x) => s + x, 0);
+    const btn = (b, i) => {
+      const on = st.bidang === b;
+      const pct = sum ? Math.round(counts[i] * 100 / sum) : 0;
+      return {
+        cls: 'pick bd-btn' + (on ? ' bd-on-' + BD[b].key : ''),
+        pressed: on ? 'true' : 'false',
+        count: counts[i],
+        w: pct + '%',
+        pct: pct + '%',
+        pick: () => { if (this.state.bidang !== b) this.setState({ bidang: b, siswa: null }); }
+      };
+    };
+
+    const d = BD[st.bidang];
+    const yv = YEARS.map((y, i) => scaled(d.years[i], d));
+    const mx = Math.max(1, ...yv);
+    const years = YEARS.map((y, i) => ({
+      label: y,
+      val: yv[i],
+      note: i === 2 ? 'berjalan' : 'selesai',
+      h: Math.max(4, Math.round(yv[i] * 136 / mx)) + 'px',
+      color: d.color,
+      op: (yi < 0 || yi === i) ? '1' : '0.35'
+    }));
+    const tgLabel = tg === 'Kota/Kab' ? 'Kota/Kabupaten' : tg;
+    const chartNote = tg === 'semua' ? 'Semua tingkat, per tahun ajaran' : 'Tingkat ' + tgLabel + ', per tahun ajaran';
+    const chartLabel = 'Perkembangan prestasi ' + st.bidang + ' per tahun ajaran: 2024/2025 ' + yv[0] + ', 2025/2026 ' + yv[1] + ', 2026/2027 ' + yv[2] + ' (masih berjalan)';
+
+    const match = (a) => a.bidang === st.bidang && (yi < 0 || a.tahun === st.tahun) && (tg === 'semua' || a.tingkat === tg);
+    const rows = [];
+    students.forEach((s) => {
+      const m = s.items.filter(match);
+      if (!m.length) return;
+      const on = st.siswa === s.id;
+      rows.push({
+        ini: s.ini, nama: s.nama, kelas: s.kelas, alumni: !!s.lulus,
+        best: m[0].capaian, bestTingkat: m[0].tingkat,
+        countLabel: m.length + ' prestasi',
+        cls: 'st-row' + (on ? ' st-on' : ''),
+        pressed: on ? 'true' : 'false',
+        pick: () => this.setState({ siswa: s.id })
+      });
+    });
+
+    const s = students.find((x) => x.id === st.siswa);
+    const sel = s ? {
+      ini: s.ini, nama: s.nama, kelas: 'Kelas ' + s.kelas, alumni: !!s.lulus,
+      lulusLabel: s.lulus ? 'Alumni · lulus ' + s.lulus : '',
+      total: s.total,
+      rankVal: '#' + (s.lulus ? rankAll[s.id] : rankActive[s.id]),
+      rankNote: s.lulus ? 'termasuk alumni' : 'siswa aktif',
+      countLabel: s.items.length + ' prestasi terverifikasi',
+      items: s.items
+    } : { ini: '', nama: '', kelas: '', alumni: false, lulusLabel: '', total: 0, rankVal: '', rankNote: '', countLabel: '', items: [] };
+
+    return {
+      tahun: st.tahun,
+      tingkat: st.tingkat,
+      onTahun: (e) => this.setState({ tahun: e.target.value }),
+      onTingkat: (e) => this.setState({ tingkat: e.target.value }),
+      sains: btn('Sains', 0),
+      riset: btn('Riset', 1),
+      seni: btn('Seni Budaya', 2),
+      olahraga: btn('Olahraga', 3),
+      totalLabel: sum + ' prestasi',
+      bidangName: st.bidang,
+      bChip: 'chip b-' + d.key,
+      years: years,
+      chartNote: chartNote,
+      chartLabel: chartLabel,
+      rows: rows,
+      hasRows: rows.length > 0,
+      noRows: rows.length === 0,
+      sel: sel,
+      hasSiswa: !!s,
+      noSiswa: !s
+    };
+  }
+}
+</script>
+</body>
+</html>

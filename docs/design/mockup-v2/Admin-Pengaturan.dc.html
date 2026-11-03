@@ -1,0 +1,648 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Pengaturan · Admin</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Urbanist:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F4F5FB;font-family:"Plus Jakarta Sans",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;color:#151A33;-webkit-font-smoothing:antialiased}
+*{box-sizing:border-box}
+a{color:#3148D6}a:hover{color:#2638B0}
+h1,h2,h3,.display{font-family:"Urbanist","Plus Jakarta Sans",system-ui,sans-serif;letter-spacing:-0.01em}
+.page{background:radial-gradient(900px 320px at 88% -8%,#ECE8FF 0%,rgba(236,232,255,0) 70%),radial-gradient(760px 300px at 28% -14%,#E2F0FF 0%,rgba(226,240,255,0) 70%),#F4F5FB}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:44px;padding:0 18px;border-radius:12px;font:600 15px/1 "Plus Jakarta Sans",system-ui,sans-serif;border:1px solid transparent;cursor:pointer;text-decoration:none;white-space:nowrap}
+.btn-primary{background:#3148D6;color:#FFFFFF;box-shadow:0 8px 18px -10px rgba(49,72,214,.65)}
+.btn-primary:hover{background:#2638B0;color:#FFFFFF}
+.btn-quiet{background:#FFFFFF;color:#151A33;border-color:#DCDFEC}
+.btn-quiet:hover{background:#F4F5FB;color:#151A33}
+.btn-soft{background:#ECEFFF;color:#2A3CB8}
+.btn-soft:hover{background:#DFE4FF;color:#2A3CB8}
+.btn-danger{background:#FFFFFF;color:#B42318;border-color:#F3C4BE}
+.btn-danger:hover{background:#FDECEA;color:#B42318}
+.btn-sm{height:36px;padding:0 14px;font-size:14px;border-radius:10px}
+.btn:focus-visible,.nav:focus-visible,.input:focus-visible,.icon-btn:focus-visible,.tab:focus-visible,.pick:focus-visible{outline:3px solid #A9B6F5;outline-offset:2px}
+.icon-btn{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:12px;border:1px solid #E7E9F3;background:#FFFFFF;color:#4A5068;cursor:pointer;position:relative;text-decoration:none}
+.icon-btn:hover{background:#F4F5FB;color:#151A33}
+.dot{position:absolute;top:8px;right:9px;width:8px;height:8px;border-radius:999px;background:#3148D6;border:2px solid #FFFFFF}
+.card{background:#FFFFFF;border:1px solid #E7E9F3;border-radius:20px;box-shadow:0 1px 2px rgba(20,24,60,.04),0 10px 28px -18px rgba(20,24,60,.18)}
+.chip{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 10px;border-radius:999px;font-size:12.5px;font-weight:600;white-space:nowrap}
+.c-blue{background:#ECEFFF;color:#2A3CB8}
+.c-green{background:#E4F5EA;color:#1B6B45}
+.c-orange{background:#FFEEDD;color:#9A3F00}
+.c-red{background:#FDECEA;color:#B42318}
+.c-gray{background:#EEF0F6;color:#4A5068}
+.c-gold{background:#FFF3D1;color:#6B4E00}
+.c-glass{background:rgba(255,255,255,.82);color:#151A33}
+.b-sains{background:#E6F0FF;color:#1D56AD}
+.b-riset{background:#F0EBFF;color:#5534B8}
+.b-seni{background:#FDE8F0;color:#A61F54}
+.b-olahraga{background:#E0F4F8;color:#0B6577}
+.cover-sains{background:linear-gradient(135deg,#DCE9FF,#C3D8FF);color:#1D56AD}
+.cover-riset{background:linear-gradient(135deg,#EEE7FF,#D9CCFF);color:#5534B8}
+.cover-seni{background:linear-gradient(135deg,#FFE6EF,#FFCFE0);color:#A61F54}
+.cover-olahraga{background:linear-gradient(135deg,#DDF4F8,#BFE8F0);color:#0B6577}
+.label{font-size:13px;font-weight:600;color:#4A5068}
+.input{height:46px;width:100%;border:1px solid #DCDFEC;border-radius:12px;padding:0 14px;font:500 15px "Plus Jakarta Sans",system-ui,sans-serif;color:#151A33;background:#FFFFFF}
+.input::placeholder{color:#8A90A6}
+textarea.input{height:auto;padding:12px 14px;line-height:1.5;resize:vertical}
+.nav{display:flex;align-items:center;gap:12px;height:44px;padding:0 14px;border-radius:12px;color:#4A5068;text-decoration:none;font-size:14.5px;font-weight:600}
+.nav:hover{background:#F1F2FA;color:#151A33}
+.nav-on{background:#3148D6;color:#FFFFFF;box-shadow:0 8px 18px -10px rgba(49,72,214,.7)}
+.nav-on:hover{background:#2638B0;color:#FFFFFF}
+.nav-sec{font-size:11.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#8A90A6;padding:8px 14px 2px}
+.badge{margin-left:auto;min-width:22px;height:22px;padding:0 7px;border-radius:999px;background:#ECEFFF;color:#2A3CB8;font-size:12px;font-weight:700;display:inline-flex;align-items:center;justify-content:center}
+.nav-on .badge{background:#FFFFFF;color:#2A3CB8}
+.avatar{display:inline-flex;align-items:center;justify-content:center;border-radius:999px;background:#ECEFFF;color:#2A3CB8;font-weight:700;flex-shrink:0}
+.stack{display:flex}.stack .avatar{border:2px solid #FFFFFF;margin-left:-8px}.stack .avatar:first-child{margin-left:0}
+.pick{cursor:pointer;border:1px solid #DCDFEC;background:#FFFFFF;border-radius:14px;font:600 14.5px "Plus Jakarta Sans",system-ui,sans-serif;color:#151A33}
+.pick-on{border:2px solid #3148D6;background:#ECEFFF;color:#2A3CB8}
+.tabbar{position:absolute;left:0;right:0;bottom:0;height:80px;background:#FFFFFF;border-top:1px solid #E7E9F3;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));padding:8px 6px 16px}
+.tab{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:52px;border-radius:14px;color:#666C84;text-decoration:none;font-size:11.5px;font-weight:600}
+.tab-ic{width:48px;height:28px;border-radius:999px;display:flex;align-items:center;justify-content:center}
+.tab-on{color:#3148D6}.tab-on .tab-ic{background:#ECEFFF}
+.muted{color:#666C84}
+.num{font-variant-numeric:tabular-nums}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.vtab{display:flex;align-items:center;gap:12px;width:100%;height:46px;padding:0 14px;border-radius:12px;border:0;background:transparent;font:600 14.5px "Plus Jakarta Sans",system-ui,sans-serif;color:#4A5068;cursor:pointer;text-align:left}
+.vtab:hover{background:#F4F5FB;color:#151A33}
+.vtab-on{background:#ECEFFF;color:#2A3CB8}
+.vtab-on:hover{background:#DFE4FF;color:#2A3CB8}
+.vtab:focus-visible,.sw:focus-visible,.link-btn:focus-visible{outline:3px solid #A9B6F5;outline-offset:2px}
+.wbox{border:1px solid #E7E9F3;border-radius:16px;overflow:hidden}
+.wtbl{width:100%;border-collapse:collapse}
+.wtbl caption{text-align:left;padding:12px 12px 4px;font:700 15px "Urbanist","Plus Jakarta Sans",system-ui,sans-serif;color:#151A33}
+.wtbl th{font-size:12px;font-weight:700;color:#666C84;text-align:left;padding:4px 12px 8px;border-bottom:1px solid #E7E9F3}
+.wtbl td{padding:0 12px;height:44px;border-bottom:1px solid #F0F1F7;font-size:13px;font-weight:600;white-space:nowrap}
+.wtbl tr:last-child td{border-bottom:0}
+.wt{height:34px;width:60px;padding:0 9px;border-radius:10px;font-size:14px;text-align:right;font-variant-numeric:tabular-nums}
+.rtile{display:flex;flex-direction:column;gap:2px;padding:10px 14px;border-radius:14px;background:#F4F5FB;min-width:96px}
+.rtile-l{font-size:12px;font-weight:600;color:#666C84}
+.rtile-v{font:800 20px/1.1 "Urbanist","Plus Jakarta Sans",system-ui,sans-serif;font-variant-numeric:tabular-nums}
+.op{font:700 18px "Urbanist",system-ui,sans-serif;color:#666C84}
+.sw{position:relative;width:48px;height:28px;border-radius:999px;border:0;background:#DCDFEC;cursor:pointer;flex-shrink:0;padding:0}
+.sw .knob{position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:999px;background:#FFFFFF;box-shadow:0 1px 3px rgba(20,24,60,.25);transition:left .15s}
+.sw-on{background:#3148D6}
+.sw-on .knob{left:23px}
+.setbox{border:1px solid #E7E9F3;border-radius:16px;padding:16px 18px;display:flex;flex-direction:column;gap:10px}
+.utbl{width:100%;border-collapse:collapse}
+.utbl th{font-size:12.5px;font-weight:700;color:#666C84;text-align:left;padding:10px 14px;background:#F8F9FD;border-bottom:1px solid #E7E9F3}
+.utbl th:first-child{border-top-left-radius:12px}.utbl th:last-child{border-top-right-radius:12px}
+.utbl td{padding:0 14px;height:47px;border-bottom:1px solid #F0F1F7;font-size:14px}
+.utbl tr:last-child td{border-bottom:0}
+.mono{font-family:ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;font-size:13.5px;letter-spacing:0}
+.link-btn{background:transparent;border:0;padding:0;font:600 13.5px "Plus Jakarta Sans",system-ui,sans-serif;color:#3148D6;cursor:pointer;min-height:36px;display:inline-flex;align-items:center;gap:4px}
+.link-btn:hover{color:#2638B0}
+.sig{width:232px;height:120px;border:2px dashed #C9CFE3;border-radius:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;flex-shrink:0;background:repeating-conic-gradient(#F4F5FB 0% 25%,#FFFFFF 0% 50%) 50% / 16px 16px;color:#4A5068}
+.input:disabled{background:#F4F5FB;color:#666C84;cursor:not-allowed}
+</style>
+</helmet>
+<div class="page" style="width:1440px;height:1000px;display:flex;overflow:hidden">
+  <aside style="width:264px;flex-shrink:0;background:#FFFFFF;border-right:1px solid #E7E9F3;padding:22px 16px;display:flex;flex-direction:column;gap:18px">
+    <div style="display:flex;align-items:center;gap:12px;padding:0 4px">
+      <span role="img" aria-label="Logo SMAGA Talent Hub" style="width:40px;height:40px;border-radius:12px;background:#3148D6;color:#FFFFFF;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 4 6v6c0 4.5 3.4 8.2 8 9 4.6-.8 8-4.5 8-9V6z"></path><path d="m8.5 12 2.5 2.5 4.5-5"></path></svg></span>
+      <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
+        <span class="display" style="font-size:17px;font-weight:800;line-height:1.15">SMAGA Talent Hub</span>
+        <span class="muted" style="font-size:12px;line-height:1.3">SMA Negeri 3 Semarang</span>
+      </div>
+    </div>
+    <nav aria-label="Menu utama" style="display:flex;flex-direction:column;gap:4px">
+      <div class="nav-sec">Menu</div>
+      <a class="nav" href="Dashboard-Sekolah.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 20V11M12 20V5M18 20v-6M3 20h18"></path></svg>Dashboard</a>
+      <a class="nav" href="Kesiswaan-Kelola-Lomba.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z"></path><path d="M17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3"></path></svg>Kelola lomba</a>
+      <div class="nav-sec" style="margin-top:10px">Data</div>
+      <a class="nav" href="Admin-Import-Siswa.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5M4 20h16"></path></svg>Import siswa</a>
+      <a class="nav" href="#"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"></circle><path d="M2.5 20a6.5 6.5 0 0 1 13 0"></path><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14a6 6 0 0 1 3.5 6"></path></svg>Pengguna &amp; peran</a>
+      <a class="nav" href="#"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="5" rx="1"></rect><path d="M5 9v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9M10 13h4"></path></svg>Arsip otomatis</a>
+      <div class="nav-sec" style="margin-top:10px">Sistem</div>
+      <a class="nav nav-on" href="Admin-Pengaturan.dc.html" aria-current="page"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12"></path><circle cx="16" cy="6" r="2"></circle><circle cx="10" cy="12" r="2"></circle><circle cx="18" cy="18" r="2"></circle></svg>Pengaturan</a>
+    </nav>
+    <div style="margin-top:auto;padding:12px;border-radius:16px;background:#F4F5FB;display:flex;align-items:center;gap:10px">
+      <span class="avatar" style="width:38px;height:38px;font-size:14px" aria-hidden="true">OS</span>
+      <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
+        <span style="font-size:14px;font-weight:700;line-height:1.3">Operator STH</span>
+        <span class="muted" style="font-size:12.5px;line-height:1.3">Admin</span>
+      </div>
+    </div>
+  </aside>
+
+  <main style="flex:1;min-width:0;padding:26px 36px;display:flex;flex-direction:column;gap:22px">
+    <header style="display:flex;align-items:center;justify-content:space-between;gap:24px">
+      <div style="display:flex;flex-direction:column;gap:4px;min-width:0">
+        <h1 style="margin:0;font-size:30px;font-weight:800;line-height:1.15">Pengaturan</h1>
+        <p class="muted" style="margin:0;font-size:15px">Aturan poin, batas waktu, surat, dan akun.</p>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;flex-shrink:0">
+        <div style="position:relative;width:300px">
+          <label class="sr-only" for="cari-atas">Cari pengaturan</label>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="position:absolute;left:14px;top:13px;color:#8A90A6"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+          <input class="input" id="cari-atas" type="search" placeholder="Cari pengaturan" style="padding-left:44px">
+        </div>
+        <button class="icon-btn" type="button" aria-label="Notifikasi, 2 baru"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 16v-5a6 6 0 1 1 12 0v5l1.5 2h-15z"></path><path d="M10 20a2 2 0 0 0 4 0"></path></svg><span class="dot"></span></button>
+        <span class="avatar" role="img" aria-label="Operator STH" style="width:40px;height:40px;font-size:14px">OS</span>
+      </div>
+    </header>
+
+    <div style="display:flex;gap:22px;flex:1;min-height:0">
+      <div class="card" role="tablist" aria-label="Bagian pengaturan" aria-orientation="vertical" style="width:248px;flex-shrink:0;align-self:flex-start;padding:10px;display:flex;flex-direction:column;gap:4px">
+        <button class="{{ tBobot.cls }}" type="button" role="tab" id="tab-bobot" aria-selected="{{ tBobot.sel }}" onClick="{{ tBobot.pick }}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12"></path><circle cx="16" cy="6" r="2"></circle><circle cx="10" cy="12" r="2"></circle><circle cx="18" cy="18" r="2"></circle></svg>Bobot poin</button>
+        <button class="{{ tBatas.cls }}" type="button" role="tab" id="tab-batas" aria-selected="{{ tBatas.sel }}" onClick="{{ tBatas.pick }}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg>Batas &amp; arsip</button>
+        <button class="{{ tSurat.cls }}" type="button" role="tab" id="tab-surat" aria-selected="{{ tSurat.sel }}" onClick="{{ tSurat.pick }}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"></path><path d="M14 3v5h5"></path></svg>Surat &amp; tanda tangan</button>
+        <button class="{{ tUser.cls }}" type="button" role="tab" id="tab-user" aria-selected="{{ tUser.sel }}" onClick="{{ tUser.pick }}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"></circle><path d="M2.5 20a6.5 6.5 0 0 1 13 0"></path><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14a6 6 0 0 1 3.5 6"></path></svg>Pengguna &amp; peran</button>
+        <button class="{{ tEmail.cls }}" type="button" role="tab" id="tab-email" aria-selected="{{ tEmail.sel }}" onClick="{{ tEmail.pick }}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="m3 7 9 6 9-6"></path></svg>Email</button>
+      </div>
+
+      <div class="card" style="flex:1;min-width:0;padding:24px 26px;display:flex;flex-direction:column">
+
+        <sc-if value="{{ isBobot }}" hint-placeholder-val="{{ true }}">
+          <section role="tabpanel" aria-labelledby="tab-bobot" style="display:flex;flex-direction:column;gap:18px;flex:1">
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px">
+              <div>
+                <h2 style="margin:0;font-size:20px;font-weight:700">Bobot poin</h2>
+                <p class="muted" style="margin:4px 0 0;font-size:14px">Poin = Tingkat × Capaian × Penyelenggara.</p>
+              </div>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:18px;align-items:start">
+              <div class="wbox" style="grid-column:span 3">
+                <table class="wtbl">
+                  <caption>Tingkat</caption>
+                  <thead><tr><th scope="col">Tingkat lomba</th><th scope="col" style="text-align:right">Bobot</th></tr></thead>
+                  <tbody>
+                    <tr><td>Internasional</td><td style="text-align:right"><input class="input wt" type="text" inputmode="numeric" aria-label="Bobot Internasional" value="{{ tk.intl }}" onChange="{{ on.tIntl }}"></td></tr>
+                    <tr><td>Nasional</td><td style="text-align:right"><input class="input wt" type="text" inputmode="numeric" aria-label="Bobot Nasional" value="{{ tk.nas }}" onChange="{{ on.tNas }}"></td></tr>
+                    <tr><td>Provinsi</td><td style="text-align:right"><input class="input wt" type="text" inputmode="numeric" aria-label="Bobot Provinsi" value="{{ tk.prov }}" onChange="{{ on.tProv }}"></td></tr>
+                    <tr><td>Kota/Kabupaten</td><td style="text-align:right"><input class="input wt" type="text" inputmode="numeric" aria-label="Bobot Kota/Kabupaten" value="{{ tk.kota }}" onChange="{{ on.tKota }}"></td></tr>
+                    <tr><td>Sekolah</td><td style="text-align:right"><input class="input wt" type="text" inputmode="numeric" aria-label="Bobot Sekolah" value="{{ tk.sek }}" onChange="{{ on.tSek }}"></td></tr>
+                  </tbody>
+                </table>
+              </div>
+              <div class="wbox" style="grid-column:span 4">
+                <table class="wtbl">
+                  <caption>Capaian</caption>
+                  <thead><tr><th scope="col">Hasil lomba</th><th scope="col" style="text-align:right">Bobot</th></tr></thead>
+                  <tbody>
+                    <tr><td>Juara I / Medali emas</td><td style="text-align:right"><input class="input wt" type="text" inputmode="decimal" aria-label="Bobot Juara I / Medali emas" value="{{ cp.j1 }}" onChange="{{ on.cJ1 }}"></td></tr>
+                    <tr><td>Juara II / Medali perak</td><td style="text-align:right"><input class="input wt" type="text" inputmode="decimal" aria-label="Bobot Juara II / Medali perak" value="{{ cp.j2 }}" onChange="{{ on.cJ2 }}"></td></tr>
+                    <tr><td>Juara III / Medali perunggu</td><td style="text-align:right"><input class="input wt" type="text" inputmode="decimal" aria-label="Bobot Juara III / Medali perunggu" value="{{ cp.j3 }}" onChange="{{ on.cJ3 }}"></td></tr>
+                    <tr><td>Finalis</td><td style="text-align:right"><input class="input wt" type="text" inputmode="decimal" aria-label="Bobot Finalis" value="{{ cp.fin }}" onChange="{{ on.cFin }}"></td></tr>
+                    <tr><td>Semifinalis</td><td style="text-align:right"><input class="input wt" type="text" inputmode="decimal" aria-label="Bobot Semifinalis" value="{{ cp.semi }}" onChange="{{ on.cSemi }}"></td></tr>
+                    <tr><td>Penghargaan khusus</td><td style="text-align:right"><input class="input wt" type="text" inputmode="decimal" aria-label="Bobot Penghargaan khusus" value="{{ cp.khusus }}" onChange="{{ on.cKhusus }}"></td></tr>
+                    <tr><td>Peserta</td><td style="text-align:right"><input class="input wt" type="text" inputmode="decimal" aria-label="Bobot Peserta" value="{{ cp.peserta }}" onChange="{{ on.cPeserta }}"></td></tr>
+                  </tbody>
+                </table>
+              </div>
+              <div class="wbox" style="grid-column:span 3">
+                <table class="wtbl">
+                  <caption>Kategori penyelenggara</caption>
+                  <thead><tr><th scope="col">Kategori</th><th scope="col" style="text-align:right">Bobot</th></tr></thead>
+                  <tbody>
+                    <tr><td>A <span class="muted" style="font-weight:500;font-size:12.5px">Puspresnas</span></td><td style="text-align:right"><input class="input wt" type="text" inputmode="decimal" aria-label="Bobot kategori A" value="{{ kt.a }}" onChange="{{ on.kA }}"></td></tr>
+                    <tr><td>B <span class="muted" style="font-weight:500;font-size:12.5px">Pemda</span></td><td style="text-align:right"><input class="input wt" type="text" inputmode="decimal" aria-label="Bobot kategori B" value="{{ kt.b }}" onChange="{{ on.kB }}"></td></tr>
+                    <tr><td>C <span class="muted" style="font-weight:500;font-size:12.5px">Federasi</span></td><td style="text-align:right"><input class="input wt" type="text" inputmode="decimal" aria-label="Bobot kategori C" value="{{ kt.c }}" onChange="{{ on.kC }}"></td></tr>
+                    <tr><td>D <span class="muted" style="font-weight:500;font-size:12.5px">Swasta</span></td><td style="text-align:right"><input class="input wt" type="text" inputmode="decimal" aria-label="Bobot kategori D" value="{{ kt.d }}" onChange="{{ on.kD }}"></td></tr>
+                    <tr><td>E <span class="muted" style="font-weight:500;font-size:12.5px">Lainnya</span></td><td style="text-align:right"><input class="input wt" type="text" inputmode="decimal" aria-label="Bobot kategori E" value="{{ kt.e }}" onChange="{{ on.kE }}"></td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div style="display:flex;flex-direction:column;gap:10px;padding:16px 18px;border-radius:16px;border:1px solid #E7E9F3">
+              <span class="label">Contoh langsung · OPSI 2026 · Nasional · Juara II · Puspresnas (A)</span>
+              <div role="status" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+                <div class="rtile"><span class="rtile-l">Tingkat · Nasional</span><span class="rtile-v">{{ tk.nas }}</span></div>
+                <span class="op" aria-hidden="true">×</span>
+                <div class="rtile"><span class="rtile-l">Capaian · Juara II</span><span class="rtile-v">{{ cp.j2 }}</span></div>
+                <span class="op" aria-hidden="true">×</span>
+                <div class="rtile"><span class="rtile-l">Penyelenggara · A</span><span class="rtile-v">{{ kt.a }}</span></div>
+                <span class="op" aria-hidden="true">=</span>
+                <div class="rtile" style="background:#FFF3D1;color:#6B4E00"><span class="rtile-l" style="color:#6B4E00">Hasil</span><span class="rtile-v">{{ contohPoin }} poin</span></div>
+              </div>
+            </div>
+
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 18px;border-radius:16px;background:#F8F9FD;border:1px solid #EEF0F6">
+              <div style="display:flex;flex-direction:column;gap:2px">
+                <span id="lbl-tim" style="font-size:15px;font-weight:700">Anggota tim mendapat poin penuh</span>
+                <span class="muted" style="font-size:13px">Setiap anggota menerima poin yang sama dengan ketua.</span>
+              </div>
+              <button class="{{ swTim.cls }}" type="button" role="switch" aria-checked="{{ swTim.on }}" aria-labelledby="lbl-tim" onClick="{{ swTim.toggle }}"><span class="knob"></span></button>
+            </div>
+
+            <div style="margin-top:auto;display:flex;align-items:center;justify-content:space-between;gap:16px;padding-top:16px;border-top:1px solid #EEF0F6">
+              <span class="chip c-orange" style="height:32px;padding:0 12px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 11v5M12 8h.01"></path></svg>Perubahan bobot menghitung ulang poin yang sudah ada.</span>
+              <div style="display:flex;align-items:center;gap:12px">
+                <sc-if value="{{ savedBobot }}" hint-placeholder-val="{{ false }}"><span class="chip c-green" role="status"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"></path></svg>Bobot tersimpan</span></sc-if>
+                <button class="btn btn-primary" type="button" onClick="{{ simpanBobot }}">Simpan bobot</button>
+              </div>
+            </div>
+          </section>
+        </sc-if>
+
+        <sc-if value="{{ isBatas }}" hint-placeholder-val="{{ false }}">
+          <section role="tabpanel" aria-labelledby="tab-batas" style="display:flex;flex-direction:column;gap:18px;flex:1">
+            <div>
+              <h2 style="margin:0;font-size:20px;font-weight:700">Batas &amp; arsip</h2>
+              <p class="muted" style="margin:4px 0 0;font-size:14px">Batas laporan hasil dan kapan akun siswa diarsipkan.</p>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px">
+              <div class="setbox">
+                <label for="batas-hari" style="font-size:15px;font-weight:700">Batas laporan hasil</label>
+                <div style="display:flex;align-items:center;gap:12px">
+                  <input class="input num" id="batas-hari" type="number" min="1" value="{{ batasHari }}" onChange="{{ onBatas }}" style="width:96px;text-align:right">
+                  <span style="font-size:14.5px;font-weight:600;color:#4A5068">hari setelah lomba selesai</span>
+                </div>
+                <span class="muted" style="font-size:13px">Laporan yang lewat batas tampil di dashboard sekolah.</span>
+              </div>
+              <div class="setbox">
+                <label for="arsip-bulan" style="font-size:15px;font-weight:700">Arsip otomatis</label>
+                <div style="display:flex;align-items:center;gap:12px">
+                  <input class="input num" id="arsip-bulan" type="number" min="1" value="{{ arsipBulan }}" onChange="{{ onArsip }}" style="width:96px;text-align:right">
+                  <span style="font-size:14.5px;font-weight:600;color:#4A5068">bulan setelah awal kelas XII</span>
+                </div>
+                <span class="muted" style="font-size:13px">Contoh: kelas XII mulai Juli 2027 → arsip {{ contohArsip }}.</span>
+              </div>
+            </div>
+
+            <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px">
+              <div role="status" style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:16px;background:#F8F9FD;border:1px solid #EEF0F6">
+                <span style="width:40px;height:40px;border-radius:12px;background:#EEF0F6;color:#4A5068;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="5" rx="1"></rect><path d="M5 9v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9M10 13h4"></path></svg></span>
+                <span style="display:flex;flex-direction:column;gap:2px">
+                  <span class="muted" style="font-size:13px;font-weight:600">Akan diarsipkan bulan depan</span>
+                  <span class="display" style="font-size:20px;font-weight:800">{{ bulanDepan }}</span>
+                </span>
+              </div>
+              <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:16px;background:#F8F9FD;border:1px solid #EEF0F6">
+                <span style="width:40px;height:40px;border-radius:12px;background:#ECEFFF;color:#2A3CB8;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"></rect><path d="M3 10h18M8 3v4M16 3v4"></path></svg></span>
+                <span style="display:flex;flex-direction:column;gap:2px">
+                  <span class="muted" style="font-size:13px;font-weight:600">Arsip berikutnya · angkatan 2023</span>
+                  <span class="display" style="font-size:20px;font-weight:800">{{ arsipBerikut }}</span>
+                </span>
+              </div>
+            </div>
+
+            <div style="display:flex;flex-direction:column;gap:10px">
+              <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px">
+                <h3 style="margin:0;font-size:17px;font-weight:700">Baru diarsipkan</h3>
+                <span class="muted" style="font-size:13px">Prestasi alumni tetap tampil di halaman publik.</span>
+              </div>
+              <table class="utbl">
+                <caption class="sr-only">Akun siswa yang baru diarsipkan</caption>
+                <thead><tr><th scope="col">Nama</th><th scope="col">Angkatan</th><th scope="col">Kelas XII mulai</th><th scope="col">Diarsipkan</th><th scope="col">Prestasi</th><th scope="col">Status</th></tr></thead>
+                <tbody>
+                  <tr><td style="font-weight:700">Ardiansyah Nur Hakim</td><td class="num">2022</td><td>Jul 2024</td><td>1 Jan 2026</td><td class="num">5</td><td><span class="chip c-gray">Alumni · hanya baca</span></td></tr>
+                  <tr><td style="font-weight:700">Putri Maharani Kusuma</td><td class="num">2022</td><td>Jul 2024</td><td>1 Jan 2026</td><td class="num">3</td><td><span class="chip c-gray">Alumni · hanya baca</span></td></tr>
+                  <tr><td style="font-weight:700">Bagas Wirayudha</td><td class="num">2022</td><td>Jul 2024</td><td>1 Jan 2026</td><td class="num">4</td><td><span class="chip c-gray">Alumni · hanya baca</span></td></tr>
+                  <tr><td style="font-weight:700">Tiara Anjani Lestari</td><td class="num">2022</td><td>Jul 2024</td><td>1 Jan 2026</td><td class="num">2</td><td><span class="chip c-gray">Alumni · hanya baca</span></td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div style="margin-top:auto;display:flex;align-items:center;justify-content:flex-end;gap:12px;padding-top:16px;border-top:1px solid #EEF0F6">
+              <sc-if value="{{ savedBatas }}" hint-placeholder-val="{{ false }}"><span class="chip c-green" role="status"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"></path></svg>Tersimpan</span></sc-if>
+              <button class="btn btn-primary" type="button" onClick="{{ simpanBatas }}">Simpan batas</button>
+            </div>
+          </section>
+        </sc-if>
+
+        <sc-if value="{{ isSurat }}" hint-placeholder-val="{{ false }}">
+          <section role="tabpanel" aria-labelledby="tab-surat" style="display:flex;flex-direction:column;gap:20px;flex:1">
+            <div>
+              <h2 style="margin:0;font-size:20px;font-weight:700">Surat &amp; tanda tangan</h2>
+              <p class="muted" style="margin:4px 0 0;font-size:14px">Dipakai Tata Usaha saat membuat surat tugas.</p>
+            </div>
+
+            <div style="display:flex;flex-direction:column;gap:10px">
+              <h3 style="margin:0;font-size:17px;font-weight:700">Tanda tangan + stempel Kepala Sekolah</h3>
+              <sc-if value="{{ hasSig }}" hint-placeholder-val="{{ true }}">
+                <div style="display:flex;align-items:center;gap:20px">
+                  <div class="sig" role="img" aria-label="Pratinjau file ttd-stempel-kepsek.png">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"></rect><circle cx="9" cy="10" r="2"></circle><path d="m21 17-5-5-9 8"></path></svg>
+                    <span style="font-size:13px;font-weight:600">Tanda tangan + stempel</span>
+                  </div>
+                  <div style="display:flex;flex-direction:column;gap:8px;min-width:0">
+                    <div style="display:flex;align-items:center;gap:10px">
+                      <span style="font-size:15px;font-weight:700">ttd-stempel-kepsek.png</span>
+                      <span class="chip c-green">Aktif</span>
+                    </div>
+                    <span class="muted" style="font-size:13px">PNG transparan, maks 1 MB</span>
+                    <span style="display:inline-flex;align-items:center;gap:6px;font-size:13.5px;font-weight:600;color:#2A3CB8"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 11v5M12 8h.01"></path></svg>Dipakai otomatis di semua surat tugas PDF.</span>
+                    <div style="display:flex;gap:10px;margin-top:2px">
+                      <button class="btn btn-quiet btn-sm" type="button"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5M4 20h16"></path></svg>Ganti file</button>
+                      <button class="btn btn-danger btn-sm" type="button" onClick="{{ hapusSig }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"></path></svg>Hapus</button>
+                    </div>
+                  </div>
+                </div>
+              </sc-if>
+              <sc-if value="{{ noSig }}" hint-placeholder-val="{{ false }}">
+                <div style="display:flex;align-items:center;gap:20px">
+                  <div class="sig" style="background:#FAFBFE">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5M4 20h16"></path></svg>
+                    <span style="font-size:13px;font-weight:600">Belum ada file</span>
+                  </div>
+                  <div style="display:flex;flex-direction:column;gap:8px">
+                    <span class="chip c-orange" style="align-self:flex-start">Wajib sebelum TU membuat surat</span>
+                    <span class="muted" style="font-size:13px">PNG transparan, maks 1 MB</span>
+                    <button class="btn btn-soft btn-sm" type="button" onClick="{{ unggahSig }}" style="align-self:flex-start"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5M4 20h16"></path></svg>Unggah file</button>
+                  </div>
+                </div>
+              </sc-if>
+            </div>
+
+            <div style="display:flex;flex-direction:column;gap:12px;padding-top:18px;border-top:1px solid #EEF0F6">
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+                <div style="display:flex;align-items:center;gap:10px">
+                  <h3 style="margin:0;font-size:17px;font-weight:700">Penandatangan</h3>
+                  <span class="chip c-blue">Terhubung ke akun Kepala Sekolah</span>
+                </div>
+                <button class="link-btn" type="button" onClick="{{ keUser }}">Ganti pejabat<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"></path></svg></button>
+              </div>
+              <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px">
+                <div style="display:flex;flex-direction:column;gap:6px"><label class="label" for="ttd-nama">Nama</label><input class="input" id="ttd-nama" placeholder="Drs. Bambang Hartono, M.Pd."></div>
+                <div style="display:flex;flex-direction:column;gap:6px"><label class="label" for="ttd-pangkat">Pangkat/Golongan</label><input class="input" id="ttd-pangkat" placeholder="Pembina Tk. I, IV/b"></div>
+                <div style="display:flex;flex-direction:column;gap:6px"><label class="label" for="ttd-nip">NIP</label><input class="input num" id="ttd-nip" inputmode="numeric" placeholder="18 digit"></div>
+              </div>
+            </div>
+
+            <div style="display:flex;flex-direction:column;gap:10px;padding-top:18px;border-top:1px solid #EEF0F6">
+              <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px">
+                <h3 style="margin:0;font-size:17px;font-weight:700">Format nomor surat</h3>
+                <span class="muted" style="font-size:13px">{bulan} ditulis angka Romawi.</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:14px;min-height:56px;padding:8px 14px;border-radius:14px;background:#F8F9FD;border:1px solid #EEF0F6">
+                <span style="width:150px;flex-shrink:0;font-size:14px;font-weight:700">Surat tugas siswa</span>
+                <sc-if value="{{ fmtS.view }}" hint-placeholder-val="{{ true }}">
+                  <div style="display:flex;align-items:center;gap:14px;flex:1;min-width:0">
+                  <span class="chip c-gray mono">{{ fmtS.value }}</span>
+                  <span class="muted" style="font-size:12.5px;flex:1">Contoh: {{ fmtS.contoh }}</span>
+                  <button class="icon-btn" type="button" aria-label="Ubah format surat siswa" onClick="{{ fmtS.edit }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z"></path><path d="m13.5 6.5 4 4"></path></svg></button>
+                  </div>
+                </sc-if>
+                <sc-if value="{{ fmtS.editing }}" hint-placeholder-val="{{ false }}">
+                  <div style="display:flex;align-items:center;gap:14px;flex:1;min-width:0">
+                  <label class="sr-only" for="fmt-siswa">Format nomor surat siswa</label>
+                  <input class="input mono" id="fmt-siswa" value="{{ draft }}" onChange="{{ onDraft }}" style="height:40px;flex:1">
+                  <button class="btn btn-primary btn-sm" type="button" onClick="{{ fmtS.save }}">Simpan</button>
+                  <button class="btn btn-quiet btn-sm" type="button" onClick="{{ batalFmt }}">Batal</button>
+                  </div>
+                </sc-if>
+              </div>
+              <div style="display:flex;align-items:center;gap:14px;min-height:56px;padding:8px 14px;border-radius:14px;background:#F8F9FD;border:1px solid #EEF0F6">
+                <span style="width:150px;flex-shrink:0;font-size:14px;font-weight:700">Surat tugas guru</span>
+                <sc-if value="{{ fmtG.view }}" hint-placeholder-val="{{ true }}">
+                  <div style="display:flex;align-items:center;gap:14px;flex:1;min-width:0">
+                  <span class="chip c-gray mono">{{ fmtG.value }}</span>
+                  <span class="muted" style="font-size:12.5px;flex:1">Contoh: {{ fmtG.contoh }}</span>
+                  <button class="icon-btn" type="button" aria-label="Ubah format surat guru" onClick="{{ fmtG.edit }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z"></path><path d="m13.5 6.5 4 4"></path></svg></button>
+                  </div>
+                </sc-if>
+                <sc-if value="{{ fmtG.editing }}" hint-placeholder-val="{{ false }}">
+                  <div style="display:flex;align-items:center;gap:14px;flex:1;min-width:0">
+                  <label class="sr-only" for="fmt-guru">Format nomor surat guru</label>
+                  <input class="input mono" id="fmt-guru" value="{{ draft }}" onChange="{{ onDraft }}" style="height:40px;flex:1">
+                  <button class="btn btn-primary btn-sm" type="button" onClick="{{ fmtG.save }}">Simpan</button>
+                  <button class="btn btn-quiet btn-sm" type="button" onClick="{{ batalFmt }}">Batal</button>
+                  </div>
+                </sc-if>
+              </div>
+            </div>
+          </section>
+        </sc-if>
+
+        <sc-if value="{{ isUser }}" hint-placeholder-val="{{ false }}">
+          <section role="tabpanel" aria-labelledby="tab-user" style="display:flex;flex-direction:column;gap:18px;flex:1">
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px">
+              <div>
+                <h2 style="margin:0;font-size:20px;font-weight:700">Pengguna &amp; peran</h2>
+                <p class="muted" style="margin:4px 0 0;font-size:14px">Akun staf sekolah. Admin bisa mengganti pejabat.</p>
+              </div>
+              <button class="btn btn-primary btn-sm" type="button"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>Tambah pengguna</button>
+            </div>
+            <table class="utbl">
+              <caption class="sr-only">Akun staf per peran</caption>
+              <thead><tr><th scope="col">Peran</th><th scope="col">Pengguna</th><th scope="col" style="text-align:right">Aksi</th></tr></thead>
+              <tbody>
+                <tr>
+                  <td style="font-weight:700">Kepala Sekolah</td>
+                  <td><div style="display:flex;align-items:center;gap:10px"><span class="avatar" style="width:32px;height:32px;font-size:12px" aria-hidden="true">BH</span><span style="display:flex;flex-direction:column"><span style="font-weight:700;line-height:1.3">Drs. Bambang Hartono, M.Pd.</span><span class="muted" style="font-size:12.5px;line-height:1.3">Akun: kepsek</span></span></div></td>
+                  <td style="text-align:right"><div style="display:inline-flex;gap:8px"><button class="btn btn-soft btn-sm" type="button">Ganti pejabat</button><button class="btn btn-quiet btn-sm" type="button" aria-label="Reset akun Drs. Bambang Hartono, M.Pd.">Reset akun</button></div></td>
+                </tr>
+                <tr>
+                  <td style="font-weight:700">Kesiswaan</td>
+                  <td><div style="display:flex;align-items:center;gap:10px"><span class="avatar" style="width:32px;height:32px;font-size:12px" aria-hidden="true">DR</span><span style="display:flex;flex-direction:column"><span style="font-weight:700;line-height:1.3">Ibu Dwi Rahayu</span><span class="muted" style="font-size:12.5px;line-height:1.3">Akun: kesiswaan</span></span></div></td>
+                  <td style="text-align:right"><button class="btn btn-quiet btn-sm" type="button" aria-label="Reset akun Ibu Dwi Rahayu">Reset akun</button></td>
+                </tr>
+                <tr>
+                  <td style="font-weight:700">Tata Usaha</td>
+                  <td><div style="display:flex;align-items:center;gap:10px"><span class="avatar" style="width:32px;height:32px;font-size:12px" aria-hidden="true">SH</span><span style="display:flex;flex-direction:column"><span style="font-weight:700;line-height:1.3">Ibu Sri Handayani</span><span class="muted" style="font-size:12.5px;line-height:1.3">Akun: tu</span></span></div></td>
+                  <td style="text-align:right"><button class="btn btn-quiet btn-sm" type="button" aria-label="Reset akun Ibu Sri Handayani">Reset akun</button></td>
+                </tr>
+                <tr>
+                  <td style="font-weight:700">Humas</td>
+                  <td><div style="display:flex;align-items:center;gap:10px"><span class="avatar" style="width:32px;height:32px;font-size:12px" aria-hidden="true">GP</span><span style="display:flex;flex-direction:column"><span style="font-weight:700;line-height:1.3">Mas Galih Prasetyo</span><span class="muted" style="font-size:12.5px;line-height:1.3">Akun: humas</span></span></div></td>
+                  <td style="text-align:right"><button class="btn btn-quiet btn-sm" type="button" aria-label="Reset akun Mas Galih Prasetyo">Reset akun</button></td>
+                </tr>
+                <tr>
+                  <td><span style="display:flex;flex-direction:column"><span style="font-weight:700;line-height:1.3">Guru pembimbing</span><span class="muted" style="font-size:12.5px;line-height:1.3">Riset</span></span></td>
+                  <td><div style="display:flex;align-items:center;gap:10px"><span class="avatar" style="width:32px;height:32px;font-size:12px" aria-hidden="true">RW</span><span style="display:flex;flex-direction:column"><span style="font-weight:700;line-height:1.3">Bu Retno Wulandari, S.Pd.</span><span class="muted" style="font-size:12.5px;line-height:1.3">Akun: retno.w</span></span></div></td>
+                  <td style="text-align:right"><button class="btn btn-quiet btn-sm" type="button" aria-label="Reset akun Bu Retno Wulandari, S.Pd.">Reset akun</button></td>
+                </tr>
+                <tr>
+                  <td><span style="display:flex;flex-direction:column"><span style="font-weight:700;line-height:1.3">Guru pembimbing</span><span class="muted" style="font-size:12.5px;line-height:1.3">Sains</span></span></td>
+                  <td><div style="display:flex;align-items:center;gap:10px"><span class="avatar" style="width:32px;height:32px;font-size:12px" aria-hidden="true">HK</span><span style="display:flex;flex-direction:column"><span style="font-weight:700;line-height:1.3">Pak Hendra Kusuma, S.Pd., M.Si.</span><span class="muted" style="font-size:12.5px;line-height:1.3">Akun: hendra.k</span></span></div></td>
+                  <td style="text-align:right"><button class="btn btn-quiet btn-sm" type="button" aria-label="Reset akun Pak Hendra Kusuma, S.Pd., M.Si.">Reset akun</button></td>
+                </tr>
+                <tr>
+                  <td><span style="display:flex;flex-direction:column"><span style="font-weight:700;line-height:1.3">Guru pembimbing</span><span class="muted" style="font-size:12.5px;line-height:1.3">Seni Budaya</span></span></td>
+                  <td><div style="display:flex;align-items:center;gap:10px"><span class="avatar" style="width:32px;height:32px;font-size:12px" aria-hidden="true">MA</span><span style="display:flex;flex-direction:column"><span style="font-weight:700;line-height:1.3">Bu Maya Anggraini, S.Sn.</span><span class="muted" style="font-size:12.5px;line-height:1.3">Akun: maya.a</span></span></div></td>
+                  <td style="text-align:right"><button class="btn btn-quiet btn-sm" type="button" aria-label="Reset akun Bu Maya Anggraini, S.Sn.">Reset akun</button></td>
+                </tr>
+                <tr>
+                  <td><span style="display:flex;flex-direction:column"><span style="font-weight:700;line-height:1.3">Guru pembimbing</span><span class="muted" style="font-size:12.5px;line-height:1.3">Olahraga</span></span></td>
+                  <td><div style="display:flex;align-items:center;gap:10px"><span class="avatar" style="width:32px;height:32px;font-size:12px" aria-hidden="true">AS</span><span style="display:flex;flex-direction:column"><span style="font-weight:700;line-height:1.3">Pak Agus Setiawan, S.Or.</span><span class="muted" style="font-size:12.5px;line-height:1.3">Akun: agus.s</span></span></div></td>
+                  <td style="text-align:right"><button class="btn btn-quiet btn-sm" type="button" aria-label="Reset akun Pak Agus Setiawan, S.Or.">Reset akun</button></td>
+                </tr>
+              </tbody>
+            </table>
+
+            <div style="display:flex;flex-direction:column;gap:10px;padding:16px 18px;border-radius:16px;background:#F8F9FD;border:1px solid #EEF0F6">
+              <div style="display:flex;flex-direction:column;gap:2px">
+                <h3 style="margin:0;font-size:17px;font-weight:700">Bantuan akun siswa</h3>
+                <span class="muted" style="font-size:13px">Untuk akun yang diambil alih orang lain.</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:12px">
+                <div style="position:relative;width:320px">
+                  <label class="sr-only" for="cari-siswa">Cari NIS atau NISN siswa</label>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="position:absolute;left:14px;top:13px;color:#8A90A6"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+                  <input class="input num" id="cari-siswa" type="search" inputmode="numeric" placeholder="Cari NIS atau NISN" style="padding-left:44px">
+                </div>
+                <button class="btn btn-danger" type="button" onClick="{{ resetSiswa }}">Reset kata sandi &amp; email</button>
+                <sc-if value="{{ resetDone }}" hint-placeholder-val="{{ false }}"><span class="chip c-green" role="status"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"></path></svg>Akun direset</span></sc-if>
+              </div>
+              <span class="muted" style="font-size:13px">Siswa login ulang dengan kata sandi awal.</span>
+            </div>
+          </section>
+        </sc-if>
+
+        <sc-if value="{{ isEmail }}" hint-placeholder-val="{{ false }}">
+          <section role="tabpanel" aria-labelledby="tab-email" style="display:flex;flex-direction:column;gap:18px;flex:1">
+            <div>
+              <h2 style="margin:0;font-size:20px;font-weight:700">Email</h2>
+              <p class="muted" style="margin:4px 0 0;font-size:14px">Kode 6 digit dikirim saat siswa menghubungkan email.</p>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;padding:16px 18px;border-radius:16px;border:1px solid #E7E9F3">
+              <div style="display:flex;flex-direction:column;gap:8px">
+                <span id="lbl-otp" style="font-size:15px;font-weight:700">Mode uji OTP</span>
+                <sc-if value="{{ otpOn }}" hint-placeholder-val="{{ true }}"><span class="chip c-orange" style="align-self:flex-start"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 11v5M12 8h.01"></path></svg>Semua kode diterima. Matikan sebelum rilis.</span></sc-if>
+                <sc-if value="{{ otpOff }}" hint-placeholder-val="{{ false }}"><span class="chip c-gray" style="align-self:flex-start">Kode dikirim lewat email sekolah</span></sc-if>
+              </div>
+              <button class="{{ swOtp.cls }}" type="button" role="switch" aria-checked="{{ swOtp.on }}" aria-labelledby="lbl-otp" onClick="{{ swOtp.toggle }}"><span class="knob"></span></button>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:12px">
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+                <h3 style="margin:0;font-size:17px;font-weight:700">Server email (SMTP)</h3>
+                <span class="chip c-gray"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 11v5M12 8h.01"></path></svg>Diatur tim deploy.</span>
+              </div>
+              <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px">
+                <div style="display:flex;flex-direction:column;gap:6px"><label class="label" for="smtp-host">Host SMTP</label><input class="input" id="smtp-host" placeholder="smtp.contoh.sch.id" disabled></div>
+                <div style="display:flex;flex-direction:column;gap:6px"><label class="label" for="smtp-port">Port</label><input class="input num" id="smtp-port" placeholder="587" disabled></div>
+                <div style="display:flex;flex-direction:column;gap:6px"><label class="label" for="smtp-from">Email pengirim</label><input class="input" id="smtp-from" placeholder="noreply@contoh.sch.id" disabled></div>
+                <div style="display:flex;flex-direction:column;gap:6px"><label class="label" for="smtp-name">Nama pengirim</label><input class="input" id="smtp-name" placeholder="SMAGA Talent Hub" disabled></div>
+              </div>
+            </div>
+          </section>
+        </sc-if>
+
+      </div>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1000}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = {
+      tab: 'bobot',
+      tk: { intl: '100', nas: '80', prov: '60', kota: '40', sek: '20' },
+      cp: { j1: '1,00', j2: '0,85', j3: '0,70', fin: '0,50', semi: '0,30', khusus: '0,30', peserta: '0,10' },
+      kt: { a: '1,00', b: '0,80', c: '0,60', d: '0,40', e: '0,20' },
+      teamFull: true,
+      savedBobot: false,
+      batasHari: '30',
+      arsipBulan: '18',
+      savedBatas: false,
+      hasSig: true,
+      fmtSiswa: '400.3.8/{nomor}/MRD/{bulan}/{tahun}',
+      fmtGuru: '400.3.8.6/{nomor}/{tahun}',
+      editFmt: null,
+      draft: '',
+      otpTest: true,
+      resetDone: false
+    };
+  }
+  renderVals() {
+    const s = this.state;
+    const tabBtn = (id) => ({
+      cls: 'vtab' + (s.tab === id ? ' vtab-on' : ''),
+      sel: s.tab === id ? 'true' : 'false',
+      pick: () => this.setState({ tab: id })
+    });
+    const setIn = (group, key) => (e) => {
+      const next = Object.assign({}, this.state[group]);
+      next[key] = e.target.value;
+      const patch = { savedBobot: false };
+      patch[group] = next;
+      this.setState(patch);
+    };
+    const num = (v) => {
+      const n = parseFloat(String(v).replace(',', '.'));
+      return isNaN(n) ? 0 : n;
+    };
+    const poin = num(s.tk.nas) * num(s.cp.j2) * num(s.kt.a);
+    const bulanNama = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+    const addBulan = (tahun, bulanIdx, n) => {
+      const total = tahun * 12 + bulanIdx + n;
+      return { y: Math.floor(total / 12), m: total % 12 };
+    };
+    const n = parseInt(s.arsipBulan, 10) || 0;
+    const contoh = addBulan(2027, 6, n);
+    const berikut = addBulan(2025, 6, n);
+    const berikutBulanDepan = berikut.y === 2026 && berikut.m === 9;
+    const isi = (fmt, nomor, bulan, tahun) => fmt.split('{nomor}').join(nomor).split('{bulan}').join(bulan).split('{tahun}').join(tahun);
+    const fmtRow = (id, value, contohStr) => ({
+      value: value,
+      contoh: contohStr,
+      view: s.editFmt !== id,
+      editing: s.editFmt === id,
+      edit: () => this.setState({ editFmt: id, draft: value }),
+      save: () => {
+        const patch = { editFmt: null };
+        patch[id === 'siswa' ? 'fmtSiswa' : 'fmtGuru'] = this.state.draft;
+        this.setState(patch);
+      }
+    });
+    return {
+      tBobot: tabBtn('bobot'),
+      tBatas: tabBtn('batas'),
+      tSurat: tabBtn('surat'),
+      tUser: tabBtn('user'),
+      tEmail: tabBtn('email'),
+      isBobot: s.tab === 'bobot',
+      isBatas: s.tab === 'batas',
+      isSurat: s.tab === 'surat',
+      isUser: s.tab === 'user',
+      isEmail: s.tab === 'email',
+      tk: s.tk,
+      cp: s.cp,
+      kt: s.kt,
+      on: {
+        tIntl: setIn('tk', 'intl'), tNas: setIn('tk', 'nas'), tProv: setIn('tk', 'prov'), tKota: setIn('tk', 'kota'), tSek: setIn('tk', 'sek'),
+        cJ1: setIn('cp', 'j1'), cJ2: setIn('cp', 'j2'), cJ3: setIn('cp', 'j3'), cFin: setIn('cp', 'fin'), cSemi: setIn('cp', 'semi'), cKhusus: setIn('cp', 'khusus'), cPeserta: setIn('cp', 'peserta'),
+        kA: setIn('kt', 'a'), kB: setIn('kt', 'b'), kC: setIn('kt', 'c'), kD: setIn('kt', 'd'), kE: setIn('kt', 'e')
+      },
+      contohPoin: poin.toLocaleString('id-ID', { maximumFractionDigits: 2 }),
+      swTim: {
+        cls: 'sw' + (s.teamFull ? ' sw-on' : ''),
+        on: s.teamFull ? 'true' : 'false',
+        toggle: () => this.setState({ teamFull: !this.state.teamFull, savedBobot: false })
+      },
+      savedBobot: s.savedBobot,
+      simpanBobot: () => this.setState({ savedBobot: true }),
+      batasHari: s.batasHari,
+      arsipBulan: s.arsipBulan,
+      onBatas: (e) => this.setState({ batasHari: e.target.value, savedBatas: false }),
+      onArsip: (e) => this.setState({ arsipBulan: e.target.value, savedBatas: false }),
+      contohArsip: bulanNama[contoh.m] + ' ' + contoh.y,
+      arsipBerikut: bulanNama[berikut.m] + ' ' + berikut.y,
+      bulanDepan: berikutBulanDepan ? '342 akun' : '0 akun',
+      savedBatas: s.savedBatas,
+      simpanBatas: () => this.setState({ savedBatas: true }),
+      hasSig: s.hasSig,
+      noSig: !s.hasSig,
+      hapusSig: () => this.setState({ hasSig: false }),
+      unggahSig: () => this.setState({ hasSig: true }),
+      keUser: () => this.setState({ tab: 'user' }),
+      fmtS: fmtRow('siswa', s.fmtSiswa, isi(s.fmtSiswa, '312', 'IX', '2026')),
+      fmtG: fmtRow('guru', s.fmtGuru, isi(s.fmtGuru, '1680', 'IX', '2026')),
+      draft: s.draft,
+      onDraft: (e) => this.setState({ draft: e.target.value }),
+      batalFmt: () => this.setState({ editFmt: null }),
+      resetDone: s.resetDone,
+      resetSiswa: () => this.setState({ resetDone: true }),
+      otpOn: s.otpTest,
+      otpOff: !s.otpTest,
+      swOtp: {
+        cls: 'sw' + (s.otpTest ? ' sw-on' : ''),
+        on: s.otpTest ? 'true' : 'false',
+        toggle: () => this.setState({ otpTest: !this.state.otpTest })
+      }
+    };
+  }
+}
+</script>
+</body>
+</html>

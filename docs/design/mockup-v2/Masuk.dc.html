@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Masuk · SMAGA Talent Hub</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Urbanist:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F4F5FB;font-family:"Plus Jakarta Sans",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;color:#151A33;-webkit-font-smoothing:antialiased}
+*{box-sizing:border-box}
+a{color:#3148D6}a:hover{color:#2638B0}
+h1,h2,h3,.display{font-family:"Urbanist","Plus Jakarta Sans",system-ui,sans-serif;letter-spacing:-0.01em}
+.page{background:radial-gradient(900px 320px at 88% -8%,#ECE8FF 0%,rgba(236,232,255,0) 70%),radial-gradient(760px 300px at 28% -14%,#E2F0FF 0%,rgba(226,240,255,0) 70%),#F4F5FB}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:44px;padding:0 18px;border-radius:12px;font:600 15px/1 "Plus Jakarta Sans",system-ui,sans-serif;border:1px solid transparent;cursor:pointer;text-decoration:none;white-space:nowrap}
+.btn-primary{background:#3148D6;color:#FFFFFF;box-shadow:0 8px 18px -10px rgba(49,72,214,.65)}
+.btn-primary:hover{background:#2638B0;color:#FFFFFF}
+.btn-quiet{background:#FFFFFF;color:#151A33;border-color:#DCDFEC}
+.btn-quiet:hover{background:#F4F5FB;color:#151A33}
+.btn-soft{background:#ECEFFF;color:#2A3CB8}
+.btn-soft:hover{background:#DFE4FF;color:#2A3CB8}
+.btn-danger{background:#FFFFFF;color:#B42318;border-color:#F3C4BE}
+.btn-danger:hover{background:#FDECEA;color:#B42318}
+.btn-sm{height:36px;padding:0 14px;font-size:14px;border-radius:10px}
+.btn:focus-visible,.nav:focus-visible,.input:focus-visible,.icon-btn:focus-visible,.tab:focus-visible,.pick:focus-visible{outline:3px solid #A9B6F5;outline-offset:2px}
+.icon-btn{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:12px;border:1px solid #E7E9F3;background:#FFFFFF;color:#4A5068;cursor:pointer;position:relative;text-decoration:none}
+.icon-btn:hover{background:#F4F5FB;color:#151A33}
+.dot{position:absolute;top:8px;right:9px;width:8px;height:8px;border-radius:999px;background:#3148D6;border:2px solid #FFFFFF}
+.card{background:#FFFFFF;border:1px solid #E7E9F3;border-radius:20px;box-shadow:0 1px 2px rgba(20,24,60,.04),0 10px 28px -18px rgba(20,24,60,.18)}
+.chip{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 10px;border-radius:999px;font-size:12.5px;font-weight:600;white-space:nowrap}
+.c-blue{background:#ECEFFF;color:#2A3CB8}
+.c-green{background:#E4F5EA;color:#1B6B45}
+.c-orange{background:#FFEEDD;color:#9A3F00}
+.c-red{background:#FDECEA;color:#B42318}
+.c-gray{background:#EEF0F6;color:#4A5068}
+.c-gold{background:#FFF3D1;color:#6B4E00}
+.c-glass{background:rgba(255,255,255,.82);color:#151A33}
+.b-sains{background:#E6F0FF;color:#1D56AD}
+.b-riset{background:#F0EBFF;color:#5534B8}
+.b-seni{background:#FDE8F0;color:#A61F54}
+.b-olahraga{background:#E0F4F8;color:#0B6577}
+.cover-sains{background:linear-gradient(135deg,#DCE9FF,#C3D8FF);color:#1D56AD}
+.cover-riset{background:linear-gradient(135deg,#EEE7FF,#D9CCFF);color:#5534B8}
+.cover-seni{background:linear-gradient(135deg,#FFE6EF,#FFCFE0);color:#A61F54}
+.cover-olahraga{background:linear-gradient(135deg,#DDF4F8,#BFE8F0);color:#0B6577}
+.label{font-size:13px;font-weight:600;color:#4A5068}
+.input{height:46px;width:100%;border:1px solid #DCDFEC;border-radius:12px;padding:0 14px;font:500 15px "Plus Jakarta Sans",system-ui,sans-serif;color:#151A33;background:#FFFFFF}
+.input::placeholder{color:#8A90A6}
+textarea.input{height:auto;padding:12px 14px;line-height:1.5;resize:vertical}
+.nav{display:flex;align-items:center;gap:12px;height:44px;padding:0 14px;border-radius:12px;color:#4A5068;text-decoration:none;font-size:14.5px;font-weight:600}
+.nav:hover{background:#F1F2FA;color:#151A33}
+.nav-on{background:#3148D6;color:#FFFFFF;box-shadow:0 8px 18px -10px rgba(49,72,214,.7)}
+.nav-on:hover{background:#2638B0;color:#FFFFFF}
+.nav-sec{font-size:11.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#8A90A6;padding:8px 14px 2px}
+.badge{margin-left:auto;min-width:22px;height:22px;padding:0 7px;border-radius:999px;background:#ECEFFF;color:#2A3CB8;font-size:12px;font-weight:700;display:inline-flex;align-items:center;justify-content:center}
+.nav-on .badge{background:#FFFFFF;color:#2A3CB8}
+.avatar{display:inline-flex;align-items:center;justify-content:center;border-radius:999px;background:#ECEFFF;color:#2A3CB8;font-weight:700;flex-shrink:0}
+.stack{display:flex}.stack .avatar{border:2px solid #FFFFFF;margin-left:-8px}.stack .avatar:first-child{margin-left:0}
+.pick{cursor:pointer;border:1px solid #DCDFEC;background:#FFFFFF;border-radius:14px;font:600 14.5px "Plus Jakarta Sans",system-ui,sans-serif;color:#151A33}
+.pick-on{border:2px solid #3148D6;background:#ECEFFF;color:#2A3CB8}
+.tabbar{position:absolute;left:0;right:0;bottom:0;height:80px;background:#FFFFFF;border-top:1px solid #E7E9F3;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));padding:8px 6px 16px}
+.tab{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:52px;border-radius:14px;color:#666C84;text-decoration:none;font-size:11.5px;font-weight:600}
+.tab-ic{width:48px;height:28px;border-radius:999px;display:flex;align-items:center;justify-content:center}
+.tab-on{color:#3148D6}.tab-on .tab-ic{background:#ECEFFF}
+.muted{color:#666C84}
+.num{font-variant-numeric:tabular-nums}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.float-card{position:absolute;background:#FFFFFF;color:#151A33;border-radius:18px;box-shadow:0 26px 44px -20px rgba(8,14,60,.6)}
+.ring{position:absolute;border-radius:999px;border:1.5px solid rgba(255,255,255,.14)}
+.text-link{display:inline-flex;align-items:center;gap:6px;height:40px;font-size:14.5px;font-weight:600;text-decoration:none}
+.text-link:focus-visible{outline:3px solid #A9B6F5;outline-offset:2px;border-radius:8px}
+</style>
+</helmet>
+<div class="page" style="width:1280px;height:800px;display:flex;overflow:hidden;position:relative">
+
+  <div style="width:560px;flex-shrink:0;padding:24px 0 20px 24px;display:flex;flex-direction:column;gap:12px">
+    <div style="flex:1;position:relative;overflow:hidden;border-radius:28px;background:#3148D6;padding:40px;color:#FFFFFF">
+      <span class="ring" aria-hidden="true" style="right:-150px;bottom:-170px;width:460px;height:460px"></span>
+      <span class="ring" aria-hidden="true" style="right:-60px;bottom:-80px;width:280px;height:280px"></span>
+      <span aria-hidden="true" style="position:absolute;right:44px;top:40px;width:128px;height:128px;border-radius:999px;background:rgba(255,255,255,.07)"></span>
+
+      <div style="display:flex;align-items:center;gap:12px;height:40px;position:relative">
+        <span role="img" aria-label="Logo SMAGA Talent Hub" style="width:40px;height:40px;border-radius:12px;background:#FFFFFF;color:#3148D6;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 4 6v6c0 4.5 3.4 8.2 8 9 4.6-.8 8-4.5 8-9V6z"></path><path d="m8.5 12 2.5 2.5 4.5-5"></path></svg>
+        </span>
+        <span style="display:flex;flex-direction:column">
+          <span class="display" style="font-size:17px;font-weight:800;line-height:20px;color:#FFFFFF">SMAGA Talent Hub</span>
+          <span style="font-size:12px;line-height:16px;color:#DCE1FF">SMA Negeri 3 Semarang</span>
+        </span>
+      </div>
+
+      <p class="display" style="position:relative;margin:64px 0 0;font-size:46px;font-weight:800;line-height:1.05;letter-spacing:-0.02em;color:#FFFFFF;max-width:380px">Prestasimu, tercatat rapi.</p>
+      <p style="position:relative;margin:14px 0 0;font-size:16px;line-height:1.55;color:#DCE1FF;max-width:360px">Daftar lomba, pantau surat tugas, dan kumpulkan poin prestasi.</p>
+
+      <div aria-hidden="true">
+        <div class="float-card" style="left:40px;top:388px;width:240px;overflow:hidden;transform:rotate(-4deg)">
+          <div class="cover-riset" style="height:92px;position:relative;padding:12px">
+            <span class="chip c-glass" style="height:24px;font-size:12px">Nasional</span>
+            <svg style="position:absolute;right:12px;bottom:8px;opacity:.7" width="50" height="50" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6M10 21h4"></path><path d="M12 3a6 6 0 0 0-3.5 10.9c.6.4 1 1.1 1 1.8V16h5v-.3c0-.7.4-1.4 1-1.8A6 6 0 0 0 12 3z"></path></svg>
+          </div>
+          <div style="padding:12px 14px 14px;display:flex;flex-direction:column;gap:7px">
+            <span class="chip b-riset" style="height:22px;font-size:12px;align-self:flex-start">Riset</span>
+            <span class="display" style="font-size:16px;font-weight:700;line-height:1.25">LPB 2026 · Nasional</span>
+            <span class="muted" style="display:flex;align-items:center;gap:6px;font-size:12.5px">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"></rect><path d="M3 10h18M8 3v4M16 3v4"></path></svg>
+              17 Okt 2026 · Daring
+            </span>
+          </div>
+        </div>
+
+        <div class="float-card" style="left:302px;top:356px;width:190px;padding:14px;display:flex;flex-direction:column;gap:10px;transform:rotate(5deg)">
+          <div style="display:flex;align-items:center;gap:10px">
+            <span style="width:40px;height:40px;border-radius:999px;background:#F2B63A;color:#6B4E00;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="9" r="6"></circle><path d="m8.5 14-1.5 7 5-3 5 3-1.5-7"></path></svg>
+            </span>
+            <span class="chip c-gold num" style="height:28px;font-size:14px">+68 poin</span>
+          </div>
+          <span class="muted" style="font-size:12.5px">OPSI 2026 · Juara II</span>
+        </div>
+
+        <div class="float-card" style="left:268px;top:540px;width:228px;padding:14px;display:flex;flex-direction:column;gap:12px;transform:rotate(-2deg)">
+          <div style="display:flex;align-items:center;gap:10px">
+            <span style="width:36px;height:36px;border-radius:12px;background:#E4F5EA;color:#1B6B45;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"></path></svg>
+            </span>
+            <span style="display:flex;flex-direction:column">
+              <span style="font-size:14px;font-weight:700;line-height:1.3">Surat tugas terbit</span>
+              <span class="muted" style="font-size:12.5px">WICE 2026</span>
+            </span>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:4px">
+            <span style="height:6px;border-radius:999px;background:#3148D6"></span>
+            <span style="height:6px;border-radius:999px;background:#3148D6"></span>
+            <span style="height:6px;border-radius:999px;background:#3148D6"></span>
+            <span style="height:6px;border-radius:999px;background:#8FA0EE"></span>
+            <span style="height:6px;border-radius:999px;background:#E3E6F2"></span>
+            <span style="height:6px;border-radius:999px;background:#E3E6F2"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <span class="muted" style="font-size:12px;font-weight:600;padding-left:6px">Prototipe desain</span>
+  </div>
+
+  <div style="flex:1;min-width:0;position:relative;display:flex;align-items:center;justify-content:center">
+    <a class="text-link" href="Main.dc.html" style="position:absolute;top:28px;right:40px">
+      Lihat prestasi sekolah
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"></path></svg>
+    </a>
+
+    <section aria-labelledby="masuk-judul" style="width:400px;display:flex;flex-direction:column;gap:24px">
+      <div>
+        <h1 id="masuk-judul" style="margin:0;font-size:34px;font-weight:800;line-height:1.1">Masuk</h1>
+        <p class="muted" style="margin:8px 0 0;font-size:15px;line-height:1.5">Pakai NIS atau NISN dan kata sandi dari sekolah.</p>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:16px">
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <label class="label" for="masuk-nis">NIS / NISN</label>
+          <input id="masuk-nis" class="input" type="text" inputmode="numeric" autocomplete="username" placeholder="Ketik NIS atau NISN" style="height:48px">
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <div style="display:flex;align-items:center;justify-content:space-between;height:36px">
+            <label class="label" for="masuk-sandi">Kata sandi</label>
+            <a class="text-link" href="#" style="height:36px;font-size:13.5px">Lupa kata sandi?</a>
+          </div>
+          <div style="position:relative">
+            <input id="masuk-sandi" class="input" type="{{ pwType }}" autocomplete="current-password" placeholder="Ketik kata sandi" style="height:48px;padding-right:54px">
+            <button type="button" class="icon-btn" aria-label="Tampilkan kata sandi" aria-pressed="{{ lihatPressed }}" onClick="{{ toggleLihat }}" style="position:absolute;right:4px;top:4px;border-color:transparent">
+              <sc-if value="{{ isHidden }}" hint-placeholder-val="{{ true }}">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+              </sc-if>
+              <sc-if value="{{ isShown }}" hint-placeholder-val="{{ false }}">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"></path><circle cx="12" cy="12" r="3"></circle><path d="M4 4l16 16"></path></svg>
+              </sc-if>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <a class="btn btn-primary" href="Beranda-Siswa.dc.html" style="width:100%;height:50px;font-size:16px">Masuk</a>
+
+      <div class="c-blue" style="display:flex;align-items:flex-start;gap:10px;padding:12px 14px;border-radius:14px;font-size:13.5px;font-weight:500;line-height:1.5">
+        <svg style="flex-shrink:0;margin-top:1px" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 11v5M12 8h.01"></path></svg>
+        <span>Baru pertama masuk? Kamu akan diminta mengganti kata sandi dan menghubungkan email.</span>
+      </div>
+
+      <p class="muted" style="margin:0;font-size:13.5px;text-align:center">Kesulitan masuk? Hubungi admin sekolah.</p>
+    </section>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":800}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { lihat: false };
+  }
+  renderVals() {
+    const lihat = this.state.lihat;
+    return {
+      pwType: lihat ? 'text' : 'password',
+      lihatPressed: lihat ? 'true' : 'false',
+      isShown: lihat,
+      isHidden: !lihat,
+      toggleLihat: () => this.setState({ lihat: !this.state.lihat })
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,616 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Livewire\Akun;
+
+use App\Actions\Accounts\AccountControls;
+use App\Actions\Accounts\ActivationReport;
+use App\Actions\Accounts\ReopenActivationWindow;
+use App\Actions\Accounts\UnfreezeAccount;
+use App\Actions\Accounts\UpdateActivationWindow;
+use App\Actions\Users\AdminRecipients;
+use App\Enums\Permission;
+use App\Livewire\Admin\Concerns\RequiresRecentPassword;
+use App\Models\User;
+use App\Notifications\Admin\LargeExportNotice;
+use Carbon\CarbonImmutable;
+use Illuminate\Contracts\View\View;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Route;
+use Illuminate\Validation\ValidationException;
+use Livewire\Attributes\Layout;
+use Livewire\Attributes\Locked;
+use Livewire\Attributes\Title;
+use Livewire\Attributes\Url;
+use Livewire\Component;
+use Symfony\Component\HttpFoundation\StreamedResponse;
+
+/**
+ * Status aktivasi (`kesiswaan.aktivasi.index`, `admin.aktivasi.index`; docs/UI-MAP.md §4a/§5, SECURITY K9/K2,
+ * B1): per-class activation report (counts, activation time, last login, NISN in full since D-137, masked email,
+ * automatic flags), filters (kelas, status, nama/NISN), formula-safe CSV export (password confirmed in the last 15
+ * min, audited; it carries the NISN in full too),
+ * K2 "Buka ulang aktivasi" (72 h, reason, Kesiswaan + Admin), Admin "Buka pembekuan" and the K1 window length
+ * (Admin), K7 alerts. Every action re-authorizes; the target id is #[Locked] and set only by open*().
+ *
+ * M1-E (lead, 2026-10-04, item 16): "Lihat" on a class row opens the dialog `aktivasi-kelas` with that class's
+ * students (status tabs, steps of 40, the same row actions) instead of filtering the list at the bottom of
+ * the page. `?kelas=<classroom id>` opens the page with that dialog. The list at the bottom stays for
+ * cross-class lookups and the CSV; its class filter is `?kelas_daftar=`.
+ *
+ * D-159 (the lead, 2026-10-19): the page no longer scrolls through both tables. On top the stat tiles stand next to
+ * the two boxes "Akun dibekukan" and "Kata sandi awal dicoba di akun aktif" (each BOX rows, then "Tampilkan lebih
+ * banyak"); below, one segmented choice "Per kelas" | "Daftar siswa" (`?tampil=siswa`) shows one table at the full
+ * width, PREVIEW rows first and STEP more per "Tampilkan lebih banyak", with "Menampilkan X dari Y". The list keeps
+ * its status tabs, class filter, search and CSV. A list filter in the address, or a change of one, opens the list.
+ */
+#[Title('Status aktivasi')]
+// One search box per screen (D-90, backlog #60): this page has its own, so the top bar shows none.
+#[Layout('layouts::app', ['subtitle' => 'Aktivasi akun siswa per kelas.', 'search' => false])]
+final class StatusAktivasi extends Component
+{
+    use RequiresRecentPassword;
+
+    /** Rows per step in the class dialog: one full class fits; 100 rows made the first page about 300 kB. */
+    public const PAGE = 40;
+
+    /**
+     * Upper bound of every list's rows (the limits are counters the page raises): beyond it the user narrows the list.
+     * r3 (2026-10-31): "Daftar siswa" offered "Tampilkan lebih banyak" at this bound and the click did nothing; now the
+     * button stops there and capNote() says how to see the others.
+     */
+    public const MAX = 1000;
+
+    /** D-159: rows of "Per kelas" and "Daftar siswa" before the first "Tampilkan lebih banyak", and the step after. */
+    public const PREVIEW = 10;
+
+    public const STEP = 20;
+
+    /** D-159: rows of the two boxes on top before their "Tampilkan lebih banyak", and their step. */
+    public const BOX = 3;
+
+    public const BOX_STEP = 10;
+
+    /** Frozen accounts and K7 alerts the boxes can list at most (both queries stop at 50). */
+    public const BOX_MAX = 50;
+
+    public const VIEW_CLASSES = 'kelas';
+
+    public const VIEW_STUDENTS = 'siswa';
+
+    public const ACTION_REOPEN = 'buka';
+
+    public const ACTION_UNFREEZE = 'cair';
+
+    public const CLASS_DIALOG = 'aktivasi-kelas';
+
+    /** Class shown in the dialog ("Lihat"); '' = no dialog. Checked against the classes that have students. */
+    #[Url(as: 'kelas', except: '')]
+    public string $kelas = '';
+
+    /** Status tab inside the dialog. */
+    public string $kelasStatus = '';
+
+    #[Locked]
+    public int $kelasLimit = self::PAGE;
+
+    /** Class filter of the cross-class list at the bottom (and of its CSV). */
+    #[Url(as: 'kelas_daftar', except: '')]
+    public string $daftarKelas = '';
+
+    #[Url(as: 'status', except: '')]
+    public string $status = '';
+
+    #[Url(as: 'q', except: '')]
+    public string $q = '';
+
+    /** D-159: which table stands below the summary, "Per kelas" or "Daftar siswa". */
+    #[Url(as: 'tampil', except: self::VIEW_CLASSES)]
+    public string $tampil = self::VIEW_CLASSES;
+
+    #[Locked]
+    public int $limit = self::PREVIEW;
+
+    #[Locked]
+    public int $classLimit = self::PREVIEW;
+
+    #[Locked]
+    public int $frozenLimit = self::BOX;
+
+    #[Locked]
+    public int $k7Limit = self::BOX;
+
+    /** True only in the request that mounts the page with `?kelas=`: the dialog is rendered open. */
+    private bool $openClassOnLoad = false;
+
+    #[Locked]
+    public ?int $targetId = null;
+
+    #[Locked]
+    public string $action = '';
+
+    public string $reason = '';
+
+    public string $windowDays = '';
+
+    #[Locked]
+    public string $returnTo = '';
+
+    public function mount(AccountControls $controls): void
+    {
+        Gate::authorize(Permission::StudentView->value);
+
+        $route = request()->routeIs('admin.*') ? 'admin.aktivasi.index' : 'kesiswaan.aktivasi.index';
+        $this->returnTo = Route::has($route) ? route($route) : url()->current();
+        $this->windowDays = (string) $controls->windowDays();
+
+        if (! array_key_exists($this->status, AccountControls::STATES)) {
+            $this->status = '';
+        }
+
+        // A list filter in the address (a link, the way back from the password page) means the list (D-159).
+        $listFiltered = $this->status !== '' || trim($this->q) !== '' || $this->daftarKelas !== '';
+
+        if ($listFiltered || $this->tampil !== self::VIEW_STUDENTS) {
+            $this->tampil = $listFiltered ? self::VIEW_STUDENTS : self::VIEW_CLASSES;
+        }
+
+        // `?kelas=` opens the class dialog; an unknown or empty class is dropped.
+        $this->openClassOnLoad = self::knownClass($this->kelas);
+
+        if (! $this->openClassOnLoad) {
+            $this->kelas = '';
+        }
+    }
+
+    public function updated(string $property): void
+    {
+        if (in_array($property, ['daftarKelas', 'status', 'q'], true)) {
+            $this->limit = self::PREVIEW;
+            $this->tampil = self::VIEW_STUDENTS;
+            $this->forgetClass();
+        }
+
+        if ($property === 'tampil' && $this->tampil !== self::VIEW_STUDENTS) {
+            $this->tampil = self::VIEW_CLASSES;
+        }
+
+        // The address changed under the page (browser history): follow it.
+        if ($property === 'kelas') {
+            $this->kelasStatus = '';
+            $this->kelasLimit = self::PAGE;
+
+            if (self::knownClass($this->kelas)) {
+                $this->dispatch('sth-modal-open', id: self::CLASS_DIALOG);
+            } else {
+                $this->kelas = '';
+                $this->dispatch('sth-modal-close', id: self::CLASS_DIALOG);
+            }
+        }
+    }
+
+    /** D-159: the segmented choice between the two tables. */
+    public function setView(string $view): void
+    {
+        $this->tampil = $view === self::VIEW_STUDENTS ? self::VIEW_STUDENTS : self::VIEW_CLASSES;
+        $this->forgetClass();
+    }
+
+    public function setStatus(string $status): void
+    {
+        $this->status = array_key_exists($status, AccountControls::STATES) ? $status : '';
+        $this->limit = self::PREVIEW;
+        $this->tampil = self::VIEW_STUDENTS;
+        $this->forgetClass();
+    }
+
+    public function resetFilters(): void
+    {
+        $this->reset('daftarKelas', 'status', 'q');
+        $this->limit = self::PREVIEW;
+        $this->forgetClass();
+    }
+
+    public function showMore(): void
+    {
+        $this->limit = min(self::MAX, $this->limit + self::STEP);
+        $this->forgetClass();
+    }
+
+    public function showMoreClasses(): void
+    {
+        $this->classLimit = min(self::MAX, $this->classLimit + self::STEP);
+        $this->forgetClass();
+    }
+
+    public function showMoreFrozen(): void
+    {
+        $this->frozenLimit = min(self::BOX_MAX, $this->frozenLimit + self::BOX_STEP);
+        $this->forgetClass();
+    }
+
+    public function showMoreK7(): void
+    {
+        $this->k7Limit = min(self::BOX_MAX, $this->k7Limit + self::BOX_STEP);
+        $this->forgetClass();
+    }
+
+    /** The line in place of "Tampilkan lebih banyak" once "Daftar siswa" shows MAX rows and more match (r3). */
+    public static function capNote(): string
+    {
+        return 'Menampilkan '.number_format(self::MAX, 0, ',', '.').' siswa pertama. Persempit dengan kelas, status, atau pencarian untuk melihat lainnya.';
+    }
+
+    // Class dialog ("Lihat") ----------------------------------------------------------------------
+
+    public function showClass(string $classroomId): void
+    {
+        Gate::authorize(Permission::StudentView->value);
+        abort_unless(self::knownClass($classroomId), 404);
+
+        $this->kelas = $classroomId;
+        $this->kelasStatus = '';
+        $this->kelasLimit = self::PAGE;
+        $this->dispatch('sth-modal-open', id: self::CLASS_DIALOG);
+    }
+
+    public function setClassStatus(string $status): void
+    {
+        $this->kelasStatus = array_key_exists($status, AccountControls::STATES) ? $status : '';
+        $this->kelasLimit = self::PAGE;
+    }
+
+    public function showMoreClass(): void
+    {
+        $this->kelasLimit = min(self::MAX, $this->kelasLimit + self::PAGE);
+    }
+
+    public function closeClass(): void
+    {
+        $this->forgetClass();
+        $this->dispatch('sth-modal-close', id: self::CLASS_DIALOG);
+    }
+
+    // Actions -------------------------------------------------------------------------------------
+
+    public function openReopen(int $userId): void
+    {
+        Gate::authorize(Permission::StudentImport->value);
+        $student = $this->studentAccount($userId);
+
+        // A stale list (the button is only drawn where a reopen does something): say why instead of a dialog.
+        if (($notNeeded = ReopenActivationWindow::notNeededMessage($student)) !== null) {
+            $this->dispatch('sth-toast', message: $notNeeded, tone: 'error');
+
+            return;
+        }
+
+        $this->openAction($student, self::ACTION_REOPEN);
+    }
+
+    public function openUnfreeze(int $userId): void
+    {
+        Gate::authorize(Permission::UserResetPassword->value);
+        $this->openAction($this->account($userId), self::ACTION_UNFREEZE);
+    }
+
+    public function submitAction(ReopenActivationWindow $reopen, UnfreezeAccount $unfreeze): void
+    {
+        abort_if($this->targetId === null, 404);
+
+        // A reopen needs a real reason (M2-B: "ab" was accepted); the Action checks the trimmed text again.
+        $min = $this->action === self::ACTION_REOPEN ? ReopenActivationWindow::MIN_REASON : 1;
+
+        $this->validate(
+            ['reason' => ['required', 'string', 'min:'.$min, 'max:500']],
+            ['required' => 'Isi alasannya.', 'min' => 'Alasan minimal :min karakter.', 'max' => 'Maksimal :max karakter.'],
+            ['reason' => 'alasan'],
+        );
+
+        try {
+            if ($this->action === self::ACTION_REOPEN) {
+                Gate::authorize(Permission::StudentImport->value);
+                $until = $reopen->handle($this->actor(), $this->studentAccount($this->targetId), $this->reason);
+                $message = 'Aktivasi dibuka lagi sampai '.$until->translatedFormat('j M Y H:i').'.';
+            } elseif ($this->action === self::ACTION_UNFREEZE) {
+                Gate::authorize(Permission::UserResetPassword->value);
+
+                if (! $this->passwordRecentlyConfirmed()) {
+                    return;
+                }
+
+                $unfreeze->handle($this->actor(), $this->account($this->targetId), $this->reason);
+                $message = 'Pembekuan dibuka. Akun bisa dipakai masuk lagi.';
+            } else {
+                abort(404);
+            }
+        } catch (ValidationException $e) {
+            throw ValidationException::withMessages(['reason' => collect($e->errors())->flatten()->all()]);
+        }
+
+        $this->reset('reason', 'targetId', 'action');
+        $this->dispatch('sth-modal-close', id: 'aktivasi-aksi');
+        $this->dispatch('sth-toast', message: $message, tone: 'success');
+    }
+
+    public function saveWindow(UpdateActivationWindow $update): void
+    {
+        Gate::authorize(Permission::SettingManage->value);
+        $this->forgetClass();
+
+        $this->validate(
+            ['windowDays' => ['required', 'integer', 'min:1', 'max:'.AccountControls::MAX_WINDOW_DAYS]],
+            ['required' => 'Wajib diisi.', 'integer' => 'Isi angka hari.', 'min' => 'Minimal :min hari.', 'max' => 'Maksimal :max hari.'],
+            ['windowDays' => 'jendela aktivasi'],
+        );
+
+        if (! $this->passwordRecentlyConfirmed()) {
+            return;
+        }
+
+        $update->handle($this->actor(), (int) $this->windowDays);
+        $this->dispatch('sth-toast', message: 'Jendela aktivasi disimpan: '.(int) $this->windowDays.' hari untuk impor berikutnya.', tone: 'success');
+    }
+
+    public function export(ActivationReport $report, AdminRecipients $recipients): ?StreamedResponse
+    {
+        Gate::authorize(Permission::StudentView->value);
+        // The CSV belongs to the list: coming back from the password page must not reopen a dialog, and shows the list.
+        $this->forgetClass();
+        $this->tampil = self::VIEW_STUDENTS;
+
+        if (! $this->passwordRecentlyConfirmed('export')) {
+            return null;
+        }
+
+        $rows = $report->rows($this->daftarKelas ?: null, $this->status ?: null, $this->q);
+
+        activity('account')
+            ->causedBy($this->actor())
+            ->event('account.activation_report_exported')
+            ->withProperties(['filters' => array_filter(['kelas' => $this->daftarKelas, 'status' => $this->status, 'q' => $this->q !== '' ? 'ya' : '']), 'rows' => $rows->count()])
+            ->log('account.activation_report_exported');
+
+        // SECURITY §3m-9: the CSV of the whole school (names, classes, account states) alerts every Admin above
+        // LargeExportNotice::LIMIT rows, like the other exports (QA10).
+        if ($rows->count() > LargeExportNotice::LIMIT) {
+            Notification::send($recipients->admins(), new LargeExportNotice((string) $this->actor()->name, 'laporan status aktivasi', $rows->count(), now()->translatedFormat('j F Y H:i')));
+        }
+
+        return response()->streamDownload(function () use ($report, $rows): void {
+            $out = fopen('php://output', 'wb');
+            $report->writeCsv($rows, $out);
+            fclose($out);
+        }, 'status-aktivasi-'.now()->format('Ymd-His').'.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
+    }
+
+    // View ----------------------------------------------------------------------------------------
+
+    public function render(ActivationReport $report): View
+    {
+        $this->limit = max(self::PREVIEW, min(self::MAX, $this->limit));
+        $this->classLimit = max(self::PREVIEW, min(self::MAX, $this->classLimit));
+        $this->frozenLimit = max(self::BOX, min(self::BOX_MAX, $this->frozenLimit));
+        $this->k7Limit = max(self::BOX, min(self::BOX_MAX, $this->k7Limit));
+        $all = $report->rows();
+        $filtered = $report->rows($this->daftarKelas ?: null, $this->status ?: null, $this->q);
+        $isAdmin = Gate::allows(Permission::UserResetPassword->value);
+        $canReopen = Gate::allows(Permission::StudentImport->value);
+        $target = $this->targetId !== null
+            ? User::query()->with('student.classroom:id,name')->find($this->targetId, ['id', 'name', 'initial_password_expires_at', 'frozen_at'])
+            : null;
+
+        $summary = $report->summary($all);
+        $frozen = $this->frozenAccounts($isAdmin);
+        $k7 = $report->initialPasswordAlerts();
+
+        return view('livewire.akun.status-aktivasi', [
+            'totals' => ActivationReport::totals($all),
+            'summary' => $summary->take($this->classLimit),
+            'classCount' => $summary->count(),
+            'classDialog' => $this->classDialog($all, $canReopen, $isAdmin),
+            'openClassOnLoad' => $this->openClassOnLoad && $this->kelas !== '',
+            'rows' => $filtered->take($this->limit)->map(fn (array $row): array => $row + [
+                'action' => self::rowAction($row['state'], $row['frozenReason'], true, $canReopen, $isAdmin, $row['expiresAt']),
+            ]),
+            'filteredCount' => $filtered->count(),
+            // r3: no button at the cap (a click could not show more); the note says how to narrow the list instead.
+            'hasMore' => $filtered->count() > $this->limit && $this->limit < self::MAX,
+            'capNote' => $filtered->count() > $this->limit && $this->limit >= self::MAX ? self::capNote() : null,
+            'classes' => ActivationReport::classOptions()->all(),
+            'states' => AccountControls::STATES,
+            'frozen' => $frozen->take($this->frozenLimit)->map(fn (array $account): array => $account + [
+                'action' => self::rowAction(AccountControls::STATE_FROZEN, $account['reason'], $account['student'], $canReopen, $isAdmin),
+            ]),
+            'frozenCount' => $frozen->count(),
+            'k7' => $k7->take($this->k7Limit),
+            'k7Count' => $k7->count(),
+            'canReopen' => $canReopen,
+            'canUnfreeze' => $isAdmin,
+            'canSetWindow' => Gate::allows(Permission::SettingManage->value),
+            'currentWindow' => app(AccountControls::class)->windowDays(),
+            'target' => $target === null ? null : [
+                'name' => (string) $target->name,
+                'classroom' => $target->student?->classroom?->name,
+                'reopen' => $this->action === self::ACTION_REOPEN ? self::reopenPreview($target) : null,
+            ],
+            'filtersActive' => $this->daftarKelas !== '' || $this->status !== '' || trim($this->q) !== '',
+        ]);
+    }
+
+    /**
+     * Content of the class dialog: the students of `$kelas` out of the rows the page already loaded (no extra
+     * query), the status tabs that have students, and one step of rows. Null while no class is chosen.
+     *
+     * @param  Collection<int, array<string, mixed>>  $all
+     * @return array{name: string, total: int, tabs: list<array{key: string, label: string, count: int}>, rows: Collection<int, array<string, mixed>>, count: int, hasMore: bool}|null
+     */
+    private function classDialog(Collection $all, bool $canReopen, bool $canUnfreeze): ?array
+    {
+        if ($this->kelas === '') {
+            return null;
+        }
+
+        $students = $all->where('classroomId', $this->kelas)->values();
+
+        if ($students->isEmpty()) {
+            $this->kelas = '';
+
+            return null;
+        }
+
+        $this->kelasLimit = max(self::PAGE, min(self::MAX, $this->kelasLimit));
+        $totals = ActivationReport::totals($students);
+
+        if (! array_key_exists($this->kelasStatus, AccountControls::STATES)) {
+            $this->kelasStatus = '';
+        }
+
+        $tabs = [['key' => '', 'label' => 'Semua', 'count' => $students->count()]];
+
+        foreach (AccountControls::STATES as $key => $meta) {
+            if ($totals[$key] > 0 || $this->kelasStatus === $key) {
+                $tabs[] = ['key' => $key, 'label' => $meta['label'], 'count' => $totals[$key]];
+            }
+        }
+
+        $shown = $this->kelasStatus === '' ? $students : $students->where('state', $this->kelasStatus)->values();
+
+        return [
+            'name' => (string) $students->first()['classroom'],
+            'total' => $students->count(),
+            'tabs' => $tabs,
+            'rows' => $shown->take($this->kelasLimit)->map(fn (array $row): array => $row + [
+                'action' => self::rowAction($row['state'], $row['frozenReason'], true, $canReopen, $canUnfreeze, $row['expiresAt']),
+            ]),
+            'count' => $shown->count(),
+            'hasMore' => $shown->count() > $this->kelasLimit,
+        ];
+    }
+
+    /** A classroom id that exists and has students (the only ones "Lihat" is offered for). */
+    private static function knownClass(string $classroomId): bool
+    {
+        return $classroomId !== '' && ActivationReport::classOptions()->has($classroomId);
+    }
+
+    /** The dialog is closed (or about to be): drop its state so the address and a reload do not reopen it. */
+    private function forgetClass(): void
+    {
+        $this->kelas = '';
+        $this->kelasStatus = '';
+        $this->kelasLimit = self::PAGE;
+    }
+
+    /**
+     * Frozen accounts (K3/K8). Kesiswaan sees students only; Admin also staff (K8 can freeze any account).
+     *
+     * @return Collection<int, array{id: int, name: string, where: string, reason: ?string, since: ?CarbonImmutable, student: bool}>
+     */
+    private function frozenAccounts(bool $includeStaff): Collection
+    {
+        return User::query()
+            ->whereNotNull('frozen_at')
+            ->when(! $includeStaff, fn ($q) => $q->whereHas('student'))
+            ->with('student.classroom:id,name')
+            ->orderByDesc('frozen_at')
+            ->limit(self::BOX_MAX)
+            ->get(['id', 'name', 'status', 'frozen_at', 'frozen_reason'])
+            ->map(fn (User $u): array => [
+                'id' => (int) $u->getKey(),
+                'name' => (string) $u->name,
+                'where' => $u->student !== null ? (string) ($u->student->classroom?->name ?? 'Siswa') : 'Staf',
+                'reason' => AccountControls::frozenReason($u),
+                'since' => AccountControls::date($u, 'frozen_at'),
+                'student' => $u->student !== null,
+            ]);
+    }
+
+    /**
+     * Which button a row gets: 'reopen' (K2: expired, frozen after failed logins, or a window with less than
+     * 72 hours left, so the reopen really moves the deadline later; M2-B), 'unfreeze' (Admin, any freeze),
+     * 'admin' (frozen by "Bukan saya?" and the viewer is not Admin) or null.
+     */
+    private static function rowAction(string $state, ?string $frozenReason, bool $student, bool $canReopen, bool $canUnfreeze, ?CarbonImmutable $expiresAt = null): ?string
+    {
+        $reopenable = $student && match ($state) {
+            AccountControls::STATE_EXPIRED => true,
+            AccountControls::STATE_FROZEN => $frozenReason === AccountControls::FROZEN_FAILED_ATTEMPTS,
+            AccountControls::STATE_PENDING => ReopenActivationWindow::wouldChange($expiresAt, false),
+            default => false,
+        };
+
+        return match (true) {
+            $reopenable && $canReopen => self::ACTION_REOPEN,
+            $state === AccountControls::STATE_FROZEN && $canUnfreeze => self::ACTION_UNFREEZE,
+            $state === AccountControls::STATE_FROZEN => 'admin',
+            default => null,
+        };
+    }
+
+    /**
+     * What "Buka ulang" will do for the account in the dialog, so the dialog says it before the click
+     * (the rule itself is ReopenActivationWindow::deadlineAfter()).
+     *
+     * @return array{until: string, kept: bool, unfreezes: bool}
+     */
+    private static function reopenPreview(User $target): array
+    {
+        $current = AccountControls::date($target, 'initial_password_expires_at');
+        $until = ReopenActivationWindow::deadlineAfter($current);
+
+        return [
+            'until' => $until->translatedFormat('j M Y H:i'),
+            // The window already runs longer than 72 hours: only the freeze is lifted.
+            'kept' => $current !== null && $until->equalTo($current),
+            'unfreezes' => AccountControls::isFrozen($target),
+        ];
+    }
+
+    private function openAction(User $target, string $action): void
+    {
+        $this->resetErrorBag();
+        $this->reset('reason');
+        $this->targetId = (int) $target->getKey();
+        $this->action = $action;
+        $this->dispatch('sth-modal-open', id: 'aktivasi-aksi');
+    }
+
+    private function studentAccount(int $userId): User
+    {
+        /** @var User|null $user */
+        $user = User::query()->whereHas('student')->find($userId);
+        abort_if($user === null, 404);
+
+        return $user;
+    }
+
+    private function account(int $userId): User
+    {
+        /** @var User|null $user */
+        $user = User::query()->find($userId);
+        abort_if($user === null, 404);
+
+        return $user;
+    }
+
+    private function actor(): User
+    {
+        /** @var User $user */
+        $user = Auth::user();
+
+        return $user;
+    }
+
+    protected function returnUrl(): string
+    {
+        // `kelas` is only set while the class dialog is in use (e.g. Admin "Buka pembekuan" from a dialog row).
+        $query = array_filter(['kelas' => $this->kelas, 'tampil' => $this->tampil === self::VIEW_STUDENTS ? self::VIEW_STUDENTS : '', 'kelas_daftar' => $this->daftarKelas, 'status' => $this->status, 'q' => $this->q]);
+
+        return $this->returnTo.($query !== [] ? '?'.http_build_query($query) : '');
+    }
+}

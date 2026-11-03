@@ -1,0 +1,438 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Livewire\Admin;
+
+use App\Actions\Archive\ChangeArchiveDate;
+use App\Actions\Archive\UnarchiveStudent;
+use App\Domain\Archive\GraduationCalculator;
+use App\Enums\UserStatus;
+use App\Livewire\Admin\Concerns\RequiresRecentPassword;
+use App\Models\Student;
+use App\Models\User;
+use Carbon\CarbonImmutable;
+use Carbon\CarbonInterface;
+use Illuminate\Contracts\View\View;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Gate;
+use Livewire\Attributes\Layout;
+use Livewire\Attributes\Locked;
+use Livewire\Attributes\Title;
+use Livewire\Attributes\Url;
+use Livewire\Component;
+use Livewire\WithPagination;
+use Spatie\Activitylog\Models\Activity;
+
+/**
+ * Admin · Arsip otomatis (UI-MAP §5 `admin.arsip.index`, backlog #8, owner B5; SECURITY §3m-8, D-13, D-29):
+ * tab "Segera" (not archived yet, archive date within the chosen window, incl. overdue = archived tonight),
+ * tab "Diarsipkan" (alumni, newest first) and tab "Riwayat" (automatic runs per day + manual changes from the
+ * audit log). Actions: change a student's archive date (ChangeArchiveDate) and restore an archived account
+ * (UnarchiveStudent), both with a reason, audited, re-authorized in the Action and behind a password
+ * confirmation from the last 15 minutes (SECURITY §3m-9 "unarchive"). No NIS/NISN in the lists; search by
+ * name or an exact NISN.
+ */
+#[Title('Arsip otomatis')]
+// One search box per screen (D-90, backlog #60): this page has its own, so the top bar shows none.
+#[Layout('layouts::app', ['search' => false])]
+final class ArsipOtomatis extends Component
+{
+    use RequiresRecentPassword;
+    use WithPagination;
+
+    public const TABS = ['segera', 'arsip', 'riwayat'];
+
+    public const WINDOWS = [30, 60, 90, 180];
+
+    public const EVENTS = ['account.archived', 'account.unarchived', 'student.archive_date_changed'];
+
+    /** The search reads at most this many characters (the box keeps what was typed, term() trims). */
+    public const SEARCH_MAX = 100;
+
+    #[Url(as: 'tab', except: 'segera')]
+    public string $tab = 'segera';
+
+    #[Url(as: 'q', except: '')]
+    public string $q = '';
+
+    #[Url(as: 'hari', except: '30')]
+    public string $hari = '30';
+
+    /** Student (ULID) the open dialog acts on; set only by openDate()/openRestore(). */
+    #[Locked]
+    public ?string $studentId = null;
+
+    public string $archiveDate = '';
+
+    public string $archiveReason = '';
+
+    public function mount(): void
+    {
+        Gate::authorize('viewArchive', User::class);
+        $this->normalize();
+    }
+
+    public function updated(string $property): void
+    {
+        $this->normalize();
+
+        if (in_array($property, ['tab', 'q', 'hari'], true)) {
+            $this->resetPage('segera');
+            $this->resetPage('arsip');
+        }
+    }
+
+    public function openDate(string $studentId): void
+    {
+        $student = $this->student($studentId);
+        $owner = $this->owner($student);
+
+        if ($this->changedElsewhere($owner, expectArchived: false, dialog: 'arsip-tanggal')) {
+            return;
+        }
+
+        Gate::authorize('changeArchiveDate', $owner);
+
+        $this->resetErrorBag();
+        $this->studentId = (string) $student->getKey();
+        $this->archiveDate = $student->archive_at?->toDateString() ?? '';
+        $this->archiveReason = '';
+        $this->dispatch('sth-modal-open', id: 'arsip-tanggal');
+    }
+
+    public function saveDate(ChangeArchiveDate $change): void
+    {
+        $student = $this->student((string) $this->studentId);
+        $owner = $this->owner($student);
+
+        if ($this->changedElsewhere($owner, expectArchived: false, dialog: 'arsip-tanggal')) {
+            return;
+        }
+
+        Gate::authorize('changeArchiveDate', $owner);
+
+        $this->validate(
+            ['archiveDate' => ['required', 'date_format:Y-m-d'], 'archiveReason' => ['required', 'string', 'max:500']],
+            [],
+            ['archiveDate' => 'tanggal arsip', 'archiveReason' => 'alasan'],
+        );
+
+        if (! $this->passwordRecentlyConfirmed()) {
+            return;
+        }
+
+        $change->handle($this->actor(), $student, $this->archiveDate, $this->archiveReason);
+        $this->closeDialog('arsip-tanggal', 'Tanggal arsip diubah.');
+    }
+
+    public function openRestore(string $studentId): void
+    {
+        $student = $this->student($studentId);
+        $owner = $this->owner($student);
+
+        if ($this->changedElsewhere($owner, expectArchived: true, dialog: 'arsip-pulihkan')) {
+            return;
+        }
+
+        Gate::authorize('unarchive', $owner);
+
+        $this->resetErrorBag();
+        $this->studentId = (string) $student->getKey();
+        $this->archiveDate = '';
+        $this->archiveReason = '';
+        $this->dispatch('sth-modal-open', id: 'arsip-pulihkan');
+    }
+
+    public function restore(UnarchiveStudent $unarchive): void
+    {
+        $student = $this->student((string) $this->studentId);
+        $owner = $this->owner($student);
+
+        if ($this->changedElsewhere($owner, expectArchived: true, dialog: 'arsip-pulihkan')) {
+            return;
+        }
+
+        Gate::authorize('unarchive', $owner);
+
+        $this->validate(
+            ['archiveDate' => ['required', 'date_format:Y-m-d'], 'archiveReason' => ['required', 'string', 'max:500']],
+            [],
+            ['archiveDate' => 'tanggal arsip baru', 'archiveReason' => 'alasan'],
+        );
+
+        if (! $this->passwordRecentlyConfirmed()) {
+            return;
+        }
+
+        $restored = $unarchive->handle($this->actor(), $owner, $this->archiveDate, $this->archiveReason);
+        $this->closeDialog('arsip-pulihkan', $restored->status === UserStatus::Active
+            ? 'Akun dipulihkan. Siswa bisa login lagi.'
+            : 'Akun dipulihkan. Siswa perlu aktivasi saat login.');
+    }
+
+    public function render(): View
+    {
+        Gate::authorize('viewArchive', User::class);
+
+        $today = CarbonImmutable::now(config('app.timezone'))->startOfDay();
+
+        // The months come from Admin › Pengaturan, also in the subtitle (QA8: it said a fixed 18).
+        $months = app(GraduationCalculator::class)->archiveMonths();
+        $selected = $this->studentId !== null
+            ? Student::query()->with(['user:id,name,status,deleted_at', 'classroom:id,name'])->find($this->studentId)
+            : null;
+        $archived = $this->tab === 'arsip' ? $this->archivedQuery()->paginate(20, pageName: 'arsip') : null;
+
+        // "Malam ini" and "dalam 30 hari" count what the nightly job archives: active and pending accounts only (QA9).
+        return view('livewire.admin.arsip-otomatis', [
+            'today' => $today,
+            'stats' => [
+                'tonight' => Student::query()->active()->whereNotNull('archive_at')->whereDate('archive_at', '<=', $today)->count(),
+                'soon' => Student::query()->active()->whereDate('archive_at', '>', $today)->whereDate('archive_at', '<=', $today->addDays(30))->count(),
+                'archived' => Student::query()->alumni()->count(),
+                'months' => $months,
+            ],
+            'tabs' => $this->tabItems(),
+            'due' => $this->tab === 'segera' ? $this->dueQuery($today)->paginate(20, pageName: 'segera') : null,
+            'archived' => $archived,
+            'archivedOn' => $archived !== null ? self::archivedOn($archived->getCollection()) : [],
+            'runs' => $this->tab === 'riwayat' ? $this->automaticRuns() : collect(),
+            'history' => $this->tab === 'riwayat' ? $this->manualHistory() : collect(),
+            'selected' => $selected,
+            'windowOptions' => collect(self::WINDOWS)->mapWithKeys(fn (int $d) => [(string) $d => $d.' hari'])->all(),
+            'minDate' => $today->addDay()->toDateString(),
+        ])->layoutData(['subtitle' => 'Akun siswa diarsipkan '.$months.' bulan setelah mulai kelas XII.']);
+    }
+
+    /** @return Builder<Student> */
+    private function dueQuery(CarbonImmutable $today): Builder
+    {
+        // Only accounts the nightly job archives (QA9): a disabled student stays disabled.
+        return $this->search(Student::query()->active())
+            ->whereNotNull('archive_at')
+            ->whereDate('archive_at', '<=', $today->addDays((int) $this->hari))
+            ->with(['user:id,name,status,deleted_at', 'classroom:id,name'])
+            ->orderBy('archive_at')
+            ->orderBy('id');
+    }
+
+    /** @return Builder<Student> */
+    private function archivedQuery(): Builder
+    {
+        return $this->search(Student::query()->alumni())
+            ->with(['user:id,name,status,deleted_at', 'classroom:id,name'])
+            ->withCount('achievements')
+            ->orderByDesc('archive_at')
+            ->orderBy('id');
+    }
+
+    /**
+     * The day each archived student's account was archived, for the column "Diarsipkan" here and in Admin ›
+     * Pengaturan › Arsip akun (QA9): the date of its latest `account.archived` audit row. A manual archive (D-30)
+     * keeps the planned `archive_at`, which may still lie in the future; that date itself stays as it is (the nightly
+     * job and UnarchiveStudent read it). Without an audit row (older data) the archive date stands in.
+     *
+     * @param  iterable<Student>  $students
+     * @return array<string, CarbonInterface|null> student id => day
+     */
+    public static function archivedOn(iterable $students): array
+    {
+        $students = collect($students);
+
+        if ($students->isEmpty()) {
+            return [];
+        }
+
+        // Oldest first, so the latest row of a student archived, restored and archived again wins.
+        $days = Activity::query()
+            ->where('event', 'account.archived')
+            ->where('subject_type', (new User)->getMorphClass())
+            ->whereIn('subject_id', $students->map(fn (Student $s): string => (string) $s->user_id)->all())
+            ->orderBy('id')
+            ->get(['id', 'subject_id', 'created_at'])
+            ->mapWithKeys(fn (Activity $a): array => [(string) $a->subject_id => $a->created_at?->timezone(config('app.timezone'))]);
+
+        return $students
+            ->mapWithKeys(fn (Student $s): array => [(string) $s->getKey() => $days[(string) $s->user_id] ?? $s->archive_at])
+            ->all();
+    }
+
+    /**
+     * The account changed since the list was drawn (QA9): the nightly job or another Admin archived it, or another
+     * Admin restored it. The policy would refuse with a full-screen 403 (and the Actions' own messages were never
+     * reached), so say so, close the dialog and let the lists redraw.
+     */
+    private function changedElsewhere(User $owner, bool $expectArchived, string $dialog): bool
+    {
+        if ($owner->isArchived() === $expectArchived) {
+            return false;
+        }
+
+        $this->reset('studentId', 'archiveDate', 'archiveReason');
+        $this->resetErrorBag();
+        $this->dispatch('sth-modal-close', id: $dialog);
+        $this->dispatch('sth-toast', message: $expectArchived
+            ? 'Akun ini sudah dipulihkan. Daftar sudah diperbarui.'
+            : 'Akun ini sudah diarsipkan. Daftar sudah diperbarui.', tone: 'warning');
+
+        return true;
+    }
+
+    /**
+     * @param  Builder<Student>  $query
+     * @return Builder<Student>
+     */
+    private function search(Builder $query): Builder
+    {
+        $term = $this->term();
+
+        if ($term === '') {
+            return $query;
+        }
+
+        // Exact NISN only (no prefix search, SECURITY §3m-3); otherwise the name.
+        if (preg_match('/^\d{10}$/', $term) === 1) {
+            return $query->where('nisn', $term);
+        }
+
+        return $query->whereHas('user', fn (Builder $u) => $u->where('name', 'like', '%'.addcslashes($term, '%_\\').'%'));
+    }
+
+    /**
+     * Automatic runs of `sth:arsip-otomatis` in the last year, one row per day (newest first).
+     *
+     * @return Collection<int, array{date: string, count: int}>
+     */
+    private function automaticRuns(): Collection
+    {
+        return Activity::query()
+            ->where('event', 'account.archived')
+            ->whereNull('causer_id')
+            ->where('created_at', '>=', now()->subYear())
+            ->orderByDesc('id')
+            ->get(['id', 'created_at'])
+            ->groupBy(fn (Activity $a) => $a->created_at?->timezone(config('app.timezone'))->toDateString())
+            ->map(fn (Collection $rows, string $date): array => ['date' => $date, 'count' => $rows->count()])
+            ->values()
+            ->take(12);
+    }
+
+    /**
+     * Manual archive changes (Admin): restore, archive-date change, manual archive. Names resolved in one query.
+     *
+     * @return Collection<int, array<string, mixed>>
+     */
+    private function manualHistory(): Collection
+    {
+        $rows = Activity::query()
+            ->whereIn('event', self::EVENTS)
+            ->whereNotNull('causer_id')
+            ->with('causer')
+            ->orderByDesc('id')
+            ->limit(30)
+            ->get();
+
+        $userIds = $rows->map(fn (Activity $a) => $a->subject_type === (new User)->getMorphClass()
+            ? (int) $a->subject_id
+            : (int) ($a->properties['user_id'] ?? 0))->filter()->unique()->values();
+        $names = User::withTrashed()->whereKey($userIds)->pluck('name', 'id');
+
+        return $rows->map(function (Activity $a) use ($names): array {
+            $userId = $a->subject_type === (new User)->getMorphClass() ? (int) $a->subject_id : (int) ($a->properties['user_id'] ?? 0);
+
+            return [
+                'id' => $a->id,
+                'at' => $a->created_at,
+                'event' => $a->event,
+                'label' => match ($a->event) {
+                    'account.unarchived' => 'Dipulihkan',
+                    'student.archive_date_changed' => 'Tanggal arsip diubah',
+                    default => 'Diarsipkan manual',
+                },
+                'tone' => match ($a->event) {
+                    'account.unarchived' => 'green',
+                    'student.archive_date_changed' => 'blue',
+                    default => 'gray',
+                },
+                'student' => (string) ($names[$userId] ?? '-'),
+                'actor' => (string) ($a->causer?->name ?? '-'),
+                'reason' => (string) ($a->properties['reason'] ?? ''),
+                'to' => match ($a->event) {
+                    'student.archive_date_changed' => data_get($a->properties, 'to.archive_at'),
+                    'account.unarchived' => data_get($a->properties, 'dates.to.archive_at'),
+                    default => null,
+                },
+            ];
+        });
+    }
+
+    /** @return list<array{key: string, label: string, href: string, count?: int}> */
+    private function tabItems(): array
+    {
+        // The search as the lists read it (term()), never with the spaces the box keeps.
+        $base = array_filter(['q' => $this->term(), 'hari' => $this->hari !== '30' ? $this->hari : ''], fn (string $value): bool => $value !== '');
+
+        return [
+            ['key' => 'segera', 'label' => 'Segera diarsipkan', 'href' => route('admin.arsip.index', $base)],
+            ['key' => 'arsip', 'label' => 'Sudah diarsipkan', 'href' => route('admin.arsip.index', ['tab' => 'arsip'] + $base)],
+            ['key' => 'riwayat', 'label' => 'Riwayat', 'href' => route('admin.arsip.index', ['tab' => 'riwayat'])],
+        ];
+    }
+
+    private function normalize(): void
+    {
+        $this->tab = in_array($this->tab, self::TABS, true) ? $this->tab : 'segera';
+        $this->hari = in_array((int) $this->hari, self::WINDOWS, true) ? (string) (int) $this->hari : '30';
+
+        // The search box keeps the text as typed (SV1, backlog #81): a trimmed value written back here would land in the
+        // box while the Admin is still typing and eat the space before the next word ("Raka " + pause + "Aditya" became
+        // "RakaAditya"). term() trims it for the lists and the tab links; here it is only cut to what the search reads.
+        if (mb_strlen($this->q) > self::SEARCH_MAX) {
+            $this->q = mb_substr($this->q, 0, self::SEARCH_MAX);
+        }
+    }
+
+    /** The search as the lists and the tab links read it: trimmed, at most SEARCH_MAX characters. */
+    private function term(): string
+    {
+        return mb_substr(trim($this->q), 0, self::SEARCH_MAX);
+    }
+
+    private function student(string $id): Student
+    {
+        /** @var Student $student */
+        $student = Student::query()->findOrFail($id);
+
+        return $student;
+    }
+
+    private function owner(Student $student): User
+    {
+        /** @var User $user */
+        $user = User::withTrashed()->findOrFail($student->user_id);
+
+        return $user;
+    }
+
+    private function actor(): User
+    {
+        /** @var User $user */
+        $user = auth()->user();
+
+        return $user;
+    }
+
+    private function closeDialog(string $id, string $message): void
+    {
+        $this->reset('studentId', 'archiveDate', 'archiveReason');
+        $this->dispatch('sth-modal-close', id: $id);
+        $this->dispatch('sth-toast', message: $message, tone: 'success');
+    }
+
+    protected function returnUrl(): string
+    {
+        return route('admin.arsip.index', array_filter(['tab' => $this->tab !== 'segera' ? $this->tab : null]));
+    }
+}

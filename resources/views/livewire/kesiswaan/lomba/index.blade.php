@@ -1,0 +1,212 @@
+{{-- Kelola lomba & antrean verifikasi (board Kesiswaan-Kelola-Lomba). Data prepared in App\Livewire\Kesiswaan\Lomba\Index. --}}
+<div class="flex flex-col gap-[22px]">
+    <section aria-label="Ringkasan" class="grid auto-rows-fr grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
+        @foreach ($stats as $stat)
+            <x-sth.stat-tile :icon="$stat['icon']" :tone="$stat['tone']" :label="$stat['label']" :value="$stat['value']" :note="$stat['note']" :href="$stat['href']" />
+        @endforeach
+    </section>
+
+    <div class="flex flex-wrap items-center justify-between gap-3">
+        <x-sth.tabs label="Daftar lomba" variant="pill" :active="$tab" :items="[
+            ['key' => 'katalog', 'label' => 'Katalog', 'count' => $catalogCount, 'attributes' => ['wire:click' => 'setTab(\'katalog\')']],
+            ['key' => 'verifikasi', 'label' => 'Verifikasi usulan lomba', 'count' => $pendingCount, 'attributes' => ['wire:click' => 'setTab(\'verifikasi\')']],
+        ]" />
+        <div class="flex w-full flex-wrap items-center gap-3 sm:w-auto">
+            @if ($tab === 'katalog')
+                <x-sth.input type="search" wire:model.live.debounce.400ms="q" label="Cari lomba" hide-label icon="search" placeholder="Cari nama lomba atau penyelenggara" class="w-full sm:w-80" />
+            @endif
+            @if ($canCreate)
+                <x-sth.button icon="plus" wire:click="create" aria-haspopup="dialog">Tambah lomba</x-sth.button>
+            @endif
+        </div>
+    </div>
+
+    @if ($tab === 'katalog')
+        <div class="flex flex-wrap gap-2" role="group" aria-label="Filter status">
+            @foreach ($statusFilters as $value => $label)
+                <button type="button" class="fchip" wire:click="setStatus('{{ $value }}')" aria-pressed="{{ $status === (string) $value ? 'true' : 'false' }}">{{ $label }}</button>
+            @endforeach
+        </div>
+
+        @if ($rows->isEmpty())
+            <x-sth.empty-state icon="search" title="Belum ada lomba yang cocok">
+                {{ $canCreate ? 'Ubah filter atau tambah lomba baru.' : 'Ubah filter.' }}
+            </x-sth.empty-state>
+        @else
+            <x-sth.table caption="Katalog lomba SMAGA, {{ $rows->count() }} lomba ditampilkan" fixed table-class="min-w-[880px]">
+                <x-slot:head>
+                    <th scope="col" class="w-[36%] min-w-[240px]">Lomba</th>
+                    <th scope="col" class="w-32">Bidang</th>
+                    <th scope="col" class="w-24">Tingkat</th>
+                    <th scope="col" class="w-32">Batas daftar</th>
+                    <th scope="col" class="w-24">Pendaftar</th>
+                    <th scope="col" class="w-44">Status</th>
+                    <th scope="col" class="w-40"><span class="sr-only">Aksi</span></th>
+                </x-slot:head>
+                @foreach ($rows as $row)
+                    <tr wire:key="lomba-{{ $row['id'] }}">
+                        <td>
+                            {{-- No icon tile here: the bidang has its own column (dot + name), and 25 rows stay calm. --}}
+                            <div class="flex min-w-0 flex-col gap-0.5">
+                                <span class="leading-[1.35] font-semibold">{{ $row['name'] }}</span>
+                                <span class="ellip text-xs text-muted">{{ $row['sub'] }}</span>
+                            </div>
+                        </td>
+                        <td>@if ($row['bidang'])<x-sth.chip :bidang="$row['bidang']" />@else – @endif</td>
+                        <td>{{ $row['tingkat'] }}</td>
+                        <td>
+                            <div class="flex flex-col gap-0.5">
+                                <span class="num">{{ $row['batas'] }}</span>
+                                @if ($row['soon'])<span class="text-xs font-bold text-orange">{{ $row['soon'] }}</span>@endif
+                            </div>
+                        </td>
+                        <td class="num">{{ $row['count'] }} siswa</td>
+                        <td><x-sth.chip :tone="$row['status'][0]" :icon="$row['status'][1]">{{ $row['status'][2] }}</x-sth.chip></td>
+                        <td>
+                            <div class="flex items-center gap-1.5">
+                                @if ($row['canEdit'])
+                                    <x-sth.button variant="quiet" size="sm" :aria-label="'Ubah '.$row['name']" wire:click="edit('{{ $row['id'] }}')">Ubah</x-sth.button>
+                                @endif
+                                @if ($row['canClose'])
+                                    {{-- D-128: opens the dialog "Tutup lomba ini?" at the end of this file (the app's own dialog, no browser box). --}}
+                                    <x-sth.button variant="quiet" size="sm" :aria-label="'Tutup '.$row['name']" wire:click="askClose('{{ $row['id'] }}')" aria-haspopup="dialog">Tutup</x-sth.button>
+                                @endif
+                            </div>
+                        </td>
+                    </tr>
+                @endforeach
+            </x-sth.table>
+            @if ($hasMore)
+                <div class="flex justify-center">
+                    <x-sth.button variant="quiet" size="sm" wire:click="showMore">Tampilkan lebih banyak</x-sth.button>
+                </div>
+            @elseif ($capped)
+                <p class="m-0 text-center text-xs text-muted">Menampilkan {{ $rows->count() }} lomba pertama. Persempit filter untuk melihat lainnya.</p>
+            @endif
+        @endif
+    @else
+        {{-- D-145: only students propose a lomba and Admin adds one; Kesiswaan checks every new one here. --}}
+        <x-sth.alert>Setiap lomba baru, dari usulan siswa atau dari Admin, diperiksa di sini sebelum tampil di katalog.</x-sth.alert>
+
+        @if ($queue->isEmpty())
+            <x-sth.empty-state icon="inbox" title="Antrean kosong">Tidak ada lomba yang menunggu verifikasi.</x-sth.empty-state>
+        @else
+            <ul class="m-0 grid list-none grid-cols-1 gap-4 p-0 xl:grid-cols-2" aria-label="Lomba menunggu verifikasi">
+                @foreach ($queue as $item)
+                    <x-sth.card as="li" class="flex flex-col gap-4" wire:key="usulan-{{ $item['id'] }}">
+                        <div class="flex items-start gap-3">
+                            <x-sth.avatar :name="$item['submitter']" size="md" />
+                            <div class="flex min-w-0 flex-1 flex-col gap-0.5">
+                                <span class="font-bold">{{ $item['submitter'] }}</span>
+                                <span class="text-xs text-muted">{{ $item['submitterMeta'] }} · {{ $item['when'] }}</span>
+                            </div>
+                            <x-sth.chip :tone="$item['source'][0]" size="sm">{{ $item['source'][1] }}</x-sth.chip>
+                        </div>
+
+                        <div class="flex flex-col gap-1.5">
+                            <div class="flex flex-wrap items-center gap-2">
+                                @if ($item['bidang'])<x-sth.chip :bidang="$item['bidang']" size="sm" />@endif
+                                <h3 class="title-card m-0">{{ $item['name'] }}</h3>
+                            </div>
+                            <p class="m-0 text-sm text-muted">{{ $item['organizer'] ?? 'Penyelenggara belum diisi' }}</p>
+                            <div class="flex flex-wrap items-center gap-x-4 gap-y-1">
+                                @if ($item['website'])
+                                    <x-sth.link :href="$item['website']" icon="link" external>{{ $item['websiteHost'] }}</x-sth.link>
+                                @elseif ($item['websiteInvalid'])
+                                    <span class="text-xs font-semibold text-orange">Link tidak valid</span>
+                                @else
+                                    <span class="text-xs text-muted">Tanpa link</span>
+                                @endif
+                                @if ($item['juknis'])
+                                    @if ($item['juknis']['url'])
+                                        <x-sth.link :href="$item['juknis']['url']" icon="file" aria-haspopup="dialog"
+                                            :data-sth-preview="$item['juknis']['preview']" :data-sth-preview-type="$item['juknis']['previewType']"
+                                            :data-sth-preview-name="$item['juknis']['name']">{{ $item['juknis']['name'] }} · {{ $item['juknis']['size'] }}</x-sth.link>
+                                    @else
+                                        <span class="text-xs text-muted">{{ $item['juknis']['name'] }} · {{ $item['juknis']['size'] }}</span>
+                                    @endif
+                                @endif
+                            </div>
+                        </div>
+
+                        @if ($item['missing'] !== [])
+                            <p class="m-0 text-xs text-orange"><strong>Perlu dilengkapi:</strong> {{ implode(', ', $item['missing']) }}</p>
+                        @elseif ($item['dateProblem'])
+                            <p class="m-0 text-xs text-orange"><strong>Perlu diperbaiki:</strong> {{ $item['dateProblem'] }}</p>
+                        @else
+                            <x-sth.chip tone="green" icon="check" class="self-start">Data lengkap, siap dipublikasikan</x-sth.chip>
+                        @endif
+                        @if ($item['past'] !== [])
+                            <p class="m-0 text-xs text-orange"><strong>Tanggal sudah lewat:</strong> {{ implode(', ', $item['past']) }}</p>
+                        @endif
+
+                        @if ($rejectingId === $item['id'])
+                            <form wire:submit="reject" class="flex flex-col gap-3">
+                                <x-sth.textarea wire:model="rejectNote" label="Alasan penolakan" rows="2" optional placeholder="Contoh: Lomba sudah lewat atau info tidak resmi."
+                                    hint="Boleh dikosongkan. Kalau diisi, alasan ini dikirim ke pengirim." />
+                                <div class="flex flex-wrap gap-2">
+                                    <x-sth.button type="submit" variant="danger" size="sm" icon="send">Kirim penolakan</x-sth.button>
+                                    <x-sth.button variant="quiet" size="sm" wire:click="cancelReject">Batal</x-sth.button>
+                                </div>
+                            </form>
+                        @elseif ($item['canVerify'])
+                            <div class="flex flex-wrap gap-2">
+                                @if ($item['canEdit'])
+                                    <x-sth.button size="sm" variant="soft" icon="edit" wire:click="edit('{{ $item['id'] }}')" aria-haspopup="dialog">Periksa & lengkapi</x-sth.button>
+                                @endif
+                                @if ($item['missing'] === [] && ! $item['dateProblem'])
+                                    <x-sth.button size="sm" icon="check" wire:click="publish('{{ $item['id'] }}')" :aria-haspopup="$item['past'] !== [] ? 'dialog' : null">Publikasikan</x-sth.button>
+                                @endif
+                                <x-sth.button size="sm" variant="danger" icon="x" wire:click="startReject('{{ $item['id'] }}')">Tolak</x-sth.button>
+                            </div>
+                        @endif
+                    </x-sth.card>
+                @endforeach
+            </ul>
+        @endif
+    @endif
+
+    {{-- Q1-04: old lomba may be published for the record, but only after this "yes" (opened by publish()). --}}
+    <x-sth.modal :id="\App\Livewire\Kesiswaan\Lomba\Index::PAST_DIALOG" size="sm" title="Tetap publikasikan?" description="Tanggal lomba ini sudah lewat.">
+        @if ($pastLomba)
+            <div class="flex flex-col gap-3">
+                <div class="rounded-tile bg-subtle px-3 py-2.5">
+                    <p class="m-0 font-semibold">{{ $pastLomba['name'] }}</p>
+                    <p class="m-0 text-xs text-muted">Sudah lewat: {{ $pastLomba['dates'] ?: 'tidak ada' }}</p>
+                </div>
+                <p class="m-0 text-md">Lomba terbit sebagai catatan. Siswa tidak bisa mendaftar lagi lewat STH.</p>
+            </div>
+        @else
+            <p class="m-0 text-md text-muted">Lomba tidak ditemukan. Tutup lalu coba lagi.</p>
+        @endif
+        <x-slot:footer>
+            <x-sth.button variant="quiet" data-sth-close>Batal</x-sth.button>
+            @if ($pastLomba)
+                <x-sth.button icon="check" wire:click="publishPast" wire:loading.attr="disabled" wire:target="publishPast">Tetap publikasikan</x-sth.button>
+            @endif
+        </x-slot:footer>
+    </x-sth.modal>
+
+    {{-- D-128: "Tutup" asks here (opened by askClose()): a closed lomba cannot be opened again. --}}
+    <x-sth.modal :id="\App\Livewire\Kesiswaan\Lomba\Index::CLOSE_DIALOG" size="sm" title="Tutup lomba ini?" description="Lomba tidak tampil lagi di katalog siswa dan tidak bisa dibuka lagi.">
+        @if ($closingLomba)
+            <div class="flex flex-col gap-3">
+                <div class="rounded-tile bg-subtle px-3 py-2.5">
+                    <p class="m-0 font-semibold [overflow-wrap:anywhere]">{{ $closingLomba['name'] }}</p>
+                    <p class="num m-0 text-xs text-muted">{{ $closingLomba['count'] }} siswa terdaftar</p>
+                </div>
+                <p class="m-0 text-md">Pendaftaran yang sudah ada tetap berjalan.</p>
+            </div>
+        @else
+            <p class="m-0 text-md text-muted">Lomba tidak ditemukan. Tutup lalu coba lagi.</p>
+        @endif
+        <x-slot:footer>
+            <x-sth.button variant="quiet" data-sth-close>Batal</x-sth.button>
+            @if ($closingLomba)
+                <x-sth.button variant="danger" wire:click="close" wire:loading.attr="disabled" wire:target="close">Tutup lomba</x-sth.button>
+            @endif
+        </x-slot:footer>
+    </x-sth.modal>
+
+    <livewire:kesiswaan.lomba.form />
+</div>

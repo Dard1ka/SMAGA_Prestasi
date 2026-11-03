@@ -1,0 +1,26 @@
+# gitleaks config for CI (.github/workflows/ci.yml, job secrets; docs/SECURITY.md §3k).
+# Default rules + narrow allowlists for known fictional values. Add an allowlist only for values that are provably
+# not secrets (fictional test data, documentation placeholders); a real leak is rotated, never allowlisted.
+title = "SMAGA Talent Hub"
+
+[extend]
+useDefault = true
+
+# Fictional passwords in tests (Pest constants, E2E local default), e.g. const W1C_NEW_PASSWORD = '...'.
+# Only the generic rule, only under tests/, only on lines that name a password.
+[[allowlists]]
+description = "Fictional test passwords under tests/"
+targetRules = ["generic-api-key"]
+condition = "AND"
+paths = ['''^tests/''']
+regexTarget = "line"
+regexes = ['''(?i)passw(or)?d''']
+
+# DNS record samples in the docs (DKIM placeholder "p=<2048-bit key>").
+[[allowlists]]
+description = "DKIM/SPF/DMARC samples in docs"
+targetRules = ["generic-api-key"]
+condition = "AND"
+paths = ['''^docs/.*\.md$''']
+regexTarget = "line"
+regexes = ['''v=(DKIM1|spf1|DMARC1)''']

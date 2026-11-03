@@ -1,0 +1,9 @@
+DejaVuSans.ttf and DejaVuSans-Bold.ttf in this folder are the DejaVu fonts (copied unchanged from
+vendor/dompdf/dompdf/lib/fonts). They are used server-side by App\Actions\Publications\GenerateFlyer
+to render the Humas e-flyer PNG.
+
+DejaVu fonts are derived from the Bitstream Vera fonts and are distributed under a free license
+(Bitstream Vera license + public-domain DejaVu changes; Arev additions under the same terms).
+Full license text: https://dejavu-fonts.github.io/License.html
+
+Fonts are (c) Bitstream (see the license above). DejaVu changes are in the public domain.

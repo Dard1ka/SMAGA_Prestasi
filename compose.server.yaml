@@ -1,0 +1,13 @@
+# smaga_server on the school's server: the web container is reachable from outside on port 8149
+# (http://<the server's public IP>:8149; the school forwards the port on its router). MySQL and Mailpit stay on 127.0.0.1.
+# Used only on the server, through COMPOSE_FILE=compose.yaml:compose.server.yaml in its .env; the laptop ignores it.
+# php-fpm runs 10 workers there (STH_FPM_WORKERS, docker/php/fpm.dev.conf; the laptop keeps the default 3): one class
+# using the app at once no longer queues behind 3 workers. Server: 6 CPUs, 62 GB RAM (2026-10-23).
+services:
+  app:
+    environment:
+      STH_FPM_WORKERS: "10"
+
+  web:
+    ports: !override
+      - "8149:80"

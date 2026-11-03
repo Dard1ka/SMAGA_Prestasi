@@ -1,0 +1,153 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Actions\Letters;
+
+use App\Actions\Templates\LetterTemplate;
+use App\Domain\Letters\PdfDocument;
+use App\Domain\Letters\PdfQrCode;
+use App\Domain\Letters\PdfRenderer;
+use App\Enums\FilePurpose;
+use App\Enums\LetterType;
+use App\Enums\SettingKey;
+use App\Models\File;
+use App\Models\Letter;
+use App\Models\Registration;
+use App\Models\Setting;
+use App\Models\User;
+use App\Support\PublicAddress;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
+use InvalidArgumentException;
+
+/**
+ * Shared PDF steps of IssueLetters and RevokeLetter (SECURITY §3g/§3m-5/§3m-6): the one signature +
+ * stamp image from settings, the dompdf render with the verification QR, and the private-disk `files`
+ * row (purpose letter, SHA-256). Callers collect written paths and call cleanup() when their
+ * transaction fails, so no orphan PDF stays on disk.
+ */
+final class LetterPdf
+{
+    public const TEMPLATES = [
+        'siswa' => 'surat-tugas-siswa',
+        'guru' => 'surat-perintah-tugas-guru',
+    ];
+
+    public const MSG_NO_SIGNATURE = 'Tanda tangan dan stempel belum di-upload. Minta Admin upload di Pengaturan › Surat & tanda tangan.';
+
+    public function __construct(
+        private readonly PdfRenderer $renderer,
+        private readonly PdfQrCode $qr,
+    ) {}
+
+    /**
+     * The signature + stamp image (settings.signature_file_id, private disk). TU never downloads it; it
+     * only travels into the render sandbox.
+     *
+     * @return array{bytes: string, file_id: string, sha256: string}
+     *
+     * @throws ValidationException key `signature`
+     */
+    public function signature(): array
+    {
+        $fileId = Setting::get(SettingKey::SignatureFileId);
+        $file = is_string($fileId) && $fileId !== '' ? File::query()->find($fileId) : null;
+        $bytes = $file !== null && $file->purpose === FilePurpose::Signature ? $file->storage()->get($file->path) : null;
+
+        if (! is_string($bytes) || $bytes === '') {
+            throw ValidationException::withMessages(['signature' => self::MSG_NO_SIGNATURE]);
+        }
+
+        return ['bytes' => $bytes, 'file_id' => (string) $file->getKey(), 'sha256' => hash('sha256', $bytes)];
+    }
+
+    /**
+     * What a letter stores in `printed` (QA retest 2026-10-06): the same content and template the PDF is
+     * rendered with, so the TU preview of the issued letter shows its PDF.
+     *
+     * @return array{content: array<string, mixed>, template: array{version: int, values: array<string, string>}}
+     */
+    public static function printed(LetterContent $content, LetterTemplate $template): array
+    {
+        return ['content' => $content->toArray(), 'template' => $template->toArray()];
+    }
+
+    /**
+     * @param  LetterTemplate  $template  B5: TU letter template, read once by the caller and stored with printed()
+     * @param  string|null  $replaces  full number of the revoked letter this one replaces (printed in the footer)
+     *
+     * @throws ValidationException key `signature` when the image cannot be used
+     */
+    public function render(LetterType $type, LetterContent $content, Letter $letter, string $signature, LetterTemplate $template, ?string $replaces = null): PdfDocument
+    {
+        $url = self::verificationUrl($letter);
+
+        try {
+            return $this->renderer->render(self::TEMPLATES[$type->value], [
+                'content' => $content,
+                'number' => $letter->full_number,
+                'verification' => ['code' => $letter->verification_code, 'url' => $url],
+                'replaces' => $replaces,
+                'letterTemplate' => $template,
+            ], [
+                'ttd.png' => $signature,
+                'qr.png' => $this->qr->png($url, 6),
+            ]);
+        } catch (InvalidArgumentException) {
+            throw ValidationException::withMessages(['signature' => 'Gambar tanda tangan tidak bisa dipakai. Minta Admin upload ulang.']);
+        }
+    }
+
+    /**
+     * The public check of the letter, printed under the QR code and encoded in it (`public.surat.verifikasi`). Built on
+     * the app's public address (config app.url, APP_URL), never on the host of the request: a letter TU makes while
+     * the app is opened by a LAN address would carry that address for good, and the paper leaves the school (SV1).
+     * Without a public APP_URL (empty, or a loopback address on a laptop copy: PublicAddress) the request's host is
+     * the only address there is.
+     */
+    public static function verificationUrl(Letter $letter): string
+    {
+        $parameters = ['code' => $letter->verification_code];
+        $root = PublicAddress::root();
+
+        return $root !== null
+            ? $root.route('public.surat.verifikasi', $parameters, absolute: false)
+            : route('public.surat.verifikasi', $parameters);
+    }
+
+    /** @param list<array{disk: string, path: string}> $written */
+    public function store(PdfDocument $document, LetterType $type, Registration $registration, User $actor, array &$written, int $version = 1): File
+    {
+        $path = sprintf('surat/%s/%s.pdf', now()->format('Y'), Str::lower((string) Str::ulid()));
+        Storage::disk('local')->put($path, $document->bytes);
+        $written[] = ['disk' => 'local', 'path' => $path];
+
+        $registration->loadMissing('competition');
+        $slug = Str::limit(Str::slug((string) $registration->competition?->name), 60, '');
+        $prefix = $type === LetterType::Siswa ? 'surat-tugas-siswa-' : 'surat-perintah-tugas-guru-';
+
+        $file = new File;
+        $file->forceFill([
+            'disk' => 'local',
+            'path' => $path,
+            'original_name' => $prefix.($slug !== '' ? $slug : 'lomba').($version > 1 ? '-versi-'.$version : '').'.pdf',
+            'mime' => 'application/pdf',
+            'size' => $document->size(),
+            'sha256' => $document->sha256(),
+            'purpose' => FilePurpose::Letter,
+            'owner_user_id' => $actor->getKey(),
+        ])->save();
+
+        return $file;
+    }
+
+    /** @param list<array{disk: string, path: string}> $written */
+    public function cleanup(array $written): void
+    {
+        foreach ($written as $item) {
+            rescue(fn () => Storage::disk($item['disk'])->delete($item['path']), null, false);
+        }
+    }
+}

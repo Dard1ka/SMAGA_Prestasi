@@ -1,0 +1,157 @@
+<?php
+
+declare(strict_types=1);
+
+use App\Enums\Bidang;
+use App\Enums\RegistrationStatus;
+use App\Enums\ReportStatus;
+use App\Enums\ResultType;
+use App\Enums\RoleName;
+use App\Livewire\Siswa\LombaSaya\LaporHasil;
+use App\Models\Report;
+use App\Models\WeightValue;
+use App\Models\WeightVersion;
+use App\Notifications\Reports\ReportSubmitted;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Notification;
+use Livewire\Livewire;
+use Tests\Feature\Siswa\Hasil\HasilFixtures as F;
+
+uses(RefreshDatabase::class);
+
+beforeEach(function (): void {
+    Notification::fake();
+    F::boot();
+    F::today('2026-10-01');
+    $this->withoutVite();
+
+    $this->kesiswaan = F::staff(RoleName::Kesiswaan, 'Ibu Dwi Rahayu');
+    $this->nadia = F::student();
+    $this->dimas = F::student('Dimas Arya Nugroho');
+    $this->wice = F::registration($this->nadia, members: [$this->dimas]);
+});
+
+afterEach(fn () => F::resetToday());
+
+// UX2 (the lead, 2026-10-20): one place to report. The old page address opens the yellow card of Lomba saya.
+it('sends the old report page to the open card of Lomba saya', function (): void {
+    $this->actingAs($this->nadia->user)
+        ->get(route('siswa.lapor', $this->wice))
+        ->assertRedirect(route('siswa.lomba-saya.show', ['registration' => $this->wice, 'lapor' => 1]));
+});
+
+it('opens the report form inside Lomba saya for the ketua with the request to report and the riset fields', function (): void {
+    $this->actingAs($this->nadia->user)
+        ->get(route('siswa.lomba-saya.show', ['registration' => $this->wice, 'lapor' => 1]))
+        ->assertOk()
+        ->assertSee('Segera laporkan hasil lombamu.')
+        ->assertDontSee('Batas')
+        ->assertSee('Hasil yang diraih')
+        ->assertSee('Penghargaan khusus')
+        ->assertSee('(final setelah diverifikasi)', false)
+        ->assertSee('Khusus lomba riset')
+        ->assertSee('Kirim laporan');
+});
+
+it('refuses members, outsiders, staff and guests', function (): void {
+    $open = route('siswa.lomba-saya.show', ['registration' => $this->wice, 'lapor' => 1]);
+
+    // A member sees the card without the form: only the ketua reports.
+    $this->actingAs($this->dimas->user)->get($open)->assertOk()
+        ->assertSee('Ketua tim mengirim laporan hasil untuk seluruh tim.')
+        ->assertDontSee('Kirim laporan');
+
+    $this->actingAs(F::student('Rizky Maulana', 'XI-A')->user)->get($open)->assertNotFound();
+    $this->actingAs(F::staff(RoleName::Kesiswaan, 'Staf lain'))->get($open)->assertForbidden();
+    auth()->logout();
+    $this->get(route('siswa.lapor', $this->wice))->assertRedirect(route('login'));
+});
+
+it('previews points live from the active weight version', function (): void {
+    // Internasional 100 × Juara II 0,85 × kategori D 0,40 = 34.
+    Livewire::actingAs($this->nadia->user)
+        ->test(LaporHasil::class, ['registration' => $this->wice])
+        ->set('hasil', ResultType::Juara2->value)
+        ->assertSee('100 × 0,85 × 0,40 = 34 poin');
+
+    // A newer version wins (Admin changed the kategori D weight).
+    $version = WeightVersion::factory()->withDefaultValues()->create(['effective_at' => now()->subHour()]);
+    WeightValue::query()->where('weight_version_id', $version->getKey())->where('group', 'organizer')->where('key', 'D')->update(['value' => '0.50']);
+
+    Livewire::actingAs($this->nadia->user)
+        ->test(LaporHasil::class, ['registration' => $this->wice])
+        ->set('hasil', ResultType::Juara2->value)
+        ->assertSee('100 × 0,85 × 0,50 = 42,5 poin');
+});
+
+it('sends the report from the form and returns to Lomba saya', function (): void {
+    Livewire::actingAs($this->nadia->user)
+        ->test(LaporHasil::class, ['registration' => $this->wice])
+        ->set('hasil', ResultType::MedaliEmas->value)
+        ->set('sertifikat', F::pdf())
+        ->set('fotoBaru', [F::jpg('foto-1.jpg'), F::jpg('foto-2.jpg')])
+        ->assertCount('foto', 2)
+        ->set('judul', 'Biofilter sabut kelapa untuk air sumur payau')
+        ->set('abstrak', 'Biofilter berbahan sabut kelapa menurunkan salinitas air sumur rata-rata 38 persen.')
+        ->set('laporan', F::pdf('laporan-penelitian.pdf'))
+        ->set('asli', true)
+        ->call('kirim')
+        ->assertHasNoErrors()
+        ->assertRedirect(route('siswa.lomba-saya.show', $this->wice));
+
+    $report = Report::query()->where('registration_id', $this->wice->getKey())->firstOrFail();
+    expect($report->status)->toBe(ReportStatus::Dikirim)
+        ->and($report->claimed_result)->toBe(ResultType::MedaliEmas)
+        ->and($report->files()->count())->toBe(4)
+        ->and($this->wice->fresh()->status)->toBe(RegistrationStatus::LaporanDikirim);
+    Notification::assertSentTo($this->kesiswaan, ReportSubmitted::class);
+});
+
+it('shows Indonesian errors and keeps the status when fields are missing', function (): void {
+    Livewire::actingAs($this->nadia->user)
+        ->test(LaporHasil::class, ['registration' => $this->wice])
+        ->call('kirim')
+        ->assertHasErrors(['hasil', 'asli', 'sertifikat', 'foto', 'judul', 'abstrak', 'laporan'])
+        ->assertSee('Centang pernyataan keaslian dokumen dulu.')
+        ->assertSee('Upload sertifikat atau piagam.');
+
+    Livewire::actingAs($this->nadia->user)
+        ->test(LaporHasil::class, ['registration' => $this->wice])
+        ->set('sertifikat', F::jpg('sertifikat.gif'))
+        ->assertHasErrors('sertifikat');
+
+    expect($this->wice->fresh()->status)->toBe(RegistrationStatus::MenungguLaporan);
+});
+
+it('hides the riset section for other bidang and caps photos at five', function (): void {
+    $o2sn = F::registration(F::student('Yoga Pratama', 'XII-E'), competition: F::competition(['name' => 'O2SN Kota Semarang 2026', 'bidang' => Bidang::Olahraga]));
+
+    Livewire::actingAs($o2sn->leader->user)
+        ->test(LaporHasil::class, ['registration' => $o2sn])
+        ->assertDontSee('Khusus lomba riset')
+        ->set('fotoBaru', array_map(fn (int $i) => F::jpg("foto-{$i}.jpg"), range(1, 4)))
+        ->set('fotoBaru', array_map(fn (int $i) => F::jpg("foto-b{$i}.jpg"), range(1, 3)))
+        ->assertCount('foto', 5)
+        // R3: the photos past the fifth are no longer dropped without a word (LaporHasilPilihFileTest).
+        ->assertSee('Maksimal 5 foto. Tidak ditambahkan: foto-b2.jpg, foto-b3.jpg.')
+        ->call('removeFoto', 0)
+        ->assertCount('foto', 4);
+});
+
+it('pre-fills a revision with the Kesiswaan note and the earlier answers', function (): void {
+    $this->wice->forceFill(['status' => RegistrationStatus::MenungguLaporan])->save();
+    $report = Report::factory()->create([
+        'registration_id' => $this->wice->getKey(),
+        'claimed_result' => ResultType::MedaliPerak,
+        'research_title' => 'Biofilter sabut kelapa',
+        'research_abstract' => 'Ringkasan lama.',
+    ]);
+    $report->forceFill(['status' => ReportStatus::PerluRevisi, 'note' => 'Sertifikat buram, upload ulang.'])->save();
+
+    Livewire::actingAs($this->nadia->user)
+        ->test(LaporHasil::class, ['registration' => $this->wice])
+        ->assertSet('hasil', ResultType::MedaliPerak->value)
+        ->assertSet('judul', 'Biofilter sabut kelapa')
+        ->assertSee('Perlu revisi')
+        ->assertSee('Sertifikat buram, upload ulang.');
+});

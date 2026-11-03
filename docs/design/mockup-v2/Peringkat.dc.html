@@ -1,0 +1,476 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Peringkat prestasi · SMAGA Talent Hub</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Urbanist:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F4F5FB;font-family:"Plus Jakarta Sans",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;color:#151A33;-webkit-font-smoothing:antialiased}
+*{box-sizing:border-box}
+a{color:#3148D6}a:hover{color:#2638B0}
+h1,h2,h3,.display{font-family:"Urbanist","Plus Jakarta Sans",system-ui,sans-serif;letter-spacing:-0.01em}
+.page{background:radial-gradient(900px 320px at 88% -8%,#ECE8FF 0%,rgba(236,232,255,0) 70%),radial-gradient(760px 300px at 28% -14%,#E2F0FF 0%,rgba(226,240,255,0) 70%),#F4F5FB}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:44px;padding:0 18px;border-radius:12px;font:600 15px/1 "Plus Jakarta Sans",system-ui,sans-serif;border:1px solid transparent;cursor:pointer;text-decoration:none;white-space:nowrap}
+.btn-primary{background:#3148D6;color:#FFFFFF;box-shadow:0 8px 18px -10px rgba(49,72,214,.65)}
+.btn-primary:hover{background:#2638B0;color:#FFFFFF}
+.btn-quiet{background:#FFFFFF;color:#151A33;border-color:#DCDFEC}
+.btn-quiet:hover{background:#F4F5FB;color:#151A33}
+.btn-soft{background:#ECEFFF;color:#2A3CB8}
+.btn-soft:hover{background:#DFE4FF;color:#2A3CB8}
+.btn-danger{background:#FFFFFF;color:#B42318;border-color:#F3C4BE}
+.btn-danger:hover{background:#FDECEA;color:#B42318}
+.btn-sm{height:36px;padding:0 14px;font-size:14px;border-radius:10px}
+.btn:focus-visible,.nav:focus-visible,.input:focus-visible,.icon-btn:focus-visible,.tab:focus-visible,.pick:focus-visible{outline:3px solid #A9B6F5;outline-offset:2px}
+.icon-btn{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:12px;border:1px solid #E7E9F3;background:#FFFFFF;color:#4A5068;cursor:pointer;position:relative;text-decoration:none}
+.icon-btn:hover{background:#F4F5FB;color:#151A33}
+.dot{position:absolute;top:8px;right:9px;width:8px;height:8px;border-radius:999px;background:#3148D6;border:2px solid #FFFFFF}
+.card{background:#FFFFFF;border:1px solid #E7E9F3;border-radius:20px;box-shadow:0 1px 2px rgba(20,24,60,.04),0 10px 28px -18px rgba(20,24,60,.18)}
+.chip{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 10px;border-radius:999px;font-size:12.5px;font-weight:600;white-space:nowrap}
+.c-blue{background:#ECEFFF;color:#2A3CB8}
+.c-green{background:#E4F5EA;color:#1B6B45}
+.c-orange{background:#FFEEDD;color:#9A3F00}
+.c-red{background:#FDECEA;color:#B42318}
+.c-gray{background:#EEF0F6;color:#4A5068}
+.c-gold{background:#FFF3D1;color:#6B4E00}
+.c-glass{background:rgba(255,255,255,.82);color:#151A33}
+.b-sains{background:#E6F0FF;color:#1D56AD}
+.b-riset{background:#F0EBFF;color:#5534B8}
+.b-seni{background:#FDE8F0;color:#A61F54}
+.b-olahraga{background:#E0F4F8;color:#0B6577}
+.cover-sains{background:linear-gradient(135deg,#DCE9FF,#C3D8FF);color:#1D56AD}
+.cover-riset{background:linear-gradient(135deg,#EEE7FF,#D9CCFF);color:#5534B8}
+.cover-seni{background:linear-gradient(135deg,#FFE6EF,#FFCFE0);color:#A61F54}
+.cover-olahraga{background:linear-gradient(135deg,#DDF4F8,#BFE8F0);color:#0B6577}
+.label{font-size:13px;font-weight:600;color:#4A5068}
+.input{height:46px;width:100%;border:1px solid #DCDFEC;border-radius:12px;padding:0 14px;font:500 15px "Plus Jakarta Sans",system-ui,sans-serif;color:#151A33;background:#FFFFFF}
+.input::placeholder{color:#8A90A6}
+textarea.input{height:auto;padding:12px 14px;line-height:1.5;resize:vertical}
+.nav{display:flex;align-items:center;gap:12px;height:44px;padding:0 14px;border-radius:12px;color:#4A5068;text-decoration:none;font-size:14.5px;font-weight:600}
+.nav:hover{background:#F1F2FA;color:#151A33}
+.nav-on{background:#3148D6;color:#FFFFFF;box-shadow:0 8px 18px -10px rgba(49,72,214,.7)}
+.nav-on:hover{background:#2638B0;color:#FFFFFF}
+.nav-sec{font-size:11.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#8A90A6;padding:8px 14px 2px}
+.badge{margin-left:auto;min-width:22px;height:22px;padding:0 7px;border-radius:999px;background:#ECEFFF;color:#2A3CB8;font-size:12px;font-weight:700;display:inline-flex;align-items:center;justify-content:center}
+.nav-on .badge{background:#FFFFFF;color:#2A3CB8}
+.avatar{display:inline-flex;align-items:center;justify-content:center;border-radius:999px;background:#ECEFFF;color:#2A3CB8;font-weight:700;flex-shrink:0}
+.stack{display:flex}.stack .avatar{border:2px solid #FFFFFF;margin-left:-8px}.stack .avatar:first-child{margin-left:0}
+.pick{cursor:pointer;border:1px solid #DCDFEC;background:#FFFFFF;border-radius:14px;font:600 14.5px "Plus Jakarta Sans",system-ui,sans-serif;color:#151A33}
+.pick-on{border:2px solid #3148D6;background:#ECEFFF;color:#2A3CB8}
+.tabbar{position:absolute;left:0;right:0;bottom:0;height:80px;background:#FFFFFF;border-top:1px solid #E7E9F3;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));padding:8px 6px 16px}
+.tab{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:52px;border-radius:14px;color:#666C84;text-decoration:none;font-size:11.5px;font-weight:600}
+.tab-ic{width:48px;height:28px;border-radius:999px;display:flex;align-items:center;justify-content:center}
+.tab-on{color:#3148D6}.tab-on .tab-ic{background:#ECEFFF}
+.muted{color:#666C84}
+.num{font-variant-numeric:tabular-nums}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.pub-head{height:72px;flex-shrink:0;background:rgba(255,255,255,.9);border-bottom:1px solid #E7E9F3;padding:0 56px;display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center}
+.pub-nav{display:flex;align-self:stretch;gap:32px}
+.pub-link{display:flex;align-items:center;border-top:2px solid transparent;border-bottom:2px solid transparent;color:#4A5068;text-decoration:none;font-size:15px;font-weight:600}
+.pub-link:hover{color:#151A33}
+.pub-on{color:#151A33;border-bottom-color:#3148D6}
+.pub-link:focus-visible,.seg-btn:focus-visible,.cek input:focus-visible{outline:3px solid #A9B6F5;outline-offset:2px;border-radius:8px}
+.seg{display:inline-flex;gap:4px;padding:4px;background:#FFFFFF;border:1px solid #DCDFEC;border-radius:14px;flex-shrink:0}
+.seg-btn{height:36px;padding:0 18px;border:0;border-radius:10px;background:transparent;color:#4A5068;font:600 14.5px "Plus Jakarta Sans",system-ui,sans-serif;cursor:pointer}
+.seg-btn:hover{background:#F4F5FB;color:#151A33}
+.seg-on,.seg-on:hover{background:#3148D6;color:#FFFFFF}
+.sel{appearance:none;-webkit-appearance:none;padding-right:40px;font-size:14.5px;cursor:pointer}
+.sel-ic{position:absolute;right:14px;top:13px;color:#666C84;pointer-events:none}
+.cek{display:inline-flex;align-items:center;gap:10px;min-height:44px;padding:0 4px;font-size:14.5px;font-weight:600;color:#151A33;cursor:pointer;white-space:nowrap}
+.cek input{width:18px;height:18px;margin:0;accent-color:#3148D6;cursor:pointer}
+.rk3{width:36px;height:36px;border-radius:999px;background:#EEF0F6;color:#4A5068;font:800 16px "Urbanist","Plus Jakarta Sans",system-ui,sans-serif;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
+.rk3-1{background:#F2B63A;color:#151A33;box-shadow:inset 0 0 0 3px rgba(255,255,255,.5)}
+.tb-av{width:48px;height:48px;font-size:16px}
+.tb-kl{width:48px;height:48px;border-radius:14px;background:#ECEFFF;color:#2A3CB8;font:800 14px "Urbanist","Plus Jakarta Sans",system-ui,sans-serif;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
+.lb{width:100%;border-collapse:collapse}
+.lb th{font-size:12.5px;font-weight:700;color:#4A5068;text-align:left;padding:13px 18px;background:#FAFBFE;border-bottom:1px solid #E7E9F3}
+.lb td{height:52px;padding:0 18px;font-size:14px;border-bottom:1px solid #EEF0F6}
+.lb tbody tr:last-child td{border-bottom:0}
+.row-hide{display:none}
+.rt{display:flex;flex-direction:column;gap:2px;padding:10px 11px;border-radius:14px;background:#F4F5FB}
+.rt-l{font-size:12px;color:#666C84;font-weight:600;white-space:nowrap}
+.rt-v{font-family:"Urbanist","Plus Jakarta Sans",system-ui,sans-serif;font-size:20px;font-weight:800;line-height:24px;font-variant-numeric:tabular-nums}
+.rt-gold{background:#FFF3D1;color:#6B4E00}
+.rt-gold .rt-l{color:#6B4E00}
+.op{font-size:16px;font-weight:700;color:#666C84}
+.wt{width:100%;border-collapse:collapse;font-size:13px}
+.wt caption{text-align:left;font-size:13.5px;font-weight:700;color:#151A33;padding-bottom:6px}
+.wt th{font-size:12px;font-weight:700;color:#666C84;text-align:left;padding:0 0 5px;border-bottom:1px solid #E7E9F3}
+.wt td{padding:5px 0;border-bottom:1px solid #F0F1F7;color:#151A33}
+.wt tr:last-child td{border-bottom:0}
+.wt .w{text-align:right;font-weight:700;font-variant-numeric:tabular-nums}
+</style>
+</helmet>
+<div class="page" style="width:1440px;height:1000px;display:flex;flex-direction:column;overflow:hidden">
+
+  <header class="pub-head">
+    <div style="display:flex;align-items:center;gap:12px">
+      <span role="img" aria-label="Logo SMAGA Talent Hub" style="width:36px;height:36px;border-radius:12px;background:#3148D6;color:#FFFFFF;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 4 6v6c0 4.5 3.4 8.2 8 9 4.6-.8 8-4.5 8-9V6z"></path><path d="m8.5 12 2.5 2.5 4.5-5"></path></svg></span>
+      <div style="display:flex;flex-direction:column;gap:1px">
+        <span class="display" style="font-size:17px;font-weight:800;line-height:1.15">SMAGA Talent Hub</span>
+        <span class="muted" style="font-size:12px;line-height:1.3">SMA Negeri 3 Semarang</span>
+      </div>
+    </div>
+    <nav class="pub-nav" aria-label="Navigasi publik">
+      <a class="pub-link" href="Main.dc.html">Beranda</a>
+      <a class="pub-link" href="Prestasi-Bidang.dc.html">Prestasi</a>
+      <a class="pub-link pub-on" href="Peringkat.dc.html" aria-current="page">Peringkat</a>
+    </nav>
+    <a class="btn btn-primary btn-sm" href="Masuk.dc.html" style="justify-self:end">Masuk</a>
+  </header>
+
+  <main style="flex:1;min-height:0;padding:24px 56px;display:flex;flex-direction:column;gap:18px">
+    <div style="display:flex;flex-direction:column;gap:4px">
+      <h1 style="margin:0;font-size:32px;font-weight:800;line-height:1.15">Peringkat prestasi</h1>
+      <p class="muted" style="margin:0;font-size:15px">Akumulasi poin dari semua lomba yang sudah diverifikasi.</p>
+    </div>
+
+    <div style="flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) 456px;gap:24px">
+      <div style="display:flex;flex-direction:column;gap:16px;min-width:0">
+
+        <div style="display:flex;align-items:center;gap:12px">
+          <div class="seg" role="group" aria-label="Tampilan peringkat">
+            <button type="button" class="{{ segSiswa }}" aria-pressed="{{ pSiswa }}" onClick="{{ toSiswa }}">Siswa</button>
+            <button type="button" class="{{ segKelas }}" aria-pressed="{{ pKelas }}" onClick="{{ toKelas }}">Kelas</button>
+          </div>
+          <div style="position:relative;width:190px">
+            <label class="sr-only" for="f-bidang">Bidang</label>
+            <select class="input sel" id="f-bidang" value="{{ bidang }}" onChange="{{ onBidang }}">
+              <option value="semua">Semua bidang</option>
+              <option value="Sains">Sains</option>
+              <option value="Riset">Riset</option>
+              <option value="Seni Budaya">Seni Budaya</option>
+              <option value="Olahraga">Olahraga</option>
+            </select>
+            <svg class="sel-ic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg>
+          </div>
+          <div style="position:relative;width:236px">
+            <label class="sr-only" for="f-angkatan">Angkatan</label>
+            <select class="input sel" id="f-angkatan" value="{{ angkatan }}" onChange="{{ onAngkatan }}">
+              <option value="semua">Semua angkatan</option>
+              <option value="2026">Angkatan 2026 (kelas X)</option>
+              <option value="2025">Angkatan 2025 (kelas XI)</option>
+              <option value="2024">Angkatan 2024 (kelas XII)</option>
+            </select>
+            <svg class="sel-ic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg>
+          </div>
+          <sc-if value="{{ isSiswa }}" hint-placeholder-val="{{ true }}">
+            <label class="cek" for="f-alumni"><input id="f-alumni" type="checkbox" checked="{{ alumni }}" onChange="{{ onAlumni }}">Tampilkan alumni</label>
+          </sc-if>
+        </div>
+
+        <sc-if value="{{ hasList }}" hint-placeholder-val="{{ true }}">
+          <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px">
+            <sc-for list="{{ top3 }}" as="t" hint-placeholder-count="3">
+              <article class="card" style="padding:18px;display:flex;flex-direction:column;gap:14px;min-width:0">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+                  <span class="{{ t.rkCls }}"><span class="sr-only">Peringkat </span>{{ t.rank }}</span>
+                  <span class="chip c-gray num">{{ t.nLabel }}</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:12px;min-width:0">
+                  <span class="{{ t.badgeCls }}">{{ t.badge }}</span>
+                  <div style="display:flex;flex-direction:column;gap:3px;min-width:0">
+                    <span style="font-size:16px;font-weight:700;line-height:20px">{{ t.title }}</span>
+                    <span style="display:flex;align-items:center;gap:6px">
+                      <span class="muted" style="font-size:13px">{{ t.sub }}</span>
+                      <sc-if value="{{ t.alumni }}" hint-placeholder-val="{{ false }}">
+                        <span class="chip c-gray" style="height:22px;padding:0 8px;font-size:12px">Alumni</span>
+                      </sc-if>
+                    </span>
+                  </div>
+                </div>
+                <div style="display:flex;align-items:baseline;gap:6px">
+                  <span class="display num" style="font-size:30px;font-weight:800;line-height:1">{{ t.poin }}</span>
+                  <span class="muted" style="font-size:13px;font-weight:600">poin</span>
+                </div>
+              </article>
+            </sc-for>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ showSiswaTable }}" hint-placeholder-val="{{ true }}">
+          <section class="card" aria-label="Peringkat siswa berikutnya" style="overflow:hidden">
+            <table class="lb">
+              <thead>
+                <tr><th scope="col" style="width:120px">Peringkat</th><th scope="col">Siswa</th><th scope="col" style="width:120px">Kelas</th><th scope="col" style="width:120px">Prestasi</th><th scope="col" style="width:120px;text-align:right">Poin</th></tr>
+              </thead>
+              <tbody>
+                <tr class="{{ t4.cls }}">
+                  <td class="num" style="font-weight:700;color:#4A5068">{{ t4.rank }}</td>
+                  <td><span style="display:flex;align-items:center;gap:12px"><span class="avatar" style="width:32px;height:32px;font-size:12px">{{ t4.ini }}</span><span style="font-weight:700">{{ t4.nama }}</span><sc-if value="{{ t4.alumni }}" hint-placeholder-val="{{ false }}"><span class="chip c-gray" style="height:22px;padding:0 8px;font-size:12px">Alumni</span></sc-if></span></td>
+                  <td>{{ t4.kelas }}</td>
+                  <td class="num">{{ t4.n }}</td>
+                  <td class="display num" style="text-align:right;font-size:16px;font-weight:800">{{ t4.poin }}</td>
+                </tr>
+                <tr class="{{ t5.cls }}">
+                  <td class="num" style="font-weight:700;color:#4A5068">{{ t5.rank }}</td>
+                  <td><span style="display:flex;align-items:center;gap:12px"><span class="avatar" style="width:32px;height:32px;font-size:12px">{{ t5.ini }}</span><span style="font-weight:700">{{ t5.nama }}</span><sc-if value="{{ t5.alumni }}" hint-placeholder-val="{{ false }}"><span class="chip c-gray" style="height:22px;padding:0 8px;font-size:12px">Alumni</span></sc-if></span></td>
+                  <td>{{ t5.kelas }}</td>
+                  <td class="num">{{ t5.n }}</td>
+                  <td class="display num" style="text-align:right;font-size:16px;font-weight:800">{{ t5.poin }}</td>
+                </tr>
+                <tr class="{{ t6.cls }}">
+                  <td class="num" style="font-weight:700;color:#4A5068">{{ t6.rank }}</td>
+                  <td><span style="display:flex;align-items:center;gap:12px"><span class="avatar" style="width:32px;height:32px;font-size:12px">{{ t6.ini }}</span><span style="font-weight:700">{{ t6.nama }}</span><sc-if value="{{ t6.alumni }}" hint-placeholder-val="{{ false }}"><span class="chip c-gray" style="height:22px;padding:0 8px;font-size:12px">Alumni</span></sc-if></span></td>
+                  <td>{{ t6.kelas }}</td>
+                  <td class="num">{{ t6.n }}</td>
+                  <td class="display num" style="text-align:right;font-size:16px;font-weight:800">{{ t6.poin }}</td>
+                </tr>
+                <tr class="{{ t7.cls }}">
+                  <td class="num" style="font-weight:700;color:#4A5068">{{ t7.rank }}</td>
+                  <td><span style="display:flex;align-items:center;gap:12px"><span class="avatar" style="width:32px;height:32px;font-size:12px">{{ t7.ini }}</span><span style="font-weight:700">{{ t7.nama }}</span><sc-if value="{{ t7.alumni }}" hint-placeholder-val="{{ false }}"><span class="chip c-gray" style="height:22px;padding:0 8px;font-size:12px">Alumni</span></sc-if></span></td>
+                  <td>{{ t7.kelas }}</td>
+                  <td class="num">{{ t7.n }}</td>
+                  <td class="display num" style="text-align:right;font-size:16px;font-weight:800">{{ t7.poin }}</td>
+                </tr>
+                <tr class="{{ t8.cls }}">
+                  <td class="num" style="font-weight:700;color:#4A5068">{{ t8.rank }}</td>
+                  <td><span style="display:flex;align-items:center;gap:12px"><span class="avatar" style="width:32px;height:32px;font-size:12px">{{ t8.ini }}</span><span style="font-weight:700">{{ t8.nama }}</span><sc-if value="{{ t8.alumni }}" hint-placeholder-val="{{ false }}"><span class="chip c-gray" style="height:22px;padding:0 8px;font-size:12px">Alumni</span></sc-if></span></td>
+                  <td>{{ t8.kelas }}</td>
+                  <td class="num">{{ t8.n }}</td>
+                  <td class="display num" style="text-align:right;font-size:16px;font-weight:800">{{ t8.poin }}</td>
+                </tr>
+                <tr class="{{ t9.cls }}">
+                  <td class="num" style="font-weight:700;color:#4A5068">{{ t9.rank }}</td>
+                  <td><span style="display:flex;align-items:center;gap:12px"><span class="avatar" style="width:32px;height:32px;font-size:12px">{{ t9.ini }}</span><span style="font-weight:700">{{ t9.nama }}</span><sc-if value="{{ t9.alumni }}" hint-placeholder-val="{{ false }}"><span class="chip c-gray" style="height:22px;padding:0 8px;font-size:12px">Alumni</span></sc-if></span></td>
+                  <td>{{ t9.kelas }}</td>
+                  <td class="num">{{ t9.n }}</td>
+                  <td class="display num" style="text-align:right;font-size:16px;font-weight:800">{{ t9.poin }}</td>
+                </tr>
+                <tr class="{{ gapCls }}">
+                  <td class="muted" style="font-weight:700;font-size:16px">…</td>
+                  <td colspan="4" class="muted" style="font-size:13px">{{ gapLabel }}</td>
+                </tr>
+                <tr class="{{ fo.cls }}">
+                  <td class="num" style="font-weight:700;color:#4A5068">{{ fo.rank }}</td>
+                  <td><span style="display:flex;align-items:center;gap:12px"><span class="avatar" style="width:32px;height:32px;font-size:12px">{{ fo.ini }}</span><span style="font-weight:700">{{ fo.nama }}</span><sc-if value="{{ fo.alumni }}" hint-placeholder-val="{{ false }}"><span class="chip c-gray" style="height:22px;padding:0 8px;font-size:12px">Alumni</span></sc-if></span></td>
+                  <td>{{ fo.kelas }}</td>
+                  <td class="num">{{ fo.n }}</td>
+                  <td class="display num" style="text-align:right;font-size:16px;font-weight:800">{{ fo.poin }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </section>
+        </sc-if>
+
+        <sc-if value="{{ showKelasTable }}" hint-placeholder-val="{{ false }}">
+          <section class="card" aria-label="Peringkat kelas berikutnya" style="overflow:hidden">
+            <table class="lb">
+              <thead>
+                <tr><th scope="col" style="width:120px">Peringkat</th><th scope="col">Kelas</th><th scope="col" style="width:130px">Angkatan</th><th scope="col" style="width:160px">Siswa berprestasi</th><th scope="col" style="width:110px">Prestasi</th><th scope="col" style="width:110px;text-align:right">Poin</th></tr>
+              </thead>
+              <tbody>
+                <tr class="{{ t4.cls }}"><td class="num" style="font-weight:700;color:#4A5068">{{ t4.rank }}</td><td style="font-weight:700">Kelas {{ t4.kelas }}</td><td class="num">{{ t4.angkatan }}</td><td class="num">{{ t4.siswa }}</td><td class="num">{{ t4.n }}</td><td class="display num" style="text-align:right;font-size:16px;font-weight:800">{{ t4.poin }}</td></tr>
+                <tr class="{{ t5.cls }}"><td class="num" style="font-weight:700;color:#4A5068">{{ t5.rank }}</td><td style="font-weight:700">Kelas {{ t5.kelas }}</td><td class="num">{{ t5.angkatan }}</td><td class="num">{{ t5.siswa }}</td><td class="num">{{ t5.n }}</td><td class="display num" style="text-align:right;font-size:16px;font-weight:800">{{ t5.poin }}</td></tr>
+                <tr class="{{ t6.cls }}"><td class="num" style="font-weight:700;color:#4A5068">{{ t6.rank }}</td><td style="font-weight:700">Kelas {{ t6.kelas }}</td><td class="num">{{ t6.angkatan }}</td><td class="num">{{ t6.siswa }}</td><td class="num">{{ t6.n }}</td><td class="display num" style="text-align:right;font-size:16px;font-weight:800">{{ t6.poin }}</td></tr>
+                <tr class="{{ t7.cls }}"><td class="num" style="font-weight:700;color:#4A5068">{{ t7.rank }}</td><td style="font-weight:700">Kelas {{ t7.kelas }}</td><td class="num">{{ t7.angkatan }}</td><td class="num">{{ t7.siswa }}</td><td class="num">{{ t7.n }}</td><td class="display num" style="text-align:right;font-size:16px;font-weight:800">{{ t7.poin }}</td></tr>
+                <tr class="{{ t8.cls }}"><td class="num" style="font-weight:700;color:#4A5068">{{ t8.rank }}</td><td style="font-weight:700">Kelas {{ t8.kelas }}</td><td class="num">{{ t8.angkatan }}</td><td class="num">{{ t8.siswa }}</td><td class="num">{{ t8.n }}</td><td class="display num" style="text-align:right;font-size:16px;font-weight:800">{{ t8.poin }}</td></tr>
+                <tr class="{{ t9.cls }}"><td class="num" style="font-weight:700;color:#4A5068">{{ t9.rank }}</td><td style="font-weight:700">Kelas {{ t9.kelas }}</td><td class="num">{{ t9.angkatan }}</td><td class="num">{{ t9.siswa }}</td><td class="num">{{ t9.n }}</td><td class="display num" style="text-align:right;font-size:16px;font-weight:800">{{ t9.poin }}</td></tr>
+              </tbody>
+            </table>
+          </section>
+        </sc-if>
+
+        <sc-if value="{{ isEmpty }}" hint-placeholder-val="{{ false }}">
+          <div class="card" style="padding:40px;display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center">
+            <span style="width:52px;height:52px;border-radius:16px;background:#EEF0F6;color:#4A5068;display:inline-flex;align-items:center;justify-content:center"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 20V11M12 20V5M18 20v-6M3 20h18"></path></svg></span>
+            <p style="margin:0;font-size:15px;font-weight:700">Belum ada data untuk filter ini.</p>
+            <p class="muted" style="margin:0;font-size:13.5px">Ganti bidang atau angkatan.</p>
+          </div>
+        </sc-if>
+      </div>
+
+      <aside class="card" aria-labelledby="h-cara" style="padding:22px;display:flex;flex-direction:column;gap:14px;align-self:start">
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <h2 id="h-cara" style="margin:0;font-size:20px;font-weight:700">Cara poin dihitung</h2>
+          <p class="muted" style="margin:0;font-size:13.5px">Contoh: Juara I Nasional ajang Puspresnas</p>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px" role="group" aria-label="Contoh rumus: 80 kali 1,00 kali 1,00 sama dengan 80 poin">
+          <div class="rt"><span class="rt-l">Tingkat</span><span class="rt-v">80</span></div>
+          <span class="op" aria-hidden="true">×</span>
+          <div class="rt"><span class="rt-l">Capaian</span><span class="rt-v">1,00</span></div>
+          <span class="op" aria-hidden="true">×</span>
+          <div class="rt"><span class="rt-l">Penyelenggara</span><span class="rt-v">1,00</span></div>
+          <span class="op" aria-hidden="true">=</span>
+          <div class="rt rt-gold"><span class="rt-l">Hasil</span><span class="rt-v">80 <span style="font-size:13px;font-weight:700">poin</span></span></div>
+        </div>
+        <div style="height:1px;background:#E7E9F3"></div>
+        <table class="wt">
+          <caption>Bobot capaian</caption>
+          <thead><tr><th scope="col">Capaian</th><th scope="col" class="w">Bobot</th></tr></thead>
+          <tbody>
+            <tr><td>Juara I / Medali emas</td><td class="w">1,00</td></tr>
+            <tr><td>Juara II / Medali perak</td><td class="w">0,85</td></tr>
+            <tr><td>Juara III / Medali perunggu</td><td class="w">0,70</td></tr>
+            <tr><td>Finalis</td><td class="w">0,50</td></tr>
+            <tr><td>Semifinalis</td><td class="w">0,30</td></tr>
+            <tr><td>Penghargaan khusus</td><td class="w">0,30</td></tr>
+            <tr><td>Peserta</td><td class="w">0,10</td></tr>
+          </tbody>
+        </table>
+        <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px">
+          <table class="wt">
+            <caption>Bobot tingkat</caption>
+            <thead><tr><th scope="col">Tingkat</th><th scope="col" class="w">Bobot</th></tr></thead>
+            <tbody>
+              <tr><td>Internasional</td><td class="w">100</td></tr>
+              <tr><td>Nasional</td><td class="w">80</td></tr>
+              <tr><td>Provinsi</td><td class="w">60</td></tr>
+              <tr><td>Kota/Kabupaten</td><td class="w">40</td></tr>
+              <tr><td>Sekolah</td><td class="w">20</td></tr>
+            </tbody>
+          </table>
+          <table class="wt">
+            <caption>Bobot penyelenggara</caption>
+            <thead><tr><th scope="col">Kategori</th><th scope="col" class="w">Bobot</th></tr></thead>
+            <tbody>
+              <tr><td>Kategori A</td><td class="w">1,00</td></tr>
+              <tr><td>Kategori B</td><td class="w">0,80</td></tr>
+              <tr><td>Kategori C</td><td class="w">0,60</td></tr>
+              <tr><td>Kategori D</td><td class="w">0,40</td></tr>
+              <tr><td>Kategori E</td><td class="w">0,20</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:14px;background:#ECEFFF;color:#2A3CB8">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink:0"><circle cx="9" cy="8" r="3.5"></circle><path d="M2.5 20a6.5 6.5 0 0 1 13 0"></path><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14a6 6 0 0 1 3.5 6"></path></svg>
+          <span style="font-size:13.5px;font-weight:600">Anggota tim masing-masing mendapat poin penuh.</span>
+        </div>
+      </aside>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1000}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { mode: 'siswa', bidang: 'semua', angkatan: 'semua', alumni: false };
+  }
+  renderVals() {
+    const st = this.state;
+    // [nama, kelas, inisial, angkatan, alumni, poin & jumlah prestasi per bidang]
+    const S = [
+      ['Raka Pradipta', 'XII-2', 'RP', '2024', false, { 'Sains': [60, 1], 'Riset': [252, 4] }],
+      ['Salsabila Kirana', 'XI-5', 'SK', '2025', false, { 'Seni Budaya': [268, 5] }],
+      ['Bima Satria Wicaksono', 'XII-7', 'BW', '2024', false, { 'Riset': [136, 3], 'Olahraga': [104, 2] }],
+      ['Aurelia Maharani', 'X-3', 'AM', '2026', false, { 'Sains': [148, 3], 'Riset': [32, 1], 'Seni Budaya': [16, 1] }],
+      ['Fajar Ramadhan', 'XII-1', 'FR', '2024', false, { 'Olahraga': [180, 5] }],
+      ['Citra Ayu Lestari', 'XI-2', 'CL', '2025', false, { 'Seni Budaya': [164, 3] }],
+      ['Yoga Pratama', 'XII-5', 'YP', '2024', false, { 'Riset': [80, 2], 'Olahraga': [70, 2] }],
+      ['Hana Safira', 'X-8', 'HS', '2026', false, { 'Sains': [132, 3] }],
+      ['Rizky Maulana', 'XI-1', 'RM', '2025', false, { 'Sains': [87, 2], 'Olahraga': [34, 1] }],
+      ['Keisha Larasati', 'XI-6', 'KL', '2025', false, { 'Riset': [118, 3] }],
+      ['Dimas Arya Nugroho', 'XI-4', 'DN', '2025', false, { 'Riset': [112, 3] }],
+      ['Farhan Aditya', 'XI-3', 'FA', '2025', false, { 'Sains': [110, 2] }],
+      ['Laras Wening Pangestu', 'XI-7', 'LP', '2025', false, { 'Seni Budaya': [108, 2] }],
+      ['Nadia Putri Anindya', 'XI-4', 'NA', '2025', false, { 'Riset': [100, 2], 'Olahraga': [4, 1] }],
+      ['Galuh Prameswari', 'XII-4', 'GP', '2024', false, { 'Seni Budaya': [96, 2] }],
+      ['Bayu Anggara', 'XII-6', 'BA', '2024', false, { 'Seni Budaya': [88, 3] }],
+      ['Ardiansyah Nur Hakim', 'XII-3', 'AH', '2022', true, { 'Sains': [236, 5] }],
+      ['Tiara Anjani Lestari', 'XII-8', 'TL', '2022', true, { 'Olahraga': [94, 2] }]
+    ];
+    // [kelas, angkatan, siswa berprestasi, prestasi, total poin, poin per bidang]
+    const K = [
+      ['XII-2', '2024', 4, 9, 452, { 'Sains': 100, 'Riset': 282, 'Seni Budaya': 40, 'Olahraga': 30 }],
+      ['XI-5', '2025', 3, 8, 398, { 'Sains': 36, 'Riset': 32, 'Seni Budaya': 300, 'Olahraga': 30 }],
+      ['XII-7', '2024', 3, 7, 351, { 'Sains': 24, 'Riset': 180, 'Seni Budaya': 12, 'Olahraga': 135 }],
+      ['XI-4', '2025', 4, 8, 330, { 'Sains': 40, 'Riset': 244, 'Seni Budaya': 18, 'Olahraga': 28 }],
+      ['X-3', '2026', 2, 6, 284, { 'Sains': 160, 'Riset': 96, 'Seni Budaya': 16, 'Olahraga': 12 }],
+      ['XII-1', '2024', 3, 7, 262, { 'Sains': 20, 'Riset': 32, 'Seni Budaya': 0, 'Olahraga': 210 }],
+      ['XI-2', '2025', 3, 6, 239, { 'Sains': 24, 'Riset': 16, 'Seni Budaya': 175, 'Olahraga': 24 }],
+      ['XII-5', '2024', 2, 5, 214, { 'Sains': 32, 'Riset': 96, 'Seni Budaya': 0, 'Olahraga': 86 }],
+      ['X-8', '2026', 2, 4, 176, { 'Sains': 144, 'Riset': 16, 'Seni Budaya': 8, 'Olahraga': 8 }],
+      ['XI-1', '2025', 2, 4, 158, { 'Sains': 105, 'Riset': 0, 'Seni Budaya': 11, 'Olahraga': 42 }],
+      ['XI-6', '2025', 2, 4, 150, { 'Sains': 12, 'Riset': 126, 'Seni Budaya': 12, 'Olahraga': 0 }],
+      ['XI-3', '2025', 2, 4, 142, { 'Sains': 122, 'Riset': 20, 'Seni Budaya': 0, 'Olahraga': 0 }],
+      ['XI-7', '2025', 2, 4, 131, { 'Sains': 0, 'Riset': 15, 'Seni Budaya': 116, 'Olahraga': 0 }],
+      ['XII-4', '2024', 2, 4, 120, { 'Sains': 12, 'Riset': 0, 'Seni Budaya': 108, 'Olahraga': 0 }],
+      ['XII-6', '2024', 2, 4, 112, { 'Sains': 0, 'Riset': 12, 'Seni Budaya': 88, 'Olahraga': 12 }]
+    ];
+    const isSiswa = st.mode === 'siswa';
+    const allB = st.bidang === 'semua';
+    const angOk = (a) => st.angkatan === 'semua' || a === st.angkatan;
+
+    let list = [];
+    if (isSiswa) {
+      list = S.filter((x) => (st.alumni || !x[4]) && angOk(x[3])).map((x) => {
+        let p = 0;
+        let n = 0;
+        Object.keys(x[5]).forEach((b) => {
+          if (allB || st.bidang === b) { p += x[5][b][0]; n += x[5][b][1]; }
+        });
+        return { nama: x[0], kelas: x[1], ini: x[2], alumni: x[4], poin: p, n: n };
+      });
+    } else {
+      list = K.filter((k) => angOk(k[1])).map((k) => {
+        const pb = allB ? k[4] : k[5][st.bidang];
+        const share = k[4] ? pb / k[4] : 0;
+        const pr = allB ? k[3] : (pb > 0 ? Math.max(1, Math.round(k[3] * share)) : 0);
+        const sw = allB ? k[2] : (pb > 0 ? Math.max(1, Math.min(pr, Math.round(k[2] * share))) : 0);
+        return { kelas: k[0], angkatan: k[1], siswa: sw, n: pr, poin: pb };
+      });
+    }
+    list = list.filter((x) => x.poin > 0).sort((a, b) => b.poin - a.poin);
+    list.forEach((x, i) => { x.rank = i + 1; });
+
+    const top3 = list.slice(0, 3).map((x, i) => (isSiswa ? {
+      rank: x.rank, rkCls: i === 0 ? 'rk3 rk3-1' : 'rk3',
+      badge: x.ini, badgeCls: 'avatar tb-av',
+      title: x.nama, sub: x.kelas, alumni: !!x.alumni,
+      poin: x.poin, nLabel: x.n + ' prestasi'
+    } : {
+      rank: x.rank, rkCls: i === 0 ? 'rk3 rk3-1' : 'rk3',
+      badge: x.kelas, badgeCls: 'tb-kl',
+      title: 'Kelas ' + x.kelas, sub: 'Angkatan ' + x.angkatan, alumni: false,
+      poin: x.poin, nLabel: x.siswa + ' siswa · ' + x.n + ' prestasi'
+    }));
+
+    const HIDE = { cls: 'row-hide', rank: '', ini: '', nama: '', kelas: '', alumni: false, n: '', poin: '', angkatan: '', siswa: '' };
+    const slot = (x) => (x ? {
+      cls: '', rank: '#' + x.rank, ini: x.ini || '', nama: x.nama || '', kelas: x.kelas,
+      alumni: !!x.alumni, n: x.n, poin: x.poin, angkatan: x.angkatan || '', siswa: x.siswa || ''
+    } : HIDE);
+
+    const fi = isSiswa ? list.findIndex((x) => x.nama === 'Nadia Putri Anindya') : -1;
+    const showFocus = fi >= 9;
+
+    return {
+      isSiswa: isSiswa,
+      segSiswa: isSiswa ? 'seg-btn seg-on' : 'seg-btn',
+      segKelas: isSiswa ? 'seg-btn' : 'seg-btn seg-on',
+      pSiswa: isSiswa ? 'true' : 'false',
+      pKelas: isSiswa ? 'false' : 'true',
+      toSiswa: () => this.setState({ mode: 'siswa' }),
+      toKelas: () => this.setState({ mode: 'kelas' }),
+      bidang: st.bidang,
+      angkatan: st.angkatan,
+      alumni: st.alumni,
+      onBidang: (e) => this.setState({ bidang: e.target.value }),
+      onAngkatan: (e) => this.setState({ angkatan: e.target.value }),
+      onAlumni: (e) => this.setState({ alumni: e.target.checked }),
+      hasList: list.length > 0,
+      isEmpty: list.length === 0,
+      top3: top3,
+      showSiswaTable: isSiswa && list.length > 3,
+      showKelasTable: !isSiswa && list.length > 3,
+      t4: slot(list[3]),
+      t5: slot(list[4]),
+      t6: slot(list[5]),
+      t7: slot(list[6]),
+      t8: slot(list[7]),
+      t9: slot(list[8]),
+      gapCls: showFocus && fi > 9 ? '' : 'row-hide',
+      gapLabel: 'Peringkat 10–' + fi,
+      fo: showFocus ? slot(list[fi]) : HIDE
+    };
+  }
+}
+</script>
+</body>
+</html>

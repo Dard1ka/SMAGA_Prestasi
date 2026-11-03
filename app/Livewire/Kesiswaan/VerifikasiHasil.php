@@ -1,0 +1,461 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Livewire\Kesiswaan;
+
+use App\Actions\Reports\RequestReportRevision;
+use App\Actions\Reports\VerifyReport;
+use App\Domain\Points\PointCalculator;
+use App\Domain\Points\PointFormatter;
+use App\Domain\Points\WeightTable;
+use App\Enums\ReportStatus;
+use App\Enums\ResultType;
+use App\Http\Controllers\FileController;
+use App\Livewire\Kesiswaan\Concerns\WithKesiswaanBadges;
+use App\Models\Registration;
+use App\Models\Report;
+use App\Models\ReportFile;
+use App\Models\User;
+use App\Models\WeightVersion;
+use App\Support\VerificationArea;
+use Illuminate\Contracts\View\View;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Route;
+use Illuminate\Validation\ValidationException;
+use Livewire\Attributes\Layout;
+use Livewire\Attributes\Locked;
+use Livewire\Attributes\Title;
+use Livewire\Component;
+
+/**
+ * Verifikasi hasil (UI-MAP #17, board Kesiswaan-Verifikasi-Hasil). Kesiswaan, Admin (kesiswaan.verifikasi.*) and Humas
+ * (humas.verifikasi.*, D-139); `$area` decides links and badge keys. Queue of `dikirim` reports on the left,
+ * detail with evidence, capaian decision, live point formula, 4-item checklist and the decisions on
+ * the right. Rules live in VerifyReport / RequestReportRevision; the policy denies a verifier
+ * who is the registration's guru pembimbing (§3c-10). "Buka" on an evidence file shows it in the preview
+ * popup (M3-C, `data-sth-preview`); nothing is downloaded until "Download" is pressed there.
+ *
+ * Two decisions only (D-140): verify or ask for a revision. The rejection Action stays for old data and has no caller
+ * on a screen. The result banners of "Minta revisi" name only the people who were told (D-109,
+ * RequestReportRevision::audience()).
+ */
+#[Title('Verifikasi hasil')]
+#[Layout('layouts::app', ['subtitle' => 'Periksa bukti, tetapkan capaian, lalu beri poin.'])]
+class VerifikasiHasil extends Component
+{
+    use WithKesiswaanBadges;
+
+    /** D-109: nobody of the team can log in and no guru pembimbing hears about it. */
+    public const NO_NOTICE = 'Akun siswa tidak aktif, jadi tidak ada notifikasi.';
+
+    /** Address family this screen was opened under (VerificationArea); set once in mount(). */
+    #[Locked]
+    public string $area = VerificationArea::KESISWAAN;
+
+    #[Locked]
+    public ?string $selectedId = null;
+
+    public string $finalResult = '';
+
+    /** @var array<string, bool> */
+    public array $checks = [];
+
+    public string $note = '';
+
+    /**
+     * Result banner of the last decision: tone, title, text, and `report` = which report it was ("Laporan … dari …."),
+     * because the panel under it already shows the next one.
+     *
+     * @var array<string, string>|null
+     */
+    #[Locked]
+    public ?array $decision = null;
+
+    public function mount(?Report $report = null): void
+    {
+        $this->authorize('viewQueue', Report::class);
+        $this->area = VerificationArea::resolve(Route::currentRouteName(), $this->actor());
+
+        if ($report !== null) {
+            $this->authorize('view', $report);
+            $this->selectReport($report);
+
+            return;
+        }
+
+        $first = $this->queueQuery()->first();
+
+        if ($first !== null) {
+            $this->selectReport($first);
+        }
+    }
+
+    public function select(string $id): void
+    {
+        $report = $this->find($id);
+        $this->authorize('view', $report);
+        $this->decision = null;
+        $this->selectReport($report);
+        $this->showAddress();
+    }
+
+    public function verify(VerifyReport $action): void
+    {
+        $this->resetErrorBag();
+        $report = $this->selected();
+
+        if ($this->decidedElsewhere($report)) {
+            return;
+        }
+
+        $result = ResultType::tryFrom($this->finalResult);
+
+        if ($result === null) {
+            $this->addError('finalResult', 'Pilih capaian akhir.');
+
+            return;
+        }
+
+        $about = self::aboutReport($report);
+
+        try {
+            $achievements = $action->handle($this->actor(), $report, $result, $this->checks, $this->note);
+        } catch (ValidationException $e) {
+            $this->showErrors($e);
+
+            return;
+        }
+
+        $points = (new PointFormatter)->format((string) $achievements->first()?->points);
+        $this->afterDecision('green', 'Terverifikasi · '.$points.' poin'.($achievements->count() > 1 ? ' untuk tiap anggota' : ''), 'Masuk antrean Humas dan peringkat.', $about);
+    }
+
+    public function requestRevision(RequestReportRevision $action): void
+    {
+        $this->resetErrorBag();
+        $report = $this->selected();
+
+        if ($this->decidedElsewhere($report)) {
+            return;
+        }
+
+        // Read before the Action: who is told is what the banner may claim (D-109).
+        $audience = RequestReportRevision::audience($report);
+        // Only the ketua sends a report again: a team member who was told does not make that sentence true.
+        $canResend = RequestReportRevision::leaderCanResend($report);
+        $about = self::aboutReport($report);
+
+        try {
+            $action->handle($this->actor(), $report, $this->note);
+        } catch (ValidationException $e) {
+            $this->showErrors($e);
+
+            return;
+        }
+
+        $this->afterDecision('orange', 'Revisi diminta', self::decisionText($audience, 'menerima catatan revisi')
+            .($canResend ? ($audience['of'] > 1 ? ' Ketua bisa mengirim ulang laporan.' : ' Siswa bisa mengirim ulang laporan.') : ''), $about);
+    }
+
+    public function render(PointCalculator $calculator, PointFormatter $formatter): View
+    {
+        $weights = WeightVersion::active()?->toWeightTable() ?? WeightTable::defaults();
+        $queue = $this->queueQuery()->get();
+        $report = $this->selectedId !== null ? $this->loadDetail($this->selectedId) : null;
+
+        return view('livewire.kesiswaan.verifikasi-hasil', [
+            'queue' => $queue->map(fn (Report $r): array => $this->queueItem($r)),
+            'detail' => $report !== null ? $this->detail($report, $weights, $calculator, $formatter) : null,
+            'resultOptions' => collect(ResultType::cases())->mapWithKeys(fn (ResultType $r): array => [
+                $r->value => ['label' => $r->label(), 'sub' => $formatter->formatWeight($weights->result($r))],
+            ])->all(),
+            'checkLabels' => VerifyReport::CHECKS,
+            'checkCount' => count(array_filter($this->checks)),
+        ])->layoutData(['badges' => $this->verificationBadges()]);
+    }
+
+    /**
+     * Sidebar counts of the area: the Kesiswaan keys, or Humas' own key for the same queue (D-139). Sent to the
+     * browser as well, so the numbers follow every decision without a reload.
+     *
+     * @return array<string, int>
+     */
+    private function verificationBadges(): array
+    {
+        if ($this->area === VerificationArea::KESISWAAN) {
+            return $this->kesiswaanBadges();
+        }
+
+        $badges = ['humas.verifikasi' => Report::query()->awaitingVerification()->count()];
+        $this->dispatch('sth-badges', badges: $badges);
+
+        return $badges;
+    }
+
+    /**
+     * Who of the team and the guru pembimbing is told, as the subject of a sentence; null = nobody.
+     *
+     * @param  array{told: int, of: int, mentor: bool}  $audience
+     */
+    private static function audienceSubject(array $audience): ?string
+    {
+        $students = match (true) {
+            $audience['told'] === 0 => null,
+            $audience['told'] >= $audience['of'] => 'Siswa',
+            default => 'Siswa yang akunnya aktif',
+        };
+
+        return match (true) {
+            $students !== null && $audience['mentor'] => $students.' dan guru pembimbing',
+            $students !== null => $students,
+            $audience['mentor'] => 'Guru pembimbing',
+            default => null,
+        };
+    }
+
+    /**
+     * The sentence of a result banner, e.g. "Siswa dan guru pembimbing menerima catatan revisi."
+     *
+     * @param  array{told: int, of: int, mentor: bool}  $audience
+     */
+    private static function decisionText(array $audience, string $verb): string
+    {
+        $subject = self::audienceSubject($audience);
+
+        return $subject === null ? self::NO_NOTICE : $subject.' '.$verb.'.';
+    }
+
+    /** @return Builder<Report> */
+    private function queueQuery()
+    {
+        return Report::query()
+            ->awaitingVerification()
+            // Only the members still in the team, as the detail and RecordAchievements count them (QA8).
+            ->with(['registration' => fn ($q) => $q->withTrashed()->with(['competition' => fn ($c) => $c->withTrashed(), 'leader.user', 'leader.classroom'])
+                ->withCount(['members' => fn ($m) => $m->whereNull('declined_at')])])
+            // UX2 (the lead, 2026-10-20): newest report first (also for Humas, the same screen); the first opens itself.
+            ->orderByDesc('submitted_at')
+            ->orderByDesc('id');
+    }
+
+    /** @return array<string, mixed> */
+    private function queueItem(Report $r): array
+    {
+        $registration = $r->registration;
+        $competition = $registration?->competition;
+        $leader = $registration?->leader;
+        $others = max(0, (int) ($registration?->members_count ?? 1) - 1);
+
+        return [
+            'id' => $r->getKey(),
+            'name' => $competition?->name ?? 'Lomba',
+            'bidang' => $competition?->bidang,
+            'student' => trim(($leader?->user?->name ?? 'Siswa').($leader?->classroom ? ' · '.$leader->classroom->name : '')).($others > 0 ? ' +'.$others : ''),
+            'claim' => $r->claimed_result->label().' · '.($competition?->level?->shortLabel() ?? '–'),
+            'when' => self::whenLabel($r->submitted_at),
+            'selected' => $r->getKey() === $this->selectedId,
+        ];
+    }
+
+    private function loadDetail(string $id): ?Report
+    {
+        return Report::query()
+            ->with([
+                'registration' => fn ($q) => $q->withTrashed()->with([
+                    'competition' => fn ($c) => $c->withTrashed(),
+                    'mentor',
+                    'members' => fn ($m) => $m->whereNull('declined_at')->orderBy('created_at'),
+                    'members.student.user',
+                    'members.student.classroom',
+                ]),
+                'files.file',
+            ])
+            ->find($id);
+    }
+
+    /** @return array<string, mixed> */
+    private function detail(Report $report, WeightTable $weights, PointCalculator $calculator, PointFormatter $formatter): array
+    {
+        /** @var Registration|null $registration */
+        $registration = $report->registration;
+        $competition = $registration?->competition;
+        $result = ResultType::tryFrom($this->finalResult) ?? $report->final_result ?? $report->claimed_result;
+        $members = $registration?->members ?? collect();
+        $canCompute = $competition?->level !== null && $competition?->weight_category !== null;
+        $points = $canCompute ? $calculator->breakdown($weights, $competition->level, $result, $competition->weight_category)->points : null;
+
+        return [
+            'id' => $report->getKey(),
+            'name' => $competition?->name ?? 'Lomba',
+            'bidang' => $competition?->bidang,
+            'tingkat' => $competition?->level?->shortLabel() ?? '–',
+            'kategori' => $competition?->weight_category?->value ?? '–',
+            'organizer' => $competition?->organizer_name,
+            'status' => [$report->status->tone(), self::statusLabel($report)],
+            'members' => $members->map(fn ($m): array => [
+                'name' => $m->student?->user?->name ?? 'Siswa',
+                'class' => $m->student?->classroom?->name,
+                'leader' => $m->isLeader(),
+            ])->values()->all(),
+            'team' => $members->count() > 1,
+            'reportedAt' => self::shortDate($report->submitted_at),
+            'mentor' => $registration?->mentor?->name,
+            'branch' => $registration?->branch,
+            'files' => $report->files->map(fn (ReportFile $f): array => [
+                'kind' => $f->kind->label(),
+                'name' => $f->file?->original_name ?? 'Berkas',
+                'size' => $f->file !== null ? self::fileSize($f->file->size) : '',
+                'isImage' => $f->file?->isImage() ?? false,
+                'url' => $f->file !== null && Route::has('files.show') ? route('files.show', $f->file) : null,
+                // "Buka" shows the file in the preview popup (data-sth-preview); the link itself stays the download.
+                'preview' => $f->file !== null ? FileController::previewUrl($f->file) : null,
+                'previewType' => $f->file !== null ? FileController::previewType($f->file) : null,
+                'thumb' => $f->file !== null && FileController::previewType($f->file) === FileController::PREVIEW_IMAGE
+                    ? FileController::previewUrl($f->file)
+                    : null,
+            ])->values()->all(),
+            'researchTitle' => $report->research_title,
+            'researchAbstract' => $report->research_abstract,
+            'claim' => $report->claimed_result->label(),
+            'changed' => $result !== $report->claimed_result,
+            'resultLabel' => $result->label(),
+            'wLevel' => $canCompute ? $weights->level($competition->level) : null,
+            'wResult' => $weights->result($result),
+            'wOrganizer' => $canCompute ? $weights->organizer($competition->weight_category) : null,
+            'points' => $points !== null ? $formatter->format($points) : null,
+            'pointsLabel' => $members->count() > 1 ? 'Poin tiap anggota' : 'Poin',
+            'studentNote' => $report->note,
+            'open' => $report->status === ReportStatus::Dikirim,
+            'catalogGap' => $this->area === VerificationArea::HUMAS
+                ? 'Tingkat atau kategori lomba belum diisi di katalog. Kesiswaan melengkapinya di Kelola lomba.'
+                : 'Tingkat atau kategori lomba belum diisi di katalog. Lengkapi dulu di Kelola lomba.',
+            'canDecide' => $this->actor()->can('verify', $report),
+            'ownMentee' => $registration?->mentor_id !== null && (int) $registration->mentor_id === (int) $this->actor()->getKey(),
+        ];
+    }
+
+    /**
+     * Tag of the detail panel. A report waiting for a decision is "Laporan baru" the first time and "Laporan diperbaiki"
+     * once the ketua sent it again after "Minta revisi" (FS1 QA-05, RequestReportRevision::wasRevised()).
+     */
+    private static function statusLabel(Report $report): string
+    {
+        if ($report->status !== ReportStatus::Dikirim) {
+            return $report->status->label();
+        }
+
+        return RequestReportRevision::wasRevised($report) ? 'Laporan diperbaiki' : 'Laporan baru';
+    }
+
+    private function selectReport(Report $report): void
+    {
+        $this->selectedId = $report->getKey();
+        $this->finalResult = ($report->final_result ?? $report->claimed_result)->value;
+        $this->checks = array_fill_keys(array_keys(VerifyReport::CHECKS), false);
+        $this->note = '';
+        $this->resetErrorBag();
+    }
+
+    /**
+     * Which report a result banner speaks of, e.g. "Laporan Olimpiade Kimia Nasional 2026 dari tim Nadia Putri
+     * Anindya.": after a decision the panel moves on to the next report while the banner stays above it (SV1 browser
+     * check). Read before the Action, from the lomba and the ketua as the queue card shows them.
+     */
+    private static function aboutReport(Report $report): string
+    {
+        /** @var Registration|null $registration */
+        $registration = $report->registration()->withTrashed()->with(['competition', 'leader.user'])->first();
+        $leader = $registration?->leader?->user?->name ?? 'siswa';
+
+        return 'Laporan '.($registration?->competition?->name ?? 'lomba').' dari '.($registration?->isTeam() ? 'tim ' : '').$leader.'.';
+    }
+
+    private function afterDecision(string $tone, string $title, string $text, string $about): void
+    {
+        $this->decision = ['tone' => $tone, 'title' => $title, 'text' => $text, 'report' => $about];
+        $this->dispatch('sth-toast', message: $title.'.', tone: 'success');
+
+        $next = $this->queueQuery()->first();
+
+        if ($next !== null) {
+            $this->selectReport($next);
+            $this->showAddress();
+        } else {
+            $this->note = '';
+            $this->checks = array_fill_keys(array_keys(VerifyReport::CHECKS), false);
+        }
+    }
+
+    /**
+     * Another tab or another Kesiswaan account decided this report meanwhile (QA8): the Actions would refuse it with a
+     * 403 (ReportPolicy::verify), which Livewire showed as a full-screen error. Say so and move on in the queue.
+     */
+    private function decidedElsewhere(Report $report): bool
+    {
+        if ($report->status === ReportStatus::Dikirim) {
+            return false;
+        }
+
+        $this->dispatch('sth-toast', message: 'Laporan ini sudah diputuskan. Antrean sudah diperbarui.', tone: 'warning');
+        $next = $this->queueQuery()->first();
+
+        if ($next !== null) {
+            $this->selectReport($next);
+        } else {
+            $this->selectedId = null;
+            $this->note = '';
+            $this->checks = array_fill_keys(array_keys(VerifyReport::CHECKS), false);
+        }
+
+        $this->showAddress();
+
+        return true;
+    }
+
+    /**
+     * The address names the report on screen (QA8): the cards and the move after a decision change the panel without a
+     * page load, so a reload or a copied link used to open the report of the first link again. Hook `sth-address` in
+     * app.js replaces the address without a new history entry.
+     */
+    private function showAddress(): void
+    {
+        $this->dispatch('sth-address', url: $this->selectedId !== null
+            ? VerificationArea::showUrl($this->area, $this->selectedId)
+            : VerificationArea::indexUrl($this->area));
+    }
+
+    private function showErrors(ValidationException $e): void
+    {
+        $this->resetErrorBag();
+
+        foreach ($e->errors() as $key => $messages) {
+            $this->addError(in_array($key, ['note', 'checks'], true) ? $key : 'decision', (string) ($messages[0] ?? 'Periksa isian.'));
+        }
+    }
+
+    private function selected(): Report
+    {
+        abort_if($this->selectedId === null, 404);
+
+        return $this->find($this->selectedId);
+    }
+
+    private function find(string $id): Report
+    {
+        $report = Report::query()->find($id);
+
+        abort_if($report === null, 404);
+
+        return $report;
+    }
+
+    private function actor(): User
+    {
+        /** @var User $user */
+        $user = Auth::user();
+
+        return $user;
+    }
+}

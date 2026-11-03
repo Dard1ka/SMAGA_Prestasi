@@ -1,0 +1,324 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Laporkan hasil (ponsel)</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Urbanist:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F4F5FB;font-family:"Plus Jakarta Sans",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;color:#151A33;-webkit-font-smoothing:antialiased}
+*{box-sizing:border-box}
+a{color:#3148D6}a:hover{color:#2638B0}
+h1,h2,h3,.display{font-family:"Urbanist","Plus Jakarta Sans",system-ui,sans-serif;letter-spacing:-0.01em}
+.page{background:radial-gradient(900px 320px at 88% -8%,#ECE8FF 0%,rgba(236,232,255,0) 70%),radial-gradient(760px 300px at 28% -14%,#E2F0FF 0%,rgba(226,240,255,0) 70%),#F4F5FB}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:44px;padding:0 18px;border-radius:12px;font:600 15px/1 "Plus Jakarta Sans",system-ui,sans-serif;border:1px solid transparent;cursor:pointer;text-decoration:none;white-space:nowrap}
+.btn-primary{background:#3148D6;color:#FFFFFF;box-shadow:0 8px 18px -10px rgba(49,72,214,.65)}
+.btn-primary:hover{background:#2638B0;color:#FFFFFF}
+.btn-quiet{background:#FFFFFF;color:#151A33;border-color:#DCDFEC}
+.btn-quiet:hover{background:#F4F5FB;color:#151A33}
+.btn-soft{background:#ECEFFF;color:#2A3CB8}
+.btn-soft:hover{background:#DFE4FF;color:#2A3CB8}
+.btn-danger{background:#FFFFFF;color:#B42318;border-color:#F3C4BE}
+.btn-danger:hover{background:#FDECEA;color:#B42318}
+.btn-sm{height:36px;padding:0 14px;font-size:14px;border-radius:10px}
+.btn:focus-visible,.nav:focus-visible,.input:focus-visible,.icon-btn:focus-visible,.tab:focus-visible,.pick:focus-visible{outline:3px solid #A9B6F5;outline-offset:2px}
+.icon-btn{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:12px;border:1px solid #E7E9F3;background:#FFFFFF;color:#4A5068;cursor:pointer;position:relative;text-decoration:none}
+.icon-btn:hover{background:#F4F5FB;color:#151A33}
+.dot{position:absolute;top:8px;right:9px;width:8px;height:8px;border-radius:999px;background:#3148D6;border:2px solid #FFFFFF}
+.card{background:#FFFFFF;border:1px solid #E7E9F3;border-radius:20px;box-shadow:0 1px 2px rgba(20,24,60,.04),0 10px 28px -18px rgba(20,24,60,.18)}
+.chip{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 10px;border-radius:999px;font-size:12.5px;font-weight:600;white-space:nowrap}
+.c-blue{background:#ECEFFF;color:#2A3CB8}
+.c-green{background:#E4F5EA;color:#1B6B45}
+.c-orange{background:#FFEEDD;color:#9A3F00}
+.c-red{background:#FDECEA;color:#B42318}
+.c-gray{background:#EEF0F6;color:#4A5068}
+.c-gold{background:#FFF3D1;color:#6B4E00}
+.c-glass{background:rgba(255,255,255,.82);color:#151A33}
+.b-sains{background:#E6F0FF;color:#1D56AD}
+.b-riset{background:#F0EBFF;color:#5534B8}
+.b-seni{background:#FDE8F0;color:#A61F54}
+.b-olahraga{background:#E0F4F8;color:#0B6577}
+.cover-sains{background:linear-gradient(135deg,#DCE9FF,#C3D8FF);color:#1D56AD}
+.cover-riset{background:linear-gradient(135deg,#EEE7FF,#D9CCFF);color:#5534B8}
+.cover-seni{background:linear-gradient(135deg,#FFE6EF,#FFCFE0);color:#A61F54}
+.cover-olahraga{background:linear-gradient(135deg,#DDF4F8,#BFE8F0);color:#0B6577}
+.label{font-size:13px;font-weight:600;color:#4A5068}
+.input{height:46px;width:100%;border:1px solid #DCDFEC;border-radius:12px;padding:0 14px;font:500 15px "Plus Jakarta Sans",system-ui,sans-serif;color:#151A33;background:#FFFFFF}
+.input::placeholder{color:#8A90A6}
+textarea.input{height:auto;padding:12px 14px;line-height:1.5;resize:vertical}
+.nav{display:flex;align-items:center;gap:12px;height:44px;padding:0 14px;border-radius:12px;color:#4A5068;text-decoration:none;font-size:14.5px;font-weight:600}
+.nav:hover{background:#F1F2FA;color:#151A33}
+.nav-on{background:#3148D6;color:#FFFFFF;box-shadow:0 8px 18px -10px rgba(49,72,214,.7)}
+.nav-on:hover{background:#2638B0;color:#FFFFFF}
+.nav-sec{font-size:11.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#8A90A6;padding:8px 14px 2px}
+.badge{margin-left:auto;min-width:22px;height:22px;padding:0 7px;border-radius:999px;background:#ECEFFF;color:#2A3CB8;font-size:12px;font-weight:700;display:inline-flex;align-items:center;justify-content:center}
+.nav-on .badge{background:#FFFFFF;color:#2A3CB8}
+.avatar{display:inline-flex;align-items:center;justify-content:center;border-radius:999px;background:#ECEFFF;color:#2A3CB8;font-weight:700;flex-shrink:0}
+.stack{display:flex}.stack .avatar{border:2px solid #FFFFFF;margin-left:-8px}.stack .avatar:first-child{margin-left:0}
+.pick{cursor:pointer;border:1px solid #DCDFEC;background:#FFFFFF;border-radius:14px;font:600 14.5px "Plus Jakarta Sans",system-ui,sans-serif;color:#151A33}
+.pick-on{border:2px solid #3148D6;background:#ECEFFF;color:#2A3CB8}
+.tabbar{position:absolute;left:0;right:0;bottom:0;height:80px;background:#FFFFFF;border-top:1px solid #E7E9F3;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));padding:8px 6px 16px}
+.tab{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:52px;border-radius:14px;color:#666C84;text-decoration:none;font-size:11.5px;font-weight:600}
+.tab-ic{width:48px;height:28px;border-radius:999px;display:flex;align-items:center;justify-content:center}
+.tab-on{color:#3148D6}.tab-on .tab-ic{background:#ECEFFF}
+.muted{color:#666C84}
+.num{font-variant-numeric:tabular-nums}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.mpk{height:46px;padding:0 10px;font-size:15px;line-height:1.2}.pick-on.mpk{padding:0 9px}
+.rt{display:flex;flex-direction:column;gap:2px;min-width:0;padding:10px;border-radius:14px;background:#F4F5FB}
+.rt-l{font-size:12px;line-height:16px;font-weight:600;color:#666C84;white-space:nowrap}
+.rt-v{font-family:"Urbanist","Plus Jakarta Sans",system-ui,sans-serif;font-size:20px;line-height:24px;font-weight:800;color:#151A33;font-variant-numeric:tabular-nums;white-space:nowrap}
+.rt-gold{background:#FFF3D1}.rt-gold .rt-l,.rt-gold .rt-v{color:#6B4E00}
+.rt-op{font-size:18px;font-weight:700;color:#8A90A6;text-align:center}
+.flabel{font-size:14.5px;line-height:20px;font-weight:700;color:#151A33}
+.drop-m{display:flex;align-items:center;gap:12px;width:100%;border:1.5px dashed #C9CEE2;border-radius:14px;background:#FAFBFE;cursor:pointer;text-align:left;font:500 14px "Plus Jakarta Sans",system-ui,sans-serif;color:#151A33}
+.drop-m:hover{border-color:#3148D6;background:#F5F7FF}
+.up-row{display:flex;align-items:center;gap:12px;width:100%;min-height:52px;padding:6px 12px 6px 8px;border:1px solid #E7E9F3;border-radius:14px;background:#FFFFFF;cursor:pointer;text-align:left;font:500 14px "Plus Jakarta Sans",system-ui,sans-serif;color:#151A33}
+.up-row:hover{border-color:#C9CEE2;background:#FAFBFE}
+.drop-m:focus-visible,.up-row:focus-visible{outline:3px solid #A9B6F5;outline-offset:2px}
+</style>
+</helmet>
+<div class="page" style="width:390px;height:1980px;position:relative;overflow:hidden">
+  <main style="padding:22px 20px 0;display:flex;flex-direction:column;gap:16px">
+
+    <header style="display:flex;align-items:center;gap:12px">
+      <a class="icon-btn" href="Beranda-Mobile.dc.html" aria-label="Kembali ke beranda" style="width:44px;height:44px;border-radius:14px;flex-shrink:0">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 6-6 6 6 6"></path></svg>
+      </a>
+      <div style="min-width:0;display:flex;flex-direction:column;gap:2px">
+        <h1 style="margin:0;font-size:24px;line-height:30px;font-weight:800">Laporkan hasil</h1>
+        <p class="muted" style="margin:0;font-size:14px;line-height:20px;font-weight:500">WICE 2026 · Riset · Tim 3 orang</p>
+      </div>
+    </header>
+
+    <p style="margin:0;display:flex;align-items:flex-start;gap:10px;padding:12px 14px;border-radius:16px;background:#FFEEDD;border:1px solid #FFD8B5;color:#9A3F00;font-size:15px;line-height:22px;font-weight:600">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink:0;margin-top:1px"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg>
+      Batas 24 Okt 2026 (30 hari setelah lomba).
+    </p>
+
+    <section class="card" aria-labelledby="hasil-judul" style="padding:16px;display:flex;flex-direction:column;gap:14px">
+      <h2 id="hasil-judul" style="margin:0;font-size:19px;line-height:24px;font-weight:700">Hasil yang diraih</h2>
+      <div role="group" aria-labelledby="hasil-judul" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px">
+        <sc-for list="{{ opts }}" as="o" hint-placeholder-count="10">
+          <button type="button" class="{{ o.cls }}" aria-pressed="{{ o.pressed }}" onClick="{{ o.pick }}">{{ o.label }}</button>
+        </sc-for>
+      </div>
+      <div style="border-top:1px solid #E7E9F3;padding-top:14px;display:flex;flex-direction:column;gap:10px">
+        <p style="margin:0;font-size:14px;line-height:20px;font-weight:700">Perkiraan poin <span class="muted" style="font-size:13px;font-weight:500">(final setelah diverifikasi)</span></p>
+        <div role="group" aria-label="Rumus poin" style="display:flex;flex-direction:column;gap:8px">
+          <div style="display:grid;grid-template-columns:minmax(0,1fr) 12px minmax(0,1fr) 12px minmax(0,1.4fr);align-items:center;gap:4px">
+            <div class="rt"><span class="rt-l">Tingkat</span><span class="rt-v">100</span></div>
+            <span class="rt-op" aria-hidden="true">×</span>
+            <div class="rt"><span class="rt-l">Capaian</span><span class="rt-v">{{ capV }}</span></div>
+            <span class="rt-op" aria-hidden="true">×</span>
+            <div class="rt"><span class="rt-l">Penyelenggara</span><span class="rt-v">0,40</span></div>
+          </div>
+          <div style="display:grid;grid-template-columns:12px minmax(0,1fr);align-items:center;gap:4px">
+            <span class="rt-op" aria-hidden="true">=</span>
+            <div class="rt rt-gold" style="flex-direction:row;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px">
+              <span class="rt-l" style="font-size:13px">Perkiraan poin kamu</span>
+              <span class="rt-v" style="font-size:24px;line-height:28px">{{ capPoin }} <span style="font-size:14px;font-weight:700">poin</span></span>
+            </div>
+          </div>
+        </div>
+        <p style="margin:0;display:flex;align-items:center;gap:8px;font-size:14px;line-height:20px;font-weight:600;color:#4A5068">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color:#3148D6;flex-shrink:0"><circle cx="9" cy="8" r="3.5"></circle><path d="M2.5 20a6.5 6.5 0 0 1 13 0"></path><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14a6 6 0 0 1 3.5 6"></path></svg>
+          Setiap anggota tim mendapat poin penuh.
+        </p>
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="bukti-judul" style="padding:16px;display:flex;flex-direction:column;gap:16px">
+      <h2 id="bukti-judul" style="margin:0;font-size:19px;line-height:24px;font-weight:700">Bukti</h2>
+
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+          <span class="flabel">Sertifikat/piagam</span>
+          <span class="muted" style="font-size:13px;font-weight:600">wajib</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;min-height:64px;padding:8px 4px 8px 12px;border:1px solid #E7E9F3;border-radius:14px;background:#FFFFFF">
+          <span aria-hidden="true" style="width:40px;height:40px;border-radius:12px;background:#ECEFFF;color:#2A3CB8;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"></path><path d="M14 3v5h5"></path></svg></span>
+          <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px">
+            <span style="font-size:14.5px;line-height:20px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">sertifikat-wice-2026.pdf</span>
+            <span style="display:inline-flex;align-items:center;gap:5px;font-size:13px;line-height:18px;font-weight:600;color:#1B6B45"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"></path></svg>Terunggah · 1,4 MB</span>
+          </div>
+          <button type="button" class="icon-btn" aria-label="Hapus sertifikat" style="width:44px;height:44px;border:0;background:transparent;flex-shrink:0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"></path></svg></button>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+          <span class="flabel">Foto dokumentasi</span>
+          <span class="muted" style="font-size:13px;font-weight:600">2 foto</span>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px">
+          <div role="img" aria-label="Foto dokumentasi 1" style="height:88px;border-radius:14px;background:#EEF0F6;color:#666C84;display:flex;align-items:center;justify-content:center"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"></rect><circle cx="9" cy="10" r="2"></circle><path d="m21 17-5-5-9 8"></path></svg></div>
+          <div role="img" aria-label="Foto dokumentasi 2" style="height:88px;border-radius:14px;background:#EEF0F6;color:#666C84;display:flex;align-items:center;justify-content:center"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"></rect><circle cx="9" cy="10" r="2"></circle><path d="m21 17-5-5-9 8"></path></svg></div>
+          <button type="button" class="drop-m" style="height:88px;flex-direction:column;justify-content:center;gap:4px;text-align:center;color:#2A3CB8;font-weight:700;font-size:14px"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>Tambah</button>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+          <span class="flabel">Pengumuman resmi</span>
+          <span class="muted" style="font-size:13px;font-weight:600">opsional</span>
+        </div>
+        <button type="button" class="drop-m" style="min-height:64px;padding:10px 14px">
+          <span aria-hidden="true" style="width:40px;height:40px;border-radius:12px;background:#ECEFFF;color:#2A3CB8;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5M4 20h16"></path></svg></span>
+          <span style="display:flex;flex-direction:column;gap:2px;min-width:0">
+            <span style="font-size:14.5px;line-height:20px;font-weight:700;color:#2A3CB8">Unggah pengumuman</span>
+            <span class="muted" style="font-size:12.5px;line-height:17px">Tangkapan layar atau PDF, maks 5 MB</span>
+          </span>
+        </button>
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="riset-judul" style="padding:16px;display:flex;flex-direction:column;gap:14px">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+        <h2 id="riset-judul" style="margin:0;font-size:19px;line-height:26px;font-weight:700">Khusus lomba riset</h2>
+        <span class="chip b-riset">Riset</span>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <label class="flabel" for="judul">Judul penelitian</label>
+        <input class="input" id="judul" type="text" value="{{ judul }}" onChange="{{ onJudul }}" style="height:48px;font-size:16px">
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <label class="flabel" for="abstrak">Abstrak</label>
+        <textarea class="input" id="abstrak" rows="4" value="{{ abstrak }}" onChange="{{ onAbstrak }}" style="font-size:16px"></textarea>
+        <span class="muted" style="font-size:12.5px;line-height:18px">Maks 250 kata</span>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+          <span class="flabel">Laporan penelitian</span>
+          <span class="muted" style="font-size:13px;font-weight:600">wajib</span>
+        </div>
+        <button type="button" class="drop-m" style="min-height:56px;padding:8px 14px 8px 8px">
+          <span aria-hidden="true" style="width:40px;height:40px;border-radius:12px;background:#ECEFFF;color:#2A3CB8;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5M4 20h16"></path></svg></span>
+          <span style="display:flex;flex-direction:column;gap:2px;min-width:0">
+            <span style="font-size:14.5px;line-height:20px;font-weight:700;color:#2A3CB8">Unggah laporan</span>
+            <span class="muted" style="font-size:12.5px;line-height:17px">PDF, maks 10 MB</span>
+          </span>
+        </button>
+      </div>
+
+      <button type="button" class="up-row">
+        <span aria-hidden="true" style="width:36px;height:36px;border-radius:11px;background:#EEF0F6;color:#4A5068;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"></path><path d="M14 3v5h5"></path></svg></span>
+        <span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:1px">
+          <span style="font-size:14.5px;line-height:20px;font-weight:700">Artikel ilmiah</span>
+          <span class="muted" style="font-size:12.5px;line-height:17px">opsional · PDF</span>
+        </span>
+        <span style="display:inline-flex;align-items:center;gap:6px;font-size:14px;font-weight:700;color:#2A3CB8"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5M4 20h16"></path></svg>Unggah</span>
+      </button>
+
+      <button type="button" class="up-row" style="margin-top:-4px">
+        <span aria-hidden="true" style="width:36px;height:36px;border-radius:11px;background:#EEF0F6;color:#4A5068;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"></rect><circle cx="9" cy="10" r="2"></circle><path d="m21 17-5-5-9 8"></path></svg></span>
+        <span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:1px">
+          <span style="font-size:14.5px;line-height:20px;font-weight:700">Poster</span>
+          <span class="muted" style="font-size:12.5px;line-height:17px">opsional · JPG atau PDF</span>
+        </span>
+        <span style="display:inline-flex;align-items:center;gap:6px;font-size:14px;font-weight:700;color:#2A3CB8"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5M4 20h16"></path></svg>Unggah</span>
+      </button>
+    </section>
+
+    <div style="display:flex;flex-direction:column">
+      <label for="asli" style="display:flex;align-items:flex-start;gap:12px;min-height:48px;padding:12px 14px;border-radius:16px;background:#FFFFFF;border:1px solid #E7E9F3;font-size:15px;line-height:22px;font-weight:600;cursor:pointer">
+        <input id="asli" type="checkbox" checked="{{ asli }}" onChange="{{ toggleAsli }}" style="width:22px;height:22px;margin:0;accent-color:#3148D6;flex-shrink:0">
+        Dokumen ini asli dan sesuai hasil lomba.
+      </label>
+      <sc-if value="{{ err }}" hint-placeholder-val="{{ false }}">
+        <p role="alert" style="margin:8px 0 0;font-size:14px;line-height:20px;font-weight:600;color:#B42318">Centang pernyataan ini dulu sebelum mengirim.</p>
+      </sc-if>
+    </div>
+  </main>
+
+  <div style="position:absolute;left:0;right:0;bottom:0;background:#FFFFFF;border-top:1px solid #E7E9F3;padding:14px 20px 18px;box-shadow:0 -12px 24px -20px rgba(20,24,60,.35)">
+    <sc-if value="{{ belum }}" hint-placeholder-val="{{ true }}">
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <button type="button" class="btn btn-primary" onClick="{{ kirim }}" style="width:100%;height:52px;border-radius:14px;font-size:16px">Kirim laporan</button>
+        <p class="muted" style="margin:0;text-align:center;font-size:13.5px;line-height:20px">Kesiswaan akan memverifikasi laporanmu.</p>
+      </div>
+    </sc-if>
+    <sc-if value="{{ terkirim }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div role="status" style="display:flex;align-items:center;gap:12px">
+          <span aria-hidden="true" style="width:40px;height:40px;border-radius:12px;background:#E4F5EA;color:#1B6B45;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"></path></svg></span>
+          <div style="min-width:0;display:flex;flex-direction:column;gap:1px">
+            <span style="font-size:15px;line-height:20px;font-weight:700">Laporan terkirim</span>
+            <span class="muted" style="font-size:13px;line-height:18px">{{ capLabel }} · perkiraan {{ capPoin }} poin. Menunggu verifikasi.</span>
+          </div>
+        </div>
+        <a class="btn btn-quiet" href="Beranda-Mobile.dc.html" style="width:100%;height:48px;border-radius:14px">Kembali ke beranda</a>
+      </div>
+    </sc-if>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":1980}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = {
+      hasil: 'emas',
+      asli: false,
+      err: false,
+      terkirim: false,
+      judul: 'Biofilter sabut kelapa untuk air sumur payau',
+      abstrak: 'Biofilter berbahan sabut kelapa diuji untuk menurunkan kadar garam air sumur di pesisir Semarang. Pada 12 sampel, salinitas turun rata-rata 38%.'
+    };
+  }
+  renderVals() {
+    const s = this.state;
+    const CAP = [
+      { id: 'j1', label: 'Juara 1', v: '1,00', poin: 40 },
+      { id: 'j2', label: 'Juara 2', v: '0,85', poin: 34 },
+      { id: 'j3', label: 'Juara 3', v: '0,70', poin: 28 },
+      { id: 'emas', label: 'Medali emas', v: '1,00', poin: 40 },
+      { id: 'perak', label: 'Medali perak', v: '0,85', poin: 34 },
+      { id: 'perunggu', label: 'Medali perunggu', v: '0,70', poin: 28 },
+      { id: 'finalis', label: 'Finalis', v: '0,50', poin: 20 },
+      { id: 'semifinalis', label: 'Semifinalis', v: '0,30', poin: 12 },
+      { id: 'khusus', label: 'Penghargaan khusus', v: '0,30', poin: 12 },
+      { id: 'peserta', label: 'Peserta', v: '0,10', poin: 4 }
+    ];
+    const cap = CAP.find((c) => c.id === s.hasil) || CAP[3];
+    const opts = CAP.map((c) => ({
+      label: c.label,
+      cls: c.id === s.hasil ? 'pick mpk pick-on' : 'pick mpk',
+      pressed: c.id === s.hasil ? 'true' : 'false',
+      pick: () => this.setState({ hasil: c.id })
+    }));
+    return {
+      opts: opts,
+      capV: cap.v,
+      capPoin: cap.poin,
+      capLabel: cap.label,
+      judul: s.judul,
+      abstrak: s.abstrak,
+      onJudul: (e) => this.setState({ judul: e.target.value }),
+      onAbstrak: (e) => this.setState({ abstrak: e.target.value }),
+      asli: s.asli,
+      toggleAsli: () => this.setState((p) => ({ asli: !p.asli, err: false })),
+      err: s.err,
+      belum: !s.terkirim,
+      terkirim: s.terkirim,
+      kirim: () => {
+        if (this.state.asli) {
+          this.setState({ terkirim: true, err: false });
+        } else {
+          this.setState({ err: true });
+        }
+      }
+    };
+  }
+}
+</script>
+</body>
+</html>
