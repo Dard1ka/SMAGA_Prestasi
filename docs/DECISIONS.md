@@ -1477,6 +1477,42 @@ ini di smaga server lokal aja deh, smaga4 gausah dulu"); Smaga4 tetap D-138 samp
 - **Status:** final untuk `smaga_server` (permintaan lead). **Menggantikan D-138 untuk `smaga_server`** hanya pada bentuk
   kata sandi awal; bagian lain D-138 (wajib ganti, tanpa "Lewati", tidak pernah ditampilkan) tetap. Smaga4 tidak berubah.
 
+## D26. Beranda, template import, dan file Status aktivasi untuk server sekolah (3 Nov 2026, SV3, hanya `smaga_server`)
+
+Konteks: permintaan lead 3 Nov 2026 setelah memakai server sekolah. Berlaku **hanya untuk `smaga_server`** (branch
+`smaga-server`); Smaga4 tidak berubah. Catatan kerja: `docs/dev-notes/SV3.md`.
+
+### D-174 · Hero STH, template import siap isi, file Status aktivasi per tingkat · 3 Nov 2026
+- **Keputusan:**
+  - Hero beranda publik menyebut sistemnya: judul "SMAGA TALENT HUB (STH)" dan baris "Talent Scouting, Competition &
+    Achievement Management System" (bahasa Inggris atas permintaan lead: nama sistem, bukan kalimat layar). Baris "Prestasi
+    SMA Negeri 3 Semarang", "Prestasi siswa SMAGA, dalam satu tempat." dan "Capaian lomba siswa yang sudah diverifikasi
+    sekolah." hilang; tombol "Lihat prestasi" tetap.
+  - Template import siswa: judul kolom "Nama lengkap (wajib diisi)", "NIS (wajib diisi)", "NISN (wajib diisi)", "Tanggal
+    lahir (wajib diisi)", "Kelas (wajib diisi)", "No HP (opsional)"; lebar kolom diatur supaya judul dan contoh langsung
+    terbaca; baris 2 = satu baris contoh fiktif abu-abu miring (`ImportStudents::TEMPLATE_EXAMPLE`). Excel tidak punya
+    teks bayangan, jadi contoh itu sel biasa: diketik di atasnya = terganti; dibiarkan = import melewatinya diam-diam
+    (bukan siswa, bukan error). Import membaca judul baru dan judul lama tanpa keterangan.
+  - Import ulang tahun ajaran baru tidak berubah (D-81): siswa terdaftar dikenali dari NIS **dan** NISN (lead: "tetap aja
+    NIS dan NISN"), pindah ke kelas di file, akun dan kata sandinya tidak disentuh.
+  - Status aktivasi › Daftar siswa: "Download CSV" diganti "Download Excel" dengan pilihan tingkat di sebelahnya (Semua
+    kelas · Kelas X · Kelas XI · Kelas XII). File `.xlsx`: Semua kelas = tiga sheet `X`, `XI`, `XII` (sheet kosong tetap ada,
+    hanya judul), satu tingkat = satu sheet; dalam sheet urut kelas lalu nama; kolom sama dengan CSV lama, semua sel teks
+    (NISN tetap dengan nol di depan) dan formula-safe. Siswa dengan tingkat kelas di luar 10–12 (hanya data rusak) masuk
+    sheet "Tanpa kelas", tidak hilang. File mengikuti tab status dan pencarian yang terbuka; pilihan kelas di daftar tidak
+    dipakai untuk file (diganti pilihan tingkat). Catatan "Buka di Excel lewat Data › Dari Teks/CSV …" hilang. Konfirmasi
+    kata sandi, audit `account.activation_report_exported` (sekarang juga `tingkat`) dan `LargeExportNotice` tetap.
+  - Kata sandi akun staf di server dan data penandatangan surat (nama, pangkat, NIP, gambar tanda tangan + stempel) adalah
+    data, bukan kode: diubah langsung di server oleh yang men-deploy (Pengaturan › Surat & tanda tangan untuk
+    penandatangan). Nilainya tidak pernah masuk repo (repo publik, aturan §3.2); langkahnya dikirim bersama paket server.
+- **Alasan:** permintaan lead 3 Nov 2026 ("dibuat default excel nya dibenarkan … defaultnya sdh kelihatan semua", "di
+  bagian download csv dikasih sebelahnya filter …", "per tingkat aja, jgn per rombel terlalu banyak").
+- **Dampak:** `beranda.blade.php` + `dev/public.blade.php`, `ImportStudents` (`TEMPLATE_HEADER`, `TEMPLATE_EXAMPLE`,
+  `TEMPLATE_WIDTHS`, `TEMPLATE_TEXT_COLUMNS`, `normalizeHeader()`, `isTemplateExample()`), `ImportSiswa::downloadTemplate()`
+  + satu kalimat di layar, `ActivationReport::writeXlsx()` (menggantikan `writeCsv()`; `HEADER`, `LEVELS`,
+  `NO_LEVEL_SHEET`), `StatusAktivasi` (`$unduhTingkat`, `DOWNLOAD_LEVELS`, `export()`), view Status aktivasi, tes terkait.
+  Tanpa migrasi.
+
 ## E. Usulan keamanan yang belum diputuskan
 
 | ID | Usulan | Alasan singkat | Status |
