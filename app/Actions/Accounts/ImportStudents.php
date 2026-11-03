@@ -114,11 +114,16 @@ final class ImportStudents
     public const TEMPLATE_HEADER = ['Nama lengkap (wajib diisi)', 'NIS (wajib diisi)', 'NISN (wajib diisi)', 'Tanggal lahir (wajib diisi)', 'Kelas (wajib diisi)', 'No HP (opsional)'];
 
     /**
-     * The grey example row under the header of the template (SV3; fictional data, DESIGN-SPEC-v2 §5). Typing into a cell
-     * replaces it; a row left exactly like this is skipped by the import (isTemplateExample()), so it never becomes a
-     * student or an error.
+     * The grey example row under the header of the template (SV3; values nobody has, so no real row equals one of them).
+     * Typing into a cell replaces it; a row left exactly like this is skipped by the import (isTemplateExample()), so it
+     * never becomes a student or an error. A row that was only partly typed over (SV3 review) is refused while its name,
+     * NIS or NISN is still the example's, and an example No HP is dropped with NOTE_EXAMPLE_PHONE; class and birth date
+     * are never judged, a real student may well be in X-A or born on 01-02-2010.
      */
-    public const TEMPLATE_EXAMPLE = ['Nadia Putri Anindya', '225226201', '0012345678', '01-02-2010', 'X-A', '081234567890'];
+    public const TEMPLATE_EXAMPLE = ['Contoh Nama Siswa', '100000001', '0012345678', '01-02-2010', 'X-A', '081200000000'];
+
+    /** Row note when the No HP cell still holds the template's example: the number is not stored (SV3 review). */
+    public const NOTE_EXAMPLE_PHONE = 'No HP masih contoh dari template, tidak dipakai.';
 
     /** Column widths of the template in Excel characters (A–F), wide enough for the header and the example (SV3). */
     public const TEMPLATE_WIDTHS = [32, 20, 21, 30, 22, 22];
@@ -344,7 +349,8 @@ final class ImportStudents
             'nisn' => self::digits($row['nisn'] ?? ''),
             'birth_date' => $row['birth_date'] ?? null,
             'classroom' => mb_strtoupper(str_replace(' ', '', self::sanitize($row['classroom'] ?? ''))),
-            'phone' => self::phone($row['phone'] ?? null),
+            'phone' => self::digits($row['phone'] ?? '') === self::TEMPLATE_EXAMPLE[5] ? null : self::phone($row['phone'] ?? null),
+            'example_phone' => self::digits($row['phone'] ?? '') === self::TEMPLATE_EXAMPLE[5],
             'sanitized' => self::hadFormulaPrefix($row),
         ], $rows);
 
@@ -372,6 +378,17 @@ final class ImportStudents
             $notes = [];
             $nisOk = preg_match('/^\d{4,20}$/', $row['nis']) === 1;
             $nisnOk = preg_match('/^\d{10}$/', $row['nisn']) === 1;
+
+            // SV3 review: the example row of the template, only partly typed over.
+            foreach (['name' => [0, 'Nama lengkap'], 'nis' => [1, 'NIS'], 'nisn' => [2, 'NISN']] as $field => [$column, $label]) {
+                if ($row[$field] !== '' && $row[$field] === self::TEMPLATE_EXAMPLE[$column]) {
+                    $errors[] = $label.' masih berisi contoh dari template.';
+                }
+            }
+
+            if ($row['example_phone']) {
+                $notes[] = self::NOTE_EXAMPLE_PHONE;
+            }
 
             if (! $nisOk) {
                 $errors[] = 'NIS harus 4–20 angka.';

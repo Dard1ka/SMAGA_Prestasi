@@ -4,7 +4,7 @@
          only in the header. --}}
     <section aria-labelledby="hero-title" class="spanduk rounded-card px-5 py-8 sm:px-8 sm:py-10 xl:px-10 xl:py-12">
         <div class="flex max-w-[640px] flex-col items-start gap-3.5">
-            <h1 id="hero-title" class="m-0 text-4xl leading-[1.06] font-bold tracking-[-0.02em] text-balance text-white md:text-5xl">SMAGA TALENT HUB (STH)</h1>
+            <h1 id="hero-title" class="m-0 text-4xl leading-[1.06] font-bold tracking-[-0.02em] text-balance text-white md:text-5xl">SMAGA TALENT HUB</h1>
             <p class="m-0 text-lg leading-normal text-on-primary-soft">Talent Scouting, Competition &amp; Achievement Management System</p>
             <x-sth.button variant="white" :href="'#bidang'" icon-right="chevron-right" class="mt-2.5">Lihat prestasi</x-sth.button>
         </div>

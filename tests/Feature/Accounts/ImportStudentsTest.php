@@ -1149,3 +1149,36 @@ it('still accepts the old template header, and a CSV with the new one (SV3)', fu
     expect($old->validCount())->toBe(1)->and($old->invalidCount())->toBe(0)
         ->and($new->validCount())->toBe(1)->and($new->invalidCount())->toBe(0);
 });
+
+it('drops the example No HP from a row whose other cells were typed over, with a note (SV3 review)', function (): void {
+    [, , , , , $examplePhone] = ImportStudents::TEMPLATE_EXAMPLE;
+    $csv = w1cCsv([['Raka Pratama', '225226202', '0098765433', '20-11-2009', 'X-A', $examplePhone]]);
+
+    $preview = app(ImportStudents::class)->handle($this->kesiswaan, $csv, 'csv', '2026/2027');
+    expect($preview->invalidCount())->toBe(0)
+        ->and($preview->rows[0]['notes'])->toContain(ImportStudents::NOTE_EXAMPLE_PHONE);
+
+    app(ImportStudents::class)->handle($this->kesiswaan, $csv, 'csv', '2026/2027', dryRun: false);
+    expect(Student::query()->where('nisn', '0098765433')->sole()->phone)->toBeNull();
+});
+
+it('refuses a row that still holds the example name, NIS or NISN (SV3 review)', function (int $column, string $message): void {
+    $row = ['Raka Pratama', '225226202', '0098765433', '20-11-2009', 'X-A', ''];
+    $row[$column] = ImportStudents::TEMPLATE_EXAMPLE[$column];
+
+    $report = app(ImportStudents::class)->handle($this->kesiswaan, w1cCsv([$row]), 'csv', '2026/2027');
+
+    expect($report->invalidCount())->toBe(1)
+        ->and($report->rows[0]['errors'])->toContain($message);
+})->with([
+    'nama' => [0, 'Nama lengkap masih berisi contoh dari template.'],
+    'nis' => [1, 'NIS masih berisi contoh dari template.'],
+    'nisn' => [2, 'NISN masih berisi contoh dari template.'],
+]);
+
+it('keeps a real student in the class and with the birth date of the example (SV3 review)', function (): void {
+    [, , , $birthDate, $kelas] = ImportStudents::TEMPLATE_EXAMPLE;
+    $report = app(ImportStudents::class)->handle($this->kesiswaan, w1cCsv([['Raka Pratama', '225226202', '0098765433', $birthDate, $kelas, '']]), 'csv', '2026/2027');
+
+    expect($report->validCount())->toBe(1)->and($report->invalidCount())->toBe(0);
+});

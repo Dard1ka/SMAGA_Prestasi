@@ -111,7 +111,11 @@ final class StatusAktivasi extends Component
     #[Url(as: 'q', except: '')]
     public string $q = '';
 
-    /** SV3: the tingkat of the Excel download, '' = every tingkat (one sheet each); a key of DOWNLOAD_LEVELS. */
+    /**
+     * SV3: the tingkat of the Excel download, '' = every tingkat (one sheet each); a key of DOWNLOAD_LEVELS. In the
+     * address (SV3 review) so the download that resumes after the password page is the tingkat that was chosen.
+     */
+    #[Url(as: 'unduh', except: '')]
     public string $unduhTingkat = '';
 
     /** D-159: which table stands below the summary, "Per kelas" or "Daftar siswa". */
@@ -156,6 +160,10 @@ final class StatusAktivasi extends Component
 
         if (! array_key_exists($this->status, AccountControls::STATES)) {
             $this->status = '';
+        }
+
+        if (! array_key_exists($this->unduhTingkat, self::DOWNLOAD_LEVELS)) {
+            $this->unduhTingkat = '';
         }
 
         // A list filter in the address (a link, the way back from the password page) means the list (D-159).
@@ -625,7 +633,7 @@ final class StatusAktivasi extends Component
     protected function returnUrl(): string
     {
         // `kelas` is only set while the class dialog is in use (e.g. Admin "Buka pembekuan" from a dialog row).
-        $query = array_filter(['kelas' => $this->kelas, 'tampil' => $this->tampil === self::VIEW_STUDENTS ? self::VIEW_STUDENTS : '', 'kelas_daftar' => $this->daftarKelas, 'status' => $this->status, 'q' => $this->q]);
+        $query = array_filter(['kelas' => $this->kelas, 'tampil' => $this->tampil === self::VIEW_STUDENTS ? self::VIEW_STUDENTS : '', 'kelas_daftar' => $this->daftarKelas, 'status' => $this->status, 'q' => $this->q, 'unduh' => $this->unduhTingkat]);
 
         return $this->returnTo.($query !== [] ? '?'.http_build_query($query) : '');
     }

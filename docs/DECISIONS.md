@@ -1,7 +1,7 @@
 # DECISIONS.md — Log keputusan SMAGA Talent Hub (STH)
 
 > Log keputusan produk & teknis STH untuk SMA Negeri 3 Semarang. Dirujuk dari `CLAUDE.md` proyek.
-> Diperbarui: **19 Oktober 2026** (Profil saya D-152…D-153; surat siswa mengikuti surat cetak sekolah D-154; hapus antrean surat dan arsip foto Humas D-155…D-156; surat undangan sebagai Dasar 2 surat siswa D-157; masukan lead 19 Okt (reset akun siswa, Status aktivasi, notifikasi siswa, antrean TU) D-158…D-161; masukan lead 20 Okt (izin dihapus, laporan hasil satu tempat, antrean Kesiswaan) D-162…D-164; D-32…D-44; backlog D-45…D-60; integrasi W4 D-61…D-65; uji menyeluruh Q1 D-66…D-77; uji manual lead D-78…D-91; perbaikan dari uji QA D-92…D-102; permintaan lead 6 Okt dan QA4 D-103…D-108; uji ulang M3 / QA5 D-109…D-112; eksplorasi ulang QA6 D-113…D-116; arah visual v3 dan lambang D-117…D-120; email nyata saat pengembangan D-121; uji email dan notifikasi lead 9 Okt D-122…D-129; demo dan review bersama 11 Okt D-130…D-134; feedback sekolah FS1 D-135…D-151: Paket A D-135…D-136, Paket D D-137…D-138, Paket C D-139…D-141, Paket E D-142…D-144, Paket B D-145…D-151) · Sumber: keputusan pengguna 30 Sep 2026, keputusan lead 1, 2, 4, 6, 7, 8, 10, 11, dan 12 Okt 2026, feedback sekolah via lead 12 Okt 2026, laporan lead "Hasil uji email dan notifikasi STH" (9 Okt 2026), dokumen klien "SMAGA TALENT HUB (STH)", `DESIGN-SPEC-v2.md` §1–§5, `DESIGN-SPEC-v3.md`, `docs/SECURITY.md`.
+> Diperbarui: **19 Oktober 2026** (Profil saya D-152…D-153; surat siswa mengikuti surat cetak sekolah D-154; hapus antrean surat dan arsip foto Humas D-155…D-156; surat undangan sebagai Dasar 2 surat siswa D-157; masukan lead 19 Okt (reset akun siswa, Status aktivasi, notifikasi siswa, antrean TU) D-158…D-161; masukan lead 20 Okt (izin dihapus, laporan hasil satu tempat, antrean Kesiswaan) D-162…D-164; D-32…D-44; backlog D-45…D-60; integrasi W4 D-61…D-65; uji menyeluruh Q1 D-66…D-77; uji manual lead D-78…D-91; perbaikan dari uji QA D-92…D-102; permintaan lead 6 Okt dan QA4 D-103…D-108; uji ulang M3 / QA5 D-109…D-112; eksplorasi ulang QA6 D-113…D-116; arah visual v3 dan lambang D-117…D-120; email nyata saat pengembangan D-121; uji email dan notifikasi lead 9 Okt D-122…D-129; demo dan review bersama 11 Okt D-130…D-134; feedback sekolah FS1 D-135…D-151: Paket A D-135…D-136, Paket D D-137…D-138, Paket C D-139…D-141, Paket E D-142…D-144, Paket B D-145…D-151) · Sumber: keputusan pengguna 30 Sep 2026, keputusan lead 1, 2, 4, 6, 7, 8, 10, 11, dan 12 Okt 2026, feedback sekolah via lead 12 Okt 2026, laporan lead "Hasil uji email dan notifikasi STH" (9 Okt 2026), dokumen klien "SMAGA TALENT HUB", `DESIGN-SPEC-v2.md` §1–§5, `DESIGN-SPEC-v3.md`, `docs/SECURITY.md`.
 > **Status:** `final` = dipakai untuk implementasi · `sementara` = dipakai sekarang, akan ditinjau · `menunggu jawaban sekolah` = butuh konfirmasi sebelum dibangun.
 > **Aturan log:** entri tidak dihapus atau ditimpa. Keputusan yang berubah → entri baru dengan catatan "menggantikan D-xx", lalu status entri lama diubah menjadi `digantikan`.
 
@@ -832,7 +832,7 @@ Enam permintaan lead setelah menarik PR 12 milik S, ditambah satu perubahan skem
 
 ## D9. Uji ulang M3 dan keputusan lead 7 Okt 2026 (QA5)
 
-Hasil uji ulang sistem setelah PR 13 (M3) di browser, ditambah jawaban lead atas pertanyaan uji dan isi dokumen klien "SMAGA TALENT HUB (STH)" untuk hal yang tidak ditanyakan (lead: "baca smaga talent hub docxnya itu dari klien, kalo tidak ada yg mention ini, jadi tentukan sendiri uxnya yg enak"). Catatan pengerja: `docs/dev-notes/QA5.md`.
+Hasil uji ulang sistem setelah PR 13 (M3) di browser, ditambah jawaban lead atas pertanyaan uji dan isi dokumen klien "SMAGA TALENT HUB" untuk hal yang tidak ditanyakan (lead: "baca smaga talent hub docxnya itu dari klien, kalo tidak ada yg mention ini, jadi tentukan sendiri uxnya yg enak"). Catatan pengerja: `docs/dev-notes/QA5.md`.
 
 ### D-109 · "Pulihkan" ke Peserta pembinaan wajib memilih guru pembina · 7 Okt 2026
 - **Keputusan:** Pilihan talenta yang dipulihkan ke **Peserta pembinaan** harus punya guru pembina. Dialog "Pulihkan" kini punya pilihan "Guru pembina" (berisi guru pembina pilihan itu bila sudah ada, keterangan "Wajib kalau dipulihkan ke Peserta pembinaan."). Tanpa guru pembina, pemulihan ke Peserta pembinaan ditolak dengan "Peserta pembinaan perlu guru pembina. Pilih guru pembinanya." Tahap lain tetap tanpa syarat. Pilihan tahap menulis nomor tahapnya ("Tahap 2 · tahap sebelumnya") supaya urutannya terbaca.
@@ -1484,7 +1484,7 @@ Konteks: permintaan lead 3 Nov 2026 setelah memakai server sekolah. Berlaku **ha
 
 ### D-174 · Hero STH, template import siap isi, file Status aktivasi per tingkat · 3 Nov 2026
 - **Keputusan:**
-  - Hero beranda publik menyebut sistemnya: judul "SMAGA TALENT HUB (STH)" dan baris "Talent Scouting, Competition &
+  - Hero beranda publik menyebut sistemnya: judul "SMAGA TALENT HUB" (tanpa "(STH)", lead 3 Nov) dan baris "Talent Scouting, Competition &
     Achievement Management System" (bahasa Inggris atas permintaan lead: nama sistem, bukan kalimat layar). Baris "Prestasi
     SMA Negeri 3 Semarang", "Prestasi siswa SMAGA, dalam satu tempat." dan "Capaian lomba siswa yang sudah diverifikasi
     sekolah." hilang; tombol "Lihat prestasi" tetap.
@@ -1492,7 +1492,11 @@ Konteks: permintaan lead 3 Nov 2026 setelah memakai server sekolah. Berlaku **ha
     lahir (wajib diisi)", "Kelas (wajib diisi)", "No HP (opsional)"; lebar kolom diatur supaya judul dan contoh langsung
     terbaca; baris 2 = satu baris contoh fiktif abu-abu miring (`ImportStudents::TEMPLATE_EXAMPLE`). Excel tidak punya
     teks bayangan, jadi contoh itu sel biasa: diketik di atasnya = terganti; dibiarkan = import melewatinya diam-diam
-    (bukan siswa, bukan error). Import membaca judul baru dan judul lama tanpa keterangan.
+    (bukan siswa, bukan error). Isi contohnya jelas bukan data siapa pun ("Contoh Nama Siswa", NIS 100000001, NISN
+    0012345678, 01-02-2010, X-A, 081200000000). Baris contoh yang hanya ditimpa sebagian (review SV3): nama, NIS atau NISN
+    yang masih nilai contoh = baris ditolak ("… masih berisi contoh dari template."); No HP contoh tidak disimpan, dengan
+    catatan; kelas dan tanggal lahir tidak dinilai (siswa sungguhan bisa di X-A atau lahir 01-02-2010). Import membaca
+    judul baru dan judul lama tanpa keterangan.
   - Import ulang tahun ajaran baru tidak berubah (D-81): siswa terdaftar dikenali dari NIS **dan** NISN (lead: "tetap aja
     NIS dan NISN"), pindah ke kelas di file, akun dan kata sandinya tidak disentuh.
   - Status aktivasi › Daftar siswa: "Download CSV" diganti "Download Excel" dengan pilihan tingkat di sebelahnya (Semua
@@ -1500,7 +1504,8 @@ Konteks: permintaan lead 3 Nov 2026 setelah memakai server sekolah. Berlaku **ha
     hanya judul), satu tingkat = satu sheet; dalam sheet urut kelas lalu nama; kolom sama dengan CSV lama, semua sel teks
     (NISN tetap dengan nol di depan) dan formula-safe. Siswa dengan tingkat kelas di luar 10–12 (hanya data rusak) masuk
     sheet "Tanpa kelas", tidak hilang. File mengikuti tab status dan pencarian yang terbuka; pilihan kelas di daftar tidak
-    dipakai untuk file (diganti pilihan tingkat). Catatan "Buka di Excel lewat Data › Dari Teks/CSV …" hilang. Konfirmasi
+    dipakai untuk file (diganti pilihan tingkat). Pilihan tingkat ada di alamat (`?unduh=`), jadi download yang berjalan
+    sendiri setelah halaman konfirmasi kata sandi tetap tingkat yang dipilih (review SV3). Catatan "Buka di Excel lewat Data › Dari Teks/CSV …" hilang. Konfirmasi
     kata sandi, audit `account.activation_report_exported` (sekarang juga `tingkat`) dan `LargeExportNotice` tetap.
   - Kata sandi akun staf di server dan data penandatangan surat (nama, pangkat, NIP, gambar tanda tangan + stempel) adalah
     data, bukan kode: diubah langsung di server oleh yang men-deploy (Pengaturan › Surat & tanda tangan untuk

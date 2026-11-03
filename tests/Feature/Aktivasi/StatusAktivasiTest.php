@@ -638,3 +638,30 @@ it('keeps the two boxes short: three frozen accounts first, then more (D-159)', 
         ->assertDontSeeHtml('wire:click="showMoreFrozen"')
         ->assertDontSeeHtml('wire:click="showMoreK7"');
 });
+
+it('keeps the chosen tingkat through the password page, so the resumed download is that tingkat (SV3 review)', function (): void {
+    $this->actingAs($this->kesiswaan);
+
+    Livewire::test(StatusAktivasi::class)
+        ->set('unduhTingkat', '11')
+        ->call('export')
+        ->assertRedirect(route('password.confirm'));
+
+    // The password page sends the user back to this address, which must carry the tingkat.
+    expect(session('url.intended'))->toContain('unduh=11');
+
+    session(A::passwordConfirmed());
+    $file = sv3Download(Livewire::withQueryParams(['unduh' => '11', 'tampil' => 'siswa'])->test(StatusAktivasi::class)
+        ->assertSet('unduhTingkat', '11')
+        ->assertSeeHtml('wire:init="export"')
+        ->call('export'));
+
+    expect(sv3Sheets($file))->toBe(['XI'])
+        ->and(Activity::query()->where('event', 'account.activation_report_exported')->sole()->properties['tingkat'])->toBe('XI');
+});
+
+it('drops an unknown tingkat from the address (SV3 review)', function (): void {
+    $this->actingAs($this->kesiswaan);
+
+    Livewire::withQueryParams(['unduh' => '9'])->test(StatusAktivasi::class)->assertSet('unduhTingkat', '');
+});
