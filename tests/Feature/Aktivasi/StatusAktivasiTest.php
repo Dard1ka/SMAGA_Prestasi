@@ -11,9 +11,11 @@ use App\Models\Classroom;
 use App\Models\Student;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Livewire\Livewire;
 use Spatie\Activitylog\Models\Activity;
+use Spatie\SimpleExcel\SimpleExcelReader;
 use Tests\Feature\Admin\AdminTestHelpers as A;
 use Tests\Feature\Auth\AuthTestHelpers as H;
 
@@ -115,12 +117,14 @@ it('shows the NISN in full and the email masked (D-137), and filters by class, s
         ->assertDontSee('Raka Pratama');
 });
 
-it('tells Kesiswaan how to open the CSV without losing the leading zeros of the NISN', function (): void {
+it('offers the tingkat choice next to Download Excel and no CSV hint any more (SV3)', function (): void {
     $this->actingAs($this->kesiswaan);
 
     Livewire::test(StatusAktivasi::class)
         ->call('setView', 'siswa')
-        ->assertSee('Buka di Excel lewat Data › Dari Teks/CSV dan atur kolom NISN sebagai Teks agar angka 0 di depan tetap ada.');
+        ->assertSee('Download Excel')
+        ->assertSee(['Semua kelas', 'Kelas X', 'Kelas XI', 'Kelas XII'])
+        ->assertDontSee('Dari Teks/CSV');
 });
 
 // --- M1-E: "Lihat" opens the class in a dialog (lead 2026-10-04, item 16) -------------------------------
@@ -299,24 +303,104 @@ it('refuses the class dialog to a student', function (): void {
     Livewire::actingAs($student)->test(StatusAktivasi::class)->assertForbidden();
 });
 
-it('exports the list filtered by its own class filter', function (): void {
+/** The Excel file of a Livewire download, written to a temp .xlsx. */
+function sv3Download(mixed $component): string
+{
+    $path = tempnam(sys_get_temp_dir(), 'sth-aktivasi-').'.xlsx';
+    file_put_contents($path, base64_decode((string) ($component->effects['download']['content'] ?? '')));
+
+    return $path;
+}
+
+/** @return list<string> sheet names of an .xlsx, in order */
+function sv3Sheets(string $xlsx): array
+{
+    $zip = new ZipArchive;
+    $zip->open($xlsx);
+    $book = simplexml_load_string((string) $zip->getFromName('xl/workbook.xml'));
+    $zip->close();
+    $book->registerXPathNamespace('m', 'http://schemas.openxmlformats.org/spreadsheetml/2006/main');
+
+    return array_map(fn (SimpleXMLElement $sheet): string => (string) $sheet['name'], $book->xpath('//m:sheets/m:sheet'));
+}
+
+/** @return list<array<string, string>> rows of one sheet, keyed by header */
+function sv3SheetRows(string $xlsx, string $sheet): array
+{
+    return SimpleExcelReader::create($xlsx)->fromSheetName($sheet)->getRows()->all();
+}
+
+it('downloads every class as one sheet per tingkat, empty tingkat included (SV3)', function (): void {
+    $this->actingAs($this->kesiswaan);
+    session(A::passwordConfirmed());
+
+    $component = Livewire::test(StatusAktivasi::class)->call('export');
+    $file = sv3Download($component);
+
+    expect($component->effects['download']['name'] ?? '')->toStartWith('status-aktivasi-semua-')->toEndWith('.xlsx')
+        ->and(sv3Sheets($file))->toBe(['X', 'XI', 'XII'])
+        ->and(array_column(sv3SheetRows($file, 'X'), 'Kelas'))->each->toBe('X-A')
+        ->and(array_column(sv3SheetRows($file, 'XI'), 'Nama'))->toBe(['Nadia Putri Anindya', 'Raka Pratama', 'Salsa Maharani'])
+        ->and(sv3SheetRows($file, 'XII'))->toBe([])
+        ->and(SimpleExcelReader::create($file)->fromSheetName('XII')->getHeaders())->toBe(ActivationReport::HEADER);
+});
+
+it('downloads one tingkat as one sheet (SV3)', function (): void {
+    $this->actingAs($this->kesiswaan);
+    session(A::passwordConfirmed());
+
+    $component = Livewire::test(StatusAktivasi::class)->set('unduhTingkat', '11')->call('export');
+    $file = sv3Download($component);
+    $log = Activity::query()->where('event', 'account.activation_report_exported')->sole();
+
+    expect($component->effects['download']['name'] ?? '')->toStartWith('status-aktivasi-xi-')
+        ->and(sv3Sheets($file))->toBe(['XI'])
+        ->and(count(sv3SheetRows($file, 'XI')))->toBe(3)
+        ->and($log->properties['tingkat'])->toBe('XI')
+        ->and($log->properties['rows'])->toBe(3);
+});
+
+it('puts a student of a class without tingkat on its own sheet instead of dropping it (SV3)', function (): void {
+    $this->actingAs($this->kesiswaan);
+    session(A::passwordConfirmed());
+    // The domain allows no other tingkat (GraduationCalculator), so only broken data gets here: a class whose level was
+    // changed in the database by hand after its students were imported.
+    $odd = Classroom::factory()->create(['name' => 'Kelas Khusus', 'level' => 10]);
+    Student::factory()->create(['classroom_id' => $odd->getKey()])->user->forceFill(['name' => 'Yoga Pratama'])->saveQuietly();
+    DB::table('classrooms')->where('id', $odd->getKey())->update(['level' => 13]);
+
+    $file = sv3Download(Livewire::test(StatusAktivasi::class)->call('export'));
+
+    expect(sv3Sheets($file))->toBe(['X', 'XI', 'XII', ActivationReport::NO_LEVEL_SHEET])
+        ->and(array_column(sv3SheetRows($file, ActivationReport::NO_LEVEL_SHEET), 'Nama'))->toBe(['Yoga Pratama']);
+});
+
+it('follows the open status tab, not the class filter of the list (SV3)', function (): void {
     $this->actingAs($this->kesiswaan);
     session(A::passwordConfirmed());
 
     $component = Livewire::test(StatusAktivasi::class)
         ->call('showClass', $this->xi4->getKey())
         ->set('daftarKelas', $this->x1->getKey())
+        ->set('status', AccountControls::STATE_ACTIVE)
         ->call('export');
+    $file = sv3Download($component);
 
-    $csv = base64_decode((string) ($component->effects['download']['content'] ?? ''));
-    $log = Activity::query()->where('event', 'account.activation_report_exported')->sole();
-
-    expect($csv)->toContain('Dimas Saputra')->not->toContain('Raka Pratama')
-        ->and($log->properties['rows'])->toBe(2)
-        ->and($log->properties['filters'])->toBe(['kelas' => $this->x1->getKey()]);
+    // The list shows X-A only, the file every tingkat of the tab "Aktif": Nadia (XI-D) is in it.
+    expect(array_column(sv3SheetRows($file, 'XI'), 'Nama'))->toBe(['Nadia Putri Anindya'])
+        ->and(sv3SheetRows($file, 'X'))->toBe([]);
 });
 
-it('exports a formula-safe CSV after a recent password confirmation, audited', function (): void {
+it('refuses an unknown tingkat without a file or an audit row (SV3)', function (): void {
+    $this->actingAs($this->kesiswaan);
+    session(A::passwordConfirmed());
+
+    Livewire::test(StatusAktivasi::class)->set('unduhTingkat', '9')->call('export')->assertStatus(404);
+
+    expect(Activity::query()->where('event', 'account.activation_report_exported')->exists())->toBeFalse();
+});
+
+it('exports a formula-safe Excel file after a recent password confirmation, audited', function (): void {
     $this->actingAs($this->kesiswaan);
 
     Livewire::test(StatusAktivasi::class)->call('export')->assertRedirect(route('password.confirm'));
@@ -325,21 +409,22 @@ it('exports a formula-safe CSV after a recent password confirmation, audited', f
     session(A::passwordConfirmed());
 
     $component = Livewire::test(StatusAktivasi::class)->call('export');
-    $download = $component->effects['download'] ?? null;
-    expect($download)->not->toBeNull();
+    expect($component->effects['download'] ?? null)->not->toBeNull();
+    $file = sv3Download($component);
+    $x = collect(sv3SheetRows($file, 'X'));
+    $xi = collect(sv3SheetRows($file, 'XI'));
 
-    $csv = base64_decode((string) $download['content']);
-    expect($csv)->toStartWith("\xEF\xBB\xBF")
-        ->toContain('Kelas;Nama;NISN;Status')
-        ->toContain('"\'=HYPERLINK(""http://evil.example"",""klik"")"')
-        ->toContain('Kedaluwarsa')
-        // D-131: the file carries the NIS in full, as the screen does; the email stays masked.
-        ->toContain(';'.$this->raka->nisn.';')
-        ->not->toContain(';'.$this->raka->nis.';')
-        ->toContain('n•••@example.test')
-        ->not->toContain('nadia.anindya@example.test');
+    expect(SimpleExcelReader::create($file)->fromSheetName('X')->getHeaders())->toBe(ActivationReport::HEADER)
+        ->and($x->pluck('Nama')->all())->toContain('\'=HYPERLINK("http://evil.example","klik")')
+        ->and($xi->pluck('Status')->all())->toContain('Kedaluwarsa')
+        // D-131: the file carries the NISN in full (as text: the leading zero stays), as the screen does; the email
+        // stays masked.
+        ->and($xi->firstWhere('Nama', 'Raka Pratama')['NISN'])->toBe($this->raka->nisn)
+        ->and($xi->pluck('Email')->all())->toContain('n•••@example.test')
+        ->and(file_get_contents('zip://'.$file.'#xl/sharedStrings.xml'))->not->toContain('nadia.anindya@example.test');
 
-    expect(Activity::query()->where('event', 'account.activation_report_exported')->sole()->properties['rows'])->toBe(5);
+    $log = Activity::query()->where('event', 'account.activation_report_exported')->sole();
+    expect($log->properties['rows'])->toBe(5)->and($log->properties['tingkat'])->toBe('semua');
 });
 
 it('reopens activation from the report (Kesiswaan) with a reason', function (): void {
@@ -485,13 +570,13 @@ it('shows one table at a time: Per kelas first, Daftar siswa on its tab or with 
         ->assertSeeHtml('role="tablist"')
         ->assertSeeHtml('wire:key="kelas-'.$this->xi4->getKey().'"')
         ->assertDontSeeHtml($inList($this->raka))
-        ->assertDontSee('Download CSV')
+        ->assertDontSee('Download Excel')
         ->assertSee('Menampilkan 2 dari 2 kelas')
         ->call('setView', 'siswa')
         ->assertSet('tampil', 'siswa')
         ->assertSeeHtml($inList($this->raka))
         ->assertDontSeeHtml('wire:key="kelas-'.$this->xi4->getKey().'"')
-        ->assertSee('Download CSV')
+        ->assertSee('Download Excel')
         ->assertSee('Menampilkan 5 dari 5 siswa. Email ditampilkan tersamar.')
         ->call('setView', 'apa-saja')
         ->assertSet('tampil', 'kelas')

@@ -9,11 +9,15 @@ use App\Models\Student;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
+use OpenSpout\Common\Entity\Cell\StringCell;
+use OpenSpout\Common\Entity\Row;
+use OpenSpout\Common\Entity\Style\Style;
 use Spatie\Activitylog\Models\Activity;
+use Spatie\SimpleExcel\SimpleExcelWriter;
 
 /**
  * K9 activation report per class (docs/SECURITY.md §3a, B1) for Admin and Kesiswaan: name, class, NISN (in full
- * since D-131, lead 2026-10-11: both roles work with the class lists, also in the CSV), state
+ * since D-131, lead 2026-10-11: both roles work with the class lists, also in the Excel export), state
  * (belum/aktif/kedaluwarsa/dibekukan/nonaktif/arsip), activation time, last login, masked email and automatic
  * flags (activation outside school hours, many failed logins, "Bukan saya?" report).
  * Read-only; ~1 100 students fit in memory, so states are derived in PHP (same rules as the login controls).
@@ -143,25 +147,75 @@ final class ActivationReport
             ->values();
     }
 
-    /** CSV export (`;`-separated, UTF-8 BOM, formula-safe cells) written to the given stream. */
-    public function writeCsv(Collection $rows, mixed $stream): void
-    {
-        fwrite($stream, "\xEF\xBB\xBF");
-        fputcsv($stream, ['Kelas', 'Nama', 'NISN', 'Status', 'Email', 'Aktivasi', 'Login terakhir', 'Batas kata sandi awal', 'Catatan'], ';', '"', '');
+    /** Header row of every sheet of the Excel export (the CSV columns before SV3). */
+    public const HEADER = ['Kelas', 'Nama', 'NISN', 'Status', 'Email', 'Aktivasi', 'Login terakhir', 'Batas kata sandi awal', 'Catatan'];
 
-        foreach ($rows as $row) {
-            fputcsv($stream, array_map(self::cell(...), [
-                $row['classroom'],
-                $row['name'],
-                $row['nisn'],
-                AccountControls::stateLabel($row['state']),
-                $row['email'] ?? '',
-                $row['activatedAt']?->format('Y-m-d H:i') ?? '',
-                $row['lastLoginAt']?->format('Y-m-d H:i') ?? '',
-                $row['expiresAt']?->format('Y-m-d H:i') ?? '',
-                implode('; ', $row['flags']),
-            ]), ';', '"', '');
+    /** Sheet name per tingkat (classrooms.level) of the Excel export, in sheet order (SV3, lead 2026-11-03). */
+    public const LEVELS = [10 => 'X', 11 => 'XI', 12 => 'XII'];
+
+    /** Extra sheet for a student whose class has no tingkat of LEVELS: never dropped from a whole-school file. */
+    public const NO_LEVEL_SHEET = 'Tanpa kelas';
+
+    /** Column widths of the export in Excel characters, in HEADER order. */
+    private const WIDTHS = [12, 32, 14, 16, 28, 18, 18, 22, 40];
+
+    /**
+     * Excel export written to $path (SV3, replaces the CSV): $level null = one sheet per tingkat of LEVELS, always all
+     * three (header only when empty), plus NO_LEVEL_SHEET only when a row has no such tingkat; an int = that one sheet.
+     * Rows keep the order of rows() (class, then name). Every cell is formula-safe text, so the NISN keeps its zeros.
+     *
+     * @param  Collection<int, array<string, mixed>>  $rows
+     */
+    public function writeXlsx(Collection $rows, string $path, ?int $level): void
+    {
+        $byLevel = $rows->groupBy(fn (array $row): string => (string) (array_key_exists((int) $row['level'], self::LEVELS) ? $row['level'] : ''));
+        $sheets = $level !== null
+            ? [self::LEVELS[$level] => $byLevel->get((string) $level, collect())]
+            : collect(self::LEVELS)->mapWithKeys(fn (string $name, int $l): array => [$name => $byLevel->get((string) $l, collect())])->all();
+
+        if ($level === null && $byLevel->has('')) {
+            $sheets[self::NO_LEVEL_SHEET] = $byLevel->get('');
         }
+
+        $writer = SimpleExcelWriter::create($path);
+        $text = (new Style)->setFormat('@');
+        $bold = (new Style)->setFontBold();
+        $first = true;
+
+        foreach ($sheets as $name => $sheetRows) {
+            if (! $first) {
+                $writer->getWriter()->addNewSheetAndMakeItCurrent();
+            }
+
+            $first = false;
+            $sheet = $writer->getWriter()->getCurrentSheet();
+            $sheet->setName($name);
+
+            foreach (self::WIDTHS as $i => $width) {
+                $sheet->setColumnWidth($width, $i + 1);
+            }
+
+            $writer->addRow(Row::fromValues(self::HEADER, $bold));
+
+            foreach ($sheetRows as $row) {
+                $writer->addRow(new Row(array_map(
+                    fn (string $value): StringCell => new StringCell(self::cell($value), $text),
+                    [
+                        (string) $row['classroom'],
+                        (string) $row['name'],
+                        (string) $row['nisn'],
+                        AccountControls::stateLabel($row['state']),
+                        (string) ($row['email'] ?? ''),
+                        $row['activatedAt']?->format('Y-m-d H:i') ?? '',
+                        $row['lastLoginAt']?->format('Y-m-d H:i') ?? '',
+                        $row['expiresAt']?->format('Y-m-d H:i') ?? '',
+                        implode('; ', $row['flags']),
+                    ],
+                )));
+            }
+        }
+
+        $writer->close();
     }
 
     /** Spreadsheet cell text: values a spreadsheet would read as a formula get a leading apostrophe (OWASP CSV injection). */

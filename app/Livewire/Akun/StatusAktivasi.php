@@ -27,12 +27,12 @@ use Livewire\Attributes\Locked;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
 use Livewire\Component;
-use Symfony\Component\HttpFoundation\StreamedResponse;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 /**
  * Status aktivasi (`kesiswaan.aktivasi.index`, `admin.aktivasi.index`; docs/UI-MAP.md §4a/§5, SECURITY K9/K2,
  * B1): per-class activation report (counts, activation time, last login, NISN in full since D-137, masked email,
- * automatic flags), filters (kelas, status, nama/NISN), formula-safe CSV export (password confirmed in the last 15
+ * automatic flags), filters (kelas, status, nama/NISN), formula-safe Excel export, one sheet per tingkat since SV3 (password confirmed in the last 15
  * min, audited; it carries the NISN in full too),
  * K2 "Buka ulang aktivasi" (72 h, reason, Kesiswaan + Admin), Admin "Buka pembekuan" and the K1 window length
  * (Admin), K7 alerts. Every action re-authorizes; the target id is #[Locked] and set only by open*().
@@ -40,13 +40,13 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  * M1-E (lead, 2026-10-04, item 16): "Lihat" on a class row opens the dialog `aktivasi-kelas` with that class's
  * students (status tabs, steps of 40, the same row actions) instead of filtering the list at the bottom of
  * the page. `?kelas=<classroom id>` opens the page with that dialog. The list at the bottom stays for
- * cross-class lookups and the CSV; its class filter is `?kelas_daftar=`.
+ * cross-class lookups and the Excel file; its class filter is `?kelas_daftar=`.
  *
  * D-159 (the lead, 2026-10-19): the page no longer scrolls through both tables. On top the stat tiles stand next to
  * the two boxes "Akun dibekukan" and "Kata sandi awal dicoba di akun aktif" (each BOX rows, then "Tampilkan lebih
  * banyak"); below, one segmented choice "Per kelas" | "Daftar siswa" (`?tampil=siswa`) shows one table at the full
  * width, PREVIEW rows first and STEP more per "Tampilkan lebih banyak", with "Menampilkan X dari Y". The list keeps
- * its status tabs, class filter, search and CSV. A list filter in the address, or a change of one, opens the list.
+ * its status tabs, class filter, search and the Excel download. A list filter in the address, or a change of one, opens the list.
  */
 #[Title('Status aktivasi')]
 // One search box per screen (D-90, backlog #60): this page has its own, so the top bar shows none.
@@ -82,6 +82,9 @@ final class StatusAktivasi extends Component
 
     public const VIEW_STUDENTS = 'siswa';
 
+    /** SV3 (lead, 2026-11-03): the choice next to "Download Excel"; '' = Semua kelas, else classrooms.level. */
+    public const DOWNLOAD_LEVELS = ['' => 'Semua kelas', '10' => 'Kelas X', '11' => 'Kelas XI', '12' => 'Kelas XII'];
+
     public const ACTION_REOPEN = 'buka';
 
     public const ACTION_UNFREEZE = 'cair';
@@ -98,7 +101,7 @@ final class StatusAktivasi extends Component
     #[Locked]
     public int $kelasLimit = self::PAGE;
 
-    /** Class filter of the cross-class list at the bottom (and of its CSV). */
+    /** Class filter of the cross-class list at the bottom (the Excel file uses the tingkat choice instead, SV3). */
     #[Url(as: 'kelas_daftar', except: '')]
     public string $daftarKelas = '';
 
@@ -107,6 +110,9 @@ final class StatusAktivasi extends Component
 
     #[Url(as: 'q', except: '')]
     public string $q = '';
+
+    /** SV3: the tingkat of the Excel download, '' = every tingkat (one sheet each); a key of DOWNLOAD_LEVELS. */
+    public string $unduhTingkat = '';
 
     /** D-159: which table stands below the summary, "Per kelas" or "Daftar siswa". */
     #[Url(as: 'tampil', except: self::VIEW_CLASSES)]
@@ -356,10 +362,11 @@ final class StatusAktivasi extends Component
         $this->dispatch('sth-toast', message: 'Jendela aktivasi disimpan: '.(int) $this->windowDays.' hari untuk impor berikutnya.', tone: 'success');
     }
 
-    public function export(ActivationReport $report, AdminRecipients $recipients): ?StreamedResponse
+    public function export(ActivationReport $report, AdminRecipients $recipients): ?BinaryFileResponse
     {
         Gate::authorize(Permission::StudentView->value);
-        // The CSV belongs to the list: coming back from the password page must not reopen a dialog, and shows the list.
+        abort_unless(array_key_exists($this->unduhTingkat, self::DOWNLOAD_LEVELS), 404);
+        // The file belongs to the list: coming back from the password page must not reopen a dialog, and shows the list.
         $this->forgetClass();
         $this->tampil = self::VIEW_STUDENTS;
 
@@ -367,25 +374,34 @@ final class StatusAktivasi extends Component
             return null;
         }
 
-        $rows = $report->rows($this->daftarKelas ?: null, $this->status ?: null, $this->q);
+        // SV3: the tingkat choice replaces the class filter of the list for the file; the status tab and the search
+        // still apply.
+        $level = $this->unduhTingkat === '' ? null : (int) $this->unduhTingkat;
+        $rows = $report->rows(null, $this->status ?: null, $this->q)
+            ->when($level !== null, fn ($c) => $c->where('level', $level))
+            ->values();
+        $tingkat = $level === null ? 'semua' : ActivationReport::LEVELS[$level];
 
         activity('account')
             ->causedBy($this->actor())
             ->event('account.activation_report_exported')
-            ->withProperties(['filters' => array_filter(['kelas' => $this->daftarKelas, 'status' => $this->status, 'q' => $this->q !== '' ? 'ya' : '']), 'rows' => $rows->count()])
+            ->withProperties(['filters' => array_filter(['status' => $this->status, 'q' => $this->q !== '' ? 'ya' : '']), 'tingkat' => $tingkat, 'rows' => $rows->count()])
             ->log('account.activation_report_exported');
 
-        // SECURITY §3m-9: the CSV of the whole school (names, classes, account states) alerts every Admin above
+        // SECURITY §3m-9: the file of the whole school (names, classes, account states) alerts every Admin above
         // LargeExportNotice::LIMIT rows, like the other exports (QA10).
         if ($rows->count() > LargeExportNotice::LIMIT) {
             Notification::send($recipients->admins(), new LargeExportNotice((string) $this->actor()->name, 'laporan status aktivasi', $rows->count(), now()->translatedFormat('j F Y H:i')));
         }
 
-        return response()->streamDownload(function () use ($report, $rows): void {
-            $out = fopen('php://output', 'wb');
-            $report->writeCsv($rows, $out);
-            fclose($out);
-        }, 'status-aktivasi-'.now()->format('Ymd-His').'.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
+        $base = (string) tempnam(sys_get_temp_dir(), 'sth');
+        @unlink($base);
+        $path = $base.'.xlsx';
+        $report->writeXlsx($rows, $path, $level);
+
+        return response()
+            ->download($path, 'status-aktivasi-'.mb_strtolower($tingkat).'-'.now()->format('Ymd-His').'.xlsx')
+            ->deleteFileAfterSend();
     }
 
     // View ----------------------------------------------------------------------------------------
