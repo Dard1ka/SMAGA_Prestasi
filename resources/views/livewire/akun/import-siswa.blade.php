@@ -28,6 +28,7 @@
                     @endforeach
                 </ul>
                 <p class="m-0 text-xs text-muted">Tanggal lahir DD-MM-YYYY. Format kolom NIS, NISN, dan Tanggal lahir sebagai teks.</p>
+                <p class="m-0 text-xs text-muted">Kolom selain No HP wajib diisi. Baris contoh di bawah judul boleh ditimpa atau dibiarkan.</p>
                 <p class="m-0 text-xs text-muted">Isi semua siswa dari semua angkatan dengan kelasnya sekarang, lalu upload lagi setiap tahun ajaran baru. Siswa yang sudah terdaftar hanya pindah ke kelas di file. Akun dan kata sandinya tidak berubah.</p>
                 <x-sth.button variant="soft" icon="download" wire:click="downloadTemplate">Download template Excel</x-sth.button>
             </x-sth.card>

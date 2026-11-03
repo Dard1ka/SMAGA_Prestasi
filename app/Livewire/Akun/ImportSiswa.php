@@ -215,7 +215,14 @@ class ImportSiswa extends Component
         $this->authorize(Permission::StudentImport->value);
 
         $path = self::tempPath('xlsx');
-        $writer = SimpleExcelWriter::create($path)->addHeader(ImportStudents::TEMPLATE_HEADER);
+        $writer = SimpleExcelWriter::create($path);
+
+        // SV3 (lead, 2026-11-03): every column opens wide enough for its header and the example, no dragging needed.
+        foreach (ImportStudents::TEMPLATE_WIDTHS as $i => $width) {
+            $writer->getWriter()->getCurrentSheet()->setColumnWidth($width, $i + 1);
+        }
+
+        $writer->addHeader(ImportStudents::TEMPLATE_HEADER);
 
         // A General cell turns 0098765432 into 98765432 and 0812… into 812… (QA Q1-21, backlog #66), and a typed
         // 01-02-2010 into 2 Jan 2010 on a PC with a US date setting (SV2 review: the birth date is the initial password
@@ -224,7 +231,20 @@ class ImportSiswa extends Component
         // string: OpenSpout leaves out rows of only EmptyCells). Such rows are no data: the import skips them.
         $text = (new Style)->setFormat('@');
 
-        for ($i = 0; $i < ImportStudents::MAX_ROWS; $i++) {
+        // SV3: one grey italic example row (fictional); typing into a cell replaces it, and a row left as it is is
+        // skipped by the import (ImportStudents::isTemplateExample()).
+        $example = (new Style)->setFontItalic()->setFontColor('808080');
+        $exampleText = (new Style)->setFontItalic()->setFontColor('808080')->setFormat('@');
+        $writer->addRow(new Row(array_map(
+            fn (string $column, string $value): Cell => new StringCell(
+                $value,
+                in_array($column, ImportStudents::TEMPLATE_TEXT_COLUMNS, true) ? $exampleText : $example,
+            ),
+            ImportStudents::TEMPLATE_HEADER,
+            ImportStudents::TEMPLATE_EXAMPLE,
+        )));
+
+        for ($i = 1; $i < ImportStudents::MAX_ROWS; $i++) {
             $writer->addRow(new Row(array_map(
                 fn (string $column): Cell => in_array($column, ImportStudents::TEMPLATE_TEXT_COLUMNS, true)
                     ? new StringCell('', $text)

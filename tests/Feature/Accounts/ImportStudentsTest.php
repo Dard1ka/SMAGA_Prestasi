@@ -37,8 +37,12 @@ use Tests\Feature\Auth\AuthTestHelpers as H;
 
 uses(RefreshDatabase::class);
 
-// M1-C (lead, 2026-10-04): the class column is the class at the moment of the upload, header "Kelas".
-const W1C_IMPORT_HEADER = ['Nama lengkap', 'NIS', 'NISN', 'Tanggal lahir', 'Kelas', 'No HP'];
+// M1-C (lead, 2026-10-04): the class column is the class at the moment of the upload, header "Kelas". SV3 (lead,
+// 2026-11-03): the template marks every column but No HP as required.
+const W1C_IMPORT_HEADER = ['Nama lengkap (wajib diisi)', 'NIS (wajib diisi)', 'NISN (wajib diisi)', 'Tanggal lahir (wajib diisi)', 'Kelas (wajib diisi)', 'No HP (opsional)'];
+
+// The header of every template before SV3: files made with it stay accepted.
+const W1C_OLD_IMPORT_HEADER = ['Nama lengkap', 'NIS', 'NISN', 'Tanggal lahir', 'Kelas', 'No HP'];
 
 beforeEach(function (): void {
     H::seedRoles();
@@ -660,6 +664,7 @@ it('formats the NIS, NISN, Tanggal lahir and No HP columns of the template as te
 
     $screen = Livewire::actingAs($this->kesiswaan)->test(ImportSiswa::class)
         ->assertSee('Format kolom NIS, NISN, dan Tanggal lahir sebagai teks.')
+        ->assertSee('Kolom selain No HP wajib diisi. Baris contoh di bawah judul boleh ditimpa atau dibiarkan.')
         ->call('downloadTemplate');
 
     $path = tempnam(sys_get_temp_dir(), 'sth-template-').'.xlsx';
@@ -885,7 +890,7 @@ it('builds the password from an Excel date cell and from a plain Excel serial nu
         ->close();
 
     // Both paths of the reader are really taken.
-    $cells = collect(SimpleExcelReader::create($xlsx)->getRows()->all())->pluck('Tanggal lahir');
+    $cells = collect(SimpleExcelReader::create($xlsx)->getRows()->all())->pluck(W1C_IMPORT_HEADER[3]);
     expect($cells[0])->toBeInstanceOf(DateTimeInterface::class)
         ->and($cells[1])->toBe($serial);
 
@@ -918,7 +923,7 @@ it('reads a date typed into the Text column of the template as DD-MM-YYYY, day f
         ))
         ->close();
 
-    expect(collect(SimpleExcelReader::create($xlsx)->getRows()->all())->pluck('Tanggal lahir')->all())->toBe(['01-02-2010']);
+    expect(collect(SimpleExcelReader::create($xlsx)->getRows()->all())->pluck(W1C_IMPORT_HEADER[3])->all())->toBe(['01-02-2010']);
 
     app(ImportStudents::class)->handle($this->kesiswaan, $xlsx, 'xlsx', '2026/2027', dryRun: false);
 
@@ -1045,4 +1050,102 @@ it('finds a class whose name has a space, written with or without it (Admin › 
 
     expect($report->created)->toBe(2)
         ->and(Student::query()->where('classroom_id', $ipa->getKey())->count())->toBe(2);
+});
+
+/** The downloaded template of the import screen, written to a temp .xlsx (fictional content only). */
+function sv3Template(User $actor): string
+{
+    $screen = Livewire::actingAs($actor)->test(ImportSiswa::class)->call('downloadTemplate');
+    $path = tempnam(sys_get_temp_dir(), 'sth-template-').'.xlsx';
+    $GLOBALS['w1c_tmp_files'][] = $path;
+    file_put_contents($path, base64_decode((string) data_get($screen->effects, 'download.content')));
+
+    return $path;
+}
+
+/** One part of an .xlsx as XML, with the main spreadsheet namespace registered as "m". */
+function sv3Xml(string $xlsx, string $part): SimpleXMLElement
+{
+    $zip = new ZipArchive;
+    $zip->open($xlsx);
+    $xml = simplexml_load_string((string) $zip->getFromName($part));
+    $zip->close();
+    $xml->registerXPathNamespace('m', 'http://schemas.openxmlformats.org/spreadsheetml/2006/main');
+
+    return $xml;
+}
+
+it('gives every template column a width that shows its header and its example (SV3)', function (): void {
+    $this->withoutVite();
+    $cols = sv3Xml(sv3Template($this->kesiswaan), 'xl/worksheets/sheet1.xml')->xpath('//m:cols/m:col');
+    $widths = [];
+
+    foreach ($cols as $col) {
+        for ($n = (int) $col['min']; $n <= (int) $col['max']; $n++) {
+            $widths[$n] = (float) $col['width'];
+        }
+    }
+
+    foreach (ImportStudents::TEMPLATE_HEADER as $i => $header) {
+        $needed = max(mb_strlen($header), mb_strlen(ImportStudents::TEMPLATE_EXAMPLE[$i])) + 2;
+        expect($widths[$i + 1] ?? 0.0)->toBeGreaterThanOrEqual($needed, $header);
+    }
+});
+
+it('puts one grey italic example row under the header and keeps its text columns as text (SV3)', function (): void {
+    $this->withoutVite();
+    $path = sv3Template($this->kesiswaan);
+
+    expect(SimpleExcelReader::create($path)->noHeaderRow()->getRows()->skip(1)->first())
+        ->toBe(ImportStudents::TEMPLATE_EXAMPLE);
+
+    $sheet = sv3Xml($path, 'xl/worksheets/sheet1.xml');
+    $styles = sv3Xml($path, 'xl/styles.xml');
+    $fontOf = function (string $ref) use ($sheet, $styles): SimpleXMLElement {
+        $xf = $styles->xpath('//m:cellXfs/m:xf')[(int) $sheet->xpath("//m:c[@r='{$ref}']")[0]['s']];
+
+        return $styles->xpath('//m:fonts/m:font')[(int) $xf['fontId']];
+    };
+
+    foreach (['A2', 'C2', 'D2', 'F2'] as $ref) {
+        $font = $fontOf($ref);
+        $font->registerXPathNamespace('m', 'http://schemas.openxmlformats.org/spreadsheetml/2006/main');
+        expect($font->xpath('m:i'))->not->toBeEmpty($ref)
+            ->and((string) ($font->xpath('m:color')[0]['rgb'] ?? ''))->toBe('FF808080', $ref);
+    }
+
+    // The header row stays plain.
+    $header = $fontOf('A1');
+    $header->registerXPathNamespace('m', 'http://schemas.openxmlformats.org/spreadsheetml/2006/main');
+    expect($header->xpath('m:i'))->toBeEmpty();
+});
+
+it('skips the untouched example row and imports the students below it (SV3)', function (): void {
+    $xlsx = tempnam(sys_get_temp_dir(), 'sth-import-').'.xlsx';
+    $GLOBALS['w1c_tmp_files'][] = $xlsx;
+    SimpleExcelWriter::create($xlsx)
+        ->addHeader(ImportStudents::TEMPLATE_HEADER)
+        ->addRow(ImportStudents::TEMPLATE_EXAMPLE)
+        ->addRow(['Raka Pratama', '225226202', '0098765433', '20-11-2009', 'X-A', ''])
+        ->close();
+
+    $report = app(ImportStudents::class)->handle($this->kesiswaan, $xlsx, 'xlsx', '2026/2027');
+
+    expect($report->total())->toBe(1)
+        ->and($report->invalidCount())->toBe(0)
+        ->and($report->rows[0]['row'] ?? null)->toBe(3);
+});
+
+it('still accepts the old template header, and a CSV with the new one (SV3)', function (): void {
+    $row = ['Raka Pratama', '225226202', '0098765433', '20-11-2009', 'X-A', ''];
+
+    $xlsx = tempnam(sys_get_temp_dir(), 'sth-import-').'.xlsx';
+    $GLOBALS['w1c_tmp_files'][] = $xlsx;
+    SimpleExcelWriter::create($xlsx)->addHeader(W1C_OLD_IMPORT_HEADER)->addRow($row)->close();
+    $old = app(ImportStudents::class)->handle($this->kesiswaan, $xlsx, 'xlsx', '2026/2027');
+
+    $new = app(ImportStudents::class)->handle($this->kesiswaan, w1cCsv([$row], ImportStudents::TEMPLATE_HEADER, ';'), 'csv', '2026/2027');
+
+    expect($old->validCount())->toBe(1)->and($old->invalidCount())->toBe(0)
+        ->and($new->validCount())->toBe(1)->and($new->invalidCount())->toBe(0);
 });

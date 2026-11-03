@@ -106,8 +106,22 @@ final class ImportStudents
      */
     public const NOTE_TAKEN = 'Sudah didaftarkan oleh impor lain, jadi tidak dibuat dari file ini.';
 
-    /** Header row of the template (App\Livewire\Akun\ImportSiswa::downloadTemplate). */
-    public const TEMPLATE_HEADER = ['Nama lengkap', 'NIS', 'NISN', 'Tanggal lahir', 'Kelas', 'No HP'];
+    /**
+     * Header row of the template (App\Livewire\Akun\ImportSiswa::downloadTemplate). SV3 (lead, 2026-11-03): every column
+     * but No HP says it is required; normalizeHeader() drops the "(wajib diisi)" / "(opsional)" part, so files made with
+     * the older template (plain names) still read.
+     */
+    public const TEMPLATE_HEADER = ['Nama lengkap (wajib diisi)', 'NIS (wajib diisi)', 'NISN (wajib diisi)', 'Tanggal lahir (wajib diisi)', 'Kelas (wajib diisi)', 'No HP (opsional)'];
+
+    /**
+     * The grey example row under the header of the template (SV3; fictional data, DESIGN-SPEC-v2 §5). Typing into a cell
+     * replaces it; a row left exactly like this is skipped by the import (isTemplateExample()), so it never becomes a
+     * student or an error.
+     */
+    public const TEMPLATE_EXAMPLE = ['Nadia Putri Anindya', '225226201', '0012345678', '01-02-2010', 'X-A', '081234567890'];
+
+    /** Column widths of the template in Excel characters (A–F), wide enough for the header and the example (SV3). */
+    public const TEMPLATE_WIDTHS = [32, 20, 21, 30, 22, 22];
 
     /**
      * Template columns formatted as Text, so Excel keeps them as typed: digits whose leading zero matters, and the birth
@@ -115,7 +129,7 @@ final class ImportStudents
      * date setting turn a typed 01-02-2010 into 2 Jan 2010. As text it reaches parseDate() as DD-MM-YYYY whatever the
      * PC's setting; date cells and serials of other files stay accepted.
      */
-    public const TEMPLATE_TEXT_COLUMNS = ['NIS', 'NISN', 'Tanggal lahir', 'No HP'];
+    public const TEMPLATE_TEXT_COLUMNS = ['NIS (wajib diisi)', 'NISN (wajib diisi)', 'Tanggal lahir (wajib diisi)', 'No HP (opsional)'];
 
     public const REQUIRED = ['name', 'nis', 'nisn', 'birth_date', 'classroom'];
 
@@ -296,7 +310,7 @@ final class ImportStudents
                 }
             }
 
-            if ($this->isBlank($row)) {
+            if ($this->isBlank($row) || self::isTemplateExample($row)) {
                 continue;
             }
 
@@ -823,8 +837,10 @@ final class ImportStudents
     private static function normalizeHeader(string $header): string
     {
         $header = str_replace("\u{FEFF}", '', $header);
+        $header = (string) preg_replace('/\s+/u', ' ', mb_strtolower(trim($header)));
 
-        return (string) preg_replace('/\s+/u', ' ', mb_strtolower(trim($header)));
+        // SV3: "Nama lengkap (wajib diisi)" and "No HP (opsional)" of the template read as their plain names.
+        return (string) preg_replace('/\s*\((wajib diisi|opsional)\)$/u', '', $header);
     }
 
     private static function digits(mixed $value): string
@@ -887,6 +903,24 @@ final class ImportStudents
         }
 
         return true;
+    }
+
+    /**
+     * True for the untouched example row of the template (TEMPLATE_EXAMPLE, SV3): digits compared as digits, text as
+     * trimmed text, so a reader that turned a cell into a number or added spaces still matches it.
+     *
+     * @param  array<string, mixed>  $row
+     */
+    private static function isTemplateExample(array $row): bool
+    {
+        [$name, $nis, $nisn, $birthDate, $classroom, $phone] = self::TEMPLATE_EXAMPLE;
+
+        return self::sanitize($row['name'] ?? '') === $name
+            && self::digits($row['nis'] ?? '') === $nis
+            && self::digits($row['nisn'] ?? '') === $nisn
+            && self::sanitize($row['birth_date'] ?? '') === $birthDate
+            && mb_strtoupper(str_replace(' ', '', self::sanitize($row['classroom'] ?? ''))) === $classroom
+            && self::digits($row['phone'] ?? '') === $phone;
     }
 
     private function detectDelimiter(string $path): string
