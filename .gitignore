@@ -34,3 +34,8 @@ Thumbs.db
 # AKUN-UJI.md and the seeder data file are sent separately and go into the server packages by name.
 /AKUN-UJI.md
 /database/seeders/data/akun-sekolah.php
+# Hand-over files of a second developer (SV3, 2026-11-04): passwords, the principal's data and signature, the school's
+# own letters. They stay next to the code, never in git.
+/PERUBAHAN-*.md
+/server-*/
+/*.docx

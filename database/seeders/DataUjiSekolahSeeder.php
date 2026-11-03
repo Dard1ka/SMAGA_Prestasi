@@ -96,7 +96,7 @@ class DataUjiSekolahSeeder extends Seeder
     /**
      * The local data file, or the fictional example when it is missing (a fresh clone).
      *
-     * @return array{trial_mailbox: string, trial_domain: string, staff_password: string, activated_student_password: string, staff_emails: array<string, string>}
+     * @return array{trial_mailbox: string, trial_domain: string, staff_password: string, guru_password?: string, activated_student_password: string, staff_emails: array<string, string>}
      */
     public static function data(): array
     {
@@ -125,9 +125,18 @@ class DataUjiSekolahSeeder extends Seeder
         return array_intersect_key(self::data()['staff_emails'], self::STAFF);
     }
 
+    /** The password of the six real staff accounts. */
     public static function staffPassword(): string
     {
         return self::data()['staff_password'];
+    }
+
+    /** The password of the trial guru accounts (SV3: the staff got their own; a data file without it gives both one). */
+    public static function guruPassword(): string
+    {
+        $data = self::data();
+
+        return $data['guru_password'] ?? $data['staff_password'];
     }
 
     public static function activatedStudentPassword(): string
@@ -168,7 +177,8 @@ class DataUjiSekolahSeeder extends Seeder
     {
         $now = CarbonImmutable::now();
         $realStaff = self::realStaff();
-        $password = self::staffPassword();
+        $staffPassword = self::staffPassword();
+        $guruPassword = self::guruPassword();
 
         foreach (self::STAFF as $username => [$name, $role, $honorific, $position]) {
             $user = new User;
@@ -177,7 +187,7 @@ class DataUjiSekolahSeeder extends Seeder
                 'username' => $username,
                 'email' => self::staffEmail($username, $realStaff[$username] ?? null),
                 'email_verified_at' => $now,
-                'password' => $password,
+                'password' => array_key_exists($username, $realStaff) ? $staffPassword : $guruPassword,
                 'status' => UserStatus::Active,
                 'must_change_password' => false,
                 'password_changed_at' => $now,

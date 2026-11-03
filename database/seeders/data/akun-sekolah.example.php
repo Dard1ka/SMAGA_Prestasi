@@ -14,8 +14,10 @@ return [
     'trial_mailbox' => 'uji',
     'trial_domain' => 'sth.test',
 
-    // Kata sandi awal akun staf dan siswa uji yang sudah aktivasi (siswa belum aktivasi: SMAGA_ + tanggal lahir, D-173).
+    // Kata sandi awal keenam akun staf, akun guru uji, dan siswa uji yang sudah aktivasi (siswa belum aktivasi:
+    // SMAGA_ + tanggal lahir, D-173).
     'staff_password' => 'contoh-sandi-staf',
+    'guru_password' => 'contoh-sandi-guru',
     'activated_student_password' => 'contoh-sandi-siswa',
 
     // username => email asli dari sekolah, untuk keenam akun staf.
