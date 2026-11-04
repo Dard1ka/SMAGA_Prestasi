@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# smaga_server: builds the update package for the school's server (PANDUAN-DEPLOY-SERVER.md, step 2).
+# smaga_server: builds the update package for the school's server (PANDUAN-DEPLOY-SERVER.md, part C).
 # Run from Git Bash in the smaga_server folder:   bash scripts/dev/buat-paket-server.sh
 #
 # The package = every tracked file + public/build + the two local files the server needs (AKUN-UJI.md and
@@ -17,7 +17,7 @@ fi
 
 for f in public/build/manifest.json AKUN-UJI.md database/seeders/data/akun-sekolah.php; do
     if [ ! -f "$f" ]; then
-        echo "GAGAL: $f tidak ada. Lihat PANDUAN-DEPLOY-SERVER.md bagian 2." >&2
+        echo "GAGAL: $f tidak ada. Lihat PANDUAN-DEPLOY-SERVER.md bagian C." >&2
         exit 1
     fi
 done
@@ -51,4 +51,4 @@ echo "Isi   : $(tar --force-local -tzf "$out" | wc -l) file"
 echo "Versi : $(head -1 VERSI.txt)"
 echo "SHA256: $(sha256sum "$out" | cut -d' ' -f1)"
 echo
-echo "Langkah berikutnya: PANDUAN-DEPLOY-SERVER.md bagian 3 (kirim dengan scp)."
+echo "Langkah berikutnya: PANDUAN-DEPLOY-SERVER.md bagian D (kirim dengan scp)."
