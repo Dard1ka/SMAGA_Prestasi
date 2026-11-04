@@ -48,9 +48,9 @@ beforeEach(function (): void {
     H::seedRoles();
     $this->travelTo(now()->setDate(2026, 10, 4)->setTime(9, 0));
 
-    Classroom::factory()->create(['name' => 'X-A', 'level' => 10]);
-    Classroom::factory()->level(11)->create(['name' => 'XI-D']);
-    Classroom::factory()->create(['name' => 'X-I', 'level' => 10, 'active' => false]);
+    Classroom::factory()->create(['name' => 'X-1', 'level' => 10]);
+    Classroom::factory()->level(11)->create(['name' => 'XI-4']);
+    Classroom::factory()->create(['name' => 'X-9', 'level' => 10, 'active' => false]);
 
     // An existing student whose NIS/NISN are already taken (fictional).
     Student::factory()->create(['nis' => '225226999', 'nisn' => '0011111111']);
@@ -103,17 +103,17 @@ function w1cCsv(array $rows, array $header = W1C_IMPORT_HEADER, string $delimite
 function w1cMixedRows(): array
 {
     return [
-        ['Nadia Putri Anindya', '225226201', '0098765432', '02-03-2010', 'X-A', '081234567890'],        // 2 valid
-        ['Raka Pratama', '225226202', '0098765433', '2009-11-20', 'xi-d', '+6281298765432'],            // 3 valid
-        ['=HYPERLINK("http://evil.example","klik")', '225226203', '0098765434', '01-01-2010', 'X-A', ''], // 4 formula
-        ['Salsa Maharani', '225226204', '009876543', '05-05-2010', 'X-A', ''],                            // 5 NISN 9 digits
-        ['Dimas Saputra', '225226204', '0098765435', '06-06-2010', 'X-A', ''],                             // 6 same NIS as row 5
+        ['Nadia Putri Anindya', '225226201', '0098765432', '02-03-2010', 'X-1', '081234567890'],        // 2 valid
+        ['Raka Pratama', '225226202', '0098765433', '2009-11-20', 'xi-4', '+6281298765432'],            // 3 valid
+        ['=HYPERLINK("http://evil.example","klik")', '225226203', '0098765434', '01-01-2010', 'X-1', ''], // 4 formula
+        ['Salsa Maharani', '225226204', '009876543', '05-05-2010', 'X-1', ''],                            // 5 NISN 9 digits
+        ['Dimas Saputra', '225226204', '0098765435', '06-06-2010', 'X-1', ''],                             // 6 same NIS as row 5
         ['Intan Lestari', '225226206', '0098765436', '07-07-2010', 'XIII-9', ''],                          // 7 unknown class
-        ['Bayu Nugroho', '225226207', '0098765437', '31-02-2010', 'X-A', ''],                              // 8 impossible date
-        ['Citra Ayu', '225226999', '0098765438', '08-08-2010', 'X-A', ''],                                 // 9 NIS registered with another NISN
-        ['Fajar Hidayat', '225226209', '0098765439', '09-09-2020', 'X-A', ''],                             // 10 too young
-        ['Gita Permata', '225226210', '0098765440', '10-10-2010', 'X-A', '12345'],                         // 11 bad phone
-        ['Hana Safitri', '225226211', '0098765441', '11-11-2010', 'X-I', ''],                              // 12 inactive class
+        ['Bayu Nugroho', '225226207', '0098765437', '31-02-2010', 'X-1', ''],                              // 8 impossible date
+        ['Citra Ayu', '225226999', '0098765438', '08-08-2010', 'X-1', ''],                                 // 9 NIS registered with another NISN
+        ['Fajar Hidayat', '225226209', '0098765439', '09-09-2020', 'X-1', ''],                             // 10 too young
+        ['Gita Permata', '225226210', '0098765440', '10-10-2010', 'X-1', '12345'],                         // 11 bad phone
+        ['Hana Safitri', '225226211', '0098765441', '11-11-2010', 'X-9', ''],                              // 12 inactive class
         ['', '', '', '', '', ''],                                                                            // blank, skipped
     ];
 }
@@ -133,7 +133,7 @@ it('reports valid and invalid rows in a dry run without creating anything', func
     expect($byRow[2]['errors'])->toBe([])
         ->and($byRow[2]['grade12_start_date'])->toBe('2028-07-01')
         ->and($byRow[2]['archive_at'])->toBe('2030-01-01')
-        ->and($byRow[3]['classroom'])->toBe('XI-D')
+        ->and($byRow[3]['classroom'])->toBe('XI-4')
         ->and($byRow[3]['grade12_start_date'])->toBe('2027-07-01')
         ->and($byRow[3]['archive_at'])->toBe('2029-01-01')
         ->and($byRow[4]['errors'])->toContain('Nama lengkap hanya boleh berisi huruf.')
@@ -206,7 +206,7 @@ it('creates only the valid rows as pending students with a hashed initial passwo
 
 it('strips formula trigger characters from text cells', function (): void {
     $report = app(ImportStudents::class)->handle($this->kesiswaan, w1cCsv([
-        ['@Nadia Putri Anindya', '=225226201', '+0098765432', '02-03-2010', '-X-A', ''],
+        ['@Nadia Putri Anindya', '=225226201', '+0098765432', '02-03-2010', '-X-1', ''],
     ]), 'csv', '2026/2027', dryRun: false);
 
     expect($report->validCount())->toBe(1);
@@ -214,14 +214,14 @@ it('strips formula trigger characters from text cells', function (): void {
 });
 
 it('reads semicolon CSV exports and xlsx files', function (): void {
-    $csv = w1cCsv([['Nadia Putri Anindya', '225226201', '0098765432', '02/03/2010', 'X-A', '']], W1C_IMPORT_HEADER, ';');
+    $csv = w1cCsv([['Nadia Putri Anindya', '225226201', '0098765432', '02/03/2010', 'X-1', '']], W1C_IMPORT_HEADER, ';');
     expect(app(ImportStudents::class)->handle($this->kesiswaan, $csv, 'csv', '2026/2027')->validCount())->toBe(1);
 
     $xlsx = tempnam(sys_get_temp_dir(), 'sth-import-').'.xlsx';
     $GLOBALS['w1c_tmp_files'][] = $xlsx;
     SimpleExcelWriter::create($xlsx)
         ->addHeader(W1C_IMPORT_HEADER)
-        ->addRow(['Nadia Putri Anindya', '225226201', '0098765432', '02-03-2010', 'X-A', '081234567890'])
+        ->addRow(['Nadia Putri Anindya', '225226201', '0098765432', '02-03-2010', 'X-1', '081234567890'])
         ->close();
 
     $report = app(ImportStudents::class)->handle($this->kesiswaan, $xlsx, 'xlsx', '2026/2027');
@@ -253,7 +253,7 @@ it('allows Admin and Kesiswaan only', function (): void {
 // --- M1-C (lead, 2026-10-04): the yearly file lists every student with the current class --------------------
 
 /**
- * A registered, activated student (fictional): Nadia in X-A, registered for 2026/2027
+ * A registered, activated student (fictional): Nadia in X-1, registered for 2026/2027
  * (kelas XII from 2028-07-01, archive 2030-01-01).
  *
  * @param  array<string, mixed>  $student  students columns; `kelas` = class name
@@ -261,7 +261,7 @@ it('allows Admin and Kesiswaan only', function (): void {
  */
 function m1cRegistered(array $student = [], array $user = []): Student
 {
-    $classroom = Classroom::query()->where('name', $student['kelas'] ?? 'X-A')->firstOrFail();
+    $classroom = Classroom::query()->where('name', $student['kelas'] ?? 'X-1')->firstOrFail();
     unset($student['kelas']);
 
     $created = Student::factory()->create([
@@ -311,10 +311,10 @@ function m1cAccount(Student $student): array
 
 it('still reads the old class header "Kelas saat pendaftaran"', function (): void {
     $old = ['Nama lengkap', 'NIS', 'NISN', 'Tanggal lahir', 'Kelas saat pendaftaran', 'No HP'];
-    $report = app(ImportStudents::class)->handle($this->kesiswaan, w1cCsv([['Nadia Putri Anindya', '225226201', '0098765432', '02-03-2010', 'X-A', '']], $old), 'csv', '2026/2027');
+    $report = app(ImportStudents::class)->handle($this->kesiswaan, w1cCsv([['Nadia Putri Anindya', '225226201', '0098765432', '02-03-2010', 'X-1', '']], $old), 'csv', '2026/2027');
 
     expect($report->validCount())->toBe(1)
-        ->and($report->rows[0])->toMatchArray(['classroom' => 'X-A', 'action' => StudentImportReport::NEW]);
+        ->and($report->rows[0])->toMatchArray(['classroom' => 'X-1', 'action' => StudentImportReport::NEW]);
 });
 
 it('moves a registered student to the class in the file and leaves the account alone', function (): void {
@@ -323,8 +323,8 @@ it('moves a registered student to the class in the file and leaves the account a
     $version = (int) Cache::get(PublicAchievements::VERSION_KEY, 1);
 
     $path = w1cCsv([
-        m1cNadiaRow('XI-D'),
-        ['Raka Pratama', '225226202', '0098765433', '20-11-2011', 'X-A', ''],
+        m1cNadiaRow('XI-4'),
+        ['Raka Pratama', '225226202', '0098765433', '20-11-2011', 'X-1', ''],
     ]);
 
     // The dry run shows what will happen and writes nothing.
@@ -333,8 +333,8 @@ it('moves a registered student to the class in the file and leaves the account a
     expect($preview->summary())->toBe(['new' => 1, 'moved' => 1, 'unchanged' => 0, 'skipped' => 0, 'rejected' => 0])
         ->and($preview->rows[0])->toMatchArray([
             'action' => StudentImportReport::MOVED,
-            'previous_classroom' => 'X-A',
-            'classroom' => 'XI-D',
+            'previous_classroom' => 'X-1',
+            'classroom' => 'XI-4',
             'errors' => [],
             'notes' => [],
             'changes' => true,
@@ -342,7 +342,7 @@ it('moves a registered student to the class in the file and leaves the account a
             'grade12_start_date' => '2028-07-01',
             'archive_at' => '2030-01-01',
         ])
-        ->and($nadia->refresh()->classroom->name)->toBe('X-A')
+        ->and($nadia->refresh()->classroom->name)->toBe('X-1')
         ->and(Activity::query()->whereIn('event', ['student.class_changed', 'student.import'])->count())->toBe(0)
         ->and(Student::query()->where('nis', '225226202')->exists())->toBeFalse();
 
@@ -351,7 +351,7 @@ it('moves a registered student to the class in the file and leaves the account a
 
     expect($report->created)->toBe(1)
         ->and($report->moved)->toBe(1)
-        ->and($nadia->classroom->name)->toBe('XI-D')
+        ->and($nadia->classroom->name)->toBe('XI-4')
         ->and($nadia->import_school_year)->toBe('2027/2028')
         ->and($nadia->grade12_start_date->format('Y-m-d'))->toBe('2028-07-01')
         ->and($nadia->archive_at->format('Y-m-d'))->toBe('2030-01-01')
@@ -364,8 +364,8 @@ it('moves a registered student to the class in the file and leaves the account a
     expect($log->log_name)->toBe('student')
         ->and($log->subject_id)->toBe($nadia->getKey())
         ->and($log->causer_id)->toBe($this->kesiswaan->getKey())
-        ->and($log->properties['from'])->toBe(['classroom' => 'X-A', 'school_year' => '2026/2027', 'grade12_start_date' => '2028-07-01', 'archive_at' => '2030-01-01'])
-        ->and($log->properties['to'])->toBe(['classroom' => 'XI-D', 'school_year' => '2027/2028', 'grade12_start_date' => '2028-07-01', 'archive_at' => '2030-01-01'])
+        ->and($log->properties['from'])->toBe(['classroom' => 'X-1', 'school_year' => '2026/2027', 'grade12_start_date' => '2028-07-01', 'archive_at' => '2030-01-01'])
+        ->and($log->properties['to'])->toBe(['classroom' => 'XI-4', 'school_year' => '2027/2028', 'grade12_start_date' => '2028-07-01', 'archive_at' => '2030-01-01'])
         ->and($log->properties['phone_updated'])->toBeFalse()
         ->and($log->properties['file_sha256'])->toHaveLength(64)
         // No personal data in the audit entry: no name, no NIS/NISN, no birth date.
@@ -377,7 +377,7 @@ it('moves a registered student to the class in the file and leaves the account a
 
 it('changes nothing when the same file is imported again', function (): void {
     $nadia = m1cRegistered();
-    $path = w1cCsv([m1cNadiaRow('XI-D'), ['Raka Pratama', '225226202', '0098765433', '20-11-2011', 'X-A', '']]);
+    $path = w1cCsv([m1cNadiaRow('XI-4'), ['Raka Pratama', '225226202', '0098765433', '20-11-2011', 'X-1', '']]);
 
     app(ImportStudents::class)->handle($this->kesiswaan, $path, 'csv', '2027/2028', dryRun: false);
     $again = app(ImportStudents::class)->handle($this->kesiswaan, $path, 'csv', '2027/2028', dryRun: false);
@@ -389,14 +389,14 @@ it('changes nothing when the same file is imported again', function (): void {
         ->and(array_column($again->rows, 'notes'))->toBe([[], []])
         ->and(Student::query()->count())->toBe(3) // the fixture student, Nadia, Raka
         ->and(Activity::query()->where('event', 'student.class_changed')->count())->toBe(1)
-        ->and($nadia->refresh()->classroom->name)->toBe('XI-D');
+        ->and($nadia->refresh()->classroom->name)->toBe('XI-4');
 });
 
 it('corrects the archive date of a student who repeats a year', function (): void {
     $nadia = m1cRegistered();
 
     // Still kelas X one school year later: kelas XII starts a year later, so does the archive date.
-    $report = app(ImportStudents::class)->handle($this->kesiswaan, w1cCsv([m1cNadiaRow('X-A')]), 'csv', '2027/2028', dryRun: false);
+    $report = app(ImportStudents::class)->handle($this->kesiswaan, w1cCsv([m1cNadiaRow('X-1')]), 'csv', '2027/2028', dryRun: false);
     $nadia->refresh();
 
     expect($report->rows[0])->toMatchArray([
@@ -408,7 +408,7 @@ it('corrects the archive date of a student who repeats a year', function (): voi
         'archive_at' => '2031-01-01',
     ])
         ->and($report->moved)->toBe(0)
-        ->and($nadia->classroom->name)->toBe('X-A')
+        ->and($nadia->classroom->name)->toBe('X-1')
         ->and($nadia->import_school_year)->toBe('2027/2028')
         ->and($nadia->grade12_start_date->format('Y-m-d'))->toBe('2029-07-01')
         ->and($nadia->archive_at->format('Y-m-d'))->toBe('2031-01-01');
@@ -420,17 +420,17 @@ it('corrects the archive date of a student who repeats a year', function (): voi
 });
 
 it('corrects a student who was registered in the wrong class', function (): void {
-    // Registered as XI-D by mistake (kelas XII 2027, archive 2029); the right class is X-A.
-    $nadia = m1cRegistered(['kelas' => 'XI-D']);
+    // Registered as XI-4 by mistake (kelas XII 2027, archive 2029); the right class is X-1.
+    $nadia = m1cRegistered(['kelas' => 'XI-4']);
 
     expect($nadia->archive_at->format('Y-m-d'))->toBe('2029-01-01');
 
-    $report = app(ImportStudents::class)->handle($this->kesiswaan, w1cCsv([m1cNadiaRow('X-A')]), 'csv', '2026/2027', dryRun: false);
+    $report = app(ImportStudents::class)->handle($this->kesiswaan, w1cCsv([m1cNadiaRow('X-1')]), 'csv', '2026/2027', dryRun: false);
     $nadia->refresh();
 
-    expect($report->rows[0])->toMatchArray(['action' => StudentImportReport::MOVED, 'previous_classroom' => 'XI-D', 'notes' => ['Tanggal arsip dikoreksi: Jan 2029 → Jan 2030.']])
+    expect($report->rows[0])->toMatchArray(['action' => StudentImportReport::MOVED, 'previous_classroom' => 'XI-4', 'notes' => ['Tanggal arsip dikoreksi: Jan 2029 → Jan 2030.']])
         ->and($report->moved)->toBe(1)
-        ->and($nadia->classroom->name)->toBe('X-A')
+        ->and($nadia->classroom->name)->toBe('X-1')
         ->and($nadia->grade12_start_date->format('Y-m-d'))->toBe('2028-07-01')
         ->and($nadia->archive_at->format('Y-m-d'))->toBe('2030-01-01');
 });
@@ -439,11 +439,11 @@ it('refuses a row when only the NIS or only the NISN belongs to a registered stu
     $nadia = m1cRegistered();
 
     $report = app(ImportStudents::class)->handle($this->kesiswaan, w1cCsv([
-        ['Nadia Putri Anindya', '225226201', '0098765499', '02-03-2010', 'XI-D', ''], // 2 her NIS, another NISN
-        ['Nadia Putri Anindya', '225226299', '0098765432', '02-03-2010', 'XI-D', ''], // 3 another NIS, her NISN
-        ['Citra Ayu', '225226999', '0098765432', '08-08-2010', 'XI-D', ''],           // 4 NIS and NISN of two students (also NISN dobel)
-        ['Dimas Saputra', '0011111111', '0098765450', '06-06-2010', 'X-A', ''],       // 5 new NIS = another student's NISN: accepted since D-137
-        ['Gita Permata', '225226777', '0225226999', '10-10-2010', 'X-A', ''],         // 6 unknown numbers: new
+        ['Nadia Putri Anindya', '225226201', '0098765499', '02-03-2010', 'XI-4', ''], // 2 her NIS, another NISN
+        ['Nadia Putri Anindya', '225226299', '0098765432', '02-03-2010', 'XI-4', ''], // 3 another NIS, her NISN
+        ['Citra Ayu', '225226999', '0098765432', '08-08-2010', 'XI-4', ''],           // 4 NIS and NISN of two students (also NISN dobel)
+        ['Dimas Saputra', '0011111111', '0098765450', '06-06-2010', 'X-1', ''],       // 5 new NIS = another student's NISN: accepted since D-137
+        ['Gita Permata', '225226777', '0225226999', '10-10-2010', 'X-1', ''],         // 6 unknown numbers: new
     ]), 'csv', '2027/2028', dryRun: false);
 
     $byRow = collect($report->rows)->keyBy('row');
@@ -455,7 +455,7 @@ it('refuses a row when only the NIS or only the NISN belongs to a registered stu
         ->and($byRow[6]['errors'])->toBe([])
         ->and($report->summary())->toMatchArray(['new' => 2, 'moved' => 0, 'rejected' => 3])
         ->and($report->created)->toBe(2)
-        ->and($nadia->refresh()->classroom->name)->toBe('X-A')
+        ->and($nadia->refresh()->classroom->name)->toBe('X-1')
         ->and(Activity::query()->where('event', 'student.class_changed')->count())->toBe(0);
 });
 
@@ -464,7 +464,7 @@ it('never overwrites the name or the birth date of a registered student', functi
     $before = m1cAccount($nadia);
 
     $report = app(ImportStudents::class)->handle($this->kesiswaan, w1cCsv([
-        ['Nadia P Anindya', '225226201', '0098765432', '03-03-2010', 'XI-D', ''],
+        ['Nadia P Anindya', '225226201', '0098765432', '03-03-2010', 'XI-4', ''],
     ]), 'csv', '2027/2028', dryRun: false);
 
     expect($report->rows[0])->toMatchArray([
@@ -472,7 +472,7 @@ it('never overwrites the name or the birth date of a registered student', functi
         'errors' => [],
         'notes' => ['Nama dan tanggal lahir berbeda dari data lama, tidak diubah.'],
     ])
-        ->and($nadia->refresh()->classroom->name)->toBe('XI-D')
+        ->and($nadia->refresh()->classroom->name)->toBe('XI-4')
         ->and(m1cAccount($nadia))->toBe($before);
 });
 
@@ -483,11 +483,11 @@ it('compares names without case and ignores blank or unreadable cells of a regis
 
     expect($report->rows[0])->toMatchArray(['action' => StudentImportReport::MOVED, 'errors' => [], 'notes' => $notes]);
 })->with([
-    'same name, other case and spaces' => [['NADIA  putri anindya', '225226201', '0098765432', '2010-03-02', 'XI-D', ''], []],
-    'blank name and birth date' => [['', '225226201', '0098765432', '', 'XI-D', ''], []],
-    'other name only' => [['Nadia Anindya', '225226201', '0098765432', '02-03-2010', 'XI-D', ''], ['Nama berbeda dari data lama, tidak diubah.']],
-    'unreadable birth date' => [['Nadia Putri Anindya', '225226201', '0098765432', '31-02-2010', 'XI-D', ''], ['Tanggal lahir berbeda dari data lama, tidak diubah.']],
-    'birth date outside 13–21 is not checked' => [['Nadia Putri Anindya', '225226201', '0098765432', '02-03-2020', 'XI-D', ''], ['Tanggal lahir berbeda dari data lama, tidak diubah.']],
+    'same name, other case and spaces' => [['NADIA  putri anindya', '225226201', '0098765432', '2010-03-02', 'XI-4', ''], []],
+    'blank name and birth date' => [['', '225226201', '0098765432', '', 'XI-4', ''], []],
+    'other name only' => [['Nadia Anindya', '225226201', '0098765432', '02-03-2010', 'XI-4', ''], ['Nama berbeda dari data lama, tidak diubah.']],
+    'unreadable birth date' => [['Nadia Putri Anindya', '225226201', '0098765432', '31-02-2010', 'XI-4', ''], ['Tanggal lahir berbeda dari data lama, tidak diubah.']],
+    'birth date outside 13–21 is not checked' => [['Nadia Putri Anindya', '225226201', '0098765432', '02-03-2020', 'XI-4', ''], ['Tanggal lahir berbeda dari data lama, tidak diubah.']],
 ]);
 
 it('skips an alumni account with a note and refuses a deleted one', function (): void {
@@ -496,8 +496,8 @@ it('skips an alumni account with a note and refuses a deleted one', function ():
     $deleted->delete();
 
     $report = app(ImportStudents::class)->handle($this->kesiswaan, w1cCsv([
-        m1cNadiaRow('XI-D', '081234567890'),
-        ['Gita Permata', '225226210', '0098765440', '10-10-2010', 'XI-D', ''],
+        m1cNadiaRow('XI-4', '081234567890'),
+        ['Gita Permata', '225226210', '0098765440', '10-10-2010', 'XI-4', ''],
     ]), 'csv', '2027/2028', dryRun: false);
 
     expect($report->rows[0])->toMatchArray([
@@ -512,7 +512,7 @@ it('skips an alumni account with a note and refuses a deleted one', function ():
         ->and($report->summary())->toBe(['new' => 0, 'moved' => 0, 'unchanged' => 0, 'skipped' => 1, 'rejected' => 1])
         ->and($report->created)->toBe(0)
         ->and($report->moved)->toBe(0)
-        ->and($alumni->refresh()->classroom->name)->toBe('X-A')
+        ->and($alumni->refresh()->classroom->name)->toBe('X-1')
         ->and($alumni->phone)->toBeNull()
         ->and($alumni->user->status)->toBe(UserStatus::Archived)
         ->and(Activity::query()->whereIn('event', ['student.class_changed', 'student.phone_updated'])->count())->toBe(0);
@@ -521,10 +521,10 @@ it('skips an alumni account with a note and refuses a deleted one', function ():
 it('updates the class of a disabled account without enabling it', function (): void {
     $nadia = m1cRegistered([], ['status' => UserStatus::Disabled]);
 
-    $report = app(ImportStudents::class)->handle($this->kesiswaan, w1cCsv([m1cNadiaRow('XI-D')]), 'csv', '2027/2028', dryRun: false);
+    $report = app(ImportStudents::class)->handle($this->kesiswaan, w1cCsv([m1cNadiaRow('XI-4')]), 'csv', '2027/2028', dryRun: false);
 
     expect($report->rows[0])->toMatchArray(['action' => StudentImportReport::MOVED, 'notes' => ['Akun ini nonaktif dan tetap nonaktif.']])
-        ->and($nadia->refresh()->classroom->name)->toBe('XI-D')
+        ->and($nadia->refresh()->classroom->name)->toBe('XI-4')
         ->and($nadia->user->status)->toBe(UserStatus::Disabled);
 });
 
@@ -532,7 +532,7 @@ it('stores the phone number when the file has one and keeps it when the cell is 
     $nadia = m1cRegistered();
 
     // Same class and school year: only the phone number is new.
-    $report = app(ImportStudents::class)->handle($this->kesiswaan, w1cCsv([m1cNadiaRow('X-A', '081234567890')]), 'csv', '2026/2027', dryRun: false);
+    $report = app(ImportStudents::class)->handle($this->kesiswaan, w1cCsv([m1cNadiaRow('X-1', '081234567890')]), 'csv', '2026/2027', dryRun: false);
 
     expect($report->rows[0])->toMatchArray(['action' => StudentImportReport::UNCHANGED, 'notes' => ['No HP diperbarui.'], 'changes' => true])
         ->and($report->moved)->toBe(0)
@@ -545,29 +545,29 @@ it('stores the phone number when the file has one and keeps it when the cell is 
         ->and(json_encode($report->rows))->not->toContain('0812')
         ->and(Activity::query()->where('event', 'student.class_changed')->count())->toBe(0);
 
-    $again = app(ImportStudents::class)->handle($this->kesiswaan, w1cCsv([m1cNadiaRow('X-A')]), 'csv', '2026/2027', dryRun: false);
+    $again = app(ImportStudents::class)->handle($this->kesiswaan, w1cCsv([m1cNadiaRow('X-1')]), 'csv', '2026/2027', dryRun: false);
 
     expect($again->rows[0])->toMatchArray(['action' => StudentImportReport::UNCHANGED, 'notes' => [], 'changes' => false])
         ->and($nadia->refresh()->phone)->toBe('081234567890');
 });
 
 it('refuses an update with an unknown class, a bad phone number or an archive date that has passed', function (): void {
-    Classroom::factory()->level(12)->create(['name' => 'XII-A']);
+    Classroom::factory()->level(12)->create(['name' => 'XII-1']);
     $nadia = m1cRegistered();
     $importer = app(ImportStudents::class);
 
     $unknown = $importer->handle($this->kesiswaan, w1cCsv([m1cNadiaRow('XIII-9')]), 'csv', '2027/2028', dryRun: false);
-    $inactive = $importer->handle($this->kesiswaan, w1cCsv([m1cNadiaRow('X-I')]), 'csv', '2027/2028', dryRun: false);
-    $phone = $importer->handle($this->kesiswaan, w1cCsv([m1cNadiaRow('XI-D', '12345')]), 'csv', '2027/2028', dryRun: false);
+    $inactive = $importer->handle($this->kesiswaan, w1cCsv([m1cNadiaRow('X-9')]), 'csv', '2027/2028', dryRun: false);
+    $phone = $importer->handle($this->kesiswaan, w1cCsv([m1cNadiaRow('XI-4', '12345')]), 'csv', '2027/2028', dryRun: false);
     // Kelas XII in 2024/2025 would mean an archive date of January 2026: already gone (today is 4 Oct 2026).
-    $past = $importer->handle($this->kesiswaan, w1cCsv([m1cNadiaRow('XII-A')]), 'csv', '2024/2025', dryRun: false);
+    $past = $importer->handle($this->kesiswaan, w1cCsv([m1cNadiaRow('XII-1')]), 'csv', '2024/2025', dryRun: false);
 
     expect($unknown->rows[0]['errors'])->toBe(['Kelas tidak ditemukan.'])
         ->and($inactive->rows[0]['errors'])->toBe(['Kelas tidak ditemukan.'])
         ->and($phone->rows[0]['errors'])->toBe(['No HP tidak valid (contoh 0812…).'])
         ->and($past->rows[0]['errors'])->toBe(['Tanggal arsip dari kelas dan tahun ajaran ini sudah lewat. Periksa tahun ajaran dan kelasnya.'])
         ->and($past->rows[0])->toMatchArray(['action' => StudentImportReport::REJECTED, 'archive_at' => null, 'changes' => false])
-        ->and($nadia->refresh()->classroom->name)->toBe('X-A')
+        ->and($nadia->refresh()->classroom->name)->toBe('X-1')
         ->and($nadia->archive_at->format('Y-m-d'))->toBe('2030-01-01')
         ->and(Activity::query()->where('event', 'student.class_changed')->count())->toBe(0);
 });
@@ -575,16 +575,16 @@ it('refuses an update with an unknown class, a bad phone number or an archive da
 it('refuses two rows for the same registered student', function (): void {
     $nadia = m1cRegistered();
 
-    $report = app(ImportStudents::class)->handle($this->kesiswaan, w1cCsv([m1cNadiaRow('XI-D'), m1cNadiaRow('X-A')]), 'csv', '2027/2028', dryRun: false);
+    $report = app(ImportStudents::class)->handle($this->kesiswaan, w1cCsv([m1cNadiaRow('XI-4'), m1cNadiaRow('X-1')]), 'csv', '2027/2028', dryRun: false);
 
     expect($report->rows[0]['errors'])->toBe(['NIS dobel di file ini.', 'NISN dobel di file ini.'])
         ->and($report->summary()['rejected'])->toBe(2)
-        ->and($nadia->refresh()->classroom->name)->toBe('X-A');
+        ->and($nadia->refresh()->classroom->name)->toBe('X-1');
 });
 
 it('lets nobody without student.import move a class', function (): void {
     $nadia = m1cRegistered();
-    $path = w1cCsv([m1cNadiaRow('XI-D')]);
+    $path = w1cCsv([m1cNadiaRow('XI-4')]);
 
     foreach ([RoleName::Guru, RoleName::TataUsaha, RoleName::Humas, RoleName::KepalaSekolah] as $role) {
         expect(fn () => app(ImportStudents::class)->handle(H::staff($role), $path, 'csv', '2027/2028', dryRun: false))
@@ -592,7 +592,7 @@ it('lets nobody without student.import move a class', function (): void {
     }
 
     expect(fn () => app(ImportStudents::class)->importSlice($nadia->user, $path, 'csv', '2027/2028', 0, 10))->toThrow(AuthorizationException::class)
-        ->and($nadia->refresh()->classroom->name)->toBe('X-A');
+        ->and($nadia->refresh()->classroom->name)->toBe('X-1');
 });
 
 it('moves classes through the queued job exactly like the synchronous import', function (): void {
@@ -600,9 +600,9 @@ it('moves classes through the queued job exactly like the synchronous import', f
     $before = m1cAccount($nadia);
     $csv = implode("\n", [
         implode(',', W1C_IMPORT_HEADER),
-        'Nadia Putri Anindya,225226201,0098765432,02-03-2010,XI-D,',
-        'Raka Pratama,225226202,0098765433,20-11-2011,X-A,',
-        'Salsa Maharani,225226204,009876543,05-05-2011,X-A,', // NISN 9 digits
+        'Nadia Putri Anindya,225226201,0098765432,02-03-2010,XI-4,',
+        'Raka Pratama,225226202,0098765433,20-11-2011,X-1,',
+        'Salsa Maharani,225226204,009876543,05-05-2011,X-1,', // NISN 9 digits
     ])."\n";
 
     $file = app(StoreUpload::class)->storeSpreadsheet(UploadedFile::fake()->createWithContent('data-siswa.csv', $csv), $this->kesiswaan);
@@ -627,7 +627,7 @@ it('moves classes through the queued job exactly like the synchronous import', f
         ->and($import->invalid_rows)->toBe(1)
         ->and($import->created_count)->toBe(1)
         ->and($import->updated_count)->toBe(1)
-        ->and($nadia->classroom->name)->toBe('XI-D')
+        ->and($nadia->classroom->name)->toBe('XI-4')
         ->and($nadia->archive_at->format('Y-m-d'))->toBe('2030-01-01')
         ->and(m1cAccount($nadia))->toBe($before)
         ->and(Activity::query()->where('event', 'student.class_changed')->count())->toBe(1)
@@ -635,7 +635,7 @@ it('moves classes through the queued job exactly like the synchronous import', f
         ->toMatchArray(['rows' => 3, 'created' => 1, 'moved' => 1, 'invalid' => 1, 'file_sha256' => $import->file_sha256]);
 
     // A second slice run over the same rows (retry) moves nobody twice.
-    $retry = app(ImportStudents::class)->importSlice($this->kesiswaan, w1cCsv([m1cNadiaRow('XI-D')]), 'csv', '2027/2028', 0, 10);
+    $retry = app(ImportStudents::class)->importSlice($this->kesiswaan, w1cCsv([m1cNadiaRow('XI-4')]), 'csv', '2027/2028', 0, 10);
 
     expect($retry)->toMatchArray(['rows' => 1, 'valid' => 1, 'invalid' => 0, 'created' => 0, 'moved' => 0])
         ->and(Activity::query()->where('event', 'student.class_changed')->count())->toBe(1);
@@ -693,10 +693,10 @@ it('previews baru, pindah kelas, tidak berubah and ditolak, then imports without
 
     $csv = implode("\n", [
         implode(';', W1C_IMPORT_HEADER),
-        'Nadia Putri Anindya;225226201;0098765432;02-03-2010;XI-D;',  // moved (and the dates follow the class)
-        'Gita Permata;225226210;0098765440;10-10-2010;X-A;',           // unchanged
-        'Raka Pratama;225226202;0098765433;20-11-2011;X-A;',           // new
-        'Galang Putra Mahendra;225226204;0098765435;31-02-2011;X-A;',  // rejected
+        'Nadia Putri Anindya;225226201;0098765432;02-03-2010;XI-4;',  // moved (and the dates follow the class)
+        'Gita Permata;225226210;0098765440;10-10-2010;X-1;',           // unchanged
+        'Raka Pratama;225226202;0098765433;20-11-2011;X-1;',           // new
+        'Galang Putra Mahendra;225226204;0098765435;31-02-2011;X-1;',  // rejected
     ])."\n";
 
     $screen = Livewire::actingAs($this->kesiswaan)->test(ImportSiswa::class)
@@ -709,7 +709,7 @@ it('previews baru, pindah kelas, tidak berubah and ditolak, then imports without
         ->assertSee('Pindah kelas')
         ->assertSee('Tidak berubah')
         ->assertSee('Ditolak')
-        ->assertSee('X-A → XI-D')
+        ->assertSee('X-1 → XI-4')
         ->assertSee('Tanggal arsip dikoreksi: Jan 2030 → Jan 2029.')
         // Many of these would mean a wrong school year: the screen says how many archive dates move.
         ->assertViewHas('archiveCorrections', 1)
@@ -718,7 +718,7 @@ it('previews baru, pindah kelas, tidak berubah and ditolak, then imports without
         ->assertSee('Impor 2 siswa')
         ->assertDontSee('sm4g4');
 
-    expect($nadia->refresh()->classroom->name)->toBe('X-A')
+    expect($nadia->refresh()->classroom->name)->toBe('X-1')
         ->and(Student::query()->where('nis', '225226202')->exists())->toBeFalse();
 
     // Rows with a note can be listed on their own.
@@ -737,7 +737,7 @@ it('previews baru, pindah kelas, tidak berubah and ditolak, then imports without
         ->assertSee('Buat 1 akun siswa dan pindahkan 1 siswa ke kelas di file.')
         ->assertDontSee('sekarang?');
 
-    expect($nadia->refresh()->classroom->name)->toBe('X-A');
+    expect($nadia->refresh()->classroom->name)->toBe('X-1');
 
     $screen->call('import')
         ->assertHasNoErrors()
@@ -745,9 +745,9 @@ it('previews baru, pindah kelas, tidak berubah and ditolak, then imports without
         ->assertSee('1 baris ditolak dan belum diimpor.')
         ->assertDontSee('sm4g4');
 
-    expect($nadia->refresh()->classroom->name)->toBe('XI-D')
+    expect($nadia->refresh()->classroom->name)->toBe('XI-4')
         ->and(m1cAccount($nadia))->toBe($before)
-        ->and($gita->refresh()->classroom->name)->toBe('X-A')
+        ->and($gita->refresh()->classroom->name)->toBe('X-1')
         ->and(Student::query()->where('nis', '225226202')->exists())->toBeTrue()
         ->and(Student::query()->where('nis', '225226204')->exists())->toBeFalse();
 });
@@ -757,13 +757,13 @@ it('queues the yearly file by the number of rows to write, not by the rows that 
     Queue::fake();
     session(['auth.password_confirmed_at' => time()]); // QA9: the import needs a recent password confirmation
 
-    // More registered students than the synchronous limit, all already in X-A: nothing to write, nothing queued.
+    // More registered students than the synchronous limit, all already in X-1: nothing to write, nothing queued.
     $lines = [implode(',', W1C_IMPORT_HEADER)];
-    $kelas = Classroom::query()->where('name', 'X-A')->value('id');
+    $kelas = Classroom::query()->where('name', 'X-1')->value('id');
 
     foreach (range(1, ImportStudentsJob::SYNC_MAX_ROWS + 10) as $i) {
         $student = Student::factory()->create(['nis' => sprintf('2252%05d', $i), 'nisn' => sprintf('00%08d', $i), 'classroom_id' => $kelas]);
-        $lines[] = sprintf('Siswa Uji,%s,%s,,X-A,', $student->nis, $student->nisn);
+        $lines[] = sprintf('Siswa Uji,%s,%s,,X-1,', $student->nis, $student->nisn);
     }
 
     Livewire::actingAs($this->kesiswaan)->test(ImportSiswa::class)
@@ -814,7 +814,7 @@ it('shows the students who moved class in the progress of a queued import', func
 it('names the archive months the Admin set, not a fixed 18 (QA8)', function (): void {
     $this->withoutVite();
     Setting::put(SettingKey::ArchiveMonthsAfterGrade12, 12);
-    $csv = implode("\n", [implode(',', W1C_IMPORT_HEADER), 'Raka Pratama,225226202,0098765433,20-11-2011,X-A,'])."\n";
+    $csv = implode("\n", [implode(',', W1C_IMPORT_HEADER), 'Raka Pratama,225226202,0098765433,20-11-2011,X-1,'])."\n";
 
     Livewire::actingAs($this->kesiswaan)->test(ImportSiswa::class)
         ->set('schoolYear', '2026/2027')
@@ -854,7 +854,7 @@ it('builds the password from every accepted date format of a CSV (D-173)', funct
     ];
 
     $report = app(ImportStudents::class)->handle($this->kesiswaan, w1cCsv(array_map(
-        fn (array $r): array => ['Siswa Uji', $r[0], $r[1], $r[2], 'X-A', ''],
+        fn (array $r): array => ['Siswa Uji', $r[0], $r[1], $r[2], 'X-1', ''],
         $rows,
     )), 'csv', '2026/2027', dryRun: false);
 
@@ -881,12 +881,12 @@ it('builds the password from an Excel date cell and from a plain Excel serial nu
         ->addHeader(W1C_IMPORT_HEADER)
         // A date cell as Excel keeps a typed date: a serial with a date format, which the reader gives back as a DateTime.
         ->addRow(Row::fromValuesWithStyles(
-            ['Siswa Tanggal', '226227111', '0101234111', new DateTimeImmutable('2010-03-04 00:00:00', new DateTimeZone('Asia/Jakarta')), 'X-A', ''],
+            ['Siswa Tanggal', '226227111', '0101234111', new DateTimeImmutable('2010-03-04 00:00:00', new DateTimeZone('Asia/Jakarta')), 'X-1', ''],
             null,
             [3 => (new Style)->setFormat('dd-mm-yyyy')],
         ))
         // A plain number cell holding the serial (no date format): the reader gives the number.
-        ->addRow(['Siswa Serial', '226227112', '0101234112', $serial, 'X-A', ''])
+        ->addRow(['Siswa Serial', '226227112', '0101234112', $serial, 'X-1', ''])
         ->close();
 
     // Both paths of the reader are really taken.
@@ -917,7 +917,7 @@ it('reads a date typed into the Text column of the template as DD-MM-YYYY, day f
     SimpleExcelWriter::create($xlsx)
         ->addHeader(W1C_IMPORT_HEADER)
         ->addRow(Row::fromValuesWithStyles(
-            ['Siswa Teks', '226227113', '0101234113', '01-02-2010', 'X-A', ''],
+            ['Siswa Teks', '226227113', '0101234113', '01-02-2010', 'X-1', ''],
             null,
             [3 => (new Style)->setFormat('@')],
         ))
@@ -936,8 +936,8 @@ it('reads a date typed into the Text column of the template as DD-MM-YYYY, day f
 
 it('gives two new students with one birth date the same password (accepted by the lead, D-173)', function (): void {
     app(ImportStudents::class)->handle($this->kesiswaan, w1cCsv([
-        ['Siswa Kembar Satu', '226227121', '0101234121', '01-02-2010', 'X-A', ''],
-        ['Siswa Kembar Dua', '226227122', '0101234122', '1-2-2010', 'xi-d', ''],
+        ['Siswa Kembar Satu', '226227121', '0101234121', '01-02-2010', 'X-1', ''],
+        ['Siswa Kembar Dua', '226227122', '0101234122', '1-2-2010', 'xi-4', ''],
     ]), 'csv', '2026/2027', dryRun: false);
 
     $first = Student::query()->where('nisn', '0101234121')->sole()->user->password;
@@ -961,7 +961,7 @@ it('never touches the password of a registered student on a re-import (D-173)', 
     ]);
     $before = m1cAccount($nadia);
 
-    app(ImportStudents::class)->handle($this->kesiswaan, w1cCsv([m1cNadiaRow('X-A', '081234567890')]), 'csv', '2026/2027', dryRun: false);
+    app(ImportStudents::class)->handle($this->kesiswaan, w1cCsv([m1cNadiaRow('X-1', '081234567890')]), 'csv', '2026/2027', dryRun: false);
 
     $hash = User::query()->findOrFail($nadia->user_id)->password;
     expect(m1cAccount($nadia))->toBe($before)
@@ -972,8 +972,8 @@ it('never touches the password of a registered student on a re-import (D-173)', 
 it('builds the birth-date password through the queued job too (D-173)', function (): void {
     $csv = implode("\n", [
         implode(',', W1C_IMPORT_HEADER),
-        'Raka Pratama,225226202,0098765433,20-11-2011,X-A,',
-        'Salsa Maharani,225226204,0098765434,2010-05-05,X-A,',
+        'Raka Pratama,225226202,0098765433,20-11-2011,X-1,',
+        'Salsa Maharani,225226204,0098765434,2010-05-05,X-1,',
     ])."\n";
 
     $file = app(StoreUpload::class)->storeSpreadsheet(UploadedFile::fake()->createWithContent('data-siswa.csv', $csv), $this->kesiswaan);
@@ -1020,7 +1020,7 @@ it('keeps every initial password out of the report, the audit log and every log 
 
 it('accepts a new NIS that equals another student NISN, and the login still finds the NISN owner (D-137)', function (): void {
     app(ImportStudents::class)->handle($this->kesiswaan, w1cCsv([
-        ['Dimas Saputra', '0011111111', '0098765450', '06-06-2010', 'X-A', ''],
+        ['Dimas Saputra', '0011111111', '0098765450', '06-06-2010', 'X-1', ''],
     ]), 'csv', '2026/2027', dryRun: false);
 
     $owner = Student::query()->where('nisn', '0011111111')->sole();
@@ -1032,8 +1032,8 @@ it('accepts a new NIS that equals another student NISN, and the login still find
 
 it('counts NIS and NISN duplicates per column inside the file', function (): void {
     $report = app(ImportStudents::class)->handle($this->kesiswaan, w1cCsv([
-        ['Dimas Saputra', '0098765460', '0098765461', '06-06-2010', 'X-A', ''],
-        ['Intan Lestari', '225226290', '0098765460', '07-07-2010', 'X-A', ''],
+        ['Dimas Saputra', '0098765460', '0098765461', '06-06-2010', 'X-1', ''],
+        ['Intan Lestari', '225226290', '0098765460', '07-07-2010', 'X-1', ''],
     ]), 'csv', '2026/2027');
 
     expect(collect($report->rows)->pluck('errors')->all())->toBe([[], []])
@@ -1126,7 +1126,7 @@ it('skips the untouched example row and imports the students below it (SV3)', fu
     SimpleExcelWriter::create($xlsx)
         ->addHeader(ImportStudents::TEMPLATE_HEADER)
         ->addRow(ImportStudents::TEMPLATE_EXAMPLE)
-        ->addRow(['Raka Pratama', '225226202', '0098765433', '20-11-2009', 'X-A', ''])
+        ->addRow(['Raka Pratama', '225226202', '0098765433', '20-11-2009', 'X-1', ''])
         ->close();
 
     $report = app(ImportStudents::class)->handle($this->kesiswaan, $xlsx, 'xlsx', '2026/2027');
@@ -1137,7 +1137,7 @@ it('skips the untouched example row and imports the students below it (SV3)', fu
 });
 
 it('still accepts the old template header, and a CSV with the new one (SV3)', function (): void {
-    $row = ['Raka Pratama', '225226202', '0098765433', '20-11-2009', 'X-A', ''];
+    $row = ['Raka Pratama', '225226202', '0098765433', '20-11-2009', 'X-1', ''];
 
     $xlsx = tempnam(sys_get_temp_dir(), 'sth-import-').'.xlsx';
     $GLOBALS['w1c_tmp_files'][] = $xlsx;
@@ -1152,7 +1152,7 @@ it('still accepts the old template header, and a CSV with the new one (SV3)', fu
 
 it('drops the example No HP from a row whose other cells were typed over, with a note (SV3 review)', function (): void {
     [, , , , , $examplePhone] = ImportStudents::TEMPLATE_EXAMPLE;
-    $csv = w1cCsv([['Raka Pratama', '225226202', '0098765433', '20-11-2009', 'X-A', $examplePhone]]);
+    $csv = w1cCsv([['Raka Pratama', '225226202', '0098765433', '20-11-2009', 'X-1', $examplePhone]]);
 
     $preview = app(ImportStudents::class)->handle($this->kesiswaan, $csv, 'csv', '2026/2027');
     expect($preview->invalidCount())->toBe(0)
@@ -1163,7 +1163,7 @@ it('drops the example No HP from a row whose other cells were typed over, with a
 });
 
 it('refuses a row that still holds the example name, NIS or NISN (SV3 review)', function (int $column, string $message): void {
-    $row = ['Raka Pratama', '225226202', '0098765433', '20-11-2009', 'X-A', ''];
+    $row = ['Raka Pratama', '225226202', '0098765433', '20-11-2009', 'X-1', ''];
     $row[$column] = ImportStudents::TEMPLATE_EXAMPLE[$column];
 
     $report = app(ImportStudents::class)->handle($this->kesiswaan, w1cCsv([$row]), 'csv', '2026/2027');

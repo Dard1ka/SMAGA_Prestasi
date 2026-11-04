@@ -73,12 +73,12 @@ function b1Expire(User $user): void
 // K1 ---------------------------------------------------------------------------------------------
 
 it('gives imported students the activation window from the setting (default 14 days)', function (): void {
-    Classroom::factory()->create(['name' => 'X-A', 'level' => 10]);
+    Classroom::factory()->create(['name' => 'X-1', 'level' => 10]);
 
     $path = tempnam(sys_get_temp_dir(), 'sth-b1-');
     $handle = fopen($path, 'wb');
     fputcsv($handle, ['Nama lengkap', 'NIS', 'NISN', 'Tanggal lahir', 'Kelas saat pendaftaran', 'No HP'], ',', '"', '');
-    fputcsv($handle, ['Nadia Putri Anindya', H::NIS, H::NISN, '02-03-2010', 'X-A', ''], ',', '"', '');
+    fputcsv($handle, ['Nadia Putri Anindya', H::NIS, H::NISN, '02-03-2010', 'X-1', ''], ',', '"', '');
     fclose($handle);
 
     try {

@@ -6,7 +6,6 @@ use App\Enums\UserStatus;
 use App\Models\Classroom;
 use App\Models\Student;
 use App\Models\User;
-use Database\Seeders\ClassroomSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
@@ -27,31 +26,8 @@ function kelasTahfidzOlimpMigration(): object
     return $migration ??= require database_path('migrations/2026_10_21_100100_remove_tahfidz_olimp_classrooms.php');
 }
 
-it('seeds 34 classes named with a letter, never with a number and without X-TAHFIDZ or X-OLIMP (D-165)', function (): void {
-    $this->seed(ClassroomSeeder::class);
-
-    $names = Classroom::query()->ordered()->pluck('name')->all();
-
-    expect($names)->toHaveCount(34)
-        ->and(array_slice($names, 0, 10))->toBe(['X-A', 'X-B', 'X-C', 'X-D', 'X-E', 'X-F', 'X-G', 'X-H', 'X-I', 'X-J'])
-        ->and(array_slice($names, 10, 12))->toBe(array_map(fn (string $l): string => "XI-{$l}", range('A', 'L')))
-        ->and(array_slice($names, 22))->toBe(array_map(fn (string $l): string => "XII-{$l}", range('A', 'L')))
-        ->and(preg_grep('/\d/', $names))->toBe([])
-        ->and($names)->not->toContain('X-TAHFIDZ')
-        ->and($names)->not->toContain('X-OLIMP')
-        ->and(Classroom::levelFromName('XII-C'))->toBe(12)
-        ->and(Classroom::levelFromName('X-J'))->toBe(10);
-});
-
-it('orders a longer class name after the letters of its tingkat', function (): void {
-    $this->seed(ClassroomSeeder::class);
-    Classroom::factory()->create(['name' => 'X-IPA 1', 'level' => 10]);
-
-    $names = Classroom::query()->ordered()->pluck('name')->all();
-
-    expect(array_slice($names, 0, 11))->toBe(['X-A', 'X-B', 'X-C', 'X-D', 'X-E', 'X-F', 'X-G', 'X-H', 'X-I', 'X-J', 'X-IPA 1'])
-        ->and($names[11])->toBe('XI-A');
-});
+// The seeder of today names the classes with numbers again (D-175): tests/Feature/DataLayer/KelasNomorTest.php. The
+// tests below keep checking the two migrations of 21 Okt 2026, which stay in the migration history.
 
 it('renames numbered classes in place so every student keeps the row (D-165)', function (): void {
     $x1 = Classroom::factory()->create(['name' => 'X-1', 'level' => 10]);
@@ -70,11 +46,10 @@ it('renames numbered classes in place so every student keeps the row (D-165)', f
         ->and($other->fresh()->name)->toBe('X-KHUSUS')
         ->and($student->fresh()->classroom->name)->toBe('XII-C');
 
-    // A second run and then the seeder change nothing: no duplicate rows (34 seeded names + X-KHUSUS).
+    // A second run changes nothing: no duplicate rows.
     kelasHurufMigration()->up();
-    $this->seed(ClassroomSeeder::class);
 
-    expect(Classroom::query()->count())->toBe(35)
+    expect(Classroom::query()->count())->toBe(5)
         ->and(Classroom::query()->where('name', 'like', '%-1%')->exists())->toBeFalse()
         ->and($student->fresh()->classroom_id)->toBe($xii3->getKey());
 });

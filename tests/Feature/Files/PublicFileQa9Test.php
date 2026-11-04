@@ -117,8 +117,8 @@ it('drops the certificate link from the public student page once a teammate is d
     $this->withoutVite();
     $this->travelTo(now()->setDate(2026, 10, 1)->setTime(10, 0));
     $f = new PublikFixtures;
-    $keisha = $f->student('Keisha Larasati', 'XI-F');
-    $citra = $f->student('Citra Ayu Lestari', 'XI-B');
+    $keisha = $f->student('Keisha Larasati', 'XI-6');
+    $citra = $f->student('Citra Ayu Lestari', 'XI-2');
     $lkti = $f->lomba('LKTI Nasional 2026', Bidang::Riset, Level::Nasional, '2026-08-20');
     $f->prestasi($keisha, $lkti, ResultType::Juara1);
     $f->prestasi($citra, $lkti, ResultType::Juara1);

@@ -39,7 +39,7 @@ beforeEach(function (): void {
     F::boot();
     Queue::fake();
     $this->withoutVite();
-    Classroom::factory()->create(['name' => 'X-A', 'level' => 10]);
+    Classroom::factory()->create(['name' => 'X-1', 'level' => 10]);
     $this->kesiswaan = F::staff(RoleName::Kesiswaan);
     session(A::passwordConfirmed());
 });
@@ -65,10 +65,10 @@ function sv1rLetters(int $n): string
     return $s;
 }
 
-/** Row $i of the big file: "Siswa Uji <letters>", NIS 2262001xx, NISN 01000001xx, X-A. */
+/** Row $i of the big file: "Siswa Uji <letters>", NIS 2262001xx, NISN 01000001xx, X-1. */
 function sv1rRow(int $i): array
 {
-    return ['Siswa Uji '.sv1rLetters($i), sprintf('2262%05d', 100 + $i), sprintf('01%08d', 100 + $i), '12-05-2011', 'X-A', ''];
+    return ['Siswa Uji '.sv1rLetters($i), sprintf('2262%05d', 100 + $i), sprintf('01%08d', 100 + $i), '12-05-2011', 'X-1', ''];
 }
 
 /** The import screen after "Impor 51 siswa" queued its import (nothing ran yet: Queue::fake()). */
@@ -123,7 +123,7 @@ it('reads a file again that was read while a queued import ran, before the dialo
     // A file that waits: one row of the queued file and one new student. While the import waits, both are "Baru".
     $screen->set('file', sv1rFile([
         sv1rRow(1),
-        ['Dewi Anggraini', '226227005', '0101234505', '12-05-2011', 'X-A', ''],
+        ['Dewi Anggraini', '226227005', '0101234505', '12-05-2011', 'X-1', ''],
     ]))
         ->assertHasNoErrors()
         ->assertSet('previewWhileImporting', true)
@@ -172,7 +172,7 @@ it('reads a file again that was read while a queued import ran, before the dialo
 it('keeps refusing a file read while the import runs, without reading it again yet (SV1 review)', function (): void {
     $screen = sv1rQueued($this->kesiswaan);
 
-    $screen->set('file', sv1rFile([['Dewi Anggraini', '226227005', '0101234505', '12-05-2011', 'X-A', '']]))
+    $screen->set('file', sv1rFile([['Dewi Anggraini', '226227005', '0101234505', '12-05-2011', 'X-1', '']]))
         ->call('askImport')
         ->assertHasErrors(['file'])
         ->assertSee(ImportSiswa::IMPORT_RUNNING)
@@ -189,7 +189,7 @@ it('asks at once about a file read when no import of the same person runs (SV1 r
     Livewire::actingAs($this->kesiswaan)->test(ImportSiswa::class)
         ->assertSet('importId', null)
         ->set('schoolYear', '2026/2027')
-        ->set('file', sv1rFile([['Dewi Anggraini', '226227005', '0101234505', '12-05-2011', 'X-A', '']]))
+        ->set('file', sv1rFile([['Dewi Anggraini', '226227005', '0101234505', '12-05-2011', 'X-1', '']]))
         ->assertSet('previewWhileImporting', false)
         ->call('askImport')
         ->assertHasNoErrors()
@@ -203,7 +203,7 @@ it('asks at once about a file read when no import of the same person runs (SV1 r
 it('takes over an import started in another tab when it refuses, then reads the file again after it (SV1 review)', function (): void {
     $screen = Livewire::actingAs($this->kesiswaan)->test(ImportSiswa::class)
         ->set('schoolYear', '2026/2027')
-        ->set('file', sv1rFile([['Dewi Anggraini', '226227005', '0101234505', '12-05-2011', 'X-A', '']]))
+        ->set('file', sv1rFile([['Dewi Anggraini', '226227005', '0101234505', '12-05-2011', 'X-1', '']]))
         ->assertSet('importId', null)
         ->assertSet('previewWhileImporting', false)
         ->assertDontSeeHtml('wire:poll.2s');
@@ -291,7 +291,7 @@ it('says under a file that waits for a running import when the password confirma
     // Confirmed when the file was chosen: no hint yet.
     $screen = Livewire::actingAs($this->kesiswaan)->test(ImportSiswa::class)
         ->set('schoolYear', '2026/2027')
-        ->set('file', sv1rFile([['Dewi Anggraini', '226227005', '0101234505', '12-05-2011', 'X-A', '']]))
+        ->set('file', sv1rFile([['Dewi Anggraini', '226227005', '0101234505', '12-05-2011', 'X-1', '']]))
         ->assertSee(sv1rWaiting())
         ->assertDontSee(sv1rHint());
 
@@ -314,7 +314,7 @@ function sv1rFileInvalid(Testable $screen): bool
 it('drops the refusal once the import it waited for is over, so it never stands beside the result (SV1 review)', function (): void {
     $screen = Livewire::actingAs($this->kesiswaan)->test(ImportSiswa::class)
         ->set('schoolYear', '2026/2027')
-        ->set('file', sv1rFile([['Dewi Anggraini', '226227005', '0101234505', '12-05-2011', 'X-A', '']]));
+        ->set('file', sv1rFile([['Dewi Anggraini', '226227005', '0101234505', '12-05-2011', 'X-1', '']]));
 
     // Another tab of the same person queued an import meanwhile: the click is refused and takes that import over.
     $other = sv1rJob($this->kesiswaan, ['status' => StudentImportStatus::Running, 'total_rows' => 300, 'processed_rows' => 100, 'created_count' => 40]);
@@ -391,7 +391,7 @@ it('counts a file as read next to an import that ended while its dry run read th
         StudentImport::query()->whereKey($running->getKey())->update(['status' => StudentImportStatus::Done->value, 'processed_rows' => 300]);
     });
 
-    $screen->set('file', sv1rFile([['Dewi Anggraini', '226227005', '0101234505', '12-05-2011', 'X-A', '']]))
+    $screen->set('file', sv1rFile([['Dewi Anggraini', '226227005', '0101234505', '12-05-2011', 'X-1', '']]))
         ->assertHasNoErrors()
         ->assertSet('previewWhileImporting', true);
 

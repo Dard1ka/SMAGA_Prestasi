@@ -15,7 +15,7 @@ use Livewire\Component;
 */
 
 #[Title('Beranda')]
-#[Layout('layouts::app', ['role' => 'siswa', 'subtitle' => 'Rabu, 30 September 2026', 'user' => ['name' => 'Nadia Putri Anindya', 'meta' => 'Siswa · XI-D']])]
+#[Layout('layouts::app', ['role' => 'siswa', 'subtitle' => 'Rabu, 30 September 2026', 'user' => ['name' => 'Nadia Putri Anindya', 'meta' => 'Siswa · XI-4']])]
 final class SthLayoutProbe extends Component
 {
     public function render(): string

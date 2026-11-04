@@ -23,10 +23,10 @@ beforeEach(function (): void {
     $this->withoutVite();
 
     // Newest report first (D-164): the team report opens first, the older solo report is next in the queue.
-    $this->solo = F::pendingReport(F::student('Nadia Putri Anindya', 'XI-D'), competition: F::competition(['name' => 'Olimpiade Kimia Fiktif 2026']));
+    $this->solo = F::pendingReport(F::student('Nadia Putri Anindya', 'XI-4'), competition: F::competition(['name' => 'Olimpiade Kimia Fiktif 2026']));
     $this->team = F::pendingReport(
-        F::student('Raka Pradipta', 'XII-B'),
-        [F::student('Dimas Arya Nugroho', 'XII-B')],
+        F::student('Raka Pradipta', 'XII-2'),
+        [F::student('Dimas Arya Nugroho', 'XII-2')],
         competition: F::competition(['name' => 'Lomba Debat Fiktif 2026']),
     );
     $this->solo->forceFill(['submitted_at' => now()->subDays(3)])->save();

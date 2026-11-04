@@ -35,8 +35,8 @@ beforeEach(function (): void {
     $this->admin = A::admin();
     $this->kesiswaan = A::staff(RoleName::Kesiswaan);
 
-    $this->xi4 = Classroom::factory()->level(11)->create(['name' => 'XI-D']);
-    $this->x1 = Classroom::factory()->create(['name' => 'X-A', 'level' => 10]);
+    $this->xi4 = Classroom::factory()->level(11)->create(['name' => 'XI-4']);
+    $this->x1 = Classroom::factory()->create(['name' => 'X-1', 'level' => 10]);
 
     $make = function (Classroom $class, string $name, array $user = []): Student {
         $student = Student::factory()->create(['classroom_id' => $class->getKey()]);
@@ -84,11 +84,11 @@ it('derives the K9 state, flags and per-class counts', function (): void {
         ->and($rows['Dimas Saputra']['flags'])->toContain('Gagal masuk 10 kali');
 
     $summary = app(ActivationReport::class)->summary()->keyBy('classroom');
-    expect($summary->keys()->all())->toBe(['X-A', 'XI-D'])
-        ->and($summary['XI-D']['total'])->toBe(3)
-        ->and($summary['XI-D']['counts']['aktif'])->toBe(1)
-        ->and($summary['XI-D']['activePct'])->toBe(33)
-        ->and($summary['X-A']['counts']['arsip'])->toBe(1);
+    expect($summary->keys()->all())->toBe(['X-1', 'XI-4'])
+        ->and($summary['XI-4']['total'])->toBe(3)
+        ->and($summary['XI-4']['counts']['aktif'])->toBe(1)
+        ->and($summary['XI-4']['activePct'])->toBe(33)
+        ->and($summary['X-1']['counts']['arsip'])->toBe(1);
 });
 
 it('shows the NISN in full and the email masked (D-137), and filters by class, status and exact NISN', function (): void {
@@ -141,7 +141,7 @@ it('opens the students of a class in a dialog instead of filtering the list at t
         ->call('showClass', $this->xi4->getKey())
         ->assertDispatched('sth-modal-open', id: 'aktivasi-kelas')
         ->assertSet('kelas', $this->xi4->getKey())
-        ->assertSee('Kelas XI-D')
+        ->assertSee('Kelas XI-4')
         ->assertSeeHtml($inDialog($this->nadia))
         ->assertSeeHtml($inDialog($this->raka))
         ->assertSeeHtml($inDialog($this->salsa))
@@ -166,7 +166,7 @@ it('opens the students of a class in a dialog instead of filtering the list at t
         ->call('setClassStatus', AccountControls::STATE_ACTIVE)
         ->call('showClass', $this->x1->getKey())
         ->assertSet('kelasStatus', '')
-        ->assertSee('Kelas X-A')
+        ->assertSee('Kelas X-1')
         ->assertSeeHtml($inDialog($this->dimas))
         ->assertDontSeeHtml($inDialog($this->nadia))
         ->call('closeClass')
@@ -185,13 +185,13 @@ it('resets ?kelas= however the class dialog is closed, not only with Tutup (QA5 
 
 it('opens the dialog on page load with ?kelas= and drops an unknown class', function (): void {
     $this->actingAs($this->kesiswaan);
-    $empty = Classroom::factory()->create(['name' => 'X-I', 'level' => 10]);
+    $empty = Classroom::factory()->create(['name' => 'X-9', 'level' => 10]);
 
     Livewire::withQueryParams(['kelas' => $this->xi4->getKey()])
         ->test(StatusAktivasi::class)
         ->assertSet('kelas', $this->xi4->getKey())
         ->assertSeeHtml('data-sth-autoopen')
-        ->assertSee('Kelas XI-D')
+        ->assertSee('Kelas XI-4')
         ->assertSeeHtml('wire:key="kelas-siswa-'.$this->salsa->user_id.'"')
         ->assertSet('daftarKelas', '');
 
@@ -208,9 +208,9 @@ it('opens the dialog on page load with ?kelas= and drops an unknown class', func
 
     // Both routes of the shared component.
     $this->get(route('kesiswaan.aktivasi.index', ['kelas' => $this->xi4->getKey()]))
-        ->assertOk()->assertSee('data-sth-autoopen', false)->assertSee('Kelas XI-D');
+        ->assertOk()->assertSee('data-sth-autoopen', false)->assertSee('Kelas XI-4');
     $this->actingAs($this->admin)->get(route('admin.aktivasi.index', ['kelas' => $this->x1->getKey()]))
-        ->assertOk()->assertSee('data-sth-autoopen', false)->assertSee('Kelas X-A');
+        ->assertOk()->assertSee('data-sth-autoopen', false)->assertSee('Kelas X-1');
     $this->actingAs($this->admin)->get(route('admin.aktivasi.index'))
         ->assertOk()->assertDontSee('data-sth-autoopen', false);
 });
@@ -238,7 +238,7 @@ it('keeps the list filter in its own address parameter and forgets the dialog wh
 
 it('shows a class in steps of 40 inside the dialog', function (): void {
     $this->actingAs($this->kesiswaan);
-    $big = Classroom::factory()->create(['name' => 'X-B', 'level' => 10]);
+    $big = Classroom::factory()->create(['name' => 'X-2', 'level' => 10]);
     Student::factory()->count(45)->create(['classroom_id' => $big->getKey()]);
 
     expect(fn () => Livewire::test(StatusAktivasi::class)->set('kelasLimit', 5000))->toThrow(Exception::class);
@@ -339,7 +339,7 @@ it('downloads every class as one sheet per tingkat, empty tingkat included (SV3)
 
     expect($component->effects['download']['name'] ?? '')->toStartWith('status-aktivasi-semua-')->toEndWith('.xlsx')
         ->and(sv3Sheets($file))->toBe(['X', 'XI', 'XII'])
-        ->and(array_column(sv3SheetRows($file, 'X'), 'Kelas'))->each->toBe('X-A')
+        ->and(array_column(sv3SheetRows($file, 'X'), 'Kelas'))->each->toBe('X-1')
         ->and(array_column(sv3SheetRows($file, 'XI'), 'Nama'))->toBe(['Nadia Putri Anindya', 'Raka Pratama', 'Salsa Maharani'])
         ->and(sv3SheetRows($file, 'XII'))->toBe([])
         ->and(SimpleExcelReader::create($file)->fromSheetName('XII')->getHeaders())->toBe(ActivationReport::HEADER);
@@ -386,7 +386,7 @@ it('follows the open status tab, not the class filter of the list (SV3)', functi
         ->call('export');
     $file = sv3Download($component);
 
-    // The list shows X-A only, the file every tingkat of the tab "Aktif": Nadia (XI-D) is in it.
+    // The list shows X-1 only, the file every tingkat of the tab "Aktif": Nadia (XI-4) is in it.
     expect(array_column(sv3SheetRows($file, 'XI'), 'Nama'))->toBe(['Nadia Putri Anindya'])
         ->and(sv3SheetRows($file, 'X'))->toBe([]);
 });

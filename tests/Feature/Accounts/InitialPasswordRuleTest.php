@@ -37,8 +37,8 @@ beforeEach(function (): void {
     config(['sth.initial_student_password' => 'Awal-Uji-7319']);
 
     $this->classes = [
-        'X-A' => Classroom::factory()->create(['name' => 'X-A', 'level' => 10])->getKey(),
-        'XI-D' => Classroom::factory()->level(11)->create(['name' => 'XI-D'])->getKey(),
+        'X-1' => Classroom::factory()->create(['name' => 'X-1', 'level' => 10])->getKey(),
+        'XI-4' => Classroom::factory()->level(11)->create(['name' => 'XI-4'])->getKey(),
     ];
 });
 
@@ -56,29 +56,29 @@ function d173Student(string $class, string $birthDate, array $user = [], ?string
 }
 
 /**
- * Three students to move (two in X-A, one in XI-D) and everybody the rule must leave alone.
+ * Three students to move (two in X-1, one in XI-4) and everybody the rule must leave alone.
  *
  * @return array{move: list<Student>, keep: array<string, User>}
  */
 function d173Population(): array
 {
     $move = [
-        d173Student('X-A', '2010-02-01'),
-        d173Student('X-A', '2010-02-01'), // the same birth date: the same password (accepted by the lead)
-        d173Student('XI-D', '2009-07-19'),
+        d173Student('X-1', '2010-02-01'),
+        d173Student('X-1', '2010-02-01'), // the same birth date: the same password (accepted by the lead)
+        d173Student('XI-4', '2009-07-19'),
     ];
 
     $keep = [
         // Already on the birth-date password (imported after D-173): counted as "kata sandi lain".
-        'birth-date password' => d173Student('X-A', '2010-05-05', [], InitialPassword::forBirthDate('2010-05-05'))->user,
+        'birth-date password' => d173Student('X-1', '2010-05-05', [], InitialPassword::forBirthDate('2010-05-05'))->user,
         // Activated: never a candidate, even with the configured value as its hash.
-        'active' => d173Student('X-A', '2010-06-06', ['status' => UserStatus::Active, 'must_change_password' => false, 'email' => 'aktif.d173@example.test', 'email_verified_at' => now()])->user,
+        'active' => d173Student('X-1', '2010-06-06', ['status' => UserStatus::Active, 'must_change_password' => false, 'email' => 'aktif.d173@example.test', 'email_verified_at' => now()])->user,
         // A temporary password of an Admin reset that happens to equal the configured value.
-        'temporary password' => d173Student('X-A', '2010-07-07', ['temporary_password_issued_at' => now()])->user,
+        'temporary password' => d173Student('X-1', '2010-07-07', ['temporary_password_issued_at' => now()])->user,
         // Pending but not forced to change (not the shape of an import).
-        'not forced' => d173Student('XI-D', '2009-08-08', ['must_change_password' => false])->user,
+        'not forced' => d173Student('XI-4', '2009-08-08', ['must_change_password' => false])->user,
         // Disabled before the activation.
-        'disabled' => d173Student('XI-D', '2009-09-09', ['status' => UserStatus::Disabled])->user,
+        'disabled' => d173Student('XI-4', '2009-09-09', ['status' => UserStatus::Disabled])->user,
     ];
 
     // A guru account with the configured value: not a student.
@@ -135,10 +135,10 @@ function d173HasherBeforeMake(Closure $beforeMake): void
     });
 }
 
-/** $count students of X-A born 2010-02-01 on the configured value (one shared hash: bcrypt per row is not needed here). */
+/** $count students of X-1 born 2010-02-01 on the configured value (one shared hash: bcrypt per row is not needed here). */
 function d173ManyStudents(int $count): array
 {
-    $students = Student::factory()->count($count)->create(['birth_date' => '2010-02-01', 'classroom_id' => test()->classes['X-A']]);
+    $students = Student::factory()->count($count)->create(['birth_date' => '2010-02-01', 'classroom_id' => test()->classes['X-1']]);
     User::query()->whereIn('id', $students->pluck('user_id'))->update(['password' => Hash::make(app(InitialPassword::class)->make())]);
 
     return $students->sortBy('user_id')->values()->all();
@@ -174,8 +174,8 @@ it('previews the students still on the configured value per class and writes not
         // One chunk only: no progress lines.
         ->and($output)->not->toContain('akun diperiksa')
         ->and($output)->toContain('Pratinjau, tidak ada yang diubah: 3 siswa belum aktivasi masih memakai kata sandi awal lama.')
-        ->and($output)->toContain('X-A: 2 siswa')
-        ->and($output)->toContain('XI-D: 1 siswa')
+        ->and($output)->toContain('X-1: 2 siswa')
+        ->and($output)->toContain('XI-4: 1 siswa')
         ->and($output)->toContain('Tidak diubah (siswa belum aktivasi): 1 tanpa tanggal lahir, 1 dengan kata sandi lain.')
         ->and($output)->toContain('Jalankan lagi dengan --terapkan')
         ->and(d173Hashes())->toBe($before)
@@ -196,8 +196,8 @@ it('moves only pending students on the configured value to SMAGA_ + their birth 
 
     expect($code)->toBe(0)
         ->and($output)->toContain('Kata sandi awal 3 siswa diganti ke pola SMAGA_ + tanggal lahir (ddmmyyyy).')
-        ->and($output)->toContain('X-A: 2 siswa')
-        ->and($output)->toContain('XI-D: 1 siswa');
+        ->and($output)->toContain('X-1: 2 siswa')
+        ->and($output)->toContain('XI-4: 1 siswa');
 
     foreach ($move as $student) {
         $user = User::query()->findOrFail($student->user_id);
@@ -303,8 +303,8 @@ it('writes nothing for a row activated or reset between the check and the write 
 
     expect($code)->toBe(0)
         ->and($output)->toContain('Kata sandi awal 1 siswa diganti ke pola SMAGA_ + tanggal lahir (ddmmyyyy).')
-        ->and($output)->toContain('XI-D: 1 siswa')
-        ->and($output)->not->toContain('X-A:')
+        ->and($output)->toContain('XI-4: 1 siswa')
+        ->and($output)->not->toContain('X-1:')
         ->and($output)->toContain('Tidak diubah (siswa belum aktivasi): 1 tanpa tanggal lahir, 1 dengan kata sandi lain, 2 berubah saat perintah berjalan.')
         ->and(User::query()->findOrFail($move[0]->user_id)->password)->toBe($before[$move[0]->user_id])
         ->and(User::query()->findOrFail($move[1]->user_id)->password)->toBe($before[$move[1]->user_id])

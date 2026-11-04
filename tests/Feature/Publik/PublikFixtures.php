@@ -43,7 +43,7 @@ final class PublikFixtures
      *
      * @param  array<string, mixed>  $attributes  extra students columns (nis, nisn, grade12_start_date, …)
      */
-    public function student(string $name, string $kelas = 'XI-D', bool $disabled = false, bool $archived = false, array $attributes = []): Student
+    public function student(string $name, string $kelas = 'XI-4', bool $disabled = false, bool $archived = false, array $attributes = []): Student
     {
         $factory = match (true) {
             $disabled => User::factory()->disabled(),

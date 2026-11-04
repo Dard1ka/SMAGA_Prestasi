@@ -38,8 +38,8 @@ beforeEach(function (): void {
     F::boot();
     Queue::fake();
     $this->withoutVite();
-    Classroom::factory()->create(['name' => 'X-A', 'level' => 10]);
-    Classroom::factory()->create(['name' => 'XI-D', 'level' => 11]);
+    Classroom::factory()->create(['name' => 'X-1', 'level' => 10]);
+    Classroom::factory()->create(['name' => 'XI-4', 'level' => 11]);
     $this->kesiswaan = F::staff(RoleName::Kesiswaan);
     session(A::passwordConfirmed());
 });
@@ -65,14 +65,14 @@ function r3iLetters(int $n): string
     return $s;
 }
 
-/** A registered student in X-A with the dates of X-A in 2026/2027 (kelas XII from Jul 2028, archive Jan 2030). */
+/** A registered student in X-1 with the dates of X-1 in 2026/2027 (kelas XII from Jul 2028, archive Jan 2030). */
 function r3iRegistered(string $name, string $nis, string $nisn): Student
 {
     $created = Student::factory()->create([
         'nis' => $nis,
         'nisn' => $nisn,
         'birth_date' => '2011-05-12',
-        'classroom_id' => Classroom::query()->where('name', 'X-A')->value('id'),
+        'classroom_id' => Classroom::query()->where('name', 'X-1')->value('id'),
         'import_school_year' => '2026/2027',
         'grade12_start_date' => '2028-07-01',
         'archive_at' => '2030-01-01',
@@ -89,7 +89,7 @@ function r3iBigFile(): UploadedFile
     $rows = [];
 
     foreach (range(1, ImportStudentsJob::SYNC_MAX_ROWS + 1) as $i) {
-        $rows[] = ['Siswa Uji '.r3iLetters($i), sprintf('2262%05d', 100 + $i), sprintf('01%08d', 100 + $i), '12-05-2011', 'X-A', ''];
+        $rows[] = ['Siswa Uji '.r3iLetters($i), sprintf('2262%05d', 100 + $i), sprintf('01%08d', 100 + $i), '12-05-2011', 'X-1', ''];
     }
 
     return r3iFile($rows);
@@ -152,7 +152,7 @@ it('offers "Impor N siswa" for the next file once a queued import is done (SV1 s
         ->assertSee('51 akun siswa dibuat')
         ->assertSee('Impor file lain')
         // The next file: the finished import goes with the old preview, the new preview offers its own import.
-        ->set('file', r3iFile([['Dewi Anggraini', '226227005', '0101234505', '12-05-2011', 'X-A', '']]))
+        ->set('file', r3iFile([['Dewi Anggraini', '226227005', '0101234505', '12-05-2011', 'X-1', '']]))
         ->assertHasNoErrors()
         ->assertSet('importId', null)
         ->assertSet('queuedPreview', null)
@@ -179,7 +179,7 @@ it('lets a file read while a queued import runs wait for it, and keeps the banne
     $screen = r3iQueued($this->kesiswaan);
     $import = StudentImport::query()->sole();
 
-    $screen->set('file', r3iFile([['Dewi Anggraini', '226227005', '0101234505', '12-05-2011', 'X-A', '']]))
+    $screen->set('file', r3iFile([['Dewi Anggraini', '226227005', '0101234505', '12-05-2011', 'X-1', '']]))
         ->assertHasNoErrors()
         // The running import stays on screen and keeps polling.
         ->assertSet('importId', $import->getKey())
@@ -239,7 +239,7 @@ it('keeps a running import on screen when the file read meanwhile is dropped (SV
     $screen = r3iQueued($this->kesiswaan);
     $import = StudentImport::query()->sole();
 
-    $screen->set('file', r3iFile([['Dewi Anggraini', '226227005', '0101234505', '12-05-2011', 'X-A', '']]))
+    $screen->set('file', r3iFile([['Dewi Anggraini', '226227005', '0101234505', '12-05-2011', 'X-1', '']]))
         ->call('startOver')
         ->assertSet('importId', $import->getKey())
         ->assertSet('queuedPreview', null)
@@ -256,9 +256,9 @@ it('takes the tile columns from the step-3 column and shows the row status under
     $screen = Livewire::actingAs($this->kesiswaan)->test(ImportSiswa::class)
         ->set('schoolYear', '2026/2027')
         ->set('file', r3iFile([
-            ['Rafi Pratama', '226227001', '0101234501', '12-05-2011', 'XI-D', ''],      // moves to XI-D
-            ['Dewi Anggraini', '226227005', '0101234505', '12-05-2011', 'X-A', ''],     // new
-            ['Galang Putra Mahendra', '226227006', '010123450', '12-05-2011', 'X-A', ''], // NISN of 9 digits
+            ['Rafi Pratama', '226227001', '0101234501', '12-05-2011', 'XI-4', ''],      // moves to XI-4
+            ['Dewi Anggraini', '226227005', '0101234505', '12-05-2011', 'X-1', ''],     // new
+            ['Galang Putra Mahendra', '226227006', '010123450', '12-05-2011', 'X-1', ''], // NISN of 9 digits
         ]))
         ->assertHasNoErrors();
     $html = r3iHtml($screen);
@@ -316,7 +316,7 @@ it('says that the untouched template holds no student data (SV1 second check)', 
 it('keeps the sentences of the empty filters for a file with students (SV1 second check)', function (): void {
     Livewire::actingAs($this->kesiswaan)->test(ImportSiswa::class)
         ->set('schoolYear', '2026/2027')
-        ->set('file', r3iFile([['Dewi Anggraini', '226227005', '0101234505', '12-05-2011', 'X-A', '']]))
+        ->set('file', r3iFile([['Dewi Anggraini', '226227005', '0101234505', '12-05-2011', 'X-1', '']]))
         ->set('filter', 'bad')
         ->assertSee('Tidak ada baris yang ditolak.')
         ->assertDontSee(ImportSiswa::EMPTY_FILE)
@@ -332,10 +332,10 @@ it('gives a valid row with a cleaned cell a note, and leaves a refused one witho
     $path = tempnam(sys_get_temp_dir(), 'r3i-');
     file_put_contents($path, implode("\n", [
         'Nama lengkap,NIS,NISN,Tanggal lahir,Kelas,No HP',
-        '=Nadia Putri Anindya,226227011,0101234511,12-05-2011,X-A,',  // new, a cleaned name
-        'Rafi Pratama,-226227001,0101234501,12-05-2011,X-A,',         // registered, a cleaned NIS, nothing to write
-        '=Galang Putra,226227013,010123451,12-05-2011,X-A,',          // a cleaned name, refused (NISN of 9 digits)
-        'Dewi Anggraini,226227005,0101234505,12-05-2011,X-A,',        // nothing cleaned
+        '=Nadia Putri Anindya,226227011,0101234511,12-05-2011,X-1,',  // new, a cleaned name
+        'Rafi Pratama,-226227001,0101234501,12-05-2011,X-1,',         // registered, a cleaned NIS, nothing to write
+        '=Galang Putra,226227013,010123451,12-05-2011,X-1,',          // a cleaned name, refused (NISN of 9 digits)
+        'Dewi Anggraini,226227005,0101234505,12-05-2011,X-1,',        // nothing cleaned
     ])."\n");
 
     $rows = collect(app(ImportStudents::class)->handle($this->kesiswaan, $path, 'csv', '2026/2027')->rows)->keyBy('row');
@@ -355,10 +355,10 @@ it('lists a valid row with a cleaned cell under "Ada catatan" and in its downloa
     $screen = Livewire::actingAs($this->kesiswaan)->test(ImportSiswa::class)
         ->set('schoolYear', '2026/2027')
         ->set('file', r3iFile([
-            ['=Nadia Putri Anindya', '226227011', '0101234511', '12-05-2011', 'X-A', ''],
-            ['Rafi Pratama', '-226227001', '0101234501', '12-05-2011', 'X-A', ''],
-            ['=Galang Putra', '226227013', '010123451', '12-05-2011', 'X-A', ''],
-            ['Dewi Anggraini', '226227005', '0101234505', '12-05-2011', 'X-A', ''],
+            ['=Nadia Putri Anindya', '226227011', '0101234511', '12-05-2011', 'X-1', ''],
+            ['Rafi Pratama', '-226227001', '0101234501', '12-05-2011', 'X-1', ''],
+            ['=Galang Putra', '226227013', '010123451', '12-05-2011', 'X-1', ''],
+            ['Dewi Anggraini', '226227005', '0101234505', '12-05-2011', 'X-1', ''],
         ]))
         ->assertHasNoErrors()
         ->assertViewHas('notedCount', 2)
@@ -455,7 +455,7 @@ it('names no predicted number for a queued run of corrections, only what the job
         $nisn = sprintf('01%08d', 200 + $i);
         r3iRegistered('Siswa Lama '.r3iLetters($i), $nis, $nisn);
         // Same class, a new No HP: a correction for every row, no account and no class move.
-        $rows[] = ['Siswa Lama '.r3iLetters($i), $nis, $nisn, '12-05-2011', 'X-A', sprintf('081234567%03d', $i)];
+        $rows[] = ['Siswa Lama '.r3iLetters($i), $nis, $nisn, '12-05-2011', 'X-1', sprintf('081234567%03d', $i)];
     }
 
     $screen = Livewire::actingAs($this->kesiswaan)->test(ImportSiswa::class)
@@ -494,7 +494,7 @@ it('says "Tidak ada data yang berubah" for an import that wrote nothing, not "0 
 
     Livewire::actingAs($this->kesiswaan)->test(ImportSiswa::class)
         ->set('schoolYear', '2026/2027')
-        ->set('file', r3iFile([['Rafi Pratama', '226227001', '0101234501', '12-05-2011', 'X-A', '']]))
+        ->set('file', r3iFile([['Rafi Pratama', '226227001', '0101234501', '12-05-2011', 'X-1', '']]))
         ->assertViewHas('changeCount', 0)
         ->call('askImport')
         ->call('import')
@@ -512,12 +512,12 @@ it('drops "akan berubah" and "sebelum mengimpor" once the file went to a queued 
     // SYNC_MAX_ROWS more new students: 52 rows to write, so the import is queued.
     r3iRegistered('Rafi Pratama', '226227001', '0101234501')->forceFill(['archive_at' => '2031-01-01'])->save();
     $rows = [
-        ['Rafi Pratama', '226227001', '0101234501', '12-05-2011', 'X-A', ''],
-        ['=Nadia Putri Anindya', '226227011', '0101234511', '12-05-2011', 'X-A', ''],
+        ['Rafi Pratama', '226227001', '0101234501', '12-05-2011', 'X-1', ''],
+        ['=Nadia Putri Anindya', '226227011', '0101234511', '12-05-2011', 'X-1', ''],
     ];
 
     foreach (range(1, ImportStudentsJob::SYNC_MAX_ROWS) as $i) {
-        $rows[] = ['Siswa Uji '.r3iLetters($i), sprintf('2262%05d', 100 + $i), sprintf('01%08d', 100 + $i), '12-05-2011', 'X-A', ''];
+        $rows[] = ['Siswa Uji '.r3iLetters($i), sprintf('2262%05d', 100 + $i), sprintf('01%08d', 100 + $i), '12-05-2011', 'X-1', ''];
     }
 
     $screen = Livewire::actingAs($this->kesiswaan)->test(ImportSiswa::class)
@@ -550,7 +550,7 @@ it('drops "akan berubah" and "sebelum mengimpor" once the file went to a queued 
 
     // The next file is before its import again.
     $screen->call('startOver')
-        ->set('file', r3iFile([['=Dewi Anggraini', '226227005', '0101234505', '12-05-2011', 'X-A', '']]))
+        ->set('file', r3iFile([['=Dewi Anggraini', '226227005', '0101234505', '12-05-2011', 'X-1', '']]))
         ->assertSee('periksa datanya sebelum mengimpor');
 });
 
@@ -560,8 +560,8 @@ it('drops "akan berubah" and "sebelum mengimpor" after a synchronous import too 
     Livewire::actingAs($this->kesiswaan)->test(ImportSiswa::class)
         ->set('schoolYear', '2026/2027')
         ->set('file', r3iFile([
-            ['Rafi Pratama', '226227001', '0101234501', '12-05-2011', 'X-A', ''],
-            ['=Nadia Putri Anindya', '226227011', '0101234511', '12-05-2011', 'X-A', ''],
+            ['Rafi Pratama', '226227001', '0101234501', '12-05-2011', 'X-1', ''],
+            ['=Nadia Putri Anindya', '226227011', '0101234511', '12-05-2011', 'X-1', ''],
         ]))
         ->assertSee('Tanggal arsip 1 siswa lama akan berubah')
         ->assertSee('periksa datanya sebelum mengimpor')

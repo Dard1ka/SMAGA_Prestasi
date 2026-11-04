@@ -121,8 +121,8 @@ it('sends the verifier\'s note to the students with the points and shows it on L
     K::boot();
     Notification::fake();
     $kesiswaan = K::staff(RoleName::Kesiswaan);
-    $leader = K::student('Nadia Putri Anindya', 'XI-D');
-    $dimas = K::student('Dimas Arya Nugroho', 'XI-D');
+    $leader = K::student('Nadia Putri Anindya', 'XI-4');
+    $dimas = K::student('Dimas Arya Nugroho', 'XI-4');
     $report = K::pendingReport($leader, [$dimas], ResultType::Juara2);
 
     app(VerifyReport::class)->handle($kesiswaan, $report, ResultType::Juara3, K::allChecks(), 'Sertifikat menulis Juara 3, jadi capaian disesuaikan.');
@@ -145,7 +145,7 @@ it('sends the verifier\'s note to the students with the points and shows it on L
 it('verifies without a note in the notice when the verifier wrote none', function (): void {
     K::boot();
     Notification::fake();
-    $leader = K::student('Nadia Putri Anindya', 'XI-D');
+    $leader = K::student('Nadia Putri Anindya', 'XI-4');
     $report = K::pendingReport($leader, [], ResultType::Juara3);
 
     app(VerifyReport::class)->handle(K::staff(RoleName::Kesiswaan), $report, ResultType::Juara3, K::allChecks(), '');
@@ -156,8 +156,8 @@ it('verifies without a note in the notice when the verifier wrote none', functio
 it('tells the members to ask Kesiswaan when the ketua cannot log in to fix the report', function (): void {
     K::boot();
     Notification::fake();
-    $leader = K::student('Nadia Putri Anindya', 'XI-D');
-    $dimas = K::student('Dimas Arya Nugroho', 'XI-D');
+    $leader = K::student('Nadia Putri Anindya', 'XI-4');
+    $dimas = K::student('Dimas Arya Nugroho', 'XI-4');
     $report = K::pendingReport($leader, [$dimas]);
     $leader->user->forceFill(['status' => UserStatus::Disabled])->save();
 
@@ -178,7 +178,7 @@ it('publishes the teammates\' waiting cards with the clicked one and tells every
     $rakaCard = new Publication(['achievement_id' => $raka->getKey()]);
     $rakaCard->forceFill(['status' => PublicationStatus::Terjadwal, 'channels' => ['website'], 'scheduled_at' => now()->addDay()])->save();
     // A member with a disabled account has no card Humas may publish: it stays as it is.
-    $sinta = H::teammate($publication->achievement, 'Sinta Maharani', 'XII-B', disabled: true);
+    $sinta = H::teammate($publication->achievement, 'Sinta Maharani', 'XII-2', disabled: true);
     $sintaCard = new Publication(['achievement_id' => $sinta->getKey()]);
     $sintaCard->forceFill(['status' => PublicationStatus::Siap, 'channels' => []])->save();
 
@@ -227,7 +227,7 @@ it('puts the free teammates on the event with "Masukkan" in the Publikasi panel 
     $humas = H::humas();
     $publication = H::publication();
     $raka = H::teammate($publication->achievement, 'Raka Pradipta');
-    $sinta = H::teammate($publication->achievement, 'Sinta Maharani', 'XII-B', disabled: true);
+    $sinta = H::teammate($publication->achievement, 'Sinta Maharani', 'XII-2', disabled: true);
     $event = H::event('Upacara Senin', null, '07:00');
 
     expect(RecordAppreciation::withTeammates($publication->achievement)->modelKeys())

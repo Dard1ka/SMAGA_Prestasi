@@ -93,8 +93,8 @@ it('links the letter notices to the screen that lists the current letters, not t
 it('does not tell Humas about a verified report when no member may be named (QA10)', function (): void {
     K::boot();
     $humas = K::staff(RoleName::Humas, 'Mas Galih Prasetyo');
-    $leader = K::student('Nadia Putri Anindya', 'XI-D');
-    $member = K::student('Dimas Arya Nugroho', 'XI-D');
+    $leader = K::student('Nadia Putri Anindya', 'XI-4');
+    $member = K::student('Dimas Arya Nugroho', 'XI-4');
     $report = K::pendingReport($leader, [$member], ResultType::Juara1);
     $leader->user->forceFill(['status' => UserStatus::Disabled])->save();
     $member->user->forceFill(['status' => UserStatus::Disabled])->save();
@@ -107,9 +107,9 @@ it('does not tell Humas about a verified report when no member may be named (QA1
 it('tells Humas about every member that may be named, whatever the old consent columns say (D-162)', function (): void {
     K::boot();
     $humas = K::staff(RoleName::Humas, 'Mas Galih Prasetyo');
-    $leader = K::student('Nadia Putri Anindya', 'XI-D');
+    $leader = K::student('Nadia Putri Anindya', 'XI-4');
     $leader->forceFill(['publish_consent' => false, 'photo_consent' => false])->save();
-    $report = K::pendingReport($leader, [K::student('Dimas Arya Nugroho', 'XI-D'), K::student('Keisha Larasati', 'XI-F')], ResultType::Juara1);
+    $report = K::pendingReport($leader, [K::student('Dimas Arya Nugroho', 'XI-4'), K::student('Keisha Larasati', 'XI-6')], ResultType::Juara1);
 
     app(VerifyReport::class)->handle(K::staff(RoleName::Kesiswaan), $report, ResultType::Juara1, K::allChecks());
 
@@ -123,9 +123,9 @@ it('tells Humas about every member that may be named, whatever the old consent c
 it('counts only the members Humas may name (QA10)', function (): void {
     K::boot();
     $humas = K::staff(RoleName::Humas, 'Mas Galih Prasetyo');
-    $leader = K::student('Nadia Putri Anindya', 'XI-D');
-    $dimas = K::student('Dimas Arya Nugroho', 'XI-D');
-    $keisha = K::student('Keisha Larasati', 'XI-F');
+    $leader = K::student('Nadia Putri Anindya', 'XI-4');
+    $dimas = K::student('Dimas Arya Nugroho', 'XI-4');
+    $keisha = K::student('Keisha Larasati', 'XI-6');
     $report = K::pendingReport($leader, [$dimas, $keisha], ResultType::Juara1);
     $dimas->user->forceFill(['status' => UserStatus::Disabled])->save();
     $keisha->user->forceFill(['status' => UserStatus::Disabled])->save();
@@ -220,8 +220,8 @@ it('tells the current Kepala Sekolah when the replacement cancels itself (QA10)'
 
 it('asks only the ketua to fix the report; the other members are told the ketua does it (QA10)', function (): void {
     K::boot();
-    $leader = K::student('Nadia Putri Anindya', 'XI-D');
-    $member = K::student('Dimas Arya Nugroho', 'XI-D');
+    $leader = K::student('Nadia Putri Anindya', 'XI-4');
+    $member = K::student('Dimas Arya Nugroho', 'XI-4');
     $report = K::pendingReport($leader, [$member]);
 
     app(RequestReportRevision::class)->handle(K::staff(RoleName::Kesiswaan), $report, 'Upload sertifikat yang terbaca');

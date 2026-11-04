@@ -61,7 +61,7 @@ it('refuses members, outsiders, staff and guests', function (): void {
         ->assertSee('Ketua tim mengirim laporan hasil untuk seluruh tim.')
         ->assertDontSee('Kirim laporan');
 
-    $this->actingAs(F::student('Rizky Maulana', 'XI-A')->user)->get($open)->assertNotFound();
+    $this->actingAs(F::student('Rizky Maulana', 'XI-1')->user)->get($open)->assertNotFound();
     $this->actingAs(F::staff(RoleName::Kesiswaan, 'Staf lain'))->get($open)->assertForbidden();
     auth()->logout();
     $this->get(route('siswa.lapor', $this->wice))->assertRedirect(route('login'));
@@ -124,7 +124,7 @@ it('shows Indonesian errors and keeps the status when fields are missing', funct
 });
 
 it('hides the riset section for other bidang and caps photos at five', function (): void {
-    $o2sn = F::registration(F::student('Yoga Pratama', 'XII-E'), competition: F::competition(['name' => 'O2SN Kota Semarang 2026', 'bidang' => Bidang::Olahraga]));
+    $o2sn = F::registration(F::student('Yoga Pratama', 'XII-5'), competition: F::competition(['name' => 'O2SN Kota Semarang 2026', 'bidang' => Bidang::Olahraga]));
 
     Livewire::actingAs($o2sn->leader->user)
         ->test(LaporHasil::class, ['registration' => $o2sn])

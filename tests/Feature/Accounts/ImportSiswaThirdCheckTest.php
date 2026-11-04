@@ -40,8 +40,8 @@ beforeEach(function (): void {
     F::boot();
     Queue::fake();
     $this->withoutVite();
-    Classroom::factory()->create(['name' => 'X-A', 'level' => 10]);
-    Classroom::factory()->create(['name' => 'XI-D', 'level' => 11]);
+    Classroom::factory()->create(['name' => 'X-1', 'level' => 10]);
+    Classroom::factory()->create(['name' => 'XI-4', 'level' => 11]);
     $this->kesiswaan = F::staff(RoleName::Kesiswaan);
     session(A::passwordConfirmed());
 });
@@ -67,23 +67,23 @@ function v3iLetters(int $n): string
     return $s;
 }
 
-/** Three new students in X-A; the second one is the student the other import registers too. */
+/** Three new students in X-1; the second one is the student the other import registers too. */
 function v3iThree(): array
 {
     return [
-        ['Nadia Putri Anindya', '226227001', '0101234501', '12-05-2011', 'X-A', ''],
-        ['Rafi Pratama', '226227002', '0101234502', '12-05-2011', 'X-A', ''],
-        ['Dewi Anggraini', '226227003', '0101234503', '12-05-2011', 'X-A', ''],
+        ['Nadia Putri Anindya', '226227001', '0101234501', '12-05-2011', 'X-1', ''],
+        ['Rafi Pratama', '226227002', '0101234502', '12-05-2011', 'X-1', ''],
+        ['Dewi Anggraini', '226227003', '0101234503', '12-05-2011', 'X-1', ''],
     ];
 }
 
-/** The student the other import wrote, in XI-D (so a write of this import over it would show). */
+/** The student the other import wrote, in XI-4 (so a write of this import over it would show). */
 function v3iOther(string $nis, string $nisn): Student
 {
     return Student::factory()->create([
         'nis' => $nis,
         'nisn' => $nisn,
-        'classroom_id' => Classroom::query()->where('name', 'XI-D')->value('id'),
+        'classroom_id' => Classroom::query()->where('name', 'XI-4')->value('id'),
         'import_school_year' => '2025/2026',
     ]);
 }
@@ -143,7 +143,7 @@ function v3iAsked(User $actor, array $rows, string $name = 'data-siswa.csv'): Te
 function v3iBigRows(): array
 {
     return array_map(
-        fn (int $i): array => ['Siswa Uji '.v3iLetters($i), sprintf('2262%05d', 100 + $i), sprintf('01%08d', 100 + $i), '12-05-2011', 'X-A', ''],
+        fn (int $i): array => ['Siswa Uji '.v3iLetters($i), sprintf('2262%05d', 100 + $i), sprintf('01%08d', 100 + $i), '12-05-2011', 'X-1', ''],
         range(1, ImportStudentsJob::SYNC_MAX_ROWS + 1),
     );
 }
@@ -198,7 +198,7 @@ it('leaves a new row to the import that registered it after the check, and write
     expect($report->created)->toBe(2)
         ->and($report->moved)->toBe(0)
         ->and(Student::query()->whereIn('nis', ['226227001', '226227003'])->count())->toBe(2)
-        ->and($other->classroom->name)->toBe('XI-D')
+        ->and($other->classroom->name)->toBe('XI-4')
         ->and($other->import_school_year)->toBe('2025/2026')
         ->and(User::query()->where('name', 'Rafi Pratama')->exists())->toBeFalse();
 
@@ -225,7 +225,7 @@ it('rolls back only the row whose insert meets the other import, with its accoun
     // The other import's row, then this import's insert, which the unique index refused (no exception left the import).
     expect($inserts)->toBe(2)
         ->and($report->created)->toBe(2)
-        ->and(Student::query()->where('nis', '226227002')->sole()->classroom->name)->toBe('XI-D')
+        ->and(Student::query()->where('nis', '226227002')->sole()->classroom->name)->toBe('XI-4')
         // The account this import had already inserted for that row went with its savepoint: no student-less user.
         ->and(User::query()->where('name', 'Rafi Pratama')->exists())->toBeFalse()
         ->and(User::query()->count())->toBe($users + 3)
@@ -277,7 +277,7 @@ it('names the rows the other import registered under the result instead of a 500
 });
 
 it('claims no matching classes when the other import registered every row (SV1 third check)', function (): void {
-    $screen = v3iAsked($this->kesiswaan, [['Rafi Pratama', '226227002', '0101234502', '12-05-2011', 'X-A', '']]);
+    $screen = v3iAsked($this->kesiswaan, [['Rafi Pratama', '226227002', '0101234502', '12-05-2011', 'X-1', '']]);
     v3iOtherAtTransactionStart('226227002', '0101234502');
 
     $screen->call('import')
@@ -345,10 +345,10 @@ it('finishes a queued slice whose student another import registered meanwhile (S
 
     expect($import->refresh()->status)->toBe(StudentImportStatus::Done)
         ->and($import->created_count)->toBe(ImportStudentsJob::SYNC_MAX_ROWS)
-        ->and(Student::query()->where('nis', $rows[4][1])->sole()->classroom->name)->toBe('XI-D')
+        ->and(Student::query()->where('nis', $rows[4][1])->sole()->classroom->name)->toBe('XI-4')
         ->and(Student::query()->where('nis', 'like', '2262%')->count())->toBe(ImportStudentsJob::SYNC_MAX_ROWS + 1);
 
-    // The banner claims no match with the file: one row of it stays as the other import wrote it (XI-D, not X-A).
+    // The banner claims no match with the file: one row of it stays as the other import wrote it (XI-4, not X-1).
     $screen->call('$refresh')
         ->assertSee(ImportStudentsJob::SYNC_MAX_ROWS.' akun siswa dibuat')
         ->assertDontSee('Semua baris sudah sesuai dengan file.')
@@ -361,7 +361,7 @@ it('names its own file above the file that waited for it, and says that file is 
     $screen = v3iAsked($this->kesiswaan, v3iBigRows())->call('import')->assertHasNoErrors();
     $import = StudentImport::query()->sole();
 
-    $screen->set('file', v3iFile([['Dewi Anggraini', '226227005', '0101234505', '12-05-2011', 'X-A', '']], 'siswa-baru.csv'))
+    $screen->set('file', v3iFile([['Dewi Anggraini', '226227005', '0101234505', '12-05-2011', 'X-1', '']], 'siswa-baru.csv'))
         ->assertSee('File ini bisa diimpor setelah impor yang sedang berjalan selesai.');
 
     v3iRunJob($import);
@@ -393,7 +393,7 @@ it('names its own file above the file that waited for it, and says that file is 
 it('names the file of an import taken over from another tab, its rejected rows and the file on screen (SV1 third check)', function (): void {
     $screen = Livewire::actingAs($this->kesiswaan)->test(ImportSiswa::class)
         ->set('schoolYear', '2026/2027')
-        ->set('file', v3iFile([['Dewi Anggraini', '226227005', '0101234505', '12-05-2011', 'X-A', '']], 'siswa-baru.csv'));
+        ->set('file', v3iFile([['Dewi Anggraini', '226227005', '0101234505', '12-05-2011', 'X-1', '']], 'siswa-baru.csv'));
     $other = v3iOtherTabJob($this->kesiswaan, ['status' => StudentImportStatus::Running, 'total_rows' => 152, 'processed_rows' => 100]);
 
     $screen->call('askImport')
@@ -457,7 +457,7 @@ it('keeps the plain banner over the file the import started from (SV1 third chec
 it('lets "Download baris yang perlu dicek" wrap inside the step-3 card (SV1 third check)', function (): void {
     $screen = Livewire::actingAs($this->kesiswaan)->test(ImportSiswa::class)
         ->set('schoolYear', '2026/2027')
-        ->set('file', v3iFile([['Nadia Putri Anindya', '22', '0101234501', '12-05-2011', 'X-A', '']]))
+        ->set('file', v3iFile([['Nadia Putri Anindya', '22', '0101234501', '12-05-2011', 'X-1', '']]))
         ->assertSee('Download baris yang perlu dicek');
 
     $class = (string) v3iButtonClass($screen, 'downloadInvalid');

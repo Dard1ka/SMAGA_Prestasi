@@ -42,7 +42,7 @@ beforeEach(function (): void {
     $this->humas = HumasFixtures::humas();
     $this->admin = AuthTestHelpers::staff(RoleName::Admin);
 
-    // A published post of Hana (XI-D) with a flyer file from before M3-E, also on an upcoming appreciation event.
+    // A published post of Hana (XI-4) with a flyer file from before M3-E, also on an upcoming appreciation event.
     $this->publication = HumasFixtures::publication(
         publicationState: ['status' => PublicationStatus::Dipublikasikan, 'published_at' => now()->subDays(3), 'channels' => ['instagram']],
         studentName: 'Hana Lestari',
@@ -65,7 +65,7 @@ it('names a student whose old consent columns are false on every Humas screen (D
     Student::query()->whereKey($this->publication->achievement->student_id)->update(['photo_consent' => false, 'publish_consent' => false]);
 
     Livewire::actingAs($this->humas)->test(Arsip::class)
-        ->assertSee('Hana Lestari')->assertSee('XI-D')->assertDontSee('Siswa kelas XI')->assertDontSee('Izin dicabut')
+        ->assertSee('Hana Lestari')->assertSee('XI-4')->assertDontSee('Siswa kelas XI')->assertDontSee('Izin dicabut')
         ->set('q', 'hana')->assertSee('Kimia Jateng 2026');
     Livewire::actingAs($this->humas)->test(Apresiasi::class)
         ->assertSee('Hana Lestari')->assertDontSee('Izin dicabut');
@@ -130,7 +130,7 @@ it('shows name and class on Arsip, with "Lihat" and no flyer column or link (M3-
         ->test(Arsip::class)
         ->assertSee('Kimia Jateng 2026')
         ->assertSee('Hana Lestari')
-        ->assertSee('XI-D')
+        ->assertSee('XI-4')
         ->assertSeeInOrder(['Lomba', 'Siswa', 'Capaian', 'Kanal', 'Terbit'])
         ->assertDontSee('Flyer')
         ->assertDontSee(route('files.show', $this->flyer), false)
@@ -156,7 +156,7 @@ it('hides name and class on Arsip once the account is disabled, and offers no "L
         ->assertSee('Siswa kelas XI')
         ->assertDontSee('Izin dicabut')
         ->assertDontSee('Hana Lestari')
-        ->assertDontSee('XI-D')
+        ->assertDontSee('XI-4')
         ->assertDontSee('pilih='.$this->publication->getKey(), false)
         ->assertDontSee(route('files.show', $this->flyer), false);
 
@@ -189,7 +189,7 @@ it('keeps the name on Arsip for Admin (student.view); the old flyer is not linke
     Livewire::actingAs($this->admin)
         ->test(Arsip::class)
         ->assertSee('Hana Lestari')
-        ->assertSee('XI-D')
+        ->assertSee('XI-4')
         ->assertDontSee('Siswa kelas XI')
         ->assertDontSee('Flyer')
         ->assertDontSee(route('files.show', $this->flyer), false)
@@ -209,7 +209,7 @@ it('hides name and class on Apresiasi once the account is disabled', function ()
     Livewire::actingAs($this->humas)
         ->test(Apresiasi::class)
         ->assertSee('Hana Lestari')
-        ->assertSee('XI-D');
+        ->assertSee('XI-4');
 
     ($this->disable)();
 
@@ -219,7 +219,7 @@ it('hides name and class on Apresiasi once the account is disabled', function ()
         ->assertSee('Siswa kelas XI')
         ->assertDontSee('Izin dicabut')
         ->assertDontSee('Hana Lestari')
-        ->assertDontSee('XI-D');
+        ->assertDontSee('XI-4');
 });
 
 it('keeps the name on Apresiasi for Kesiswaan and Admin (student.view)', function (RoleName $role): void {
@@ -230,7 +230,7 @@ it('keeps the name on Apresiasi for Kesiswaan and Admin (student.view)', functio
     Livewire::actingAs($user)
         ->test(Apresiasi::class)
         ->assertSee('Hana Lestari')
-        ->assertSee('XI-D')
+        ->assertSee('XI-4')
         ->assertDontSee('Siswa kelas XI');
 })->with([RoleName::Kesiswaan, RoleName::Admin]);
 
@@ -249,7 +249,7 @@ it('hides name and class in the appreciation agenda of Jadwal once the account i
         ->assertSee('Siswa kelas XI')
         ->assertDontSee('Izin dicabut')
         ->assertDontSee('Hana Lestari')
-        ->assertDontSee('XI-D');
+        ->assertDontSee('XI-4');
 });
 
 it('keeps the name on Jadwal for Admin (student.view)', function (): void {
@@ -281,7 +281,7 @@ it('uses the neutral label of the public pages for a disabled account and a view
         ->and($masked->named)->toBeFalse()
         ->and($masked->competitionName)->toBe('OPSI 2026')
         ->and(AchievementFacts::of($hidden)->visibleTo($this->admin)->studentName)->toBe('Fajar Ramadhan')
-        ->and(AchievementFacts::of($hidden)->visibleTo($this->admin)->className)->toBe('XI-D');
+        ->and(AchievementFacts::of($hidden)->visibleTo($this->admin)->className)->toBe('XI-4');
 });
 
 // --- Data untuk flyer (M3-E) -----------------------------------------------------------------------------
@@ -290,7 +290,7 @@ it('takes the name and class out of the data for the flyer once the account is d
     $before = FlyerData::of($this->publication->achievement->fresh());
 
     expect($before->rows[0])->toBe(['label' => 'Nama', 'values' => ['Hana Lestari'], 'list' => false])
-        ->and($before->rows[1])->toBe(['label' => 'Kelas', 'values' => ['XI-D'], 'list' => false])
+        ->and($before->rows[1])->toBe(['label' => 'Kelas', 'values' => ['XI-4'], 'list' => false])
         ->and($before->notes)->toBe([]);
 
     ($this->disable)();
@@ -301,6 +301,6 @@ it('takes the name and class out of the data for the flyer once the account is d
 
     expect($after->rows[0])->toBe(['label' => 'Nama', 'values' => ['Siswa kelas XI'], 'list' => false])
         ->and(array_column($after->rows, 'label'))->not->toContain('Kelas')
-        ->and($text)->not->toContain('Hana Lestari')->not->toContain('XI-D')->not->toContain('izin')->not->toContain('mengizinkan')
+        ->and($text)->not->toContain('Hana Lestari')->not->toContain('XI-4')->not->toContain('izin')->not->toContain('mengizinkan')
         ->and($after->notes)->toBe(['Akun siswa ini nonaktif, jadi namanya tidak ditampilkan.']);
 });

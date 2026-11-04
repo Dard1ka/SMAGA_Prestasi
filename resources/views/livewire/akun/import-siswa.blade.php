@@ -4,7 +4,7 @@
 --}}
 <div class="flex flex-col gap-[22px]">
     <ol class="m-0 grid list-none grid-cols-1 gap-3 p-0 sm:grid-cols-3" aria-label="Langkah import">
-        @foreach ([1 => ['Download template', 'Kolom sesuai format sekolah'], 2 => ['Upload file', $preview ? $preview['fileName'] : '.xlsx atau .csv, maks 2 MB'], 3 => ['Periksa & impor', $stepNote]] as $n => [$label, $sub])
+        @foreach ([1 => ['Download template', 'Kolom sesuai format sekolah'], 2 => ['Upload file', $chosenName ?? '.xlsx atau .csv, maks 2 MB'], 3 => ['Periksa & impor', $stepNote]] as $n => [$label, $sub])
             <li @class(['card flex items-center gap-3 p-3.5', 'border-primary' => $step === $n])>
                 <span @class(['inline-flex size-9 shrink-0 items-center justify-center rounded-full text-sm font-bold',
                     'bg-primary text-white' => $step === $n, 'bg-green-bg text-green' => $step > $n, 'bg-gray-bg text-gray' => $step < $n])>
@@ -35,7 +35,25 @@
 
             <x-sth.card as="section" aria-labelledby="h-unggah" class="flex flex-col gap-3">
                 <h2 id="h-unggah" class="title-card m-0">2 · Upload file</h2>
-                <x-sth.select wire:model.live="schoolYear" label="Tahun ajaran data" :options="$yearOptions" hint="Dipakai untuk menghitung kelas XII dan tanggal arsip." />
+                <x-sth.select wire:model.live="schoolYear" id="import-tahun-ajaran" label="Tahun ajaran data" :options="$yearOptions"
+                    hint="Dipakai untuk menghitung kelas XII dan tanggal arsip. Tahun yang tidak ada di daftar: pilih Tahun lain." />
+                {{-- SV4 (lead, 2026-11-04): "Tahun lain…" opens "Tahun mulai" right below. The typed text stays as typed
+                     (debounced, never trimmed back into the box); the line under it names the school year once the year is
+                     valid, the reason stands under the field otherwise. --}}
+                @if ($otherYear)
+                    <div class="flex flex-col gap-2 rounded-tile border border-line bg-subtle p-3">
+                        <x-sth.input wire:model.live.debounce.400ms="customYear" id="import-tahun-mulai" label="Tahun mulai"
+                            inputmode="numeric" maxlength="4" autocomplete="off" :placeholder="'Contoh: '.$otherYearExample" />
+                        <div aria-live="polite">
+                            @if ($otherYearLabel)
+                                <p class="m-0 flex items-center gap-2 text-sm">
+                                    <x-sth.icon name="calendar" :size="18" class="text-primary" />
+                                    <span class="font-bold text-ink">{{ $otherYearLabel }}</span>
+                                </p>
+                            @endif
+                        </div>
+                    </div>
+                @endif
                 @if ($passwordAsked && ! $preview)
                     {{-- QA9: the password first, then the upload, so the file is chosen only once. Also while an import
                          runs (SV1 review): a file chosen to wait for it would otherwise end on the password page; back
@@ -44,7 +62,7 @@
                     <x-sth.button variant="soft" icon="shield" wire:click="askPassword">Konfirmasi kata sandi</x-sth.button>
                 @else
                     <x-sth.file-drop wire:model="file" label="File data siswa" accept=".xlsx,.csv" icon="upload"
-                        :title="$preview ? $preview['fileName'] : 'Pilih file atau seret ke sini'" hint=".xlsx atau .csv · maks. 2 MB · pakai template dari langkah 1" />
+                        :title="$chosenName ?? 'Pilih file atau seret ke sini'" hint=".xlsx atau .csv · maks. 2 MB · pakai template dari langkah 1" />
                     <p wire:loading wire:target="file" class="m-0 text-xs text-muted">Membaca file…</p>
                 @endif
                 @error('school_year')<x-sth.alert tone="error">{{ $message }}</x-sth.alert>@enderror
@@ -81,9 +99,12 @@
             @endif
 
             @if ($preview === null)
-                @unless ($job)
+                @if ($yearMissing)
+                    {{-- SV4: a file chosen under "Tahun lain…" before its start year is valid waits for the year. --}}
+                    <x-sth.empty-state icon="calendar" title="Tahun ajaran belum lengkap" :card="false">Isi tahun mulai di langkah 2. Sesudah itu file {{ $chosenName }} langsung diperiksa.</x-sth.empty-state>
+                @elseif (! $job)
                     <x-sth.empty-state icon="file" title="Belum ada file untuk diperiksa" :card="false">Upload file Excel di langkah 2.</x-sth.empty-state>
-                @endunless
+                @endif
             @else
                 @if ($imported)
                     <x-sth.alert tone="success" :title="$importedResult">{{ $importedNote }}</x-sth.alert>

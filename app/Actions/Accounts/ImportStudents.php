@@ -118,9 +118,9 @@ final class ImportStudents
      * Typing into a cell replaces it; a row left exactly like this is skipped by the import (isTemplateExample()), so it
      * never becomes a student or an error. A row that was only partly typed over (SV3 review) is refused while its name,
      * NIS or NISN is still the example's, and an example No HP is dropped with NOTE_EXAMPLE_PHONE; class and birth date
-     * are never judged, a real student may well be in X-A or born on 01-02-2010.
+     * are never judged, a real student may well be in X-1 or born on 01-02-2010.
      */
-    public const TEMPLATE_EXAMPLE = ['Contoh Nama Siswa', '100000001', '0012345678', '01-02-2010', 'X-A', '081200000000'];
+    public const TEMPLATE_EXAMPLE = ['Contoh Nama Siswa', '100000001', '0012345678', '01-02-2010', 'X-1', '081200000000'];
 
     /** Row note when the No HP cell still holds the template's example: the number is not stored (SV3 review). */
     public const NOTE_EXAMPLE_PHONE = 'No HP masih contoh dari template, tidak dipakai.';

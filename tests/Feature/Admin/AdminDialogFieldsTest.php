@@ -102,7 +102,7 @@ it('links the error of the sent dialog to its own field (r3)', function (): void
 });
 
 it('gives the two Arsip otomatis dialogs their own date and reason fields (r3)', function (): void {
-    $classroom = Classroom::factory()->create(['name' => 'XII-A', 'level' => 12]);
+    $classroom = Classroom::factory()->create(['name' => 'XII-1', 'level' => 12]);
     Student::factory()->create(['classroom_id' => $classroom->getKey(), 'archive_at' => now()->addDays(10)->toDateString()]);
 
     $html = (string) $this->actingAs($this->admin)->get(route('admin.arsip.index'))->assertOk()->getContent();

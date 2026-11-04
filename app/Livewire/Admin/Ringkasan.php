@@ -47,6 +47,8 @@ final class Ringkasan extends Component
         'account.reset' => 'Akun siswa direset',
         'account.disabled' => 'Akun dinonaktifkan',
         'account.archived' => 'Akun diarsipkan',
+        // SV5: "Aktif kembali" of a disabled student (EnableAccount), Admin › Kelas and Status aktivasi.
+        'account.enabled' => 'Akun diaktifkan lagi',
         // SV1 browser check: "Buka pembekuan" on Status aktivasi, Admin only (user.reset_password).
         'account.unfrozen' => 'Akun dibuka',
         // B5 (backlog #8): Arsip otomatis + Log audit.

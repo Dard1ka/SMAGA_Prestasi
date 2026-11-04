@@ -138,7 +138,7 @@ it('shows status and "Lihat" of an own proposal without a sideways scroll on a p
 it('says the invitation of a member waits for Kesiswaan when the lomba still waits (LOMBA-04)', function (): void {
     $own = F::pendingCompetition($this->nadiaUser, F::usulanAttributes(['name' => 'Lomba Tim Usulan Fiktif', 'participation' => Participation::Tim, 'max_team_size' => 3]));
     $published = F::teamCompetition(3, ['name' => 'Lomba Tim Terbit Fiktif']);
-    $dimas = F::student('Dimas Arya Nugroho', 'XI-D');
+    $dimas = F::student('Dimas Arya Nugroho', 'XI-4');
 
     Livewire::actingAs($this->nadiaUser)->test(PendaftaranForm::class, ['competitionId' => $own->getKey()])
         ->set('type', 'tim')->set('q', 'Dimas')->call('tambah', $dimas->getKey())
@@ -188,7 +188,7 @@ it('shows the current stage instead of pending steps once the lomba ran (LOMBA-0
 it('asks for the corrected report, and tells a member that the ketua reports (LOMBA-06)', function (): void {
     $lomba = F::teamCompetition(3, ['name' => 'Lomba Tim Fiktif 2026']);
     $registration = fs1qaRegistration($lomba, $this->nadia, RegistrationStatus::MenungguLaporan, RegistrationType::Tim);
-    $dimas = F::student('Dimas Arya Nugroho', 'XI-D');
+    $dimas = F::student('Dimas Arya Nugroho', 'XI-4');
     $member = new RegistrationMember(['registration_id' => $registration->getKey(), 'student_id' => $dimas->getKey(), 'invited_at' => now()]);
     $member->forceFill(['role' => MemberRole::Anggota, 'confirmed_at' => now()])->save();
 

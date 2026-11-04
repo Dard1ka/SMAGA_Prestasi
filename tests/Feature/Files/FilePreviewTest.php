@@ -36,8 +36,8 @@ beforeEach(function (): void {
     F::boot();
 
     $this->kesiswaan = F::staff(RoleName::Kesiswaan);
-    $this->nadia = F::student('Nadia Putri Anindya', 'XI-D');
-    $this->dimas = F::student('Dimas Arya Nugroho', 'XI-D');
+    $this->nadia = F::student('Nadia Putri Anindya', 'XI-4');
+    $this->dimas = F::student('Dimas Arya Nugroho', 'XI-4');
     $this->report = F::pendingReport($this->nadia);
 });
 

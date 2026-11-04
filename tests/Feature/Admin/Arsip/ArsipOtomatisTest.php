@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Actions\Accounts\EnableAccount;
 use App\Actions\Archive\ChangeArchiveDate;
 use App\Actions\Archive\UnarchiveStudent;
 use App\Actions\Users\ArchiveDueStudentAccounts;
@@ -28,14 +29,14 @@ beforeEach(function (): void {
     $this->withoutVite();
     $this->travelTo('2029-12-01 09:00:00');
     $this->admin = A::admin();
-    $this->class = Classroom::factory()->level(12)->create(['name' => 'XII-B']);
+    $this->class = Classroom::factory()->level(12)->create(['name' => 'XII-2']);
 });
 
 function b5ArsipStudent(string $archiveAt, bool $archived = false, array $user = []): Student
 {
     $factory = $archived ? Student::factory()->archived() : Student::factory()->activated();
     $student = $factory->create([
-        'classroom_id' => Classroom::query()->where('name', 'XII-B')->value('id'),
+        'classroom_id' => Classroom::query()->where('name', 'XII-2')->value('id'),
         'grade12_start_date' => '2028-07-01',
         'archive_at' => $archiveAt,
     ]);
@@ -229,4 +230,18 @@ it('searches the archive overview by name or exact NISN, not by NIS (D-137)', fu
     Livewire::actingAs($this->admin)->test(ArsipOtomatis::class)
         ->set('q', $soon->nisn)->assertSee('Raka Aditya Pratama')
         ->set('q', $soon->nis)->assertDontSee('Raka Aditya Pratama');
+});
+
+it('lists "Diaktifkan lagi" in the history only when re-activating moved the archive date (SV5)', function (): void {
+    $passed = b5ArsipStudent('2029-07-01', user: ['name' => 'Laras Kinanti', 'status' => UserStatus::Disabled->value]);
+    $future = b5ArsipStudent('2030-07-01', user: ['name' => 'Yoga Prasetya', 'status' => UserStatus::Disabled->value]);
+
+    app(EnableAccount::class)->handle($this->admin, $passed->user, 'Siswa kembali bersekolah.', '2030-12-01');
+    app(EnableAccount::class)->handle($this->admin, $future->user, 'Siswa kembali bersekolah.');
+
+    $this->actingAs($this->admin)->get(route('admin.arsip.index', ['tab' => 'riwayat']))
+        ->assertOk()
+        ->assertSee('Diaktifkan lagi')
+        ->assertSee('Laras Kinanti')
+        ->assertDontSee('Yoga Prasetya');
 });

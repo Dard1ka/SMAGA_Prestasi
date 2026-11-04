@@ -42,6 +42,8 @@ final class AuditLog extends Component
         'account.admin_created' => 'Admin dibuat (CLI)',
         'account.archived' => 'Akun diarsipkan',
         'account.disabled' => 'Akun dinonaktifkan',
+        // SV5: EnableAccount, the undo of "Nonaktif" (Admin › Kelas, Status aktivasi).
+        'account.enabled' => 'Akun diaktifkan lagi',
         'account.email_changed' => 'Email diganti',
         'account.frozen' => 'Akun dibekukan',
         'account.unfrozen' => 'Akun dibuka',
@@ -58,6 +60,7 @@ final class AuditLog extends Component
         'account.initial_password_changed' => 'Kata sandi awal diganti',
         // D-173 (smaga_server): `sth:siswa:kata-sandi-awal` moved pending students to the birth-date password (counts only).
         'student.initial_password_rule_applied' => 'Kata sandi awal siswa diganti ke pola tanggal lahir',
+        'student.all_deleted' => 'Semua data siswa dihapus',
         'activation.password_kept' => 'Kata sandi dari sekolah tetap dipakai',
         'activation.profile_confirmed' => 'Data diri diisi saat aktivasi',
         'appreciation.event_deleted' => 'Acara apresiasi dihapus',
@@ -68,6 +71,7 @@ final class AuditLog extends Component
         'classroom.created' => 'Kelas ditambahkan',
         'classroom.renamed' => 'Nama kelas diganti',
         'classroom.deleted' => 'Kelas dihapus',
+        'classroom.numbered' => 'Kelas dijadikan X-1…XII-12',
         'student.phone_updated' => 'No HP siswa diperbarui',
         'student.profile_updated' => 'Data diri siswa diubah',
         'talent.restored' => 'Pengajuan talenta dipulihkan',

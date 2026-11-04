@@ -106,7 +106,7 @@ function mailInjectionCase(string $kind, string $hostile): array
         ],
         'peringatan akun' => [
             F::staff(RoleName::Admin),
-            new AccountAlert('account.frozen', 'Akun dibekukan', [$hostile.' (XI-D) dibekukan setelah 10 kali gagal masuk.']),
+            new AccountAlert('account.frozen', 'Akun dibekukan', [$hostile.' (XI-4) dibekukan setelah 10 kali gagal masuk.']),
         ],
     };
 }

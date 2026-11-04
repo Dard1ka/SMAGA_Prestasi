@@ -45,10 +45,10 @@ it('shows the search placeholder "Nama atau NISN lengkap" on Status aktivasi and
 // D-173 (smaga_server, 2 Nov 2026): the sentence now states the birth-date rule with a fictional example; a student's
 // own value (SMAGA_ + the birth date of a row) is still never shown.
 it('explains the initial password of new students with the rule only and keeps the Nama column wide (QA-02, QA-03, D-173)', function (): void {
-    Classroom::factory()->create(['name' => 'X-A', 'level' => 10]);
+    Classroom::factory()->create(['name' => 'X-1', 'level' => 10]);
     $file = UploadedFile::fake()->createWithContent('data-siswa.csv', implode("\n", [
         'Nama lengkap,NIS,NISN,Tanggal lahir,Kelas saat pendaftaran,No HP',
-        'Aurelia Maharani Kusumawardani,226227031,0101234557,12-05-2011,X-A,',
+        'Aurelia Maharani Kusumawardani,226227031,0101234557,12-05-2011,X-1,',
     ])."\n");
 
     Livewire::actingAs(F::staff(RoleName::Kesiswaan))->test(ImportSiswa::class)

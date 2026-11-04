@@ -42,7 +42,7 @@ it('gives every known fact of one student, in the order of the screen', function
 
     expect($data->rows)->toBe([
         ['label' => 'Nama', 'values' => ['Nadia Putri Anindya'], 'list' => false],
-        ['label' => 'Kelas', 'values' => ['XI-D'], 'list' => false],
+        ['label' => 'Kelas', 'values' => ['XI-4'], 'list' => false],
         ['label' => 'Capaian', 'values' => ['Juara II'], 'list' => false],
         ['label' => 'Lomba', 'values' => ['OPSI 2026'], 'list' => false],
         ['label' => 'Cabang', 'values' => ['Karya Ilmiah Terapan'], 'list' => false],
@@ -81,7 +81,7 @@ it('writes the lomba dates in full', function (?string $start, ?string $final, s
 
 it('never carries points, NIS/NISN, birth date, phone or email', function (): void {
     $achievement = HumasFixtures::achievement();
-    HumasFixtures::teammate($achievement, 'Raka Pradipta', 'XII-B');
+    HumasFixtures::teammate($achievement, 'Raka Pradipta', 'XII-2');
     $data = FlyerData::of($achievement->fresh());
     $text = (string) json_encode([$data->rows, $data->notes], JSON_UNESCAPED_UNICODE);
 
@@ -108,14 +108,14 @@ it('never carries points, NIS/NISN, birth date, phone or email', function (): vo
 
 it('lists a team with the ketua first, then by name, each with class', function (): void {
     $achievement = HumasFixtures::achievement(studentName: 'Nadia Putri Anindya');
-    HumasFixtures::teammate($achievement, 'Salsabila Kirana', 'X-C');
-    HumasFixtures::teammate($achievement, 'Dimas Arya Nugroho', 'XII-B');
+    HumasFixtures::teammate($achievement, 'Salsabila Kirana', 'X-3');
+    HumasFixtures::teammate($achievement, 'Dimas Arya Nugroho', 'XII-2');
 
     $data = FlyerData::of($achievement->fresh());
 
     expect($data->rows[0])->toBe([
         'label' => 'Anggota tim',
-        'values' => ['Nadia Putri Anindya (XI-D)', 'Dimas Arya Nugroho (XII-B)', 'Salsabila Kirana (X-C)'],
+        'values' => ['Nadia Putri Anindya (XI-4)', 'Dimas Arya Nugroho (XII-2)', 'Salsabila Kirana (X-3)'],
         'list' => true,
     ])
         ->and(array_column($data->rows, 'label'))->not->toContain('Nama')->not->toContain('Kelas')
@@ -129,13 +129,13 @@ it('lists a team with the ketua first, then by name, each with class', function 
 
 it('names every member and adds no note, whatever the old consent columns say (D-162)', function (): void {
     $achievement = HumasFixtures::achievement(['photo_consent' => false, 'publish_consent' => false]);
-    HumasFixtures::teammate($achievement, 'Raka Pradipta', 'XII-B', ['publish_consent' => false]);
-    HumasFixtures::teammate($achievement, 'Salsabila Kirana', 'X-C', ['photo_consent' => false]);
+    HumasFixtures::teammate($achievement, 'Raka Pradipta', 'XII-2', ['publish_consent' => false]);
+    HumasFixtures::teammate($achievement, 'Salsabila Kirana', 'X-3', ['photo_consent' => false]);
 
     $data = FlyerData::of($achievement->fresh());
     $text = (string) json_encode([$data->rows, $data->notes], JSON_UNESCAPED_UNICODE);
 
-    expect($data->rows[0]['values'])->toBe(['Nadia Putri Anindya (XI-D)', 'Raka Pradipta (XII-B)', 'Salsabila Kirana (X-C)'])
+    expect($data->rows[0]['values'])->toBe(['Nadia Putri Anindya (XI-4)', 'Raka Pradipta (XII-2)', 'Salsabila Kirana (X-3)'])
         ->and($data->notes)->toBe([])
         ->and($text)->not->toContain('mengizinkan');
 
@@ -143,30 +143,30 @@ it('names every member and adds no note, whatever the old consent columns say (D
     $one = FlyerData::of($single->fresh());
 
     expect($one->rows[0])->toBe(['label' => 'Nama', 'values' => ['Hana Safira'], 'list' => false])
-        ->and($one->rows[1])->toBe(['label' => 'Kelas', 'values' => ['XI-D'], 'list' => false])
+        ->and($one->rows[1])->toBe(['label' => 'Kelas', 'values' => ['XI-4'], 'list' => false])
         ->and($one->notes)->toBe([]);
 });
 
 it('leaves a team member with a disabled or deleted account out of the list and only counts them', function (): void {
     $achievement = HumasFixtures::achievement();
-    HumasFixtures::teammate($achievement, 'Raka Pradipta', 'XII-B');
-    HumasFixtures::teammate($achievement, 'Fajar Ramadhan', 'XII-E', disabled: true);
-    HumasFixtures::teammate($achievement, 'Bima Satria Wicaksono', 'XII-F')->student->delete();
+    HumasFixtures::teammate($achievement, 'Raka Pradipta', 'XII-2');
+    HumasFixtures::teammate($achievement, 'Fajar Ramadhan', 'XII-5', disabled: true);
+    HumasFixtures::teammate($achievement, 'Bima Satria Wicaksono', 'XII-6')->student->delete();
 
     $data = FlyerData::of($achievement->fresh());
     $text = (string) json_encode([$data->rows, $data->notes], JSON_UNESCAPED_UNICODE);
 
-    expect($data->rows[0]['values'])->toBe(['Nadia Putri Anindya (XI-D)', 'Raka Pradipta (XII-B)'])
+    expect($data->rows[0]['values'])->toBe(['Nadia Putri Anindya (XI-4)', 'Raka Pradipta (XII-2)'])
         ->and($data->notes)->toBe(['2 anggota tim tidak ditampilkan karena akunnya nonaktif.'])
         ->and($text)->not->toContain('Fajar Ramadhan')
         ->not->toContain('Bima Satria Wicaksono')
-        ->not->toContain('XII-E')
-        ->not->toContain('XII-F');
+        ->not->toContain('XII-5')
+        ->not->toContain('XII-6');
 });
 
 it('names nobody when every member of the team has a disabled account', function (): void {
     $achievement = HumasFixtures::achievement(disabled: true);
-    HumasFixtures::teammate($achievement, 'Fajar Ramadhan', 'XII-E', disabled: true);
+    HumasFixtures::teammate($achievement, 'Fajar Ramadhan', 'XII-5', disabled: true);
 
     $data = FlyerData::of($achievement->fresh());
     $text = (string) json_encode([$data->rows, $data->notes], JSON_UNESCAPED_UNICODE);
@@ -176,8 +176,8 @@ it('names nobody when every member of the team has a disabled account', function
         ->and($data->notes)->toBe(['2 anggota tim tidak ditampilkan karena akunnya nonaktif.'])
         ->and($text)->not->toContain('Nadia Putri Anindya')
         ->not->toContain('Fajar Ramadhan')
-        ->not->toContain('XI-D')
-        ->not->toContain('XII-E');
+        ->not->toContain('XI-4')
+        ->not->toContain('XII-5');
 });
 
 it('says so when the one student has a disabled account', function (): void {

@@ -25,9 +25,9 @@ beforeEach(function (): void {
     $this->travelTo(now()->setDate(2026, 10, 1)->setTime(10, 0));
 
     $f = new PublikFixtures;
-    $this->nadia = $f->student('Nadia Putri Anindya', 'XI-D');
+    $this->nadia = $f->student('Nadia Putri Anindya', 'XI-4');
     TalentGate::pass($this->nadia); // D-153: else the talent gate holds every siswa page
-    $dimas = $f->student('Dimas Arya Nugroho', 'XI-A');
+    $dimas = $f->student('Dimas Arya Nugroho', 'XI-1');
 
     $f->prestasi($this->nadia, $f->lomba('WICE 2026', Bidang::Riset, Level::Nasional, '2026-09-24'), ResultType::Juara2);
     $f->prestasi($dimas, $f->lomba('Lomba Esai Kota 2026', Bidang::Riset, Level::Kota, '2026-02-01'), ResultType::Juara2);

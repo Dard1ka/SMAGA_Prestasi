@@ -33,7 +33,9 @@
                 @foreach ($group['rows'] as $row)
                     <tr wire:key="kelas-{{ $row['id'] }}">
                         <td>
-                            <span class="font-semibold [overflow-wrap:anywhere]">{{ $row['name'] }}</span>
+                            {{-- The lead (2026-11-04): a click on the class shows its students, like "Lihat siswa". --}}
+                            <button type="button" class="ttl-link cursor-pointer text-left font-semibold [overflow-wrap:anywhere]" aria-haspopup="dialog"
+                                    wire:click="showStudents('{{ $row['id'] }}')">{{ $row['name'] }}<span class="sr-only">, lihat siswa</span></button>
                             @unless ($row['enabled'])
                                 <x-sth.chip tone="gray" size="sm" class="ml-1">Tidak aktif</x-sth.chip>
                             @endunless
@@ -42,6 +44,9 @@
                         <td class="num text-right">{{ $row['total'] }}</td>
                         <td class="text-right">
                             <span class="inline-flex flex-wrap justify-end gap-2">
+                                <x-sth.button variant="quiet" size="sm" icon="users" aria-haspopup="dialog" wire:click="showStudents('{{ $row['id'] }}')">
+                                    Lihat siswa<span class="sr-only"> kelas {{ $row['name'] }}</span>
+                                </x-sth.button>
                                 <x-sth.button variant="quiet" size="sm" icon="edit" wire:click="askRename('{{ $row['id'] }}')">
                                     Ganti nama<span class="sr-only"> kelas {{ $row['name'] }}</span>
                                 </x-sth.button>
@@ -67,7 +72,7 @@
     @endforelse
 
     @if ($groups !== [])
-        <p class="muted m-0 text-sm">Kelas yang masih berisi siswa, juga alumni, tidak bisa dihapus. Pindahkan siswanya lewat import siswa dulu. Tingkat kelas tidak bisa diganti karena tanggal arsip siswanya mengikuti tingkat.</p>
+        <p class="muted m-0 text-sm">Lihat siswa menampilkan siswa satu kelas; status akunnya bisa diubah dari sana, satu per satu atau beberapa sekaligus. Kelas yang masih berisi siswa, juga alumni, tidak bisa dihapus. Pindahkan siswanya lewat import siswa dulu. Tingkat kelas tidak bisa diganti karena tanggal arsip siswanya mengikuti tingkat.</p>
     @endif
 
     {{-- Dialogs ----------------------------------------------------------------------------------- --}}
@@ -101,4 +106,78 @@
             @endif
         </x-slot:footer>
     </x-sth.modal>
+
+    {{-- Students of one class ("Lihat siswa" or the class name). on-close: X, Esc and a click outside forget the class too. --}}
+    <x-sth.modal :id="\App\Livewire\Admin\Kelas::STUDENTS_DIALOG" size="lg" on-close="closeStudents"
+                 :title="$studentsDialog ? 'Kelas '.$studentsDialog['name'] : 'Siswa kelas'"
+                 description="Pilih siswa lalu ubah status akunnya: aktif kembali, nonaktif, atau arsip (alumni). Prestasinya tetap tersimpan.">
+        @if ($studentsDialog)
+            <div class="flex flex-col gap-3">
+                <p class="m-0 text-sm text-muted" aria-live="polite">
+                    {{ $studentsDialog['count'] }} siswa, {{ $studentsDialog['active'] }} siswa aktif{{ $studentsDialog['hasMore'] ? ', '.count($studentsDialog['rows']).' tampil' : '' }}.
+                </p>
+
+                @if ($studentsDialog['rows'] === [])
+                    <x-sth.empty-state icon="users" title="Belum ada siswa di kelas ini" :card="false">Siswa masuk ke kelas lewat import siswa.</x-sth.empty-state>
+                @else
+                    {{-- SV5: ticks for several students at once; the shared dialog UbahStatusSiswa does the rest. --}}
+                    <div class="flex flex-wrap items-center gap-3">
+                        <label class="inline-flex min-h-11 cursor-pointer items-center gap-2.5 text-sm font-semibold">
+                            <input type="checkbox" class="cek" id="kelas-siswa-pilih-semua" wire:click="toggleAllStudents" @checked($studentsDialog['allSelected'])>
+                            Pilih semua yang tampil
+                        </label>
+                        <x-sth.button class="ml-auto" variant="soft" size="sm" icon="users" aria-haspopup="dialog" wire:click="askStatusSelected"
+                                      wire:loading.attr="disabled" wire:target="askStatusSelected" :disabled="$studentsDialog['selected'] === 0">
+                            <span>Ubah status terpilih (<span class="num">{{ $studentsDialog['selected'] }}</span>)</span>
+                        </x-sth.button>
+                    </div>
+                    <x-sth.table :caption="'Siswa kelas '.$studentsDialog['name']" class="overflow-hidden rounded-tile border border-line" :card="false">
+                        <x-slot:head>
+                            <th scope="col" class="w-12"><span class="sr-only">Pilih</span></th>
+                            <th scope="col" class="min-w-44">Siswa dan NISN</th>
+                            <th scope="col" class="min-w-28">Status</th>
+                            <th scope="col" class="min-w-28"><span class="sr-only">Aksi</span></th>
+                        </x-slot:head>
+                        @foreach ($studentsDialog['rows'] as $student)
+                            <tr wire:key="kelas-siswa-{{ $student['id'] }}">
+                                <td>
+                                    <label class="inline-flex size-11 cursor-pointer items-center justify-center" for="kelas-siswa-pilih-{{ $student['id'] }}">
+                                        <input type="checkbox" class="cek" id="kelas-siswa-pilih-{{ $student['id'] }}" value="{{ $student['id'] }}" wire:model.live="selectedStudents">
+                                        <span class="sr-only">Pilih {{ $student['name'] }}</span>
+                                    </label>
+                                </td>
+                                <td>
+                                    <div class="flex min-w-0 flex-col [overflow-wrap:anywhere]">
+                                        <span class="font-semibold">{{ $student['name'] }}</span>
+                                        <span class="text-xs text-muted">NISN <span class="num">{{ $student['nisn'] ?? '–' }}</span></span>
+                                    </div>
+                                </td>
+                                <td><x-sth.chip :tone="$student['tone']" size="sm">{{ $student['status'] }}</x-sth.chip></td>
+                                <td class="text-right">
+                                    <x-sth.button variant="quiet" size="sm" aria-haspopup="dialog" wire:click="askStatus({{ $student['id'] }})">
+                                        Ubah status<span class="sr-only"> akun {{ $student['name'] }}</span>
+                                    </x-sth.button>
+                                </td>
+                            </tr>
+                        @endforeach
+                    </x-sth.table>
+                    @if ($studentsDialog['capped'])
+                        <p class="m-0 text-sm text-muted">Menampilkan {{ count($studentsDialog['rows']) }} siswa pertama.</p>
+                    @elseif ($studentsDialog['hasMore'])
+                        <div class="flex justify-center">
+                            <x-sth.button variant="quiet" size="sm" icon="chevron-down" wire:click="showMoreStudents" wire:loading.attr="disabled" wire:target="showMoreStudents">Tampilkan lebih banyak</x-sth.button>
+                        </div>
+                    @endif
+                @endif
+            </div>
+        @else
+            <p class="m-0 text-md text-muted">Kelas tidak ditemukan. Tutup lalu pilih kelas lagi.</p>
+        @endif
+        <x-slot:footer>
+            <x-sth.button variant="quiet" data-sth-close>Tutup</x-sth.button>
+        </x-slot:footer>
+    </x-sth.modal>
+
+    {{-- SV5: "Ubah status" of one or several listed students, the dialog shared with Status aktivasi (Admin). --}}
+    <livewire:admin.ubah-status-siswa :return-to="route('admin.kelas.index')" :key="'ubah-status-siswa'" />
 </div>

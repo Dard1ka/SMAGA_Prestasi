@@ -580,7 +580,7 @@ class Apresiasi extends Component
         ];
     }
 
-    /** "Raka Pradipta (XI-D) · Juara II Nasional · FIKSI 2026" for the row in the "Lepas dari acara" dialog. */
+    /** "Raka Pradipta (XI-4) · Juara II Nasional · FIKSI 2026" for the row in the "Lepas dari acara" dialog. */
     private function releasing(): ?string
     {
         $relations = array_map(fn (string $r): string => 'achievement.'.$r, AchievementFacts::RELATIONS);
@@ -691,7 +691,7 @@ class Apresiasi extends Component
     }
 
     /**
-     * One row of the picker: "Nadia Putri Anindya · XI-D" over "Juara II Nasional · OPSI 2026". Only students
+     * One row of the picker: "Nadia Putri Anindya · XI-4" over "Juara II Nasional · OPSI 2026". Only students
      * who may be named (NamedStudent) reach this list, so the name is shown.
      *
      * @return array{id: string, student: string, class: string|null, headline: string, competition: string}

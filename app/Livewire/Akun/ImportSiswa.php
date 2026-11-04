@@ -68,6 +68,10 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
  * meanwhile to the other import, the result names those rows (TAKEN_BY_OTHER_IMPORT), and a unique index the import still
  * met reads the file again (IMPORT_COLLIDED) instead of Livewire's 500. A finished queued import above a file it did not
  * import names its own file and says that the file on screen is not imported yet.
+ * SV4 (lead, 2026-11-04): "Tahun ajaran data" ends with "Tahun lain…" (OTHER_YEAR): a start year typed under it
+ * ("Tahun mulai", OTHER_YEAR_SPAN years around the current school year) gives "YYYY/YYYY+1". effectiveSchoolYear() is
+ * the one year the dry run, the import and the queued import use; a typed year that is not complete or refused drops
+ * the preview of the previous year and keeps the chosen file, which is read as soon as the year is valid.
  */
 #[Title('Import data siswa')]
 #[Layout('layouts::app', ['subtitle' => 'Akun siswa dibuat otomatis dari file Excel.'])]
@@ -124,6 +128,23 @@ class ImportSiswa extends Component
      */
     public const INITIAL_PASSWORD_NOTE = 'Kata sandi awal dibuat hanya untuk siswa baru, dari tanggal lahirnya: SMAGA_ diikuti tanggal lahir ddmmyyyy (01-02-2010 menjadi SMAGA_01022010), dan wajib diganti saat aktivasi. Kata sandi siswa lama tidak berubah.';
 
+    /** The last choice of "Tahun ajaran data": the school year starts in the year typed under it ("Tahun mulai"). */
+    public const OTHER_YEAR = 'lain';
+
+    /** "Tahun mulai" accepts the start year of the current school year minus and plus this many years. */
+    public const OTHER_YEAR_SPAN = 10;
+
+    /** Address keys that carry the year choice across the password page (SV4, returnUrl()). */
+    public const YEAR_QUERY = 'tahun';
+
+    public const CUSTOM_YEAR_QUERY = 'tahun_mulai';
+
+    /**
+     * The click on "Impor N siswa" when the preview on screen was read with another school year than the one chosen
+     * now: the file was read again with the chosen year.
+     */
+    public const PREVIEW_YEAR_RECHECKED = 'Tahun ajaran berubah. File ini sudah diperiksa ulang dengan tahun ajaran yang dipilih; cek angkanya sebelum mengimpor.';
+
     /** The result of an import that wrote nothing (the same words as the dialog for that case). */
     private const NOTHING_CHANGED = 'Tidak ada data yang berubah';
 
@@ -146,7 +167,14 @@ class ImportSiswa extends Component
     /** @var TemporaryUploadedFile|null */
     public $file = null;
 
+    /** A listed school year "YYYY/YYYY", or OTHER_YEAR for the year typed in `customYear`. */
     public string $schoolYear = '';
+
+    /**
+     * "Tahun mulai" under "Tahun lain…": kept exactly as typed (never trimmed and written back while it is typed, SV1);
+     * it is trimmed where it is read (customYearProblem(), effectiveSchoolYear()).
+     */
+    public string $customYear = '';
 
     /** all | bad (ditolak) | notes (rows with a note) */
     public string $filter = 'all';
@@ -195,6 +223,7 @@ class ImportSiswa extends Component
     {
         $this->authorize(Permission::StudentImport->value);
         $this->schoolYear = SchoolYear::containing(CarbonImmutable::now())->toString();
+        $this->restoreYearChoice();
         $this->importId = StudentImport::query()->activeFor($this->actor())->latest()->value('id');
         $this->returnTo = request()->routeIs('admin.import') || (! request()->routeIs('kesiswaan.import') && $this->actor()->hasRole(RoleName::Admin->value))
             ? route('admin.import')
@@ -266,8 +295,43 @@ class ImportSiswa extends Component
 
     public function updatedSchoolYear(ImportStudents $import): void
     {
-        if ($this->file !== null) {
-            $this->check($import);
+        $this->yearChanged($import, typed: false);
+    }
+
+    /** "Tahun mulai" (debounced in the view): only while "Tahun lain…" is chosen. */
+    public function updatedCustomYear(ImportStudents $import): void
+    {
+        if ($this->schoolYear === self::OTHER_YEAR) {
+            $this->yearChanged($import, typed: true);
+        }
+    }
+
+    /**
+     * The school year changed: a listed year, "Tahun lain…" or the typed start year. A complete year reads the chosen
+     * file again (as before for a listed year). Without one ("Tahun lain…" with an empty, incomplete or refused start
+     * year) the preview and the result of the previous year go and the file stays chosen; the reason stands under
+     * "Tahun mulai" once something was typed there (a fresh "Tahun lain…" opens without a red line).
+     */
+    private function yearChanged(ImportStudents $import, bool $typed): void
+    {
+        $this->resetErrorBag('customYear');
+
+        if ($this->effectiveSchoolYear() !== null) {
+            if ($this->file !== null) {
+                $this->check($import);
+            }
+
+            return;
+        }
+
+        if ($typed || trim($this->customYear) !== '') {
+            $this->addError('customYear', (string) $this->customYearProblem());
+        }
+
+        if ($this->previewToken !== null || $this->imported !== null) {
+            $this->imported = null;
+            $this->forgetFinishedImport();
+            $this->forgetPreview();
         }
     }
 
@@ -283,8 +347,9 @@ class ImportSiswa extends Component
     }
 
     /**
-     * The dry run of the chosen file: the old preview goes, the new one is cached. False, with the reason on the field
-     * and the file dropped, when the file or the school year is refused.
+     * The dry run of the chosen file with effectiveSchoolYear(): the old preview goes, the new one is cached. False, with
+     * the reason on the field and the file dropped, when the file or the school year is refused; false with the reason
+     * under "Tahun mulai" and the file kept when "Tahun lain…" has no valid start year yet.
      */
     private function readFile(ImportStudents $import): bool
     {
@@ -305,7 +370,16 @@ class ImportSiswa extends Component
                 ],
             );
 
-            $report = $import->handle($this->actor(), (string) $this->file->getRealPath(), $this->extension(), $this->schoolYear, dryRun: true);
+            $schoolYear = $this->effectiveSchoolYear();
+
+            if ($schoolYear === null) {
+                // "Tahun lain…" without a valid start year: nothing is read, the file waits for the year.
+                $this->addError('customYear', (string) $this->customYearProblem());
+
+                return false;
+            }
+
+            $report = $import->handle($this->actor(), (string) $this->file->getRealPath(), $this->extension(), $schoolYear, dryRun: true);
         } catch (ValidationException $e) {
             $this->setErrorBag($e->validator->errors());
             $this->reset('file');
@@ -348,6 +422,24 @@ class ImportSiswa extends Component
     }
 
     /**
+     * Defensive: the preview on screen was read with another school year than effectiveSchoolYear() (the year hooks
+     * normally read the file again at once). The file is read again with the chosen year and the click stops with a
+     * warning toast, so nothing is asked or written for a year nobody saw. True when it read again (the caller stops).
+     */
+    private function recheckedForYear(ImportStudents $import): bool
+    {
+        if (($this->preview()['schoolYear'] ?? null) === $this->effectiveSchoolYear()) {
+            return false;
+        }
+
+        if ($this->readFile($import)) {
+            $this->dispatch('sth-toast', message: self::PREVIEW_YEAR_RECHECKED, tone: 'warning');
+        }
+
+        return true;
+    }
+
+    /**
      * "Impor N siswa" under the preview (D-128): runs the checks of the import, then opens the dialog that says what
      * will be written. Nothing is written before import(). The password is asked here, before the question, so the
      * answer in the dialog is not followed by the password page (which does not keep the file).
@@ -363,6 +455,7 @@ class ImportSiswa extends Component
         if ($this->previewToImport() === null
             || $this->importRunning()
             || $this->recheckedAfterImport($import)
+            || $this->recheckedForYear($import)
             || ! $this->passwordRecentlyConfirmed()) {
             return;
         }
@@ -400,7 +493,7 @@ class ImportSiswa extends Component
 
         // Defensive (askImport() already read such a file again before it asked): never write from counts taken
         // before another import wrote its rows.
-        if ($this->recheckedAfterImport($import)) {
+        if ($this->recheckedAfterImport($import) || $this->recheckedForYear($import)) {
             return;
         }
 
@@ -421,7 +514,8 @@ class ImportSiswa extends Component
         }
 
         try {
-            $report = $import->handle($this->actor(), (string) $this->file->getRealPath(), $this->extension(), $this->schoolYear, dryRun: false);
+            // The year the preview was read with (recheckedForYear() made sure it is the chosen one).
+            $report = $import->handle($this->actor(), (string) $this->file->getRealPath(), $this->extension(), $preview['schoolYear'], dryRun: false);
         } catch (ValidationException $e) {
             $this->setErrorBag($e->validator->errors());
 
@@ -486,7 +580,9 @@ class ImportSiswa extends Component
         $import = new StudentImport([
             'user_id' => $actor->getKey(),
             'extension' => $this->extension(),
-            'school_year' => $this->preview()['schoolYear'] ?? $this->schoolYear,
+            // The year the preview was read with, which is effectiveSchoolYear() (recheckedForYear()); never the select's
+            // raw value, which is OTHER_YEAR for a typed year.
+            'school_year' => $this->preview()['schoolYear'] ?? (string) $this->effectiveSchoolYear(),
             'file_name' => $file->original_name,
             'file_sha256' => $file->sha256,
         ]);
@@ -574,6 +670,12 @@ class ImportSiswa extends Component
         // new + moved + corrected = $changeCount: the button, the dialog and the tiles count the same students.
         $kinds = StudentImportReport::changeKinds($rows);
         $passwordAsked = ! $this->passwordConfirmedRecently();
+        // SV4: "Tahun lain…" and the year typed under it.
+        $otherYear = $this->schoolYear === self::OTHER_YEAR;
+        $typedYear = $otherYear && $this->customYearProblem() === null ? new SchoolYear((int) trim($this->customYear)) : null;
+        $chosenName = $preview['fileName'] ?? ($this->file instanceof TemporaryUploadedFile ? $this->file->getClientOriginalName() : null);
+        // A chosen file that waits for the typed start year: no preview was read yet.
+        $yearMissing = $preview === null && $chosenName !== null && $otherYear && $typedYear === null;
 
         return view('livewire.akun.import-siswa', [
             'step' => $step,
@@ -583,8 +685,14 @@ class ImportSiswa extends Component
                 $this->imported !== null => 'Selesai',
                 $job !== null && ($preview === null || $queuedHere) => $job->status->label(),
                 $preview !== null => count($rows).' baris terbaca',
+                $yearMissing => 'Menunggu tahun ajaran',
                 default => 'Belum ada file',
             },
+            'otherYear' => $otherYear,
+            'otherYearLabel' => $typedYear !== null ? 'Tahun ajaran '.$typedYear->toString() : null,
+            'otherYearExample' => (string) self::customYearExample(),
+            'chosenName' => $chosenName,
+            'yearMissing' => $yearMissing,
             'preview' => $preview,
             'rowCount' => count($rows),
             'previewDone' => $previewDone,
@@ -859,6 +967,13 @@ class ImportSiswa extends Component
      */
     private function previewToImport(): ?array
     {
+        if ($this->file !== null && $this->effectiveSchoolYear() === null) {
+            // "Tahun lain…" without a valid start year: the file waits for it (no preview was read).
+            $this->addError('customYear', (string) $this->customYearProblem());
+
+            return null;
+        }
+
         if ($this->file === null || $this->previewToken === null) {
             $this->addError('file', 'Upload file dulu.');
 
@@ -909,13 +1024,67 @@ class ImportSiswa extends Component
         return strtolower((string) $this->file?->getClientOriginalExtension());
     }
 
-    /** @return array<string, string> */
+    /**
+     * Next, current and previous school year, then "Tahun lain…" (OTHER_YEAR) for a start year typed by hand.
+     *
+     * @return array<string, string>
+     */
     private static function yearOptions(): array
     {
         $current = SchoolYear::containing(CarbonImmutable::now());
         $years = [new SchoolYear($current->startYear + 1), $current, new SchoolYear($current->startYear - 1)];
 
-        return collect($years)->mapWithKeys(fn (SchoolYear $y): array => [$y->toString() => $y->toString()])->all();
+        return collect($years)->mapWithKeys(fn (SchoolYear $y): array => [$y->toString() => $y->toString()])->all()
+            + [self::OTHER_YEAR => 'Tahun lain…'];
+    }
+
+    /**
+     * The school year every step uses (dry run, import, queued import): the listed choice as it is, or the typed start
+     * year as "YYYY/YYYY+1"; null while "Tahun lain…" has no valid start year (customYearProblem()).
+     */
+    private function effectiveSchoolYear(): ?string
+    {
+        if ($this->schoolYear !== self::OTHER_YEAR) {
+            return $this->schoolYear;
+        }
+
+        return $this->customYearProblem() === null ? (new SchoolYear((int) trim($this->customYear)))->toString() : null;
+    }
+
+    /** Why the typed start year is refused (empty, not 4 digits, outside customYearRange()), or null when it is valid. */
+    private function customYearProblem(): ?string
+    {
+        $value = trim($this->customYear);
+        [$min, $max] = self::customYearRange();
+
+        return match (true) {
+            $value === '' => 'Isi tahun mulai, misalnya '.self::customYearExample().'.',
+            preg_match('/^\d{4}$/', $value) !== 1 => 'Tahun mulai harus 4 angka, misalnya '.self::customYearExample().'.',
+            (int) $value < $min || (int) $value > $max => 'Tahun mulai harus antara '.$min.' dan '.$max.'.',
+            default => null,
+        };
+    }
+
+    /**
+     * The start years "Tahun mulai" accepts: the start year of the current school year ± OTHER_YEAR_SPAN, inside the
+     * years SchoolYear knows.
+     *
+     * @return array{0: int, 1: int}
+     */
+    private static function customYearRange(): array
+    {
+        $current = SchoolYear::containing(CarbonImmutable::now())->startYear;
+
+        return [
+            max(SchoolYear::MIN_YEAR, $current - self::OTHER_YEAR_SPAN),
+            min(SchoolYear::MAX_YEAR, $current + self::OTHER_YEAR_SPAN),
+        ];
+    }
+
+    /** The example start year in the placeholder and the messages: two years after the current one (2028 in 2026/2027). */
+    private static function customYearExample(): int
+    {
+        return SchoolYear::containing(CarbonImmutable::now())->startYear + 2;
     }
 
     private static function monthLabel(?string $date): string
@@ -948,6 +1117,29 @@ class ImportSiswa extends Component
 
     protected function returnUrl(): string
     {
-        return $this->returnTo !== '' ? $this->returnTo : route('kesiswaan.import');
+        $base = $this->returnTo !== '' ? $this->returnTo : route('kesiswaan.import');
+        $query = $this->schoolYear === SchoolYear::containing(CarbonImmutable::now())->toString() ? [] : array_filter([
+            self::YEAR_QUERY => $this->schoolYear,
+            self::CUSTOM_YEAR_QUERY => $this->schoolYear === self::OTHER_YEAR ? trim($this->customYear) : '',
+        ]);
+
+        return $base.($query !== [] ? '?'.http_build_query($query) : '');
+    }
+
+    /**
+     * SV4: the year chosen before the password page comes back with it (returnUrl() puts it in the address), so the
+     * page never silently falls back to the current school year. Anything that is not a listed choice is ignored.
+     */
+    private function restoreYearChoice(): void
+    {
+        $asked = request()->query(self::YEAR_QUERY);
+
+        if (! is_string($asked) || ! array_key_exists($asked, self::yearOptions())) {
+            return;
+        }
+
+        $this->schoolYear = $asked;
+        $typed = request()->query(self::CUSTOM_YEAR_QUERY);
+        $this->customYear = $asked === self::OTHER_YEAR && is_string($typed) ? substr((string) preg_replace('/\D/', '', $typed), 0, 4) : '';
     }
 }

@@ -63,7 +63,7 @@ it('lists the photos of verified reports with the team, the lomba and a preview 
     $achievement = H::achievement(competitionName: 'OPSI 2026');
     // The verified result is the one shown (the factory picks a random one).
     $achievement->report->forceFill(['final_result' => ResultType::Juara2])->save();
-    H::teammate($achievement, 'Raka Pradipta', 'XII-B');
+    H::teammate($achievement, 'Raka Pradipta', 'XII-2');
     $photo = d156Photo($achievement, 'foto-penyerahan-medali.png');
     // a certificate is evidence, not a photo
     ReportFile::factory()->create(['report_id' => $achievement->report_id, 'kind' => ReportFileKind::Sertifikat]);
@@ -74,7 +74,7 @@ it('lists the photos of verified reports with the team, the lomba and a preview 
         ->assertSee('Arsip foto')
         ->assertSee('OPSI 2026')
         ->assertSee('Juara II')
-        ->assertSee('Nadia Putri Anindya (XI-D), Raka Pradipta (XII-B)')
+        ->assertSee('Nadia Putri Anindya (XI-4), Raka Pradipta (XII-2)')
         ->assertSee('foto-penyerahan-medali.png')
         ->assertSee('1</span> laporan dengan foto', false)
         ->assertSee('href="'.route('files.show', $photo).'"', false)
@@ -86,7 +86,7 @@ it('lists the photos of verified reports with the team, the lomba and a preview 
 
 it('lists a team whatever the old consent columns of its members say (D-162)', function (array $state): void {
     $team = H::achievement(competitionName: 'OPSI 2026', studentState: $state);
-    H::teammate($team, 'Raka Pradipta', 'XII-B', $state);
+    H::teammate($team, 'Raka Pradipta', 'XII-2', $state);
     d156Photo($team, 'dokumentasi-tim.png');
 
     Livewire::actingAs($this->humas)->test(ArsipFoto::class)
@@ -107,7 +107,7 @@ it('leaves out a team with a disabled teammate, and only counts it in one neutra
     d156Photo($shown);
 
     $hidden = H::achievement(competitionName: 'OPSI 2026');
-    H::teammate($hidden, 'Raka Pradipta', 'XII-B', disabled: true);
+    H::teammate($hidden, 'Raka Pradipta', 'XII-2', disabled: true);
     d156Photo($hidden, 'rahasia.png');
 
     Livewire::actingAs($this->humas)->test(ArsipFoto::class)

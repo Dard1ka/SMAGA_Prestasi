@@ -43,10 +43,10 @@ beforeEach(function (): void {
 
     $this->kesiswaan = F::staff(RoleName::Kesiswaan);
 
-    $this->hana = F::application(F::student('Hana Safira', 'X-H'));
+    $this->hana = F::application(F::student('Hana Safira', 'X-8'));
     // Newest first (D-142): Aurelia's choice is the first row, the one mount() opens.
     $this->travel(1)->minutes();
-    $this->aurelia = F::application(F::student('Aurelia Maharani', 'X-C'), TalentStatus::Terdaftar, 'Kimia');
+    $this->aurelia = F::application(F::student('Aurelia Maharani', 'X-3'), TalentStatus::Terdaftar, 'Kimia');
 });
 
 /** One Livewire request as the browser sends it: the deferred and live fields, then the "Simpan" of the panel. */
@@ -84,7 +84,7 @@ it('opens the first match when a live search hides the open row, and "Simpan" sa
 });
 
 it('keeps the open row and what was typed in the panel while the row still matches (r3)', function (): void {
-    $hanaClass = (string) Classroom::query()->where('name', 'X-H')->value('id');
+    $hanaClass = (string) Classroom::query()->where('name', 'X-8')->value('id');
 
     Livewire::actingAs($this->kesiswaan)->test(Talenta::class)
         ->call('showPanel', $this->hana->getKey())
@@ -99,7 +99,7 @@ it('keeps the open row and what was typed in the panel while the row still match
 });
 
 it('re-picks the panel on the jenis, cabang and kelas filters too (r3)', function (): void {
-    $aureliaClass = (string) Classroom::query()->where('name', 'X-C')->value('id');
+    $aureliaClass = (string) Classroom::query()->where('name', 'X-3')->value('id');
 
     // Kelas: Hana's row is open, the filter keeps only Aurelia's class.
     Livewire::actingAs($this->kesiswaan)->test(Talenta::class)
@@ -271,10 +271,10 @@ it('opens the first shown row when the open row still matches but stands below t
 
     foreach (range(1, 30) as $i) {
         $this->travel(1)->seconds();
-        $newest = F::application(F::student('Siswa Contoh '.$i, 'X-H'));
+        $newest = F::application(F::student('Siswa Contoh '.$i, 'X-8'));
     }
 
-    $hanaClass = (string) Classroom::query()->where('name', 'X-H')->value('id');
+    $hanaClass = (string) Classroom::query()->where('name', 'X-8')->value('id');
 
     Livewire::actingAs($this->kesiswaan)->test(Talenta::class)
         ->assertSet('panelId', $newest->getKey())

@@ -203,13 +203,21 @@
                                         <span class="block"><span class="text-muted">Login</span> <span class="num">{{ $row['lastLoginAt']?->translatedFormat('j M Y H:i') ?? '–' }}</span></span>
                                     </td>
                                     <td>
-                                        @if ($row['action'] === 'buka')
-                                            <x-sth.button variant="soft" size="sm" wire:click="openReopen({{ $row['userId'] }})">Buka ulang</x-sth.button>
-                                        @elseif ($row['action'] === 'cair')
-                                            <x-sth.button variant="soft" size="sm" wire:click="openUnfreeze({{ $row['userId'] }})">Buka pembekuan</x-sth.button>
-                                        @elseif ($row['action'] === 'admin')
-                                            <span class="text-xs text-muted">Hubungi Admin</span>
-                                        @endif
+                                        <div class="flex flex-col items-start gap-1.5">
+                                            @if ($row['action'] === 'buka')
+                                                <x-sth.button variant="soft" size="sm" wire:click="openReopen({{ $row['userId'] }})">Buka ulang</x-sth.button>
+                                            @elseif ($row['action'] === 'cair')
+                                                <x-sth.button variant="soft" size="sm" wire:click="openUnfreeze({{ $row['userId'] }})">Buka pembekuan</x-sth.button>
+                                            @elseif ($row['action'] === 'admin')
+                                                <span class="text-xs text-muted">Hubungi Admin</span>
+                                            @endif
+                                            {{-- SV5 (Admin): the shared dialog "Ubah status"; "Aktifkan lagi" on a row that can be brought back. --}}
+                                            @if ($row['change'])
+                                                <x-sth.button variant="quiet" size="sm" aria-haspopup="dialog" wire:click="askStatus({{ $row['userId'] }})">
+                                                    {{ $row['change'] }}<span class="sr-only"> akun {{ $row['name'] }}</span>
+                                                </x-sth.button>
+                                            @endif
+                                        </div>
                                     </td>
                                 </tr>
                             @endforeach
@@ -293,13 +301,20 @@
                                     <span class="block"><span class="text-muted">Login</span> <span class="num">{{ $row['lastLoginAt']?->translatedFormat('j M Y H:i') ?? '–' }}</span></span>
                                 </td>
                                 <td>
-                                    @if ($row['action'] === 'buka')
-                                        <x-sth.button variant="soft" size="sm" aria-haspopup="dialog" wire:click="openReopen({{ $row['userId'] }})">Buka ulang</x-sth.button>
-                                    @elseif ($row['action'] === 'cair')
-                                        <x-sth.button variant="soft" size="sm" aria-haspopup="dialog" wire:click="openUnfreeze({{ $row['userId'] }})">Buka pembekuan</x-sth.button>
-                                    @elseif ($row['action'] === 'admin')
-                                        <span class="text-xs text-muted">Hubungi Admin</span>
-                                    @endif
+                                    <div class="flex flex-col items-start gap-1.5">
+                                        @if ($row['action'] === 'buka')
+                                            <x-sth.button variant="soft" size="sm" aria-haspopup="dialog" wire:click="openReopen({{ $row['userId'] }})">Buka ulang</x-sth.button>
+                                        @elseif ($row['action'] === 'cair')
+                                            <x-sth.button variant="soft" size="sm" aria-haspopup="dialog" wire:click="openUnfreeze({{ $row['userId'] }})">Buka pembekuan</x-sth.button>
+                                        @elseif ($row['action'] === 'admin')
+                                            <span class="text-xs text-muted">Hubungi Admin</span>
+                                        @endif
+                                        @if ($row['change'])
+                                            <x-sth.button variant="quiet" size="sm" aria-haspopup="dialog" wire:click="askStatus({{ $row['userId'] }})">
+                                                {{ $row['change'] }}<span class="sr-only"> akun {{ $row['name'] }}</span>
+                                            </x-sth.button>
+                                        @endif
+                                    </div>
                                 </td>
                             </tr>
                         @endforeach
@@ -350,4 +365,9 @@
             <x-sth.button type="submit" form="aktivasi-aksi-form" wire:loading.attr="disabled" wire:target="submitAction">{{ $action === 'cair' ? 'Buka pembekuan' : 'Buka ulang' }}</x-sth.button>
         </x-slot:footer>
     </x-sth.modal>
+
+    {{-- SV5 (Admin only): "Ubah status" / "Aktifkan lagi", the dialog shared with Admin › Kelas. --}}
+    @if ($canChangeStatus)
+        <livewire:admin.ubah-status-siswa :return-to="$statusReturnUrl" :key="'ubah-status-siswa'" />
+    @endif
 </div>

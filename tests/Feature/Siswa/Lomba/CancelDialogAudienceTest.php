@@ -40,8 +40,8 @@ beforeEach(function (): void {
     $this->kepsek = F::staff(RoleName::KepalaSekolah, 'Kepala Sekolah Contoh');
     $this->tu = F::staff(RoleName::TataUsaha, 'Tata Usaha Contoh');
     $this->nadia = F::student();
-    $this->dimas = F::student('Dimas Arya Nugroho', 'XI-D');
-    $this->keisha = F::student('Keisha Larasati', 'XI-F');
+    $this->dimas = F::student('Dimas Arya Nugroho', 'XI-4');
+    $this->keisha = F::student('Keisha Larasati', 'XI-6');
 });
 
 /** @param list<Student> $members */

@@ -54,7 +54,7 @@ final class AppreciationList
             ];
         }
 
-        // Real classes first (natural order: X-B, XI-D, XII-B), "Alumni" then "–" last, then by name.
+        // Real classes first (natural order: X-2, XI-4, XII-2), "Alumni" then "–" last, then by name.
         usort($people, static fn (array $a, array $b): int => self::group($a['class']) <=> self::group($b['class'])
             ?: strnatcasecmp($a['class'], $b['class'])
             ?: strcmp(mb_strtolower($a['name']), mb_strtolower($b['name'])));

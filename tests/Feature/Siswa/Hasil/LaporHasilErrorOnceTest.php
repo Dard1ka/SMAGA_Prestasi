@@ -88,7 +88,7 @@ it('keeps the form ids app.js scrolls in', function (): void {
 });
 
 it('brings a refusal of SubmitReport into view too, and asks nothing after a sent report', function (): void {
-    $o2sn = F::registration(F::student('Yoga Pratama', 'XII-E'), competition: F::competition(['name' => 'O2SN Kota Semarang 2026', 'bidang' => Bidang::Olahraga]));
+    $o2sn = F::registration(F::student('Yoga Pratama', 'XII-5'), competition: F::competition(['name' => 'O2SN Kota Semarang 2026', 'bidang' => Bidang::Olahraga]));
 
     $component = Livewire::actingAs($o2sn->leader->user)
         ->test(LaporHasil::class, ['registration' => $o2sn, 'inline' => true])

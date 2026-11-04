@@ -46,7 +46,8 @@ final class ArsipOtomatis extends Component
 
     public const WINDOWS = [30, 60, 90, 180];
 
-    public const EVENTS = ['account.archived', 'account.unarchived', 'student.archive_date_changed'];
+    /** `account.enabled` (SV5, "Aktifkan lagi") counts only when it moved the archive date (manualHistory()). */
+    public const EVENTS = ['account.archived', 'account.unarchived', 'student.archive_date_changed', 'account.enabled'];
 
     /** The search reads at most this many characters (the box keeps what was typed, term() trims). */
     public const SEARCH_MAX = 100;
@@ -332,7 +333,9 @@ final class ArsipOtomatis extends Component
             ->with('causer')
             ->orderByDesc('id')
             ->limit(30)
-            ->get();
+            ->get()
+            ->reject(fn (Activity $a): bool => $a->event === 'account.enabled' && data_get($a->properties, 'dates') === null)
+            ->values();
 
         $userIds = $rows->map(fn (Activity $a) => $a->subject_type === (new User)->getMorphClass()
             ? (int) $a->subject_id
@@ -348,11 +351,12 @@ final class ArsipOtomatis extends Component
                 'event' => $a->event,
                 'label' => match ($a->event) {
                     'account.unarchived' => 'Dipulihkan',
+                    'account.enabled' => 'Diaktifkan lagi',
                     'student.archive_date_changed' => 'Tanggal arsip diubah',
                     default => 'Diarsipkan manual',
                 },
                 'tone' => match ($a->event) {
-                    'account.unarchived' => 'green',
+                    'account.unarchived', 'account.enabled' => 'green',
                     'student.archive_date_changed' => 'blue',
                     default => 'gray',
                 },
@@ -361,7 +365,7 @@ final class ArsipOtomatis extends Component
                 'reason' => (string) ($a->properties['reason'] ?? ''),
                 'to' => match ($a->event) {
                     'student.archive_date_changed' => data_get($a->properties, 'to.archive_at'),
-                    'account.unarchived' => data_get($a->properties, 'dates.to.archive_at'),
+                    'account.unarchived', 'account.enabled' => data_get($a->properties, 'dates.to.archive_at'),
                     default => null,
                 },
             ];

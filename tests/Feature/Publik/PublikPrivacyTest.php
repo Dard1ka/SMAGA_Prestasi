@@ -27,11 +27,11 @@ beforeEach(function (): void {
     $this->travelTo(now()->setDate(2026, 10, 1)->setTime(10, 0));
 
     $this->f = new PublikFixtures;
-    $this->nadia = $this->f->student('Nadia Putri Anindya', 'XI-D', attributes: ['nis' => '225226201', 'nisn' => '0098765432']);
+    $this->nadia = $this->f->student('Nadia Putri Anindya', 'XI-4', attributes: ['nis' => '225226201', 'nisn' => '0098765432']);
     User::query()->whereKey($this->nadia->user_id)->update(['email' => 'nadia.anindya@sth.test']);
 
     // Fictional student with a DISABLED account: since D-162 (no consent any more) the only kind that stays anonymous.
-    $this->bima = $this->f->student('Bima Satria Wicaksono', 'XI-E', disabled: true, attributes: ['nis' => '225226777', 'nisn' => '0091234567']);
+    $this->bima = $this->f->student('Bima Satria Wicaksono', 'XI-5', disabled: true, attributes: ['nis' => '225226777', 'nisn' => '0091234567']);
     User::query()->whereKey($this->bima->user_id)->update(['email' => 'bima.wicaksono@sth.test']);
 
     $this->opsi = $this->f->lomba('OPSI 2026', Bidang::Riset, Level::Nasional, '2026-09-20');
@@ -75,8 +75,8 @@ it('never shows the name of a disabled account, but counts it in the totals', fu
 
     // A disabled account has no ranking row, in Kelas mode neither.
     $kelas = collect(app(PublicAchievements::class)->ranking('kelas'))->keyBy('kelas');
-    expect($kelas->has('XI-E'))->toBeFalse()
-        ->and($kelas->has('XI-D'))->toBeTrue();
+    expect($kelas->has('XI-5'))->toBeFalse()
+        ->and($kelas->has('XI-4'))->toBeTrue();
 });
 
 it('names every other student on every public page, whatever the old consent columns say (D-162)', function (): void {
@@ -91,7 +91,7 @@ it('names every other student on every public page, whatever the old consent col
         ->assertDontSee('/berkas/', false);
 
     $row = collect(app(PublicAchievements::class)->ranking('siswa'))->firstWhere('slug', $this->slug);
-    expect($row)->toMatchArray(['name' => 'Nadia Putri Anindya', 'named' => true, 'kelas' => 'XI-D']);
+    expect($row)->toMatchArray(['name' => 'Nadia Putri Anindya', 'named' => true, 'kelas' => 'XI-4']);
 });
 
 it('never shows NIS, NISN, email or internal ids in public HTML', function (): void {
@@ -145,7 +145,7 @@ it('hides a student once the account is disabled and the cache is flushed', func
 });
 
 it('shows alumni with the Alumni label and their rank including alumni', function (): void {
-    $ardi = $this->f->student('Ardiansyah Nur Hakim', 'XII-C', archived: true, attributes: ['grade12_start_date' => '2024-07-01']);
+    $ardi = $this->f->student('Ardiansyah Nur Hakim', 'XII-3', archived: true, attributes: ['grade12_start_date' => '2024-07-01']);
     $this->f->prestasi($ardi, $this->f->lomba('OSN Nasional 2024 Kimia', Bidang::Sains, Level::Nasional, '2024-10-05'), ResultType::Juara1);
     $slug = $this->f->slug($ardi);
 
@@ -154,12 +154,12 @@ it('shows alumni with the Alumni label and their rank including alumni', functio
         ->assertOk()
         ->assertSee('Alumni · lulus 2025')
         ->assertSee('termasuk alumni')
-        ->assertDontSee('XII-C')
+        ->assertDontSee('XII-3')
         ->assertDontSee('Kelas terakhir');
 });
 
 it('names an alumnus in every ranking group whatever the old consent column says, never with the last class (D-162)', function (): void {
-    $tiara = $this->f->student('Tiara Anjani Lestari', 'XII-H', archived: true, attributes: ['grade12_start_date' => '2024-07-01', 'nis' => '222223555', 'nisn' => '0077123456', 'publish_consent' => false]);
+    $tiara = $this->f->student('Tiara Anjani Lestari', 'XII-8', archived: true, attributes: ['grade12_start_date' => '2024-07-01', 'nis' => '222223555', 'nisn' => '0077123456', 'publish_consent' => false]);
     $this->f->prestasi($tiara, $this->robotik, ResultType::Juara2);
     PublicAchievements::flush();
 
@@ -168,7 +168,7 @@ it('names an alumnus in every ranking group whatever the old consent column says
             ->assertOk()
             ->assertSee('Alumni')
             ->assertSee('Tiara Anjani Lestari')
-            ->assertDontSee('XII-H')
+            ->assertDontSee('XII-8')
             ->getContent();
 
         foreach (['222223555', '0077123456', (string) $tiara->id] as $secret) {
@@ -183,7 +183,7 @@ it('names an alumnus in every ranking group whatever the old consent column says
 });
 
 it('keeps disabled accounts out of names and rankings but inside the totals', function (): void {
-    $gone = $this->f->student('Laras Wening Pangestu', 'XI-G');
+    $gone = $this->f->student('Laras Wening Pangestu', 'XI-7');
     $this->f->prestasi($gone, $this->robotik, ResultType::Finalis);
     User::query()->whereKey($gone->user_id)->update(['status' => UserStatus::Disabled->value]);
     PublicAchievements::flush();
@@ -241,7 +241,7 @@ it('never links a team certificate when one member\'s account is disabled', func
 });
 
 it('links a team certificate of named members whatever the old consent columns say (D-162)', function (): void {
-    $dimas = $this->f->student('Dimas Arya Nugroho', 'XI-D', attributes: ['publish_consent' => false, 'photo_consent' => false]);
+    $dimas = $this->f->student('Dimas Arya Nugroho', 'XI-4', attributes: ['publish_consent' => false, 'photo_consent' => false]);
     $lkti = $this->f->lomba('LKTI Nasional 2026', Bidang::Riset, Level::Nasional, '2026-08-20');
     $this->f->prestasi($this->nadia, $lkti, ResultType::Juara1);
     $this->f->prestasi($dimas, $lkti, ResultType::Juara1);

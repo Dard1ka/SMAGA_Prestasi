@@ -33,7 +33,7 @@ beforeEach(function (): void {
 
     $this->nadia = F::student();
     $this->dimas = F::student('Dimas Arya Nugroho');
-    $this->keisha = F::student('Keisha Larasati', 'XI-F');
+    $this->keisha = F::student('Keisha Larasati', 'XI-6');
     $this->mentor = F::staff(RoleName::Guru, 'Retno Wulandari, S.Pd.');
 
     $this->wice = F::registration($this->nadia, RegistrationStatus::MenungguLaporan, members: [$this->dimas, $this->keisha], mentor: $this->mentor);
@@ -79,7 +79,7 @@ it('shows a member (not ketua) the report card without the send button', functio
 });
 
 it('answers 404 for someone else\'s registration and hides declined invitations', function (): void {
-    $rizky = F::student('Rizky Maulana', 'XI-A');
+    $rizky = F::student('Rizky Maulana', 'XI-1');
 
     $this->actingAs($rizky->user)->get(route('siswa.lomba-saya.show', $this->wice))->assertNotFound();
 

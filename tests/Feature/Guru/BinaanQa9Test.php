@@ -49,8 +49,8 @@ function qa9TalentTile(Testable $component): string
 }
 
 it('shows old rows of every status without a stage and counts every coached student once', function (): void {
-    $aurelia = GuruFixtures::student('Aurelia Maharani', 'X-C');
-    $hana = GuruFixtures::student('Hana Safira', 'X-H');
+    $aurelia = GuruFixtures::student('Aurelia Maharani', 'X-3');
+    $hana = GuruFixtures::student('Hana Safira', 'X-8');
 
     // Aurelia: an old "tidak lolos" row. Hana: two choices with the same guru pembina, one of them jenis Lainnya.
     GuruFixtures::talent($this->retno, $aurelia, TalentStatus::TidakLolos);
@@ -64,7 +64,7 @@ it('shows old rows of every status without a stage and counts every coached stud
         'mentor_id' => $this->retno->getKey(),
     ])->save();
     // Another guru's student counts nowhere here.
-    GuruFixtures::talent(GuruFixtures::guru('Hendra Kusuma, S.Pd., M.Si.'), GuruFixtures::student('Raka Pradipta', 'XII-B'));
+    GuruFixtures::talent(GuruFixtures::guru('Hendra Kusuma, S.Pd., M.Si.'), GuruFixtures::student('Raka Pradipta', 'XII-2'));
 
     $component = Livewire::actingAs($this->retno)->test(Binaan::class)
         ->assertViewHas('counts', fn (array $c): bool => $c['dibina'] === 2 && $c['talenta'] === 3);
@@ -83,10 +83,10 @@ it('shows old rows of every status without a stage and counts every coached stud
 });
 
 it('counts the students that match the search in the caption of the Talenta tab (QA9)', function (): void {
-    $aurelia = GuruFixtures::student('Aurelia Maharani', 'X-C');
+    $aurelia = GuruFixtures::student('Aurelia Maharani', 'X-3');
     GuruFixtures::talent($this->retno, $aurelia, TalentStatus::Seleksi);
     qa9SecondChoice($this->retno, $aurelia, TalentStatus::Pemetaan, 'Kimia');
-    GuruFixtures::talent($this->retno, GuruFixtures::student('Fajar Ramadhan', 'XII-A'), TalentStatus::Pembinaan);
+    GuruFixtures::talent($this->retno, GuruFixtures::student('Fajar Ramadhan', 'XII-1'), TalentStatus::Pembinaan);
 
     $component = Livewire::actingAs($this->retno)->test(Binaan::class)
         ->call('setTab', 'talenta')

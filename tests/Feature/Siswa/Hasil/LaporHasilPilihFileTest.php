@@ -145,7 +145,7 @@ it('fills only the places left, lets a refused photo take none and clears the me
 });
 
 it('sends the photos the picker kept', function (): void {
-    $o2sn = F::registration(F::student('Yoga Pratama', 'XII-E'), competition: F::competition(['name' => 'O2SN Kota Semarang 2026', 'bidang' => Bidang::Olahraga]));
+    $o2sn = F::registration(F::student('Yoga Pratama', 'XII-5'), competition: F::competition(['name' => 'O2SN Kota Semarang 2026', 'bidang' => Bidang::Olahraga]));
 
     Livewire::actingAs($o2sn->leader->user)
         ->test(LaporHasil::class, ['registration' => $o2sn, 'inline' => true])
@@ -260,7 +260,7 @@ it('keeps the other messages of the form when a picked file is refused', functio
 });
 
 it('drops a single file the send refused for its content, so its drop zone comes back with the reason', function (): void {
-    $o2sn = F::registration(F::student('Yoga Pratama', 'XII-E'), competition: F::competition(['name' => 'O2SN Kota Semarang 2026', 'bidang' => Bidang::Olahraga]));
+    $o2sn = F::registration(F::student('Yoga Pratama', 'XII-5'), competition: F::competition(['name' => 'O2SN Kota Semarang 2026', 'bidang' => Bidang::Olahraga]));
 
     $form = Livewire::actingAs($o2sn->leader->user)
         ->test(LaporHasil::class, ['registration' => $o2sn, 'inline' => true])
@@ -416,7 +416,7 @@ it('says that no photo of the pick was added when Livewire refused the upload of
 });
 
 it('keeps a refusal of SubmitReport under the result when another tile is picked (r3 review)', function (): void {
-    $o2sn = F::registration(F::student('Yoga Pratama', 'XII-E'), competition: F::competition(['name' => 'O2SN Kota Semarang 2026', 'bidang' => Bidang::Olahraga]));
+    $o2sn = F::registration(F::student('Yoga Pratama', 'XII-5'), competition: F::competition(['name' => 'O2SN Kota Semarang 2026', 'bidang' => Bidang::Olahraga]));
     $race = true;
 
     // Another tab sends the report while this one stores its files: the screen's and the Action's policy checks passed,

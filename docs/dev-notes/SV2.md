@@ -113,7 +113,7 @@ student 6 with NISN + the birth-date password answered 302 → /aktivasi (200), 
 ## Follow-ups (not done)
 - Smaga4: nothing changed; if the lead wants D-173 there too, the same files apply (DataUjiSekolahSeeder and AKUN-UJI.md
   exist only here).
-- **Tell the lead before real students are imported**: the NISN-only guessing risk of D-173 (about 366 guesses, 29 a day
+- **Tell the lead before real students are imported**: the NISN-only guessing risk of D-173 (about 366 guesses, 29 a day (Correction 4 Nov 2026, SV4: the K3 freeze after 10 failed logins of a pending account caps the guesses at 10, about 3 % per account; see the correction in D-173.)
   without an alert) and the four options above; none is built (CLAUDE.md backlog #84).
 - The D-14 risk-acceptance form should name the D-173 risk (with the NISN point) instead of the D-138 "one value for
   everyone" risk.

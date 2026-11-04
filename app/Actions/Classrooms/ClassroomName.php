@@ -9,7 +9,7 @@ use Illuminate\Validation\ValidationException;
 
 /**
  * The name rule of a class (Admin › Kelas): the Admin picks the tingkat (X, XI, XII = level 10, 11, 12) and types the
- * part after the dash; the name is stored as "<TINGKAT>-<PART>" in capitals ("X-A", "XI-IPA 1"). The part is 1–12
+ * part after the dash; the name is stored as "<TINGKAT>-<PART>" in capitals ("X-1", "XI-IPA 1"). The part is 1–12
  * characters of letters A–Z, digits and single spaces (trimmed, runs of spaces collapsed). Two names are the same when
  * they match without case and spaces, the way the student import compares the "Kelas" column
  * (App\Actions\Accounts\ImportStudents). "XII-" + 12 characters fits `classrooms.name` (20).

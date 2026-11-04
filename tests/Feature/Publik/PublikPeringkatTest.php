@@ -24,11 +24,11 @@ beforeEach(function (): void {
 
     $f = $this->f = new PublikFixtures;
     // Kelas XII in 2026/2027 → angkatan 2024; XI → 2025; X → 2026.
-    $raka = $f->student('Raka Pradipta', 'XII-B');
-    $salsa = $f->student('Salsabila Kirana', 'XI-E');
-    $aurelia = $f->student('Aurelia Maharani', 'X-C');
-    $fajar = $f->student('Fajar Ramadhan', 'XII-A');
-    $ardi = $f->student('Ardiansyah Nur Hakim', 'XII-C', archived: true, attributes: ['grade12_start_date' => '2024-07-01']);
+    $raka = $f->student('Raka Pradipta', 'XII-2');
+    $salsa = $f->student('Salsabila Kirana', 'XI-5');
+    $aurelia = $f->student('Aurelia Maharani', 'X-3');
+    $fajar = $f->student('Fajar Ramadhan', 'XII-1');
+    $ardi = $f->student('Ardiansyah Nur Hakim', 'XII-3', archived: true, attributes: ['grade12_start_date' => '2024-07-01']);
 
     $fiksi = $f->lomba('FIKSI 2026', Bidang::Riset, Level::Nasional, '2026-09-01');
     $opsi = $f->lomba('OPSI 2025', Bidang::Riset, Level::Nasional, '2025-09-01');
@@ -64,8 +64,8 @@ it('ranks students by cumulative points and hides alumni by default', function (
 
 it('shows only alumni who have achievements with the Alumni filter, ranked among themselves', function (): void {
     // An alumnus without any verified achievement, and one whose old consent column is false (named anyway, D-162).
-    $this->f->student('Bagas Wirayudha', 'XII-E', archived: true, attributes: ['grade12_start_date' => '2024-07-01']);
-    $tiara = $this->f->student('Tiara Anjani Lestari', 'XII-H', archived: true, attributes: ['grade12_start_date' => '2024-07-01', 'publish_consent' => false]);
+    $this->f->student('Bagas Wirayudha', 'XII-5', archived: true, attributes: ['grade12_start_date' => '2024-07-01']);
+    $tiara = $this->f->student('Tiara Anjani Lestari', 'XII-8', archived: true, attributes: ['grade12_start_date' => '2024-07-01', 'publish_consent' => false]);
     $this->f->prestasi($tiara, $this->f->lomba('LKS Provinsi 2024', Bidang::Sains, Level::Provinsi, '2024-11-01'), ResultType::Juara1); // 60
     PublicAchievements::flush();
 
@@ -144,7 +144,7 @@ it('shows "Alumni" where the class stands and never the last class of an alumnus
             ->assertOk()
             ->assertSee('Ardiansyah Nur Hakim')
             ->assertSee('Alumni')
-            ->assertDontSee('XII-C')
+            ->assertDontSee('XII-3')
             ->assertDontSee('Kelas terakhir');
     }
 
@@ -152,7 +152,7 @@ it('shows "Alumni" where the class stands and never the last class of an alumnus
     $active = collect(app(PublicAchievements::class)->ranking('siswa'))->firstWhere('name', 'Raka Pradipta');
 
     expect($row)->toMatchArray(['kelas' => null, 'kelas_label' => 'Alumni', 'alumni' => true])
-        ->and($active)->toMatchArray(['kelas' => 'XII-B', 'kelas_label' => 'XII-B', 'alumni' => false]);
+        ->and($active)->toMatchArray(['kelas' => 'XII-2', 'kelas_label' => 'XII-2', 'alumni' => false]);
 });
 
 it('offers only the angkatan of the shown group and clears a choice that no longer exists', function (): void {
@@ -191,20 +191,20 @@ it('explains an empty alumni list instead of showing other students', function (
 it('ranks classes in kelas mode (active students only)', function (): void {
     $this->get(route('public.peringkat', ['mode' => 'kelas']))
         ->assertOk()
-        ->assertSeeInOrder(['XII-B', 'XI-E', 'X-C', 'XII-A'])
+        ->assertSeeInOrder(['XII-2', 'XI-5', 'X-3', 'XII-1'])
         ->assertSee('Siswa berprestasi')
         ->assertSee('Peringkat kelas hanya menghitung siswa aktif.')
-        ->assertDontSee('XII-C');
+        ->assertDontSee('XII-3');
 
     $rows = app(PublicAchievements::class)->ranking('kelas');
-    expect($rows[0])->toMatchArray(['kelas' => 'XII-B', 'angkatan' => 2024, 'students' => 1, 'count' => 2, 'points' => '160.00'])
+    expect($rows[0])->toMatchArray(['kelas' => 'XII-2', 'angkatan' => 2024, 'students' => 1, 'count' => 2, 'points' => '160.00'])
         ->and(app(PublicAchievements::class)->ranking('kelas', scope: RankingScope::All))->toBe($rows)
         ->and(app(PublicAchievements::class)->ranking('kelas', scope: RankingScope::Alumni))->toBe([]);
 
     Livewire::test(Peringkat::class)
         ->call('pilihMode', 'kelas')
         ->assertSet('mode', 'kelas')
-        ->assertSee('Kelas XII-B');
+        ->assertSee('Kelas XII-2');
 });
 
 it('has no class ranking for alumni and keeps the status choice while classes are shown', function (): void {
@@ -302,7 +302,7 @@ it('falls back to defaults for invalid query values', function (array $query): v
 
 it('shows 20 rows first and 20 more per click (max 200)', function (): void {
     foreach (range(1, 22) as $i) {
-        $student = $this->f->student('Siswa Contoh '.$i, 'X-E');
+        $student = $this->f->student('Siswa Contoh '.$i, 'X-5');
         $this->f->prestasi($student, $this->f->lomba('Lomba Contoh '.$i, Bidang::Sains, Level::Sekolah, '2026-08-01'), ResultType::Peserta);
     }
     PublicAchievements::flush();

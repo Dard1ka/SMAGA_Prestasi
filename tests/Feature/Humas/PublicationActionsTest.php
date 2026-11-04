@@ -33,7 +33,7 @@ function humasSchedulePublication(Publication $publication, array $overrides = [
 {
     $args = array_merge([
         'actor' => test()->humas,
-        'caption' => 'Selamat kepada Nadia Putri Anindya (XI-D).',
+        'caption' => 'Selamat kepada Nadia Putri Anindya (XI-4).',
         'channels' => ['instagram', 'website'],
         'at' => CarbonImmutable::now()->addDay()->setTime(9, 0),
     ], $overrides);
@@ -52,7 +52,7 @@ it('schedules a ready publication', function (): void {
     $fresh = $publication->fresh();
     expect($fresh->status)->toBe(PublicationStatus::Terjadwal)
         ->and($fresh->channels)->toBe(['instagram', 'website'])
-        ->and($fresh->caption)->toBe('Selamat kepada Nadia Putri Anindya (XI-D).')
+        ->and($fresh->caption)->toBe('Selamat kepada Nadia Putri Anindya (XI-4).')
         ->and($fresh->scheduled_at->equalTo($at))->toBeTrue()
         ->and((int) $fresh->created_by)->toBe((int) $this->humas->getKey())
         ->and($fresh->published_at)->toBeNull();

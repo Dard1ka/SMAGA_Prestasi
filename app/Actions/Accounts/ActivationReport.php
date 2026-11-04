@@ -281,7 +281,7 @@ final class ActivationReport
             'frozenReason' => $frozenReason,
             'attempts' => $attempts,
             'flags' => $flags,
-            // Classroom::ordered(): level, then shorter class names first (X-A … X-J before X-IPA 1), then name; then student name.
+            // Classroom::ordered(): level, then shorter class names first (X-1 … X-10 before X-IPA 1), then name; then student name.
             'sort' => sprintf('%02d|%03d|%s|%s', $level, mb_strlen($classroomName), $classroomName, mb_strtolower((string) $user->name)),
         ];
     }

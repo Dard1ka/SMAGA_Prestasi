@@ -60,7 +60,7 @@ it('preselects the first ready card and suggests a caption', function (): void {
     Livewire::actingAs($this->humas)
         ->test(Publikasi::class)
         ->assertSet('selectedId', $publication->getKey())
-        ->assertSet('caption', "Selamat kepada Nadia Putri Anindya (XI-D), Juara II OPSI 2026 tingkat nasional. Terima kasih Bu Retno Wulandari atas bimbingannya.\n#SMAGASpectacular #SMAN3Semarang")
+        ->assertSet('caption', "Selamat kepada Nadia Putri Anindya (XI-4), Juara II OPSI 2026 tingkat nasional. Terima kasih Bu Retno Wulandari atas bimbingannya.\n#SMAGASpectacular #SMAN3Semarang")
         ->assertSet('channels', ['instagram', 'website'])
         ->assertSee('Siapkan publikasi');
 });
@@ -81,7 +81,7 @@ it('shows the data for the flyer as one fact per line, with a copy button for th
         ->assertSee('Data untuk flyer')
         ->assertSeeInOrder([
             'Nama:', 'Nadia Putri Anindya',
-            'Kelas:', 'XI-D',
+            'Kelas:', 'XI-4',
             'Capaian:', 'Juara II',
             'Lomba:', 'OPSI 2026',
             'Tingkat:', 'Nasional',
@@ -115,12 +115,12 @@ it('shows the data for the flyer as one fact per line, with a copy button for th
 
 it('lists every team member with class in the data for the flyer', function (): void {
     $publication = HumasFixtures::publication();
-    HumasFixtures::teammate($publication->achievement, 'Raka Pradipta', 'XII-B');
-    HumasFixtures::teammate($publication->achievement, 'Salsabila Kirana', 'X-C', ['photo_consent' => false]);
+    HumasFixtures::teammate($publication->achievement, 'Raka Pradipta', 'XII-2');
+    HumasFixtures::teammate($publication->achievement, 'Salsabila Kirana', 'X-3', ['photo_consent' => false]);
 
     Livewire::actingAs($this->humas)
         ->test(Publikasi::class)
-        ->assertSeeInOrder(['Anggota tim:', 'Nadia Putri Anindya (XI-D)', 'Raka Pradipta (XII-B)', 'Salsabila Kirana (X-C)', 'Capaian:', 'Juara II'])
+        ->assertSeeInOrder(['Anggota tim:', 'Nadia Putri Anindya (XI-4)', 'Raka Pradipta (XII-2)', 'Salsabila Kirana (X-3)', 'Capaian:', 'Juara II'])
         ->assertDontSee('Nama:')
         ->assertDontSee('Kelas:')
         ->assertDontSee('mengizinkan');
@@ -128,15 +128,15 @@ it('lists every team member with class in the data for the flyer', function (): 
 
 it('never names a team member with a disabled account in the data for the flyer', function (): void {
     $publication = HumasFixtures::publication();
-    HumasFixtures::teammate($publication->achievement, 'Raka Pradipta', 'XII-B');
-    HumasFixtures::teammate($publication->achievement, 'Fajar Ramadhan', 'XII-E', disabled: true);
+    HumasFixtures::teammate($publication->achievement, 'Raka Pradipta', 'XII-2');
+    HumasFixtures::teammate($publication->achievement, 'Fajar Ramadhan', 'XII-5', disabled: true);
 
     Livewire::actingAs($this->humas)
         ->test(Publikasi::class)
-        ->assertSeeInOrder(['Anggota tim:', 'Nadia Putri Anindya (XI-D)', 'Raka Pradipta (XII-B)'])
+        ->assertSeeInOrder(['Anggota tim:', 'Nadia Putri Anindya (XI-4)', 'Raka Pradipta (XII-2)'])
         ->assertSee('1 anggota tim tidak ditampilkan karena akunnya nonaktif.')
         ->assertDontSee('Fajar Ramadhan')
-        ->assertDontSee('XII-E');
+        ->assertDontSee('XII-5');
 });
 
 it('says nothing about photos and offers none', function (): void {
@@ -344,7 +344,7 @@ it('publishes from the panel through the dialog and notifies the student', funct
             'Tandai sudah terbit?',
             'Siswa langsung diberi tahu.',
             'OPSI 2026',
-            'Nadia Putri Anindya · XI-D · Juara II Nasional',
+            'Nadia Putri Anindya · XI-4 · Juara II Nasional',
             'Kanal: Instagram, Mading sekolah',
             'Status menjadi Dipublikasikan dan tidak bisa dikembalikan ke antrean.',
         ])

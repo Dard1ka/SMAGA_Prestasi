@@ -5,7 +5,7 @@
 --}}
 @php
     $people = [
-        'siswa' => ['name' => 'Nadia Putri Anindya', 'meta' => 'Siswa · XI-D', 'badges' => ['siswa.lomba-saya' => 2]],
+        'siswa' => ['name' => 'Nadia Putri Anindya', 'meta' => 'Siswa · XI-4', 'badges' => ['siswa.lomba-saya' => 2]],
         'guru' => ['name' => 'Pak Hendra Kusuma, S.Pd., M.Si.', 'meta' => 'Guru Pembimbing', 'badges' => []],
         'kesiswaan' => ['name' => 'Ibu Dwi Rahayu', 'meta' => 'Kesiswaan', 'badges' => ['kesiswaan.usulan' => 3, 'kesiswaan.verifikasi' => 4]],
         'kepala_sekolah' => ['name' => 'Drs. Bambang Hartono, M.Pd.', 'meta' => 'Kepala Sekolah', 'badges' => ['kepsek.persetujuan' => 5]],
@@ -48,7 +48,7 @@
         ['title' => 'OSN Tingkat Kota Semarang 2026', 'sub' => 'Puspresnas · Kategori A · Individu', 'bidang' => 'sains', 'tingkat' => 'Kota/Kab', 'batas' => '8 Okt 2026', 'soon' => null, 'count' => 12, 'status' => ['green', 'check', 'Dipublikasikan']],
         ['title' => 'O2SN Kota Semarang 2026 · Bulu tangkis', 'sub' => 'Puspresnas · Kategori A · Individu', 'bidang' => 'olahraga', 'tingkat' => 'Kota/Kab', 'batas' => '9 Okt 2026', 'soon' => null, 'count' => 4, 'status' => ['green', 'check', 'Dipublikasikan']],
         ['title' => 'Lomba Peneliti Belia (LPB) 2026', 'sub' => 'Center for Young Scientists · Kategori C · Tim maks 3', 'bidang' => 'riset', 'tingkat' => 'Nasional', 'batas' => '10 Okt 2026', 'soon' => null, 'count' => 5, 'status' => ['green', 'check', 'Dipublikasikan']],
-        ['title' => 'Kompetisi Robotik Pelajar Jateng 2026', 'sub' => 'Usulan Bima Satria Wicaksono · XII-G', 'bidang' => 'riset', 'tingkat' => 'Provinsi', 'batas' => '–', 'soon' => null, 'count' => 0, 'status' => ['gray', 'clock', 'Menunggu verifikasi']],
+        ['title' => 'Kompetisi Robotik Pelajar Jateng 2026', 'sub' => 'Usulan Bima Satria Wicaksono · XII-7', 'bidang' => 'riset', 'tingkat' => 'Provinsi', 'batas' => '–', 'soon' => null, 'count' => 0, 'status' => ['gray', 'clock', 'Menunggu verifikasi']],
     ];
 
     $sections = ['warna' => 'Warna', 'tombol' => 'Tombol', 'ikon' => 'Ikon', 'chip' => 'Chip', 'kartu' => 'Kartu', 'form' => 'Formulir',

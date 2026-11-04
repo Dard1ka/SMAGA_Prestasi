@@ -78,8 +78,8 @@ final class HumasFixtures
         bool $withEmail = true,
         bool $disabled = false,
     ): Achievement {
-        $classroom = Classroom::query()->firstWhere('name', 'XI-D')
-            ?? Classroom::factory()->level(11)->create(['name' => 'XI-D']);
+        $classroom = Classroom::query()->firstWhere('name', 'XI-4')
+            ?? Classroom::factory()->level(11)->create(['name' => 'XI-4']);
 
         $user = ($disabled ? User::factory()->disabled() : User::factory())->create([
             'name' => $studentName,
@@ -137,7 +137,7 @@ final class HumasFixtures
      *
      * @param  array<string, mixed>  $studentState  extra students columns
      */
-    public static function teammate(Achievement $of, string $studentName, string $className = 'XII-B', array $studentState = [], bool $disabled = false): Achievement
+    public static function teammate(Achievement $of, string $studentName, string $className = 'XII-2', array $studentState = [], bool $disabled = false): Achievement
     {
         $classroom = Classroom::query()->firstWhere('name', $className)
             ?? Classroom::factory()->level(match (true) {

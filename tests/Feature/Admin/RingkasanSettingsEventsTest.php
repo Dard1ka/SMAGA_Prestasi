@@ -49,7 +49,7 @@ it('lists the activation window an Admin changed, with its label (SV1)', functio
 
 it('lists the class changes of Admin › Kelas, with the words of Log audit (SV1)', function (): void {
     $this->actingAs($this->admin);
-    $kelas = Classroom::factory()->create(['name' => 'XI-B', 'level' => 11]);
+    $kelas = Classroom::factory()->create(['name' => 'XI-2', 'level' => 11]);
 
     foreach ([CreateClassroom::EVENT, RenameClassroom::EVENT, DeleteClassroom::EVENT] as $event) {
         activity('classroom')->causedBy($this->admin)->performedOn($kelas)->event($event)->log($event);

@@ -217,7 +217,7 @@ it('puts team mates next to each other in the list', function (): void {
             return count($names) === 3 && abs(array_search('Nadia Putri Anindya', $names, true) - array_search('Raka Pradipta', $names, true)) === 1;
         })
         ->set('search', 'OPSI')
-        ->assertViewHas('picker', fn (array $p): bool => count($p['rows']) === 2 && $p['rows'][1]['class'] === 'XII-B');
+        ->assertViewHas('picker', fn (array $p): bool => count($p['rows']) === 2 && $p['rows'][1]['class'] === 'XII-2');
 });
 
 // --- Steps (D-72) --------------------------------------------------------------------------------------------------

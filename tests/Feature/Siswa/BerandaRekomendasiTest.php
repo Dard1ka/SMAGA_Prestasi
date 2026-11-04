@@ -33,7 +33,7 @@ beforeEach(function (): void {
     Notification::fake();
     $this->withoutVite();
 
-    // XI-D: the fixture already gives a "Lainnya" talent (no bidang, D-143), so OSN is the one bidang of interest.
+    // XI-4: the fixture already gives a "Lainnya" talent (no bidang, D-143), so OSN is the one bidang of interest.
     $this->nadia = F::student();
     ui2BerandaTalent($this->nadia, TalentTypeCode::Osn);
 });
@@ -125,7 +125,7 @@ it('says the student is in every open lomba of the bidang when only other lomba 
 });
 
 it('keeps the general subtitle for a student whose talents have no bidang', function (): void {
-    $kirana = F::student('Kirana Ayu Lestari', 'XI-B'); // only the "Lainnya" talent of the fixture
+    $kirana = F::student('Kirana Ayu Lestari', 'XI-2'); // only the "Lainnya" talent of the fixture
     F::openCompetition(['name' => 'Lomba Riset Fiktif 2026', 'bidang' => Bidang::Riset]);
 
     expect(ui2BerandaRecommendations($kirana)['subtitle'])->toBe('Pendaftaran yang sedang dibuka');

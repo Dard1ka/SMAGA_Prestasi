@@ -101,7 +101,7 @@ it('cuts only a text longer than the search reads and never trims it', function 
     'Humas › Arsip publikasi' => [Arsip::class, fn () => HumasFixtures::humas()],
     'Tata Usaha › Arsip surat' => [ArsipSurat::class, fn () => AuthTestHelpers::staff(RoleName::TataUsaha)],
     'Kepala Sekolah › Surat atas nama saya' => [SuratSaya::class, fn () => KepsekFixtures::kepsek()],
-    'Siswa › Cari lomba' => [Katalog::class, fn () => KesiswaanFixtures::student('Nadia Putri Anindya', 'XI-D')->user],
+    'Siswa › Cari lomba' => [Katalog::class, fn () => KesiswaanFixtures::student('Nadia Putri Anindya', 'XI-4')->user],
 ]);
 
 it('keeps the typed text on Kelola lomba and finds a lomba by two words', function (): void {
@@ -122,8 +122,8 @@ it('keeps the typed text on Kelola lomba and finds a lomba by two words', functi
 });
 
 it('keeps the typed text on Database talenta siswa and puts the trimmed term in the export, its filter row and its audit row', function (): void {
-    KesiswaanFixtures::application(KesiswaanFixtures::student('Nadia Putri Anindya', 'X-A'));
-    KesiswaanFixtures::application(KesiswaanFixtures::student('Dimas Arya Nugroho', 'X-B'), branch: 'Kimia');
+    KesiswaanFixtures::application(KesiswaanFixtures::student('Nadia Putri Anindya', 'X-1'));
+    KesiswaanFixtures::application(KesiswaanFixtures::student('Dimas Arya Nugroho', 'X-2'), branch: 'Kimia');
     $kesiswaan = KesiswaanFixtures::staff(RoleName::Kesiswaan);
 
     Livewire::actingAs($kesiswaan)->test(Talenta::class)
@@ -157,8 +157,8 @@ it('keeps the typed text on Database talenta siswa and puts the trimmed term in 
 
 it('keeps the typed text on Database prestasi, still cleans the other filters and exports the trimmed term', function (): void {
     $f = new PrestasiFixtures;
-    $f->prestasi([KesiswaanFixtures::student('Nadia Putri Anindya', 'XI-D')], $f->lomba('WICE 2026'));
-    $f->prestasi([KesiswaanFixtures::student('Dimas Arya Nugroho', 'XI-D')], $f->lomba('OPSI 2026'));
+    $f->prestasi([KesiswaanFixtures::student('Nadia Putri Anindya', 'XI-4')], $f->lomba('WICE 2026'));
+    $f->prestasi([KesiswaanFixtures::student('Dimas Arya Nugroho', 'XI-4')], $f->lomba('OPSI 2026'));
     $kesiswaan = KesiswaanFixtures::staff(RoleName::Kesiswaan);
 
     Livewire::actingAs($kesiswaan)->test(DatabasePrestasi::class)
@@ -221,7 +221,7 @@ it('keeps the typed text on Guru › Lomba and carries the trimmed term in its l
 
 it('keeps the typed text on Admin › Arsip otomatis and carries the trimmed term in the tab links', function (): void {
     foreach (['Nadia Putri Anindya', 'Dimas Arya Nugroho'] as $name) {
-        KesiswaanFixtures::student($name, 'XII-B')->forceFill(['archive_at' => now()->addDays(10)->toDateString()])->save();
+        KesiswaanFixtures::student($name, 'XII-2')->forceFill(['archive_at' => now()->addDays(10)->toDateString()])->save();
     }
 
     Livewire::actingAs(AdminTestHelpers::admin())->test(ArsipOtomatis::class)
@@ -313,7 +313,7 @@ it('keeps the typed text on Kepala Sekolah › Surat atas nama saya', function (
 */
 
 it('keeps the typed text on Siswa › Cari lomba and finds a lomba by two words', function (string $tab, string $list, string $key, string $noMatch): void {
-    $nadia = KesiswaanFixtures::student('Nadia Putri Anindya', 'XI-D')->user;
+    $nadia = KesiswaanFixtures::student('Nadia Putri Anindya', 'XI-4')->user;
     $names = ['Uji Coba Robotik Fiktif 2026', 'Uji Ulang Sains Fiktif 2026'];
 
     // "Katalog" lists published lomba, "Usulan saya" the student's own of every status (here still waiting for Kesiswaan).
@@ -363,7 +363,7 @@ it('keeps the spaces of a ?q= from the top bar on Siswa › Cari lomba and still
     KesiswaanFixtures::competition(['name' => 'Uji Ulang Sains Fiktif 2026']);
 
     Livewire::withQueryParams(['q' => ' Uji Ulang '])
-        ->actingAs(KesiswaanFixtures::student('Nadia Putri Anindya', 'XI-D')->user)
+        ->actingAs(KesiswaanFixtures::student('Nadia Putri Anindya', 'XI-4')->user)
         ->test(Katalog::class)
         ->assertSet('q', ' Uji Ulang ')
         ->assertViewHas('cards', fn (array $cards): bool => sv1SearchColumn($cards, 'title') === ['Uji Ulang Sains Fiktif 2026']);
@@ -372,7 +372,7 @@ it('keeps the spaces of a ?q= from the top bar on Siswa › Cari lomba and still
 it('keeps the Usulan saya box while it holds spaces only, without a "no match" sentence', function (): void {
     // No own lomba: the box shows only because something is typed (an old ?q=); spaces only must not hide it under the
     // student's typing, and they are no search either, so the tab keeps its own empty state.
-    Livewire::actingAs(KesiswaanFixtures::student('Nadia Putri Anindya', 'XI-D')->user)->test(Katalog::class)
+    Livewire::actingAs(KesiswaanFixtures::student('Nadia Putri Anindya', 'XI-4')->user)->test(Katalog::class)
         ->set('tab', 'usulan')
         ->set('q', '  ')
         ->assertSeeHtml('placeholder="Cari usulan"')

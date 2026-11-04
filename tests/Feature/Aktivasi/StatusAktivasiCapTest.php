@@ -28,7 +28,7 @@ beforeEach(function (): void {
     Notification::fake();
 
     $this->kesiswaan = A::staff(RoleName::Kesiswaan);
-    $this->classroom = Classroom::factory()->create(['name' => 'X-A', 'level' => 10]);
+    $this->classroom = Classroom::factory()->create(['name' => 'X-1', 'level' => 10]);
 });
 
 /** $count students waiting for their activation in one class, written in bulk (the factories would take minutes). */

@@ -29,7 +29,7 @@ beforeEach(function (): void {
     config(['session.driver' => 'database']);
     $this->admin = A::admin();
     $this->actingAs($this->admin);
-    $this->class = Classroom::factory()->level(11)->create(['name' => 'XI-D']);
+    $this->class = Classroom::factory()->level(11)->create(['name' => 'XI-4']);
 });
 
 function bantuanStudent(object $t, string $name, array $user = []): Student

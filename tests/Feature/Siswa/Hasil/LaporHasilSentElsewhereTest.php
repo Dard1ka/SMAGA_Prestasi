@@ -35,7 +35,7 @@ beforeEach(function (): void {
     F::today('2026-10-01');
     $this->withoutVite();
 
-    $this->yoga = F::student('Yoga Pratama', 'XII-E');
+    $this->yoga = F::student('Yoga Pratama', 'XII-5');
     $this->o2sn = F::registration($this->yoga, competition: F::competition(['name' => 'O2SN Kota Semarang 2026', 'bidang' => Bidang::Olahraga]));
 });
 

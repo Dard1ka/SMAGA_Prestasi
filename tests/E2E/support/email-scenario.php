@@ -634,10 +634,10 @@ $students = [
 
 $importCsv = implode("\n", [
     'Nama lengkap,NIS,NISN,Tanggal lahir,Kelas',
-    'Sekar Ayu Pramesti,226227201,0109900001,14-02-2011,X-A',
-    'Wulan Kusumaningrum,226227202,0109900002,23-08-2010,X-B',
-    'Bintang Mahardika,226227203,0109900003,05-11-2010,X-C',
-    "Ma'ruf Hidayat,226227204,0109900004,19-06-2010,X-D",
+    'Sekar Ayu Pramesti,226227201,0109900001,14-02-2011,X-1',
+    'Wulan Kusumaningrum,226227202,0109900002,23-08-2010,X-2',
+    'Bintang Mahardika,226227203,0109900003,05-11-2010,X-3',
+    "Ma'ruf Hidayat,226227204,0109900004,19-06-2010,X-4",
 ])."\n";
 
 /**

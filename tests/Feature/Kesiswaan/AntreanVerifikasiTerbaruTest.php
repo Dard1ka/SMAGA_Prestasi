@@ -28,7 +28,7 @@ beforeEach(function (): void {
 
 function antreanReport(string $name, string $sentAt): Report
 {
-    $report = F::pendingReport(F::student($name, 'XI-D'), [], ResultType::Juara3, null, F::competition(['name' => 'Lomba '.$name]));
+    $report = F::pendingReport(F::student($name, 'XI-4'), [], ResultType::Juara3, null, F::competition(['name' => 'Lomba '.$name]));
     $report->forceFill(['submitted_at' => $sentAt])->save();
 
     return $report->fresh();

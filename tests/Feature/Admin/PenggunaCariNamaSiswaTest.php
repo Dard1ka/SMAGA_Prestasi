@@ -27,7 +27,7 @@ beforeEach(function (): void {
     $this->admin = A::admin();
     $this->actingAs($this->admin);
     $this->guru = A::staff(RoleName::Guru, ['name' => 'Pak Hendra Kusuma']);
-    $this->class = Classroom::factory()->level(11)->create(['name' => 'XI-D']);
+    $this->class = Classroom::factory()->level(11)->create(['name' => 'XI-4']);
 });
 
 function ui2PenggunaStudent(object $t, string $name): Student

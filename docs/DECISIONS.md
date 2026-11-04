@@ -1456,6 +1456,14 @@ ini di smaga server lokal aja deh, smaga4 gausah dulu"); Smaga4 tetap D-138 samp
     untuk semua akun) membiarkan satu alamat menebak banyak akun belum aktivasi sekaligus; "Buka ulang" dan jendela
     sampai 30 hari menambah jatah tebakan. K7 tidak berlaku untuk akun yang belum aktivasi. Setelah masuk, penyerang
     menghubungkan emailnya sendiri, jadi kode OTP dan "Bukan saya?" sampai ke penyerang, bukan ke siswa.
+  - *Koreksi 4 Nov 2026 (SV4):* butir di atas melewatkan pembekuan K3. Akun siswa **belum aktivasi** dibekukan setelah
+    **10** kali gagal masuk, berapa pun lamanya (`AccountControls::MAX_FAILED_ATTEMPTS`, `RecordFailedLogin`, dipanggil
+    oleh event `Failed` Fortify): akun tidak bisa masuk sama sekali, sesinya diakhiri, dan Admin diberi tahu ("Akun
+    dibekukan setelah 10 kali gagal masuk"). Jadi penebak yang hanya tahu NISN mendapat 10 tebakan dari sekitar 366,
+    kira-kira 3 % per akun, bukan sekitar 400; menebak banyak akun membekukan semuanya dan membanjiri Admin dengan
+    peringatan. Yang tetap: "Buka ulang" (Kesiswaan/Admin) mengosongkan hitungan itu, jadi buka ulang hanya setelah
+    pemiliknya dipastikan; dan siapa pun yang tahu NISN bisa sengaja membekukan akun yang belum aktivasi (bisa dipulihkan
+    dengan "Buka ulang"). Pilihan tambahan di bawah menjadi kurang mendesak.
   - Dibanding D-138 risikonya tetap lebih kecil: dengan satu nilai bersama, siapa pun yang tahu nilai itu (semua siswa
     dan orang yang mereka beri tahu) cukup sekali mencoba; dengan pola tanggal lahir orang luar butuh tanggal lahirnya
     atau ratusan tebakan. Siswa yang tanggal lahirnya sama tetap saling bisa menebak.
@@ -1517,6 +1525,119 @@ Konteks: permintaan lead 3 Nov 2026 setelah memakai server sekolah. Berlaku **ha
   + satu kalimat di layar, `ActivationReport::writeXlsx()` (menggantikan `writeCsv()`; `HEADER`, `LEVELS`,
   `NO_LEVEL_SHEET`), `StatusAktivasi` (`$unduhTingkat`, `DOWNLOAD_LEVELS`, `export()`), view Status aktivasi, tes terkait.
   Tanpa migrasi.
+
+## D27. Kelas bernomor, siswa per kelas, tahun ajaran manual, data siswa dikosongkan, ubah status siswa (4 Nov 2026, SV4, hanya `smaga_server`)
+
+Permintaan lead 4 Nov 2026 untuk server sekolah. Smaga4 tidak berubah (tetap D-165). Catatan kerja: `docs/dev-notes/SV4.md`.
+
+### D-175 · Kelas X-1…X-12, XI-1…XI-12, XII-1…XII-12 · 4 Nov 2026
+*menggantikan D-165 untuk `smaga_server`*
+- **Keputusan:** kelas sekolah bernomor lagi, dua belas per tingkat: X-1…X-12, XI-1…XI-12, XII-1…XII-12 (36 kelas;
+  D-165 punya X-A…X-J, XI-A…XI-L, XII-A…XII-L). `ClassroomSeeder` membuat nama ini. Database yang sudah ada dibawa ke sana
+  dengan `php artisan sth:kelas:nomor` (pratinjau; `--terapkan` menulis), bukan migrasi, supaya bisa dijalankan setelah
+  data siswa dikosongkan dan diulang dengan aman:
+  - kelas berhuruf diganti nama di tempat (A = 1 … L = 12), siswanya tetap di baris yang sama;
+  - kalau nomor tujuan sudah ada (Admin pernah menambah X-4 sendiri), siswa kelas berhuruf pindah ke kelas bernomor dan
+    baris berhuruf dihapus: satu kelas, tidak dobel;
+  - kelas yang belum ada dibuat;
+  - kelas lain di luar 36 nama itu dihapus kalau kosong (pilihan lead), dibiarkan kalau masih ada baris siswa;
+  - satu baris audit `classroom.numbered` berisi nama kelas dan jumlah, tanpa data siswa.
+  Admin › Kelas tetap bisa menambah, mengganti nama, dan menghapus kelas (D-166). Import ulang tetap memindahkan siswa
+  terdaftar ke kelas di file (D-81). Surat siswa mencetak "XI - 4". Template import memakai contoh kelas X-1.
+- **Alasan:** lead, 4 Nov 2026: "kelas skrng fix adanya X-1 sampai X-12, XI-1 sampai XI-12, kelas XII-1 sampai XII-12
+  bukan X-A … kalo di import dua kali siswa akan ganti kelas".
+- **Dampak:** `ClassroomSeeder` (`PER_LEVEL`, `LEVELS`, `letters()` dihapus), `App\Actions\Classrooms\NumberClassrooms`,
+  perintah `sth:kelas:nomor`, label audit, `DataUjiSekolahSeeder`, `DemoSeeder` dan data demo, contoh di komentar, dan
+  semua tes (nama kelas berhuruf diganti nomor; tes migrasi D-165 tetap menguji migrasi lamanya). Migrasi
+  `rename_classrooms_to_letters` dan `remove_tahfidz_olimp_classrooms` tetap di riwayat dan tidak diubah. Tanpa migrasi
+  baru. Teks D-165 dan D-174 yang menyebut X-A sekarang usang untuk `smaga_server`.
+
+### D-176 · Admin › Kelas › "Lihat siswa" dan "Nonaktifkan" per siswa · 4 Nov 2026
+- **Keputusan:** setiap baris kelas (dan nama kelasnya) membuka dialog "Kelas X-1" berisi siswa kelas itu: nama, NISN,
+  status, urut nama, 40 baris per langkah ("Tampilkan lebih banyak", paling banyak 400). Siswa yang masih bisa login
+  (aktif, belum aktivasi) punya tombol "Nonaktifkan" yang membuka dialog yang sama dengan Bantuan akun siswa: Nonaktif atau
+  Alumni (arsip), alasan wajib (maks. 500), konfirmasi kata sandi terbaru, `DisableAccount` / `ArchiveAccount`, pesan
+  yang sama. Siswa nonaktif dan alumni tampil dengan statusnya tanpa tombol. Id siswa yang tidak pernah ditampilkan di
+  dialog itu (akun staf, siswa kelas lain) dijawab 404; siswa yang sudah dinonaktifkan atau pindah kelas di tab lain
+  dijawab toast peringatan dan daftar yang diperbarui. Bantuan akun siswa di Pengguna & peran tetap seperti dulu.
+- **Alasan:** lead, 4 Nov 2026: "kalo mencet kelas … akan langsung menunjukan siswa yg ada di kelas itu dan bisa jg
+  langsung menoaktifkan dari situ"; pilihan lead: dialog per kelas, satu siswa per kali (tanpa nonaktifkan massal).
+- **Dampak:** `Admin\Kelas` (dialog `kelas-siswa`, `kelas-siswa-nonaktif`, `#[Locked]` daftar yang ditampilkan,
+  `RequiresRecentPassword`), view Kelas, `tests/Feature/Admin/KelasSiswaTest.php`. Tanpa migrasi.
+- *4 Nov 2026, kemudian:* tombol "Nonaktifkan" dan dialog `kelas-siswa-nonaktif` diganti "Ubah status" dengan centang
+  beberapa siswa (D-179). Daftar "Lihat siswa" tetap.
+
+### D-177 · "Tahun ajaran data" bisa diketik ("Tahun lain…") · 4 Nov 2026
+- **Keputusan:** Import siswa › "Tahun ajaran data" tetap menawarkan tahun ajaran depan, sekarang dan lalu, ditambah
+  "Tahun lain…" di akhir. Pilihan itu membuka kolom "Tahun mulai" (4 angka, keyboard angka di HP) dan baris "Tahun ajaran
+  2028/2029 · Juli 2028 sampai Juni 2029". Batasnya tahun mulai tahun ajaran sekarang ± 10; di luar itu ditolak di bawah
+  kolom ("Tahun mulai harus antara … dan …"). Tahun hasilnya dipakai pratinjau, import langsung, dan import antre (catatan
+  `student_imports`). Mengubah tahun membaca ulang file yang sudah dipilih; file tetap dipilih selama tahunnya belum
+  lengkap. Pilihan tahun (termasuk yang diketik) ikut di alamat kembali dari halaman konfirmasi kata sandi
+  (`?tahun=lain&tahun_mulai=2028`), jadi tidak kembali diam-diam ke tahun ajaran sekarang; nilai alamat yang bukan pilihan
+  sah diabaikan.
+- **Alasan:** lead, 4 Nov 2026: "tambahkan opsi untuk menambahkan tahun ajaran, jadi bisa manual contoh tahun 2028". Pilihan
+  tahun yang hilang setelah halaman kata sandi ditemukan saat uji di browser (juga untuk tahun di daftar, sejak dulu).
+- **Dampak:** `Akun\ImportSiswa` (`OTHER_YEAR`, `OTHER_YEAR_SPAN`, `customYear`, `effectiveSchoolYear()`, `YEAR_QUERY`,
+  `CUSTOM_YEAR_QUERY`, `returnUrl()`), view Import siswa, `tests/Feature/Accounts/ImportSiswaTahunLainTest.php`.
+
+### D-178 · Data siswa dikosongkan sebelum data sungguhan, satu lomba contoh · 4 Nov 2026
+- **Keputusan:**
+  - `php artisan sth:siswa:hapus-semua` (pratinjau; `--terapkan` menulis; di luar `APP_ENV=local` juga `--force`)
+    menghapus permanen semua akun siswa (pengguna berperan siswa dan setiap baris `students`, juga yang dihapus lunak,
+    status apa pun) dan semua yang menggantung padanya: pendaftaran dan anggotanya, surat tugas (juga yang dicabut),
+    laporan hasil dan filenya, prestasi, publikasi, apresiasi (acaranya tetap), pilihan dan profil talenta, sesi,
+    notifikasi, peran, kode OTP, serta file upload yang hanya dipakai data itu (berkas di disk dihapus setelah commit).
+    Yang tetap: staf, guru, kelas, pengaturan, tanda tangan (juga versi lamanya), bobot, jenis talenta, acara apresiasi,
+    log audit (tidak pernah diubah) dan lomba. Lomba usulan siswa tetap di katalog dengan pengusul Admin aktif pertama;
+    tanpa Admin aktif perintah menolak dan tidak menulis apa pun. Satu transaksi; satu baris audit
+    `student.all_deleted` berisi jumlah saja. Output hanya jumlah, tidak pernah nama, NISN, atau email.
+  - `php artisan db:seed --class=LombaContohSeeder --force` membuat satu lomba contoh yang sudah terbit, "Lomba Karya Tulis
+    Ilmiah Remaja 2026 (Contoh)" (penyelenggara fiktif, riset, provinsi, individu, daring; pendaftaran dibuka hari itu
+    sampai 30 hari, lomba 45 hari lagi; juknis contoh bertanda "CONTOH"), lewat aturan `CreateCompetition` dan diaudit
+    seperti Tambah lomba + publikasi, tanpa notifikasi. Idempoten (dicari dari namanya); tanggalnya tidak diperbarui di
+    jalan berikutnya.
+- **Alasan:** lead, 4 Nov 2026: "data siswa hapus semua, ingat cuman siswa"; lomba usulan: "Tetap ada … buat demo aja
+  workflow secara keseluruhan yg lomba dummy tetap ada, sekalian buatkan satu lomba dummy dari awal".
+- **Dampak:** `App\Actions\Students\DeleteAllStudents`, perintah `sth:siswa:hapus-semua`, `LombaContohSeeder`, label audit,
+  `tests/Feature/Students/DeleteAllStudentsTest.php` (dengan penjaga yang gagal kalau migrasi baru menambah foreign key ke
+  `users`, `files` atau tabel siswa yang belum ditangani), `tests/Feature/DataLayer/LombaContohSeederTest.php`. Risiko
+  yang diterima: perintah tidak bertanya lagi; pengamannya pratinjau sebagai bawaan dan cadangan sebelumnya. Baris
+  lonceng staf tentang siswa yang dihapus tetap ada (tautannya ke data yang sudah tidak ada).
+
+### D-179 · Status akun siswa bisa dibatalkan dan diubah oleh Admin ("Ubah status") · 4 Nov 2026
+*menggantikan tombol "Nonaktifkan" D-176*
+- **Keputusan:**
+  - Aksi baru **"Aktifkan lagi"** (`App\Actions\Accounts\EnableAccount`, Admin, alasan 10–500 karakter, bukan akun
+    sendiri, hanya akun siswa `disabled`): status kembali `active` kalau siswa sudah selesai aktivasi, selain itu
+    `pending_activation` (aturan yang sama dengan Pulihkan dari arsip); jendela kata sandi awal paling sedikit 72 jam lagi
+    (tenggat yang lebih lambat tetap); pembekuan K3 sekalian dibuka; kalau tanggal arsip otomatis sudah lewat (hari ini atau
+    sebelumnya), tanggal baru **wajib** diisi (pilihan lead), supaya pekerjaan arsip pukul 01.00 tidak langsung
+    mengarsipkannya lagi. Audit `account.enabled` (alasan, dari, ke, perubahan jendela/pembekuan/tanggal, tanpa nama).
+    Tidak ada notifikasi.
+  - Satu dialog **"Ubah status"** untuk Admin (`App\Livewire\Admin\UbahStatusSiswa`, dipakai dua layar) dengan tiga
+    tujuan: **"Aktif kembali"** (arsip → Pulihkan dengan tanggal arsip baru; nonaktif → Aktifkan lagi; dibekukan → Buka
+    pembekuan; kedaluwarsa → Buka ulang; dilanjutkan sampai akun bisa login lagi), **"Nonaktif"** dan **"Arsip
+    (alumni)"**. Hanya tujuan yang berlaku untuk minimal satu siswa terpilih yang ditawarkan; dialog menyebut berapa akun
+    diubah dan berapa dilewati; satu alasan; kolom tanggal arsip hanya muncul kalau dibutuhkan; konfirmasi kata sandi
+    terbaru; tiap siswa dibaca ulang dan diubah dalam transaksinya sendiri; satu toast hasil ("N akun diubah.", "M
+    dilewati.", "F gagal: …").
+  - **Admin › Kelas › Lihat siswa**: centang per siswa, "Pilih semua yang tampil", "Ubah status terpilih (N)" (pilihan lead:
+    centang beberapa sekaligus) dan "Ubah status" per baris; status memakai label dan warna Status aktivasi (Dibekukan dan
+    Kedaluwarsa terlihat). Id yang tidak ditampilkan dialog ditolak 404.
+  - **Status aktivasi (Admin saja)**: tiap baris siswa di "Daftar siswa" dan di dialog per kelas punya "Aktifkan lagi"
+    (nonaktif, arsip, dibekukan, kedaluwarsa; dialog terbuka dengan "Aktif kembali") atau "Ubah status" (lainnya).
+    Kesiswaan tidak berubah. "Buka ulang" dan "Buka pembekuan" tetap.
+  - Admin › Arsip otomatis › Riwayat menampilkan "Diaktifkan lagi" saat aksi itu menggeser tanggal arsip.
+- **Alasan:** lead, 4 Nov 2026: "buatlah tombol ketika ada siswa masuk di kondisi status nonaktif, arsipkan, bekukan, dll.
+  itu bisa di undo jadi yg awalnya nonaktif bisa di aktifkan kembali" dan "bisa memilih siswa untuk diubah statusnya
+  (apapun, semuanya bisa)". Sampai sekarang akun yang dinonaktifkan tidak bisa diaktifkan lagi (backlog #79).
+- **Dampak:** `EnableAccount`, `UbahStatusSiswa` + view, `Admin\Kelas` (tanpa `askDisable`/`disableStudent` dan dialog
+  `kelas-siswa-nonaktif`), `Akun\StatusAktivasi` + view, `Admin\ArsipOtomatis::EVENTS`, label audit di Log audit dan Status
+  sistem, tes `EnableAccountTest`, `UbahStatusSiswaTest`, `StatusAktivasiUbahStatusTest`, `KelasSiswaTest` (ditulis
+  ulang), `ArsipOtomatisTest`. Tanpa migrasi. Diterima: "Aktif kembali" juga membuka pembekuan karena "Bukan saya?"
+  (dialog menyarankan reset di Pengguna & peran untuk kasus itu); di baris yang dibekukan Admin melihat "Buka
+  pembekuan"/"Buka ulang" dan "Aktifkan lagi" sekaligus.
 
 ## E. Usulan keamanan yang belum diputuskan
 

@@ -12,6 +12,7 @@ use App\Actions\Accounts\UpdateActivationWindow;
 use App\Actions\Users\AdminRecipients;
 use App\Enums\Permission;
 use App\Livewire\Admin\Concerns\RequiresRecentPassword;
+use App\Livewire\Admin\UbahStatusSiswa;
 use App\Models\User;
 use App\Notifications\Admin\LargeExportNotice;
 use Carbon\CarbonImmutable;
@@ -24,6 +25,7 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
+use Livewire\Attributes\On;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
 use Livewire\Component;
@@ -47,6 +49,12 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
  * banyak"); below, one segmented choice "Per kelas" | "Daftar siswa" (`?tampil=siswa`) shows one table at the full
  * width, PREVIEW rows first and STEP more per "Tampilkan lebih banyak", with "Menampilkan X dari Y". The list keeps
  * its status tabs, class filter, search and the Excel download. A list filter in the address, or a change of one, opens the list.
+ *
+ * SV5 (the lead, 2026-11-04: a nonaktif, archived or frozen student "bisa di undo"): for Admin only (`user.archive`)
+ * every student row of "Daftar siswa" and of the class dialog has "Ubah status", which reads "Aktifkan lagi" for a
+ * row in nonaktif, arsip, dibekukan or kedaluwarsa and opens the shared dialog UbahStatusSiswa with "Aktif kembali"
+ * preselected (askStatus()). Kesiswaan sees nothing of it. "Buka ulang" and "Buka pembekuan" stay as they were. After
+ * a change the dialog sends UbahStatusSiswa::DONE_EVENT and the page redraws its lists, boxes and counts.
  */
 #[Title('Status aktivasi')]
 // One search box per screen (D-90, backlog #60): this page has its own, so the top bar shows none.
@@ -351,6 +359,30 @@ final class StatusAktivasi extends Component
         $this->dispatch('sth-toast', message: $message, tone: 'success');
     }
 
+    /**
+     * SV5 "Ubah status" / "Aktifkan lagi" of one student row (Admin only): the shared dialog, with "Aktif kembali"
+     * preselected for a row whose account can be brought back. A staff or unknown id answers 404.
+     */
+    public function askStatus(int $userId): void
+    {
+        Gate::authorize(Permission::UserArchive->value);
+        $student = $this->studentAccount($userId);
+        Gate::authorize('archive', $student);
+
+        $this->dispatch(
+            UbahStatusSiswa::OPEN_EVENT,
+            ids: [(int) $student->getKey()],
+            target: UbahStatusSiswa::restorable(AccountControls::state($student)) ? UbahStatusSiswa::TARGET_ACTIVE : null,
+        )->to(UbahStatusSiswa::class);
+    }
+
+    /** The shared dialog changed something: render() reads the lists and counts again. */
+    #[On(UbahStatusSiswa::DONE_EVENT)]
+    public function statusChanged(): void
+    {
+        // Re-render only.
+    }
+
     public function saveWindow(UpdateActivationWindow $update): void
     {
         Gate::authorize(Permission::SettingManage->value);
@@ -424,6 +456,7 @@ final class StatusAktivasi extends Component
         $filtered = $report->rows($this->daftarKelas ?: null, $this->status ?: null, $this->q);
         $isAdmin = Gate::allows(Permission::UserResetPassword->value);
         $canReopen = Gate::allows(Permission::StudentImport->value);
+        $canChangeStatus = Gate::allows(Permission::UserArchive->value);
         $target = $this->targetId !== null
             ? User::query()->with('student.classroom:id,name')->find($this->targetId, ['id', 'name', 'initial_password_expires_at', 'frozen_at'])
             : null;
@@ -436,10 +469,11 @@ final class StatusAktivasi extends Component
             'totals' => ActivationReport::totals($all),
             'summary' => $summary->take($this->classLimit),
             'classCount' => $summary->count(),
-            'classDialog' => $this->classDialog($all, $canReopen, $isAdmin),
+            'classDialog' => $this->classDialog($all, $canReopen, $isAdmin, $canChangeStatus),
             'openClassOnLoad' => $this->openClassOnLoad && $this->kelas !== '',
             'rows' => $filtered->take($this->limit)->map(fn (array $row): array => $row + [
                 'action' => self::rowAction($row['state'], $row['frozenReason'], true, $canReopen, $isAdmin, $row['expiresAt']),
+                'change' => self::changeLabel($row['state'], $canChangeStatus),
             ]),
             'filteredCount' => $filtered->count(),
             // r3: no button at the cap (a click could not show more); the note says how to narrow the list instead.
@@ -455,6 +489,8 @@ final class StatusAktivasi extends Component
             'k7Count' => $k7->count(),
             'canReopen' => $canReopen,
             'canUnfreeze' => $isAdmin,
+            'canChangeStatus' => $canChangeStatus,
+            'statusReturnUrl' => $canChangeStatus ? $this->returnUrl() : null,
             'canSetWindow' => Gate::allows(Permission::SettingManage->value),
             'currentWindow' => app(AccountControls::class)->windowDays(),
             'target' => $target === null ? null : [
@@ -473,7 +509,7 @@ final class StatusAktivasi extends Component
      * @param  Collection<int, array<string, mixed>>  $all
      * @return array{name: string, total: int, tabs: list<array{key: string, label: string, count: int}>, rows: Collection<int, array<string, mixed>>, count: int, hasMore: bool}|null
      */
-    private function classDialog(Collection $all, bool $canReopen, bool $canUnfreeze): ?array
+    private function classDialog(Collection $all, bool $canReopen, bool $canUnfreeze, bool $canChangeStatus = false): ?array
     {
         if ($this->kelas === '') {
             return null;
@@ -510,6 +546,7 @@ final class StatusAktivasi extends Component
             'tabs' => $tabs,
             'rows' => $shown->take($this->kelasLimit)->map(fn (array $row): array => $row + [
                 'action' => self::rowAction($row['state'], $row['frozenReason'], true, $canReopen, $canUnfreeze, $row['expiresAt']),
+                'change' => self::changeLabel($row['state'], $canChangeStatus),
             ]),
             'count' => $shown->count(),
             'hasMore' => $shown->count() > $this->kelasLimit,
@@ -574,6 +611,19 @@ final class StatusAktivasi extends Component
             $state === AccountControls::STATE_FROZEN => 'admin',
             default => null,
         };
+    }
+
+    /**
+     * SV5: the label of a row's "Ubah status" button for Admin ("Aktifkan lagi" when "Aktif kembali" does something for
+     * that state), null for everybody else (no button).
+     */
+    private static function changeLabel(string $state, bool $canChangeStatus): ?string
+    {
+        if (! $canChangeStatus) {
+            return null;
+        }
+
+        return UbahStatusSiswa::restorable($state) ? 'Aktifkan lagi' : 'Ubah status';
     }
 
     /**

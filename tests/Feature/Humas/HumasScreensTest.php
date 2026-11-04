@@ -210,7 +210,7 @@ it('adds a verified achievement to an event and confirms a held event through th
         ->assertSet('addingEventId', $event->getKey())
         // The picker (D-124) lists the one free achievement of a student who may be named.
         ->assertViewHas('picker', fn (array $picker): bool => array_column($picker['rows'], 'id') === [$achievement->getKey()]
-            && $picker['rows'][0]['student'] === 'Nadia Putri Anindya' && $picker['rows'][0]['class'] === 'XI-D')
+            && $picker['rows'][0]['student'] === 'Nadia Putri Anindya' && $picker['rows'][0]['class'] === 'XI-4')
         ->assertSee('Nadia Putri Anindya')
         ->assertDontSee('Fajar Ramadhan')
         ->call('addAchievements')
@@ -461,7 +461,7 @@ it('releases one achievement from an event through the dialog and tells the stud
         ->assertSet('confirmRowId', $row->getKey())
         ->assertSet('confirmEventId', $event->getKey())
         ->assertSee('Lepas dari acara?')
-        ->assertSee('Nadia Putri Anindya (XI-D)')
+        ->assertSee('Nadia Putri Anindya (XI-4)')
         ->assertSee('Acaranya tetap ada. Siswanya diberi tahu.');
 
     // The button only opened the dialog.
@@ -623,7 +623,7 @@ it('offers the achievement of an alumnus as "Alumni" instead of the last class',
             'headline' => 'Juara II Nasional',
             'competition' => 'OPSI 2026',
         ]])
-        ->assertDontSee('XI-D');
+        ->assertDontSee('XI-4');
 });
 
 // QA5 retest (2026-10-07, backlog #65): an empty "Buat acara" form names both missing fields ------------------

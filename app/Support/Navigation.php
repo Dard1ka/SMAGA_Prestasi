@@ -633,7 +633,7 @@ final class Navigation
     }
 
     /**
-     * Class name for the siswa user card ("Siswa · XI-D"). Loads the relation explicitly so strict
+     * Class name for the siswa user card ("Siswa · XI-4"). Loads the relation explicitly so strict
      * mode (no lazy loading) is respected; returns null while the relation does not exist yet.
      *
      * @param  object|array<string, mixed>|null  $user

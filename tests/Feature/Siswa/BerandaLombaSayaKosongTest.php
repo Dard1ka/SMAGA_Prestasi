@@ -82,7 +82,7 @@ it('lists a running registration next to a finished one and shows no empty state
 });
 
 it('counts a declined invitation and one not sent yet as no lomba, as Lomba saya does', function (): void {
-    $dimas = F::student('Dimas Arya Nugroho', 'XI-D');
+    $dimas = F::student('Dimas Arya Nugroho', 'XI-4');
 
     // Nadia said no to Dimas's team, whose lomba is over now: that registration is not hers.
     $declined = r3BerandaRegistration($dimas, 'OPSI 2025', RegistrationStatus::Selesai, ['type' => RegistrationType::Tim]);

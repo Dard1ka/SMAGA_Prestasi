@@ -31,8 +31,8 @@ beforeEach(function (): void {
     F::boot();
     $this->withoutVite();
     $this->guru = F::staff(RoleName::Guru, 'Hendra Kusuma, S.Pd., M.Si.');
-    $this->citra = F::student('Citra Wulandari', 'XI-B');
-    $this->dimas = F::student('Dimas Arya Nugroho', 'XI-B');
+    $this->citra = F::student('Citra Wulandari', 'XI-2');
+    $this->dimas = F::student('Dimas Arya Nugroho', 'XI-2');
 });
 
 /** @return array{0: Testable, 1: array<string, mixed>} the Siswa binaan list of $guru on $tab and its card of $registration */
