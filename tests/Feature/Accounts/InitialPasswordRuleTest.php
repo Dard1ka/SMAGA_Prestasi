@@ -380,26 +380,12 @@ it('labels the audit event on Log audit', function (): void {
     expect(AuditLog::EVENT_LABELS)->toHaveKey(ApplyBirthDateInitialPasswords::EVENT);
 });
 
-it('gives the pending trial students of DataUjiSekolahSeeder SMAGA_ + their birth date (D-173)', function (): void {
+it('leaves nobody for the command after DataUjiSekolahSeeder, which seeds no students since 4 Nov 2026', function (): void {
     // The seeder refuses a database with accounts; this test starts from an empty one with only the roles.
     $this->seed(DataUjiSekolahSeeder::class);
 
-    foreach (DataUjiSekolahSeeder::STUDENTS as [$class, $code, $nis, $nisn, $birthDate, $activated]) {
-        $user = Student::query()->where('nisn', $nisn)->sole()->user;
+    expect(Student::query()->withTrashed()->count())->toBe(0);
 
-        if ($activated) {
-            expect(Hash::check(DataUjiSekolahSeeder::activatedStudentPassword(), $user->password))->toBeTrue();
-
-            continue;
-        }
-
-        expect($user->status)->toBe(UserStatus::PendingActivation)
-            ->and($user->must_change_password)->toBeTrue()
-            ->and(Hash::check(InitialPassword::forBirthDate($birthDate), $user->password))->toBeTrue()
-            ->and(Hash::check(app(InitialPassword::class)->make(), $user->password))->toBeFalse();
-    }
-
-    // Nobody of the trial data is left on the configured value for the command.
     [, $output] = d173Run();
     expect($output)->toContain('Tidak ada siswa belum aktivasi yang masih memakai kata sandi awal lama.');
 });

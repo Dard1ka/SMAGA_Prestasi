@@ -1604,6 +1604,12 @@ Permintaan lead 4 Nov 2026 untuk server sekolah. Smaga4 tidak berubah (tetap D-1
   `users`, `files` atau tabel siswa yang belum ditangani), `tests/Feature/DataLayer/LombaContohSeederTest.php`. Risiko
   yang diterima: perintah tidak bertanya lagi; pengamannya pratinjau sebagai bawaan dan cadangan sebelumnya. Baris
   lonceng staf tentang siswa yang dihapus tetap ada (tautannya ke data yang sudah tidak ada).
+- *4 Nov 2026, kemudian (lead: "data siswa dummy tolong hilangkan semua tapi data kelas jangan, nanti mau dites sama pihak
+  sekolah dari 0 dengan cara impor siswa"):* `DataUjiSekolahSeeder` tidak lagi membuat sembilan siswa uji (`STUDENTS`,
+  `seedStudents()`, `activatedStudentPassword()` dan kunci `activated_student_password` file data dihapus); database
+  baru berisi staf, guru uji, 36 kelas dan data referensi saja. Untuk deploy tanpa bantuan: `scripts/dev/buat-paket-server.sh`
+  (paket update + `VERSI.txt`), `scripts/dev/salin-database.sh` / `pulihkan-database.sh` (salinan database laptop untuk
+  developer kedua) dan panduan lokal `PANDUAN-DEPLOY-SERVER.md` (di luar git karena memuat alamat server).
 
 ### D-179 · Status akun siswa bisa dibatalkan dan diubah oleh Admin ("Ubah status") · 4 Nov 2026
 *menggantikan tombol "Nonaktifkan" D-176*

@@ -4,14 +4,9 @@ declare(strict_types=1);
 
 namespace Database\Seeders;
 
-use App\Actions\Accounts\AccountControls;
-use App\Domain\Accounts\InitialPassword;
-use App\Domain\Archive\GraduationCalculator;
 use App\Enums\RoleName;
 use App\Enums\UserStatus;
-use App\Models\Classroom;
 use App\Models\StaffProfile;
-use App\Models\Student;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
@@ -22,8 +17,10 @@ use RuntimeException;
 /**
  * Data awal untuk server sekolah (salinan smaga_server; lead 21 dan 27 Okt 2026). Hanya untuk database KOSONG:
  * data referensi (peran, kelas, talenta, bobot, pengaturan, contoh tanda tangan di luar production), lalu
- * 6 akun staf asli dari sekolah (email mereka, nama = nama peran, aktif), 2 guru uji dan 9 siswa uji (alamat uji
- * <kotak surat>+<peran>@...). Tidak ada lomba, pendaftaran atau prestasi. Daftar akun: AKUN-UJI.md (file lokal).
+ * 6 akun staf asli dari sekolah (email mereka, nama = nama peran, aktif) dan 2 guru uji (alamat uji
+ * <kotak surat>+<peran>@...). Tidak ada siswa (lead, 4 Nov 2026: sekolah menguji dari nol lewat Import siswa; sembilan
+ * siswa uji yang dulu dibuat di sini sudah dihapus), lomba, pendaftaran atau prestasi. Daftar akun: AKUN-UJI.md (file
+ * lokal).
  *
  * Email asli staf, kata sandi akun uji, dan kotak surat alamat uji ada di database/seeders/data/akun-sekolah.php: file
  * lokal yang tidak pernah masuk git (.gitignore). Tanpa file itu seeder memakai contoh fiktif akun-sekolah.example.php.
@@ -46,8 +43,6 @@ class DataUjiSekolahSeeder extends Seeder
 {
     use WithoutModelEvents;
 
-    public const SCHOOL_YEAR = '2026/2027';
-
     /** The school's account data (local, never in git) and the fictional example used when it is missing. */
     public const DATA_FILE = 'seeders/data/akun-sekolah.php';
 
@@ -69,22 +64,6 @@ class DataUjiSekolahSeeder extends Seeder
         'guru2' => ['Test guru 2', RoleName::Guru, 'Pak', 'Guru pembimbing'],
     ];
 
-    /**
-     * nomor => [kelas di aplikasi, kode kelas untuk email, NIS, NISN, tanggal lahir, sudah aktivasi].
-     * Kelas bernomor sejak D-175: 10A = X-1, 11A = XI-1, 11B = XI-2, 12A/B/C = XII-1/2/3.
-     */
-    public const STUDENTS = [
-        1 => ['X-1', '10a', '262701001', '0090000001', '2010-01-15', true],
-        2 => ['X-1', '10a', '262701002', '0090000002', '2010-02-20', true],
-        3 => ['X-1', '10a', '262701003', '0090000003', '2010-03-25', false],
-        4 => ['XI-1', '11a', '252601004', '0090000004', '2009-04-10', true],
-        5 => ['XI-2', '11b', '252601005', '0090000005', '2009-05-12', true],
-        6 => ['XI-2', '11b', '252601006', '0090000006', '2009-06-18', false],
-        7 => ['XII-1', '12a', '242501007', '0090000007', '2008-07-07', true],
-        8 => ['XII-2', '12b', '242501008', '0090000008', '2008-08-08', true],
-        9 => ['XII-3', '12c', '242501009', '0090000009', '2008-09-19', false],
-    ];
-
     /** The env switch: 1 / true / yes / on = the staff use the trial mailbox. Read per command, never cached. */
     public const TRIAL_SWITCH = 'STH_SEED_STAF_UJI';
 
@@ -96,7 +75,7 @@ class DataUjiSekolahSeeder extends Seeder
     /**
      * The local data file, or the fictional example when it is missing (a fresh clone).
      *
-     * @return array{trial_mailbox: string, trial_domain: string, staff_password: string, guru_password?: string, activated_student_password: string, staff_emails: array<string, string>}
+     * @return array{trial_mailbox: string, trial_domain: string, staff_password: string, guru_password?: string, staff_emails: array<string, string>}
      */
     public static function data(): array
     {
@@ -105,7 +84,7 @@ class DataUjiSekolahSeeder extends Seeder
         return require is_file($file) ? $file : database_path(self::DATA_EXAMPLE);
     }
 
-    /** A trial address: <trial_mailbox>+<tag>@<trial_domain>, e.g. the guru1 or siswa1_10a inbox. */
+    /** A trial address: <trial_mailbox>+<tag>@<trial_domain>, e.g. the guru1 inbox. */
     public static function trialAddress(string $tag): string
     {
         $data = self::data();
@@ -139,11 +118,6 @@ class DataUjiSekolahSeeder extends Seeder
         return $data['guru_password'] ?? $data['staff_password'];
     }
 
-    public static function activatedStudentPassword(): string
-    {
-        return self::data()['activated_student_password'];
-    }
-
     public function run(): void
     {
         $this->call([
@@ -161,13 +135,12 @@ class DataUjiSekolahSeeder extends Seeder
 
         DB::transaction(function (): void {
             $this->seedStaff();
-            $this->seedStudents();
         });
 
         // The signer name of the letters stays the placeholder "[Nama Kepala Sekolah]": the Admin types the real name
         // in Pengaturan (the account name is only the role name).
 
-        $this->command?->info(sprintf('Data uji: %d staf, %d siswa (lihat AKUN-UJI.md).', count(self::STAFF), count(self::STUDENTS)));
+        $this->command?->info(sprintf('Data uji: %d akun staf dan guru, tanpa siswa (lihat AKUN-UJI.md).', count(self::STAFF)));
         $this->command?->info(self::trialStaffMail()
             ? 'Email staf: UJI ('.self::trialAddress('<username>').'). Ganti ke asli: db:seed --class=EmailStafSeeder tanpa saklar.'
             : 'Email staf: ASLI (alamat dari sekolah).');
@@ -202,56 +175,6 @@ class DataUjiSekolahSeeder extends Seeder
                 'rank' => null,
                 'position' => $position,
             ]);
-        }
-    }
-
-    private function seedStudents(): void
-    {
-        $now = CarbonImmutable::now();
-        $graduation = app(GraduationCalculator::class);
-        $windowEnd = app(AccountControls::class)->initialWindowEnd();
-        $classrooms = Classroom::query()->pluck('id', 'name')->all();
-        $password = self::activatedStudentPassword();
-
-        foreach (self::STUDENTS as $number => [$class, $classCode, $nis, $nisn, $birthDate, $activated]) {
-            $dates = $graduation->calculate((int) Classroom::levelFromName($class), self::SCHOOL_YEAR);
-
-            $user = new User;
-            $user->forceFill($activated ? [
-                'name' => 'Test siswa '.$number,
-                'email' => self::trialAddress("siswa{$number}_{$classCode}"),
-                'email_verified_at' => $now,
-                'password' => $password,
-                'status' => UserStatus::Active,
-                'must_change_password' => false,
-                'password_changed_at' => $now,
-                'activated_at' => $now,
-            ] : [
-                'name' => 'Test siswa '.$number,
-                'email' => null,
-                // The initial password of a real import since D-173: "SMAGA_" + the birth date as ddmmyyyy.
-                'password' => InitialPassword::forBirthDate($birthDate),
-                'status' => UserStatus::PendingActivation,
-                'must_change_password' => true,
-                'initial_password_expires_at' => $windowEnd,
-            ])->save();
-            $user->assignRole(RoleName::Siswa->value);
-
-            $student = Student::query()->create([
-                'user_id' => $user->getKey(),
-                'nis' => $nis,
-                'nisn' => $nisn,
-                'birth_date' => $birthDate,
-                'classroom_id' => $classrooms[$class] ?? throw new RuntimeException("Kelas {$class} tidak ada."),
-                'import_school_year' => self::SCHOOL_YEAR,
-                'grade12_start_date' => $dates->grade12StartDate->format('Y-m-d'),
-                'archive_at' => $dates->archiveAt->format('Y-m-d'),
-                'phone' => $activated ? sprintf('08120000%04d', $number) : null,
-            ]);
-
-            if ($activated) {
-                $student->forceFill(['profile_confirmed_at' => $now])->save();
-            }
         }
     }
 }

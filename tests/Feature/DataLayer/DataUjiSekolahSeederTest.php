@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Models\Classroom;
+use App\Models\Student;
 use App\Models\User;
 use Database\Seeders\DataUjiSekolahSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -33,4 +35,13 @@ it('gives the six staff accounts the staff password and the trial guru the guru 
     }
 
     expect(User::query()->where('username', 'guru1')->value('email'))->toBe(DataUjiSekolahSeeder::trialAddress('guru1'));
+});
+
+it('seeds the 36 classes and no student at all: the school starts from zero with Import siswa (4 Nov 2026)', function (): void {
+    $this->seed(DataUjiSekolahSeeder::class);
+
+    expect(Student::query()->withTrashed()->count())->toBe(0)
+        ->and(User::role('siswa')->count())->toBe(0)
+        ->and(User::query()->count())->toBe(count(DataUjiSekolahSeeder::STAFF))
+        ->and(Classroom::query()->count())->toBe(36);
 });

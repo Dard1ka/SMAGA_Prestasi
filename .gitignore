@@ -39,3 +39,8 @@ Thumbs.db
 /PERUBAHAN-*.md
 /server-*/
 /*.docx
+# The deploy guide (server address and steps), a database copy for a second developer, and the version stamp of the
+# server package (scripts/dev/buat-paket-server.sh) stay out of git.
+/PANDUAN-DEPLOY-SERVER.md
+/salinan-db/
+/VERSI.txt

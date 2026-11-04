@@ -9,16 +9,15 @@ declare(strict_types=1);
  * di bawah (alamat .test tetap di Mailpit, tidak pernah keluar).
  */
 return [
-    // Alamat uji guru dan siswa uji, juga keenam staf selama saklar STH_SEED_STAF_UJI menyala:
+    // Alamat uji guru uji, juga keenam staf selama saklar STH_SEED_STAF_UJI menyala:
     // <trial_mailbox>+<tanda>@<trial_domain>, mis. uji+guru1@sth.test.
     'trial_mailbox' => 'uji',
     'trial_domain' => 'sth.test',
 
-    // Kata sandi awal keenam akun staf, akun guru uji, dan siswa uji yang sudah aktivasi (siswa belum aktivasi:
+    // Kata sandi awal keenam akun staf dan akun guru uji. Siswa hanya masuk lewat Import siswa (kata sandi awal
     // SMAGA_ + tanggal lahir, D-173).
     'staff_password' => 'contoh-sandi-staf',
     'guru_password' => 'contoh-sandi-guru',
-    'activated_student_password' => 'contoh-sandi-siswa',
 
     // username => email asli dari sekolah, untuk keenam akun staf.
     'staff_emails' => [
