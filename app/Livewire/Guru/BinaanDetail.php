@@ -20,6 +20,7 @@ use App\Models\RegistrationMember;
 use App\Models\ReportFile;
 use App\Support\StaffRoleLabel;
 use Illuminate\Contracts\View\View;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
@@ -50,11 +51,16 @@ final class BinaanDetail extends Component
 
     public function render(PointFormatter $formatter): View
     {
+        // The trash of Admin › Kelas (the lead, 5 Nov 2026; Student excludes trashed rows): a trashed member is not
+        // listed, and a registration whose members (declined ones aside) are all there is no binaan any more (as
+        // Guru\Binaan lists them): 404, like a registration of another guru.
         $registration = Registration::query()
+            ->whereHas('members', fn (Builder $m) => $m->whereNull('declined_at')->whereHas('student'))
             ->with([
                 'competition',
                 'report.files.file',
                 'report.verifier.roles',
+                'members' => fn ($m) => $m->whereHas('student'),
                 'members.student:id,user_id,classroom_id',
                 'members.student.user:id,name',
                 'members.student.classroom:id,name',
@@ -137,6 +143,8 @@ final class BinaanDetail extends Component
             ],
             'achievements' => $report === null ? [] : Achievement::query()
                 ->where('report_id', $report->getKey())
+                // Achievement::student() includes trashed students: not one in the trash of Admin › Kelas.
+                ->whereHas('student', fn (Builder $s) => $s->withoutTrashed())
                 ->with('student:id,user_id', 'student.user:id,name')
                 ->orderByDesc('points')
                 ->get()

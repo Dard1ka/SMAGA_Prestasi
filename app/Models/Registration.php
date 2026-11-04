@@ -145,16 +145,30 @@ class Registration extends Model
         $query->whereIn('status', $statuses);
     }
 
-    /** Kepala Sekolah queue. @param Builder<Registration> $query */
+    /** Kepala Sekolah queue (a trashed ketua's row is not in it, scopeWithListedLeader()). @param Builder<Registration> $query */
     public function scopeAwaitingPrincipal(Builder $query): void
     {
-        $query->where('status', RegistrationStatus::MenungguKepsek);
+        $query->where('status', RegistrationStatus::MenungguKepsek)->withListedLeader();
     }
 
-    /** TU queue (approved, letters not issued yet). @param Builder<Registration> $query */
+    /** TU queue (approved, letters not issued yet; not a trashed ketua's row). @param Builder<Registration> $query */
     public function scopeAwaitingLetters(Builder $query): void
     {
-        $query->where('status', RegistrationStatus::Disetujui);
+        $query->where('status', RegistrationStatus::Disetujui)->withListedLeader();
+    }
+
+    /**
+     * smaga_server, the trash of 5 Nov 2026: registrations whose ketua is NOT in the trash of Admin › Kelas. A trashed
+     * student has its `students` row soft-deleted, so leader() finds nothing; the registration leaves the staff queues
+     * and their counts, and comes back on "Pulihkan". A trashed anggota keeps the registration listed (member lists
+     * skip that student). The one rule for every queue: awaitingPrincipal(), awaitingLetters(),
+     * Report::awaitingVerification(), the school dashboard.
+     *
+     * @param  Builder<Registration>  $query
+     */
+    public function scopeWithListedLeader(Builder $query): void
+    {
+        $query->whereHas('leader');
     }
 
     /** Not ditolak / selesai / dibatalkan. @param Builder<Registration> $query */
@@ -198,6 +212,12 @@ class Registration extends Model
     public function isTeam(): bool
     {
         return $this->type === RegistrationType::Tim;
+    }
+
+    /** False while the ketua is in the trash of Admin › Kelas: the row is then in no staff queue (scopeWithListedLeader()). */
+    public function hasListedLeader(): bool
+    {
+        return $this->leader()->exists();
     }
 
     /**

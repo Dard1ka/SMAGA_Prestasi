@@ -34,6 +34,10 @@ use LogicException;
  * One audit row per registration (`registration.resumed` / `registration.cancelled`), causer = the verifier. A
  * registration the leader cancelled while it waited is not touched. Notices: notify(), after the commit. The screens
  * read the answer window and the reason of a cancel from Registration (graceText(), cancelledWithLomba()).
+ * Trash (smaga_server, 5 Nov 2026): a registration whose ketua is in the trash (its `students` row soft-deleted) is not
+ * touched either, for both decisions: it stays `menunggu_lomba`, no audit row, no approver notice, no invitation, so
+ * "Pulihkan" brings the student back with it exactly as it was. An anggota in the trash is stamped invited with the
+ * others but gets no TeamInvitation (invite() asks for accounts that can log in).
  */
 final class ResumeWaitingRegistrations
 {
@@ -69,8 +73,19 @@ final class ResumeWaitingRegistrations
         $invited = [];
         $toApprovers = [];
         $submitterNow = null;
+        $trashedLeaders = Student::onlyTrashed()
+            ->whereKey($waiting->pluck('leader_student_id')->map(fn (mixed $id): string => (string) $id)->unique()->values()->all())
+            ->pluck('id')
+            ->map(fn (mixed $id): string => (string) $id)
+            ->flip();
 
         foreach ($waiting as $registration) {
+            // A ketua in the trash: the registration keeps waiting, untouched (no approver notice, no invitations, no
+            // cancel), so "Pulihkan" finds it as it was.
+            if ($trashedLeaders->has((string) $registration->leader_student_id)) {
+                continue;
+            }
+
             $to = match (true) {
                 ! $published => RegistrationStatus::Dibatalkan,
                 $registration->isTeam() => RegistrationStatus::MenungguKonfirmasi,

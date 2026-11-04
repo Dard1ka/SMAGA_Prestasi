@@ -174,6 +174,9 @@
 | D-163 | **Laporan hasil diisi di satu tempat**: kotak kuning Lomba saya di semua lebar; tombol Beranda membukanya; halaman terpisah hanya mengarahkan | Lead, 20 Okt 2026 (UX2) | final |
 | D-164 | **Antrean verifikasi Kesiswaan dari yang terbaru**: Verifikasi usulan lomba dan Verifikasi hasil (juga Humas), kartu Beranda Kesiswaan | Lead, 20 Okt 2026 (UX2) | final (menggantikan "antrean tetap terlama" dari D-135) |
 | D-173 | **Kata sandi awal siswa = `SMAGA_` + tanggal lahir ddmmyyyy** dari file import (hanya `smaga_server`); siswa lama yang masih memakai nilai `.env` dipindah dengan `sth:siswa:kata-sandi-awal` | Lead, 2 Nov 2026 (SV2) | final untuk `smaga_server` (menggantikan bentuk kata sandi awal D-138; bagian lain D-138 tetap) |
+| D-180 | **"Ubah status" Admin menawarkan enam status** (Belum aktivasi, Aktif, Kedaluwarsa, Dibekukan, Nonaktif, Diarsipkan); Action baru `ActivateStudentAccount`, `ExpireActivationWindow`, `FreezeAccount` (`frozen_reason` `admin`) (hanya `smaga_server`) | Lead, 5 Nov 2026 (SV5) | final (menggantikan tiga tujuan D-179; "Aktif" untuk siswa yang belum pernah aktivasi tanpa jendela K1 dan pembekuan K3: sementara) |
+| D-181 | **Hapus kelas dan siswa ke Sampah 7 hari**, bisa dipulihkan; siswa di Sampah tidak tampil, tidak dihitung, tidak bisa masuk, tidak menerima email, notifikasi, atau poin (hanya `smaga_server`) | Lead, 5 Nov 2026 (SV5) | final (menggantikan "hanya kelas tanpa siswa" D-166 untuk `smaga_server`; jam hapus permanen, kata sandi saat Pulihkan, alasan di daftar, NISN di Sampah saat import: sementara) |
+| D-182 | **Hapus permanen dari Sampah** pukul 02.00 (`sth:sampah:hapus-permanen`, `PurgeStudents`): tim campuran tetap, ketua berpindah, kelompok yang ditolak tetap di Sampah, `letters.printed` tidak diubah (hanya `smaga_server`) | Lead, 5 Nov 2026 (SV5) | final (celah: tim bisa tertahan di `menunggu_konfirmasi` setelah Pulihkan atau hapus permanen) |
 | U-01…U-06 | Usulan keamanan yang belum diputuskan | Agent H (keamanan) | menunggu jawaban sekolah / sementara |
 
 ---
@@ -1338,10 +1341,11 @@ Dua daftar feedback dari SMAGA yang ditempel lead pada 12 Okt 2026, dipecah menj
 ## D23. Persiapan server sekolah: kelas, reset siswa, 2FA (21 Okt 2026, UX4)
 
 ### D-166 · Admin mengelola kelas; X-TAHFIDZ dan X-OLIMP dihapus · 21 Okt 2026
+> **5 Nov 2026, kemudian (D-181, hanya `smaga_server`):** "Hapus" tidak lagi hanya untuk kelas tanpa siswa: kelas dan semua siswanya pindah ke Sampah selama 7 hari, bisa dipulihkan, lalu terhapus permanen (D-182). Tambah kelas dan Ganti nama tetap.
 - **Keputusan:** Import siswa tetap hanya memasukkan siswa ke kelas yang sudah ada; kelas disiapkan Admin di menu baru **Admin › Data › Kelas** (`/admin/kelas`, `admin.kelas.index`): **Tambah kelas** (pilih tingkat X / XI / XII, ketik bagian setelah tanda hubung: huruf, angka, dan spasi, maksimal 12 karakter, disimpan huruf besar, mis. "X-A", "XI-IPA 1"; unik tanpa beda huruf besar/kecil dan spasi), **Ganti nama** (hanya bagian setelah tanda hubung; tingkat tetap karena tanggal arsip siswa mengikuti tingkat), **Hapus** (hanya kelas yang tidak dirujuk satu baris siswa pun, termasuk alumni dan siswa yang dihapus; selain itu ditolak "Kelas ini masih berisi N siswa. Pindahkan siswanya lewat import siswa dulu."). X-TAHFIDZ dan X-OLIMP bukan kelas sekolah: seeder membuat 34 kelas (X-A…X-J, XI-A…XI-L, XII-A…XII-L).
 - **Alasan:** permintaan lead: "csv yang di upload cuma ngisi siswa yg ada. dibagian admin bisa tambahin supaya bisa nambah, hapus, dan rename nama kelas gitu. yg X tahfidz dan olimp itu ga valid, hapus aja".
 - **Dampak:** permission baru `classroom.manage` (hanya Admin; jalankan ulang `RoleSeeder`), `ClassroomPolicy`, Action `app/Actions/Classrooms/{CreateClassroom,RenameClassroom,DeleteClassroom,ClassroomName}`, audit `classroom.created` / `.renamed` / `.deleted`, cache halaman publik dibuang setelah ganti nama atau hapus, `Admin\Kelas` (dialog `kelas-ganti-nama`, `kelas-hapus`). Migrasi data `2026_10_21_100100_remove_tahfidz_olimp_classrooms` menghapus dua kelas itu bila kosong (kelas yang masih berisi siswa dibiarkan sampai Admin menghapusnya); siswa demo Galang dipindah ke X-A. Import kini juga menemukan kelas bernama dengan spasi ("XI-IPA 1" = "xi-ipa1"). Menyesuaikan D-165.
-- **Status:** final.
+- **Status:** final. *(5 Nov 2026, `smaga_server`: aturan "Hapus hanya kelas tanpa siswa" digantikan D-181; Smaga4 tetap.)*
 
 ### D-167 · Reset siswa oleh Admin kembali "Reset kata sandi & email" · 21 Okt 2026
 - **Keputusan:** Reset akun siswa oleh Admin kembali **melepas email**: akun kembali ke `pending_activation`, siswa login dengan NISN + kata sandi sementara dalam 72 jam, lalu menghubungkan email, memasukkan kode, dan membuat kata sandi baru; data diri dan pilihan talenta tetap (langkah Data diri terlewati). **Admin mengetik sendiri kata sandi sementara**, minimal 8 karakter tanpa aturan lain. Kata sandi buatan aplikasi ("bakuro4827"), dialog yang menampilkannya sekali, tombol salin, dan pengecualian "Bukan saya?" dihapus; setiap reset mencatat `email_detached` true. Pencarian dengan nama atau NISN (D-158 butir 1) tetap. Kata sandi awal siswa tetap satu nilai untuk semua siswa dari `.env` (D-138 dikukuhkan; lead memilih tetap sama).
@@ -1644,6 +1648,147 @@ Permintaan lead 4 Nov 2026 untuk server sekolah. Smaga4 tidak berubah (tetap D-1
   ulang), `ArsipOtomatisTest`. Tanpa migrasi. Diterima: "Aktif kembali" juga membuka pembekuan karena "Bukan saya?"
   (dialog menyarankan reset di Pengguna & peran untuk kasus itu); di baris yang dibekukan Admin melihat "Buka
   pembekuan"/"Buka ulang" dan "Aktifkan lagi" sekaligus.
+- *5 Nov 2026, kemudian (D-180):* tiga tujuan dialog ("Aktif kembali", "Nonaktif", "Arsip (alumni)") diganti enam status
+  Status aktivasi: Belum aktivasi, Aktif, Kedaluwarsa, Dibekukan, Nonaktif, Diarsipkan. "Aktifkan lagi" kini membuka
+  dialog dengan "Aktif". `EnableAccount` dan aturan tanggal arsip baru tetap. Admin › Kelas › Lihat siswa juga bisa
+  menghapus siswa ke Sampah (D-181).
+
+## D28. Ubah status enam status, Sampah kelas dan siswa, hapus permanen (5 Nov 2026, SV5, hanya `smaga_server`)
+
+Permintaan lead 5 Nov 2026 untuk server sekolah. Smaga4 tidak berubah (tetap D-166 dan D-179). Catatan kerja:
+`docs/dev-notes/SV5.md`.
+
+### D-180 · "Ubah status": enam status · 5 Nov 2026
+*menggantikan tiga tujuan "Ubah status" D-179 ("Aktif kembali", "Nonaktif", "Arsip (alumni)")*
+- **Keputusan:**
+  - Dialog "Ubah status" Admin (`App\Livewire\Admin\UbahStatusSiswa`, di Admin › Kelas › Lihat siswa dan Status aktivasi)
+    menawarkan **enam tujuan**, sama dengan status dan urutan tab Status aktivasi: **Belum aktivasi, Aktif, Kedaluwarsa,
+    Dibekukan, Nonaktif, Diarsipkan** (kotak pilihan, tiga per baris juga di HP). Sebuah tujuan ditawarkan kalau minimal
+    satu siswa terpilih ada di status lain; siswa yang sudah di status itu dilewati. Tiap siswa menjalani rantai Action
+    yang sudah ada sampai akunnya di status tujuan, dalam transaksinya sendiri (langkah yang ditolak membatalkan seluruh
+    rantai siswa itu):
+    - lebih dulu kembali ke akun yang bisa masuk: diarsipkan → `UnarchiveStudent` (tanggal arsip baru), nonaktif →
+      `EnableAccount` (D-179), dibekukan → `UnfreezeAccount`;
+    - **Aktif**: belum aktivasi atau kedaluwarsa → `ActivateStudentAccount` (baru);
+    - **Belum aktivasi**: aktif → `ResetStudentAccount` (email dilepas, kata sandi sementara yang diketik Admin, D-167),
+      kedaluwarsa → `ReopenActivationWindow`;
+    - **Kedaluwarsa**: seperti Belum aktivasi untuk akun aktif, lalu `ExpireActivationWindow` (baru);
+    - **Dibekukan**: `FreezeAccount` (baru); **Nonaktif**: `DisableAccount`; **Diarsipkan**: `ArchiveAccount`.
+  - Kolom **"Kata sandi sementara"** (minimal 8 karakter) hanya muncul kalau minimal satu siswa terpilih di-reset; satu
+    nilai untuk semua siswa itu, tidak pernah ditampilkan lagi, dicatat, atau diaudit, dan dilupakan setelah "Simpan".
+  - Tiga Action baru, masing-masing Admin saja (izin `user.archive`), bukan akun sendiri, hanya akun siswa, alasan 10–500
+    karakter, satu baris audit tanpa nama, tanpa notifikasi:
+    - `ActivateStudentAccount` (audit `account.activated_by_admin`): siswa `pending_activation` yang tidak dibekukan
+      menjadi `active`; jendela K1 (`initial_password_expires_at`) dikosongkan dan hitungan K3 di-reset.
+      `must_change_password` dan email tetap, jadi login berikutnya tetap melewati email → kode → kata sandi baru (Data
+      diri tidak ditanya). `activated_at` diisi `CompleteActivation` saat langkah itu selesai, tanpa baris audit baru.
+    - `ExpireActivationWindow` (audit `account.activation_expired_by_admin`): jendela K1 siswa belum aktivasi yang masih
+      memakai kata sandi awal atau sementara diakhiri sekarang, lalu semua sesinya ditutup. Kebalikan "Buka ulang".
+    - `FreezeAccount` (audit `account.frozen_by_admin`): `frozen_at` = sekarang, **`frozen_reason` = `admin`**
+      (`AccountControls::FROZEN_ADMIN`, ditulis "Dibekukan Admin" di Status aktivasi), sesi dan remember token dicabut.
+      Hanya Admin yang membukanya (Buka pembekuan atau Ubah status); "Buka ulang" menolak: "Akun dibekukan Admin. Hanya
+      Admin yang bisa membukanya."
+  - Tetap dari D-179: satu alasan, kolom tanggal arsip hanya kalau dibutuhkan, konfirmasi kata sandi terbaru (15 menit),
+    tiap siswa dibaca ulang saat "Simpan", satu toast hasil, "Aktifkan lagi" pada baris nonaktif, arsip, dibekukan, atau
+    kedaluwarsa.
+- **Alasan:** lead, 5 Nov 2026: "Ubah statusnya di bagian admin lalu menu kelas itu bisa segala status … dan siswa dan
+  kelasnya bisa dihapus oleh admin".
+- **Dampak:** `UbahStatusSiswa` + view (`x-sth.radio-pick`, kolom kata sandi sementara), `ActivateStudentAccount`,
+  `ExpireActivationWindow`, `FreezeAccount`, `AccountControls::FROZEN_ADMIN` / `FROZEN_ADMIN_LABEL`,
+  `ActivationReport::FLAG_FROZEN_ADMIN`, `ReopenActivationWindow` (menolak pembekuan Admin), `CompleteActivation`
+  (`activated_at` untuk siswa yang di-"Aktif"-kan Admin), `Akun\StatusAktivasi` (alasan pembekuan dalam kata-kata), label
+  audit di Log audit dan Ringkasan, tes `AdminStudentStatusActionsTest`, `UbahStatusSiswaTest`,
+  `StatusAktivasiUbahStatusTest`, `EnableAccountTest`. Tanpa migrasi untuk bagian ini (`frozen_reason` sudah teks).
+- **Status:** final untuk enam tujuan dan tiga Action. *Sementara* (pertanyaan untuk lead): "Aktif" untuk siswa yang
+  belum pernah aktivasi mengakhiri jendela K1, dan pembekuan K3 (10 kali salah kata sandi) hanya berlaku untuk akun yang
+  belum aktif. Sampai siswa itu mengganti kata sandi awalnya, kata sandi awal (tanggal lahir, D-173) tetap bisa dipakai
+  tanpa batas waktu dan tanpa pembekuan; yang tersisa hanya kunci login bertahap (`LoginLockout`).
+
+### D-181 · Hapus siswa dan kelas ke Sampah 7 hari · 5 Nov 2026
+*menggantikan aturan "Hapus hanya kelas tanpa siswa" D-166 untuk `smaga_server`*
+- **Keputusan:**
+  - **Admin › Kelas › "Hapus"** ada di setiap baris kelas, juga yang berisi siswa (dialog `kelas-hapus`, "Hapus kelas
+    X-4?"): kelas dan **semua** siswanya, status apa pun (aktif, belum aktivasi, nonaktif, alumni), pindah ke **Sampah**
+    bersama. Dialog menyebut jumlah siswa, bahwa siswanya langsung tidak bisa masuk dan tidak tampil di mana pun, dan
+    tanggal mulai kelas dan seluruh data siswanya (akun, pendaftaran, surat tugas, laporan hasil, prestasi, talenta, file)
+    terhapus permanen. Kelas kosong juga lewat Sampah.
+  - **Lihat siswa › "Hapus"** per baris dan **"Hapus terpilih (N)"** (dialog `kelas-siswa-hapus`, "Hapus N siswa?",
+    paling banyak 400 sekaligus): siswa pindah ke Sampah sendiri; kelasnya tetap.
+  - Setiap hapus meminta **alasan 10–500 karakter** (`TrashReason`) dan **konfirmasi kata sandi terbaru** (15 menit,
+    SECURITY §3m-9), diperiksa saat bertanya dan lagi saat mengonfirmasi.
+  - Bagian **"Sampah"** di bawah daftar kelas: entri yang masih terbuka, terbaru dulu, 20 per langkah (paling banyak
+    200): kelas dengan jumlah siswanya ("N siswa ikut dihapus" atau "Tanpa siswa"), atau siswa yang dihapus sendiri dengan
+    kelasnya; siapa dan kapan menghapus, alasannya, dan "Terhapus permanen <tanggal>" ("Menunggu dihapus permanen" setelah
+    batas). **"Pulihkan"** (dialog `kelas-pulihkan`, konfirmasi kata sandi, tanpa alasan) sebelum batas itu
+    mengembalikan kelas beserta semua siswa yang ikut terhapus, atau satu siswa. Status akun, kata sandi, email, kelas,
+    dan data lain tidak berubah; sesi yang ditutup tetap tertutup. Siswa yang kelasnya masih di Sampah ditolak:
+    "Pulihkan kelas X-4 dulu."
+  - Siswa di Sampah (baris `students` dan `users` dihapus lunak) **tidak tampil, tidak dihitung, tidak menerima email atau
+    notifikasi lonceng, dan tidak mendapat poin di mana pun**, dan tidak bisa masuk apa pun statusnya; semua sesinya
+    ditutup. Emailnya tetap terpakai (tidak bisa diikat akun lain). Kelas di Sampah hilang dari setiap daftar, pilihan,
+    dan import; namanya tetap terpakai ("Kelas X-4 ada di Sampah. Pulihkan dulu atau tunggu terhapus permanen.") dan
+    `sth:kelas:nomor` tidak menyentuhnya. Penyesuaian di layar dan Action lain (antrean dan hitungan staf, tim dan
+    undangan, surat, verifikasi, apresiasi, publikasi, halaman publik, ekspor): `docs/dev-notes/SV5.md`.
+  - Satu baris `trash_entries` per kelas atau siswa (siswa yang ikut kelasnya menunjuk entri kelas lewat `parent_id`):
+    hanya id, tanpa nama atau NISN, tanpa foreign key, tetap ada setelah dipulihkan atau dihapus permanen sebagai riwayat.
+    Audit `classroom.trashed`, `student.trashed`, `classroom.restored`, `student.restored`, tanpa nama atau NISN siswa.
+- **Alasan:** permintaan pertama lead, 5 Nov 2026: "bisa hapus kelas dengan memberi notifikasi jika hapus kelas maka akan
+  menghapus seluruh data siswa. Namun berikan juga opsi tambahan backup jika kelas tidak sengaja terhapus yang akan
+  terhapus secara total selama 7 hari setelah konfirmasi hapus"; lalu "Ubah statusnya di bagian admin lalu menu kelas itu
+  bisa segala status … dan siswa dan kelasnya bisa dihapus oleh admin".
+- **Dampak:** migrasi `2026_11_05_100000_create_trash_entries_and_soft_delete_classrooms` (kolom `classrooms.deleted_at`,
+  tabel `trash_entries`; tidak mengubah data), `App\Models\TrashEntry`, `TrashEntryPolicy` (`classroom.manage`),
+  `App\Actions\Trash\{TrashStudents,TrashClassroom,RestoreFromTrash,TrashReason}`, `Classroom` memakai `SoftDeletes`
+  (`DeleteClassroom` dan `NumberClassrooms` kini `forceDelete()`; tidak ada layar yang memanggil `DeleteClassroom` lagi),
+  `ClassroomName::inTrash()`, `Admin\Kelas` + view, `ImportStudents::NOTE_IN_TRASH`, perbaikan kebocoran di banyak
+  layar dan Action, tes `SampahTest`, `KelasTest`, `tests/Feature/Trash/*`. Server produksi: `grants.sh` setelah migrasi
+  memberi hak ke tabel baru.
+- **Status:** final untuk Sampah, 7 hari, dialog, dan Pulihkan. *Sementara* (pilihan koordinator, menunggu lead):
+  - waktu hapus permanen = jalan pukul 02.00 pertama setelah 7 hari penuh (`TrashEntry::purgeAfterFor()`: dihapus Senin
+    10.00 → terhapus permanen Selasa pekan berikutnya pukul 02.00), dan tanggal itulah yang disebut dialog;
+  - "Pulihkan" meminta konfirmasi kata sandi (tanpa alasan);
+  - alasan hapus tampil di daftar Sampah untuk setiap Admin;
+  - baris import dengan NIS dan NISN siswa di Sampah "Dilewati" ("Siswa ini ada di Sampah. Pulihkan dulu atau tunggu
+    terhapus permanen."): tidak membuat akun kedua dan tidak memulihkan diam-diam.
+
+### D-182 · Hapus permanen dari Sampah · 5 Nov 2026
+- **Keputusan:**
+  - `php artisan sth:sampah:hapus-permanen` berjalan setiap hari pukul **02.00** Asia/Jakarta (`routes/console.php`,
+    `withoutOverlapping`, `onOneServer`; aman dijalankan ulang dengan tangan) dan menghapus permanen entri terbuka yang
+    batasnya (`purge_after`) sudah tiba (`App\Actions\Trash\PurgeTrash`). Per kelompok (kelas dengan siswa yang ikut
+    terhapus, atau satu siswa) data siswa dihapus oleh `App\Actions\Students\PurgeStudents`; kelas dihapus
+    (`forceDelete()`) begitu tidak ada baris siswa yang menunjuknya; entri diberi `purged_at`. Siswa yang sudah dipulihkan
+    tidak pernah dihapus.
+  - `PurgeStudents` (saudara `DeleteAllStudents` D-178, untuk sebagian siswa) menghapus semua milik siswa itu saja
+    (prestasi beserta publikasi dan apresiasinya, talenta, baris anggota tim, kode OTP, sesi, notifikasi, peran, baris
+    siswa dan akun) dan pendaftaran yang semua orangnya ikut terhapus (beserta surat, juga yang dicabut, laporan, file
+    laporan, pengingat). File hanya dihapus kalau tidak ada baris yang tetap menunjuknya; gambar tanda tangan tidak pernah.
+    Isi file di disk dihapus setelah commit.
+  - **Tim campuran** (sebagian orang terhapus, sebagian tidak): pendaftaran tetap, hanya baris anggota yang terhapus yang
+    hilang; prestasi anggota lain tidak disentuh. Kalau ketua ikut terhapus, **ketua berpindah** ke anggota tersisa
+    pertama (yang sudah konfirmasi dulu, lalu yang belum menjawab, yang menolak terakhir; masing-masing menurut waktu
+    baris anggota), baris anggotanya menjadi `ketua`, dan `reports.submitted_by` serta pemilik file laporan pindah ke
+    akun ketua baru. Lomba usulan siswa yang terhapus pindah ke Admin aktif pertama (seperti D-178); kolom pengguna lain
+    yang boleh kosong dikosongkan.
+  - **Ditolak, tanpa menulis apa pun**: kolom pengguna wajib di baris riwayat yang tetap masih menunjuk akun itu, lomba
+    usulan tanpa Admin aktif, atau ketua terhapus tanpa anggota tersisa untuk menggantikannya. Kelompok itu tetap di
+    Sampah (entrinya terbuka, dicoba lagi pada jalan berikutnya), kalimatnya (jumlah saja) dicetak dan dicatat di log,
+    kelompok lain tetap diproses, dan perintah keluar dengan kode 1.
+  - `letters.printed` (D-108) surat tim campuran yang tetap ada **tidak diubah**: surat tetap menyimpan apa yang
+    dicetaknya, juga nama dan NIS siswa yang sudah terhapus permanen (PDF-nya juga). Surat yang dibuat setelah siswa masuk
+    Sampah tidak mencetaknya.
+  - Satu baris audit `trash.purged` (tanpa pelaku, `via` cli) per jalan yang menutup entri: jumlah saja. Output perintah:
+    jumlah saja, tidak pernah nama, NISN, atau email.
+- **Alasan:** bagian "terhapus secara total selama 7 hari setelah konfirmasi hapus" dari permintaan lead 5 Nov 2026
+  (D-181).
+- **Dampak:** `PurgeTrash`, `App\Console\Commands\PurgeTrashCommand` (`sth:sampah:hapus-permanen`), `PurgeStudents`,
+  jadwal di `routes/console.php`, label audit, tes `PurgeStudentsTest`, `SampahTest`. **Container `scheduler` harus
+  berjalan** di server; tanpa itu Sampah tidak pernah terhapus permanen.
+- **Status:** final untuk jadwal dan aturan hapus. Celah yang diketahui (belum dikerjakan, pertanyaan untuk lead):
+  setelah Pulihkan atau hapus permanen sebuah tim bisa tertahan di `menunggu_konfirmasi` tanpa jalan lanjut. Selama
+  ketuanya di Sampah tim tidak pernah maju, juga saat undangan terakhir dijawab; setelah Pulihkan tidak ada yang
+  memeriksa tim itu lagi. Begitu juga tim yang satu-satunya undangan belum dijawab milik siswa yang terhapus permanen:
+  semua orang tersisa sudah konfirmasi, tetapi tidak ada langkah yang memajukannya. Ketua masih bisa membatalkan (D-33).
 
 ## E. Usulan keamanan yang belum diputuskan
 

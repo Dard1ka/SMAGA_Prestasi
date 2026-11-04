@@ -19,7 +19,8 @@ namespace App\Actions\Accounts;
  * - moved     → a registered student (same NIS and NISN) goes to the class in the file;
  * - unchanged → a registered student who is already in that class (a note tells when the archive date or the
  *               phone number is corrected anyway: such a row is a correction, kindOf() = CORRECTED);
- * - skipped   → a registered student whose account is archived (alumni): nothing is written;
+ * - skipped   → a registered student whose account is archived (alumni) or who is in the trash of Admin › Kelas
+ *               (ImportStudents::NOTE_IN_TRASH): nothing is written;
  * - rejected  → `errors` is not empty: nothing is written.
  */
 final readonly class StudentImportReport

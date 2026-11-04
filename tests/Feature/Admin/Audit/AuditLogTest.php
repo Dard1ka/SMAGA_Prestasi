@@ -226,6 +226,41 @@ it('labels a guru change at an approval without naming one deciding role (D-150,
         ->assertDontSee('Guru pembimbing diganti Kepala Sekolah');
 });
 
+// 2026-11-05: Admin "Ubah status" of a student and the Sampah of Admin › Kelas ---------------------------------------
+
+it('labels the Ubah status and Sampah events and names a class or trash subject in words (2026-11-05)', function (): void {
+    expect(AuditLog::EVENT_LABELS)->toMatchArray([
+        'account.activated_by_admin' => 'Diaktifkan Admin',
+        'account.activation_expired_by_admin' => 'Masa aktivasi diakhiri Admin',
+        'account.frozen_by_admin' => 'Dibekukan Admin',
+        'student.trashed' => 'Siswa dipindahkan ke Sampah',
+        'classroom.trashed' => 'Kelas dipindahkan ke Sampah',
+        'student.restored' => 'Siswa dipulihkan dari Sampah',
+        'classroom.restored' => 'Kelas dipulihkan dari Sampah',
+        'trash.purged' => 'Sampah dihapus permanen',
+    ])
+        ->and(ExportAuditLog::subjectLabel('App\\Models\\Classroom'))->toBe('Kelas')
+        ->and(ExportAuditLog::subjectLabel('App\\Models\\TrashEntry'))->toBe('Sampah');
+
+    activity('account')->causedBy($this->admin)->performedOn($this->tu)->event('account.frozen_by_admin')
+        ->withProperties(['reason' => 'Akun dipakai orang lain.', 'from' => 'aktif'])->log('account.frozen_by_admin');
+    activity('classroom')->causedBy($this->admin)->event('classroom.trashed')
+        ->withProperties(['reason' => 'Kelas dobel saat impor.', 'name' => 'XI-2', 'level' => 11, 'students' => 0])->log('classroom.trashed');
+    activity('classroom')->event('trash.purged')->withProperties(['counts' => ['classrooms' => 1, 'students' => 0]])->log('trash.purged');
+
+    $this->actingAs($this->admin);
+
+    Livewire::test(AuditLog::class)
+        ->assertSee('Dibekukan Admin')
+        ->assertSee('Kelas dipindahkan ke Sampah')
+        ->assertSee('Sampah dihapus permanen')
+        // Typed reasons as typed; the other properties stay in "Lihat detail".
+        ->assertSee('Alasan: Akun dipakai orang lain.')
+        ->assertSee('Alasan: Kelas dobel saat impor.')
+        ->assertViewHas('eventOptions', fn (array $options): bool => ($options['account.frozen_by_admin'] ?? null) === 'Dibekukan Admin'
+            && ($options['trash.purged'] ?? null) === 'Sampah dihapus permanen');
+});
+
 // r3 (2026-10-31): reason codes in words ---------------------------------------------------------------------------
 
 /**

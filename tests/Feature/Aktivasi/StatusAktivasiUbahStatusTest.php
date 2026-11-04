@@ -110,7 +110,7 @@ it('shows Kesiswaan nothing new and refuses its call', function (): void {
         ->assertDontSee('id="'.UbahStatusSiswa::DIALOG.'"', false);
 });
 
-it('opens the shared dialog with "Aktif kembali" preselected for a row that can be brought back', function (string $state, ?string $target): void {
+it('opens the shared dialog with "Aktif" preselected for a row that can be brought back', function (string $state, ?string $target): void {
     $this->actingAs($this->admin);
     $student = $this->students[$state];
 

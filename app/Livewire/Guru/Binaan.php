@@ -104,15 +104,17 @@ final class Binaan extends Component
     private function counts(): array
     {
         // D-148: never a registration the guru was not told about (waiting for its lomba, or cancelled while it waited).
-        $mine = fn (): Builder => Registration::query()->where('mentor_id', $this->user()->getKey())->knownToMentor();
+        $mine = fn (): Builder => self::withListedMember(Registration::query()->where('mentor_id', $this->user()->getKey())->knownToMentor());
 
-        // Only students in the team: an invitation nobody answered yet is not a binaan (QA10).
+        // Only students in the team: an invitation nobody answered yet is not a binaan (QA10). A student in the trash of
+        // Admin › Kelas is no binaan either (whereHas: Student excludes trashed rows; the lead, 5 Nov 2026).
         $students = RegistrationMember::query()
             ->whereNotNull('confirmed_at')
             ->whereNull('declined_at')
+            ->whereHas('student')
             ->whereHas('registration', fn (Builder $r) => $r->where('mentor_id', $this->user()->getKey())->knownToMentor())
             ->pluck('student_id')
-            ->merge(TalentApplication::query()->where('mentor_id', $this->user()->getKey())->pluck('student_id'))
+            ->merge(TalentApplication::query()->where('mentor_id', $this->user()->getKey())->whereHas('student')->pluck('student_id'))
             ->unique();
 
         return [
@@ -122,14 +124,27 @@ final class Binaan extends Component
             'laporan' => $mine()->where('status', RegistrationStatus::MenungguLaporan)->count(),
             'verifikasi' => $mine()->where('status', RegistrationStatus::LaporanDikirim)->count(),
             // The Talenta tab lists every choice the guru is pembina of: it counts rows.
-            'talenta' => TalentApplication::query()->where('mentor_id', $this->user()->getKey())->count(),
+            'talenta' => TalentApplication::query()->where('mentor_id', $this->user()->getKey())->whereHas('student')->count(),
             // QA9: the tile "Pembinaan talenta · siswa yang dibina" counts students, once each. D-142: talents have no
             // stages any more, so every student with a choice of this guru pembina is coached, whatever an old row says.
             'dibina' => TalentApplication::query()
                 ->where('mentor_id', $this->user()->getKey())
+                ->whereHas('student')
                 ->distinct()
                 ->count('student_id'),
         ];
+    }
+
+    /**
+     * Registrations with at least one member nobody declined whose student is not in the trash of Admin › Kelas: a team
+     * whose every student is there is hidden (the lead, 5 Nov 2026; Student excludes trashed rows).
+     *
+     * @param  Builder<Registration>  $query
+     * @return Builder<Registration>
+     */
+    private static function withListedMember(Builder $query): Builder
+    {
+        return $query->whereHas('members', fn (Builder $m) => $m->whereNull('declined_at')->whereHas('student'));
     }
 
     /** @return Builder<Registration> own binaan only (mentor_id = the guru) */
@@ -137,7 +152,7 @@ final class Binaan extends Component
     {
         $term = trim($this->q);
 
-        return Registration::query()
+        return self::withListedMember(Registration::query())
             ->where('mentor_id', $this->user()->getKey())
             ->knownToMentor()
             ->when($finished,
@@ -150,7 +165,7 @@ final class Binaan extends Component
             ->with([
                 'competition',
                 'report:id,registration_id,status',
-                'members' => fn ($m) => $m->whereNull('declined_at')->orderByRaw("CASE WHEN role = 'ketua' THEN 0 ELSE 1 END"),
+                'members' => fn ($m) => $m->whereNull('declined_at')->whereHas('student')->orderByRaw("CASE WHEN role = 'ketua' THEN 0 ELSE 1 END"),
                 'members.student:id,user_id,classroom_id',
                 'members.student.user:id,name',
                 'members.student.classroom:id,name',
@@ -166,6 +181,7 @@ final class Binaan extends Component
 
         return TalentApplication::query()
             ->where('mentor_id', $this->user()->getKey())
+            ->whereHas('student')
             ->when($term !== '', fn (Builder $q) => $q->whereHas('student.user', fn (Builder $u) => $u->where('name', 'like', $this->like($term))))
             ->with(['student:id,user_id,classroom_id', 'student.user:id,name', 'student.classroom:id,name', 'talentType', 'talentBranch'])
             ->latest('updated_at')

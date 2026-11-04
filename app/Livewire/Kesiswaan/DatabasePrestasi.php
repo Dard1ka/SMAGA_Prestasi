@@ -130,8 +130,16 @@ final class DatabasePrestasi extends Component
     {
         Gate::authorize('viewDatabase', Achievement::class);
 
-        $achievement = Achievement::query()->find($id);
-        abort_if($achievement === null, 404);
+        $achievement = Achievement::query()->ofListedStudent()->find($id);
+
+        if ($achievement === null) {
+            abort_unless(Achievement::query()->whereKey($id)->exists(), 404);
+
+            // Its student went to the trash of Admin › Kelas after the list was drawn (CLAUDE.md §6: a toast, no 404).
+            $this->dispatch('sth-toast', message: 'Siswa ini sudah dihapus. Daftar sudah diperbarui.', tone: 'warning');
+
+            return;
+        }
 
         $this->detailId = (string) $achievement->getKey();
         $this->dispatch('sth-modal-open', id: self::DRAWER);
@@ -252,6 +260,7 @@ final class DatabasePrestasi extends Component
     private function detail(string $id, PointFormatter $formatter): ?array
     {
         $a = Achievement::query()
+            ->ofListedStudent()
             ->with([
                 'student.user',
                 'student.classroom',
@@ -260,7 +269,8 @@ final class DatabasePrestasi extends Component
                 'report.verifier',
                 'report.files.file',
                 'report.registration.mentor',
-                'report.registration.members' => fn ($m) => $m->whereNull('declined_at')->orderByRaw("CASE WHEN role = 'ketua' THEN 0 ELSE 1 END"),
+                // A teammate in the trash of Admin › Kelas is not listed (whereHas: Student excludes trashed rows).
+                'report.registration.members' => fn ($m) => $m->whereNull('declined_at')->whereHas('student')->orderByRaw("CASE WHEN role = 'ketua' THEN 0 ELSE 1 END"),
                 'report.registration.members.student.user',
                 'report.registration.members.student.classroom',
             ])

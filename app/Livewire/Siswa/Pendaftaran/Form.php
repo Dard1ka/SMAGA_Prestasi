@@ -569,7 +569,13 @@ class Form extends Component
         return $user->loadMissing('student.classroom')->getRelation('student');
     }
 
-    /** The student's registration for this lomba that is still running (declined invites excluded). */
+    /**
+     * The student's registration for this lomba that is still running (declined invites excluded), not while its ketua
+     * is in the trash (Admin › Kelas, 5 Nov 2026; whereHas('leader') leaves out a soft-deleted student): hidden as on
+     * Lomba saya and the Beranda until "Pulihkan" or the purge, which passes the leadership to a remaining member.
+     * Every member row is loaded, also of a teammate in the trash (its `student` is then null): the rules below
+     * (withdrawing(), the free places) count it; statusView() leaves it out of what it shows.
+     */
     private function current(): ?Registration
     {
         $me = $this->student();
@@ -582,6 +588,7 @@ class Form extends Component
             ->where('competition_id', $this->competitionId)
             ->nonFinal()
             ->whereHas('members', fn (Builder $m) => $m->where('student_id', $me->getKey())->whereNull('declined_at'))
+            ->whereHas('leader')
             ->with(['competition', 'report', 'members.student.user:id,name', 'members.student.classroom:id,name', 'mentor.staffProfile'])
             ->latest()
             ->first();
@@ -626,8 +633,11 @@ class Form extends Component
     private function statusView(Registration $registration, ?Student $me): array
     {
         $members = $registration->members;
+        // What the panel shows: without a teammate in the trash (its soft-deleted student did not load), so no blank row.
+        // $members keeps its row for the rules: it still holds its place in the team until the purge.
+        $shown = $members->filter(fn (RegistrationMember $m): bool => $m->student !== null);
         $mine = $members->firstWhere('student_id', $me?->getKey());
-        $anggota = $members->filter(fn (RegistrationMember $m): bool => $m->role === MemberRole::Anggota && $m->declined_at === null);
+        $anggota = $shown->filter(fn (RegistrationMember $m): bool => $m->role === MemberRole::Anggota && $m->declined_at === null);
         $confirmed = $anggota->whereNotNull('confirmed_at')->count();
         $mentor = $registration->mentor;
 
@@ -700,7 +710,7 @@ class Form extends Component
             'canInvite' => $canInvite,
             'slotsLeft' => $max !== null && $max > 0 ? max(0, $max - $active) : null,
             // FS1: the one order of every team list (RegistrationMember::inTeamOrder()), the same as on Lomba saya.
-            'team' => ! $showTeam ? [] : RegistrationMember::inTeamOrder($members)
+            'team' => ! $showTeam ? [] : RegistrationMember::inTeamOrder($shown)
                 ->map(fn (RegistrationMember $m): array => [
                     'id' => (string) $m->getKey(),
                     'studentId' => (string) $m->student_id,

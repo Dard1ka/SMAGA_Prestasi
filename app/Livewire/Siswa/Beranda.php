@@ -94,7 +94,8 @@ class Beranda extends Component
             ->where('student_id', $student->getKey())
             ->where('role', MemberRole::Anggota)
             ->pending()
-            ->whereHas('registration', fn (Builder $r) => $r->where('status', RegistrationStatus::MenungguKonfirmasi))
+            // Not from a ketua in the trash (Admin › Kelas): that invitation can no longer be answered (Undangan tim).
+            ->whereHas('registration', fn (Builder $r) => $r->where('status', RegistrationStatus::MenungguKonfirmasi)->whereHas('leader'))
             ->with(['registration.competition', 'registration.leader.user:id,name'])
             ->oldest()
             ->get();
@@ -140,14 +141,16 @@ class Beranda extends Component
 
     /**
      * The registrations this student sees, as on Lomba saya: a member who did not decline, and not before the invitation
-     * went out (D-148: an anggota of a team whose lomba still waits was not invited yet).
+     * went out (D-148: an anggota of a team whose lomba still waits was not invited yet), and not while its ketua is in
+     * the trash (Admin › Kelas; whereHas('leader') leaves out a soft-deleted student).
      *
      * @return Builder<Registration>
      */
     private function visibleRegistrations(Student $student): Builder
     {
         return Registration::query()
-            ->whereHas('members', fn (Builder $m) => $m->where('student_id', $student->getKey())->whereNull('declined_at')->whereNotNull('invited_at'));
+            ->whereHas('members', fn (Builder $m) => $m->where('student_id', $student->getKey())->whereNull('declined_at')->whereNotNull('invited_at'))
+            ->whereHas('leader');
     }
 
     /**
@@ -163,7 +166,11 @@ class Beranda extends Component
         return $this->visibleRegistrations($student)
             ->nonFinal()
             ->with(['competition', 'report:id,registration_id,status'])
-            ->withCount(['members as team_size' => fn (Builder $m) => $m->whereNull('declined_at')])
+            ->withCount([
+                'members as team_size' => fn (Builder $m) => $m->whereNull('declined_at'),
+                // "Tim N" names the people Lomba saya lists: without a teammate in the trash (team_size keeps its row).
+                'members as shown_size' => fn (Builder $m) => $m->whereNull('declined_at')->whereHas('student'),
+            ])
             ->latest('updated_at')
             ->limit(3)
             ->get()
@@ -187,7 +194,7 @@ class Beranda extends Component
                 return [
                     'id' => $r->getKey(),
                     'title' => $competition->name,
-                    'meta' => LombaPresenter::tingkat($competition).' · '.($r->isTeam() ? 'Tim '.$r->team_size : 'Individu'),
+                    'meta' => LombaPresenter::tingkat($competition).' · '.($r->isTeam() ? 'Tim '.$r->shown_size : 'Individu'),
                     'bidang' => $competition->bidang?->value ?? 'sains',
                     'status' => $r->status,
                     'trackerState' => LombaSaya::trackerStateFor($r, $reports),

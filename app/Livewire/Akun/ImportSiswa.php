@@ -703,7 +703,11 @@ class ImportSiswa extends Component
             // (ImportStudents::NOTE_TAKEN) but is no alumnus (SV1 last check: the losing screen told staff to restore
             // archived accounts that were new ones).
             'alumniCount' => count(array_filter($rows, fn (array $r): bool => StudentImportReport::kindOf($r) === StudentImportReport::SKIPPED
-                && ! in_array(ImportStudents::NOTE_TAKEN, $r['notes'] ?? [], true))),
+                && ! in_array(ImportStudents::NOTE_TAKEN, $r['notes'] ?? [], true)
+                && ! in_array(ImportStudents::NOTE_IN_TRASH, $r['notes'] ?? [], true))),
+            // Skipped rows of students in the trash of Admin › Kelas (the lead, 5 Nov 2026).
+            'trashCount' => count(array_filter($rows, fn (array $r): bool => StudentImportReport::kindOf($r) === StudentImportReport::SKIPPED
+                && in_array(ImportStudents::NOTE_IN_TRASH, $r['notes'] ?? [], true))),
             'changeCount' => $changeCount,
             'kinds' => $kinds,
             // "Tidak berubah": the rows labelled "Tidak berubah" or "Dilewati" (alumni); nothing is written for them (a

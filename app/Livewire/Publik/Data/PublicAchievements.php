@@ -723,6 +723,11 @@ final class PublicAchievements
                 ->join('users', 'users.id', '=', 'students.user_id')
                 ->join('classrooms', 'classrooms.id', '=', 'students.classroom_id')
                 ->join('competitions', 'competitions.id', '=', 'achievements.competition_id')
+                // A student or class in the trash of Admin › Kelas is hidden everywhere (the lead, 5 Nov 2026): not even
+                // as an anonymous row. Nothing else soft-deletes a student or a class.
+                ->whereNull('students.deleted_at')
+                ->whereNull('users.deleted_at')
+                ->whereNull('classrooms.deleted_at')
                 ->select([
                     'achievements.id', 'achievements.report_id', 'achievements.student_id', 'achievements.competition_id',
                     'achievements.result', 'achievements.level', 'achievements.weight_category',

@@ -16,7 +16,8 @@ use Illuminate\Validation\ValidationException;
 /**
  * Admin › Pengaturan › Arsip akun: `archive_months_after_grade12` (default 18, D-13). Changing it recalculates
  * `archive_at` (= grade12_start_date + N months) for every student who is not archived yet, so the daily job follows
- * the new rule; archived accounts are never touched. Audited (`settings.limits_updated`, from/to + count).
+ * the new rule; archived accounts are never touched. Students in the trash (Admin › Kelas) are recalculated too, so one
+ * restored from it follows the new rule. Audited (`settings.limits_updated`, from/to + count).
  * D-151: a laporan hasil has no deadline any more; `report_deadline_days` stays in the settings but is no longer
  * edited here.
  */
@@ -74,7 +75,7 @@ final class UpdateLimits
         DB::table('students')
             ->join('users', 'users.id', '=', 'students.user_id')
             ->whereNotNull('students.grade12_start_date')
-            ->whereNull('students.deleted_at')
+            // Trashed students too (no deleted_at condition): one restored from the trash follows the new rule.
             ->where('users.status', '!=', UserStatus::Archived->value)
             ->select(['students.id', 'students.grade12_start_date', 'students.archive_at'])
             ->orderBy('students.id')

@@ -218,6 +218,9 @@ final class ExportAuditLog
             'File' => 'Berkas',
             'PrincipalReplacement' => 'Ganti Kepala Sekolah',
             'RoleChangeRequest' => 'Perubahan peran',
+            // Admin › Kelas (D-166) and its Sampah (5 Nov 2026).
+            'Classroom' => 'Kelas',
+            'TrashEntry' => 'Sampah',
             default => class_basename($class),
         };
     }

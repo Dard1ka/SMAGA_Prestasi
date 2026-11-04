@@ -490,7 +490,7 @@ it('compares names without case and ignores blank or unreadable cells of a regis
     'birth date outside 13–21 is not checked' => [['Nadia Putri Anindya', '225226201', '0098765432', '02-03-2020', 'XI-4', ''], ['Tanggal lahir berbeda dari data lama, tidak diubah.']],
 ]);
 
-it('skips an alumni account with a note and refuses a deleted one', function (): void {
+it('skips an alumni account and a student in the trash, each with its note', function (): void {
     $alumni = m1cRegistered([], ['status' => UserStatus::Archived]);
     $deleted = m1cRegistered(['nis' => '225226210', 'nisn' => '0098765440'], ['email' => 'gita.permata@example.test']);
     $deleted->delete();
@@ -507,9 +507,12 @@ it('skips an alumni account with a note and refuses a deleted one', function ():
         'changes' => false,
         'archive_at' => null,
     ])
-        ->and($report->rows[1]['action'])->toBe(StudentImportReport::REJECTED)
-        ->and($report->rows[1]['errors'])->toContain('Akun siswa ini sudah dihapus.')
-        ->and($report->summary())->toBe(['new' => 0, 'moved' => 0, 'unchanged' => 0, 'skipped' => 1, 'rejected' => 1])
+        // The lead's decision of 5 Nov 2026: a soft-deleted student is in the trash of Admin › Kelas; the row is skipped,
+        // never a second account and never a silent restore.
+        ->and($report->rows[1]['action'])->toBe(StudentImportReport::SKIPPED)
+        ->and($report->rows[1]['errors'])->toBe([])
+        ->and($report->rows[1]['notes'])->toBe([ImportStudents::NOTE_IN_TRASH])
+        ->and($report->summary())->toBe(['new' => 0, 'moved' => 0, 'unchanged' => 0, 'skipped' => 2, 'rejected' => 0])
         ->and($report->created)->toBe(0)
         ->and($report->moved)->toBe(0)
         ->and($alumni->refresh()->classroom->name)->toBe('X-1')

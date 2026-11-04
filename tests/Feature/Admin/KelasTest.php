@@ -205,7 +205,7 @@ it('lets a rename change only the spacing of its own name', function (): void {
     expect(app(RenameClassroom::class)->handle($this->admin, $class, 'IPA 1')->name)->toBe('XI-IPA 1');
 });
 
-// --- DeleteClassroom ---------------------------------------------------------------------------------------------
+// --- DeleteClassroom (the permanent delete of an empty class; no screen calls it since the trash of 5 Nov 2026) ----
 
 it('deletes an empty class, audits its name and flushes the public cache', function (): void {
     $version = kelasPublicVersion();
@@ -337,33 +337,39 @@ it('does nothing on rename or delete without the question', function (): void {
         ->and($this->xa->fresh()->name)->toBe('X-A');
 });
 
-it('deletes an empty class after the question', function (): void {
+// The lead's decision of 5 Nov 2026 (smaga_server): "Hapus" puts any class into the trash, also one with students
+// (tests/Feature/Admin/SampahTest.php has the rest); the "only an empty class" rule of D-166 is gone from the screen.
+it('puts an empty class into the trash after the question', function (): void {
     $this->actingAs($this->admin);
+    session(A::passwordConfirmed());
 
     Livewire::test(Kelas::class)
         ->call('askDelete', $this->xa->getKey())
         ->assertSet('deletingId', (string) $this->xa->getKey())
         ->assertDispatched('sth-modal-open', id: Kelas::DELETE_DIALOG)
-        ->assertSee('Hapus kelas ini?')
+        ->assertSee('Hapus kelas X-A?')
+        ->set('classReason', 'Kelas ini tidak dipakai lagi.')
         ->call('delete')
         ->assertSet('deletingId', null)
-        ->assertDispatched('sth-toast', message: 'Kelas X-A dihapus.', tone: 'success');
+        ->assertDispatched('sth-toast', message: 'Kelas X-A dipindahkan ke Sampah.', tone: 'success');
 
-    expect(Classroom::query()->whereKey($this->xa->getKey())->exists())->toBeFalse();
+    expect(Classroom::query()->whereKey($this->xa->getKey())->exists())->toBeFalse()
+        ->and(Classroom::withTrashed()->find($this->xa->getKey())->trashed())->toBeTrue();
 });
 
-it('disables Hapus for a class with students and refuses its question with a toast', function (): void {
+it('offers Hapus also for a class with students and asks with their count', function (): void {
     Student::factory()->create(['classroom_id' => $this->xa->getKey()]);
     $this->actingAs($this->admin);
+    session(A::passwordConfirmed());
 
     Livewire::test(Kelas::class)
         ->assertSeeHtml("wire:click=\"askDelete('{$this->xib->getKey()}')\"")
-        ->assertDontSeeHtml("wire:click=\"askDelete('{$this->xa->getKey()}')\"")
-        ->assertSee('masih berisi 1 siswa')
+        ->assertSeeHtml("wire:click=\"askDelete('{$this->xa->getKey()}')\"")
+        ->assertDontSee('masih berisi 1 siswa')
         ->call('askDelete', $this->xa->getKey())
-        ->assertSet('deletingId', null)
-        ->assertNotDispatched('sth-modal-open')
-        ->assertDispatched('sth-toast', message: DeleteClassroom::refusal(1), tone: 'warning');
+        ->assertSet('deletingId', (string) $this->xa->getKey())
+        ->assertDispatched('sth-modal-open', id: Kelas::DELETE_DIALOG)
+        ->assertSee('Kelas ini berisi 1 siswa.');
 });
 
 it('answers a class deleted in another tab with a toast, never an error page', function (string $method): void {
@@ -397,7 +403,8 @@ it('answers a rename confirmed after another tab renamed or deleted the class wi
 
 it('answers a delete confirmed after the class changed elsewhere with a toast', function (string $change): void {
     $this->actingAs($this->admin);
-    $component = Livewire::test(Kelas::class)->call('askDelete', $this->xa->getKey());
+    session(A::passwordConfirmed());
+    $component = Livewire::test(Kelas::class)->call('askDelete', $this->xa->getKey())->set('classReason', 'Kelas ini tidak dipakai lagi.');
 
     match ($change) {
         'renamed' => app(RenameClassroom::class)->handle($this->admin, $this->xa, 'Z'),
@@ -410,7 +417,7 @@ it('answers a delete confirmed after the class changed elsewhere with a toast', 
         ->assertDispatched('sth-toast', message: match ($change) {
             'renamed' => Kelas::MSG_RENAMED,
             'deleted' => Kelas::MSG_GONE,
-            'filled' => DeleteClassroom::refusal(1),
+            'filled' => Kelas::MSG_CLASS_CHANGED,
         }, tone: 'warning');
 
     expect(Classroom::query()->whereKey($this->xa->getKey())->exists())->toBe($change !== 'deleted');

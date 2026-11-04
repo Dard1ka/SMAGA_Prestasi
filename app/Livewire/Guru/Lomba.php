@@ -166,6 +166,8 @@ final class Lomba extends Component
         $binaan = RegistrationMember::query()
             ->whereNotNull('confirmed_at')
             ->whereNull('declined_at')
+            // Not a student in the trash of Admin › Kelas (Student excludes trashed rows; the lead, 5 Nov 2026).
+            ->whereHas('student')
             // D-148: not a registration the guru was never told about (cancelled while its lomba waited).
             ->whereHas('registration', fn (Builder $r) => $r
                 ->where('competition_id', $competition->getKey())

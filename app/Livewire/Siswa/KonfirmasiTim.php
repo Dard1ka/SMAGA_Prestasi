@@ -41,6 +41,9 @@ class KonfirmasiTim extends Component
 {
     public const WITHDRAWN = 'Undangan ini sudah dibatalkan ketua tim.';
 
+    /** The refusal of "Ikut tim" / "Tolak" on an invitation that can no longer be answered. */
+    public const NOT_VALID = 'Undangan ini sudah tidak berlaku.';
+
     #[Locked]
     public string $registrationId = '';
 
@@ -73,8 +76,8 @@ class KonfirmasiTim extends Component
             return;
         }
 
-        if (Gate::denies('respond', $registration)) {
-            $this->addError('registration', 'Undangan ini sudah tidak berlaku.');
+        if (! $this->answerable($registration)) {
+            $this->addError('registration', self::NOT_VALID);
 
             return;
         }
@@ -103,8 +106,8 @@ class KonfirmasiTim extends Component
             return;
         }
 
-        if (Gate::denies('respond', $registration)) {
-            $this->addError('registration', 'Undangan ini sudah tidak berlaku.');
+        if (! $this->answerable($registration)) {
+            $this->addError('registration', self::NOT_VALID);
 
             return;
         }
@@ -129,7 +132,8 @@ class KonfirmasiTim extends Component
         $mine = $registration->members->firstWhere('student_id', $me?->getKey());
         $competition = $registration->competition;
         $mentor = $registration->mentor;
-        $canRespond = Gate::allows('respond', $registration);
+        $leaderGone = self::leaderInTrash($registration);
+        $canRespond = ! $leaderGone && Gate::allows('respond', $registration);
         // QA10: the scheduler declines unanswered invitations at the deadline (D-50); that is not the student's answer.
         $expiredIds = ExpirePendingInvitations::expiredMemberIds($registration);
         $unanswered = $mine !== null && $mine->confirmed_at === null && $mine->declined_at === null;
@@ -139,14 +143,17 @@ class KonfirmasiTim extends Component
             'registration' => $registration,
             'competition' => $competition,
             'canRespond' => $canRespond,
-            'mine' => $mine,
+            // A ketua in the trash (Admin › Kelas): the page answers as an invitation that is no longer valid ("Undangan
+            // ini sudah tidak berlaku.", the view's last branch): no own answer, no deadline as the reason and no link to
+            // Lomba saya, which hides that registration.
+            'mine' => $leaderGone ? null : $mine,
             // SV1 re-check: a team short of members (D-36) has the chip of Lomba saya, the panel and the Beranda ("Tim kurang
             // anggota", orange for the ketua), not "Menunggu konfirmasi anggota" with nobody left to confirm.
             'teamChip' => LombaSaya::isShortTeam($registration)
                 ? LombaSaya::shortTeamChip($mine?->isLeader() ?? false)
                 : ['chip' => $registration->status->label(), 'tone' => $registration->status->tone()],
             // Expired by the job, or still unanswered after the deadline (before the job ran).
-            'expired' => $mine !== null && ! $canRespond && (in_array((string) $mine->getKey(), $expiredIds, true)
+            'expired' => ! $leaderGone && $mine !== null && ! $canRespond && (in_array((string) $mine->getKey(), $expiredIds, true)
                 || ($unanswered && $registration->status === RegistrationStatus::MenungguKonfirmasi
                     && ! RegistrationPolicy::teamWindowOpen($registration))),
             // D-148: a team resumed late had its own three days to answer, not the registration deadline.
@@ -198,7 +205,14 @@ class KonfirmasiTim extends Component
         }
 
         $registration = Registration::query()
-            ->with(['competition', 'mentor.staffProfile', 'members.student.user:id,name', 'members.student.classroom:id,name'])
+            ->with([
+                'competition',
+                'mentor.staffProfile',
+                // A teammate in the trash (Admin › Kelas) is hidden: no blank row; its row stays until the purge.
+                'members' => fn ($q) => $q->whereHas('student'),
+                'members.student.user:id,name',
+                'members.student.classroom:id,name',
+            ])
             ->findOrFail($this->registrationId);
 
         if ($this->isMember($registration)) {
@@ -210,6 +224,22 @@ class KonfirmasiTim extends Component
         $this->withdrawn = true;
 
         return null;
+    }
+
+    /**
+     * The viewer may answer now: RegistrationPolicy::respond, and the ketua is not in the trash (Admin › Kelas, 5 Nov
+     * 2026): the team of a trashed ketua is hidden from every student screen until "Pulihkan" or the purge, so its
+     * invitation answers as one that is no longer valid.
+     */
+    private function answerable(Registration $registration): bool
+    {
+        return ! self::leaderInTrash($registration) && Gate::allows('respond', $registration);
+    }
+
+    /** The ketua's student row is soft-deleted (in the trash); a soft-deleted student does not load through `leader`. */
+    private static function leaderInTrash(Registration $registration): bool
+    {
+        return $registration->leader()->doesntExist();
     }
 
     /** WithdrawInvitation audited the withdrawal of this student's invitation to this registration. */

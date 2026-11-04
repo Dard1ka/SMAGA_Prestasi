@@ -201,7 +201,8 @@ final class Index extends Component
                 'competition.verifier.roles',
                 'mentor.staffProfile',
                 // Sorted below in PHP (RegistrationMember::inTeamOrder()), never in SQL: the same order as every other team list.
-                'members' => fn ($q) => $q->whereNull('declined_at'),
+                // A teammate in the trash (Admin › Kelas) is hidden: no blank "Siswa" row; its row stays until the purge.
+                'members' => fn ($q) => $q->whereNull('declined_at')->whereHas('student'),
                 'members.student.user',
                 'members.student.classroom',
                 'letters',
@@ -243,7 +244,8 @@ final class Index extends Component
             'id' => (string) $registration->getKey(),
             'href' => route('siswa.lomba-saya.show', $registration),
             'title' => $competition->name,
-            'meta' => ($competition->bidang?->label() ?? 'Lomba').' · '.$this->typeLabel($registration, $people),
+            // The size the detail lists: without a teammate in the trash (the short-team rule above still counts its row).
+            'meta' => ($competition->bidang?->label() ?? 'Lomba').' · '.$this->typeLabel($registration, (int) $registration->getAttribute('shown_members_count')),
             'bidang' => $competition->bidang,
             'status' => $registration->status,
             // QA10: the tracker ends at Laporan hasil without points for a rejected report (D-34).
@@ -494,8 +496,9 @@ final class Index extends Component
             return self::shortTeamText($registration, $inviteHref !== null, $canCancel);
         }
 
-        // The members this screen loaded are the ones who did not decline.
-        if ($registration->members->contains(fn (RegistrationMember $m): bool => $m->confirmed_at === null)) {
+        // Asked in the database, not of the loaded members: a teammate in the trash is not listed, but the team still
+        // waits for its answer (ConfirmMembership counts its row until the purge).
+        if ($registration->members()->whereNull('declined_at')->whereNull('confirmed_at')->exists()) {
             return 'Menunggu konfirmasi anggota tim.';
         }
 
@@ -635,7 +638,9 @@ final class Index extends Component
 
     /**
      * Registrations of this student (member who did not decline). An anggota row without `invited_at` belongs to a
-     * team whose lomba still waits for Kesiswaan (D-148): that student was not invited yet and does not see it.
+     * team whose lomba still waits for Kesiswaan (D-148): that student was not invited yet and does not see it. A
+     * registration whose ketua is in the trash (Admin › Kelas, 5 Nov 2026) is hidden until "Pulihkan" or the purge,
+     * which passes the leadership to a remaining member (whereHas('leader') leaves out a soft-deleted student).
      *
      * @return Builder<Registration>
      */
@@ -643,10 +648,12 @@ final class Index extends Component
     {
         $studentId = $this->student()?->getKey();
 
-        return Registration::query()->whereHas(
-            'members',
-            fn (Builder $m) => $m->where('student_id', $studentId)->whereNull('declined_at')->whereNotNull('invited_at'),
-        );
+        return Registration::query()
+            ->whereHas(
+                'members',
+                fn (Builder $m) => $m->where('student_id', $studentId)->whereNull('declined_at')->whereNotNull('invited_at'),
+            )
+            ->whereHas('leader');
     }
 
     /** @return Collection<int, Registration> */
@@ -666,7 +673,11 @@ final class Index extends Component
                 'report',
                 'members' => fn ($q) => $q->where('student_id', $studentId),
             ])
-            ->withCount(['members as active_members_count' => fn (Builder $m) => $m->whereNull('declined_at')])
+            ->withCount([
+                'members as active_members_count' => fn (Builder $m) => $m->whereNull('declined_at'),
+                // The people the card names: a teammate in the trash is hidden (its row still counts above).
+                'members as shown_members_count' => fn (Builder $m) => $m->whereNull('declined_at')->whereHas('student'),
+            ])
             // Needs action first (report due, open invitation), then the most recently changed.
             ->orderByRaw('case when status = ? then 0 when status = ? then 1 else 2 end', [
                 RegistrationStatus::MenungguLaporan->value,
@@ -677,9 +688,11 @@ final class Index extends Component
             ->get();
     }
 
+    /** The rule of baseQuery() for one registration (the address of a hidden one answers 404). */
     private function isVisibleTo(Registration $registration, Student $student): bool
     {
-        return $registration->members()->where('student_id', $student->getKey())->whereNull('declined_at')->whereNotNull('invited_at')->exists();
+        return $registration->members()->where('student_id', $student->getKey())->whereNull('declined_at')->whereNotNull('invited_at')->exists()
+            && $registration->leader()->exists();
     }
 
     /**

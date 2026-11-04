@@ -21,6 +21,10 @@ use Illuminate\Support\Facades\DB;
  * Names are compared like the import does (capitals, no spaces). One audit row `classroom.numbered` with the class
  * names and counts (no student data); the cached public pages are flushed after the commit. Safe to run again: a second
  * run changes nothing.
+ *
+ * A class in the trash (soft-deleted, the lead's decision of 5 Nov 2026) is left to the purge or "Pulihkan": it is never
+ * renamed, merged or deleted here, and a numbered name it holds is not created again (the lettered class of that number
+ * stays as it is, listed under "kept"). Deletes here remove the row for good (forceDelete).
  */
 final class NumberClassrooms
 {
@@ -45,7 +49,7 @@ final class NumberClassrooms
 
             foreach ($plan['merge'] as [$source, $target]) {
                 DB::table('students')->where('classroom_id', $source->getKey())->update(['classroom_id' => $target->getKey()]);
-                $source->delete();
+                $source->forceDelete();
             }
 
             foreach ($plan['rename'] as [$classroom, $name, $level]) {
@@ -57,7 +61,7 @@ final class NumberClassrooms
             }
 
             foreach ($plan['delete'] as $classroom) {
-                $classroom->delete();
+                $classroom->forceDelete();
             }
 
             if ($plan['changed']) {
@@ -92,6 +96,9 @@ final class NumberClassrooms
     private function plan(): array
     {
         $byKey = Classroom::query()->ordered()->get()->keyBy(fn (Classroom $c): string => ClassroomName::key($c->name));
+        // Classes in the trash (the lead's decision of 5 Nov 2026) are neither renamed, merged, created again nor deleted
+        // here: the purge or "Pulihkan" decides about them. Their names stay taken.
+        $trashed = Classroom::onlyTrashed()->get(['id', 'name'])->keyBy(fn (Classroom $c): string => ClassroomName::key($c->name));
         $handled = [];
         $plan = ['merge' => [], 'rename' => [], 'create' => [], 'delete' => []];
         $summary = ['renamed' => [], 'merged' => [], 'created' => [], 'deleted' => [], 'kept' => []];
@@ -108,6 +115,15 @@ final class NumberClassrooms
 
             if ($source !== null) {
                 $handled[$source->getKey()] = true;
+            }
+
+            if ($target === null && $trashed->has(ClassroomName::key($name))) {
+                // The numbered class is in the trash: never created a second time, the lettered one is left as it is.
+                if ($source !== null) {
+                    $summary['kept'][] = "{$source->name} ({$name} ada di Sampah)";
+                }
+
+                continue;
             }
 
             if ($source !== null && $target !== null) {

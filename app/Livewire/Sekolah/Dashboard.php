@@ -111,6 +111,9 @@ class Dashboard extends Component
             ->leftJoin('students', 'students.id', '=', 'achievements.student_id')
             ->leftJoin('users', 'users.id', '=', 'students.user_id')
             ->whereNotNull('achievements.verified_at')
+            // Students in the trash of Admin › Kelas are hidden everywhere (the lead, 5 Nov 2026).
+            ->whereNull('students.deleted_at')
+            ->whereNull('users.deleted_at')
             ->get([
                 'achievements.student_id', 'achievements.points', 'achievements.level', 'achievements.result',
                 'competitions.bidang', 'competitions.final_on', 'users.name',
@@ -288,6 +291,8 @@ class Dashboard extends Component
     {
         return Registration::query()
             ->status(RegistrationStatus::MenungguLaporan)
+            // Not a registration whose ketua is in the trash of Admin › Kelas (the queues' rule; the lead, 5 Nov 2026).
+            ->withListedLeader()
             ->whereHas('competition', fn ($q) => $q->withTrashed()->whereDate('final_on', '<', $today->subDays(ReportFollowUp::NOT_REPORTED_DAYS)))
             ->whereDoesntHave('report')
             ->count();

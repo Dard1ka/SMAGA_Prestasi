@@ -83,7 +83,9 @@ class ArsipSurat extends Component
         $type = LetterType::tryFrom($this->jenis);
 
         $letters = Letter::query()
-            ->with(['file', 'replacement:id,replaces_letter_id,full_number', 'registration' => fn ($q) => $q->withTrashed(), 'registration.competition', 'registration.mentor', 'registration.members.student.user'])
+            // "Untuk" names no student in the trash of Admin › Kelas (Student excludes trashed rows; the lead, 5 Nov 2026).
+            ->with(['file', 'replacement:id,replaces_letter_id,full_number', 'registration' => fn ($q) => $q->withTrashed(), 'registration.competition', 'registration.mentor',
+                'registration.members' => fn ($q) => $q->whereHas('student'), 'registration.members.student.user'])
             ->when($type !== null, fn (Builder $q) => $q->where('type', $type))
             ->when($term !== '', fn (Builder $q) => $q->where(fn (Builder $w) => $w
                 ->where('full_number', 'like', '%'.self::escapeLike($term).'%')

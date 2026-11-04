@@ -18,7 +18,7 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Admin "Aktif kembali" for a disabled student account (SV5, the lead 2026-11-04): the undo of DisableAccount, which had
+ * Admin "Aktif" (formerly "Aktif kembali") for a disabled student account (SV5, the lead 2026-11-04): the undo of DisableAccount, which had
  * none. Admin only (`user.archive`, the permission of DisableAccount), never the Admin's own account, only a student
  * account in `disabled`; reason required (MIN_REASON–MAX_REASON characters, the rule of "Buka ulang").
  *
@@ -149,7 +149,7 @@ final class EnableAccount
                 }
             }
 
-            // "Aktif kembali" leaves an account that can log in: a freeze and its counter go too.
+            // "Aktif" leaves an account that can log in: a freeze and its counter go too.
             $frozenReason = AccountControls::frozenReason($locked);
             $wasFrozen = AccountControls::isFrozen($locked);
 

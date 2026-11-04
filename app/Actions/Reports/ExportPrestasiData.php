@@ -123,6 +123,9 @@ final class ExportPrestasiData
             ->join('users', 'users.id', '=', 'students.user_id')
             ->join('competitions', 'competitions.id', '=', 'achievements.competition_id')
             ->whereNotNull('achievements.verified_at')
+            // Students in the trash of Admin › Kelas are hidden everywhere (the lead, 5 Nov 2026).
+            ->whereNull('students.deleted_at')
+            ->whereNull('users.deleted_at')
             ->when($bidang !== null, fn ($q) => $q->where('competitions.bidang', $bidang->value))
             ->when($level !== null, fn ($q) => $q->where('achievements.level', $level->value))
             ->when($from !== null, fn ($q) => $q->where(fn ($w) => $w

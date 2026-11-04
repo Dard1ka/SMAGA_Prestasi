@@ -1,4 +1,4 @@
-{{-- Admin · Kelas (App\Livewire\Admin\Kelas). Groups, counts and names come from the component; this view only formats. --}}
+{{-- Admin · Kelas (App\Livewire\Admin\Kelas). Groups, counts, names and every dialog sentence come from the component; this view only formats. --}}
 <div class="flex flex-col gap-[22px]">
     <x-sth.alert>Import siswa hanya memasukkan siswa ke kelas yang ada di daftar ini. Kelas baru bisa langsung dipakai di kolom "Kelas" file import.</x-sth.alert>
 
@@ -50,15 +50,10 @@
                                 <x-sth.button variant="quiet" size="sm" icon="edit" wire:click="askRename('{{ $row['id'] }}')">
                                     Ganti nama<span class="sr-only"> kelas {{ $row['name'] }}</span>
                                 </x-sth.button>
-                                @if ($row['total'] > 0)
-                                    <x-sth.button variant="quiet" size="sm" icon="trash" disabled>
-                                        Hapus<span class="sr-only"> kelas {{ $row['name'] }}: masih berisi {{ $row['total'] }} siswa</span>
-                                    </x-sth.button>
-                                @else
-                                    <x-sth.button variant="quiet" size="sm" icon="trash" wire:click="askDelete('{{ $row['id'] }}')">
-                                        Hapus<span class="sr-only"> kelas {{ $row['name'] }}</span>
-                                    </x-sth.button>
-                                @endif
+                                <x-sth.button variant="quiet" size="sm" icon="trash" aria-haspopup="dialog" wire:click="askDelete('{{ $row['id'] }}')"
+                                              wire:loading.attr="disabled" wire:target="askDelete">
+                                    Hapus<span class="sr-only"> kelas {{ $row['name'] }}</span>
+                                </x-sth.button>
                             </span>
                         </td>
                     </tr>
@@ -72,8 +67,57 @@
     @endforelse
 
     @if ($groups !== [])
-        <p class="muted m-0 text-sm">Lihat siswa menampilkan siswa satu kelas; status akunnya bisa diubah dari sana, satu per satu atau beberapa sekaligus. Kelas yang masih berisi siswa, juga alumni, tidak bisa dihapus. Pindahkan siswanya lewat import siswa dulu. Tingkat kelas tidak bisa diganti karena tanggal arsip siswanya mengikuti tingkat.</p>
+        <p class="muted m-0 text-sm">Lihat siswa menampilkan siswa satu kelas; status akunnya bisa diubah dari sana, satu per satu atau beberapa sekaligus. Hapus memindahkan kelas beserta semua siswanya ke Sampah; selama 7 hari masih bisa dipulihkan. Tingkat kelas tidak bisa diganti karena tanggal arsip siswanya mengikuti tingkat.</p>
     @endif
+
+    {{-- Sampah (the lead's decision of 5 Nov 2026): classes with their students and students deleted alone, 7 days. --}}
+    <section aria-labelledby="h-kelas-sampah" class="flex flex-col gap-3">
+        <x-sth.page-header id="h-kelas-sampah" title="Sampah"
+                           subtitle="Kelas dan siswa yang dihapus. Selama 7 hari masih bisa dipulihkan, setelah itu terhapus permanen." />
+        @if ($trash['rows'] === [])
+            <x-sth.empty-state icon="trash" title="Sampah kosong">Kelas dan siswa yang dihapus tampil di sini selama 7 hari.</x-sth.empty-state>
+        @else
+            <x-sth.table :caption="'Sampah, '.$trash['total'].' data'">
+                <x-slot:head>
+                    <th scope="col" class="min-w-44">Kelas atau siswa</th>
+                    <th scope="col" class="min-w-52">Dihapus</th>
+                    <th scope="col" class="relative"><span class="sr-only">Aksi</span></th>
+                </x-slot:head>
+                @foreach ($trash['rows'] as $entry)
+                    <tr wire:key="sampah-{{ $entry['id'] }}">
+                        <td>
+                            <div class="flex min-w-0 flex-col [overflow-wrap:anywhere]">
+                                <span class="font-semibold">{{ $entry['title'] }}</span>
+                                <span class="text-xs text-muted">{{ $entry['meta'] }}</span>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="flex min-w-0 flex-col [overflow-wrap:anywhere]">
+                                <span class="text-sm">{{ $entry['deleted'] }}</span>
+                                <span class="text-xs text-muted">Alasan: {{ $entry['reason'] }}</span>
+                                <span class="text-xs font-semibold">{{ $entry['purge'] }}</span>
+                            </div>
+                        </td>
+                        <td class="text-right">
+                            @if ($entry['restorable'])
+                                <x-sth.button variant="quiet" size="sm" icon="recycle" aria-haspopup="dialog" wire:click="askRestore('{{ $entry['id'] }}')"
+                                              wire:loading.attr="disabled" wire:target="askRestore">
+                                    Pulihkan<span class="sr-only"> {{ $entry['title'] }}</span>
+                                </x-sth.button>
+                            @endif
+                        </td>
+                    </tr>
+                @endforeach
+            </x-sth.table>
+            @if ($trash['capped'])
+                <p class="m-0 text-sm text-muted">Menampilkan {{ count($trash['rows']) }} data terbaru dari {{ $trash['total'] }}.</p>
+            @elseif ($trash['hasMore'])
+                <div class="flex justify-center">
+                    <x-sth.button variant="quiet" size="sm" icon="chevron-down" wire:click="showMoreTrash" wire:loading.attr="disabled" wire:target="showMoreTrash">Tampilkan lebih banyak</x-sth.button>
+                </div>
+            @endif
+        @endif
+    </section>
 
     {{-- Dialogs ----------------------------------------------------------------------------------- --}}
     <x-sth.modal :id="\App\Livewire\Admin\Kelas::RENAME_DIALOG" size="sm" title="Ganti nama kelas"
@@ -89,20 +133,27 @@
         </x-slot:footer>
     </x-sth.modal>
 
-    <x-sth.modal :id="\App\Livewire\Admin\Kelas::DELETE_DIALOG" size="sm" title="Hapus kelas ini?"
-                 description="Kelas hilang dari daftar dan tidak bisa dipakai import siswa lagi.">
-        @if ($deletingName)
-            <div class="rounded-tile bg-subtle px-3 py-2.5">
-                <p class="m-0 font-semibold [overflow-wrap:anywhere]">{{ $deletingName }}</p>
-                <p class="m-0 text-xs text-muted">Belum ada siswa di kelas ini.</p>
-            </div>
+    {{-- "Hapus kelas X-4?": the class and all its students go to the trash. on-close forgets the question. --}}
+    <x-sth.modal :id="\App\Livewire\Admin\Kelas::DELETE_DIALOG" size="sm" on-close="forgetDelete"
+                 :title="$deleteDialog['title'] ?? 'Hapus kelas?'"
+                 description="Penghapusan dicatat di log audit bersama alasannya.">
+        @if ($deleteDialog)
+            <form id="kelas-hapus-form" wire:submit="delete" class="flex flex-col gap-4" novalidate>
+                <div class="flex flex-col gap-2">
+                    @foreach ($deleteDialog['lines'] as $line)
+                        <p class="m-0 text-md" wire:key="kelas-hapus-baris-{{ $loop->index }}">{{ $line }}</p>
+                    @endforeach
+                </div>
+                <x-sth.textarea wire:model="classReason" id="f-kelas-hapus-alasan" label="Alasan" rows="2"
+                                :hint="'Minimal '.$trashReasonMin.' karakter, maksimal '.$trashReasonMax.'. Contoh: kelas digabung ke X-2.'" />
+            </form>
         @else
             <p class="m-0 text-md text-muted">Kelas tidak ditemukan. Tutup lalu coba lagi.</p>
         @endif
         <x-slot:footer>
             <x-sth.button variant="quiet" data-sth-close>Batal</x-sth.button>
-            @if ($deletingName)
-                <x-sth.button variant="danger" wire:click="delete" wire:loading.attr="disabled" wire:target="delete">Hapus kelas</x-sth.button>
+            @if ($deleteDialog)
+                <x-sth.button type="submit" variant="danger" form="kelas-hapus-form" wire:loading.attr="disabled" wire:target="delete">Hapus kelas</x-sth.button>
             @endif
         </x-slot:footer>
     </x-sth.modal>
@@ -110,7 +161,7 @@
     {{-- Students of one class ("Lihat siswa" or the class name). on-close: X, Esc and a click outside forget the class too. --}}
     <x-sth.modal :id="\App\Livewire\Admin\Kelas::STUDENTS_DIALOG" size="lg" on-close="closeStudents"
                  :title="$studentsDialog ? 'Kelas '.$studentsDialog['name'] : 'Siswa kelas'"
-                 description="Pilih siswa lalu ubah status akunnya: aktif kembali, nonaktif, atau arsip (alumni). Prestasinya tetap tersimpan.">
+                 description="Pilih siswa lalu ubah status akunnya (aktif kembali, nonaktif, atau arsip) atau hapus siswanya.">
         @if ($studentsDialog)
             <div class="flex flex-col gap-3">
                 <p class="m-0 text-sm text-muted" aria-live="polite">
@@ -126,10 +177,16 @@
                             <input type="checkbox" class="cek" id="kelas-siswa-pilih-semua" wire:click="toggleAllStudents" @checked($studentsDialog['allSelected'])>
                             Pilih semua yang tampil
                         </label>
-                        <x-sth.button class="ml-auto" variant="soft" size="sm" icon="users" aria-haspopup="dialog" wire:click="askStatusSelected"
-                                      wire:loading.attr="disabled" wire:target="askStatusSelected" :disabled="$studentsDialog['selected'] === 0">
-                            <span>Ubah status terpilih (<span class="num">{{ $studentsDialog['selected'] }}</span>)</span>
-                        </x-sth.button>
+                        <span class="ml-auto inline-flex flex-wrap justify-end gap-2">
+                            <x-sth.button variant="soft" size="sm" icon="users" aria-haspopup="dialog" wire:click="askStatusSelected"
+                                          wire:loading.attr="disabled" wire:target="askStatusSelected" :disabled="$studentsDialog['selected'] === 0">
+                                <span>Ubah status terpilih (<span class="num">{{ $studentsDialog['selected'] }}</span>)</span>
+                            </x-sth.button>
+                            <x-sth.button variant="quiet" size="sm" icon="trash" aria-haspopup="dialog" wire:click="askTrashSelected"
+                                          wire:loading.attr="disabled" wire:target="askTrashSelected" :disabled="$studentsDialog['selected'] === 0">
+                                <span>Hapus terpilih (<span class="num">{{ $studentsDialog['selected'] }}</span>)</span>
+                            </x-sth.button>
+                        </span>
                     </div>
                     <x-sth.table :caption="'Siswa kelas '.$studentsDialog['name']" class="overflow-hidden rounded-tile border border-line" :card="false">
                         <x-slot:head>
@@ -154,9 +211,14 @@
                                 </td>
                                 <td><x-sth.chip :tone="$student['tone']" size="sm">{{ $student['status'] }}</x-sth.chip></td>
                                 <td class="text-right">
-                                    <x-sth.button variant="quiet" size="sm" aria-haspopup="dialog" wire:click="askStatus({{ $student['id'] }})">
-                                        Ubah status<span class="sr-only"> akun {{ $student['name'] }}</span>
-                                    </x-sth.button>
+                                    <span class="inline-flex flex-wrap justify-end gap-1">
+                                        <x-sth.button variant="quiet" size="sm" aria-haspopup="dialog" wire:click="askStatus({{ $student['id'] }})">
+                                            Ubah status<span class="sr-only"> akun {{ $student['name'] }}</span>
+                                        </x-sth.button>
+                                        <x-sth.button variant="quiet" size="sm" aria-haspopup="dialog" wire:click="askTrashStudent({{ $student['id'] }})">
+                                            Hapus<span class="sr-only"> {{ $student['name'] }}</span>
+                                        </x-sth.button>
+                                    </span>
                                 </td>
                             </tr>
                         @endforeach
@@ -175,6 +237,58 @@
         @endif
         <x-slot:footer>
             <x-sth.button variant="quiet" data-sth-close>Tutup</x-sth.button>
+        </x-slot:footer>
+    </x-sth.modal>
+
+    {{-- "Hapus N siswa?" over the student list: the students go to the trash. on-close forgets the question. --}}
+    <x-sth.modal :id="\App\Livewire\Admin\Kelas::TRASH_STUDENTS_DIALOG" size="sm" on-close="forgetTrashStudents"
+                 :title="$trashStudentsDialog['title'] ?? 'Hapus siswa?'"
+                 description="Penghapusan dicatat di log audit bersama alasannya.">
+        @if ($trashStudentsDialog)
+            <form id="kelas-siswa-hapus-form" wire:submit="trashStudents" class="flex flex-col gap-4" novalidate>
+                <div class="rounded-tile bg-subtle px-3 py-2.5">
+                    <p class="m-0 font-semibold [overflow-wrap:anywhere]">{{ $trashStudentsDialog['names'] }}</p>
+                    @if ($trashStudentsDialog['classroom'])
+                        <p class="m-0 text-xs text-muted">Kelas {{ $trashStudentsDialog['classroom'] }}</p>
+                    @endif
+                </div>
+                <div class="flex flex-col gap-2">
+                    @foreach ($trashStudentsDialog['lines'] as $line)
+                        <p class="m-0 text-md" wire:key="kelas-siswa-hapus-baris-{{ $loop->index }}">{{ $line }}</p>
+                    @endforeach
+                </div>
+                <x-sth.textarea wire:model="studentsReason" id="f-kelas-siswa-hapus-alasan" label="Alasan" rows="2"
+                                :hint="'Minimal '.$trashReasonMin.' karakter, maksimal '.$trashReasonMax.'. Contoh: data ganda dari import.'" />
+            </form>
+        @else
+            <p class="m-0 text-md text-muted">Pilih siswa dulu, lalu tekan Hapus.</p>
+        @endif
+        <x-slot:footer>
+            <x-sth.button variant="quiet" data-sth-close>Batal</x-sth.button>
+            @if ($trashStudentsDialog)
+                <x-sth.button type="submit" variant="danger" form="kelas-siswa-hapus-form" wire:loading.attr="disabled" wire:target="trashStudents">Hapus siswa</x-sth.button>
+            @endif
+        </x-slot:footer>
+    </x-sth.modal>
+
+    {{-- "Pulihkan" of a Sampah row. on-close forgets the question. --}}
+    <x-sth.modal :id="\App\Livewire\Admin\Kelas::RESTORE_DIALOG" size="sm" on-close="forgetRestore"
+                 :title="$restoreDialog['title'] ?? 'Pulihkan?'"
+                 description="Pemulihan dicatat di log audit.">
+        @if ($restoreDialog)
+            <div class="flex flex-col gap-2">
+                @foreach ($restoreDialog['lines'] as $line)
+                    <p class="m-0 text-md" wire:key="kelas-pulihkan-baris-{{ $loop->index }}">{{ $line }}</p>
+                @endforeach
+            </div>
+        @else
+            <p class="m-0 text-md text-muted">Data tidak ditemukan. Tutup lalu coba lagi.</p>
+        @endif
+        <x-slot:footer>
+            <x-sth.button variant="quiet" data-sth-close>Batal</x-sth.button>
+            @if ($restoreDialog)
+                <x-sth.button wire:click="restore" wire:loading.attr="disabled" wire:target="restore">Pulihkan</x-sth.button>
+            @endif
         </x-slot:footer>
     </x-sth.modal>
 

@@ -88,9 +88,15 @@ class Report extends Model
         return $this->hasMany(Achievement::class);
     }
 
-    /** Kesiswaan verification queue. @param Builder<Report> $query */
+    /**
+     * Kesiswaan / Humas verification queue: not the report of a registration whose ketua is in the trash of Admin › Kelas
+     * (Registration::scopeWithListedLeader(); a soft-deleted registration keeps its old place in the queue).
+     *
+     * @param  Builder<Report>  $query
+     */
     public function scopeAwaitingVerification(Builder $query): void
     {
-        $query->where('status', ReportStatus::Dikirim);
+        $query->where('status', ReportStatus::Dikirim)
+            ->whereHas('registration', fn (Builder $registration) => $registration->withTrashed()->withListedLeader());
     }
 }

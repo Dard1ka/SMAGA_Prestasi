@@ -101,6 +101,12 @@ final class ImportStudents
     public const NOTE_SANITIZED = 'Sel dibersihkan: tanda = + - @ di awal sel dibuang.';
 
     /**
+     * The note of a row whose NIS and NISN belong to a student in the trash of Admin › Kelas (the lead, 5 Nov 2026): the
+     * row is skipped, so the import neither creates a second account nor silently brings the student back.
+     */
+    public const NOTE_IN_TRASH = 'Siswa ini ada di Sampah. Pulihkan dulu atau tunggu terhapus permanen.';
+
+    /**
      * The note of a NEW row that a committed import did not create because another import registered its NIS or NISN
      * meanwhile (SV1 third check): the row is reported as skipped, so the result never labels it "Baru".
      */
@@ -427,8 +433,9 @@ final class ImportStudents
 
             if ($student !== null) {
                 if ($student->trashed() || $owner === null || $owner->trashed()) {
-                    $errors[] = 'Akun siswa ini sudah dihapus.';
-                    $student = null;
+                    // In the trash (the only way a student is soft-deleted): nothing is checked or written for this row.
+                    $skipped = true;
+                    $notes[] = self::NOTE_IN_TRASH;
                 } elseif ($owner->status === UserStatus::Archived) {
                     // Alumni keep their last data: nothing is checked or written for this row.
                     $skipped = true;

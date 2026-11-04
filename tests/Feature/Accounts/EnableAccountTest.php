@@ -167,7 +167,7 @@ it('lifts a freeze with its counter and clears the login locks', function (strin
         ->and(AccountControls::state($fresh))->toBe(AccountControls::STATE_PENDING)
         ->and(Activity::query()->where('event', 'account.enabled')->sole()->properties['unfrozen'])->toBe($reason)
         ->and(app(LoginLockout::class)->clearedAt('u:'.$user->getKey()))->not->toBeNull();
-})->with([AccountControls::FROZEN_FAILED_ATTEMPTS, AccountControls::FROZEN_NOT_ME]);
+})->with([AccountControls::FROZEN_FAILED_ATTEMPTS, AccountControls::FROZEN_NOT_ME, AccountControls::FROZEN_ADMIN]);
 
 it('refuses an account that is not disabled, a staff account, the own account and a short or long reason', function (): void {
     $active = disabledStudent(['status' => UserStatus::Active]);

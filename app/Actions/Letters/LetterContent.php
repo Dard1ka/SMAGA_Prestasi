@@ -63,7 +63,8 @@ final readonly class LetterContent
         $branch = trim((string) $registration->branch);
 
         $members = $registration->members
-            ->filter(fn (RegistrationMember $m): bool => $m->confirmed_at !== null && $m->declined_at === null)
+            // A member in the trash of Admin › Kelas (student() excludes trashed rows; the lead, 5 Nov 2026) is not printed.
+            ->filter(fn (RegistrationMember $m): bool => $m->confirmed_at !== null && $m->declined_at === null && $m->student !== null)
             ->sortBy(fn (RegistrationMember $m): string => ($m->role === MemberRole::Ketua ? '0' : '1').mb_strtolower((string) $m->student?->user?->name))
             ->values();
 

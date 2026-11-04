@@ -29,7 +29,7 @@
                         <div class="flex min-w-0 flex-1 flex-col">
                             <span class="font-bold [overflow-wrap:anywhere]">{{ $account['name'] }}</span>
                             <span class="text-xs text-muted">
-                                {{ $account['where'] }} · {{ $account['reason'] === 'not_me' ? 'laporan "Bukan saya"' : 'gagal masuk 10 kali' }}
+                                {{ $account['where'] }} · {{ $account['reasonText'] }}
                                 @if ($account['since']) · {{ $account['since']->translatedFormat('j M H:i') }}@endif
                             </span>
                         </div>

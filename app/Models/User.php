@@ -152,14 +152,17 @@ class User extends Authenticatable
     // Helpers --------------------------------------------------------------------------------
 
     /**
-     * Mail channel address, or null to skip the mail (the in-app notification is still stored).
+     * Mail channel address, or null to skip the mail (the in-app notification is still stored, except for a trashed
+     * account: BellChannel).
      * - A frozen account (K3 / "Bukan saya?", K8) gets no mail: its address may be the one the owner disputes.
+     * - A trashed account (Admin › Kelas › Sampah, smaga_server) gets no mail: its status still says active or pending,
+     *   and a queued notification restores it without the SoftDeletes scope.
      * - An address nobody verified yet (new or reset staff account, typed by an Admin) only gets account
      *   notices (AdminNotice), never work mail with student names. OTP test mode (local) counts as verified.
      */
     public function routeNotificationForMail(Notification $notification): ?string
     {
-        if (blank($this->email) || $this->frozen_at !== null) {
+        if (blank($this->email) || $this->frozen_at !== null || $this->trashed()) {
             return null;
         }
 
@@ -168,9 +171,14 @@ class User extends Authenticatable
         return $verified || $notification instanceof AdminNotice ? (string) $this->email : null;
     }
 
+    /**
+     * Pending activation or active, and not in the trash: a trashed student keeps its status (Admin › Kelas › Sampah,
+     * smaga_server), so the status alone would call it live. The query scope canLogIn() needs no such check: the
+     * SoftDeletes scope already leaves trashed rows out unless a caller asks for withTrashed().
+     */
     public function canLogIn(): bool
     {
-        return $this->status instanceof UserStatus && $this->status->canLogIn();
+        return ! $this->trashed() && $this->status instanceof UserStatus && $this->status->canLogIn();
     }
 
     public function isArchived(): bool

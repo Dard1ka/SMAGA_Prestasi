@@ -35,6 +35,9 @@ final class ActivationReport
 
     public const FLAG_NOT_ME = 'Dilaporkan "Bukan saya"';
 
+    /** A freeze an Admin set by hand (FreezeAccount). */
+    public const FLAG_FROZEN_ADMIN = AccountControls::FROZEN_ADMIN_LABEL;
+
     /**
      * @return Collection<int, array{
      *     userId: int, name: string, nisn: string, classroomId: ?string, classroom: string, level: int,
@@ -257,6 +260,8 @@ final class ActivationReport
 
         if ($frozenReason === AccountControls::FROZEN_NOT_ME) {
             $flags[] = self::FLAG_NOT_ME;
+        } elseif ($frozenReason === AccountControls::FROZEN_ADMIN) {
+            $flags[] = self::FLAG_FROZEN_ADMIN;
         } elseif ($attempts >= 5 && $state !== AccountControls::STATE_ACTIVE) {
             $flags[] = 'Gagal masuk '.$attempts.' kali';
         }

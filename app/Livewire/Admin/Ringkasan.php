@@ -51,6 +51,10 @@ final class Ringkasan extends Component
         'account.enabled' => 'Akun diaktifkan lagi',
         // SV1 browser check: "Buka pembekuan" on Status aktivasi, Admin only (user.reset_password).
         'account.unfrozen' => 'Akun dibuka',
+        // Admin "Ubah status" of a student (the lead, 2026-11-05), Admin only (user.archive).
+        'account.activated_by_admin' => 'Diaktifkan Admin',
+        'account.activation_expired_by_admin' => 'Masa aktivasi diakhiri Admin',
+        'account.frozen_by_admin' => 'Dibekukan Admin',
         // B5 (backlog #8): Arsip otomatis + Log audit.
         'account.unarchived' => 'Akun dipulihkan dari arsip',
         'student.archive_date_changed' => 'Tanggal arsip diubah',
@@ -73,6 +77,12 @@ final class Ringkasan extends Component
         CreateClassroom::EVENT => 'Kelas ditambahkan',
         RenameClassroom::EVENT => 'Nama kelas diganti',
         DeleteClassroom::EVENT => 'Kelas dihapus',
+        // Sampah of Admin › Kelas (the lead, 5 Nov 2026). Not `trash.purged`: the daily `sth:sampah:hapus-permanen` run
+        // does that, not an Admin (like the nightly archive, QA9); Log audit has its label.
+        'student.trashed' => 'Siswa dipindahkan ke Sampah',
+        'classroom.trashed' => 'Kelas dipindahkan ke Sampah',
+        'student.restored' => 'Siswa dipulihkan dari Sampah',
+        'classroom.restored' => 'Kelas dipulihkan dari Sampah',
     ];
 
     public function mount(): void

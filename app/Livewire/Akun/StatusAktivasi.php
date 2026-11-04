@@ -52,7 +52,7 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
  *
  * SV5 (the lead, 2026-11-04: a nonaktif, archived or frozen student "bisa di undo"): for Admin only (`user.archive`)
  * every student row of "Daftar siswa" and of the class dialog has "Ubah status", which reads "Aktifkan lagi" for a
- * row in nonaktif, arsip, dibekukan or kedaluwarsa and opens the shared dialog UbahStatusSiswa with "Aktif kembali"
+ * row in nonaktif, arsip, dibekukan or kedaluwarsa and opens the shared dialog UbahStatusSiswa with "Aktif"
  * preselected (askStatus()). Kesiswaan sees nothing of it. "Buka ulang" and "Buka pembekuan" stay as they were. After
  * a change the dialog sends UbahStatusSiswa::DONE_EVENT and the page redraws its lists, boxes and counts.
  */
@@ -360,7 +360,7 @@ final class StatusAktivasi extends Component
     }
 
     /**
-     * SV5 "Ubah status" / "Aktifkan lagi" of one student row (Admin only): the shared dialog, with "Aktif kembali"
+     * SV5 "Ubah status" / "Aktifkan lagi" of one student row (Admin only): the shared dialog, with "Aktif"
      * preselected for a row whose account can be brought back. A staff or unknown id answers 404.
      */
     public function askStatus(int $userId): void
@@ -570,7 +570,7 @@ final class StatusAktivasi extends Component
     /**
      * Frozen accounts (K3/K8). Kesiswaan sees students only; Admin also staff (K8 can freeze any account).
      *
-     * @return Collection<int, array{id: int, name: string, where: string, reason: ?string, since: ?CarbonImmutable, student: bool}>
+     * @return Collection<int, array{id: int, name: string, where: string, reason: ?string, reasonText: string, since: ?CarbonImmutable, student: bool}>
      */
     private function frozenAccounts(bool $includeStaff): Collection
     {
@@ -586,9 +586,20 @@ final class StatusAktivasi extends Component
                 'name' => (string) $u->name,
                 'where' => $u->student !== null ? (string) ($u->student->classroom?->name ?? 'Siswa') : 'Staf',
                 'reason' => AccountControls::frozenReason($u),
+                'reasonText' => self::frozenReasonText(AccountControls::frozenReason($u)),
                 'since' => AccountControls::date($u, 'frozen_at'),
                 'student' => $u->student !== null,
             ]);
+    }
+
+    /** Why an account of the box "Akun dibekukan" is frozen, in words. */
+    private static function frozenReasonText(?string $reason): string
+    {
+        return match ($reason) {
+            AccountControls::FROZEN_NOT_ME => 'laporan "Bukan saya"',
+            AccountControls::FROZEN_ADMIN => AccountControls::FROZEN_ADMIN_LABEL,
+            default => 'gagal masuk '.AccountControls::MAX_FAILED_ATTEMPTS.' kali',
+        };
     }
 
     /**
@@ -614,8 +625,8 @@ final class StatusAktivasi extends Component
     }
 
     /**
-     * SV5: the label of a row's "Ubah status" button for Admin ("Aktifkan lagi" when "Aktif kembali" does something for
-     * that state), null for everybody else (no button).
+     * SV5: the label of a row's "Ubah status" button for Admin ("Aktifkan lagi" for a state that "Aktif" brings back:
+     * UbahStatusSiswa::RESTORABLE), null for everybody else (no button).
      */
     private static function changeLabel(string $state, bool $canChangeStatus): ?string
     {

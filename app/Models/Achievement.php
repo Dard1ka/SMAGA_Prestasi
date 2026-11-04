@@ -134,4 +134,18 @@ class Achievement extends Model
     {
         $query->whereHas('student', fn (Builder $s) => NamedStudent::constrain($s));
     }
+
+    /**
+     * Achievements of students that are not in the trash of Admin › Kelas (neither the student row nor the account
+     * soft-deleted; the lead, 5 Nov 2026: a trashed student is hidden everywhere). student() includes deleted rows, so
+     * both are excluded here explicitly. Disabled accounts and alumni stay (staff lists show them).
+     *
+     * @param  Builder<Achievement>  $query
+     */
+    public function scopeOfListedStudent(Builder $query): void
+    {
+        $query->whereHas('student', fn (Builder $s) => $s
+            ->withoutTrashed()
+            ->whereHas('user', fn (Builder $u) => $u->withoutTrashed()));
+    }
 }

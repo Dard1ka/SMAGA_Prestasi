@@ -143,6 +143,9 @@
                     @if ($alumniCount > 0)
                         <p class="m-0 text-xs text-muted">{{ $alumniCount }} baris adalah akun alumni (sudah diarsipkan) dan dilewati. Kalau siswanya masih bersekolah, minta Admin memulihkan akunnya dulu.</p>
                     @endif
+                    @if ($trashCount > 0)
+                        <p class="m-0 text-xs text-muted">{{ $trashCount }} baris adalah siswa yang ada di Sampah dan dilewati. Admin bisa memulihkannya di menu Kelas, atau tunggu sampai terhapus permanen.</p>
+                    @endif
                     @if ($sanitizedCount > 0 && ! $previewDone)
                         <p class="m-0 text-xs text-muted">{{ $sanitizedCount }} baris berisi sel yang diawali = + - @. Karakter itu dibuang (tanda "Sel dibersihkan"); periksa datanya sebelum mengimpor.</p>
                     @endif

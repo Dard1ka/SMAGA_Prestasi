@@ -100,7 +100,8 @@ final class ChangeEmail
         $old = $user->email;
 
         DB::transaction(function () use ($user, $new, $old): void {
-            $taken = User::query()
+            // withTrashed(): users.email is unique over every row, a trashed student's address included.
+            $taken = User::withTrashed()
                 ->where('email', $new)
                 ->whereKeyNot($user->getKey())
                 ->lockForUpdate()

@@ -10,15 +10,21 @@ use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
  * Kelas: X-1…X-12, XI-1…XI-12, XII-1…XII-12 (ClassroomSeeder; numbers again since D-175). The Admin adds, renames and deletes
  * classes on Admin › Kelas (App\Actions\Classrooms, rules in App\Actions\Classrooms\ClassroomName).
+ *
+ * Soft-deleted = in the trash ("Sampah", the lead's decision of 5 Nov 2026): App\Actions\Trash\TrashClassroom puts a class
+ * and all its students there, hidden from every list, select and the student import, until RestoreFromTrash brings it
+ * back or the daily purge force-deletes it. Its name stays taken meanwhile (ClassroomName::assertUnique()). A delete that
+ * must really remove the row (NumberClassrooms, DeleteClassroom, the purge) calls forceDelete().
  */
 class Classroom extends Model
 {
     /** @use HasFactory<ClassroomFactory> */
-    use HasFactory, HasUlids;
+    use HasFactory, HasUlids, SoftDeletes;
 
     /** @var list<string> */
     protected $fillable = [

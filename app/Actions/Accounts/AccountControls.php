@@ -15,7 +15,8 @@ use DateTimeInterface;
  * Read side of the account controls of docs/SECURITY.md §3a (B1):
  * - K1 activation window: the initial password (import) or a temporary password (K10 reset, K2 reopen) only
  *   works until `users.initial_password_expires_at`; null = no window (accounts created before B1, staff).
- * - K3/K8 freeze: `users.frozen_at` + `frozen_reason` (failed_attempts | not_me); a frozen account cannot log in.
+ * - K3/K8 freeze: `users.frozen_at` + `frozen_reason` (failed_attempts | not_me | admin: FreezeAccount); a frozen
+ *   account cannot log in.
  * - K9 status of a student account for the activation report.
  *
  * Reads the raw attributes so it also works on models that were created in memory (strict mode); User casts the
@@ -39,6 +40,12 @@ final class AccountControls
     public const FROZEN_FAILED_ATTEMPTS = 'failed_attempts';
 
     public const FROZEN_NOT_ME = 'not_me';
+
+    /** Frozen by an Admin by hand (FreezeAccount, "Ubah status" › Dibekukan, the lead 2026-11-05). */
+    public const FROZEN_ADMIN = 'admin';
+
+    /** How a screen names a freeze by an Admin ("Dibekukan Admin"). */
+    public const FROZEN_ADMIN_LABEL = 'Dibekukan Admin';
 
     // K9 report states (value => label, tone) ------------------------------------------------------
     public const STATE_ACTIVE = 'aktif';

@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Notifications\Publications\AppreciationScheduled;
 use App\Notifications\Publications\BinaanAppreciationNotice;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
@@ -27,6 +28,9 @@ use Illuminate\Validation\ValidationException;
  * The rules per achievement are the ones RecordAppreciation always had: verified, the student may be named
  * (NamedStudent: not deleted, account not disabled; the consent check is gone since D-162), not on this event yet,
  * and on no other event (one achievement, one open event: M2-B, Q2-10).
+ *
+ * NamedStudent is checked again under the locks, on fresh rows: a student who went to the trash of Admin › Kelas (or was
+ * disabled) after the screen loaded the achievements stops the click like any other refusal (smaga_server, 5 Nov 2026).
  *
  * After commit each student who can log in gets AppreciationScheduled, one per achievement as before. The guru
  * pembimbing gets ONE BinaanAppreciationNotice per call that names every binaan of this click (the hand test of
@@ -103,6 +107,13 @@ final class RecordAppreciations
                 $ids = $achievements->modelKeys();
                 Achievement::query()->whereKey($ids)->orderBy('id')->lockForUpdate()->pluck('id');
 
+                // The models were checked before the transaction; the student may have gone to the trash since.
+                $named = Achievement::query()->whereKey($ids)->whereHas('student', fn (Builder $q) => NamedStudent::constrain($q))->count();
+
+                if ($named !== count($ids)) {
+                    throw ValidationException::withMessages(['achievement' => self::INACTIVE_MESSAGE]);
+                }
+
                 $existing = Appreciation::query()
                     ->whereIn('achievement_id', $ids)
                     ->with('event')
@@ -160,8 +171,8 @@ final class RecordAppreciations
     }
 
     /**
-     * How many students hear about these achievements (an alumnus or a disabled account does not), for the toast:
-     * it may only claim a notice somebody got (QA8). A student with two achievements counts once.
+     * How many students hear about these achievements (an alumnus, a disabled account or a student in the trash does
+     * not), for the toast: it may only claim a notice somebody got (QA8). A student with two achievements counts once.
      *
      * @param  iterable<Achievement>  $achievements
      */
@@ -172,12 +183,22 @@ final class RecordAppreciations
         $told = [];
 
         foreach ($achievements as $achievement) {
-            if (RecordAppreciation::notifiesStudent($achievement)) {
-                $told[(string) $achievement->student->user->getKey()] = true;
+            if (($user = self::studentToTell($achievement)) !== null) {
+                $told[(string) $user->getKey()] = true;
             }
         }
 
         return count($told);
+    }
+
+    /** The student's account when it is told (NamedStudent: not in the trash, not disabled; and it can log in), else null. */
+    private static function studentToTell(Achievement $achievement): ?User
+    {
+        if (! NamedStudent::allows($achievement->student) || ! RecordAppreciation::notifiesStudent($achievement)) {
+            return null;
+        }
+
+        return $achievement->student?->user;
     }
 
     /**
@@ -209,9 +230,7 @@ final class RecordAppreciations
             $achievement = $byId[(string) $row->achievement_id];
             $row->setRelation('achievement', $achievement);
 
-            if (RecordAppreciation::notifiesStudent($achievement)) {
-                $achievement->student->user->notify(AppreciationScheduled::for($row));
-            }
+            self::studentToTell($achievement)?->notify(AppreciationScheduled::for($row));
         }
 
         // One notice per guru pembimbing for all binaan of this call (D-124), grouped the way

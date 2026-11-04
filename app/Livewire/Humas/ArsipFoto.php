@@ -69,11 +69,18 @@ class ArsipFoto extends Component
         return Report::query()
             ->where('status', ReportStatus::Diverifikasi)
             ->whereHas('registration')
-            ->whereHas('files', fn (Builder $files) => $files->where('kind', ReportFileKind::Foto));
+            ->whereHas('files', fn (Builder $files) => $files->where('kind', ReportFileKind::Foto))
+            // A team whose every confirmed student is in the trash of Admin › Kelas is hidden, not even counted (the
+            // lead, 5 Nov 2026; whereHas('student'): Student excludes trashed rows).
+            ->whereHas('registration.members', fn (Builder $members) => $members
+                ->whereNotNull('confirmed_at')
+                ->whereNull('declined_at')
+                ->whereHas('student'));
     }
 
     /**
-     * withPhotos() whose every confirmed member may be named (the rule above).
+     * withPhotos() whose every confirmed member may be named (the rule above). A member in the trash of Admin › Kelas
+     * is left out of the team instead (hidden everywhere), so the team's photos stay usable.
      *
      * @return Builder<Report>
      */
@@ -82,6 +89,7 @@ class ArsipFoto extends Component
         return self::withPhotos()->whereDoesntHave('registration.members', fn (Builder $members) => $members
             ->whereNotNull('confirmed_at')
             ->whereNull('declined_at')
+            ->whereHas('student')
             ->whereDoesntHave('student', fn (Builder $student) => NamedStudent::constrain($student)));
     }
 
@@ -95,7 +103,7 @@ class ArsipFoto extends Component
         $query = self::usable()
             ->with([
                 'registration.competition',
-                'registration.members' => fn ($members) => $members->whereNotNull('confirmed_at')->whereNull('declined_at'),
+                'registration.members' => fn ($members) => $members->whereNotNull('confirmed_at')->whereNull('declined_at')->whereHas('student'),
                 'registration.members.student.user',
                 'registration.members.student.classroom',
                 'files' => fn ($files) => $files->where('kind', ReportFileKind::Foto)->orderBy('created_at'),

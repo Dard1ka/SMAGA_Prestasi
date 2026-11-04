@@ -21,7 +21,8 @@ use Illuminate\Validation\ValidationException;
  * A confirmed event, or a row that is already `selesai`, is the record and stays (same rule as
  * DeleteAppreciationEvent). The student was told "Kamu masuk daftar apresiasi" when the row was made and is
  * now told it is off, by the rule RecordAppreciation used (an account that can log in), after commit; so is
- * the guru pembimbing (D-110).
+ * the guru pembimbing (D-110). A student in the trash of Admin › Kelas (smaga_server, 5 Nov 2026) is not told (NamedStudent)
+ * and not named to the guru, who hears nothing of that row (DeleteAppreciationEvent::studentListed()).
  * Audited: actor, event, achievement id; no names.
  */
 final class ReleaseAppreciation
@@ -66,9 +67,12 @@ final class ReleaseAppreciation
             $locked->setRelation('event', $event);
             $gate->authorize('delete', $locked);
 
-            $user = $locked->achievement?->student?->user;
-            $user = $user !== null && $user->canLogIn() ? $user : null;
-            $mentor = $locked->achievement !== null ? RecordAppreciation::mentorUser($locked->achievement) : null;
+            $achievement = $locked->achievement;
+            $user = $achievement?->student?->user;
+            $user = $user !== null && NamedStudent::allows($achievement?->student) && $user->canLogIn() ? $user : null;
+            $mentor = $achievement !== null && DeleteAppreciationEvent::studentListed($achievement)
+                ? RecordAppreciation::mentorUser($achievement)
+                : null;
             $notices = [$user, AppreciationReleased::for($event, $locked), $mentor, BinaanAppreciationNotice::released($event, $locked)];
 
             $locked->delete();

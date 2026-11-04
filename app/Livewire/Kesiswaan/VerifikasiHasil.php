@@ -50,6 +50,9 @@ class VerifikasiHasil extends Component
     /** D-109: nobody of the team can log in and no guru pembimbing hears about it. */
     public const NO_NOTICE = 'Akun siswa tidak aktif, jadi tidak ada notifikasi.';
 
+    /** A waiting report whose ketua is in the trash of Admin › Kelas: out of the queue (Report::awaitingVerification()). */
+    public const MSG_NOT_LISTED = 'Laporan ini sudah tidak ada di antrean. Antrean sudah diperbarui.';
+
     /** Address family this screen was opened under (VerificationArea); set once in mount(). */
     #[Locked]
     public string $area = VerificationArea::KESISWAAN;
@@ -80,15 +83,26 @@ class VerifikasiHasil extends Component
 
         if ($report !== null) {
             $this->authorize('view', $report);
-            $this->selectReport($report);
 
-            return;
+            // The old link of a waiting report whose ketua went to the trash of Admin › Kelas: the queue, with a word.
+            if ($report->status !== ReportStatus::Dikirim || self::listed($report)) {
+                $this->selectReport($report);
+
+                return;
+            }
+
+            $this->dispatch('sth-toast', message: self::MSG_NOT_LISTED, tone: 'warning');
         }
 
         $first = $this->queueQuery()->first();
 
         if ($first !== null) {
             $this->selectReport($first);
+        }
+
+        if ($report !== null) {
+            // The address still names the report that left the queue.
+            $this->showAddress();
         }
     }
 
@@ -232,9 +246,10 @@ class VerifikasiHasil extends Component
     {
         return Report::query()
             ->awaitingVerification()
-            // Only the members still in the team, as the detail and RecordAchievements count them (QA8).
+            // Only the members still in the team, as the detail and RecordAchievements count them (QA8); not a member in
+            // the trash of Admin › Kelas (whereHas: Student excludes trashed rows; the lead, 5 Nov 2026).
             ->with(['registration' => fn ($q) => $q->withTrashed()->with(['competition' => fn ($c) => $c->withTrashed(), 'leader.user', 'leader.classroom'])
-                ->withCount(['members' => fn ($m) => $m->whereNull('declined_at')])])
+                ->withCount(['members' => fn ($m) => $m->whereNull('declined_at')->whereHas('student')])])
             // UX2 (the lead, 2026-10-20): newest report first (also for Humas, the same screen); the first opens itself.
             ->orderByDesc('submitted_at')
             ->orderByDesc('id');
@@ -266,7 +281,7 @@ class VerifikasiHasil extends Component
                 'registration' => fn ($q) => $q->withTrashed()->with([
                     'competition' => fn ($c) => $c->withTrashed(),
                     'mentor',
-                    'members' => fn ($m) => $m->whereNull('declined_at')->orderBy('created_at'),
+                    'members' => fn ($m) => $m->whereNull('declined_at')->whereHas('student')->orderBy('created_at'),
                     'members.student.user',
                     'members.student.classroom',
                 ]),
@@ -394,11 +409,14 @@ class VerifikasiHasil extends Component
      */
     private function decidedElsewhere(Report $report): bool
     {
-        if ($report->status === ReportStatus::Dikirim) {
+        // A waiting report whose ketua went to the trash of Admin › Kelas meanwhile left the queue without a decision.
+        if ($report->status === ReportStatus::Dikirim && self::listed($report)) {
             return false;
         }
 
-        $this->dispatch('sth-toast', message: 'Laporan ini sudah diputuskan. Antrean sudah diperbarui.', tone: 'warning');
+        $this->dispatch('sth-toast', message: $report->status === ReportStatus::Dikirim
+            ? self::MSG_NOT_LISTED
+            : 'Laporan ini sudah diputuskan. Antrean sudah diperbarui.', tone: 'warning');
         $next = $this->queueQuery()->first();
 
         if ($next !== null) {
@@ -424,6 +442,12 @@ class VerifikasiHasil extends Component
         $this->dispatch('sth-address', url: $this->selectedId !== null
             ? VerificationArea::showUrl($this->area, $this->selectedId)
             : VerificationArea::indexUrl($this->area));
+    }
+
+    /** The report is in the queue: still `dikirim` and its ketua is not in the trash (Report::awaitingVerification()). */
+    private static function listed(Report $report): bool
+    {
+        return Report::query()->awaitingVerification()->whereKey($report->getKey())->exists();
     }
 
     private function showErrors(ValidationException $e): void

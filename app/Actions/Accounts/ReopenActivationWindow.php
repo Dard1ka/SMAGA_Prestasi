@@ -17,7 +17,8 @@ use Illuminate\Validation\ValidationException;
  * K2 "Buka ulang aktivasi" (docs/SECURITY.md §3a): Kesiswaan or Admin (`student.import`, the people who
  * onboard students, D-26) give one not-yet-activated student 72 more hours for the password they already
  * have (initial or temporary). Also lifts a K3 freeze (failed logins) and resets its counter.
- * A K8 "Bukan saya?" freeze is NOT lifted here: only an Admin may (UnfreezeAccount or a K10 reset).
+ * A K8 "Bukan saya?" freeze and an Admin's own freeze (FreezeAccount) are NOT lifted here: only an Admin may
+ * (UnfreezeAccount or a K10 reset).
  * Reason required (at least MIN_REASON characters), audited (`account.activation_reopened`).
  *
  * A reopen never shortens a deadline (M2-B, QA 2026-10-05 Q2-09): the new deadline is the later one of the
@@ -116,6 +117,11 @@ final class ReopenActivationWindow
 
             if ($frozenReason === AccountControls::FROZEN_NOT_ME) {
                 throw ValidationException::withMessages(['reason' => 'Akun dibekukan lewat laporan "Bukan saya". Hanya Admin yang bisa membukanya.']);
+            }
+
+            // A freeze an Admin set by hand (FreezeAccount) is lifted by an Admin only, never by "Buka ulang".
+            if ($frozenReason === AccountControls::FROZEN_ADMIN) {
+                throw ValidationException::withMessages(['reason' => 'Akun dibekukan Admin. Hanya Admin yang bisa membukanya.']);
             }
 
             $now = CarbonImmutable::now();

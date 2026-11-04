@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Notifications\Channels;
 
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Notifications\Channels\DatabaseChannel;
 use Illuminate\Notifications\Notification;
 
@@ -18,9 +20,26 @@ use Illuminate\Notifications\Notification;
  * start, a copy of the database on a second machine, a site that moves to a new domain). So the address is cut down
  * to its path here, in the one place every bell row passes, and only when it starts with this application's own root
  * at that moment; an address of any other site is stored as it came and stays refused by the screen (RV1).
+ *
+ * A trashed notifiable (a student in Admin › Kelas › Sampah, smaga_server) gets no bell row: a queued notification
+ * restores its notifiable without the SoftDeletes scope, so a notice queued before the trash would still land there.
+ * "Pulihkan" brings the account back without the notices of its days in the trash.
  */
 final class BellChannel extends DatabaseChannel
 {
+    /**
+     * @param  mixed  $notifiable
+     * @return Model|null the stored row, null when the notifiable is in the trash
+     */
+    public function send($notifiable, Notification $notification)
+    {
+        if (self::trashed($notifiable)) {
+            return null;
+        }
+
+        return parent::send($notifiable, $notification);
+    }
+
     /**
      * @param  mixed  $notifiable
      * @return array<string, mixed>
@@ -34,6 +53,13 @@ final class BellChannel extends DatabaseChannel
         }
 
         return $data;
+    }
+
+    private static function trashed(mixed $notifiable): bool
+    {
+        return $notifiable instanceof Model
+            && in_array(SoftDeletes::class, class_uses_recursive($notifiable), true)
+            && $notifiable->trashed();
     }
 
     /**

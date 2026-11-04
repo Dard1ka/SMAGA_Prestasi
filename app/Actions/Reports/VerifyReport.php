@@ -32,7 +32,7 @@ use Illuminate\Validation\ValidationException;
  * (may differ from the student's claim). Creates one Achievement per confirmed member with full points
  * from the ACTIVE weight version (snapshot), report → diverifikasi, registration → selesai, one Humas
  * publication row (`siap`) per achievement. Notifies the members, the guru pembimbing (D-110) and Humas (queued,
- * after commit).
+ * after commit). A student in the trash (smaga_server, 5 Nov 2026) gets no achievement, no notice and no name.
  */
 final class VerifyReport
 {
@@ -154,7 +154,11 @@ final class VerifyReport
     {
         $achievements->load(['student.user', 'competition']);
 
-        foreach ($achievements as $achievement) {
+        // smaga_server, the trash of 5 Nov 2026: RecordAchievements gives a trashed student no row, but one trashed in
+        // another tab after the rows were written is still in this set. Nobody tells or names a student in the trash.
+        $kept = $achievements->reject(fn (Achievement $a): bool => self::inTrash($a))->values();
+
+        foreach ($kept as $achievement) {
             $user = $achievement->student?->user;
 
             if ($user !== null && $user->canLogIn()) {
@@ -162,14 +166,23 @@ final class VerifyReport
             }
         }
 
-        if ($achievements->isNotEmpty()) {
-            RequestReportRevision::mentorUser($report)?->notify(BinaanReportDecided::verified($report, $achievements));
+        if ($kept->isNotEmpty()) {
+            RequestReportRevision::mentorUser($report)?->notify(BinaanReportDecided::verified($report, $kept));
         }
 
         $humas = User::query()->role(RoleName::Humas->value)->canLogIn()->get();
 
-        if ($humas->isNotEmpty() && $achievements->isNotEmpty()) {
-            Notification::send($humas, AchievementReadyForPublication::for($achievements->first(), $achievements->count()));
+        if ($humas->isNotEmpty() && $kept->isNotEmpty()) {
+            Notification::send($humas, AchievementReadyForPublication::for($kept->first(), $kept->count()));
         }
+    }
+
+    /** The achievement's student is in the trash (row or account soft-deleted) or gone. */
+    private static function inTrash(Achievement $achievement): bool
+    {
+        $student = $achievement->student;
+        $user = $student?->user;
+
+        return $student === null || $student->trashed() || $user === null || $user->trashed();
     }
 }

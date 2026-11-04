@@ -54,6 +54,11 @@ final class AuditLog extends Component
         'account.staff_created' => 'Akun staf dibuat',
         'account.staff_reset' => 'Akun staf direset',
         'account.unarchived' => 'Akun dipulihkan dari arsip',
+        // Admin "Ubah status" of a student (the lead, 2026-11-05): ActivateStudentAccount, ExpireActivationWindow,
+        // FreezeAccount. Properties: reason (typed), from (K9 state), the old / new window end.
+        'account.activated_by_admin' => 'Diaktifkan Admin',
+        'account.activation_expired_by_admin' => 'Masa aktivasi diakhiri Admin',
+        'account.frozen_by_admin' => 'Dibekukan Admin',
         // M1: new activation order (email first, password change optional for students), yearly class import,
         // appreciation events, talent restore.
         'account.email_bound' => 'Email dihubungkan',
@@ -72,6 +77,13 @@ final class AuditLog extends Component
         'classroom.renamed' => 'Nama kelas diganti',
         'classroom.deleted' => 'Kelas dihapus',
         'classroom.numbered' => 'Kelas dijadikan X-1…XII-12',
+        // Sampah (Admin › Kelas, the lead's decision of 5 Nov 2026, smaga_server only): App\Actions\Trash and
+        // `sth:sampah:hapus-permanen`.
+        'student.trashed' => 'Siswa dipindahkan ke Sampah',
+        'classroom.trashed' => 'Kelas dipindahkan ke Sampah',
+        'student.restored' => 'Siswa dipulihkan dari Sampah',
+        'classroom.restored' => 'Kelas dipulihkan dari Sampah',
+        'trash.purged' => 'Sampah dihapus permanen',
         'student.phone_updated' => 'No HP siswa diperbarui',
         'student.profile_updated' => 'Data diri siswa diubah',
         'talent.restored' => 'Pengajuan talenta dipulihkan',

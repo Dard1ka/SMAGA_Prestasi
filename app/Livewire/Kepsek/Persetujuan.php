@@ -124,6 +124,9 @@ class Persetujuan extends Component
 
     public const MENTOR_NOTE_TU = 'Pendaftaran langsung disetujui dan masuk antrean surat tugas.';
 
+    /** A row whose ketua went to the trash of Admin › Kelas after this screen showed it (Registration::hasListedLeader()). */
+    public const MSG_NOT_LISTED = 'Pendaftaran ini sudah tidak ada di antrean. Daftar sudah diperbarui.';
+
     /** Rows on screen (clamped to STEP…MAX in visibleQuery()). */
     public int $limit = self::STEP;
 
@@ -486,7 +489,8 @@ class Persetujuan extends Component
             ->with([
                 'competition',
                 'mentor.staffProfile',
-                'members' => fn ($q) => $q->whereNull('declined_at')->orderByRaw("case when role = 'ketua' then 0 else 1 end")->orderBy('created_at'),
+                // Not a member in the trash of Admin › Kelas (whereHas: Student excludes trashed rows; the lead, 5 Nov 2026).
+                'members' => fn ($q) => $q->whereNull('declined_at')->whereHas('student')->orderByRaw("case when role = 'ketua' then 0 else 1 end")->orderBy('created_at'),
                 'members.student.user',
                 'members.student.classroom',
             ])
@@ -504,8 +508,9 @@ class Persetujuan extends Component
         $recent = array_keys($this->recent);
         $this->limit = max(self::STEP, min(self::MAX, $this->limit));
 
+        // A row whose ketua is in the trash of Admin › Kelas is in no queue (Registration::scopeWithListedLeader()).
         return $this->filtered(
-            Registration::query()->where(fn (Builder $q) => $q
+            Registration::query()->withListedLeader()->where(fn (Builder $q) => $q
                 ->where('status', RegistrationStatus::MenungguKepsek)
                 ->when($recent !== [], fn (Builder $q) => $q->orWhereIn('id', $recent)))
         )
@@ -567,7 +572,8 @@ class Persetujuan extends Component
      */
     private function decidedElsewhere(Registration $registration): bool
     {
-        if ($registration->status === RegistrationStatus::MenungguKepsek) {
+        // A waiting row whose ketua went to the trash of Admin › Kelas meanwhile left the queue without a decision.
+        if ($registration->status === RegistrationStatus::MenungguKepsek && $registration->hasListedLeader()) {
             return false;
         }
 
@@ -577,9 +583,11 @@ class Persetujuan extends Component
             $this->closeReject();
         }
 
-        $this->dispatch('sth-toast', message: ($registration->status === RegistrationStatus::Dibatalkan
-            ? 'Pendaftaran ini sudah dibatalkan siswa.'
-            : 'Pendaftaran ini sudah diputuskan.').' Daftar sudah diperbarui.', tone: 'warning');
+        $this->dispatch('sth-toast', message: match (true) {
+            $registration->status === RegistrationStatus::Dibatalkan => 'Pendaftaran ini sudah dibatalkan siswa. Daftar sudah diperbarui.',
+            $registration->status !== RegistrationStatus::MenungguKepsek => 'Pendaftaran ini sudah diputuskan. Daftar sudah diperbarui.',
+            default => self::MSG_NOT_LISTED,
+        }, tone: 'warning');
 
         return true;
     }
@@ -609,9 +617,10 @@ class Persetujuan extends Component
             RegistrationStatus::SuratTerbit, RegistrationStatus::Berlangsung,
         ];
 
+        // The trash of Admin › Kelas (the lead, 5 Nov 2026): not a registration whose ketua is there, not a student there.
         $competitions = Competition::query()
             ->whereDate('starts_on', '>=', CarbonImmutable::today())
-            ->whereHas('registrations', fn (Builder $q) => $q->whereIn('status', $active))
+            ->whereHas('registrations', fn (Builder $q) => $q->whereIn('status', $active)->withListedLeader())
             ->orderBy('starts_on')
             ->limit(5)
             ->get();
@@ -619,7 +628,8 @@ class Persetujuan extends Component
         return $competitions->map(function (Competition $competition) use ($active): array {
             $students = RegistrationMember::query()
                 ->whereNull('declined_at')
-                ->whereHas('registration', fn (Builder $q) => $q->where('competition_id', $competition->getKey())->whereIn('status', $active))
+                ->whereHas('student')
+                ->whereHas('registration', fn (Builder $q) => $q->where('competition_id', $competition->getKey())->whereIn('status', $active)->withListedLeader())
                 ->distinct()
                 ->count('student_id');
 

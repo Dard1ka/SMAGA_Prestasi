@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
+use Spatie\Activitylog\Models\Activity;
 
 /**
  * First-login activation, order of the lead's decision of 2026-10-04: email → code → (students: Data diri, D-152) →
@@ -33,8 +34,10 @@ use Illuminate\Validation\ValidationException;
  * - whenPasswordAlreadyChosen(): closes the activation after "Lupa kata sandi" on a half-activated account.
  *
  * The account becomes `active` in the same transaction as the password step: `activated_at` (K9 report) is set and
- * the K1/K3 fields are cleared. In OTP test mode the email stays unverified (email_verified_at = null) so it is
- * re-verified once real OTP delivery is on (docs/SECURITY.md §3b point 4).
+ * the K1/K3 fields are cleared. A student the Admin made "Aktif" before it activated (ActivateStudentAccount) is active
+ * already and only gets its missing `activated_at` when its steps are done (no audit row). In OTP test mode the email
+ * stays unverified (email_verified_at = null) so it is re-verified once real OTP delivery is on (docs/SECURITY.md §3b
+ * point 4).
  */
 final class CompleteActivation
 {
@@ -95,7 +98,8 @@ final class CompleteActivation
                 throw ValidationException::withMessages(['code' => 'Kode tidak valid.']);
             }
 
-            $taken = User::query()
+            // withTrashed(): users.email is unique over every row, a trashed student's address included.
+            $taken = User::withTrashed()
                 ->where('email', $email)
                 ->whereKeyNot($locked->getKey())
                 ->lockForUpdate()
@@ -171,12 +175,22 @@ final class CompleteActivation
      * For a password chosen outside the activation screen ("Lupa kata sandi" on an account whose email is bound but
      * whose password step is still open): with a verified email and no forced change left, the account is active.
      *
-     * @return bool true when this call activated the account
+     * A student the Admin made "Aktif" is active already: it only gets its missing activation date here.
+     *
+     * @return bool true when this call activated the account (changed its status)
      */
     public function whenPasswordAlreadyChosen(User $user): bool
     {
         return DB::transaction(function () use ($user): bool {
             $locked = $this->lock($user);
+
+            if ($locked->status === UserStatus::Active) {
+                if ($this->stampActivatedByAdmin($locked)) {
+                    $this->sync($user, $locked);
+                }
+
+                return false;
+            }
 
             if ($locked->status !== UserStatus::PendingActivation
                 || $locked->must_change_password
@@ -192,10 +206,15 @@ final class CompleteActivation
         });
     }
 
-    /** Inside a transaction. An account that is already active (email re-verification) is left as it is. */
+    /**
+     * Inside a transaction. An account that is already active (email re-verification) is left as it is, except the
+     * missing activation date of a student the Admin made "Aktif" (stampActivatedByAdmin()).
+     */
     private function activate(User $user): void
     {
         if ($user->status !== UserStatus::PendingActivation) {
+            $this->stampActivatedByAdmin($user);
+
             return;
         }
 
@@ -217,6 +236,36 @@ final class CompleteActivation
                 'password_changed' => $user->password_changed_at !== null,
             ])
             ->log(self::EVENT_ACTIVATED);
+    }
+
+    /**
+     * A student the Admin made "Aktif" before it activated (ActivateStudentAccount, audit `account.activated_by_admin`)
+     * is already `active`, so activate() never writes its K9 date and Status aktivasi showed "–". Once its steps are
+     * done (email, then the password, also through "Lupa kata sandi") the date is written here as activate() writes it,
+     * only while it is still empty. No audit row: the Admin's change is audited, and `account.activated` stays the
+     * event of a pending account becoming active. Inside a transaction, on the locked row.
+     */
+    private function stampActivatedByAdmin(User $user): bool
+    {
+        if ($user->status !== UserStatus::Active
+            || AccountControls::date($user, 'activated_at') !== null
+            || ($this->activationStep)($user) !== null
+            || ! self::activatedByAdmin($user)) {
+            return false;
+        }
+
+        $user->forceFill(['activated_at' => now()])->save();
+
+        return true;
+    }
+
+    private static function activatedByAdmin(User $user): bool
+    {
+        return Activity::query()
+            ->where('subject_type', $user->getMorphClass())
+            ->where('subject_id', (string) $user->getKey())
+            ->where('event', ActivateStudentAccount::EVENT)
+            ->exists();
     }
 
     /**

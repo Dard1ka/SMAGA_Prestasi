@@ -240,6 +240,9 @@ final class LombaPresenter
             ->join('users', 'users.id', '=', 'students.user_id')
             ->whereIn('registrations.competition_id', $ids)
             ->whereNull('registrations.deleted_at')
+            // A teammate in the trash of Admin › Kelas is hidden everywhere (the lead, 5 Nov 2026).
+            ->whereNull('students.deleted_at')
+            ->whereNull('users.deleted_at')
             ->whereNotIn('registrations.status', [RegistrationStatus::Dibatalkan->value, RegistrationStatus::Ditolak->value])
             ->orderBy('registration_members.created_at')
             ->get(['registrations.competition_id as competition_id', 'users.name as name', 'students.id as sid']);

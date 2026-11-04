@@ -1,6 +1,7 @@
 {{-- "Ubah status" of student accounts (App\Livewire\Admin\UbahStatusSiswa): one dialog, rendered once by Admin › Kelas and by
      Status aktivasi (Admin only). Every sentence comes from the component; this view only formats. on-close: Batal, X, Esc
-     and a click outside forget the question, so "Simpan" without a new one does nothing. --}}
+     and a click outside forget the question, so "Simpan" without a new one does nothing. The six targets are the states of
+     Status aktivasi, as tiles (three per row also on a phone). --}}
 <div>
     <x-sth.modal :id="\App\Livewire\Admin\UbahStatusSiswa::DIALOG" on-close="forget" title="Ubah status akun siswa"
                  description="Perubahan dicatat di log audit bersama alasannya.">
@@ -21,7 +22,7 @@
                 @if ($dialog['targets'] === [])
                     <p class="m-0 text-md text-muted">Status siswa ini sudah berubah. Tutup lalu pilih lagi.</p>
                 @else
-                    <x-sth.segmented wire:model.live="statusTarget" label="Ubah menjadi" :options="$dialog['targets']" block />
+                    <x-sth.radio-pick wire:model.live="statusTarget" label="Ubah menjadi" :columns="3" size="sm" :options="$dialog['targets']" />
                 @endif
 
                 @if ($dialog['chosen'])
@@ -34,6 +35,10 @@
                     @if ($dialog['chosen']['needsDate'] > 0)
                         <x-sth.input wire:model="statusArchiveDate" id="f-ubah-status-tanggal" type="date" :min="$minDate"
                                      label="Tanggal arsip otomatis baru" :hint="$dialog['chosen']['dateHint']" />
+                    @endif
+                    @if ($dialog['chosen']['needsPassword'] > 0)
+                        <x-sth.input wire:model="statusTemporaryPassword" id="f-ubah-status-sandi" type="password" label="Kata sandi sementara"
+                                     revealable autocomplete="new-password" hint="Minimal 8 karakter. Siswa wajib menggantinya saat login." />
                     @endif
                 @endif
 

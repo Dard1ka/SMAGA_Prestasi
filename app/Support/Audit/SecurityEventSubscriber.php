@@ -32,11 +32,14 @@ final class SecurityEventSubscriber
 
     /**
      * activity_log.event prefixes that are security relevant in any log (B5: role.change_*, archive date, …).
-     * `student.consent` left with D-162 (20 Okt 2026): nothing writes a consent event any more.
+     * `student.consent` left with D-162 (20 Okt 2026): nothing writes a consent event any more. The Sampah of Admin ›
+     * Kelas (5 Nov 2026) is in: a student in the trash (alone or with the class) cannot log in, and `trash.purged`
+     * deletes for good.
      */
     public const AUDITED_EVENT_PREFIXES = [
         'account.', 'principal.', 'student.import', 'student.archive', 'signature.', 'settings.',
         'two_factor.', 'archive.', 'role.', 'role_change.', 'weight.published', 'letter_template.', 'security.',
+        'student.trashed', 'student.restored', 'classroom.trashed', 'classroom.restored', 'trash.',
     ];
 
     /** …and every export (SECURITY §3l "export massal"): events ending in `.exported`. */

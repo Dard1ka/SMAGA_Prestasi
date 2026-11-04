@@ -93,6 +93,9 @@ final readonly class AchievementFilters
      */
     public function apply(Builder $query): Builder
     {
+        // List, totals and Excel never show a student in the trash of Admin › Kelas (the lead, 5 Nov 2026).
+        $query->ofListedStudent();
+
         if ($this->tahun !== null) {
             $start = sprintf('%04d-07-01', $this->tahun->startYear);
             $end = sprintf('%04d-06-30', $this->tahun->endYear());

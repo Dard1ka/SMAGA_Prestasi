@@ -518,8 +518,21 @@ class Index extends Component
     }
 
     /**
+     * Joins the member rows with their students and leaves out a student in the trash (Admin › Kelas, 5 Nov 2026:
+     * its `students` row is soft-deleted, its member rows stay until the purge), as every other screen hides it.
+     *
+     * @param  Builder<RegistrationMember>  $query
+     */
+    private static function withoutTrashedStudents(Builder $query): void
+    {
+        $query->join('students', 'students.id', '=', 'registration_members.student_id')
+            ->whereNull('students.deleted_at');
+    }
+
+    /**
      * @param  list<string>  $competitionIds
-     * @return array<string, int> competition id → distinct students in live registrations (knownMember())
+     * @return array<string, int> competition id → distinct students in live registrations (knownMember()), without the
+     *                            students in the trash
      */
     private function studentCounts(array $competitionIds): array
     {
@@ -529,6 +542,7 @@ class Index extends Component
 
         return RegistrationMember::query()
             ->join('registrations', 'registrations.id', '=', 'registration_members.registration_id')
+            ->tap(self::withoutTrashedStudents(...))
             ->whereIn('registrations.competition_id', $competitionIds)
             ->whereNull('registrations.deleted_at')
             ->whereNotIn('registrations.status', [RegistrationStatus::Dibatalkan->value, RegistrationStatus::Ditolak->value])
@@ -548,6 +562,7 @@ class Index extends Component
 
         $monthRegistrations = RegistrationMember::query()
             ->join('registrations', 'registrations.id', '=', 'registration_members.registration_id')
+            ->tap(self::withoutTrashedStudents(...))
             ->whereNull('registrations.deleted_at')
             ->whereNotIn('registrations.status', [RegistrationStatus::Dibatalkan->value])
             ->whereNull('registration_members.declined_at')

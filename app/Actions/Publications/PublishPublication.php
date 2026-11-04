@@ -109,12 +109,16 @@ final class PublishPublication
             ->values();
     }
 
-    /** Is the student told when this publication is published? Not an alumnus or a disabled account (QA8: the toast asks). */
+    /**
+     * Is the student told when this publication is published? Not an alumnus, a disabled account or a student in the
+     * trash of Admin › Kelas (NamedStudent; QA8: the toast asks).
+     */
     public static function notifiesStudent(Publication $publication): bool
     {
         $publication->loadMissing('achievement.student.user');
+        $student = $publication->achievement?->student;
 
-        return $publication->achievement?->student?->user?->canLogIn() === true;
+        return NamedStudent::allows($student) && $student?->user?->canLogIn() === true;
     }
 
     /** @param list<string> $channels */
@@ -146,12 +150,16 @@ final class PublishPublication
             ->log('publication.published');
     }
 
+    /**
+     * After commit. The student and the account are read again first: a card loaded before its student went to the
+     * trash (another tab, the Admin meanwhile) must not tell that student.
+     */
     private function notify(Publication $publication): void
     {
-        $publication->loadMissing('achievement.student.user', 'achievement.competition');
+        $publication->load('achievement.student.user', 'achievement.competition');
 
         if (self::notifiesStudent($publication)) {
-            $publication->achievement->student->user->notify(AchievementPublished::for($publication));
+            $publication->achievement?->student?->user?->notify(AchievementPublished::for($publication));
         }
     }
 }

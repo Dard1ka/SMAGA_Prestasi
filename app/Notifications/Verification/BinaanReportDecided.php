@@ -22,11 +22,21 @@ use Illuminate\Support\Collection;
  */
 final class BinaanReportDecided extends Notice
 {
-    /** @param Collection<int, Achievement> $achievements every member's row of one report (same capaian and points) */
+    /**
+     * Names only the members whose student is not in the trash (smaga_server, 5 Nov 2026: `students` or `users` row
+     * soft-deleted); with none left the sentence says "Siswa binaan".
+     *
+     * @param  Collection<int, Achievement>  $achievements  every member's row of one report (same capaian and points)
+     */
     public static function verified(Report $report, Collection $achievements): self
     {
-        $first = $achievements->first();
-        $names = $achievements->map(fn (Achievement $a): string => (string) ($a->student?->user?->name ?? 'Siswa'))->values();
+        $kept = $achievements->reject(function (Achievement $a): bool {
+            $user = $a->student?->user;
+
+            return $a->student === null || $a->student->trashed() || $user === null || $user->trashed();
+        })->values();
+        $first = $kept->first() ?? $achievements->first();
+        $names = $kept->map(fn (Achievement $a): string => (string) ($a->student?->user?->name ?? 'Siswa'))->values();
         $team = $names->count() > 1;
         $who = $team ? $names[0].' dan '.($names->count() - 1).' anggota timnya' : (string) ($names[0] ?? 'Siswa binaan');
         $points = (new PointFormatter)->format((string) ($first->points ?? '0'));

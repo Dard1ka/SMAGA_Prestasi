@@ -84,8 +84,9 @@ final class ClassroomName
     }
 
     /**
-     * Refuses a name another class already has (without case and spaces). Call it inside the transaction, after
-     * locking the classes.
+     * Refuses a name another class already has (without case and spaces), also a class in the trash (its row and name
+     * stay until the purge; the lead's decision of 5 Nov 2026). Call it inside the transaction, after locking the
+     * classes.
      *
      * @throws ValidationException
      */
@@ -93,19 +94,27 @@ final class ClassroomName
     {
         $key = self::key($name);
 
-        $taken = Classroom::query()
+        $taken = Classroom::withTrashed()
             ->when($ignoreId !== null, fn ($q) => $q->whereKeyNot($ignoreId))
-            ->pluck('name')
-            ->first(fn (string $other): bool => self::key($other) === $key);
+            ->get(['id', 'name', 'deleted_at'])
+            ->first(fn (Classroom $other): bool => self::key($other->name) === $key);
 
         if ($taken !== null) {
-            throw ValidationException::withMessages(['suffix' => "Kelas {$taken} sudah ada."]);
+            throw ValidationException::withMessages(['suffix' => $taken->trashed()
+                ? self::inTrash($taken->name)
+                : "Kelas {$taken->name} sudah ada."]);
         }
     }
 
-    /** Lock every class row, so two Admins cannot add the same name at once. */
+    /** The refusal for a name whose class is in the trash. */
+    public static function inTrash(string $name): string
+    {
+        return "Kelas {$name} ada di Sampah. Pulihkan dulu atau tunggu terhapus permanen.";
+    }
+
+    /** Lock every class row (in the trash too), so two Admins cannot add the same name at once. */
     public static function lockAll(): void
     {
-        Classroom::query()->lockForUpdate()->get(['id']);
+        Classroom::withTrashed()->lockForUpdate()->get(['id']);
     }
 }

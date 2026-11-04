@@ -80,6 +80,34 @@ it('lists an unfrozen account, an Admin-only action (SV1)', function (): void {
         ->assertDontSee('account.unfrozen');
 });
 
+it('lists the Ubah status and Sampah actions of an Admin with the words of Log audit, not the purge run (2026-11-05)', function (): void {
+    $events = [
+        'account.activated_by_admin', 'account.activation_expired_by_admin', 'account.frozen_by_admin',
+        'student.trashed', 'classroom.trashed', 'student.restored', 'classroom.restored',
+    ];
+
+    foreach ($events as $event) {
+        expect(Ringkasan::EVENTS[$event] ?? null)->toBe(AuditLog::EVENT_LABELS[$event]);
+    }
+
+    expect(Ringkasan::EVENTS)->not->toHaveKey('trash.purged');
+
+    $guru = A::staff(RoleName::Guru, ['name' => 'Pak Hendra Kusuma']);
+    activity('account')->causedBy($this->admin)->performedOn($guru)->event('account.frozen_by_admin')
+        ->withProperties(['reason' => 'Akun dipakai orang lain.', 'from' => 'aktif'])->log('account.frozen_by_admin');
+    activity('classroom')->causedBy($this->admin)->event('classroom.restored')->log('classroom.restored');
+    activity('classroom')->event('trash.purged')->log('trash.purged');
+
+    $this->actingAs($this->admin);
+
+    Livewire::test(Ringkasan::class)
+        ->assertViewHas('audit', fn (Collection $audit): bool => $audit->pluck('event')->all() === ['classroom.restored', 'account.frozen_by_admin'])
+        ->assertSee('Dibekukan Admin')
+        ->assertSee('Kelas dipulihkan dari Sampah')
+        ->assertDontSee('Sampah dihapus permanen')
+        ->assertDontSee('account.frozen_by_admin');
+});
+
 it('still leaves out what an Admin did not do: the nightly archive and a Kesiswaan reopening an activation', function (): void {
     $kesiswaan = A::staff(RoleName::Kesiswaan, ['name' => 'Ibu Dwi Rahayu']);
     activity('account')->causedBy($kesiswaan)->event('account.activation_reopened')->log('account.activation_reopened');

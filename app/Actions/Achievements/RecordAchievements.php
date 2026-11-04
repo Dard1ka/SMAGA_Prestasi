@@ -25,7 +25,8 @@ use LogicException;
 /**
  * Creates the prestasi rows of a verified report: one Achievement per confirmed member, each with the
  * FULL points (D-08), the weights snapshotted from $version, and one Humas publication row (`siap`) per
- * achievement. Every member gets a row; Humas screens show the members NamedStudent names (D-162: no consent).
+ * achievement. Every confirmed member gets a row except a student in the trash ("Sampah", smaga_server, 5 Nov 2026:
+ * no row, no points); Humas screens show the members NamedStudent names (D-162: no consent).
  * Called by VerifyReport inside its transaction (the report and registration are locked there).
  */
 final class RecordAchievements
@@ -57,6 +58,9 @@ final class RecordAchievements
         $studentIds = $registration->members()
             ->whereNotNull('confirmed_at')
             ->whereNull('declined_at')
+            // smaga_server, the trash of 5 Nov 2026: a student in the trash (its `students` row soft-deleted, which
+            // the relation's default scope leaves out) earns nothing; none left = the refusal below.
+            ->whereHas('student')
             ->orderBy('created_at')
             ->pluck('student_id');
 

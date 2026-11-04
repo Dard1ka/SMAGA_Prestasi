@@ -38,7 +38,9 @@ use Spatie\Activitylog\Models\Activity;
  * acara"); both sit behind the confirmation dialog `apresiasi-konfirmasi` (M1-E, lead 2026-10-04). A confirmed event
  * moves to "Sudah dilaksanakan" and can no longer be changed or deleted. A row whose student's account was later
  * disabled or deleted stays; its name and class are shown only to a viewer with `student.view` (Kesiswaan, Admin),
- * Humas sees "Siswa kelas XI" (SECURITY §3i).
+ * Humas sees "Siswa kelas XI" (SECURITY §3i). A row whose student is in the trash of Admin › Kelas (smaga_server,
+ * 5 Nov 2026: hidden everywhere until a restore) is not listed or counted on the card or in the dialog, for anybody;
+ * it stays on the event, so a restore brings it back (shownRows(), DeleteAppreciationEvent::studentListed()).
  *
  * M2-B (QA 2026-10-05, Q2-10): one achievement sits on one open event only, so "Tambah prestasi" offers only
  * achievements that are on no event, and every scheduled row of an open event has "Lepas dari acara"
@@ -287,7 +289,8 @@ class Apresiasi extends Component
 
         $this->authorize('update', $event);
 
-        $scheduled = $event->appreciations()->where('status', AppreciationStatus::Dijadwalkan)->count();
+        // The rows the card shows (not those of a trashed student), so the dialog never counts a hidden row.
+        $scheduled = self::shownRows($event->appreciations()->getQuery())->where('status', AppreciationStatus::Dijadwalkan)->count();
         $blocker = CompleteAppreciationEvent::blocker($event, $scheduled);
 
         if ($blocker !== null) {
@@ -325,7 +328,8 @@ class Apresiasi extends Component
      */
     public function confirmRelease(string $appreciationId): void
     {
-        $row = Appreciation::query()->with('event')->find($appreciationId);
+        // A trashed student's row is not on the card: it answers like a row that is gone.
+        $row = self::shownRows(Appreciation::query())->with('event')->find($appreciationId);
 
         if ($row === null || $row->event === null) {
             $this->authorize('viewAny', AppreciationEvent::class);
@@ -465,7 +469,9 @@ class Apresiasi extends Component
     {
         $completed = $event->isCompleted();
         $isUpcoming = ! $event->held_on->lessThan($today);
-        $rows = $event->appreciations->filter(fn (Appreciation $a): bool => $a->achievement !== null);
+        $all = $event->appreciations->filter(fn (Appreciation $a): bool => $a->achievement !== null);
+        // A trashed student's row is neither listed nor counted (shownRows() is the same rule as a query).
+        $rows = $all->filter(fn (Appreciation $a): bool => DeleteAppreciationEvent::studentListed($a->achievement));
         $scheduled = $rows->filter(fn (Appreciation $a): bool => $a->status === AppreciationStatus::Dijadwalkan)->count();
         $canUpdate = $user->can('update', $event);
         $blocker = CompleteAppreciationEvent::blocker($event, $scheduled, $today);
@@ -489,8 +495,8 @@ class Apresiasi extends Component
             'canComplete' => $canUpdate && $blocker === null,
             // The reason replaces the button, so there is never a dead "Tandai sudah dilaksanakan".
             'completeNote' => $canUpdate ? self::completeNote($blocker, $event, $isUpcoming) : null,
-            // Rows already `selesai` are a record too (DeleteAppreciationEvent refuses them).
-            'canDelete' => $scheduled === $rows->count() && $user->can('delete', $event),
+            // Rows already `selesai` are a record too (DeleteAppreciationEvent refuses them), hidden ones included.
+            'canDelete' => $all->every(fn (Appreciation $a): bool => $a->status === AppreciationStatus::Dijadwalkan) && $user->can('delete', $event),
             // D-141: the printable list of the students who may be named, for any event that holds prestasi.
             'canPrint' => $rows->isNotEmpty() && $user->can('printList', $event),
             'printUrl' => route('apresiasi.cetak', $event),
@@ -548,7 +554,9 @@ class Apresiasi extends Component
             return null;
         }
 
-        $event = AppreciationEvent::query()->withCount('appreciations')->find($this->confirmEventId);
+        $event = AppreciationEvent::query()
+            ->withCount(['appreciations' => fn (Builder $rows) => self::shownRows($rows)])
+            ->find($this->confirmEventId);
 
         if ($event === null) {
             return null;
@@ -578,6 +586,18 @@ class Apresiasi extends Component
                 default => $count.' prestasi ditandai sudah diapresiasi. Setelah itu acara ini tidak bisa diubah atau dihapus lagi.',
             },
         ];
+    }
+
+    /**
+     * The appreciation rows the event card lists, as a query: those of an achievement whose student is not in the trash
+     * of Admin › Kelas (Achievement::scopeOfListedStudent(); in memory: DeleteAppreciationEvent::studentListed()).
+     *
+     * @param  Builder<Appreciation>  $rows
+     * @return Builder<Appreciation>
+     */
+    private static function shownRows(Builder $rows): Builder
+    {
+        return $rows->whereHas('achievement', fn (Builder $achievement) => $achievement->ofListedStudent());
     }
 
     /** "Raka Pradipta (XI-4) · Juara II Nasional · FIKSI 2026" for the row in the "Lepas dari acara" dialog. */

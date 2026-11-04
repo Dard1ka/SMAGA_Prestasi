@@ -53,6 +53,14 @@ Schedule::command('sth:arsip-otomatis')
     ->withoutOverlapping(60)
     ->onOneServer();
 
+// smaga_server, the lead's decision of 5 Nov 2026: classes and students whose 7 days in the trash of Admin › Kelas are
+// over are deleted for good (App\Actions\Trash\PurgeTrash; TrashEntry::purgeAfterFor() names this run's time).
+Schedule::command('sth:sampah:hapus-permanen')
+    ->dailyAt('02:00')
+    ->timezone('Asia/Jakarta')
+    ->withoutOverlapping(60)
+    ->onOneServer();
+
 // Apply "Ganti Kepala Sekolah" requests whose 24 h delay has passed (idempotent).
 Schedule::call(fn () => app(ApplyPrincipalReplacement::class)->applyDue())
     ->name('sth:ganti-kepala-sekolah')

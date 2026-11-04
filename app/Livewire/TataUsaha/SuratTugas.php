@@ -167,8 +167,11 @@ class SuratTugas extends Component
             // Only approved registrations or ones that already have letters (done state). Another one is an old link
             // (the notice "Surat tugas perlu dibuat", a bookmark) to a registration that left the queue meanwhile:
             // cancelled from it (D-155, its unsent letters revoked) or never in it. The queue with a warning, not a 404
-            // page (SV1, stale-screen rule); a registration this account may not see keeps its 404.
-            if ($registration->status !== RegistrationStatus::Disetujui && ! $registration->letters()->exists()) {
+            // page (SV1, stale-screen rule); a registration this account may not see keeps its 404. One whose ketua went
+            // to the trash of Admin › Kelas is out of the queue too until "Pulihkan" (Registration::scopeWithListedLeader()).
+            $queued = $registration->status === RegistrationStatus::Disetujui && $registration->hasListedLeader();
+
+            if (! $queued && ! $registration->letters()->exists()) {
                 abort_unless(Gate::allows('view', $registration), 404);
 
                 session()->flash('toast', ['tone' => 'warning', 'message' => self::MSG_CANCELLED_ELSEWHERE]);
@@ -666,7 +669,8 @@ class SuratTugas extends Component
      */
     private static function sendNotice(Registration $registration): string
     {
-        $members = $registration->members()->whereNotNull('confirmed_at')->whereNull('declined_at')->count();
+        // The students the letter names: not one in the trash of Admin › Kelas (LetterContent leaves that one out too).
+        $members = $registration->members()->whereNotNull('confirmed_at')->whereNull('declined_at')->whereHas('student')->count();
         $told = ApproveRegistration::memberUsers($registration)->count();
         $mentor = SendLetters::notifiesMentor($registration);
 
@@ -689,7 +693,8 @@ class SuratTugas extends Component
         Gate::authorize('viewQueue', Letter::class);
 
         $queue = $this->searched($this->queueQuery())
-            ->with(['competition', 'members' => fn ($q) => $q->whereNotNull('confirmed_at')->whereNull('declined_at'), 'letters', 'principalDecider.roles'])
+            // "Tim N siswa": not a member in the trash of Admin › Kelas (Student excludes trashed rows; the lead, 5 Nov 2026).
+            ->with(['competition', 'members' => fn ($q) => $q->whereNotNull('confirmed_at')->whereNull('declined_at')->whereHas('student'), 'letters', 'principalDecider.roles'])
             ->get();
         $total = trim($this->q) === '' ? $queue->count() : $this->queueQuery()->count();
 
@@ -803,7 +808,8 @@ class SuratTugas extends Component
     private function selectedOrNull(): ?Registration
     {
         $registration = Registration::query()
-            ->with(['competition', 'mentor.staffProfile', 'members.student.user', 'members.student.classroom'])
+            // Members in the trash of Admin › Kelas are not listed (nor printed: LetterContent::build()).
+            ->with(['competition', 'mentor.staffProfile', 'members' => fn ($q) => $q->whereHas('student'), 'members.student.user', 'members.student.classroom'])
             ->find($this->registrationId);
 
         if ($registration === null) {

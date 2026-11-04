@@ -23,7 +23,11 @@ use Illuminate\Validation\ValidationException;
  * (they can go on another event). Every student who had a row and can log in was told "Kamu masuk daftar
  * apresiasi" and is now told the event is off (one notice per student, after commit); so is each guru pembimbing,
  * once for all their binaan on the event (D-110). Audited: actor, time,
- * event name and date, number of rows. Returns the number of released rows.
+ * event name and date, number of rows. Returns the number of released rows that Humas › Apresiasi shows.
+ *
+ * A student in the trash of Admin › Kelas (smaga_server, 5 Nov 2026: hidden everywhere until a restore) loses the row
+ * with the event like everybody, but is not told, not named to the guru pembimbing and not counted in the returned
+ * number (the event card never showed that row); the audit row keeps every deleted row.
  */
 final class DeleteAppreciationEvent
 {
@@ -83,7 +87,7 @@ final class DeleteAppreciationEvent
 
             $locked->delete();
 
-            return [$rows->count(), [...$notices, ...$mentorNotices]];
+            return [self::listedRows($rows)->count(), [...$notices, ...$mentorNotices]];
         });
 
         foreach ($result[1] as [$user, $notification]) {
@@ -97,20 +101,45 @@ final class DeleteAppreciationEvent
     public static function studentsToTell(AppreciationEvent $event): int
     {
         return self::toldRows($event->appreciations()->with('achievement.student.user')->get())
-            ->map(fn (Appreciation $a): string => (string) $a->achievement->student->user->getKey())
+            ->map(fn (Appreciation $a): string => (string) $a->achievement?->student?->user?->getKey())
             ->unique()
             ->count();
     }
 
     /**
-     * Rows whose student can log in: only they are told.
+     * True while the achievement's student is not in the trash of Admin › Kelas (neither the student row nor the account
+     * soft-deleted): the instance twin of Achievement::scopeOfListedStudent(), for a row loaded with `student.user`.
+     * Disabled accounts and alumni stay listed. Also read by ReleaseAppreciation and Humas › Apresiasi.
+     */
+    public static function studentListed(?Achievement $achievement): bool
+    {
+        $student = $achievement?->student;
+        $user = $student?->user;
+
+        return $student !== null && ! $student->trashed() && $user !== null && ! $user->trashed();
+    }
+
+    /**
+     * Rows whose student is not in the trash: the rows the event card shows, and the ones a guru pembimbing hears of.
+     *
+     * @param  Collection<int, Appreciation>  $rows
+     * @return Collection<int, Appreciation>
+     */
+    private static function listedRows(Collection $rows): Collection
+    {
+        return $rows->filter(fn (Appreciation $a): bool => self::studentListed($a->achievement));
+    }
+
+    /**
+     * Rows whose student may be named (NamedStudent: not in the trash, not disabled) and can log in: only they are told.
      *
      * @param  Collection<int, Appreciation>  $rows
      * @return Collection<int, Appreciation>
      */
     private static function toldRows(Collection $rows): Collection
     {
-        return $rows->filter(fn (Appreciation $a): bool => $a->achievement?->student?->user?->canLogIn() === true);
+        return $rows->filter(fn (Appreciation $a): bool => NamedStudent::allows($a->achievement?->student)
+            && $a->achievement?->student?->user?->canLogIn() === true);
     }
 
     /**
@@ -124,11 +153,11 @@ final class DeleteAppreciationEvent
         $notices = [];
 
         $perUser = self::toldRows($rows)
-            ->groupBy(fn (Appreciation $a): string => (string) $a->achievement->student->user->getKey());
+            ->groupBy(fn (Appreciation $a): string => (string) $a->achievement?->student?->user?->getKey());
 
         foreach ($perUser as $group) {
             /** @var User $user */
-            $user = $group->first()->achievement->student->user;
+            $user = $group->first()?->achievement?->student?->user;
             $notices[] = [$user, AppreciationCancelled::for($event, $group)];
         }
 
@@ -136,13 +165,15 @@ final class DeleteAppreciationEvent
     }
 
     /**
-     * One notice per guru pembimbing who can log in, listing every binaan row on the event (D-110).
+     * One notice per guru pembimbing who can log in, listing every binaan row on the event (D-110), except the rows of
+     * a student in the trash: the guru is not told about, or shown the name of, a student hidden everywhere.
      *
      * @param  Collection<int, Appreciation>  $rows
      * @return list<array{0: User, 1: BinaanAppreciationNotice}>
      */
     private static function mentorNotices(AppreciationEvent $event, Collection $rows): array
     {
+        $rows = self::listedRows($rows);
         $notices = [];
         $mentors = [];
         $perMentor = [];

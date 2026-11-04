@@ -24,6 +24,9 @@ use Spatie\Activitylog\Models\Activity;
  * (Kepala Sekolah notified); otherwise the team is invalid and stays `menunggu_konfirmasi`.
  * The ketua always hears what happened (InvitationsExpired, `ready` true/false).
  * System transition without a user actor; idempotent (re-checked under lockForUpdate()).
+ * Trash (smaga_server, 5 Nov 2026): `team` counts only the people outside the trash (ConfirmMembership::onlyPeople()),
+ * and a team whose ketua is in the trash is left alone (not due, nothing declined, nobody told), so "Pulihkan" finds it
+ * as it stood and the next run after it expires the invitations as usual.
  */
 final class ExpirePendingInvitations
 {
@@ -31,7 +34,8 @@ final class ExpirePendingInvitations
 
     /**
      * Team registrations still waiting for answers whose answers closed before $now (Registration::answersCloseAt()):
-     * the lomba closed registration and the team has no later grace of its own (`answer_until`, D-148).
+     * the lomba closed registration and the team has no later grace of its own (`answer_until`, D-148). Not a team whose
+     * ketua is in the trash (the `leader` relation leaves a soft-deleted student out).
      *
      * @return Builder<Registration>
      */
@@ -40,6 +44,7 @@ final class ExpirePendingInvitations
         return Registration::query()
             ->where('status', RegistrationStatus::MenungguKonfirmasi)
             ->where('type', RegistrationType::Tim)
+            ->whereHas('leader')
             // The SQL form of answersCloseAt() < $now: no later grace, and a lomba deadline that passed (or no deadline
             // at all next to a grace that passed).
             ->where(fn (Builder $r) => $r
@@ -89,6 +94,11 @@ final class ExpirePendingInvitations
                 return null;
             }
 
+            // A ketua in the trash: nothing moves until "Pulihkan" (or the purge hands the team to another member).
+            if (ConfirmMembership::leaderIsTrashed($locked)) {
+                return null;
+            }
+
             $closesAt = $locked->answersCloseAt();
 
             if ($closesAt === null || $closesAt->greaterThanOrEqualTo($now)) {
@@ -106,7 +116,7 @@ final class ExpirePendingInvitations
             }
 
             $ready = $this->confirm->advanceIfTeamReady($locked);
-            $team = $locked->members()->whereNull('declined_at')->count();
+            $team = ConfirmMembership::onlyPeople($locked->members())->count();
 
             activity('registration')
                 ->performedOn($locked)
