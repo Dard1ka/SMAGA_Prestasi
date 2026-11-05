@@ -74,7 +74,7 @@ function sv1rRow(int $i): array
 /** The import screen after "Impor 51 siswa" queued its import (nothing ran yet: Queue::fake()). */
 function sv1rQueued(User $actor): Testable
 {
-    return Livewire::actingAs($actor)->test(ImportSiswa::class)
+    return Livewire::actingAs($actor)->withQueryParams([ImportSiswa::LEVEL_QUERY => '10'])->test(ImportSiswa::class)
         ->set('schoolYear', '2026/2027')
         ->set('file', sv1rFile(array_map(sv1rRow(...), range(1, ImportStudentsJob::SYNC_MAX_ROWS + 1))))
         ->call('askImport')
@@ -186,7 +186,7 @@ it('asks at once about a file read when no import of the same person runs (SV1 r
     // Forbidden for the rule: another person's running import neither blocks nor stales this preview.
     sv1rJob(F::staff(RoleName::Admin, 'Operator STH'), ['status' => StudentImportStatus::Running, 'total_rows' => 300, 'processed_rows' => 100]);
 
-    Livewire::actingAs($this->kesiswaan)->test(ImportSiswa::class)
+    Livewire::actingAs($this->kesiswaan)->withQueryParams([ImportSiswa::LEVEL_QUERY => '10'])->test(ImportSiswa::class)
         ->assertSet('importId', null)
         ->set('schoolYear', '2026/2027')
         ->set('file', sv1rFile([['Dewi Anggraini', '226227005', '0101234505', '12-05-2011', 'X-1', '']]))
@@ -201,7 +201,7 @@ it('asks at once about a file read when no import of the same person runs (SV1 r
 // (5) An import started in another tab -------------------------------------------------------------------------------
 
 it('takes over an import started in another tab when it refuses, then reads the file again after it (SV1 review)', function (): void {
-    $screen = Livewire::actingAs($this->kesiswaan)->test(ImportSiswa::class)
+    $screen = Livewire::actingAs($this->kesiswaan)->withQueryParams([ImportSiswa::LEVEL_QUERY => '10'])->test(ImportSiswa::class)
         ->set('schoolYear', '2026/2027')
         ->set('file', sv1rFile([['Dewi Anggraini', '226227005', '0101234505', '12-05-2011', 'X-1', '']]))
         ->assertSet('importId', null)
@@ -263,7 +263,7 @@ it('asks for the password in step 2 also while an import runs, and finds the imp
     session()->forget('auth.password_confirmed_at');
     $job = sv1rJob($this->kesiswaan, ['status' => StudentImportStatus::Running, 'total_rows' => 300, 'processed_rows' => 100]);
 
-    $screen = Livewire::actingAs($this->kesiswaan)->test(ImportSiswa::class)
+    $screen = Livewire::actingAs($this->kesiswaan)->withQueryParams([ImportSiswa::LEVEL_QUERY => '10'])->test(ImportSiswa::class)
         ->assertSet('importId', $job->getKey())
         ->assertSee(StudentImportStatus::Running->label())
         ->assertSeeHtml('wire:poll.2s')
@@ -273,12 +273,12 @@ it('asks for the password in step 2 also while an import runs, and finds the imp
         ->assertDontSee('Pilih file atau seret ke sini');
 
     $screen->call('askPassword')->assertRedirect(route('password.confirm'));
-    expect(session('url.intended'))->toBe(route('kesiswaan.import'));
+    expect(session('url.intended'))->toBe(route('kesiswaan.import').'?'.ImportSiswa::LEVEL_QUERY.'=10');
 
     // Back from the password page: the running import is found again and the file can be chosen.
     session(A::passwordConfirmed());
 
-    Livewire::actingAs($this->kesiswaan)->test(ImportSiswa::class)
+    Livewire::actingAs($this->kesiswaan)->withQueryParams([ImportSiswa::LEVEL_QUERY => '10'])->test(ImportSiswa::class)
         ->assertSet('importId', $job->getKey())
         ->assertSee(StudentImportStatus::Running->label())
         ->assertSee('Pilih file atau seret ke sini')
@@ -289,7 +289,7 @@ it('says under a file that waits for a running import when the password confirma
     sv1rJob($this->kesiswaan, ['status' => StudentImportStatus::Running, 'total_rows' => 300, 'processed_rows' => 100]);
 
     // Confirmed when the file was chosen: no hint yet.
-    $screen = Livewire::actingAs($this->kesiswaan)->test(ImportSiswa::class)
+    $screen = Livewire::actingAs($this->kesiswaan)->withQueryParams([ImportSiswa::LEVEL_QUERY => '10'])->test(ImportSiswa::class)
         ->set('schoolYear', '2026/2027')
         ->set('file', sv1rFile([['Dewi Anggraini', '226227005', '0101234505', '12-05-2011', 'X-1', '']]))
         ->assertSee(sv1rWaiting())
@@ -312,7 +312,7 @@ function sv1rFileInvalid(Testable $screen): bool
 }
 
 it('drops the refusal once the import it waited for is over, so it never stands beside the result (SV1 review)', function (): void {
-    $screen = Livewire::actingAs($this->kesiswaan)->test(ImportSiswa::class)
+    $screen = Livewire::actingAs($this->kesiswaan)->withQueryParams([ImportSiswa::LEVEL_QUERY => '10'])->test(ImportSiswa::class)
         ->set('schoolYear', '2026/2027')
         ->set('file', sv1rFile([['Dewi Anggraini', '226227005', '0101234505', '12-05-2011', 'X-1', '']]));
 
@@ -375,7 +375,7 @@ it('drops the refusal of a click on the queued preview once its own import is do
 it('counts a file as read next to an import that ended while its dry run read the database (SV1 review)', function (): void {
     $running = sv1rJob($this->kesiswaan, ['status' => StudentImportStatus::Running, 'total_rows' => 300, 'processed_rows' => 280, 'created_count' => 40]);
 
-    $screen = Livewire::actingAs($this->kesiswaan)->test(ImportSiswa::class)
+    $screen = Livewire::actingAs($this->kesiswaan)->withQueryParams([ImportSiswa::LEVEL_QUERY => '10'])->test(ImportSiswa::class)
         ->assertSet('importId', $running->getKey())
         ->set('schoolYear', '2026/2027');
 

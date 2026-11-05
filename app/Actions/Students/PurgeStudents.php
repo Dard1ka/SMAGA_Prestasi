@@ -12,6 +12,7 @@ use App\Enums\UserStatus;
 use App\Livewire\Publik\Data\PublicAchievements;
 use App\Models\Setting;
 use App\Models\User;
+use Closure;
 use DomainException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -167,6 +168,100 @@ final class PurgeStudents
         /** @var array{counts: array<string, int>, bytes: list<array{disk: string, path: string}>|null} $outcome */
         $outcome = DB::transaction(fn (): array => $this->purge($ids));
 
+        return $this->afterCommit($outcome);
+    }
+
+    /**
+     * SV6, D-186 ("Hapus permanen" of one Sampah entry, App\Actions\Trash\PurgeFromTrash): the purge of handle() with the
+     * caller's own checks and writes in the SAME transaction. $before($ids) runs first (lock and re-check; a throw leaves
+     * everything as it was), $after($counts) runs after the deletes (close the entries, audit; a throw rolls the deletes
+     * back). The file bytes still go only after the commit, then the public cache is flushed.
+     *
+     * @param  array<int|string, mixed>  $studentIds
+     * @param  Closure(list<string>): void  $before
+     * @param  Closure(array<string, int>): void  $after
+     * @return array<string, int> COUNT_KEYS => count
+     *
+     * @throws DomainException when the purge is refused; nothing was written then
+     */
+    public function handleWithin(array $studentIds, Closure $before, Closure $after): array
+    {
+        $ids = self::normalize($studentIds);
+
+        /** @var array{counts: array<string, int>, bytes: list<array{disk: string, path: string}>|null} $outcome */
+        $outcome = DB::transaction(function () use ($ids, $before, $after): array {
+            $before($ids);
+            $outcome = $ids === [] ? ['counts' => self::emptyCounts(), 'bytes' => null] : $this->purge($ids);
+            $after($outcome['counts']);
+
+            return $outcome;
+        });
+
+        return $this->afterCommit($outcome);
+    }
+
+    /**
+     * SV6, D-186: what handle() would do with these students, writing nothing: the refusal sentence (null = it would go
+     * through) and the counts. `files` counts the files no row that stays points at; `disk_*` stay 0.
+     *
+     * @param  array<int|string, mixed>  $studentIds
+     * @return array{refusal: ?string, counts: array<string, int>}
+     */
+    public function preview(array $studentIds): array
+    {
+        $counts = self::emptyCounts();
+        $ids = self::normalize($studentIds);
+
+        if ($ids === []) {
+            return ['refusal' => null, 'counts' => $counts];
+        }
+
+        try {
+            $read = $this->read($ids);
+        } catch (DomainException $e) {
+            return ['refusal' => $e->getMessage(), 'counts' => $counts];
+        }
+
+        if ($read === null) {
+            return ['refusal' => null, 'counts' => $counts];
+        }
+
+        $counts['students'] = count($read['studentIds']);
+        $counts['users'] = count($read['users']);
+        $counts['registrations_deleted'] = count($read['full']);
+        $counts['registrations_kept'] = count($read['kept']);
+        $counts['registrations_new_leader'] = count(array_filter($read['kept'], fn (array $kept): bool => $kept['member_id'] !== null));
+        $counts['members'] = $this->countIn('registration_members', 'student_id', $read['studentIds']);
+        $counts['letters'] = count($read['letters']);
+        $counts['reports'] = count($read['reports']);
+        $counts['achievements'] = count($read['achievements']);
+        $counts['publications'] = $this->countIn('publications', 'achievement_id', $read['achievements']);
+        $counts['appreciations'] = $this->countIn('appreciations', 'achievement_id', $read['achievements']);
+        $counts['talent_applications'] = count($read['talentApplications']);
+        $counts['talent_profiles'] = count($read['talentProfiles']);
+        $counts['files'] = count($this->unreferenced($read['candidates'], [
+            'letters' => ['id', $read['letters']],
+            'report_files' => ['report_id', $read['reports']],
+            'talent_applications' => ['id', $read['talentApplications']],
+            'talent_profile_files' => ['talent_profile_id', $read['talentProfiles']],
+            'publications' => ['achievement_id', $read['achievements']],
+        ]));
+
+        foreach (self::USER_REFERENCES_MOVED as [$table, $column]) {
+            $counts['competitions_to_admin'] += $this->countIn($table, $column, $read['users']);
+        }
+
+        return ['refusal' => null, 'counts' => $counts];
+    }
+
+    /**
+     * Deletes the file bytes of a committed purge and flushes the public cache.
+     *
+     * @param  array{counts: array<string, int>, bytes: list<array{disk: string, path: string}>|null}  $outcome
+     * @return array<string, int>
+     */
+    private function afterCommit(array $outcome): array
+    {
         $counts = $outcome['counts'];
 
         if ($outcome['bytes'] === null) {
@@ -204,39 +299,17 @@ final class PurgeStudents
     private function purge(array $ids): array
     {
         $counts = self::emptyCounts();
+        $read = $this->read($ids);
 
-        // students.id => users.id of the students that still exist (trashed ones included).
-        $students = [];
-
-        foreach (array_chunk($ids, self::CHUNK) as $chunk) {
-            foreach (DB::table('students')->whereIn('id', $chunk)->lockForUpdate()->get(['id', 'user_id']) as $row) {
-                $students[(string) $row->id] = (int) $row->user_id;
-            }
-        }
-
-        if ($students === []) {
+        if ($read === null) {
             return ['counts' => $counts, 'bytes' => null];
         }
 
-        $studentIds = array_map(strval(...), array_keys($students));
-        sort($studentIds);
-        $users = array_values(array_unique(array_values($students)));
-        sort($users);
-        $inSet = array_fill_keys($studentIds, true);
-
-        [$fullRegistrations, $keptRegistrations] = $this->splitRegistrations($studentIds, $inSet);
-        $adminId = $this->refuseOrAdmin($users, $keptRegistrations);
-
-        // Everything the deleted rows point at is read before the first write.
-        $letters = $this->pluckIn('letters', 'id', 'registration_id', $fullRegistrations);
-        $reports = $this->pluckIn('reports', 'id', 'registration_id', $fullRegistrations);
-        $achievements = array_values(array_unique([
-            ...$this->pluckIn('achievements', 'id', 'student_id', $studentIds),
-            ...$this->pluckIn('achievements', 'id', 'report_id', $reports),
-        ]));
-        $talentApplications = $this->pluckIn('talent_applications', 'id', 'student_id', $studentIds);
-        $talentProfiles = $this->pluckIn('talent_profiles', 'id', 'student_id', $studentIds);
-        $candidates = $this->fileCandidates($users, $letters, $reports, $achievements, $talentApplications, $talentProfiles);
+        [
+            'studentIds' => $studentIds, 'users' => $users, 'full' => $fullRegistrations, 'kept' => $keptRegistrations,
+            'adminId' => $adminId, 'letters' => $letters, 'reports' => $reports, 'achievements' => $achievements,
+            'talentApplications' => $talentApplications, 'talentProfiles' => $talentProfiles, 'candidates' => $candidates,
+        ] = $read;
 
         // 1. Mixed teams: the leadership passes, the set's member rows go, the report moves to the leader.
         foreach ($keptRegistrations as $registrationId => $kept) {
@@ -346,6 +419,65 @@ final class PurgeStudents
         }
 
         return ['counts' => $counts, 'bytes' => $bytes];
+    }
+
+    /**
+     * The read part of purge() (SV6, D-186: shared with preview()): the students that still exist, the refusal check and
+     * every row the deletes will touch. Null = none of the ids exists any more. Writes nothing.
+     *
+     * @param  list<string>  $ids
+     * @return array{studentIds: list<string>, users: list<int>, full: list<string>, kept: array<string, array{leader: ?string, member_id: ?string}>, adminId: ?int, letters: list<string>, reports: list<string>, achievements: list<string>, talentApplications: list<string>, talentProfiles: list<string>, candidates: list<string>}|null
+     *
+     * @throws DomainException
+     */
+    private function read(array $ids): ?array
+    {
+        // students.id => users.id of the students that still exist (trashed ones included).
+        $students = [];
+
+        foreach (array_chunk($ids, self::CHUNK) as $chunk) {
+            foreach (DB::table('students')->whereIn('id', $chunk)->lockForUpdate()->get(['id', 'user_id']) as $row) {
+                $students[(string) $row->id] = (int) $row->user_id;
+            }
+        }
+
+        if ($students === []) {
+            return null;
+        }
+
+        $studentIds = array_map(strval(...), array_keys($students));
+        sort($studentIds);
+        $users = array_values(array_unique(array_values($students)));
+        sort($users);
+        $inSet = array_fill_keys($studentIds, true);
+
+        [$full, $kept] = $this->splitRegistrations($studentIds, $inSet);
+        $adminId = $this->refuseOrAdmin($users, $kept);
+
+        // Everything the deleted rows point at is read before the first write.
+        $letters = $this->pluckIn('letters', 'id', 'registration_id', $full);
+        $reports = $this->pluckIn('reports', 'id', 'registration_id', $full);
+        $achievements = array_values(array_unique([
+            ...$this->pluckIn('achievements', 'id', 'student_id', $studentIds),
+            ...$this->pluckIn('achievements', 'id', 'report_id', $reports),
+        ]));
+        $talentApplications = $this->pluckIn('talent_applications', 'id', 'student_id', $studentIds);
+        $talentProfiles = $this->pluckIn('talent_profiles', 'id', 'student_id', $studentIds);
+        $candidates = $this->fileCandidates($users, $letters, $reports, $achievements, $talentApplications, $talentProfiles);
+
+        return [
+            'studentIds' => $studentIds,
+            'users' => $users,
+            'full' => $full,
+            'kept' => $kept,
+            'adminId' => $adminId,
+            'letters' => $letters,
+            'reports' => $reports,
+            'achievements' => $achievements,
+            'talentApplications' => $talentApplications,
+            'talentProfiles' => $talentProfiles,
+            'candidates' => $candidates,
+        ];
     }
 
     /**
@@ -578,16 +710,33 @@ final class PurgeStudents
     /**
      * The candidates no remaining row points at, minus the signature setting and every signature image.
      *
+     * $deleting (preview(), nothing deleted yet) = table => [key column, keys of the rows the purge would delete]: their
+     * references are ignored, as they are gone when purge() asks.
+     *
      * @param  list<string>  $candidates
+     * @param  array<string, array{0: string, 1: list<string>}>  $deleting
      * @return list<string>
      */
-    private function unreferenced(array $candidates): array
+    private function unreferenced(array $candidates, array $deleting = []): array
     {
         $left = array_fill_keys($candidates, true);
         $columns = [...self::DELETED_FILE_REFERENCES, ...self::KEPT_FILES_OF_DELETED_ROWS, ...self::KEPT_FILE_REFERENCES];
+        $gone = array_map(fn (array $rows): array => array_fill_keys($rows[1], true), $deleting);
 
         foreach (array_chunk($candidates, self::CHUNK) as $chunk) {
             foreach ($columns as [$table, $column]) {
+                if (isset($deleting[$table])) {
+                    $key = $deleting[$table][0];
+
+                    foreach (DB::table($table)->whereIn($column, $chunk)->get([$key, $column]) as $row) {
+                        if (! isset($gone[$table][(string) $row->{$key}])) {
+                            unset($left[(string) $row->{$column}]);
+                        }
+                    }
+
+                    continue;
+                }
+
                 foreach (DB::table($table)->whereIn($column, $chunk)->distinct()->pluck($column) as $id) {
                     unset($left[(string) $id]);
                 }

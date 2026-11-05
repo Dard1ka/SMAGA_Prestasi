@@ -24,8 +24,9 @@ use Throwable;
  * Tata Usaha issues ONE surat tugas of an approved registration (D-06, SECURITY §3g/§3m-4/§3m-6; M1-A, lead
  * 2026-10-04: one letter at a time, each with its own number and data). `siswa` = one letter for the whole
  * team, `guru` = the Surat Perintah Tugas of the guru pembimbing (only when the registration has one).
- * The complete number is typed by TU and never used twice for the same letter type (the unique index
- * (type, full_number) is the final guard). The letter is rendered to PDF with the signature + stamp image
+ * The complete number is typed by TU and never used twice for the same letter type among the letters that are not
+ * revoked (SV6, D-188: a revoked letter's number is free again; the unique index (type, active_full_number) is the
+ * final guard). The letter is rendered to PDF with the signature + stamp image
  * from settings and a verification QR, stored on the private disk (files row, SHA-256) and immutable
  * afterwards (a correction is RevokeLetter: cabut + new version). The registration stays `disetujui` until
  * SendLetters, which needs every required letter.
@@ -201,12 +202,22 @@ final class IssueLetters
         ]);
     }
 
-    /** Is this number already used by a letter of the type (revoked versions too)? UI hint; the DB index decides. */
-    public static function isTaken(LetterType $type, string $number): bool
+    /**
+     * Is this number used by a letter of the type that is NOT revoked (SV6, D-188: a revoked letter's number is free
+     * again)? Compared without spaces and case (LetterNumber::key()). $exceptId leaves out the letter a "Koreksi"
+     * replaces, so the correction may keep its number. Early check + live hint; the unique index (type,
+     * active_full_number) decides.
+     */
+    public static function isTaken(LetterType $type, string $number, ?string $exceptId = null): bool
     {
         $key = (new LetterNumber)->key($number);
 
-        return $key !== '' && Letter::numberTaken($type, $key);
+        return $key !== '' && Letter::query()
+            ->where('type', $type)
+            ->whereNull('revoked_at')
+            ->whereRaw("LOWER(REPLACE(full_number, ' ', '')) = ?", [$key])
+            ->when($exceptId !== null, fn ($query) => $query->whereKeyNot($exceptId))
+            ->exists();
     }
 
     /**

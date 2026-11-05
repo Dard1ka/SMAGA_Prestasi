@@ -13,10 +13,13 @@ use App\Models\Letter;
 use App\Models\StaffProfile;
 use Carbon\CarbonImmutable;
 use Database\Seeders\SignatureSeeder;
+use Dompdf\Dompdf;
+use Dompdf\Frame;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\View;
 use Tests\Feature\Auth\AuthTestHelpers;
 use Tests\Feature\KepalaSekolah\W2cFixtures as F;
+use Tests\Support\TestDisks;
 
 /*
  * M1-A (lead, 2026-10-04): both letters follow the school's own files ("ST PENGUKUHAN KEG OPSI" for the guru
@@ -258,7 +261,7 @@ it('gives the student letter one Dasar row and the kop measures of the school le
         ->and($html)->toContain('.s-dasar .k { width: 103pt; }');
 
     // The longest kop line still fits between the two emblems at 75 pt (no wrapped address line).
-    $metrics = (new Dompdf\Dompdf)->getFontMetrics();
+    $metrics = (new Dompdf)->getFontMetrics();
     $longest = max(array_map(
         fn (string $line): float => $metrics->getTextWidth($line, $metrics->getFont('Helvetica', 'normal'), 8.2),
         LetterTemplate::current()->kopDetailLines(),
@@ -368,3 +371,129 @@ it('keeps the end of each letter with its signature, so a long lomba never leave
         ->and($siswaBoxes)->toHaveCount(1)
         ->and($siswaBoxes[0])->toContain(trim(preg_replace('/\s+/', ' ', LetterTemplate::current()->siswaClosing())));
 });
+
+// SV6, D-183: the signature + stamp image about 30 % larger, the lines around it where they were ------------------
+
+/**
+ * Lays one letter out with dompdf (the renderer's own options and a sandbox holding the 640 × 320 sample signature)
+ * and returns, per signature block in document order, the boxes in pt as [x, y, w, h]: the block, the reserved image
+ * box (`.gambar`), the image and the signer's name under it.
+ *
+ * @return list<array{block: list<float>, gambar: list<float>, img: list<float>, nama: list<float>}>
+ */
+function sv6SignatureBoxes(string $view, LetterContent $content, string $number): array
+{
+    View::addNamespace(PdfRenderer::VIEW_NAMESPACE, resource_path('pdf'));
+    $sandbox = TestDisks::directory('pdf-ttd');
+    file_put_contents($sandbox.'/ttd.png', SignatureSeeder::generatePng());
+
+    $html = view('pdf::'.$view, [
+        'content' => $content,
+        'number' => $number,
+        'verification' => ['code' => str_repeat('a', 32), 'url' => 'https://contoh.test/verifikasi-surat/'.str_repeat('a', 32)],
+        'pdfImages' => ['ttd.png' => $sandbox.'/ttd.png'],
+    ])->render();
+
+    $box = static function (Frame $frame): array {
+        $border = $frame->get_border_box();
+
+        return [(float) $border['x'], (float) $border['y'], (float) $border['w'], (float) $border['h']];
+    };
+    $blocks = [];
+
+    $dompdf = new Dompdf(app(PdfRenderer::class)->options($sandbox));
+    $dompdf->setBasePath($sandbox);
+    $dompdf->loadHtml($html, 'UTF-8');
+    $dompdf->setPaper('A4', 'portrait');
+    // dompdf drops each page's frames once it is drawn, so the boxes are read while the image is drawn (its page is
+    // laid out completely by then, the lines under it included).
+    $dompdf->setCallbacks([['event' => 'end_frame', 'f' => static function (Frame $frame) use ($box, &$blocks): void {
+        $node = $frame->get_node();
+
+        if (! $node instanceof DOMElement || $node->tagName !== 'img' || $node->getAttribute('alt') !== 'Tanda tangan dan stempel') {
+            return;
+        }
+
+        $gambar = $frame->get_parent();
+        $block = $gambar->get_parent();
+        $nama = null;
+
+        foreach ($block->get_children() as $child) {
+            if ($child->get_node() instanceof DOMElement && $child->get_node()->getAttribute('class') === 'nama') {
+                $nama = $child;
+            }
+        }
+
+        expect($gambar->get_node()->getAttribute('class'))->toBe('gambar')
+            ->and($nama)->not->toBeNull();
+
+        $blocks[] = ['block' => $box($block), 'gambar' => $box($gambar), 'img' => $box($frame), 'nama' => $box($nama)];
+    }]]);
+    $dompdf->render();
+
+    return $blocks;
+}
+
+it('makes the signature + stamp image about 30 % larger and keeps the reserved box, so no line moves (SV6, D-183)', function (): void {
+    $siswa = m1aLayoutHtml('surat-tugas-siswa', m1aLayoutContent($this), '400.3.8/313/MRD/X/2026');
+    $guru = m1aLayoutHtml('surat-perintah-tugas-guru', m1aLayoutContent($this), '400.3.8.6/1681/2026');
+
+    // The boxes keep the heights of the school files; only the image grows and is pulled up by half its growth.
+    expect($siswa)->toContain('.s-ttd .gambar { height: 60.95pt; }')
+        ->toContain('.s-ttd .gambar img { height: 79.25pt; position: relative; top: -9.15pt; }')
+        ->not->toContain('.s-ttd .gambar img { height: 60.95pt; }')
+        ->and($guru)->toContain('.g-ttd .gambar { height: 58pt; }')
+        ->toContain('.g-ttd .gambar img { height: 75.4pt; position: relative; top: -8.7pt; }')
+        ->not->toContain('.g-ttd .gambar img { height: 58pt; }')
+        // the Lampiran block is a .g-ttd too, so its image follows the same rule
+        ->toContain('class="g-ttd g-ttd-lampiran utuh"');
+});
+
+it('lays the larger signature + stamp out over the lines around it in a real PDF, the box and the lines unmoved (SV6, D-183)', function (string $view, string $number, float $box, float $image, int $blocks): void {
+    $found = sv6SignatureBoxes($view, m1aLayoutContent($this), $number);
+
+    expect($found)->toHaveCount($blocks);
+
+    foreach ($found as ['block' => $block, 'gambar' => $gambar, 'img' => $img, 'nama' => $nama]) {
+        [$blockX, , $blockW] = $block;
+        [, $gambarY, , $gambarH] = $gambar;
+        [$imgX, $imgY, $imgW, $imgH] = $img;
+        $grow = ($image - $box) / 2;
+
+        // the reserved box and the name under it stay where they were
+        expect($gambarH)->toEqualWithDelta($box, 0.01)
+            ->and($nama[1])->toEqualWithDelta($gambarY + $box, 0.01)
+            // the image: 30 % taller, 2:1 like the sample, half of the growth above the box and half below it
+            ->and($imgH)->toEqualWithDelta($image, 0.01)
+            ->and($imgH / $box)->toEqualWithDelta(1.3, 0.005)
+            ->and($imgW)->toEqualWithDelta($image * 2, 0.05)
+            ->and($imgY)->toEqualWithDelta($gambarY - $grow, 0.01)
+            ->and($imgY + $imgH)->toEqualWithDelta($gambarY + $box + $grow, 0.01)
+            // and it still fits the width of its block
+            ->and($imgX)->toBeGreaterThanOrEqual($blockX - 0.01)
+            ->and($imgX + $imgW)->toBeLessThanOrEqual($blockX + $blockW + 0.01);
+    }
+})->with([
+    'siswa' => ['surat-tugas-siswa', '400.3.8/313/MRD/X/2026', 60.95, 79.25, 1],
+    'guru and its Lampiran' => ['surat-perintah-tugas-guru', '400.3.8.6/1681/2026', 58.0, 75.4, 2],
+]);
+
+it('lays the dashed placeholder of the TU preview over the lines around its slot the same way (SV6, D-183)', function (string $ttd): void {
+    $html = view('livewire.tata-usaha.partials.ttd', ['ttd' => $ttd, 'content' => m1aLayoutContent($this)])->render();
+    $dom = new DOMDocument;
+    @$dom->loadHTML('<?xml encoding="utf-8"?>'.$html);
+    $xpath = new DOMXPath($dom);
+    $placeholder = $xpath->query('//span[not(*)][normalize-space(.)="Tanda tangan + stempel"]');
+
+    // The 52 px slot stays in the flow (the lines keep their places); the dashed box lies over it, 8 px higher and
+    // 8 px lower (68 px, about 30 % more), and lets clicks through to the text under it.
+    expect($placeholder->length)->toBe(1);
+
+    $box = explode(' ', $placeholder->item(0)->getAttribute('class'));
+    $slot = explode(' ', $placeholder->item(0)->parentNode->getAttribute('class'));
+
+    expect($slot)->toContain('relative', 'h-[52px]', 'w-full')
+        ->and($box)->toContain('absolute', 'inset-x-0', '-top-2', '-bottom-2', 'border-dashed', 'pointer-events-none')
+        ->not->toContain('h-[52px]')
+        ->and($html)->not->toContain('style=');
+})->with(['siswa', 'guru']);

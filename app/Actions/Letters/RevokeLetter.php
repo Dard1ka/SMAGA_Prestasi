@@ -27,9 +27,10 @@ use Throwable;
  * revokes one issued letter with a required reason and issues its next version in the same step.
  * - the old row keeps its number + PDF and gets revoked_at / revoked_by / revoke_reason; the public
  *   verification page then shows "Dicabut" (only for letters that were sent);
- * - the new row: same registration + type, version + 1, replaces_letter_id → old, a NEW complete number
- *   typed by TU in the draft (the unique (type, full_number) index means an old number is never reused,
- *   not even the revoked one), the letter data from the draft (date, basis, schedule), members/mentor/signer
+ * - the new row: same registration + type, version + 1, replaces_letter_id → old, the complete number typed by
+ *   TU in the draft: the old letter's own number may stay (SV6, D-188: the old row is revoked first, and the
+ *   unique (type, active_full_number) index only covers letters that are not revoked), the number of another
+ *   letter that is not revoked is refused; the letter data from the draft (date, basis, schedule), members/mentor/signer
  *   re-read from the database, the current signature image, a fresh verification code and PDF
  *   ("menggantikan surat nomor …" in the footer);
  * - if the old letter was already sent, the new one is sent at once and its recipients are notified
@@ -54,7 +55,7 @@ final class RevokeLetter
     ) {}
 
     /**
-     * @param  LetterDraft  $draft  the data of the new version, with its NEW complete number
+     * @param  LetterDraft  $draft  the data of the new version, with its complete number (the old one may stay, D-188)
      * @return Letter the new version
      *
      * @throws AuthorizationException
@@ -102,10 +103,13 @@ final class RevokeLetter
                     throw ValidationException::withMessages(['letter' => 'Belum ada anggota yang terkonfirmasi.']);
                 }
 
-                if (IssueLetters::isTaken($type, $number)) {
+                // SV6, D-188: the new version may keep the old letter's number (left out of the check), never the number
+                // of another letter that is not revoked.
+                if (IssueLetters::isTaken($type, $number, (string) $old->getKey())) {
                     throw ValidationException::withMessages(['number' => IssueLetters::MSG_TAKEN]);
                 }
 
+                // Revoked BEFORE the new row is inserted, so the same number passes the unique (type, active_full_number).
                 $now = now();
                 $old->forceFill(['revoked_at' => $now, 'revoked_by' => $actor->getKey(), 'revoke_reason' => $reason])->save();
 

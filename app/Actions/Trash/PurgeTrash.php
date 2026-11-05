@@ -87,6 +87,12 @@ final class PurgeTrash
             $closed = 0;
 
             foreach ($studentEntries as $entry) {
+                $entry = $this->stillOpen($entry);
+
+                if ($entry === null) {
+                    continue;
+                }
+
                 $row = DB::table('students')->where('user_id', $entry->user_id)->first(['deleted_at']);
 
                 if ($row !== null) {
@@ -104,6 +110,12 @@ final class PurgeTrash
             }
 
             foreach ($classEntries as $entry) {
+                $entry = $this->stillOpen($entry);
+
+                if ($entry === null) {
+                    continue;
+                }
+
                 /** @var Classroom|null $classroom */
                 $classroom = Classroom::withTrashed()->lockForUpdate()->find($entry->classroom_id);
 
@@ -153,6 +165,18 @@ final class PurgeTrash
         }
 
         return $result;
+    }
+
+    /**
+     * SV6, D-186: the entry read again under a lock, or null when it was closed meanwhile (an Admin's "Hapus permanen",
+     * App\Actions\Trash\PurgeFromTrash, at the same moment): never stamped or counted twice.
+     */
+    private function stillOpen(TrashEntry $entry): ?TrashEntry
+    {
+        /** @var TrashEntry|null $locked */
+        $locked = TrashEntry::query()->lockForUpdate()->find($entry->getKey());
+
+        return $locked !== null && $locked->isOpen() ? $locked : null;
     }
 
     /**

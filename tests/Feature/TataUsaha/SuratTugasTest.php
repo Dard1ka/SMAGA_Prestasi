@@ -807,7 +807,8 @@ it('opens the chosen letter in correction mode from Arsip surat (QA6, #61 Q1-13)
         ->test(SuratTugas::class, ['registration' => $registration])
         ->assertSet('tab', 'guru')
         ->assertSet('revisingId', $guru->getKey())
-        ->assertSet('guru.nomor', '')
+        // SV6, D-188: the correction starts with the old number, which may be used again.
+        ->assertSet('guru.nomor', $guru->full_number)
         ->call('cancelRevision')
         ->assertSet('koreksi', '')
         ->assertSet('revisingId', null);

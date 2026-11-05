@@ -11,8 +11,9 @@ use InvalidArgumentException;
 /**
  * Surat tugas numbers (SECURITY §3g). Since M1-A (lead, 2026-10-04) Tata Usaha types the COMPLETE number of
  * every letter, e.g. `400.3.8/313/MRD/X/2026`: normalize() + numberError() check what was typed and key() is
- * what two numbers are compared by. A number is never used twice for the same letter type; the DB index
- * (type, full_number) is the final guard. The settings formats (`{seq}`, `{roman_month}`, `{year}`) are now only
+ * what two numbers are compared by. A number is never used twice for the same letter type among the letters that
+ * are not revoked (SV6, D-188: a revoked letter's number is free again, so a "Koreksi" may keep it); the DB index
+ * (type, active_full_number) is the final guard. The settings formats (`{seq}`, `{roman_month}`, `{year}`) are now only
  * the example shown under the number field (example()); format()/parse() stay for that, the demo data and old rows.
  */
 final class LetterNumber

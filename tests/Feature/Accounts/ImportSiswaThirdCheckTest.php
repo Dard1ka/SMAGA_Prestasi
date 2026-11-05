@@ -132,7 +132,7 @@ function v3iOtherAfterCheckOf(string $nis, string $nisn): void
 /** The import screen with $rows read and confirmed in the dialog, nothing clicked yet. */
 function v3iAsked(User $actor, array $rows, string $name = 'data-siswa.csv'): Testable
 {
-    return Livewire::actingAs($actor)->test(ImportSiswa::class)
+    return Livewire::actingAs($actor)->withQueryParams([ImportSiswa::LEVEL_QUERY => '10'])->test(ImportSiswa::class)
         ->set('schoolYear', '2026/2027')
         ->set('file', v3iFile($rows, $name))
         ->call('askImport')
@@ -391,7 +391,7 @@ it('names its own file above the file that waited for it, and says that file is 
 });
 
 it('names the file of an import taken over from another tab, its rejected rows and the file on screen (SV1 third check)', function (): void {
-    $screen = Livewire::actingAs($this->kesiswaan)->test(ImportSiswa::class)
+    $screen = Livewire::actingAs($this->kesiswaan)->withQueryParams([ImportSiswa::LEVEL_QUERY => '10'])->test(ImportSiswa::class)
         ->set('schoolYear', '2026/2027')
         ->set('file', v3iFile([['Dewi Anggraini', '226227005', '0101234505', '12-05-2011', 'X-1', '']], 'siswa-baru.csv'));
     $other = v3iOtherTabJob($this->kesiswaan, ['status' => StudentImportStatus::Running, 'total_rows' => 152, 'processed_rows' => 100]);
@@ -443,7 +443,7 @@ it('keeps the plain banner over the file the import started from (SV1 third chec
 
     // Opened again with no file on screen: the plain banner as before.
     $failed = v3iOtherTabJob($this->kesiswaan, ['status' => StudentImportStatus::Running]);
-    $alone = Livewire::actingAs($this->kesiswaan)->test(ImportSiswa::class)->assertSet('importId', $failed->getKey());
+    $alone = Livewire::actingAs($this->kesiswaan)->withQueryParams([ImportSiswa::LEVEL_QUERY => '10'])->test(ImportSiswa::class)->assertSet('importId', $failed->getKey());
     $failed->forceFill(['status' => StudentImportStatus::Failed, 'error' => 'File impor tidak ditemukan. Upload ulang file.'])->save();
 
     $alone->call('$refresh')
@@ -455,7 +455,7 @@ it('keeps the plain banner over the file the import started from (SV1 third chec
 // (3) "Download baris yang perlu dicek" in a narrow step-3 card ----------------------------------------------------
 
 it('lets "Download baris yang perlu dicek" wrap inside the step-3 card (SV1 third check)', function (): void {
-    $screen = Livewire::actingAs($this->kesiswaan)->test(ImportSiswa::class)
+    $screen = Livewire::actingAs($this->kesiswaan)->withQueryParams([ImportSiswa::LEVEL_QUERY => '10'])->test(ImportSiswa::class)
         ->set('schoolYear', '2026/2027')
         ->set('file', v3iFile([['Nadia Putri Anindya', '22', '0101234501', '12-05-2011', 'X-1', '']]))
         ->assertSee('Download baris yang perlu dicek');

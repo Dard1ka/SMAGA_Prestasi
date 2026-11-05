@@ -8,16 +8,19 @@ use App\Actions\Accounts\ArchiveAccount;
 use App\Actions\Accounts\DisableAccount;
 use App\Actions\Accounts\ResetStudentAccount;
 use App\Actions\Roles\RequestRoleChange;
+use App\Actions\Students\UpdateStudentData;
 use App\Actions\Users\CancelPrincipalReplacement;
 use App\Actions\Users\ChangeStaffRole;
 use App\Actions\Users\CreateStaffAccount;
 use App\Actions\Users\RequestPrincipalReplacement;
 use App\Actions\Users\ResetStaffAccount;
 use App\Actions\Users\StaffRoles;
+use App\Enums\Permission;
 use App\Enums\RoleName;
 use App\Enums\UserStatus;
 use App\Http\Middleware\EnsureStaffTwoFactor;
 use App\Livewire\Admin\Concerns\RequiresRecentPassword;
+use App\Livewire\Akun\UbahDataSiswa;
 use App\Models\PrincipalReplacement;
 use App\Models\RoleChangeRequest;
 use App\Models\Student;
@@ -37,7 +40,8 @@ use Livewire\Component;
  * pengguna" and "Ubah peran" (the role applies at once, also Admin / Kesiswaan / Tata Usaha / Humas, since 21 Okt 2026),
  * "Reset akun", "Nonaktifkan", "Ganti Kepala Sekolah" (24 h delay, cancellable)
  * and "Bantuan akun siswa" (name or NISN → "Reset kata sandi & email" / nonaktifkan / arsipkan with the W1-C
- * Actions; the consent toggles are gone since D-162, 20 Okt 2026).
+ * Actions; the consent toggles are gone since D-162, 20 Okt 2026; "Ubah data" opens the shared dialog
+ * App\Livewire\Akun\UbahDataSiswa since SV6, D-187).
  *
  * Targets are #[Locked] ids set only by the open*() methods; every action re-authorizes through the
  * UserPolicy / PrincipalReplacementPolicy inside the Action, and needs a password confirmation from the last
@@ -568,6 +572,55 @@ final class Pengguna extends Component
         $this->closeModal('siswa-reset', 'Akun direset dan email dilepas. Siswa masuk dengan NISN dan kata sandi sementara dalam 72 jam, lalu menghubungkan email dan membuat kata sandi baru.');
     }
 
+    /**
+     * SV6, D-187: "Ubah data" on the student card opens the shared dialog (App\Livewire\Akun\UbahDataSiswa) for the
+     * student this card shows; a student moved to the Sampah meanwhile gets a warning toast instead.
+     */
+    public function openStudentData(): void
+    {
+        Gate::authorize(Permission::StudentUpdate->value);
+        abort_if($this->studentUserId === null, 404);
+
+        if (! User::query()->whereKey($this->studentUserId)->whereHas('student')->exists()) {
+            $this->studentUserId = null;
+            $this->dispatch('sth-toast', message: UpdateStudentData::MSG_GONE, tone: 'warning');
+
+            return;
+        }
+
+        $this->dispatch(UbahDataSiswa::OPEN_EVENT, userId: $this->studentUserId)->to(UbahDataSiswa::class);
+    }
+
+    /**
+     * SV6, D-187: the dialog saved (or found the student changed or gone). The card reads the student again on render;
+     * the list of name matches takes the new names, classes and NISNs, without the students that left.
+     */
+    #[On(UbahDataSiswa::DONE_EVENT)]
+    public function refreshStudentData(): void
+    {
+        if ($this->studentMatches === []) {
+            return;
+        }
+
+        $users = User::query()
+            ->whereKey(array_column($this->studentMatches, 'id'))
+            ->whereHas('student')
+            ->with('student.classroom:id,name')
+            ->get(['id', 'name', 'status'])
+            ->keyBy('id');
+
+        $this->studentMatches = collect($this->studentMatches)
+            ->filter(fn (array $match): bool => $users->has($match['id']))
+            ->map(function (array $match) use ($users): array {
+                /** @var User $u */
+                $u = $users->get($match['id']);
+
+                return ['id' => $match['id'], 'name' => (string) $u->name, 'classroom' => $u->student?->classroom?->name, 'nisn' => $u->student?->nisn, 'status' => $u->status->value];
+            })
+            ->values()
+            ->all();
+    }
+
     /** QA9: a decision in the "Perubahan peran" panel changes rows of the staff table (role, "Menunggu: …"). */
     #[On('role-change-decided')]
     public function refreshStaff(): void
@@ -646,6 +699,8 @@ final class Pengguna extends Component
                 && mb_strtolower(self::squish($this->search)) === mb_strtolower((string) $this->nameFromSearch),
             'canCreate' => Gate::allows('create', User::class),
             'canReplace' => Gate::allows('create', PrincipalReplacement::class),
+            // SV6, D-187: "Ubah data" on the student card and the shared dialog (rendered once on this page).
+            'canEditStudent' => Gate::allows(Permission::StudentUpdate->value),
         ]);
     }
 

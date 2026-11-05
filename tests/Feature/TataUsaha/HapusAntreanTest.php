@@ -89,9 +89,9 @@ it('cancels an approved registration, revokes its unsent letters and tells membe
         ->and($letter->fresh()->revoked_at)->not->toBeNull()
         ->and($letter->fresh()->revoked_by)->toBe($this->tu->getKey())
         ->and($letter->fresh()->revoke_reason)->toBe(CancelApprovedRegistration::LETTER_REASON)
-        // the queue no longer holds it, the number stays used
+        // the queue no longer holds it; SV6, D-188: the number of the revoked letter is free again
         ->and(Registration::query()->awaitingLetters()->count())->toBe(0)
-        ->and(IssueLetters::isTaken(LetterType::Siswa, '400.3.8/313/MRD/X/2026'))->toBeTrue();
+        ->and(IssueLetters::isTaken(LetterType::Siswa, '400.3.8/313/MRD/X/2026'))->toBeFalse();
 
     $log = Activity::query()->where('event', 'registration.cancelled')->sole();
     expect($log->causer_id)->toBe($this->tu->getKey())

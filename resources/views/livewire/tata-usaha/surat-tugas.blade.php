@@ -101,7 +101,7 @@
                         {{ $revising ? 'Koreksi '.$typeName : ($editing ? '1. Isi data '.$typeName : 'Data '.$typeName) }}
                     </h2>
                     <span class="muted text-xs">
-                        {{ $revising ? 'Versi baru memakai nomor baru' : ($editing ? 'Semua kolom wajib, kecuali yang bertanda opsional' : 'PDF sudah dibuat') }}
+                        {{ $revising ? 'Ubah yang salah, lalu terbitkan ulang' : ($editing ? 'Semua kolom wajib, kecuali yang bertanda opsional' : 'PDF sudah dibuat') }}
                     </span>
                 </div>
 
@@ -118,13 +118,13 @@
                             </x-sth.alert>
                         @endif
 
-                        @if ($revising)
-                            {{-- B3 (#11): cabut + versi baru, said plainly. --}}
-                            <x-sth.alert tone="warning" title="Surat {{ $revising->full_number }} akan dicabut">
-                                Surat lama tetap tercatat sebagai dicabut dan diganti versi baru. Yang perlu diisi: nomor baru (nomor lama tidak boleh dipakai lagi)
-                                dan alasan pencabutan, minimal 5 karakter. Perbaiki data yang salah di bawah, lalu tekan "Cabut dan terbitkan ulang".
-                                {{ $revising->sent_at ? 'Versi baru langsung dikirim dan penerima diberi tahu.' : 'Versi baru ikut dikirim saat tombol Kirim ditekan.' }}
-                            </x-sth.alert>
+                        {{-- SV6, D-188: no warning box on a Koreksi; every field starts with what the old letter printed and
+                             stays tinted blue while it is unchanged. --}}
+                        @if ($sameLine)
+                            <p class="m-0 flex items-center gap-2 text-sm">
+                                <span class="inline-block size-4 shrink-0 rounded-control border border-line bg-blue-bg" aria-hidden="true"></span>
+                                {{ $sameLine }}
+                            </p>
                         @endif
 
                         @unless ($signature)
@@ -134,25 +134,26 @@
                         @endunless
 
                         <div class="grid grid-cols-1 items-start gap-4 md:grid-cols-2">
-                            <x-sth.input wire:model.live.debounce.500ms="{{ $model }}.nomor" :label="$revising ? 'Nomor surat baru' : 'Nomor surat'"
+                            <x-sth.input wire:model.live.debounce.500ms="{{ $model }}.nomor" label="Nomor surat"
                                          placeholder="Ketik nomor lengkap" maxlength="64" autocomplete="off" class="num {{ $revising ? '' : 'md:col-span-2' }}"
-                                         :hint="'Terakhir dipakai: '.($lastNumber ?? 'belum ada').'.'.($example ? ' Contoh: '.$example.'.' : '')" />
+                                         :input-class="$tint['nomor'] ?? null" :hint="$numberHint" />
                             @if ($revising)
                                 <x-sth.textarea wire:model.live.debounce.500ms="alasan" label="Alasan pencabutan" rows="3" maxlength="500"
                                                 hint="Minimal 5 karakter. Tercatat di riwayat surat. Contoh: tanggal pelaksanaan salah ketik." />
                             @endif
-                            <x-sth.input type="date" wire:model.live.debounce.400ms="{{ $model }}.tanggalSurat" label="Tanggal surat" class="md:max-w-60" />
+                            <x-sth.input type="date" wire:model.live.debounce.400ms="{{ $model }}.tanggalSurat" label="Tanggal surat" class="md:max-w-60"
+                                         :input-class="$tint['tanggalSurat'] ?? null" />
                         </div>
 
                         @if ($isGuru)
                             <fieldset class="m-0 flex flex-col gap-3 border-0 p-0">
                                 <legend class="mb-2 text-sm font-bold">Dasar <span class="muted font-medium">· Surat undangan lomba</span></legend>
                                 <div class="grid grid-cols-1 items-start gap-4 md:grid-cols-2">
-                                    <x-sth.input wire:model.live.debounce.500ms="{{ $model }}.dasarDari" label="Surat dari" maxlength="200" class="md:col-span-2"
+                                    <x-sth.input wire:model.live.debounce.500ms="{{ $model }}.dasarDari" :input-class="$tint['dasarDari'] ?? null" label="Surat dari" maxlength="200" class="md:col-span-2"
                                                  hint="Diisi dari penyelenggara lomba. Boleh diubah." />
-                                    <x-sth.input wire:model.live.debounce.500ms="{{ $model }}.dasarNomor" label="Nomor surat undangan" optional maxlength="150" autocomplete="off" />
-                                    <x-sth.input type="date" wire:model.live.debounce.400ms="{{ $model }}.dasarTanggal" label="Tanggal surat undangan" optional />
-                                    <x-sth.input wire:model.live.debounce.500ms="{{ $model }}.dasarHal" label="Hal" maxlength="150" class="md:col-span-2" />
+                                    <x-sth.input wire:model.live.debounce.500ms="{{ $model }}.dasarNomor" :input-class="$tint['dasarNomor'] ?? null" label="Nomor surat undangan" optional maxlength="150" autocomplete="off" />
+                                    <x-sth.input type="date" wire:model.live.debounce.400ms="{{ $model }}.dasarTanggal" :input-class="$tint['dasarTanggal'] ?? null" label="Tanggal surat undangan" optional />
+                                    <x-sth.input wire:model.live.debounce.500ms="{{ $model }}.dasarHal" :input-class="$tint['dasarHal'] ?? null" label="Hal" maxlength="150" class="md:col-span-2" />
                                 </div>
                             </fieldset>
                         @else
@@ -171,10 +172,10 @@
                             <fieldset class="m-0 flex flex-col gap-3 border-0 p-0">
                                 <legend class="mb-2 text-sm font-bold">Dasar 2 <span class="muted font-medium">· Surat undangan lomba</span></legend>
                                 <div class="grid grid-cols-1 items-start gap-4 md:grid-cols-2">
-                                    <x-sth.input wire:model.live.debounce.500ms="{{ $model }}.dasarDari" label="Surat dari" optional maxlength="200" class="md:col-span-2"
+                                    <x-sth.input wire:model.live.debounce.500ms="{{ $model }}.dasarDari" :input-class="$tint['dasarDari'] ?? null" label="Surat dari" optional maxlength="200" class="md:col-span-2"
                                                  hint="Diisi dari penyelenggara lomba. Kosongkan bila tidak ada surat undangan, surat siswa lalu hanya memuat Dasar 1." />
-                                    <x-sth.input wire:model.live.debounce.500ms="{{ $model }}.dasarNomor" label="Nomor surat undangan" optional maxlength="150" autocomplete="off" />
-                                    <x-sth.input type="date" wire:model.live.debounce.400ms="{{ $model }}.dasarTanggal" label="Tanggal surat undangan" optional />
+                                    <x-sth.input wire:model.live.debounce.500ms="{{ $model }}.dasarNomor" :input-class="$tint['dasarNomor'] ?? null" label="Nomor surat undangan" optional maxlength="150" autocomplete="off" />
+                                    <x-sth.input type="date" wire:model.live.debounce.400ms="{{ $model }}.dasarTanggal" :input-class="$tint['dasarTanggal'] ?? null" label="Tanggal surat undangan" optional />
                                 </div>
                             </fieldset>
                         @endif
@@ -182,11 +183,11 @@
                         <fieldset class="m-0 flex flex-col gap-3 border-0 p-0">
                             <legend class="mb-2 text-sm font-bold">Pelaksanaan <span class="muted font-medium">· Diisi dari data lomba</span></legend>
                             <div class="grid grid-cols-1 items-start gap-4 md:grid-cols-2">
-                                <x-sth.input wire:model.live.debounce.500ms="{{ $model }}.hari" label="Hari" maxlength="150" />
-                                <x-sth.input wire:model.live.debounce.500ms="{{ $model }}.tanggal" label="Tanggal" maxlength="150"
+                                <x-sth.input wire:model.live.debounce.500ms="{{ $model }}.hari" :input-class="$tint['hari'] ?? null" label="Hari" maxlength="150" />
+                                <x-sth.input wire:model.live.debounce.500ms="{{ $model }}.tanggal" :input-class="$tint['tanggal'] ?? null" label="Tanggal" maxlength="150"
                                              hint="Lebih dari sehari: 7 November 2026 s.d 9 November 2026." />
-                                <x-sth.input wire:model.live.debounce.500ms="{{ $model }}.pukul" label="Pukul" maxlength="150" />
-                                <x-sth.input wire:model.live.debounce.500ms="{{ $model }}.tempat" label="Tempat" maxlength="150" />
+                                <x-sth.input wire:model.live.debounce.500ms="{{ $model }}.pukul" :input-class="$tint['pukul'] ?? null" label="Pukul" maxlength="150" />
+                                <x-sth.input wire:model.live.debounce.500ms="{{ $model }}.tempat" :input-class="$tint['tempat'] ?? null" label="Tempat" maxlength="150" />
                             </div>
                         </fieldset>
 
@@ -205,6 +206,9 @@
                                 <x-sth.button type="submit" variant="danger" icon="file" wire:loading.attr="disabled" wire:target="revise">Cabut dan terbitkan ulang</x-sth.button>
                                 <x-sth.button variant="quiet" wire:click="cancelRevision" wire:loading.attr="disabled">Batal</x-sth.button>
                                 <span wire:loading wire:target="revise" class="muted text-xs">Membuat PDF…</span>
+                                <p class="muted m-0 text-xs" wire:loading.remove wire:target="revise">
+                                    Surat lama tercatat sebagai dicabut. {{ $revising->sent_at ? 'Versi baru langsung dikirim dan penerima diberi tahu.' : 'Versi baru ikut dikirim saat tombol Kirim ditekan.' }}
+                                </p>
                             @else
                                 <x-sth.button type="submit" icon="file" wire:loading.attr="disabled" wire:target="generate">Buat PDF {{ $typeName }}</x-sth.button>
                                 <span wire:loading wire:target="generate" class="muted text-xs">Membuat PDF…</span>

@@ -43,7 +43,7 @@ function d128ImportFile(): UploadedFile
 it('asks in its own dialog what the import writes, and writes nothing yet (D-128)', function (): void {
     session(A::passwordConfirmed());
 
-    Livewire::actingAs($this->kesiswaan)->test(ImportSiswa::class)
+    Livewire::actingAs($this->kesiswaan)->withQueryParams([ImportSiswa::LEVEL_QUERY => '10'])->test(ImportSiswa::class)
         // The dialog is on the page with its description from the first render.
         ->assertSeeHtml('aria-describedby="impor-siswa-desc"')
         ->set('schoolYear', '2026/2027')
@@ -71,7 +71,7 @@ it('asks in its own dialog what the import writes, and writes nothing yet (D-128
 it('imports after the confirmation and closes the dialog (D-128)', function (): void {
     session(A::passwordConfirmed());
 
-    Livewire::actingAs($this->kesiswaan)->test(ImportSiswa::class)
+    Livewire::actingAs($this->kesiswaan)->withQueryParams([ImportSiswa::LEVEL_QUERY => '10'])->test(ImportSiswa::class)
         ->set('schoolYear', '2026/2027')
         ->set('file', d128ImportFile())
         ->call('askImport')
@@ -90,7 +90,7 @@ it('imports after the confirmation and closes the dialog (D-128)', function (): 
 it('writes nothing when the confirmation arrives without the question, and shows no error (D-128)', function (): void {
     session(A::passwordConfirmed());
 
-    Livewire::actingAs($this->kesiswaan)->test(ImportSiswa::class)
+    Livewire::actingAs($this->kesiswaan)->withQueryParams([ImportSiswa::LEVEL_QUERY => '10'])->test(ImportSiswa::class)
         ->set('schoolYear', '2026/2027')
         ->set('file', d128ImportFile())
         ->call('import')
@@ -106,7 +106,7 @@ it('writes nothing when the confirmation arrives without the question, and shows
 it('imports once when "Impor" is pressed twice in the dialog (D-128)', function (): void {
     session(A::passwordConfirmed());
 
-    Livewire::actingAs($this->kesiswaan)->test(ImportSiswa::class)
+    Livewire::actingAs($this->kesiswaan)->withQueryParams([ImportSiswa::LEVEL_QUERY => '10'])->test(ImportSiswa::class)
         ->set('schoolYear', '2026/2027')
         ->set('file', d128ImportFile())
         ->call('askImport')
@@ -120,17 +120,17 @@ it('imports once when "Impor" is pressed twice in the dialog (D-128)', function 
     expect(Student::query()->count())->toBe(2);
 });
 
-it('voids the question when another file or school year is read (D-128)', function (string $change): void {
+it('voids the question when another file or kelas is read (D-128, SV6)', function (string $change): void {
     session(A::passwordConfirmed());
 
-    $component = Livewire::actingAs($this->kesiswaan)->test(ImportSiswa::class)
+    $component = Livewire::actingAs($this->kesiswaan)->withQueryParams([ImportSiswa::LEVEL_QUERY => '10'])->test(ImportSiswa::class)
         ->set('schoolYear', '2026/2027')
         ->set('file', d128ImportFile())
         ->call('askImport')
         ->assertViewHas('importAsking', true);
 
     match ($change) {
-        'school year' => $component->set('schoolYear', '2025/2026'),
+        'kelas' => $component->set('level', '11'),
         'file' => $component->set('file', d128ImportFile()),
         'start over' => $component->call('startOver'),
     };
@@ -142,12 +142,12 @@ it('voids the question when another file or school year is read (D-128)', functi
         ->assertSet('imported', null);
 
     expect(Student::query()->count())->toBe(0);
-})->with(['school year', 'file', 'start over']);
+})->with(['kelas', 'file', 'start over']);
 
 it('keeps the dialog state locked: the browser cannot claim a question (D-128)', function (): void {
     session(A::passwordConfirmed());
 
-    $component = Livewire::actingAs($this->kesiswaan)->test(ImportSiswa::class)
+    $component = Livewire::actingAs($this->kesiswaan)->withQueryParams([ImportSiswa::LEVEL_QUERY => '10'])->test(ImportSiswa::class)
         ->set('schoolYear', '2026/2027')
         ->set('file', d128ImportFile());
 
@@ -158,7 +158,7 @@ it('keeps the dialog state locked: the browser cannot claim a question (D-128)',
 it('opens no dialog without a file to import (D-128)', function (): void {
     session(A::passwordConfirmed());
 
-    Livewire::actingAs($this->kesiswaan)->test(ImportSiswa::class)
+    Livewire::actingAs($this->kesiswaan)->withQueryParams([ImportSiswa::LEVEL_QUERY => '10'])->test(ImportSiswa::class)
         ->call('askImport')
         ->assertHasErrors(['file'])
         ->assertNotDispatched('sth-modal-open')
@@ -167,7 +167,7 @@ it('opens no dialog without a file to import (D-128)', function (): void {
 
 it('asks for the password before the dialog, never after the answer in it (D-128, QA9)', function (): void {
     // No confirmation in the last 15 minutes: the question would be followed by the password page, which drops the file.
-    Livewire::actingAs($this->kesiswaan)->test(ImportSiswa::class)
+    Livewire::actingAs($this->kesiswaan)->withQueryParams([ImportSiswa::LEVEL_QUERY => '10'])->test(ImportSiswa::class)
         ->set('schoolYear', '2026/2027')
         ->set('file', d128ImportFile())
         ->call('askImport')
@@ -181,7 +181,7 @@ it('asks for the password before the dialog, never after the answer in it (D-128
 it('still asks for the password in the confirm step when the confirmation ran out while the dialog was open (D-128, QA9)', function (): void {
     session(A::passwordConfirmed());
 
-    $component = Livewire::actingAs($this->kesiswaan)->test(ImportSiswa::class)
+    $component = Livewire::actingAs($this->kesiswaan)->withQueryParams([ImportSiswa::LEVEL_QUERY => '10'])->test(ImportSiswa::class)
         ->set('schoolYear', '2026/2027')
         ->set('file', d128ImportFile())
         ->call('askImport')
@@ -196,10 +196,10 @@ it('still asks for the password in the confirm step when the confirmation ran ou
 
 it('keeps every other role away from the import and its question (D-128)', function (): void {
     foreach ([RoleName::Guru, RoleName::KepalaSekolah, RoleName::TataUsaha, RoleName::Humas] as $role) {
-        Livewire::actingAs(F::staff($role, 'Staf '.$role->value))->test(ImportSiswa::class)->assertForbidden();
+        Livewire::actingAs(F::staff($role, 'Staf '.$role->value))->withQueryParams([ImportSiswa::LEVEL_QUERY => '10'])->test(ImportSiswa::class)->assertForbidden();
     }
 
-    Livewire::actingAs(F::student('Raka Pradipta', 'XII-2')->user)->test(ImportSiswa::class)->assertForbidden();
+    Livewire::actingAs(F::student('Raka Pradipta', 'XII-2')->user)->withQueryParams([ImportSiswa::LEVEL_QUERY => '10'])->test(ImportSiswa::class)->assertForbidden();
 });
 
 it('lists the NISN, not the NIS, in the preview and in "baris perlu dicek" (D-137)', function (): void {
@@ -209,7 +209,7 @@ it('lists the NISN, not the NIS, in the preview and in "baris perlu dicek" (D-13
         'Aurelia Maharani,226227031,0101234557,12-05-2011,XIII-9,',
     ])."\n");
 
-    $component = Livewire::actingAs($this->kesiswaan)->test(ImportSiswa::class)
+    $component = Livewire::actingAs($this->kesiswaan)->withQueryParams([ImportSiswa::LEVEL_QUERY => '10'])->test(ImportSiswa::class)
         ->set('schoolYear', '2026/2027')->set('file', $file)
         ->assertSeeHtml('<th scope="col">NISN</th>')
         ->assertSee('0101234557')->assertDontSee('226227031');

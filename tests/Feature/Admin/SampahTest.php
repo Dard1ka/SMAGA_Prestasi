@@ -16,6 +16,7 @@ use App\Actions\Trash\TrashClassroom;
 use App\Actions\Trash\TrashStudents;
 use App\Enums\RoleName;
 use App\Enums\UserStatus;
+use App\Livewire\Admin\HapusSiswa;
 use App\Livewire\Admin\Kelas;
 use App\Livewire\Kesiswaan\DatabasePrestasi;
 use App\Livewire\Kesiswaan\Talenta;
@@ -36,6 +37,8 @@ use Illuminate\Validation\ValidationException;
 use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
 use Spatie\Activitylog\Models\Activity;
+use Spatie\Permission\Models\Role;
+use Spatie\Permission\PermissionRegistrar;
 use Tests\Feature\Admin\AdminTestHelpers as A;
 use Tests\Feature\Auth\AuthTestHelpers as H;
 
@@ -135,7 +138,7 @@ function sampahCsv(array $rows): string
 
 // --- Who may ------------------------------------------------------------------------------------------------------
 
-it('lets only Admin put students or a class into the trash and restore them', function (RoleName $role): void {
+it('lets only Admin put a class into the trash and restore, and refuses students to roles without student.trash', function (RoleName $role): void {
     $student = sampahSiswa($this->x4, 'Raka Pratama Wijaya');
     $entry = app(TrashStudents::class)->handle($this->admin, [$student->user_id], 'Data ganda dari import.')[0];
     $other = sampahSiswa($this->x5, 'Bima Satria Nugraha');
@@ -147,7 +150,44 @@ it('lets only Admin put students or a class into the trash and restore them', fu
         ->and(Student::query()->whereKey($other->getKey())->exists())->toBeTrue()
         ->and(Classroom::query()->whereKey($this->x5->getKey())->exists())->toBeTrue()
         ->and($entry->fresh()->restored_at)->toBeNull();
-})->with([RoleName::Kesiswaan, RoleName::TataUsaha, RoleName::KepalaSekolah, RoleName::Humas, RoleName::Guru]);
+})->with([RoleName::TataUsaha, RoleName::KepalaSekolah, RoleName::Humas, RoleName::Guru]);
+
+it('lets Kesiswaan put students into the trash (student.trash, SV6 D-185) but not a class, the Sampah list or Pulihkan', function (): void {
+    $kesiswaan = A::staff(RoleName::Kesiswaan);
+    $raka = sampahSiswa($this->x4, 'Raka Pratama Wijaya');
+
+    expect($kesiswaan->can('trashStudents', TrashEntry::class))->toBeTrue()
+        ->and($kesiswaan->can('create', TrashEntry::class))->toBeFalse()
+        ->and($kesiswaan->can('viewAny', TrashEntry::class))->toBeFalse();
+
+    $entry = app(TrashStudents::class)->handle($kesiswaan, [$raka->user_id], 'Data ganda dari import.')[0];
+
+    expect(Student::query()->whereKey($raka->getKey())->exists())->toBeFalse()
+        ->and($entry->deleted_by)->toBe((int) $kesiswaan->getKey())
+        ->and(Activity::query()->where('event', TrashStudents::EVENT)->sole()->causer_id)->toBe($kesiswaan->getKey())
+        ->and(fn () => app(RestoreFromTrash::class)->handle($kesiswaan, $entry))->toThrow(AuthorizationException::class)
+        ->and(fn () => app(TrashClassroom::class)->handle($kesiswaan, $this->x5, 'Kelas digabung ke kelas lain.'))->toThrow(AuthorizationException::class)
+        ->and(Classroom::query()->whereKey($this->x5->getKey())->exists())->toBeTrue();
+
+    // The Admin restores it.
+    app(RestoreFromTrash::class)->handle($this->admin, $entry);
+    expect(Student::query()->whereKey($raka->getKey())->exists())->toBeTrue();
+});
+
+it('refuses students to a Kesiswaan account whose role lost student.trash, and still lets an Admin without it (classroom.manage)', function (): void {
+    $kesiswaan = A::staff(RoleName::Kesiswaan);
+    $raka = sampahSiswa($this->x4, 'Raka Pratama Wijaya');
+    $bima = sampahSiswa($this->x4, 'Bima Satria Nugraha');
+    Role::findByName(RoleName::Kesiswaan->value)->revokePermissionTo('student.trash');
+    Role::findByName(RoleName::Admin->value)->revokePermissionTo('student.trash');
+    app(PermissionRegistrar::class)->forgetCachedPermissions();
+
+    expect(fn () => app(TrashStudents::class)->handle($kesiswaan->fresh(), [$raka->user_id], 'Data ganda dari import.'))->toThrow(AuthorizationException::class)
+        ->and(Student::query()->whereKey($raka->getKey())->exists())->toBeTrue();
+
+    app(TrashStudents::class)->handle($this->admin->fresh(), [$bima->user_id], 'Data ganda dari import.');
+    expect(Student::query()->whereKey($bima->getKey())->exists())->toBeFalse();
+});
 
 it('refuses the trash to an Admin who can no longer log in', function (): void {
     $student = sampahSiswa($this->x4, 'Raka Pratama Wijaya');
@@ -487,16 +527,21 @@ it('uses the short sentence for an empty class', function (): void {
         ->assertDispatched('sth-toast', message: 'Kelas X-5 dipindahkan ke Sampah.', tone: 'success');
 });
 
-it('does nothing on delete, trashStudents or restore without their question', function (): void {
+it('does nothing on delete, the shared "Hapus siswa" or restore without their question', function (): void {
     sampahSiswa($this->x4, 'Raka Pratama Wijaya');
 
     sampahScreen()
         ->set('classReason', 'Kelas digabung ke kelas X-5.')
         ->call('delete')
-        ->set('studentsReason', 'Data ganda dari import.')
-        ->call('trashStudents')
         ->call('restore')
         ->assertNotDispatched('sth-toast')
+        ->assertHasNoErrors();
+
+    Livewire::test(HapusSiswa::class)
+        ->set('reason', 'Data ganda dari import.')
+        ->call('trash')
+        ->assertNotDispatched('sth-toast')
+        ->assertNotDispatched(HapusSiswa::DONE_EVENT)
         ->assertHasNoErrors();
 
     expect(TrashEntry::query()->count())->toBe(0)
@@ -537,7 +582,7 @@ it('answers a class trashed, renamed or filled in another tab with a toast, neve
 
 // --- Admin › Kelas: students --------------------------------------------------------------------------------------
 
-it('puts one student or the ticked ones into the trash from Lihat siswa', function (): void {
+it('puts one student or the ticked ones into the trash from Lihat siswa through the shared dialog (SV6)', function (): void {
     $raka = sampahSiswa($this->x4, 'Raka Pratama Wijaya');
     $sinta = sampahSiswa($this->x4, 'Sinta Ayu Lestari');
     $bima = sampahSiswa($this->x4, 'Bima Satria Nugraha');
@@ -546,28 +591,44 @@ it('puts one student or the ticked ones into the trash from Lihat siswa', functi
         ->call('showStudents', $this->x4->getKey())
         ->assertSeeHtml("wire:click=\"askTrashStudent({$raka->user_id})\"")
         ->call('askTrashStudent', $raka->user_id)
-        ->assertSet('trashingStudents', [(int) $raka->user_id])
-        ->assertDispatched('sth-modal-open', id: Kelas::TRASH_STUDENTS_DIALOG)
+        ->assertDispatchedTo(HapusSiswa::class, HapusSiswa::OPEN_EVENT, ids: [(int) $raka->user_id]);
+
+    // The browser hands the event to the dialog.
+    Livewire::test(HapusSiswa::class, ['returnTo' => route('admin.kelas.index')])
+        ->call('open', [(int) $raka->user_id])
+        ->assertSet('asked', [(int) $raka->user_id => (string) $this->x4->getKey()])
+        ->assertDispatched('sth-modal-open', id: HapusSiswa::DIALOG)
         ->assertSee('Hapus 1 siswa?')
+        ->assertSee('Kelas X-4')
         ->assertSee('Siswa ini dipindahkan ke Sampah: langsung tidak bisa masuk dan tidak tampil di mana pun.')
-        ->assertSee('Mulai 13 November 2026 akun dan seluruh data siswanya')
-        ->call('trashStudents')
-        ->assertHasErrors(['studentsReason'])
-        ->set('studentsReason', 'Data ganda dari import.')
-        ->call('trashStudents')
-        ->assertSet('trashingStudents', [])
+        ->assertSee('Selama 7 hari masih bisa dipulihkan. Mulai 13 November 2026 akun dan seluruh data siswanya')
+        ->call('trash')
+        ->assertHasErrors(['reason'])
+        ->set('reason', 'Data ganda dari import.')
+        ->call('trash')
+        ->assertSet('asked', [])
+        ->assertDispatched('sth-modal-close', id: HapusSiswa::DIALOG)
+        ->assertDispatched(HapusSiswa::DONE_EVENT)
         ->assertDispatched('sth-toast', message: '1 siswa dipindahkan ke Sampah.', tone: 'success');
 
     expect(Student::query()->whereKey($raka->getKey())->exists())->toBeFalse();
 
-    $screen->set('selectedStudents', [(string) $sinta->user_id, (string) $bima->user_id])
-        ->call('askTrashSelected')
-        ->assertSee('Hapus 2 siswa?')
+    $screen->dispatch(HapusSiswa::DONE_EVENT)
+        ->assertSee('Raka Pratama Wijaya')   // now in the Sampah section
+        ->set('selectedStudents', [(string) $sinta->user_id, (string) $bima->user_id])
         ->assertSee('Hapus terpilih')
-        ->set('studentsReason', 'Siswa pindah sekolah lain.')
-        ->call('trashStudents')
-        ->assertSet('selectedStudents', [])
+        ->call('askTrashSelected')
+        ->assertDispatchedTo(HapusSiswa::class, HapusSiswa::OPEN_EVENT, ids: [(int) $sinta->user_id, (int) $bima->user_id]);
+
+    Livewire::test(HapusSiswa::class)
+        ->call('open', [(int) $sinta->user_id, (int) $bima->user_id])
+        ->assertSee('Hapus 2 siswa?')
+        ->assertSee('Bima Satria Nugraha, Sinta Ayu Lestari')
+        ->set('reason', 'Siswa pindah sekolah lain.')
+        ->call('trash')
         ->assertDispatched('sth-toast', message: '2 siswa dipindahkan ke Sampah.', tone: 'success');
+
+    $screen->dispatch(HapusSiswa::DONE_EVENT)->assertSet('selectedStudents', []);
 
     expect(Student::query()->where('classroom_id', $this->x4->getKey())->count())->toBe(0)
         ->and(TrashEntry::query()->count())->toBe(3);
@@ -582,16 +643,17 @@ it('refuses a student id the list never showed and answers a student trashed els
         ->call('askTrashStudent', $other->user_id)
         ->assertStatus(404);
 
-    $screen = sampahScreen()
-        ->call('showStudents', $this->x4->getKey())
-        ->call('askTrashStudent', $raka->user_id)
-        ->set('studentsReason', 'Data ganda dari import.');
+    $dialog = Livewire::test(HapusSiswa::class)
+        ->call('open', [(int) $raka->user_id])
+        ->set('reason', 'Data ganda dari import.');
 
     app(TrashStudents::class)->handle($this->admin, [$raka->user_id], 'Dihapus dari tab lain.');
 
-    $screen->call('trashStudents')
+    $dialog->call('trash')
         ->assertOk()
-        ->assertDispatched('sth-toast', message: Kelas::MSG_STUDENTS_MOVED, tone: 'warning');
+        ->assertSet('asked', [])
+        ->assertDispatched(HapusSiswa::DONE_EVENT)
+        ->assertDispatched('sth-toast', message: HapusSiswa::MSG_CHANGED, tone: 'warning');
 
     expect(TrashEntry::query()->count())->toBe(1);
 });

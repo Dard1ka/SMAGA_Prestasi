@@ -84,8 +84,12 @@ final class AuditLog extends Component
         'student.restored' => 'Siswa dipulihkan dari Sampah',
         'classroom.restored' => 'Kelas dipulihkan dari Sampah',
         'trash.purged' => 'Sampah dihapus permanen',
+        // SV6, D-186: "Hapus permanen" of one Sampah entry by an Admin (App\Actions\Trash\PurgeFromTrash).
+        'trash.purged_by_admin' => 'Sampah dihapus permanen oleh Admin',
         'student.phone_updated' => 'No HP siswa diperbarui',
         'student.profile_updated' => 'Data diri siswa diubah',
+        // SV6, D-187: "Ubah data siswa" by Admin, Kesiswaan or Tata Usaha (field names, screen and booleans only).
+        'student.data_updated' => 'Data siswa diubah',
         'talent.restored' => 'Pengajuan talenta dipulihkan',
         'talent.review_requested' => 'Siswa minta ditinjau ulang',
         'audit.exported' => 'Log audit di-download',

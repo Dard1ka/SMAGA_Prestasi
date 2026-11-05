@@ -403,6 +403,10 @@ final class Navigation
                         ['key' => 'arsip', 'label' => 'Arsip surat', 'icon' => 'folder', 'route' => ['tu.surat.arsip', 'tu.arsip']],
                         ['key' => 'template', 'label' => 'Template surat', 'icon' => 'file', 'route' => ['tu.surat.template', 'tu.template']],
                     ]],
+                    ['label' => 'Data', 'items' => [
+                        // SV6, D-187: the students with "Ubah data" (name, NIS, NISN, birth date, class).
+                        ['key' => 'siswa', 'label' => 'Data siswa', 'icon' => 'users', 'route' => ['tu.siswa.index'], 'match' => ['tu.siswa*']],
+                    ]],
                 ],
             ],
             'humas' => [

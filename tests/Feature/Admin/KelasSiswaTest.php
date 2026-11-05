@@ -3,17 +3,22 @@
 declare(strict_types=1);
 
 use App\Actions\Accounts\AccountControls;
+use App\Actions\Accounts\ActivationReport;
 use App\Actions\Accounts\DisableAccount;
+use App\Actions\Accounts\ExportActivationReport;
 use App\Enums\RoleName;
 use App\Enums\UserStatus;
+use App\Livewire\Admin\HapusSiswa;
 use App\Livewire\Admin\Kelas;
 use App\Livewire\Admin\UbahStatusSiswa;
+use App\Livewire\Akun\UbahDataSiswa;
 use App\Models\Classroom;
 use App\Models\Student;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Spatie\Activitylog\Models\Activity;
+use Spatie\SimpleExcel\SimpleExcelReader;
 use Tests\Feature\Admin\AdminTestHelpers as A;
 
 /*
@@ -338,3 +343,168 @@ it('refuses the screen, the student list, the ticks and "Ubah status" to Kesiswa
 
     expect($raka->user->fresh()->status)->toBe(UserStatus::Active);
 });
+
+// --- SV6: the same row actions as Status aktivasi, Ubah data, Download Excel ------------------------------------------
+
+it('offers Ubah data, Ubah status (Aktifkan lagi for a row that can be brought back) and Hapus on every row, with the shared dialogs (SV6)', function (): void {
+    $raka = kelasSiswa($this->x1, 'Raka Pratama');
+    $dimas = kelasSiswa($this->x1, 'Dimas Saputra', UserStatus::Disabled);
+
+    $screen = Livewire::test(Kelas::class)->call('showStudents', $this->x1->getKey());
+
+    foreach ([$raka, $dimas] as $student) {
+        $screen->assertSeeHtml('wire:click="askData('.$student->user_id.')"')
+            ->assertSeeHtml('wire:click="askStatus('.$student->user_id.')"')
+            ->assertSeeHtml('wire:click="askTrashStudent('.$student->user_id.')"');
+    }
+
+    expect(collect($screen->viewData('studentsDialog')['rows'])->pluck('change', 'name')->all())
+        ->toBe(['Dimas Saputra' => 'Aktifkan lagi', 'Raka Pratama' => 'Ubah status']);
+
+    $this->get(route('admin.kelas.index'))
+        ->assertOk()
+        ->assertSee('id="'.HapusSiswa::DIALOG.'"', false)
+        ->assertSee('wire:name="akun.ubah-data-siswa"', false)
+        ->assertDontSee('kelas-siswa-hapus', false);
+});
+
+it('opens the shared "Ubah data siswa" dialog for a listed row only (SV6, D-187)', function (): void {
+    $raka = kelasSiswa($this->x1, 'Raka Pratama');
+    $other = kelasSiswa($this->x2, 'Citra Kelas Lain');
+
+    Livewire::test(Kelas::class)
+        ->call('showStudents', $this->x1->getKey())
+        ->call('askData', $raka->user_id)
+        ->assertDispatched(UbahDataSiswa::OPEN_EVENT, userId: (int) $raka->user_id);
+
+    Livewire::test(Kelas::class)
+        ->call('showStudents', $this->x1->getKey())
+        ->call('askData', $other->user_id)
+        ->assertNotFound()
+        ->assertNotDispatched(UbahDataSiswa::OPEN_EVENT);
+
+    // A student who left the class meanwhile: a toast.
+    $screen = Livewire::test(Kelas::class)->call('showStudents', $this->x1->getKey());
+    $raka->forceFill(['classroom_id' => $this->x2->getKey()])->save();
+    $screen->call('askData', $raka->user_id)
+        ->assertDispatched('sth-toast', message: Kelas::MSG_STUDENT_MOVED, tone: 'warning')
+        ->assertNotDispatched(UbahDataSiswa::OPEN_EVENT);
+});
+
+it('clears the ticks after the shared delete or data dialog finished (SV6)', function (string $event): void {
+    $raka = kelasSiswa($this->x1, 'Raka Pratama');
+
+    Livewire::test(Kelas::class)
+        ->call('showStudents', $this->x1->getKey())
+        ->set('selectedStudents', [(string) $raka->user_id])
+        ->dispatch($event)
+        ->assertSet('selectedStudents', [])
+        ->assertSet('viewingId', (string) $this->x1->getKey());
+})->with([HapusSiswa::DONE_EVENT, UbahDataSiswa::DONE_EVENT]);
+
+it('downloads every class from "Download semua kelas": Ringkasan first, one sheet per tingkat with students (SV6, D-185)', function (): void {
+    kelasSiswa($this->x1, 'Raka Pratama');
+    kelasSiswa($this->x1, 'Dimas Saputra', UserStatus::Disabled);
+    $xi = Classroom::factory()->level(11)->create(['name' => 'XI-3']);
+    kelasSiswa($xi, 'Nadia Putri Anindya', UserStatus::PendingActivation);
+
+    Livewire::test(Kelas::class)
+        ->assertSeeHtml('wire:click="exportAll"')
+        ->call('exportAll')
+        ->assertRedirect(route('password.confirm'))
+        ->assertNoFileDownloaded();
+
+    session(A::passwordConfirmed());
+    Livewire::test(Kelas::class)->assertSeeHtml('wire:init="exportAll"');
+
+    $screen = Livewire::test(Kelas::class)->call('exportAll');
+    $file = kelasSiswaDownload($screen);
+    $summary = SimpleExcelReader::create($file)->fromSheetName(ActivationReport::SUMMARY_SHEET)->getRows()->all();
+    $log = Activity::query()->where('event', ExportActivationReport::EVENT)->sole();
+
+    expect($screen->effects['download']['name'] ?? '')->toStartWith('status-aktivasi-semua-')
+        ->and(kelasSiswaSheets($file))->toBe([ActivationReport::SUMMARY_SHEET, 'X', 'XI'])
+        ->and(array_column($summary, 'Kelas'))->toBe(['X-1', 'XI-3', ActivationReport::SUMMARY_TOTAL])
+        ->and(array_column($summary, 'Nonaktif'))->toBe(['1', '0', '1'])
+        ->and(array_column(SimpleExcelReader::create($file)->fromSheetName('X')->getRows()->all(), 'Nama'))->toBe(['Dimas Saputra', 'Raka Pratama'])
+        ->and($log->properties['source'])->toBe(ExportActivationReport::SOURCE_CLASSES)
+        ->and($log->properties['tingkat'])->toBe('semua')
+        ->and($log->properties['rows'])->toBe(3);
+});
+
+it('downloads one class from "Lihat siswa", and says so when the class has no student (SV6, D-185)', function (): void {
+    kelasSiswa($this->x1, 'Raka Pratama');
+    session(A::passwordConfirmed());
+
+    $screen = Livewire::test(Kelas::class)
+        ->call('showStudents', $this->x1->getKey())
+        ->assertSeeHtml("wire:click=\"exportClass('".$this->x1->getKey()."')\"")
+        ->call('exportClass', $this->x1->getKey());
+    $file = kelasSiswaDownload($screen);
+
+    expect(kelasSiswaSheets($file))->toBe(['X-1'])
+        ->and(array_column(SimpleExcelReader::create($file)->fromSheetName('X-1')->getRows()->all(), 'Status'))->toBe(['Aktif'])
+        ->and(Activity::query()->where('event', ExportActivationReport::EVENT)->sole()->properties['kelas'])->toBe('X-1');
+
+    // An empty class shows no download, and a forged call answers with a toast and no file.
+    Livewire::test(Kelas::class)
+        ->call('showStudents', $this->x2->getKey())
+        ->assertDontSeeHtml('exportClass(')
+        ->call('exportClass', $this->x2->getKey())
+        ->assertDispatched('sth-toast', message: ExportActivationReport::MSG_EMPTY, tone: 'warning')
+        ->assertNoFileDownloaded();
+
+    Livewire::test(Kelas::class)->call('exportClass', 'tidak-ada')
+        ->assertDispatched('sth-toast', message: Kelas::MSG_GONE, tone: 'warning')
+        ->assertNoFileDownloaded();
+
+    expect(Activity::query()->where('event', ExportActivationReport::EVENT)->count())->toBe(1);
+});
+
+it('says that there is nothing to download when no class has students (SV6)', function (): void {
+    session(A::passwordConfirmed());
+
+    Livewire::test(Kelas::class)->call('exportAll')
+        ->assertDispatched('sth-toast', message: ExportActivationReport::MSG_EMPTY, tone: 'warning')
+        ->assertNoFileDownloaded();
+
+    expect(Activity::query()->where('event', ExportActivationReport::EVENT)->exists())->toBeFalse();
+});
+
+it('refuses the downloads, Ubah data and Hapus of Admin › Kelas to Kesiswaan (no classroom.manage)', function (): void {
+    $raka = kelasSiswa($this->x1, 'Raka Pratama');
+    $opened = fn () => Livewire::test(Kelas::class)->call('showStudents', $this->x1->getKey());
+    $screens = [$opened(), $opened(), $opened(), $opened()];
+
+    $this->actingAs(A::staff(RoleName::Kesiswaan));
+    session(A::passwordConfirmed());
+
+    $screens[0]->call('exportAll')->assertForbidden();
+    $screens[1]->call('exportClass', $this->x1->getKey())->assertForbidden();
+    $screens[2]->call('askData', $raka->user_id)->assertForbidden();
+    $screens[3]->call('askTrashStudent', $raka->user_id)->assertForbidden();
+
+    expect(Activity::query()->where('event', ExportActivationReport::EVENT)->exists())->toBeFalse()
+        ->and(Student::query()->whereKey($raka->getKey())->exists())->toBeTrue();
+});
+
+/** The Excel file of a Livewire download, written to a temp .xlsx. */
+function kelasSiswaDownload(mixed $component): string
+{
+    $path = tempnam(sys_get_temp_dir(), 'sth-kelas-').'.xlsx';
+    file_put_contents($path, base64_decode((string) ($component->effects['download']['content'] ?? '')));
+
+    return $path;
+}
+
+/** @return list<string> sheet names of an .xlsx, in order */
+function kelasSiswaSheets(string $xlsx): array
+{
+    $zip = new ZipArchive;
+    $zip->open($xlsx);
+    $book = simplexml_load_string((string) $zip->getFromName('xl/workbook.xml'));
+    $zip->close();
+    $book->registerXPathNamespace('m', 'http://schemas.openxmlformats.org/spreadsheetml/2006/main');
+
+    return array_map(fn (SimpleXMLElement $sheet): string => (string) $sheet['name'], $book->xpath('//m:sheets/m:sheet'));
+}

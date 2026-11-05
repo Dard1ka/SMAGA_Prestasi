@@ -6,21 +6,24 @@ namespace App\Livewire\Akun;
 
 use App\Actions\Accounts\AccountControls;
 use App\Actions\Accounts\ActivationReport;
+use App\Actions\Accounts\ExportActivationReport;
 use App\Actions\Accounts\ReopenActivationWindow;
 use App\Actions\Accounts\UnfreezeAccount;
 use App\Actions\Accounts\UpdateActivationWindow;
-use App\Actions\Users\AdminRecipients;
+use App\Actions\Exports\ExportedFile;
 use App\Enums\Permission;
 use App\Livewire\Admin\Concerns\RequiresRecentPassword;
+use App\Livewire\Admin\Concerns\SelectsListedStudents;
+use App\Livewire\Admin\HapusSiswa;
 use App\Livewire\Admin\UbahStatusSiswa;
+use App\Models\Classroom;
+use App\Models\TrashEntry;
 use App\Models\User;
-use App\Notifications\Admin\LargeExportNotice;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
@@ -55,6 +58,18 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
  * row in nonaktif, arsip, dibekukan or kedaluwarsa and opens the shared dialog UbahStatusSiswa with "Aktif"
  * preselected (askStatus()). Kesiswaan sees nothing of it. "Buka ulang" and "Buka pembekuan" stay as they were. After
  * a change the dialog sends UbahStatusSiswa::DONE_EVENT and the page redraws its lists, boxes and counts.
+ *
+ * SV6, D-185 (the lead, 5 Nov 2026, requests 4 and 6): both student lists ("Daftar siswa" and the class dialog) offer the
+ * same student actions as Admin › Kelas › Lihat siswa (partials livewire.partials.siswa-pilih / siswa-cek / siswa-aksi,
+ * SelectsListedStudents): ticks with "Pilih semua" (at most 400), "Ubah status" / "Ubah status terpilih (N)" (Admin,
+ * `user.archive`, UbahStatusSiswa), "Hapus" / "Hapus terpilih (N)" (`student.trash`: Admin and Kesiswaan, the shared
+ * dialog HapusSiswa) and "Ubah data" (`student.update`, the shared dialog UbahDataSiswa, D-187). Every id is checked
+ * against the rows this visit listed (#[Locked] $shownStudents): any other id answers 404, a listed student who went to
+ * the trash meanwhile a warning toast. The ticks are one selection for the list on screen; they are cleared whenever
+ * that list changes (tab, filter, class, status tab) and after a shared dialog changed something.
+ * "Download Excel" (ExportActivationReport) stands on both tabs and in the class dialog: "Per kelas" = the whole school
+ * (or the chosen tingkat), "Daftar siswa" = what the list shows (its class filter gives one sheet named after the class,
+ * its status tab and search apply), the class dialog = that whole class. No student matches: a warning toast, no file.
  */
 #[Title('Status aktivasi')]
 // One search box per screen (D-90, backlog #60): this page has its own, so the top bar shows none.
@@ -62,6 +77,7 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 final class StatusAktivasi extends Component
 {
     use RequiresRecentPassword;
+    use SelectsListedStudents;
 
     /** Rows per step in the class dialog: one full class fits; 100 rows made the first page about 300 kB. */
     public const PAGE = 40;
@@ -99,6 +115,13 @@ final class StatusAktivasi extends Component
 
     public const CLASS_DIALOG = 'aktivasi-kelas';
 
+    /** SV6: a listed student went to the trash (or stopped being a student) meanwhile. */
+    public const MSG_STUDENT_GONE = 'Siswa ini sudah dihapus. Daftar sudah diperbarui.';
+
+    public const MSG_STUDENTS_GONE = 'Sebagian siswa yang dipilih sudah dihapus. Daftar dan pilihan sudah diperbarui.';
+
+    public const MSG_CLASS_GONE = 'Kelas ini sudah dihapus. Daftar sudah diperbarui.';
+
     /** Class shown in the dialog ("Lihat"); '' = no dialog. Checked against the classes that have students. */
     #[Url(as: 'kelas', except: '')]
     public string $kelas = '';
@@ -109,7 +132,7 @@ final class StatusAktivasi extends Component
     #[Locked]
     public int $kelasLimit = self::PAGE;
 
-    /** Class filter of the cross-class list at the bottom (the Excel file uses the tingkat choice instead, SV3). */
+    /** Class filter of the cross-class list at the bottom (SV6, D-185: also the class of its Excel file, one sheet). */
     #[Url(as: 'kelas_daftar', except: '')]
     public string $daftarKelas = '';
 
@@ -120,8 +143,9 @@ final class StatusAktivasi extends Component
     public string $q = '';
 
     /**
-     * SV3: the tingkat of the Excel download, '' = every tingkat (one sheet each); a key of DOWNLOAD_LEVELS. In the
-     * address (SV3 review) so the download that resumes after the password page is the tingkat that was chosen.
+     * SV3: the tingkat of the Excel download, '' = every tingkat (SV6: "Ringkasan" + one sheet per tingkat with
+     * students); a key of DOWNLOAD_LEVELS. Not used while "Daftar siswa" is filtered by a class. In the address (SV3
+     * review) so the download that resumes after the password page is the tingkat that was chosen.
      */
     #[Url(as: 'unduh', except: '')]
     public string $unduhTingkat = '';
@@ -195,16 +219,22 @@ final class StatusAktivasi extends Component
             $this->limit = self::PREVIEW;
             $this->tampil = self::VIEW_STUDENTS;
             $this->forgetClass();
+            $this->reset('selectedStudents');
         }
 
-        if ($property === 'tampil' && $this->tampil !== self::VIEW_STUDENTS) {
-            $this->tampil = self::VIEW_CLASSES;
+        if ($property === 'tampil') {
+            $this->reset('selectedStudents');
+
+            if ($this->tampil !== self::VIEW_STUDENTS) {
+                $this->tampil = self::VIEW_CLASSES;
+            }
         }
 
         // The address changed under the page (browser history): follow it.
         if ($property === 'kelas') {
             $this->kelasStatus = '';
             $this->kelasLimit = self::PAGE;
+            $this->reset('selectedStudents');
 
             if (self::knownClass($this->kelas)) {
                 $this->dispatch('sth-modal-open', id: self::CLASS_DIALOG);
@@ -220,6 +250,7 @@ final class StatusAktivasi extends Component
     {
         $this->tampil = $view === self::VIEW_STUDENTS ? self::VIEW_STUDENTS : self::VIEW_CLASSES;
         $this->forgetClass();
+        $this->reset('selectedStudents');
     }
 
     public function setStatus(string $status): void
@@ -228,11 +259,12 @@ final class StatusAktivasi extends Component
         $this->limit = self::PREVIEW;
         $this->tampil = self::VIEW_STUDENTS;
         $this->forgetClass();
+        $this->reset('selectedStudents');
     }
 
     public function resetFilters(): void
     {
-        $this->reset('daftarKelas', 'status', 'q');
+        $this->reset('daftarKelas', 'status', 'q', 'selectedStudents');
         $this->limit = self::PREVIEW;
         $this->forgetClass();
     }
@@ -277,6 +309,7 @@ final class StatusAktivasi extends Component
         $this->kelas = $classroomId;
         $this->kelasStatus = '';
         $this->kelasLimit = self::PAGE;
+        $this->reset('selectedStudents');
         $this->dispatch('sth-modal-open', id: self::CLASS_DIALOG);
     }
 
@@ -284,6 +317,7 @@ final class StatusAktivasi extends Component
     {
         $this->kelasStatus = array_key_exists($status, AccountControls::STATES) ? $status : '';
         $this->kelasLimit = self::PAGE;
+        $this->reset('selectedStudents');
     }
 
     public function showMoreClass(): void
@@ -294,6 +328,7 @@ final class StatusAktivasi extends Component
     public function closeClass(): void
     {
         $this->forgetClass();
+        $this->reset('selectedStudents');
         $this->dispatch('sth-modal-close', id: self::CLASS_DIALOG);
     }
 
@@ -359,14 +394,22 @@ final class StatusAktivasi extends Component
         $this->dispatch('sth-toast', message: $message, tone: 'success');
     }
 
+    // Student actions of both lists (SV5, SV6) ------------------------------------------------------
+
     /**
      * SV5 "Ubah status" / "Aktifkan lagi" of one student row (Admin only): the shared dialog, with "Aktif"
-     * preselected for a row whose account can be brought back. A staff or unknown id answers 404.
+     * preselected for a row whose account can be brought back. An id this visit never listed answers 404 (SV6: a
+     * staff, unknown or forged id), a listed student who went to the trash meanwhile a warning toast.
      */
     public function askStatus(int $userId): void
     {
         Gate::authorize(Permission::UserArchive->value);
-        $student = $this->studentAccount($userId);
+        $student = $this->listedStudent($userId);
+
+        if ($student === null) {
+            return;
+        }
+
         Gate::authorize('archive', $student);
 
         $this->dispatch(
@@ -376,11 +419,66 @@ final class StatusAktivasi extends Component
         )->to(UbahStatusSiswa::class);
     }
 
-    /** The shared dialog changed something: render() reads the lists and counts again. */
+    /** SV6 "Ubah status terpilih (N)" (Admin only): the shared dialog for the ticked rows. */
+    public function askStatusSelected(): void
+    {
+        Gate::authorize(Permission::UserArchive->value);
+        $ids = $this->tickedStudents();
+
+        if ($ids !== null) {
+            $this->dispatch(UbahStatusSiswa::OPEN_EVENT, ids: $ids)->to(UbahStatusSiswa::class);
+        }
+    }
+
+    /** SV6 "Hapus" of one row (`student.trash`): the shared dialog "Hapus 1 siswa?". */
+    public function askTrashStudent(int $userId): void
+    {
+        Gate::authorize('trashStudents', TrashEntry::class);
+        $student = $this->listedStudent($userId);
+
+        if ($student !== null) {
+            $this->dispatch(HapusSiswa::OPEN_EVENT, ids: [(int) $student->getKey()])->to(HapusSiswa::class);
+        }
+    }
+
+    /** SV6 "Hapus terpilih (N)" (`student.trash`): the shared dialog "Hapus N siswa?" for the ticked rows. */
+    public function askTrashSelected(): void
+    {
+        Gate::authorize('trashStudents', TrashEntry::class);
+        $ids = $this->tickedStudents();
+
+        if ($ids !== null) {
+            $this->dispatch(HapusSiswa::OPEN_EVENT, ids: $ids)->to(HapusSiswa::class);
+        }
+    }
+
+    /** SV6, D-187 "Ubah data" of one row (`student.update`): the shared dialog UbahDataSiswa for that student. */
+    public function askData(int $userId): void
+    {
+        Gate::authorize(Permission::StudentUpdate->value);
+        $student = $this->listedStudent($userId);
+
+        if ($student !== null) {
+            $this->dispatch(UbahDataSiswa::OPEN_EVENT, userId: (int) $student->getKey());
+        }
+    }
+
+    /** "Pilih semua yang tampil": the rows of the open class dialog, else the rows of "Daftar siswa" (at most 400). */
+    public function toggleAllStudents(ActivationReport $report): void
+    {
+        Gate::authorize(Permission::StudentView->value);
+        abort_unless(Gate::allows(Permission::UserArchive->value) || Gate::allows('trashStudents', TrashEntry::class), 403);
+
+        $this->toggleTicks($this->listedIds($report));
+    }
+
+    /** A shared dialog changed something: render() reads the lists and counts again, and the ticks are cleared. */
     #[On(UbahStatusSiswa::DONE_EVENT)]
+    #[On(HapusSiswa::DONE_EVENT)]
+    #[On(UbahDataSiswa::DONE_EVENT)]
     public function statusChanged(): void
     {
-        // Re-render only.
+        $this->reset('selectedStudents');
     }
 
     public function saveWindow(UpdateActivationWindow $update): void
@@ -402,46 +500,51 @@ final class StatusAktivasi extends Component
         $this->dispatch('sth-toast', message: 'Jendela aktivasi disimpan: '.(int) $this->windowDays.' hari untuk impor berikutnya.', tone: 'success');
     }
 
-    public function export(ActivationReport $report, AdminRecipients $recipients): ?BinaryFileResponse
+    /**
+     * "Download Excel" next to the two tabs (SV3; SV6, D-185 moved the file into ExportActivationReport): on "Per kelas"
+     * the whole school or the chosen tingkat; on "Daftar siswa" what the list shows (its class filter = one sheet named
+     * after the class, else the tingkat choice; its status tab and search apply). No match: a warning toast, no file.
+     */
+    public function export(ExportActivationReport $export): ?BinaryFileResponse
     {
         Gate::authorize(Permission::StudentView->value);
         abort_unless(array_key_exists($this->unduhTingkat, self::DOWNLOAD_LEVELS), 404);
-        // The file belongs to the list: coming back from the password page must not reopen a dialog, and shows the list.
+        // The file belongs to the tab: coming back from the password page must not reopen a dialog.
         $this->forgetClass();
-        $this->tampil = self::VIEW_STUDENTS;
 
         if (! $this->passwordRecentlyConfirmed('export')) {
             return null;
         }
 
-        // SV3: the tingkat choice replaces the class filter of the list for the file; the status tab and the search
-        // still apply.
-        $level = $this->unduhTingkat === '' ? null : (int) $this->unduhTingkat;
-        $rows = $report->rows(null, $this->status ?: null, $this->q)
-            ->when($level !== null, fn ($c) => $c->where('level', $level))
-            ->values();
-        $tingkat = $level === null ? 'semua' : ActivationReport::LEVELS[$level];
+        $scope = $this->downloadScope();
 
-        activity('account')
-            ->causedBy($this->actor())
-            ->event('account.activation_report_exported')
-            ->withProperties(['filters' => array_filter(['status' => $this->status, 'q' => $this->q !== '' ? 'ya' : '']), 'tingkat' => $tingkat, 'rows' => $rows->count()])
-            ->log('account.activation_report_exported');
+        if ($scope['classroom'] !== null && ! self::knownClass($scope['classroom'])) {
+            $this->dispatch('sth-toast', message: ExportActivationReport::MSG_EMPTY, tone: 'warning');
 
-        // SECURITY §3m-9: the file of the whole school (names, classes, account states) alerts every Admin above
-        // LargeExportNotice::LIMIT rows, like the other exports (QA10).
-        if ($rows->count() > LargeExportNotice::LIMIT) {
-            Notification::send($recipients->admins(), new LargeExportNotice((string) $this->actor()->name, 'laporan status aktivasi', $rows->count(), now()->translatedFormat('j F Y H:i')));
+            return null;
         }
 
-        $base = (string) tempnam(sys_get_temp_dir(), 'sth');
-        @unlink($base);
-        $path = $base.'.xlsx';
-        $report->writeXlsx($rows, $path, $level);
+        return $this->download($export->handle($this->actor(), $scope['classroom'], $scope['level'], $scope['state'], $scope['search']));
+    }
 
-        return response()
-            ->download($path, 'status-aktivasi-'.mb_strtolower($tingkat).'-'.now()->format('Ymd-His').'.xlsx')
-            ->deleteFileAfterSend();
+    /** SV6, D-185 "Download Excel" in the class dialog: every student of that class, every status, one sheet. */
+    public function exportClass(string $classroomId): ?BinaryFileResponse
+    {
+        Gate::authorize(Permission::StudentView->value);
+        $classroom = Classroom::query()->find($classroomId, ['id']);
+
+        if ($classroom === null) {
+            $this->dispatch('sth-toast', message: self::MSG_CLASS_GONE, tone: 'warning');
+
+            return null;
+        }
+
+        // The id comes from the database, so the call the password page resumes is a plain literal.
+        if (! $this->passwordRecentlyConfirmed("exportClass('".$classroom->getKey()."')")) {
+            return null;
+        }
+
+        return $this->download(app(ExportActivationReport::class)->handle($this->actor(), (string) $classroom->getKey()));
     }
 
     // View ----------------------------------------------------------------------------------------
@@ -457,6 +560,7 @@ final class StatusAktivasi extends Component
         $isAdmin = Gate::allows(Permission::UserResetPassword->value);
         $canReopen = Gate::allows(Permission::StudentImport->value);
         $canChangeStatus = Gate::allows(Permission::UserArchive->value);
+        $canTrash = Gate::allows('trashStudents', TrashEntry::class);
         $target = $this->targetId !== null
             ? User::query()->with('student.classroom:id,name')->find($this->targetId, ['id', 'name', 'initial_password_expires_at', 'frozen_at'])
             : null;
@@ -464,17 +568,30 @@ final class StatusAktivasi extends Component
         $summary = $report->summary($all);
         $frozen = $this->frozenAccounts($isAdmin);
         $k7 = $report->initialPasswordAlerts();
+        $classDialog = $this->classDialog($all, $canReopen, $isAdmin, $canChangeStatus);
+        $rows = $filtered->take($this->limit)->map(fn (array $row): array => $row + [
+            'action' => self::rowAction($row['state'], $row['frozenReason'], true, $canReopen, $isAdmin, $row['expiresAt']),
+            'change' => self::changeLabel($row['state'], $canChangeStatus),
+        ]);
+
+        // SV6: the rows drawn now are the ones the student actions may name.
+        $listIds = $this->tampil === self::VIEW_STUDENTS ? $rows->pluck('userId')->map(intval(...))->values()->all() : [];
+        $classIds = $classDialog !== null ? $classDialog['rows']->pluck('userId')->map(intval(...))->values()->all() : [];
+        $this->rememberShown([...$listIds, ...$classIds]);
 
         return view('livewire.akun.status-aktivasi', [
             'totals' => ActivationReport::totals($all),
             'summary' => $summary->take($this->classLimit),
             'classCount' => $summary->count(),
-            'classDialog' => $this->classDialog($all, $canReopen, $isAdmin, $canChangeStatus),
+            'classDialog' => $classDialog,
             'openClassOnLoad' => $this->openClassOnLoad && $this->kelas !== '',
-            'rows' => $filtered->take($this->limit)->map(fn (array $row): array => $row + [
-                'action' => self::rowAction($row['state'], $row['frozenReason'], true, $canReopen, $isAdmin, $row['expiresAt']),
-                'change' => self::changeLabel($row['state'], $canChangeStatus),
-            ]),
+            'rows' => $rows,
+            'listTicks' => $this->tickState($listIds),
+            'classTicks' => $this->tickState($classIds),
+            'canTick' => $canChangeStatus || $canTrash,
+            'canTrash' => $canTrash,
+            'canEditData' => Gate::allows(Permission::StudentUpdate->value),
+            'downloadNote' => $this->downloadNote(),
             'filteredCount' => $filtered->count(),
             // r3: no button at the cap (a click could not show more); the note says how to narrow the list instead.
             'hasMore' => $filtered->count() > $this->limit && $this->limit < self::MAX,
@@ -491,6 +608,7 @@ final class StatusAktivasi extends Component
             'canUnfreeze' => $isAdmin,
             'canChangeStatus' => $canChangeStatus,
             'statusReturnUrl' => $canChangeStatus ? $this->returnUrl() : null,
+            'trashReturnUrl' => $canTrash ? $this->returnUrl() : null,
             'canSetWindow' => Gate::allows(Permission::SettingManage->value),
             'currentWindow' => app(AccountControls::class)->windowDays(),
             'target' => $target === null ? null : [
@@ -663,6 +781,126 @@ final class StatusAktivasi extends Component
         $this->targetId = (int) $target->getKey();
         $this->action = $action;
         $this->dispatch('sth-modal-open', id: 'aktivasi-aksi');
+    }
+
+    /**
+     * SV6: a student account one of the lists drew during this visit that is still a student (not in the trash). An id
+     * never listed (a staff account, an unknown or forged id) is refused with 404; a listed one that went to the trash
+     * meanwhile gets a warning toast and null.
+     */
+    private function listedStudent(int $userId): ?User
+    {
+        abort_unless(in_array($userId, $this->shownStudents, true), 404);
+
+        /** @var User|null $user */
+        $user = User::query()->whereHas('student')->find($userId);
+
+        if ($user === null) {
+            $this->dispatch('sth-toast', message: self::MSG_STUDENT_GONE, tone: 'warning');
+        }
+
+        return $user;
+    }
+
+    /**
+     * SV6: the ticked rows (SelectsListedStudents::tickedIds()) when every one is still a student. A ticked student who
+     * went to the trash meanwhile drops out of the ticks with a warning toast and null.
+     *
+     * @return list<int>|null
+     */
+    private function tickedStudents(): ?array
+    {
+        $ids = $this->tickedIds();
+
+        if ($ids === null) {
+            return null;
+        }
+
+        $present = User::query()->whereKey($ids)->whereHas('student')->pluck('id')->map(intval(...))->all();
+
+        if (count($present) !== count($ids)) {
+            $this->selectedStudents = array_map(strval(...), array_values(array_intersect($ids, $present)));
+            $this->dispatch('sth-toast', message: self::MSG_STUDENTS_GONE, tone: 'warning');
+
+            return null;
+        }
+
+        return $ids;
+    }
+
+    /**
+     * SV6: the student ids the list on screen shows now, in its order (the same rows and limits as render()): the open
+     * class dialog, else "Daftar siswa" when that tab is open, else none.
+     *
+     * @return list<int>
+     */
+    private function listedIds(ActivationReport $report): array
+    {
+        if ($this->kelas !== '') {
+            $students = $report->rows($this->kelas);
+            $rows = ($this->kelasStatus === '' ? $students : $students->where('state', $this->kelasStatus))
+                ->take(max(self::PAGE, min(self::MAX, $this->kelasLimit)));
+        } elseif ($this->tampil === self::VIEW_STUDENTS) {
+            $rows = $report->rows($this->daftarKelas ?: null, $this->status ?: null, $this->q)
+                ->take(max(self::PREVIEW, min(self::MAX, $this->limit)));
+        } else {
+            return [];
+        }
+
+        return $rows->pluck('userId')->map(intval(...))->values()->all();
+    }
+
+    /**
+     * SV6, D-185: what "Download Excel" next to the tabs writes. "Daftar siswa": its class filter (else the tingkat
+     * choice), its status tab and its search. "Per kelas": the tingkat choice only.
+     *
+     * @return array{classroom: ?string, level: ?int, state: string, search: string}
+     */
+    private function downloadScope(): array
+    {
+        $list = $this->tampil === self::VIEW_STUDENTS;
+        $classroom = $list && $this->daftarKelas !== '' ? $this->daftarKelas : null;
+
+        return [
+            'classroom' => $classroom,
+            'level' => $classroom === null && $this->unduhTingkat !== '' && array_key_exists($this->unduhTingkat, self::DOWNLOAD_LEVELS)
+                ? (int) $this->unduhTingkat
+                : null,
+            'state' => $list && array_key_exists($this->status, AccountControls::STATES) ? $this->status : '',
+            'search' => $list ? trim($this->q) : '',
+        ];
+    }
+
+    /** SV6: one line under "Download Excel" that says what the file will hold. */
+    private function downloadNote(): string
+    {
+        $scope = $this->downloadScope();
+        $parts = [
+            match (true) {
+                $scope['classroom'] !== null => 'Kelas '.(ActivationReport::classOptions()->get($scope['classroom']) ?? 'yang dipilih'),
+                $scope['level'] !== null => self::DOWNLOAD_LEVELS[(string) $scope['level']],
+                default => self::DOWNLOAD_LEVELS[''],
+            },
+            $scope['state'] !== '' ? 'status '.AccountControls::stateLabel($scope['state']) : 'semua status',
+        ];
+
+        if ($scope['search'] !== '') {
+            $parts[] = 'hasil pencarian';
+        }
+
+        return 'Isi file: '.implode(', ', $parts).'.';
+    }
+
+    /** The finished file, or the warning toast when no student matched (no file, no audit row). */
+    private function download(?ExportedFile $file): ?BinaryFileResponse
+    {
+        if ($file === null) {
+            $this->dispatch('sth-toast', message: ExportActivationReport::MSG_EMPTY, tone: 'warning');
+
+            return null;
+        }
+
+        return response()->download($file->path, $file->filename)->deleteFileAfterSend();
     }
 
     private function studentAccount(int $userId): User

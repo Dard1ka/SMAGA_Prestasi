@@ -82,13 +82,17 @@
                     Daftar siswa <span class="cnt">{{ $number(array_sum($totals)) }}</span>
                 </button>
             </div>
-            @if ($tampil === 'siswa')
-                {{-- SV3: the Excel file per tingkat, one sheet per tingkat for "Semua kelas". --}}
+            {{-- SV3: the Excel file per tingkat. SV6, D-185: on both tabs; "Semua kelas" starts with the sheet "Ringkasan"; on
+                 "Daftar siswa" a class filter gives that class, so the tingkat choice steps aside. --}}
+            <div class="flex flex-col items-end gap-1 max-sm:w-full max-sm:items-start">
                 <div class="flex items-center gap-2">
-                    <x-sth.select wire:model.live="unduhTingkat" label="Tingkat untuk download" hide-label size="sm" :options="\App\Livewire\Akun\StatusAktivasi::DOWNLOAD_LEVELS" class="w-40" />
+                    @unless ($tampil === 'siswa' && $daftarKelas !== '')
+                        <x-sth.select wire:model.live="unduhTingkat" label="Tingkat untuk download" hide-label size="sm" :options="\App\Livewire\Akun\StatusAktivasi::DOWNLOAD_LEVELS" class="w-40" />
+                    @endunless
                     <x-sth.button variant="quiet" size="sm" icon="download" wire:click="export" wire:loading.attr="disabled" wire:target="export">Download Excel</x-sth.button>
                 </div>
-            @endif
+                <p class="m-0 text-xs text-muted">{{ $downloadNote }}</p>
+            </div>
         </div>
 
         <div id="panel-aktivasi" role="tabpanel" aria-labelledby="tab-aktivasi-{{ $tampil }}" class="flex min-w-0 flex-col gap-3">
@@ -167,10 +171,19 @@
                             <x-sth.empty-state icon="search" title="Tidak ada siswa yang cocok" :card="false">Ubah filter atau kata kunci.</x-sth.empty-state>
                         </div>
                     @else
+                        {{-- SV6, D-185: the same ticks and student actions as Admin › Kelas › Lihat siswa. --}}
+                        @if ($canTick)
+                            <div class="border-b border-line px-4 py-2">
+                                @include('livewire.partials.siswa-pilih', ['pilihId' => 'aktivasi-siswa-pilih-semua', 'ticks' => $listTicks, 'canStatus' => $canChangeStatus, 'canTrash' => $canTrash])
+                            </div>
+                        @endif
                         {{-- Five columns so the list fits the page from 1280 px without sideways scrolling (D-159): flags sit
                              under the status, activation and last login share a cell. On a phone it scrolls inside the card. --}}
-                        <x-sth.table caption="Daftar status aktivasi siswa" :card="false" table-class="min-w-[760px]">
+                        <x-sth.table caption="Daftar status aktivasi siswa" :card="false" table-class="min-w-[820px]">
                             <x-slot:head>
+                                @if ($canTick)
+                                    <th scope="col" class="w-12"><span class="sr-only">Pilih</span></th>
+                                @endif
                                 <th scope="col" class="min-w-52">Siswa</th>
                                 <th scope="col" class="min-w-36">Status</th>
                                 <th scope="col" class="min-w-40">Email</th>
@@ -179,6 +192,9 @@
                             </x-slot:head>
                             @foreach ($rows as $row)
                                 <tr wire:key="siswa-{{ $row['userId'] }}">
+                                    @if ($canTick)
+                                        <td>@include('livewire.partials.siswa-cek', ['cekId' => 'aktivasi-siswa-pilih-'.$row['userId'], 'userId' => $row['userId'], 'name' => $row['name']])</td>
+                                    @endif
                                     <td>
                                         <div class="flex min-w-0 items-center gap-2.5">
                                             <x-sth.avatar :name="$row['name']" size="sm" />
@@ -211,12 +227,8 @@
                                             @elseif ($row['action'] === 'admin')
                                                 <span class="text-xs text-muted">Hubungi Admin</span>
                                             @endif
-                                            {{-- SV5 (Admin): the shared dialog "Ubah status"; "Aktifkan lagi" on a row that can be brought back. --}}
-                                            @if ($row['change'])
-                                                <x-sth.button variant="quiet" size="sm" aria-haspopup="dialog" wire:click="askStatus({{ $row['userId'] }})">
-                                                    {{ $row['change'] }}<span class="sr-only"> akun {{ $row['name'] }}</span>
-                                                </x-sth.button>
-                                            @endif
+                                            {{-- SV5/SV6: Ubah data, Ubah status (Admin; "Aktifkan lagi" on a row that can be brought back), Hapus. --}}
+                                            @include('livewire.partials.siswa-aksi', ['userId' => $row['userId'], 'name' => $row['name'], 'change' => $row['change'], 'canData' => $canEditData, 'canTrash' => $canTrash])
                                         </div>
                                     </td>
                                 </tr>
@@ -270,9 +282,17 @@
                 @if ($classDialog['rows']->isEmpty())
                     <x-sth.empty-state icon="users" title="Tidak ada siswa dengan status ini" :card="false">Pilih status lain.</x-sth.empty-state>
                 @else
+                    {{-- SV6, D-185: the same ticks and student actions as Admin › Kelas › Lihat siswa. --}}
+                    @if ($canTick)
+                        @include('livewire.partials.siswa-pilih', ['pilihId' => 'aktivasi-kelas-pilih-semua', 'ticks' => $classTicks, 'canStatus' => $canChangeStatus, 'canTrash' => $canTrash])
+                    @endif
                     <x-sth.table caption="Status aktivasi siswa kelas {{ $classDialog['name'] }}" class="overflow-hidden rounded-tile border border-line" :card="false">
-                        {{-- Four columns so the table fits the 760px dialog without sideways scrolling: NISN and email sit under the name. --}}
+                        {{-- Four columns (five with ticks) so the table fits the 760px dialog without sideways scrolling: NISN and
+                             email sit under the name. --}}
                         <x-slot:head>
+                            @if ($canTick)
+                                <th scope="col" class="w-12"><span class="sr-only">Pilih</span></th>
+                            @endif
                             <th scope="col" class="min-w-44">Siswa, NISN, email</th>
                             <th scope="col" class="min-w-28">Status</th>
                             <th scope="col" class="min-w-40">Aktivasi dan login terakhir</th>
@@ -280,6 +300,9 @@
                         </x-slot:head>
                         @foreach ($classDialog['rows'] as $row)
                             <tr wire:key="kelas-siswa-{{ $row['userId'] }}">
+                                @if ($canTick)
+                                    <td>@include('livewire.partials.siswa-cek', ['cekId' => 'aktivasi-kelas-pilih-'.$row['userId'], 'userId' => $row['userId'], 'name' => $row['name']])</td>
+                                @endif
                                 <td>
                                     <div class="flex min-w-0 flex-col">
                                         <span class="font-bold">{{ $row['name'] }}</span>
@@ -309,11 +332,7 @@
                                         @elseif ($row['action'] === 'admin')
                                             <span class="text-xs text-muted">Hubungi Admin</span>
                                         @endif
-                                        @if ($row['change'])
-                                            <x-sth.button variant="quiet" size="sm" aria-haspopup="dialog" wire:click="askStatus({{ $row['userId'] }})">
-                                                {{ $row['change'] }}<span class="sr-only"> akun {{ $row['name'] }}</span>
-                                            </x-sth.button>
-                                        @endif
+                                        @include('livewire.partials.siswa-aksi', ['userId' => $row['userId'], 'name' => $row['name'], 'change' => $row['change'], 'canData' => $canEditData, 'canTrash' => $canTrash])
                                     </div>
                                 </td>
                             </tr>
@@ -330,6 +349,12 @@
             <p class="m-0 text-md text-muted">Pilih kelas dari tabel Per kelas.</p>
         @endif
         <x-slot:footer>
+            {{-- SV6, D-185: the whole class with every status, one sheet named after the class. --}}
+            @if ($classDialog)
+                <x-sth.button variant="quiet" icon="download" wire:click="exportClass('{{ $kelas }}')" wire:loading.attr="disabled" wire:target="exportClass">
+                    Download Excel<span class="sr-only"> kelas {{ $classDialog['name'] }}</span>
+                </x-sth.button>
+            @endif
             <x-sth.button variant="quiet" data-sth-close>Tutup</x-sth.button>
         </x-slot:footer>
     </x-sth.modal>
@@ -369,5 +394,13 @@
     {{-- SV5 (Admin only): "Ubah status" / "Aktifkan lagi", the dialog shared with Admin › Kelas. --}}
     @if ($canChangeStatus)
         <livewire:admin.ubah-status-siswa :return-to="$statusReturnUrl" :key="'ubah-status-siswa'" />
+    @endif
+    {{-- SV6, D-185 (student.trash: Admin, Kesiswaan): "Hapus siswa?", the dialog shared with Admin › Kelas. --}}
+    @if ($canTrash)
+        <livewire:admin.hapus-siswa :return-to="$trashReturnUrl" :key="'hapus-siswa'" />
+    @endif
+    {{-- SV6, D-187 (student.update): "Ubah data siswa", the dialog shared with Admin › Kelas and TU › Data siswa. --}}
+    @if ($canEditData)
+        <livewire:akun.ubah-data-siswa :key="'ubah-data-siswa'" />
     @endif
 </div>

@@ -179,18 +179,6 @@ class Letter extends Model
         return is_string($number) && $number !== '' ? $number : null;
     }
 
-    /**
-     * Is this number already used by a letter of the type (any version, revoked too)? Compared without spaces
-     * and without case (LetterNumber::key()). UI hint + early check; the unique index (type, full_number) decides.
-     */
-    public static function numberTaken(LetterType $type, string $key): bool
-    {
-        return static::query()
-            ->where('type', $type)
-            ->whereRaw("LOWER(REPLACE(full_number, ' ', '')) = ?", [$key])
-            ->exists();
-    }
-
     public function isSent(): bool
     {
         return $this->sent_at !== null;

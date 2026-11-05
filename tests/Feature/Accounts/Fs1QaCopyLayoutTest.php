@@ -51,7 +51,7 @@ it('explains the initial password of new students with the rule only and keeps t
         'Aurelia Maharani Kusumawardani,226227031,0101234557,12-05-2011,X-1,',
     ])."\n");
 
-    Livewire::actingAs(F::staff(RoleName::Kesiswaan))->test(ImportSiswa::class)
+    Livewire::actingAs(F::staff(RoleName::Kesiswaan))->withQueryParams([ImportSiswa::LEVEL_QUERY => '10'])->test(ImportSiswa::class)
         ->set('schoolYear', '2026/2027')
         ->set('file', $file)
         ->assertHasNoErrors()

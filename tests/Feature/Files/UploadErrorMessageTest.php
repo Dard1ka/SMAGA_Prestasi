@@ -140,7 +140,7 @@ it('names the field and says what to do when an upload is refused before it reac
     expect($talent->errors()->first('bukti'))->toBe('Bukti dukung gagal di-upload. '.ui2UploadAdvice());
 
     // Import siswa: "file", not the old "berkas" next to the word "file".
-    $import = Livewire::actingAs(F::staff(RoleName::Kesiswaan, 'Ibu Dwi Rahayu'))->test(ImportSiswa::class)
+    $import = Livewire::actingAs(F::staff(RoleName::Kesiswaan, 'Ibu Dwi Rahayu'))->withQueryParams([ImportSiswa::LEVEL_QUERY => '10'])->test(ImportSiswa::class)
         ->call('_uploadErrored', 'file', null, false);
     expect($import->errors()->first('file'))->toBe('File gagal di-upload. '.ui2UploadAdvice());
 });
@@ -185,7 +185,7 @@ it('answers a file over the limit of the temporary upload without a property nam
     $kesiswaan = F::staff(RoleName::Kesiswaan, 'Ibu Dwi Rahayu');
 
     foreach ([false, true] as $multiple) {
-        $screen = Livewire::actingAs($kesiswaan)->test(ImportSiswa::class)
+        $screen = Livewire::actingAs($kesiswaan)->withQueryParams([ImportSiswa::LEVEL_QUERY => '10'])->test(ImportSiswa::class)
             ->call('_uploadErrored', 'file', $response->getContent(), $multiple);
         $shown = collect($screen->errors()->toArray())->flatten()->all();
 

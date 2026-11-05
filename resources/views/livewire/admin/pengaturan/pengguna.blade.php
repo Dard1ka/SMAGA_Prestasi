@@ -187,6 +187,10 @@
                 </div>
                 <x-sth.chip :tone="$statusTone($studentAccount['status'])">{{ $studentAccount['status']?->label() }}</x-sth.chip>
                 <span class="flex w-full flex-wrap justify-end gap-2">
+                    {{-- SV6, D-187: name, NIS, NISN, birth date and class in the shared dialog (rendered once below). --}}
+                    @if ($canEditStudent)
+                        <x-sth.button variant="soft" size="sm" icon="edit" wire:click="openStudentData" aria-haspopup="dialog">Ubah data</x-sth.button>
+                    @endif
                     {{-- QA9: a disabled or archived account cannot log in, so the reset is not offered; the card says why. --}}
                     @if ($studentAccount['resetRefusal'])
                         <span class="text-sm muted">{{ $studentAccount['resetRefusal'] }}</span>
@@ -322,4 +326,9 @@
             <x-sth.button type="submit" variant="danger" form="siswa-nonaktif-form" wire:loading.attr="disabled" wire:target="disableStudent">Simpan</x-sth.button>
         </x-slot:footer>
     </x-sth.modal>
+
+    {{-- SV6, D-187: the shared "Ubah data siswa" dialog, once on this page; "Ubah data" on the student card opens it. --}}
+    @if ($canEditStudent)
+        <livewire:akun.ubah-data-siswa :key="'ubah-data-siswa'" :return-to="$returnTo" source="pengguna" />
+    @endif
 </section>

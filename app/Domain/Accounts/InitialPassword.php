@@ -14,8 +14,10 @@ use InvalidArgumentException;
  * D-173 (smaga_server, the lead's request of 2 Nov 2026): a newly imported student gets PREFIX + the birth date of the
  * imported row as ddmmyyyy (01-02-2010 → SMAGA_01022010), built by forBirthDate(). Students born on one day share it
  * (accepted by the lead). It is hashed by ImportStudents::createStudent(), by the seeders (DataUjiSekolahSeeder, the
- * local DemoSeeder) and by `sth:siswa:kata-sandi-awal`, nowhere else; the student must replace it at the activation
- * (D-138 stays for that: no "Lewati").
+ * local DemoSeeder), by `sth:siswa:kata-sandi-awal` and, since SV6 (D-187), by App\Actions\Students\UpdateStudentData
+ * ("Ubah data siswa"): a corrected birth date re-hashes the password of a pending student only while it is still the
+ * birth-date password of the old date (compared with Hash::check, the conditions of ApplyBirthDateInitialPasswords);
+ * nowhere else. The student must replace it at the activation (D-138 stays for that: no "Lewati").
  *
  * D-138: the configured value (config `sth.initial_student_password`) was the one initial password of every student
  * imported before D-173. make() still returns it, for four readers: K7 (matches()), PasswordPolicy (refused as a new

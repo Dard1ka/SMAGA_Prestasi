@@ -22,9 +22,11 @@ use Illuminate\Validation\ValidationException;
  * (kind student, no parent) keeps who, when, why and until when ("purge_after", TrashEntry::purgeAfterFor()). Before that
  * moment RestoreFromTrash brings the student back unchanged; afterwards `sth:sampah:hapus-permanen` deletes the data.
  *
- * Authorised with `classroom.manage` (TrashEntryPolicy::create), one transaction with the rows locked, ONE audit row
- * `student.trashed` (log `account`) with the user ids, the count, the reason and purge_after: never a name or NISN. The
- * rows are written with the query builder, so the User model's own activity log (which logs the name) stays silent.
+ * Authorised with TrashEntryPolicy::trashStudents(): `student.trash` (Kesiswaan, Admin; SV6, D-185) or `classroom.manage`
+ * (Admin). Since SV6 it is called from the shared dialog App\Livewire\Admin\HapusSiswa (Admin › Kelas › Lihat siswa and
+ * Status aktivasi). One transaction with the rows locked, ONE audit row `student.trashed` (log `account`) with the user
+ * ids, the count, the reason and purge_after: never a name or NISN. The rows are written with the query builder, so the
+ * User model's own activity log (which logs the name) stays silent.
  */
 final class TrashStudents
 {
@@ -50,7 +52,7 @@ final class TrashStudents
      */
     public function handle(User $actor, array $userIds, string $reason): array
     {
-        Gate::forUser($actor)->authorize('create', TrashEntry::class);
+        Gate::forUser($actor)->authorize('trashStudents', TrashEntry::class);
 
         $reason = TrashReason::validated($reason);
         $ids = self::ids($userIds);

@@ -11,6 +11,8 @@
 
     Props: name · id (default from name) · label · type (text) · value · hint · error (overrides $errors)
            icon (leading) · revealable (password show/hide button, JS) · optional · hide-label · size md | lg (48px)
+           input-class (extra classes on the <input> itself, e.g. a tint; null = none, the default output is unchanged;
+           SV6: "Koreksi" surat tints a field that still equals the old letter with `bg-blue-bg`)
 --}}
 @props([
     'name' => null,
@@ -25,6 +27,7 @@
     'optional' => false,
     'hideLabel' => false,
     'size' => 'md',
+    'inputClass' => null,
 ])
 @php
     $wireModel = $attributes->wire('model')->value();
@@ -45,7 +48,7 @@
             type="{{ $type }}"
             @if ($name !== null) name="{{ $name }}" @endif
             @if ($currentValue !== null && $type !== 'password') value="{{ $currentValue }}" @endif
-            @class(['input', 'h-12' => $size === 'lg', 'pl-11' => $icon, 'pr-14' => $revealable])
+            @class(['input', 'h-12' => $size === 'lg', 'pl-11' => $icon, 'pr-14' => $revealable, (string) $inputClass => filled($inputClass)])
             @if ($error) aria-invalid="true" @endif
             @if ($describedBy !== '') aria-describedby="{{ $describedBy }}" @endif
             {{ $attributes->except('class') }}

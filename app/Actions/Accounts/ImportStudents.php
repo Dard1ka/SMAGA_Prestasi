@@ -67,6 +67,14 @@ use Throwable;
  * Two imports of the same new students at the same moment (SV1 third check: the second one answered 500 from the unique
  * index): a NEW row whose NIS or NISN was registered after the check is not created and not counted (createStudent()),
  * the rest of the file is written; `created` stays what was written.
+ *
+ * SV6, D-184 (the lead, 5 Nov 2026: "bisa langsung ditunjukan siswa mana"): every report row whose numbers point to a
+ * registered student carries `matches`, the users.id of that student (moved, unchanged, corrected, skipped as alumni,
+ * in the Sampah or registered by another import meanwhile, refused while registered), or of the one or two students it
+ * collides with ("NIS dan NISN ini milik dua siswa yang berbeda": the owner of the NIS, then the owner of the NISN;
+ * "NIS sudah terdaftar …" / "NISN sudah terdaftar …": that owner); a row that matches nobody has []. The ids are for the
+ * server-side preview cache of the import screen only: never in the Livewire payload, in "Download baris yang perlu
+ * dicek" or in an audit entry (recordImport() and updateStudent() log counts, classes and dates only).
  */
 final class ImportStudents
 {
@@ -144,6 +152,16 @@ final class ImportStudents
 
     public const REQUIRED = ['name', 'nis', 'nisn', 'birth_date', 'classroom'];
 
+    /**
+     * SV6, D-184 (the lead, 5 Nov 2026, sementara): the tingkat a file may be imported for (`classrooms.level` => name).
+     * handle() / importSlice() with a level refuse every row whose class belongs to another tingkat (levelMismatch());
+     * null = no check (CLI, older callers).
+     */
+    public const LEVELS = [10 => 'X', 11 => 'XI', 12 => 'XII'];
+
+    /** SV6, D-184: a level outside LEVELS. */
+    public const LEVEL_REQUIRED = 'Pilih kelas.';
+
     private const LABELS = [
         'name' => 'Nama lengkap',
         'nis' => 'NIS',
@@ -161,15 +179,22 @@ final class ImportStudents
      *
      * @throws ValidationException for file-level problems (type, size, headers, too many rows, school year)
      */
-    public function handle(User $actor, string $path, string $extension, string $schoolYear, bool $dryRun = true): StudentImportReport
+    public function handle(User $actor, string $path, string $extension, string $schoolYear, bool $dryRun = true, ?int $level = null): StudentImportReport
     {
-        [$rows, $year] = $this->checkedRows($actor, $path, $extension, $schoolYear);
+        [$rows, $year] = $this->checkedRows($actor, $path, $extension, $schoolYear, $level);
 
         $applied = $dryRun ? ['created' => 0, 'moved' => 0, 'taken' => []] : $this->commit($actor, $rows, $year, (string) hash_file('sha256', $path));
         $taken = array_flip($applied['taken']);
+        // SV6, D-184: a row another import registered meanwhile names the student(s) that import wrote.
+        [$takenByNis, $takenByNisn] = $taken === [] ? [[], []] : $this->registeredStudents(array_map(
+            fn (array $r): array => ['nis' => $r['data']['nis'], 'nisn' => $r['data']['nisn']],
+            array_values(array_filter($rows, fn (array $r): bool => isset($taken[$r['report']['row']]))),
+        ));
 
         return new StudentImportReport(
-            rows: array_map(fn (array $r): array => isset($taken[$r['report']['row']]) ? self::markTaken($r['report']) : $r['report'], $rows),
+            rows: array_map(fn (array $r): array => isset($taken[$r['report']['row']])
+                ? self::markTaken($r['report'], self::matchIds([$takenByNis[$r['data']['nis']] ?? null, $takenByNisn[$r['data']['nisn']] ?? null]))
+                : $r['report'], $rows),
             dryRun: $dryRun,
             created: $applied['created'],
             schoolYear: $year->toString(),
@@ -190,9 +215,9 @@ final class ImportStudents
      *
      * @throws ValidationException for file-level problems
      */
-    public function importSlice(User $actor, string $path, string $extension, string $schoolYear, int $offset, int $length): array
+    public function importSlice(User $actor, string $path, string $extension, string $schoolYear, int $offset, int $length, ?int $level = null): array
     {
-        [$rows, $year] = $this->checkedRows($actor, $path, $extension, $schoolYear);
+        [$rows, $year] = $this->checkedRows($actor, $path, $extension, $schoolYear, $level);
 
         $valid = self::validOnly($rows);
         $slice = self::validOnly(array_slice($rows, max(0, $offset), max(0, $length)));
@@ -232,11 +257,16 @@ final class ImportStudents
      *
      * @throws ValidationException
      */
-    private function checkedRows(User $actor, string $path, string $extension, string $schoolYear): array
+    private function checkedRows(User $actor, string $path, string $extension, string $schoolYear, ?int $level = null): array
     {
         Gate::forUser($actor)->authorize(Permission::StudentImport->value);
 
         $year = $this->schoolYear($schoolYear);
+
+        if ($level !== null && ! array_key_exists($level, self::LEVELS)) {
+            throw ValidationException::withMessages(['level' => self::LEVEL_REQUIRED]);
+        }
+
         $extension = strtolower(ltrim($extension, '.'));
 
         if (! in_array($extension, ['xlsx', 'csv'], true)) {
@@ -247,7 +277,7 @@ final class ImportStudents
             throw ValidationException::withMessages(['file' => 'Ukuran file maksimal 2 MB.']);
         }
 
-        return [$this->validateRows($this->readRows($path, $extension), $year), $year];
+        return [$this->validateRows($this->readRows($path, $extension), $year, $level), $year];
     }
 
     /**
@@ -341,7 +371,7 @@ final class ImportStudents
      * @param  list<array<string, mixed>>  $rows
      * @return list<array{data: array<string, mixed>, report: array<string, mixed>}>
      */
-    private function validateRows(array $rows, SchoolYear $year): array
+    private function validateRows(array $rows, SchoolYear $year, ?int $level = null): array
     {
         $classrooms = Classroom::query()->get();
         $byName = $classrooms->keyBy(fn (Classroom $c): string => mb_strtoupper(str_replace(' ', '', $c->name)));
@@ -410,10 +440,13 @@ final class ImportStudents
 
             // The registered student this row updates: only when NIS and NISN point to the same one.
             $student = null;
+            // SV6, D-184: the registered student(s) the row matches or collides with (users.id, report `matches`).
+            $matches = [];
 
             if ($nisOk && $nisnOk) {
                 $ownerOfNis = $byNis[$row['nis']] ?? null;
                 $ownerOfNisn = $byNisn[$row['nisn']] ?? null;
+                $matches = self::matchIds([$ownerOfNis, $ownerOfNisn]);
 
                 if ($ownerOfNis !== null && $ownerOfNisn !== null) {
                     if ($ownerOfNis->is($ownerOfNisn)) {
@@ -485,6 +518,9 @@ final class ImportStudents
             if (! $skipped) {
                 if ($classroom === null || ! $classroom->active) {
                     $errors[] = 'Kelas tidak ditemukan.';
+                } elseif ($level !== null && $classroom->level !== $level) {
+                    // SV6, D-184 (sementara): the file of one tingkat holds only classes of that tingkat.
+                    $errors[] = self::levelMismatch((string) $classroom->name, $level);
                 }
 
                 if ($row['phone'] !== null && ! PhoneNumber::isValid($row['phone'])) {
@@ -566,11 +602,32 @@ final class ImportStudents
                     'previous_classroom' => $moved ? ($classNames[(string) $student?->classroom_id] ?? null) : null,
                     'notes' => $errors === [] ? $notes : [],
                     'changes' => $changes && $errors === [],
+                    'matches' => $matches,
                 ],
             ];
         }
 
         return $result;
+    }
+
+    /**
+     * SV6, D-184: the users.id of the given registered students, in order, each once (a row whose NIS and NISN belong to
+     * one student names it once).
+     *
+     * @param  list<Student|null>  $students
+     * @return list<int>
+     */
+    private static function matchIds(array $students): array
+    {
+        $ids = [];
+
+        foreach ($students as $student) {
+            if ($student !== null && $student->user_id !== null && ! in_array((int) $student->user_id, $ids, true)) {
+                $ids[] = (int) $student->user_id;
+            }
+        }
+
+        return $ids;
     }
 
     /**
@@ -714,14 +771,16 @@ final class ImportStudents
     }
 
     /**
-     * A NEW report row the commit did not create (NOTE_TAKEN): skipped, nothing written for it.
+     * A NEW report row the commit did not create (NOTE_TAKEN): skipped, nothing written for it; `matches` = the student(s)
+     * the other import registered with its NIS or NISN (SV6, D-184; [] when that import's row is gone again).
      *
      * @param  array<string, mixed>  $report
+     * @param  list<int>  $matches
      * @return array<string, mixed>
      */
-    private static function markTaken(array $report): array
+    private static function markTaken(array $report, array $matches): array
     {
-        return ['action' => StudentImportReport::SKIPPED, 'changes' => false, 'notes' => [...($report['notes'] ?? []), self::NOTE_TAKEN]] + $report;
+        return ['action' => StudentImportReport::SKIPPED, 'changes' => false, 'notes' => [...($report['notes'] ?? []), self::NOTE_TAKEN], 'matches' => $matches] + $report;
     }
 
     /**
@@ -856,6 +915,14 @@ final class ImportStudents
         } catch (InvalidArgumentException $e) {
             throw ValidationException::withMessages(['school_year' => $e->getMessage()]);
         }
+    }
+
+    /** SV6, D-184: "Kelas XI-4 bukan kelas XII. File ini untuk kelas XII saja." */
+    public static function levelMismatch(string $classroom, int $level): string
+    {
+        $name = self::LEVELS[$level] ?? (string) $level;
+
+        return 'Kelas '.$classroom.' bukan kelas '.$name.'. File ini untuk kelas '.$name.' saja.';
     }
 
     private static function normalizeHeader(string $header): string

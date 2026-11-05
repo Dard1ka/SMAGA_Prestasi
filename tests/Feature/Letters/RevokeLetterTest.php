@@ -23,6 +23,7 @@ use App\Notifications\Letters\LetterRevised;
 use App\Notifications\Letters\LettersIssued;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
@@ -78,6 +79,15 @@ function b3Issued(object $t, bool $send = true): Registration
     }
 
     return $registration->fresh();
+}
+
+/** A student letter of another registration (not revoked); returns its number. */
+function b3Other(object $t, string $number = '400.3.8/314/MRD/X/2026'): string
+{
+    $other = F::registration(RegistrationStatus::Disetujui, ['Hana Safira'], $t->mentor);
+    app(IssueLetters::class)->handle($t->tu, $other, LetterType::Siswa, b3LetterDraft($number));
+
+    return $number;
 }
 
 function b3Letter(LetterType $type = LetterType::Siswa): Letter
@@ -165,27 +175,68 @@ it('notifies only the mentor when the guru letter is corrected', function (): vo
     Notification::assertNotSentTo(ApproveRegistration::memberUsers($registration), LetterRevised::class);
 });
 
-it('never reuses a number, not even the revoked one', function (): void {
+it('refuses the number of another letter that is not revoked, in any spelling (SV6, D-188)', function (): void {
     b3Issued($this);
-    $other = F::registration(RegistrationStatus::Disetujui, ['Hana Safira'], $this->mentor);
-    app(IssueLetters::class)->handle($this->tu, $other, LetterType::Siswa, b3LetterDraft('400.3.8/314/MRD/X/2026'));
+    b3Other($this);
 
-    // Its own number, another letter's number, and the same number in another spelling.
-    foreach ([B3_SISWA, '400.3.8/314/MRD/X/2026', '400.3.8 / 314 / mrd / x / 2026'] as $taken) {
+    foreach (['400.3.8/314/MRD/X/2026', '400.3.8 / 314 / mrd / x / 2026'] as $taken) {
         try {
             app(RevokeLetter::class)->handle($this->tu, b3Letter(), 'Koreksi nomor surat.', b3LetterDraft($taken));
             $this->fail('A used number was accepted: '.$taken);
         } catch (ValidationException $e) {
-            expect($e->errors())->toHaveKey('number');
+            expect($e->errors()['number'][0])->toBe(IssueLetters::MSG_TAKEN);
         }
     }
 
-    // Revoke, then try to give the revoked number to a new registration.
-    app(RevokeLetter::class)->handle($this->tu, Letter::query()->where('full_number', B3_SISWA)->firstOrFail(), 'Koreksi data.', b3LetterDraft('400.3.8/330/MRD/X/2026'));
+    expect(Letter::query()->whereNotNull('revoked_at')->count())->toBe(0);
+});
+
+it('re-issues a correction with the SAME number: the old letter is revoked, the new one is current (SV6, D-188)', function (): void {
+    b3Issued($this);
+    $old = b3Letter();
+
+    // Same number in another spelling: still "its own" number.
+    $new = app(RevokeLetter::class)->handle($this->tu, $old, 'Tanggal pelaksanaan salah ketik.', b3LetterDraft(' 400.3.8 / 313 / MRD / X / 2026 ', date: '8 November 2026'));
+
+    expect($old->fresh()->revoked_at)->not->toBeNull()
+        ->and($new->full_number)->toBe('400.3.8 / 313 / MRD / X / 2026')
+        ->and($new->version)->toBe(2)
+        ->and($new->replaces_letter_id)->toBe($old->getKey())
+        ->and($new->revoked_at)->toBeNull()
+        ->and(b3Letter()->getKey())->toBe($new->getKey());
+
+    // A second correction keeps the number again.
+    $third = app(RevokeLetter::class)->handle($this->tu, $new, 'Tempat salah ketik.', b3LetterDraft(B3_SISWA));
+    expect($third->full_number)->toBe(B3_SISWA)
+        ->and($third->version)->toBe(3)
+        ->and(Letter::query()->where('type', LetterType::Siswa)->whereNull('revoked_at')->count())->toBe(1);
+});
+
+it('lets another registration use the number of a revoked letter: the NEW rule of SV6 / D-188', function (): void {
+    b3Issued($this);
+    app(RevokeLetter::class)->handle($this->tu, b3Letter(), 'Koreksi data.', b3LetterDraft('400.3.8/330/MRD/X/2026'));
     $third = F::registration(RegistrationStatus::Disetujui, ['Citra Ayu Lestari'], $this->mentor);
 
-    expect(fn () => app(IssueLetters::class)->handle($this->tu, $third, LetterType::Siswa, b3LetterDraft(B3_SISWA)))->toThrow(ValidationException::class);
-    expect(Letter::query()->where('full_number', B3_SISWA)->where('type', LetterType::Siswa)->count())->toBe(1);
+    expect(IssueLetters::isTaken(LetterType::Siswa, B3_SISWA))->toBeFalse()
+        ->and(IssueLetters::isTaken(LetterType::Siswa, '400.3.8/330/MRD/X/2026'))->toBeTrue();
+
+    $letter = app(IssueLetters::class)->handle($this->tu, $third, LetterType::Siswa, b3LetterDraft(B3_SISWA));
+
+    expect($letter->full_number)->toBe(B3_SISWA)
+        ->and(Letter::query()->where('full_number', B3_SISWA)->where('type', LetterType::Siswa)->count())->toBe(2)
+        ->and(IssueLetters::isTaken(LetterType::Siswa, B3_SISWA))->toBeTrue();
+});
+
+it('keeps the unique index on letters that are not revoked only (SV6, D-188)', function (): void {
+    $registration = F::registration(RegistrationStatus::Disetujui, ['Raka Pradipta'], $this->mentor);
+    $other = F::registration(RegistrationStatus::Disetujui, ['Hana Safira'], $this->mentor);
+
+    Letter::factory()->create(['registration_id' => $registration->getKey(), 'sequence' => null, 'full_number' => 'B-1/2026', 'revoked_at' => now()]);
+    Letter::factory()->create(['registration_id' => $other->getKey(), 'sequence' => null, 'full_number' => 'B-1/2026']);
+
+    // A second current letter with the number, also in another spelling, is refused by the database.
+    expect(fn () => Letter::factory()->create(['registration_id' => $registration->getKey(), 'version' => 2, 'sequence' => null, 'full_number' => 'b-1/2026']))
+        ->toThrow(UniqueConstraintViolationException::class);
 });
 
 it('validates the reason, the new number and the letter data at once', function (): void {
@@ -315,15 +366,16 @@ it('corrects a letter from the TU screen: explained, errors listed with a jump, 
         ->call('startRevision', $old->getKey())
         ->assertSet('revisingId', $old->getKey())
         ->assertSet('tab', 'siswa')
-        ->assertSet('siswa.nomor', '')
-        ->assertSee('akan dicabut')
-        ->assertSee('Nomor surat baru')
+        // SV6, D-188: the old number is kept and may be used again; no warning box.
+        ->assertSet('siswa.nomor', B3_SISWA)
+        ->assertDontSee('akan dicabut')
+        ->assertDontSee('Nomor surat baru')
         ->assertSee('Alasan pencabutan')
-        ->assertSee('minimal 5 karakter')
+        ->assertSee('Minimal 5 karakter')
         ->assertSee('Cabut dan terbitkan ulang')
-        // a used number is refused while typing
-        ->set('siswa.nomor', B3_SISWA)
-        ->assertHasErrors(['siswa.nomor']);
+        // the guru letter's number is another number book (refusing a used number: KoreksiSuratTest)
+        ->set('siswa.nomor', B3_GURU)
+        ->assertHasNoErrors(['siswa.nomor']);
 
     // The button is never greyed out: an incomplete correction is explained.
     expect($component->html())->not->toMatch('/<button[^>]*\sdisabled[\s>]/');

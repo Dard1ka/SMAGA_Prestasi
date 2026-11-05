@@ -37,6 +37,8 @@ beforeEach(function (): void {
     $this->withoutVite();
     $this->xa = Classroom::factory()->create(['name' => 'X-1', 'level' => 10]);
     Classroom::factory()->create(['name' => 'XI-4', 'level' => 11]);
+    // SV6, D-184: a file holds one tingkat, so a class move in these files stays inside kelas X.
+    Classroom::factory()->create(['name' => 'X-2', 'level' => 10]);
     $this->kesiswaan = F::staff(RoleName::Kesiswaan);
     session(A::passwordConfirmed());
 });
@@ -82,15 +84,15 @@ function ui2ImportLetters(int $n): string
 }
 
 it('counts a correction of a registered student in the button, the tiles, the dialog and the result alike (SV1)', function (): void {
-    $rafi = ui2ImportRegistered('Rafi Pratama', '226227001', '0101234501');                                   // moves to XI-4
+    $rafi = ui2ImportRegistered('Rafi Pratama', '226227001', '0101234501');                                   // moves to X-2
     $salsa = ui2ImportRegistered('Salsabila Putri', '226227002', '0101234502');                              // gets a No HP
     $bima = ui2ImportRegistered('Bima Saputra', '226227003', '0101234503', ['archive_at' => '2031-01-01']);  // wrong archive date
     ui2ImportRegistered('Citra Lestari', '226227004', '0101234504');                                         // nothing to write
 
-    $screen = Livewire::actingAs($this->kesiswaan)->test(ImportSiswa::class)
+    $screen = Livewire::actingAs($this->kesiswaan)->withQueryParams([ImportSiswa::LEVEL_QUERY => '10'])->test(ImportSiswa::class)
         ->set('schoolYear', '2026/2027')
         ->set('file', ui2ImportFile([
-            ['Rafi Pratama', '226227001', '0101234501', '12-05-2011', 'XI-4', ''],
+            ['Rafi Pratama', '226227001', '0101234501', '12-05-2011', 'X-2', ''],
             ['Salsabila Putri', '226227002', '0101234502', '12-05-2011', 'X-1', '081234567890'],
             ['Bima Saputra', '226227003', '0101234503', '12-05-2011', 'X-1', ''],
             ['Citra Lestari', '226227004', '0101234504', '12-05-2011', 'X-1', ''],
@@ -115,7 +117,7 @@ it('counts a correction of a registered student in the button, the tiles, the di
         ->assertViewHas('stepNote', 'Selesai');
 
     // What the sentences name is what was written.
-    expect($rafi->refresh()->classroom->name)->toBe('XI-4')
+    expect($rafi->refresh()->classroom->name)->toBe('X-2')
         ->and($salsa->refresh()->phone)->toBe('081234567890')
         ->and($bima->refresh()->archive_at->format('Y-m-d'))->toBe('2030-01-01')
         ->and(Student::query()->where('nis', '226227005')->exists())->toBeTrue();
@@ -124,7 +126,7 @@ it('counts a correction of a registered student in the button, the tiles, the di
 it('names a file of corrections only as corrections, not as a number of students to import (SV1)', function (): void {
     $salsa = ui2ImportRegistered('Salsabila Putri', '226227002', '0101234502');
 
-    Livewire::actingAs($this->kesiswaan)->test(ImportSiswa::class)
+    Livewire::actingAs($this->kesiswaan)->withQueryParams([ImportSiswa::LEVEL_QUERY => '10'])->test(ImportSiswa::class)
         ->set('schoolYear', '2026/2027')
         ->set('file', ui2ImportFile([['Salsabila Putri', '226227002', '0101234502', '12-05-2011', 'X-1', '081234567890']]))
         ->assertSee('Impor 1 siswa')
@@ -168,15 +170,15 @@ it('counts the kinds from the rows the import writes', function (): void {
 });
 
 it('labels a corrected row "Data diperbarui" in the preview and in its download, like its tile (SV1 follow-up)', function (): void {
-    ui2ImportRegistered('Rafi Pratama', '226227001', '0101234501');                                   // moves to XI-4
+    ui2ImportRegistered('Rafi Pratama', '226227001', '0101234501');                                   // moves to X-2
     ui2ImportRegistered('Salsabila Putri', '226227002', '0101234502');                              // gets a No HP
     ui2ImportRegistered('Bima Saputra', '226227003', '0101234503', ['archive_at' => '2031-01-01']);  // wrong archive date
     ui2ImportRegistered('Citra Lestari', '226227004', '0101234504');                                // a note, nothing written
 
-    $screen = Livewire::actingAs($this->kesiswaan)->test(ImportSiswa::class)
+    $screen = Livewire::actingAs($this->kesiswaan)->withQueryParams([ImportSiswa::LEVEL_QUERY => '10'])->test(ImportSiswa::class)
         ->set('schoolYear', '2026/2027')
         ->set('file', ui2ImportFile([
-            ['Rafi Pratama', '226227001', '0101234501', '12-05-2011', 'XI-4', ''],
+            ['Rafi Pratama', '226227001', '0101234501', '12-05-2011', 'X-2', ''],
             ['Salsabila Putri', '226227002', '0101234502', '12-05-2011', 'X-1', '081234567890'],
             ['Bima Saputra', '226227003', '0101234503', '12-05-2011', 'X-1', ''],
             ['Citra Lestary', '226227004', '0101234504', '12-05-2011', 'X-1', ''],
@@ -213,8 +215,8 @@ it('labels a corrected row "Data diperbarui" in the preview and in its download,
     @unlink($path);
     @unlink($base);
 
+    // SV6, D-184: Rafi moves inside kelas X (X-1 → X-2), so his archive dates stay and his row has no note.
     expect($status)->toBe([
-        'Rafi Pratama' => 'Pindah kelas',
         'Salsabila Putri' => 'Data diperbarui',
         'Bima Saputra' => 'Data diperbarui',
         'Citra Lestary' => 'Tidak berubah',
@@ -228,7 +230,7 @@ it('says "Selesai" at step 3 once a queued import is done, and names only what t
     ui2ImportRegistered('Salsabila Putri', '226227002', '0101234502');
 
     $rows = [
-        ['Rafi Pratama', '226227001', '0101234501', '12-05-2011', 'XI-4', ''],
+        ['Rafi Pratama', '226227001', '0101234501', '12-05-2011', 'X-2', ''],
         ['Salsabila Putri', '226227002', '0101234502', '12-05-2011', 'X-1', '081234567890'],
     ];
 
@@ -237,7 +239,7 @@ it('says "Selesai" at step 3 once a queued import is done, and names only what t
     }
 
     // 50 new + 1 class move + 1 correction = 52 rows to write: more than SYNC_MAX_ROWS, so the import is queued.
-    $screen = Livewire::actingAs($this->kesiswaan)->test(ImportSiswa::class)
+    $screen = Livewire::actingAs($this->kesiswaan)->withQueryParams([ImportSiswa::LEVEL_QUERY => '10'])->test(ImportSiswa::class)
         ->set('schoolYear', '2026/2027')
         ->set('file', ui2ImportFile($rows))
         ->assertSee('Impor 52 siswa')
@@ -278,7 +280,7 @@ it('names no correction for a queued import it did not start, which it cannot co
     ]);
     $import->forceFill(['status' => StudentImportStatus::Running, 'total_rows' => 120, 'processed_rows' => 100, 'created_count' => 0, 'updated_count' => 12])->save();
 
-    $screen = Livewire::actingAs($this->kesiswaan)->test(ImportSiswa::class)
+    $screen = Livewire::actingAs($this->kesiswaan)->withQueryParams([ImportSiswa::LEVEL_QUERY => '10'])->test(ImportSiswa::class)
         ->assertViewHas('stepNote', StudentImportStatus::Running->label())
         // A kind with 0 is left out: no "0 akun siswa dibuat" in front of the class moves.
         ->assertSee('100 dari 120 baris diproses · 12 siswa pindah kelas.');

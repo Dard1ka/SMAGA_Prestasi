@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Policies;
 
+use App\Enums\Permission;
 use App\Enums\RoleName;
 use App\Models\Student;
 use App\Models\User;
@@ -33,5 +34,18 @@ final class StudentPolicy
     public function updateProfile(User $actor, Student $student): bool
     {
         return $this->updatePhone($actor, $student);
+    }
+
+    /**
+     * SV6, D-187 "Ubah data siswa" (App\Actions\Students\UpdateStudentData): staff holding `student.update` (Admin,
+     * Kesiswaan, Tata Usaha) change name, NIS, NISN, birth date and class of a student who has an account and is not in
+     * the Sampah. A student never edits these fields through this ability (Siswa does not hold the permission).
+     */
+    public function update(User $actor, Student $student): bool
+    {
+        return $actor->can(Permission::StudentUpdate->value)
+            && ! $actor->hasRoleName(RoleName::Siswa)
+            && ! $student->trashed()
+            && $student->user_id !== null;
     }
 }

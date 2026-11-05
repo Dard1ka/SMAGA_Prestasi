@@ -5,14 +5,18 @@ declare(strict_types=1);
 namespace App\Livewire\Admin;
 
 use App\Actions\Accounts\AccountControls;
+use App\Actions\Accounts\ExportActivationReport;
 use App\Actions\Classrooms\ClassroomName;
 use App\Actions\Classrooms\CreateClassroom;
 use App\Actions\Classrooms\RenameClassroom;
+use App\Actions\Exports\ExportedFile;
 use App\Actions\Trash\RestoreFromTrash;
 use App\Actions\Trash\TrashClassroom;
 use App\Actions\Trash\TrashReason;
-use App\Actions\Trash\TrashStudents;
+use App\Enums\Permission;
 use App\Livewire\Admin\Concerns\RequiresRecentPassword;
+use App\Livewire\Admin\Concerns\SelectsListedStudents;
+use App\Livewire\Akun\UbahDataSiswa;
 use App\Models\Classroom;
 use App\Models\Student;
 use App\Models\TrashEntry;
@@ -28,6 +32,7 @@ use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Title;
 use Livewire\Component;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 /**
  * Admin › Kelas (`admin.kelas.index`, ClassroomPolicy / `classroom.manage`, Admin only): the classes per tingkat with
@@ -48,8 +53,8 @@ use Livewire\Component;
  * - "Hapus" on every class row, also one with students: dialog `kelas-hapus` (askDelete() → delete(), TrashClassroom):
  *   the class and every student in it go to the trash; the dialog says how many students and from which date their
  *   data is gone for good;
- * - "Hapus" per row and "Hapus terpilih (N)" in "Lihat siswa": dialog `kelas-siswa-hapus` (askTrashStudent() /
- *   askTrashSelected() → trashStudents(), TrashStudents);
+ * - "Hapus" per row and "Hapus terpilih (N)" in "Lihat siswa": since SV6 (D-185) the shared dialog HapusSiswa
+ *   (askTrashStudent() / askTrashSelected() → HapusSiswa::OPEN_EVENT → TrashStudents), the same one Status aktivasi uses;
  * - the section "Sampah" below the classes lists the open trash entries (a class with its student count, a student
  *   trashed alone with name and class; who deleted it when, and the purge date), TRASH_STEP at a time, each with
  *   "Pulihkan" behind the dialog `kelas-pulihkan` (askRestore() → restore(), RestoreFromTrash).
@@ -61,20 +66,27 @@ use Livewire\Component;
  * page. A student id this visit never listed (a staff account, a student of another class) and an entry id that never
  * existed are refused with 404. The dialogs keep what they ask in #[Locked] properties; the confirm methods do nothing
  * without them (D-128 pattern).
+ *
+ * SV6 (the lead, 5 Nov 2026, requests 4, 6 and 7):
+ * - "Lihat siswa" offers the same student actions as Status aktivasi (partials livewire.partials.siswa-pilih /
+ *   siswa-cek / siswa-aksi, SelectsListedStudents): ticks, "Ubah status", "Hapus" through the shared HapusSiswa (D-185)
+ *   and "Ubah data" through the shared UbahDataSiswa (`student.update`, D-187; askData()).
+ * - "Download semua kelas" on top (exportAll()) and "Download Excel" in "Lihat siswa" (exportClass(), that class) write
+ *   the Status aktivasi file (ExportActivationReport, D-185): password from the last 15 minutes, resumed by itself after
+ *   the password page; no student = a warning toast and no file.
  */
 #[Title('Kelas')]
 #[Layout('layouts::app', ['subtitle' => 'Daftar kelas yang dipakai import siswa.'])]
 final class Kelas extends Component
 {
     use RequiresRecentPassword;
+    use SelectsListedStudents;
 
     public const RENAME_DIALOG = 'kelas-ganti-nama';
 
     public const DELETE_DIALOG = 'kelas-hapus';
 
     public const STUDENTS_DIALOG = 'kelas-siswa';
-
-    public const TRASH_STUDENTS_DIALOG = 'kelas-siswa-hapus';
 
     public const RESTORE_DIALOG = 'kelas-pulihkan';
 
@@ -98,8 +110,6 @@ final class Kelas extends Component
     public const MSG_STUDENT_MOVED = 'Siswa ini sudah tidak ada di kelas ini. Daftar sudah diperbarui.';
 
     public const MSG_STUDENTS_MOVED = 'Sebagian siswa yang dipilih sudah tidak ada di kelas ini. Daftar dan pilihan sudah diperbarui.';
-
-    public const MSG_NONE_SELECTED = 'Pilih siswa dulu.';
 
     public const MSG_ENTRY_CLOSED = 'Data ini sudah dipulihkan atau sudah terhapus permanen. Daftar sudah diperbarui.';
 
@@ -137,29 +147,8 @@ final class Kelas extends Component
     /** Rows of the student dialog (clamped in render()). */
     public int $studentLimit = self::STUDENTS_STEP;
 
-    /**
-     * @var list<int> user ids the student dialog listed for the open class during this visit (filled in render()): an
-     *                id among them that changed since gets a toast, any other id is refused (a forged call)
-     */
-    #[Locked]
-    public array $shownStudents = [];
-
-    /**
-     * @var list<string> ticked rows of the student dialog (checkbox values, so strings); render() counts only the rows it
-     *                   shows, askStatusSelected() / askTrashSelected() check them against $shownStudents and the class
-     */
-    public array $selectedStudents = [];
-
-    /** @var list<int> students the "Hapus N siswa?" dialog asks about; set only by askTrashStudent() / askTrashSelected() */
-    #[Locked]
-    public array $trashingStudents = [];
-
-    /** The class those students were in when asked. */
-    #[Locked]
-    public ?string $trashingClassId = null;
-
-    /** Reason typed in the "Hapus N siswa?" dialog. */
-    public string $studentsReason = '';
+    // $shownStudents (the user ids the student dialog listed for the open class during this visit) and $selectedStudents
+    // (its ticks) come from SelectsListedStudents.
 
     /** Trash entry in the restore dialog; set only by askRestore(). */
     #[Locked]
@@ -361,17 +350,14 @@ final class Kelas extends Component
         Gate::authorize('viewAny', Classroom::class);
 
         // The rows the list shows now (the same query and limit as render()), never more than this visit listed.
-        $listed = $this->studentsInClass($this->viewingId)
+        $this->toggleTicks($this->studentsInClass($this->viewingId)
             ->orderBy('name')
             ->orderBy('id')
             ->limit(max(self::STUDENTS_STEP, min(self::STUDENTS_MAX, $this->studentLimit)))
             ->pluck('id')
-            ->map(fn (mixed $id): string => (string) $id)
-            ->filter(fn (string $id): bool => in_array((int) $id, $this->shownStudents, true))
+            ->map(fn (mixed $id): int => (int) $id)
             ->values()
-            ->all();
-
-        $this->selectedStudents = $listed !== [] && array_diff($listed, $this->selectedStudents) === [] ? [] : $listed;
+            ->all());
     }
 
     /** "Ubah status" of one row: the shared dialog for that student. */
@@ -396,16 +382,18 @@ final class Kelas extends Component
         }
     }
 
-    /** The shared dialog changed something (or found nothing left to change): redraw and clear the ticks. */
+    /** A shared dialog changed something (or found nothing left to change): redraw and clear the ticks. */
     #[On(UbahStatusSiswa::DONE_EVENT)]
+    #[On(HapusSiswa::DONE_EVENT)]
+    #[On(UbahDataSiswa::DONE_EVENT)]
     public function statusChanged(): void
     {
         $this->reset('selectedStudents');
     }
 
-    // Trash: students ----------------------------------------------------------------------------
+    // Students: Hapus and Ubah data (SV6) ----------------------------------------------------------
 
-    /** "Hapus" of one row in "Lihat siswa": the question "Hapus 1 siswa?". */
+    /** "Hapus" of one row in "Lihat siswa": the shared dialog "Hapus 1 siswa?" (SV6, D-185). */
     public function askTrashStudent(int $userId): void
     {
         $student = $this->listedStudent($userId);
@@ -414,68 +402,66 @@ final class Kelas extends Component
             return;
         }
 
-        $this->openTrashStudents([(int) $student->getKey()]);
+        Gate::authorize('trashStudents', TrashEntry::class);
+        $this->dispatch(HapusSiswa::OPEN_EVENT, ids: [(int) $student->getKey()])->to(HapusSiswa::class);
     }
 
-    /** "Hapus terpilih (N)": the question "Hapus N siswa?" for the ticked rows. */
+    /** "Hapus terpilih (N)": the shared dialog "Hapus N siswa?" for the ticked rows (SV6, D-185). */
     public function askTrashSelected(): void
     {
         $ids = $this->selectedInClass();
 
         if ($ids !== null) {
-            $this->openTrashStudents($ids);
+            Gate::authorize('trashStudents', TrashEntry::class);
+            $this->dispatch(HapusSiswa::OPEN_EVENT, ids: $ids)->to(HapusSiswa::class);
         }
     }
 
-    /**
-     * "Hapus siswa" in the dialog. Without a question asked by askTrashStudent() / askTrashSelected() there is nothing
-     * to confirm: it returns without a word.
-     */
-    public function trashStudents(TrashStudents $trash): void
+    /** "Ubah data" of one row: the shared dialog UbahDataSiswa for that student (SV6, D-187, `student.update`). */
+    public function askData(int $userId): void
     {
-        if ($this->trashingStudents === [] || $this->trashingClassId === null) {
+        $student = $this->listedStudent($userId);
+
+        if ($student === null) {
             return;
         }
 
-        $ids = $this->trashingStudents;
-
-        // Every asked student still in that class and not in the trash (another tab, the import, a colleague).
-        if ($this->studentsInClass($this->trashingClassId)->whereKey($ids)->count() !== count($ids)) {
-            $this->closeTrashStudents();
-            $this->reset('selectedStudents');
-            $this->stale(self::MSG_STUDENTS_MOVED);
-
-            return;
-        }
-
-        Gate::authorize('create', TrashEntry::class);
-
-        $reason = TrashReason::validated($this->studentsReason, 'studentsReason');
-
-        if (! $this->passwordRecentlyConfirmed()) {
-            return;
-        }
-
-        try {
-            $entries = $trash->handle($this->actor(), $ids, $reason);
-        } catch (ValidationException $e) {
-            $this->closeTrashStudents();
-            $this->reset('selectedStudents');
-            $this->stale((string) (collect($e->errors())->flatten()->first() ?? self::MSG_STUDENTS_MOVED));
-
-            return;
-        }
-
-        $this->closeTrashStudents();
-        $this->reset('selectedStudents');
-        $this->dispatch('sth-toast', message: count($entries).' siswa dipindahkan ke Sampah.', tone: 'success');
+        Gate::authorize(Permission::StudentUpdate->value);
+        $this->dispatch(UbahDataSiswa::OPEN_EVENT, userId: (int) $student->getKey());
     }
 
-    /** The "Hapus N siswa?" dialog closed: forget the question and the reason. */
-    public function forgetTrashStudents(): void
+    // Downloads (SV6, D-185) ----------------------------------------------------------------------
+
+    /** "Download semua kelas": the Status aktivasi file of the whole school ("Ringkasan" + one sheet per tingkat). */
+    public function exportAll(): ?BinaryFileResponse
     {
-        $this->reset('trashingStudents', 'trashingClassId', 'studentsReason');
-        $this->resetErrorBag('studentsReason');
+        Gate::authorize('viewAny', Classroom::class);
+
+        if (! $this->passwordRecentlyConfirmed('exportAll')) {
+            return null;
+        }
+
+        return $this->download(app(ExportActivationReport::class)->handle($this->actor(), source: ExportActivationReport::SOURCE_CLASSES));
+    }
+
+    /** "Download Excel" in "Lihat siswa": every student of that class with its status, one sheet named after the class. */
+    public function exportClass(string $id): ?BinaryFileResponse
+    {
+        Gate::authorize('viewAny', Classroom::class);
+        $classroom = Classroom::query()->find($id, ['id']);
+
+        if ($classroom === null) {
+            $this->stale(self::MSG_GONE);
+
+            return null;
+        }
+
+        // The id comes from the database, so the call the password page resumes is a plain literal.
+        if (! $this->passwordRecentlyConfirmed("exportClass('".$classroom->getKey()."')")) {
+            return null;
+        }
+
+        return $this->download(app(ExportActivationReport::class)->handle($this->actor(), (string) $classroom->getKey(), source: ExportActivationReport::SOURCE_CLASSES));
     }
 
     // Trash: restore -----------------------------------------------------------------------------
@@ -602,7 +588,10 @@ final class Kelas extends Component
             'renamingName' => $renaming?->name,
             'deleteDialog' => $this->deleteDialog($purgeDate),
             'studentsDialog' => $studentsDialog,
-            'trashStudentsDialog' => $this->trashStudentsDialog($purgeDate),
+            // SV6: the shared dialogs and the row actions they back (an Admin holds both; the checks keep a database
+            // where RoleSeeder has not run yet from showing a button that answers 403).
+            'canTrash' => Gate::allows('trashStudents', TrashEntry::class),
+            'canEditData' => Gate::allows(Permission::StudentUpdate->value),
             'trash' => $this->trashList(),
             'restoreDialog' => $this->restoreDialog(),
             'trashReasonMin' => TrashReason::MIN,
@@ -635,32 +624,6 @@ final class Kelas extends Component
                     'Kelas ini belum berisi siswa. Kelas dipindahkan ke Sampah dan tidak bisa dipakai import siswa.',
                     'Selama '.TrashEntry::KEEP_DAYS.' hari masih bisa dipulihkan. Mulai '.$purgeDate.' kelas ini terhapus permanen.',
                 ],
-        ];
-    }
-
-    /**
-     * View model of the "Hapus N siswa?" dialog, null without a question.
-     *
-     * @return array{title: string, names: string, classroom: ?string, lines: list<string>}|null
-     */
-    private function trashStudentsDialog(string $purgeDate): ?array
-    {
-        if ($this->trashingStudents === []) {
-            return null;
-        }
-
-        $count = count($this->trashingStudents);
-        $users = User::query()->whereKey($this->trashingStudents)->orderBy('name')->orderBy('id')->limit(3)->pluck('name');
-        $names = $users->implode(', ').($count > 3 ? ', dan '.($count - 3).' lainnya' : '');
-
-        return [
-            'title' => 'Hapus '.$count.' siswa?',
-            'names' => $names,
-            'classroom' => $this->trashingClassId !== null ? Classroom::query()->whereKey($this->trashingClassId)->value('name') : null,
-            'lines' => [
-                ($count === 1 ? 'Siswa ini' : 'Semua siswa yang dipilih').' dipindahkan ke Sampah: langsung tidak bisa masuk dan tidak tampil di mana pun.',
-                'Selama '.TrashEntry::KEEP_DAYS.' hari masih bisa dipulihkan. Mulai '.$purgeDate.' akun dan seluruh data siswanya (pendaftaran, surat tugas, laporan hasil, prestasi, talenta, file) terhapus permanen.',
-            ],
         ];
     }
 
@@ -789,7 +752,7 @@ final class Kelas extends Component
      * View model of the student dialog: null while it is closed or when its class was deleted meanwhile. Adds the
      * listed ids to $shownStudents; counts only the ticks on listed rows.
      *
-     * @return array{name: string, count: int, active: int, rows: list<array{id: int, name: string, nisn: ?string, state: string, status: string, tone: string}>, hasMore: bool, capped: bool, selected: int, allSelected: bool}|null
+     * @return array{id: string, name: string, count: int, active: int, rows: list<array{id: int, name: string, nisn: ?string, state: string, status: string, tone: string, change: string}>, hasMore: bool, capped: bool, selected: int, allSelected: bool}|null
      */
     private function studentsDialog(): ?array
     {
@@ -824,25 +787,28 @@ final class Kelas extends Component
                 'state' => $state,
                 'status' => AccountControls::stateLabel($state),
                 'tone' => AccountControls::stateTone($state),
+                // SV6: the label of Status aktivasi, so both pages read the same.
+                'change' => UbahStatusSiswa::restorable($state) ? 'Aktifkan lagi' : 'Ubah status',
             ];
         })->values()->all();
 
-        $this->shownStudents = array_values(array_unique([...$this->shownStudents, ...array_column($rows, 'id')]));
+        $listed = array_column($rows, 'id');
+        $this->rememberShown($listed);
 
         // Only ticks on rows the list shows count; askStatusSelected() / askTrashSelected() refuse any other id (404) or
         // drop a student who left the class meanwhile (toast).
-        $listed = array_map(strval(...), array_column($rows, 'id'));
-        $selected = array_values(array_intersect(array_map(strval(...), $this->selectedStudents), $listed));
+        $ticks = $this->tickState($listed);
 
         return [
+            'id' => (string) $classroom->getKey(),
             'name' => $classroom->name,
             'count' => $inClass()->count(),
             'active' => $inClass()->canLogIn()->count(),
             'rows' => $rows,
             'hasMore' => $hasMore,
             'capped' => $hasMore && $this->studentLimit >= self::STUDENTS_MAX,
-            'selected' => count($selected),
-            'allSelected' => $listed !== [] && array_diff($listed, $selected) === [],
+            'selected' => $ticks['selected'],
+            'allSelected' => $ticks['allSelected'],
         ];
     }
 
@@ -859,23 +825,12 @@ final class Kelas extends Component
         Gate::authorize('viewAny', Classroom::class);
         Gate::authorize('viewAny', User::class);
 
-        $ids = [];
+        // Malformed or never listed: 404; nothing ticked or more than 400: a toast (SelectsListedStudents).
+        $ids = $this->tickedIds();
 
-        foreach ($this->selectedStudents as $value) {
-            abort_unless(is_int($value) || (is_string($value) && ctype_digit($value)), 404);
-            $ids[] = (int) $value;
-        }
-
-        $ids = array_values(array_unique($ids));
-
-        if ($ids === []) {
-            $this->dispatch('sth-toast', message: self::MSG_NONE_SELECTED, tone: 'warning');
-
+        if ($ids === null) {
             return null;
         }
-
-        // A tick on a row this visit never listed is forged.
-        abort_if(array_diff($ids, $this->shownStudents) !== [], 404);
 
         $inClass = $this->studentsInClass($this->viewingId)
             ->whereKey($ids)
@@ -927,19 +882,16 @@ final class Kelas extends Component
         $this->dispatch(UbahStatusSiswa::OPEN_EVENT, ids: $ids)->to(UbahStatusSiswa::class);
     }
 
-    /** @param  list<int>  $ids */
-    private function openTrashStudents(array $ids): void
+    /** The finished file, or a warning toast when no student matched (no file, no audit row). */
+    private function download(?ExportedFile $file): ?BinaryFileResponse
     {
-        Gate::authorize('create', TrashEntry::class);
-        $this->forgetTrashStudents();
+        if ($file === null) {
+            $this->stale(ExportActivationReport::MSG_EMPTY);
 
-        if (! $this->passwordRecentlyConfirmed()) {
-            return;
+            return null;
         }
 
-        $this->trashingStudents = $ids;
-        $this->trashingClassId = $this->viewingId;
-        $this->dispatch('sth-modal-open', id: self::TRASH_STUDENTS_DIALOG);
+        return response()->download($file->path, $file->filename)->deleteFileAfterSend();
     }
 
     /** Student rows of the class that are not in the trash, any status (what TrashClassroom takes along). */
@@ -959,12 +911,6 @@ final class Kelas extends Component
     {
         $this->forgetDelete();
         $this->dispatch('sth-modal-close', id: self::DELETE_DIALOG);
-    }
-
-    private function closeTrashStudents(): void
-    {
-        $this->forgetTrashStudents();
-        $this->dispatch('sth-modal-close', id: self::TRASH_STUDENTS_DIALOG);
     }
 
     private function closeRestore(): void

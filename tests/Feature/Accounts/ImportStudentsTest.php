@@ -23,6 +23,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Log\Events\MessageLogged;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Queue;
@@ -150,7 +151,8 @@ it('reports valid and invalid rows in a dry run without creating anything', func
     // The report never carries birth dates, phones or passwords.
     // B2 (#19): `sanitized` flags rows whose cells lost a leading = + - @ ("Sel dibersihkan").
     // M1-C: `action` (new/moved/unchanged/skipped/rejected), the class a student leaves, notes, and `changes`.
-    expect(array_keys($report->rows[0]))->toBe(['row', 'name', 'nis', 'nisn', 'classroom', 'errors', 'grade12_start_date', 'archive_at', 'sanitized', 'action', 'previous_classroom', 'notes', 'changes'])
+    // SV6, D-184: `matches` = the users.id of the registered student(s) a row matches, for the preview cache only.
+    expect(array_keys($report->rows[0]))->toBe(['row', 'name', 'nis', 'nisn', 'classroom', 'errors', 'grade12_start_date', 'archive_at', 'sanitized', 'action', 'previous_classroom', 'notes', 'changes', 'matches'])
         ->and($byRow[4]['sanitized'])->toBeTrue()
         ->and($byRow[2]['sanitized'])->toBeFalse()
         ->and($byRow[2])->toMatchArray(['action' => StudentImportReport::NEW, 'previous_classroom' => null, 'notes' => [], 'changes' => true])
@@ -647,7 +649,7 @@ it('moves classes through the queued job exactly like the synchronous import', f
 it('offers the template with the column "Kelas" and explains the yearly upload on the screen', function (): void {
     $this->withoutVite();
 
-    $screen = Livewire::actingAs($this->kesiswaan)->test(ImportSiswa::class)
+    $screen = Livewire::actingAs($this->kesiswaan)->withQueryParams([ImportSiswa::LEVEL_QUERY => '10'])->test(ImportSiswa::class)
         ->assertSee('Isi semua siswa dari semua angkatan dengan kelasnya sekarang')
         ->assertSee('Akun dan kata sandinya tidak berubah.')
         ->assertDontSee('Kelas saat pendaftaran')
@@ -665,7 +667,7 @@ it('offers the template with the column "Kelas" and explains the yearly upload o
 it('formats the NIS, NISN, Tanggal lahir and No HP columns of the template as text, so Excel keeps them as typed', function (): void {
     $this->withoutVite();
 
-    $screen = Livewire::actingAs($this->kesiswaan)->test(ImportSiswa::class)
+    $screen = Livewire::actingAs($this->kesiswaan)->withQueryParams([ImportSiswa::LEVEL_QUERY => '10'])->test(ImportSiswa::class)
         ->assertSee('Format kolom NIS, NISN, dan Tanggal lahir sebagai teks.')
         ->assertSee('Kolom selain No HP wajib diisi. Baris contoh di bawah judul boleh ditimpa atau dibiarkan.')
         ->call('downloadTemplate');
@@ -691,18 +693,19 @@ it('previews baru, pindah kelas, tidak berubah and ditolak, then imports without
     $this->withoutVite();
     session(['auth.password_confirmed_at' => time()]); // QA9: the import needs a recent password confirmation
     $nadia = m1cRegistered();
-    $gita = m1cRegistered(['nis' => '225226210', 'nisn' => '0098765440', 'birth_date' => '2010-10-10'], ['name' => 'Gita Permata', 'email' => 'gita.permata@example.test']);
+    // SV6, D-184: the file of kelas XI; Gita is already in XI-4 (the class and dates of the file).
+    $gita = m1cRegistered(['nis' => '225226210', 'nisn' => '0098765440', 'birth_date' => '2010-10-10', 'kelas' => 'XI-4'], ['name' => 'Gita Permata', 'email' => 'gita.permata@example.test']);
     $before = m1cAccount($nadia);
 
     $csv = implode("\n", [
         implode(';', W1C_IMPORT_HEADER),
         'Nadia Putri Anindya;225226201;0098765432;02-03-2010;XI-4;',  // moved (and the dates follow the class)
-        'Gita Permata;225226210;0098765440;10-10-2010;X-1;',           // unchanged
-        'Raka Pratama;225226202;0098765433;20-11-2011;X-1;',           // new
-        'Galang Putra Mahendra;225226204;0098765435;31-02-2011;X-1;',  // rejected
+        'Gita Permata;225226210;0098765440;10-10-2010;XI-4;',          // unchanged
+        'Raka Pratama;225226202;0098765433;20-11-2011;XI-4;',          // new
+        'Galang Putra Mahendra;225226204;0098765435;31-02-2011;XI-4;', // rejected
     ])."\n";
 
-    $screen = Livewire::actingAs($this->kesiswaan)->test(ImportSiswa::class)
+    $screen = Livewire::actingAs($this->kesiswaan)->withQueryParams([ImportSiswa::LEVEL_QUERY => '11'])->test(ImportSiswa::class)
         ->set('schoolYear', '2026/2027')
         ->set('file', UploadedFile::fake()->createWithContent('data-siswa.csv', $csv))
         ->assertHasNoErrors()
@@ -750,7 +753,7 @@ it('previews baru, pindah kelas, tidak berubah and ditolak, then imports without
 
     expect($nadia->refresh()->classroom->name)->toBe('XI-4')
         ->and(m1cAccount($nadia))->toBe($before)
-        ->and($gita->refresh()->classroom->name)->toBe('X-1')
+        ->and($gita->refresh()->classroom->name)->toBe('XI-4')
         ->and(Student::query()->where('nis', '225226202')->exists())->toBeTrue()
         ->and(Student::query()->where('nis', '225226204')->exists())->toBeFalse();
 });
@@ -769,7 +772,7 @@ it('queues the yearly file by the number of rows to write, not by the rows that 
         $lines[] = sprintf('Siswa Uji,%s,%s,,X-1,', $student->nis, $student->nisn);
     }
 
-    Livewire::actingAs($this->kesiswaan)->test(ImportSiswa::class)
+    Livewire::actingAs($this->kesiswaan)->withQueryParams([ImportSiswa::LEVEL_QUERY => '10'])->test(ImportSiswa::class)
         ->set('schoolYear', '2026/2027')
         ->set('file', UploadedFile::fake()->createWithContent('data-siswa.csv', implode("\n", $lines)."\n"))
         ->assertViewHas('changeCount', 0)
@@ -798,7 +801,7 @@ it('shows the students who moved class in the progress of a queued import', func
     ]);
     $import->forceFill(['status' => StudentImportStatus::Running, 'total_rows' => 300, 'processed_rows' => 100, 'invalid_rows' => 2, 'created_count' => 40, 'updated_count' => 55])->save();
 
-    $screen = Livewire::actingAs($this->kesiswaan)->test(ImportSiswa::class)
+    $screen = Livewire::actingAs($this->kesiswaan)->withQueryParams([ImportSiswa::LEVEL_QUERY => '10'])->test(ImportSiswa::class)
         ->assertSee('100 dari 300 baris diproses')
         ->assertSee('40 akun siswa dibuat, 55 siswa pindah kelas');
 
@@ -819,7 +822,7 @@ it('names the archive months the Admin set, not a fixed 18 (QA8)', function (): 
     Setting::put(SettingKey::ArchiveMonthsAfterGrade12, 12);
     $csv = implode("\n", [implode(',', W1C_IMPORT_HEADER), 'Raka Pratama,225226202,0098765433,20-11-2011,X-1,'])."\n";
 
-    Livewire::actingAs($this->kesiswaan)->test(ImportSiswa::class)
+    Livewire::actingAs($this->kesiswaan)->withQueryParams([ImportSiswa::LEVEL_QUERY => '10'])->test(ImportSiswa::class)
         ->set('schoolYear', '2026/2027')
         ->set('file', UploadedFile::fake()->createWithContent('data-siswa.csv', $csv))
         ->assertHasNoErrors()
@@ -1058,7 +1061,7 @@ it('finds a class whose name has a space, written with or without it (Admin › 
 /** The downloaded template of the import screen, written to a temp .xlsx (fictional content only). */
 function sv3Template(User $actor): string
 {
-    $screen = Livewire::actingAs($actor)->test(ImportSiswa::class)->call('downloadTemplate');
+    $screen = Livewire::actingAs($actor)->withQueryParams([ImportSiswa::LEVEL_QUERY => '10'])->test(ImportSiswa::class)->call('downloadTemplate');
     $path = tempnam(sys_get_temp_dir(), 'sth-template-').'.xlsx';
     $GLOBALS['w1c_tmp_files'][] = $path;
     file_put_contents($path, base64_decode((string) data_get($screen->effects, 'download.content')));
@@ -1184,4 +1187,127 @@ it('keeps a real student in the class and with the birth date of the example (SV
     $report = app(ImportStudents::class)->handle($this->kesiswaan, w1cCsv([['Raka Pratama', '225226202', '0098765433', $birthDate, $kelas, '']]), 'csv', '2026/2027');
 
     expect($report->validCount())->toBe(1)->and($report->invalidCount())->toBe(0);
+});
+
+// SV6, D-184 (the lead, 5 Nov 2026: "bisa langsung ditunjukan siswa mana"): every row that matches or collides with a
+// registered student carries that student's users.id in the report (`matches`), for the preview cache of the screen only.
+
+/** A registered student with a chosen users.id, so the id can be looked for in logs and files (fictional data). */
+function sv6mStudent(int $userId, string $name, string $nis, string $nisn, array $user = []): Student
+{
+    User::factory()->create(['id' => $userId, 'name' => $name, 'email' => str($name)->slug('.').'@example.test'])
+        ->forceFill(['status' => UserStatus::Active, 'must_change_password' => false, 'password_changed_at' => now(), ...$user])
+        ->save();
+
+    return Student::factory()->create([
+        'user_id' => $userId,
+        'nis' => $nis,
+        'nisn' => $nisn,
+        'birth_date' => '2010-03-02',
+        'classroom_id' => Classroom::query()->where('name', 'X-1')->value('id'),
+        'import_school_year' => '2026/2027',
+        'grade12_start_date' => '2028-07-01',
+        'archive_at' => '2030-01-01',
+    ])->refresh();
+}
+
+it('names the registered student of every row that matches or collides with one (SV6, D-184)', function (): void {
+    sv6mStudent(731001, 'Nadia Putri Anindya', '225226201', '0098765432');
+    sv6mStudent(731002, 'Raka Pratama', '225226202', '0098765433');
+    sv6mStudent(731003, 'Salsa Maharani', '225226203', '0098765434', ['status' => UserStatus::Archived]);
+    $dimas = sv6mStudent(731004, 'Dimas Saputra', '225226204', '0098765435');
+    sv6mStudent(731005, 'Citra Ayu', '225226205', '0098765436');
+    sv6mStudent(731006, 'Fajar Hidayat', '225226206', '0098765437');
+    $dimas->user->delete();
+    $dimas->delete();
+    $taken = Student::query()->where('nis', '225226999')->sole();
+
+    $report = app(ImportStudents::class)->handle($this->kesiswaan, w1cCsv([
+        ['Nadia Putri Anindya', '225226201', '0098765432', '02-03-2010', 'XI-4', ''], // 2 pindah kelas
+        ['Raka Pratama', '225226202', '0098765433', '02-03-2010', 'X-1', ''],         // 3 tidak berubah
+        ['Salsa Maharani', '225226203', '0098765434', '02-03-2010', 'X-1', ''],       // 4 alumni, dilewati
+        ['Dimas Saputra', '225226204', '0098765435', '02-03-2010', 'X-1', ''],        // 5 in the Sampah, dilewati
+        ['Citra Fajar', '225226205', '0098765437', '02-03-2010', 'X-1', ''],          // 6 NIS of Citra, NISN of Fajar
+        ['Gita Permata', '225226999', '0098765499', '02-03-2010', 'X-1', ''],         // 7 NIS registered with another NISN
+        ['Hana Safitri', '225226298', '0011111111', '02-03-2010', 'X-1', ''],         // 8 NISN registered with another NIS
+        ['Bima Saputra', '225226299', '0098765429', '02-03-2010', 'X-1', ''],         // 9 new
+    ]), 'csv', '2026/2027');
+
+    $byRow = collect($report->rows)->keyBy('row');
+
+    expect($byRow[2])->toMatchArray(['action' => StudentImportReport::MOVED, 'matches' => [731001]])
+        ->and($byRow[3])->toMatchArray(['action' => StudentImportReport::UNCHANGED, 'matches' => [731002]])
+        ->and($byRow[4])->toMatchArray(['action' => StudentImportReport::SKIPPED, 'matches' => [731003]])
+        ->and($byRow[5])->toMatchArray(['action' => StudentImportReport::SKIPPED, 'notes' => [ImportStudents::NOTE_IN_TRASH], 'matches' => [731004]])
+        // The owner of the NIS first, then the owner of the NISN.
+        ->and($byRow[6])->toMatchArray(['errors' => ['NIS dan NISN ini milik dua siswa yang berbeda.'], 'matches' => [731005, 731006]])
+        ->and($byRow[7])->toMatchArray(['errors' => ['NIS sudah terdaftar dengan NISN lain.'], 'matches' => [(int) $taken->user_id]])
+        ->and($byRow[8])->toMatchArray(['errors' => ['NISN sudah terdaftar dengan NIS lain.'], 'matches' => [(int) $taken->user_id]])
+        ->and($byRow[9])->toMatchArray(['action' => StudentImportReport::NEW, 'matches' => []]);
+});
+
+it('names the student of a registered row whose archive date has passed, and of a corrected one (SV6, D-184)', function (): void {
+    Classroom::factory()->level(12)->create(['name' => 'XII-1']);
+    sv6mStudent(731001, 'Nadia Putri Anindya', '225226201', '0098765432');
+    sv6mStudent(731002, 'Raka Pratama', '225226202', '0098765433');
+    $importer = app(ImportStudents::class);
+
+    // Kelas XII in 2024/2025: archive date January 2026, already gone (today is 4 Oct 2026).
+    $past = $importer->handle($this->kesiswaan, w1cCsv([m1cNadiaRow('XII-1')]), 'csv', '2024/2025');
+    // Same class, a phone number in the file: "Data diperbarui".
+    $corrected = $importer->handle($this->kesiswaan, w1cCsv([['Raka Pratama', '225226202', '0098765433', '02-03-2010', 'X-1', '081234567890']]), 'csv', '2026/2027');
+
+    expect($past->rows[0])->toMatchArray([
+        'action' => StudentImportReport::REJECTED,
+        'errors' => ['Tanggal arsip dari kelas dan tahun ajaran ini sudah lewat. Periksa tahun ajaran dan kelasnya.'],
+        'matches' => [731001],
+    ])
+        ->and(StudentImportReport::kindOf($corrected->rows[0]))->toBe(StudentImportReport::CORRECTED)
+        ->and($corrected->rows[0]['matches'])->toBe([731002]);
+});
+
+it('names the student another import registered meanwhile on a row it did not create (SV6, D-184)', function (): void {
+    $done = false;
+
+    // The other import commits its student when this import's write starts (the check of the file is then stale).
+    DB::connection()->beforeStartingTransaction(function () use (&$done): void {
+        if ($done) {
+            return;
+        }
+
+        $done = true;
+        sv6mStudent(731009, 'Rafi Pratama', '225226202', '0098765433');
+    });
+
+    $report = app(ImportStudents::class)->handle($this->kesiswaan, w1cCsv([
+        ['Rafi Pratama', '225226202', '0098765433', '02-03-2010', 'X-1', ''],
+    ]), 'csv', '2026/2027', dryRun: false);
+
+    expect($report->taken)->toBe(1)
+        ->and($report->rows[0])->toMatchArray(['action' => StudentImportReport::SKIPPED, 'matches' => [731009]])
+        ->and($report->rows[0]['notes'])->toContain(ImportStudents::NOTE_TAKEN);
+});
+
+it('keeps the matched ids out of the audit log of a committed import (SV6, D-184)', function (): void {
+    sv6mStudent(731001, 'Nadia Putri Anindya', '225226201', '0098765432');
+    sv6mStudent(731002, 'Raka Pratama', '225226202', '0098765433');
+    sv6mStudent(731003, 'Salsa Maharani', '225226203', '0098765434');
+    $logged = Activity::query()->max('id') ?? 0;
+
+    $report = app(ImportStudents::class)->handle($this->kesiswaan, w1cCsv([
+        ['Nadia Putri Anindya', '225226201', '0098765432', '02-03-2010', 'XI-4', ''],
+        ['Raka Pratama', '225226202', '0098765433', '02-03-2010', 'X-1', '081234567890'],
+        ['Citra Ayu', '225226203', '0098765488', '02-03-2010', 'X-1', ''],
+    ]), 'csv', '2026/2027', dryRun: false);
+
+    $entries = Activity::query()->where('id', '>', $logged)->get();
+    $properties = $entries->map(fn (Activity $a): string => (string) json_encode($a->properties))->implode(' ');
+
+    expect($report->moved)->toBe(1)
+        ->and(array_column($report->rows, 'matches'))->toBe([[731001], [731002], [731003]])
+        ->and($entries->pluck('event')->all())->toContain('student.import', 'student.class_changed', 'student.phone_updated')
+        ->and($properties)->not->toContain('731001')
+        ->and($properties)->not->toContain('731002')
+        ->and($properties)->not->toContain('731003')
+        ->and($properties)->not->toContain('matches');
 });

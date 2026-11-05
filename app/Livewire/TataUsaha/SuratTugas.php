@@ -92,6 +92,12 @@ class SuratTugas extends Component
     ];
 
     /** Form field → name in the error summary (same order as on screen). */
+    /** SV6, D-188: the light blue info tint (app.css `--color-blue-bg`) of a "Koreksi" field still equal to the old letter. */
+    public const SAME_TINT = 'bg-blue-bg';
+
+    /** SV6, D-188: the line above the fields of a "Koreksi" while at least one field is tinted. */
+    public const SAME_LINE = 'Isian berwarna biru masih sama dengan surat sebelum dikoreksi.';
+
     private const FIELD_LABELS = [
         'nomor' => 'Nomor surat',
         'alasan' => 'Alasan pencabutan',
@@ -132,6 +138,15 @@ class SuratTugas extends Component
     /** B3: the current letter being corrected (cabut + new version), set only by startRevision(). */
     #[Locked]
     public ?string $revisingId = null;
+
+    /**
+     * SV6, D-188: what the corrected letter printed (form keys of LetterDraft::fromLetter()), set by startRevision().
+     * render() tints every field whose value still equals it.
+     *
+     * @var array<string, string>
+     */
+    #[Locked]
+    public array $before = [];
 
     /** "Koreksi" on Arsip surat names its letter (QA6, Q1-13): read once in mount(), emptied when the correction ends. */
     #[Url(as: 'koreksi', except: '')]
@@ -354,11 +369,10 @@ class SuratTugas extends Component
         $this->revisingId = (string) $letter->getKey();
         $this->tab = $type->value;
         $this->alasan = '';
-        // The new version starts from what the old one printed, with today's date and an empty number.
-        $this->{$type->value} = array_merge(LetterDraft::fromLetter($letter, $registration), [
-            'nomor' => '',
-            'tanggalSurat' => CarbonImmutable::today()->format('Y-m-d'),
-        ]);
+        // SV6, D-188: the new version starts from EVERYTHING the old one printed, its number and date included (a
+        // revoked letter's number may be used again); the snapshot marks the fields TU has not changed yet.
+        $this->before = LetterDraft::fromLetter($letter, $registration);
+        $this->{$type->value} = $this->before;
     }
 
     public function cancelRevision(): void
@@ -368,7 +382,7 @@ class SuratTugas extends Component
 
         $this->resetErrorBag();
         $this->clearFailure();
-        $this->reset('revisingId', 'alasan', 'koreksi');
+        $this->reset('revisingId', 'before', 'alasan', 'koreksi');
 
         if ($letter !== null) {
             $this->{$letter->type->value} = LetterDraft::fromLetter($letter, $registration);
@@ -397,7 +411,7 @@ class SuratTugas extends Component
         }
 
         $this->clearFailure();
-        $this->reset('revisingId', 'alasan', 'koreksi');
+        $this->reset('revisingId', 'before', 'alasan', 'koreksi');
         $this->{$type->value} = LetterDraft::fromLetter($new, $registration);
         $this->dispatch('sth-toast', tone: 'success', message: $new->sent_at !== null
             ? 'Surat lama dicabut. Versi baru '.$new->full_number.' terkirim.'
@@ -458,7 +472,7 @@ class SuratTugas extends Component
 
         $this->resetErrorBag();
         $this->clearFailure();
-        $this->reset('revisingId', 'alasan', 'koreksi');
+        $this->reset('revisingId', 'before', 'alasan', 'koreksi');
         $this->tab = $type->value;
         $this->{$type->value} = $current !== null ? LetterDraft::fromLetter($current, $registration) : LetterDraft::defaults($registration);
         $this->dispatch('sth-toast', message: 'Surat ini sudah dicabut. Tampilan sudah diperbarui.', tone: 'warning');
@@ -593,7 +607,7 @@ class SuratTugas extends Component
             return;
         }
 
-        $this->reset('revisingId', 'alasan', 'koreksi');
+        $this->reset('revisingId', 'before', 'alasan', 'koreksi');
         $next = $this->searched($this->queueQuery())->first();
 
         if ($next !== null) {
@@ -724,8 +738,16 @@ class SuratTugas extends Component
             $printedContent = $editing ? null : LetterContent::fromArray($letter->printed['content'] ?? null);
             $printedTemplate = $editing ? null : LetterTemplate::fromArray($letter->printed['template'] ?? null);
             $printed = $printedContent !== null && $printedTemplate !== null;
+            $tint = $revising !== null && $revising->type === $type ? $this->unchangedTint($type) : [];
+            $example = $issue->example($type, $this->previewDate($type), $last);
 
             $data += [
+                'tint' => $tint,
+                'sameLine' => in_array(self::SAME_TINT, $tint, true) ? self::SAME_LINE : null,
+                // SV6, D-188: during a "Koreksi" the old number may stay, so the hint says so first.
+                'numberHint' => ($tint !== [] ? 'Nomor lama boleh dipakai lagi. ' : '')
+                    .'Terakhir dipakai: '.($last ?? 'belum ada').'.'
+                    .($example !== null ? ' Contoh: '.$example.'.' : ''),
                 'hasMentor' => $registration->mentor_id !== null,
                 'sendNotice' => self::sendNotice($registration),
                 'type' => $type,
@@ -738,7 +760,7 @@ class SuratTugas extends Component
                 'printed' => $printed,
                 'number' => $editing ? ($typed !== '' ? $typed : null) : $letter->full_number,
                 'lastNumber' => $last,
-                'example' => $issue->example($type, $this->previewDate($type), $last),
+                'example' => $example,
                 'problems' => $this->failed ? $this->problems($type) : [],
                 'tabs' => array_map(fn (LetterType $t): array => [
                     'key' => $t->value,
@@ -762,6 +784,29 @@ class SuratTugas extends Component
             'subtitle' => 'Pendaftaran yang sudah disetujui.',
             'badges' => ['tu.surat' => $total],
         ]);
+    }
+
+    /**
+     * SV6, D-188: the input class of every form field during a "Koreksi": SAME_TINT while the value still equals what the
+     * corrected letter printed ($before, compared trimmed), null once it differs.
+     *
+     * @return array<string, string|null>
+     */
+    private function unchangedTint(LetterType $type): array
+    {
+        $form = $this->form($type);
+        $tint = [];
+
+        foreach ($this->before as $field => $old) {
+            // The student letter has no "Hal" field on screen (D-157), so it never counts as an unchanged field.
+            if ($field === 'dasarHal' && ! LetterDraft::usesSubject($type)) {
+                continue;
+            }
+
+            $tint[$field] = trim((string) ($form[$field] ?? '')) === trim((string) $old) ? self::SAME_TINT : null;
+        }
+
+        return $tint;
     }
 
     /** @return Builder<Registration> */
@@ -918,7 +963,10 @@ class SuratTugas extends Component
 
         $error = (new LetterNumber)->numberError($number);
 
-        if ($error === null && IssueLetters::isTaken($type, $number)) {
+        // SV6, D-188: the letter being corrected may keep its own number.
+        $revising = $this->revisingId !== null && $this->tab === $type->value ? $this->revisingId : null;
+
+        if ($error === null && IssueLetters::isTaken($type, $number, $revising)) {
             $error = IssueLetters::MSG_TAKEN;
         }
 

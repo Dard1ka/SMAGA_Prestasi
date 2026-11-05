@@ -40,6 +40,8 @@ beforeEach(function (): void {
     $this->withoutVite();
     Classroom::factory()->create(['name' => 'X-1', 'level' => 10]);
     Classroom::factory()->create(['name' => 'XI-4', 'level' => 11]);
+    // SV6, D-184: a file holds one tingkat, so a class move in these files stays inside kelas X.
+    Classroom::factory()->create(['name' => 'X-2', 'level' => 10]);
     $this->kesiswaan = F::staff(RoleName::Kesiswaan);
     session(A::passwordConfirmed());
 });
@@ -98,7 +100,7 @@ function r3iBigFile(): UploadedFile
 /** The import screen after "Impor 51 siswa" queued its import (nothing ran yet: Queue::fake()). */
 function r3iQueued(User $actor): Testable
 {
-    return Livewire::actingAs($actor)->test(ImportSiswa::class)
+    return Livewire::actingAs($actor)->withQueryParams([ImportSiswa::LEVEL_QUERY => '10'])->test(ImportSiswa::class)
         ->set('schoolYear', '2026/2027')
         ->set('file', r3iBigFile())
         ->call('askImport')
@@ -253,10 +255,10 @@ it('keeps a running import on screen when the file read meanwhile is dropped (SV
 it('takes the tile columns from the step-3 column and shows the row status under the name (SV1 second check)', function (): void {
     r3iRegistered('Rafi Pratama', '226227001', '0101234501');
 
-    $screen = Livewire::actingAs($this->kesiswaan)->test(ImportSiswa::class)
+    $screen = Livewire::actingAs($this->kesiswaan)->withQueryParams([ImportSiswa::LEVEL_QUERY => '10'])->test(ImportSiswa::class)
         ->set('schoolYear', '2026/2027')
         ->set('file', r3iFile([
-            ['Rafi Pratama', '226227001', '0101234501', '12-05-2011', 'XI-4', ''],      // moves to XI-4
+            ['Rafi Pratama', '226227001', '0101234501', '12-05-2011', 'X-2', ''],       // moves to X-2
             ['Dewi Anggraini', '226227005', '0101234505', '12-05-2011', 'X-1', ''],     // new
             ['Galang Putra Mahendra', '226227006', '010123450', '12-05-2011', 'X-1', ''], // NISN of 9 digits
         ]))
@@ -293,7 +295,7 @@ it('takes the tile columns from the step-3 column and shows the row status under
 // (3) A file without students ---------------------------------------------------------------------------------------
 
 it('says that the untouched template holds no student data (SV1 second check)', function (): void {
-    $screen = Livewire::actingAs($this->kesiswaan)->test(ImportSiswa::class)->call('downloadTemplate');
+    $screen = Livewire::actingAs($this->kesiswaan)->withQueryParams([ImportSiswa::LEVEL_QUERY => '10'])->test(ImportSiswa::class)->call('downloadTemplate');
     $template = base64_decode((string) data_get($screen->effects, 'download.content'));
 
     $screen->set('schoolYear', '2026/2027')
@@ -314,7 +316,7 @@ it('says that the untouched template holds no student data (SV1 second check)', 
 });
 
 it('keeps the sentences of the empty filters for a file with students (SV1 second check)', function (): void {
-    Livewire::actingAs($this->kesiswaan)->test(ImportSiswa::class)
+    Livewire::actingAs($this->kesiswaan)->withQueryParams([ImportSiswa::LEVEL_QUERY => '10'])->test(ImportSiswa::class)
         ->set('schoolYear', '2026/2027')
         ->set('file', r3iFile([['Dewi Anggraini', '226227005', '0101234505', '12-05-2011', 'X-1', '']]))
         ->set('filter', 'bad')
@@ -352,7 +354,7 @@ it('gives a valid row with a cleaned cell a note, and leaves a refused one witho
 it('lists a valid row with a cleaned cell under "Ada catatan" and in its download (SV1 second check)', function (): void {
     r3iRegistered('Rafi Pratama', '226227001', '0101234501');
 
-    $screen = Livewire::actingAs($this->kesiswaan)->test(ImportSiswa::class)
+    $screen = Livewire::actingAs($this->kesiswaan)->withQueryParams([ImportSiswa::LEVEL_QUERY => '10'])->test(ImportSiswa::class)
         ->set('schoolYear', '2026/2027')
         ->set('file', r3iFile([
             ['=Nadia Putri Anindya', '226227011', '0101234511', '12-05-2011', 'X-1', ''],
@@ -399,7 +401,7 @@ it('lists a valid row with a cleaned cell under "Ada catatan" and in its downloa
 it('says what a queued import is doing before and during its first slice (SV1 second check)', function (): void {
     $import = r3iJob($this->kesiswaan, ['status' => StudentImportStatus::Queued]);
 
-    $screen = Livewire::actingAs($this->kesiswaan)->test(ImportSiswa::class)
+    $screen = Livewire::actingAs($this->kesiswaan)->withQueryParams([ImportSiswa::LEVEL_QUERY => '10'])->test(ImportSiswa::class)
         ->assertSee(StudentImportStatus::Queued->label())
         ->assertSee('Menunggu giliran. Halaman ini diperbarui otomatis dan boleh ditinggalkan.')
         ->assertDontSee('akun siswa dibuat');
@@ -420,7 +422,7 @@ it('says what a queued import is doing before and during its first slice (SV1 se
 it('names no "0 akun siswa dibuat" while a run of corrections goes on (SV1 second check)', function (): void {
     $import = r3iJob($this->kesiswaan, ['status' => StudentImportStatus::Running, 'total_rows' => 300, 'processed_rows' => 100, 'created_count' => 0, 'updated_count' => 0]);
 
-    $screen = Livewire::actingAs($this->kesiswaan)->test(ImportSiswa::class)
+    $screen = Livewire::actingAs($this->kesiswaan)->withQueryParams([ImportSiswa::LEVEL_QUERY => '10'])->test(ImportSiswa::class)
         ->assertSee('100 dari 300 baris diproses. Halaman ini diperbarui otomatis dan boleh ditinggalkan.')
         ->assertDontSee('akun siswa dibuat');
 
@@ -458,7 +460,7 @@ it('names no predicted number for a queued run of corrections, only what the job
         $rows[] = ['Siswa Lama '.r3iLetters($i), $nis, $nisn, '12-05-2011', 'X-1', sprintf('081234567%03d', $i)];
     }
 
-    $screen = Livewire::actingAs($this->kesiswaan)->test(ImportSiswa::class)
+    $screen = Livewire::actingAs($this->kesiswaan)->withQueryParams([ImportSiswa::LEVEL_QUERY => '10'])->test(ImportSiswa::class)
         ->set('schoolYear', '2026/2027')
         ->set('file', r3iFile($rows))
         ->assertViewHas('kinds', ['new' => 0, 'moved' => 0, 'corrected' => 51])
@@ -492,7 +494,7 @@ it('names no predicted number for a queued run of corrections, only what the job
 it('says "Tidak ada data yang berubah" for an import that wrote nothing, not "0 akun siswa dibuat" (SV1 second check)', function (): void {
     r3iRegistered('Rafi Pratama', '226227001', '0101234501');
 
-    Livewire::actingAs($this->kesiswaan)->test(ImportSiswa::class)
+    Livewire::actingAs($this->kesiswaan)->withQueryParams([ImportSiswa::LEVEL_QUERY => '10'])->test(ImportSiswa::class)
         ->set('schoolYear', '2026/2027')
         ->set('file', r3iFile([['Rafi Pratama', '226227001', '0101234501', '12-05-2011', 'X-1', '']]))
         ->assertViewHas('changeCount', 0)
@@ -520,7 +522,7 @@ it('drops "akan berubah" and "sebelum mengimpor" once the file went to a queued 
         $rows[] = ['Siswa Uji '.r3iLetters($i), sprintf('2262%05d', 100 + $i), sprintf('01%08d', 100 + $i), '12-05-2011', 'X-1', ''];
     }
 
-    $screen = Livewire::actingAs($this->kesiswaan)->test(ImportSiswa::class)
+    $screen = Livewire::actingAs($this->kesiswaan)->withQueryParams([ImportSiswa::LEVEL_QUERY => '10'])->test(ImportSiswa::class)
         ->set('schoolYear', '2026/2027')
         ->set('file', r3iFile($rows))
         ->assertViewHas('archiveCorrections', 1)
@@ -557,7 +559,7 @@ it('drops "akan berubah" and "sebelum mengimpor" once the file went to a queued 
 it('drops "akan berubah" and "sebelum mengimpor" after a synchronous import too (SV1 review)', function (): void {
     r3iRegistered('Rafi Pratama', '226227001', '0101234501')->forceFill(['archive_at' => '2031-01-01'])->save();
 
-    Livewire::actingAs($this->kesiswaan)->test(ImportSiswa::class)
+    Livewire::actingAs($this->kesiswaan)->withQueryParams([ImportSiswa::LEVEL_QUERY => '10'])->test(ImportSiswa::class)
         ->set('schoolYear', '2026/2027')
         ->set('file', r3iFile([
             ['Rafi Pratama', '226227001', '0101234501', '12-05-2011', 'X-1', ''],

@@ -83,6 +83,8 @@ final class Ringkasan extends Component
         'classroom.trashed' => 'Kelas dipindahkan ke Sampah',
         'student.restored' => 'Siswa dipulihkan dari Sampah',
         'classroom.restored' => 'Kelas dipulihkan dari Sampah',
+        // SV6, D-186: an Admin's "Hapus permanen" of one Sampah entry (unlike the nightly `trash.purged`).
+        'trash.purged_by_admin' => 'Sampah dihapus permanen oleh Admin',
     ];
 
     public function mount(): void

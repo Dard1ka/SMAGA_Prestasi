@@ -48,7 +48,8 @@ final class ImportStudentsJob implements ShouldQueue
 
     public int $backoff = 15;
 
-    public function __construct(public readonly string $importId, public readonly int $offset = 0) {}
+    /** `level`: SV6, D-184, the tingkat chosen on the screen (ImportStudents::LEVELS), null = no tingkat check. */
+    public function __construct(public readonly string $importId, public readonly int $offset = 0, public readonly ?int $level = null) {}
 
     public function handle(ImportStudents $importer, StoreUpload $store): void
     {
@@ -86,6 +87,7 @@ final class ImportStudentsJob implements ShouldQueue
                 $import->school_year,
                 $this->offset,
                 self::CHUNK,
+                $this->level,
             );
         } catch (ValidationException $e) {
             $this->finishFailed($import, $store, (string) collect($e->errors())->flatten()->first());
@@ -119,7 +121,7 @@ final class ImportStudentsJob implements ShouldQueue
         $import->forceFill($changes)->save();
 
         if ($processed < $result['rows']) {
-            self::dispatch($import->getKey(), $this->offset + self::CHUNK);
+            self::dispatch($import->getKey(), $this->offset + self::CHUNK, $this->level);
 
             return;
         }

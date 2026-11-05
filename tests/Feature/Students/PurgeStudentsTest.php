@@ -668,3 +668,98 @@ it('handles every foreign key that points at users, files, students, registratio
 
     expect($missing)->toBe([]);
 });
+
+// --- SV6, D-186: preview() and handleWithin() for "Hapus permanen" of one Sampah entry --------------------------------
+
+/** A full team of A + B and a mixed team led by A with C, both with a verified report and a certificate. */
+function pgsTwoTeams(): array
+{
+    $staff = pgsStaff();
+    [$a, $b, $c] = [pgsStudent(), pgsStudent(), pgsStudent()];
+    $lomba = Competition::factory()->published()->team()->create(['submitted_by' => $staff['kesiswaan']->getKey()]);
+    $full = pgsTeam($lomba, $a, [[$b, 'confirmed', '2026-11-05 08:00:00']], $staff);
+    $mixed = pgsTeam($lomba, $a, [[$c, 'confirmed', '2026-11-05 08:00:00']], $staff);
+    pgsTrash($a, $b);
+
+    return ['a' => $a, 'b' => $b, 'c' => $c, 'full' => $full, 'mixed' => $mixed];
+}
+
+it('previews exactly the counts of the purge and writes nothing', function (): void {
+    $t = pgsTwoTeams();
+    $ids = [(string) $t['a']->getKey(), (string) $t['b']->getKey()];
+    $before = pgsSnapshot();
+
+    $preview = app(PurgeStudents::class)->preview($ids);
+
+    expect(pgsSnapshot())->toBe($before)
+        ->and($preview['refusal'])->toBeNull()
+        ->and(Storage::disk('local')->exists($t['full']['certificate']->path))->toBeTrue()
+        ->and(app(PurgeStudents::class)->preview([]))->toBe(['refusal' => null, 'counts' => pgsCounts([])]);
+
+    $counts = pgsPurge([$t['a'], $t['b']]);
+
+    expect($counts['registrations_deleted'])->toBe(1)
+        ->and($counts['registrations_new_leader'])->toBe(1)
+        ->and($counts['files'])->toBe(1)
+        ->and($preview['counts'])->toBe($counts);
+});
+
+it('previews a refusal with its sentence and writes nothing', function (): void {
+    $staff = pgsStaff();
+    $student = pgsStudent();
+    DB::table('role_change_requests')->insert([
+        'id' => (string) Str::ulid(),
+        'user_id' => $student->user_id,
+        'from_roles' => json_encode(['siswa']),
+        'to_role' => RoleName::Guru->value,
+        'requested_by' => $staff['admin']->getKey(),
+        'reason' => 'Contoh perubahan peran.',
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+    $before = pgsSnapshot();
+
+    $preview = app(PurgeStudents::class)->preview([(string) $student->getKey()]);
+
+    expect($preview['refusal'])->toBe('1 baris riwayat penggantian Kepala Sekolah atau perubahan peran menunjuk akun siswa yang dihapus. Tidak ada yang dihapus.')
+        ->and($preview['counts'])->toBe(pgsCounts([]))
+        ->and(pgsSnapshot())->toBe($before);
+});
+
+it('runs both closures of handleWithin in its transaction and deletes the file bytes only after the commit', function (): void {
+    $t = pgsTwoTeams();
+    $ids = [(string) $t['b']->getKey(), (string) $t['a']->getKey()];
+    $seen = [];
+
+    $counts = app(PurgeStudents::class)->handleWithin($ids, function (array $given) use (&$seen): void {
+        $seen['before'] = [$given, DB::transactionLevel()];
+    }, function (array $counts) use (&$seen, $t): void {
+        $seen['after'] = [$counts['students'], DB::transactionLevel(), Storage::disk('local')->exists($t['full']['certificate']->path)];
+    });
+
+    $sorted = $ids;
+    sort($sorted);
+
+    expect($seen['before'][0])->toBe($sorted)
+        ->and($seen['before'][1])->toBeGreaterThan(1)
+        ->and($seen['after'][0])->toBe(2)
+        ->and($seen['after'][1])->toBe($seen['before'][1])
+        ->and($seen['after'][2])->toBeTrue()
+        ->and($counts['students'])->toBe(2)
+        ->and(Storage::disk('local')->exists($t['full']['certificate']->path))->toBeFalse();
+});
+
+it('rolls everything back and deletes no file bytes when a closure of handleWithin throws', function (string $failing): void {
+    $t = pgsTwoTeams();
+    $ids = [(string) $t['a']->getKey(), (string) $t['b']->getKey()];
+    $before = pgsSnapshot();
+    $throw = fn () => throw new RuntimeException('Entri sudah berubah.');
+    $nothing = fn () => null;
+
+    expect(fn () => app(PurgeStudents::class)->handleWithin($ids, $failing === 'before' ? $throw : $nothing, $failing === 'after' ? $throw : $nothing))
+        ->toThrow(RuntimeException::class, 'Entri sudah berubah.');
+
+    expect(pgsSnapshot())->toBe($before)
+        ->and(Storage::disk('local')->exists($t['full']['certificate']->path))->toBeTrue()
+        ->and(Storage::disk('local')->exists($t['mixed']['certificate']->path))->toBeTrue();
+})->with(['before', 'after']);

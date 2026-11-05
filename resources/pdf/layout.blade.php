@@ -13,6 +13,12 @@
     All lengths are pt and every block has its own left offset + width, so nothing depends on dompdf's
     handling of negative margins. The guru page is laid out from the left edge of the Pemprov logo, which sits
     29.85 pt left of the text edge in the Word file (hence the 41.05 pt page margin and the 29.85 pt offsets).
+    SV6, D-183 (lead, 2026-11-05: "Stempel tanda tangan … dibesarkan sedikit, nabrak atau kena tulisan gpp"): the
+    signature + stamp image is about 30 % taller than its reserved box (.gambar) and pulled up by half the growth with
+    position: relative, so it overlaps the line above and the name below equally. The boxes keep the school files'
+    heights: no line moves and the page count stays. Paint order: the image covers the line above, the name is drawn
+    over the image (a stamp image needs a transparent background). Width follows the image's ratio; at 2:1 it fits the
+    block, a much wider image runs into the right margin.
 
     Vars: $title · $letter ('siswa' | 'guru') · $verification (['code' => …, 'url' => …])
           · $pdfImages['qr.png'] (sandbox path) · $replaces (optional, B3: number of the revoked letter this one replaces)
@@ -95,8 +101,9 @@
         .g-kepada .lampir { width: 120pt; }
         .g-kepada-akhir { height: 6pt; }
         .g-ttd { margin-left: 277.95pt; width: 240pt; }
+        /* SV6, D-183: the image 30 % taller than its box (58 → 75.4 pt), half of the 17.4 pt above it; Lampiran too. */
         .g-ttd .gambar { height: 58pt; }
-        .g-ttd .gambar img { height: 58pt; }
+        .g-ttd .gambar img { height: 75.4pt; position: relative; top: -8.7pt; }
         .g-lampiran { margin-left: 29.85pt; }
         .g-lampiran-atas { height: 44.7pt; }
         .g-lampiran-kepala .k { width: 72pt; }
@@ -137,8 +144,9 @@
         .s-pelaksanaan .awal { width: 103.5pt; }
         .s-pelaksanaan .sd { width: 24.75pt; text-align: center; }
         .s-ttd { margin-left: 246.5pt; width: 226.5pt; text-align: center; }
+        /* SV6, D-183: the image 30 % taller than its box (60.95 → 79.25 pt), half of the 18.3 pt above it. */
         .s-ttd .gambar { height: 60.95pt; }
-        .s-ttd .gambar img { height: 60.95pt; }
+        .s-ttd .gambar img { height: 79.25pt; position: relative; top: -9.15pt; }
         .s-ttd .nama { font-weight: bold; text-decoration: underline; }
 
         /* Verification QR + code: small, bottom-left, on every page. */

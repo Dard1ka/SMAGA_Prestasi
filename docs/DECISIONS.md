@@ -177,6 +177,12 @@
 | D-180 | **"Ubah status" Admin menawarkan enam status** (Belum aktivasi, Aktif, Kedaluwarsa, Dibekukan, Nonaktif, Diarsipkan); Action baru `ActivateStudentAccount`, `ExpireActivationWindow`, `FreezeAccount` (`frozen_reason` `admin`) (hanya `smaga_server`) | Lead, 5 Nov 2026 (SV5) | final (menggantikan tiga tujuan D-179; "Aktif" untuk siswa yang belum pernah aktivasi tanpa jendela K1 dan pembekuan K3: sementara) |
 | D-181 | **Hapus kelas dan siswa ke Sampah 7 hari**, bisa dipulihkan; siswa di Sampah tidak tampil, tidak dihitung, tidak bisa masuk, tidak menerima email, notifikasi, atau poin (hanya `smaga_server`) | Lead, 5 Nov 2026 (SV5) | final (menggantikan "hanya kelas tanpa siswa" D-166 untuk `smaga_server`; jam hapus permanen, kata sandi saat Pulihkan, alasan di daftar, NISN di Sampah saat import: sementara) |
 | D-182 | **Hapus permanen dari Sampah** pukul 02.00 (`sth:sampah:hapus-permanen`, `PurgeStudents`): tim campuran tetap, ketua berpindah, kelompok yang ditolak tetap di Sampah, `letters.printed` tidak diubah (hanya `smaga_server`) | Lead, 5 Nov 2026 (SV5) | final (celah: tim bisa tertahan di `menunggu_konfirmasi` setelah Pulihkan atau hapus permanen) |
+| D-183 | **Gambar tanda tangan + stempel sekitar 30 % lebih besar** di surat siswa dan guru, boleh menimpa tulisan; tata letak halaman tetap (hanya `smaga_server`) | Lead, 5 Nov 2026 (SV6) | final |
+| D-184 | **Import siswa menyebut siswa yang sudah terdaftar** ("Terdaftar: nama · kelas · NISN · status", "Lihat" membuka "Ubah data siswa"); algoritma tahun ajaran tetap; "Tahun ajaran" hanya 2026/2027 tanpa "Tahun lain…", di bawahnya pilihan wajib "Kelas" X / XI / XII dan baris tingkat lain ditolak (hanya `smaga_server`) | Lead, 5 Nov 2026 (SV6) | final untuk "Terdaftar" dan "Lihat"; *sementara* untuk "Tahun ajaran" = 2026/2027 saja (menggantikan untuk sementara tahun yang diketik dari D-177) |
+| D-185 | **Status aktivasi punya aksi siswa yang sama dengan Admin › Kelas** (centang, Ubah data, Ubah status, Hapus ke Sampah); izin baru `student.trash` untuk Admin dan Kesiswaan; file Excel dengan sheet "Ringkasan", tanpa sheet kosong, tanpa file kosong, filter kelas dipakai, download juga di Admin › Kelas (hanya `smaga_server`) | Lead, 5 Nov 2026 (SV6) | final (menggantikan "sheet kosong tetap ada" dan "pilihan kelas tidak dipakai" dari D-174) |
+| D-186 | **"Hapus permanen" per entri Sampah** oleh Admin (kata sandi terbaru, nama kelas diketik), satu transaksi dengan batas pulih, audit `trash.purged_by_admin` (hanya `smaga_server`) | Lead, 5 Nov 2026 (SV6) | final sebagai keputusan; kode boleh menyusul di paket berikutnya |
+| D-187 | **"Ubah data siswa"** (Nama, NIS, NISN, Tanggal lahir, Kelas) untuk Admin, Kesiswaan dan Tata Usaha (`student.update`), satu dialog bersama, halaman baru Tata Usaha › Data siswa; tanggal lahir baru meng-hash ulang kata sandi awal siswa yang belum aktivasi dengan syarat ketat (hanya `smaga_server`) | Lead, 5 Nov 2026 (SV6) | final |
+| D-188 | **Koreksi surat tugas: nomor lama boleh dipakai lagi** setelah surat lama dicabut (nomor unik hanya di antara surat yang tidak dicabut), tanpa peringatan oranye, semua isian terisi dari surat lama dengan warna biru muda selama sama (hanya `smaga_server`) | Lead, 5 Nov 2026 (SV6) | final (menggantikan bagian "termasuk nomor surat yang sudah dicabut" dari D-82) |
 | U-01…U-06 | Usulan keamanan yang belum diputuskan | Agent H (keamanan) | menunggu jawaban sekolah / sementara |
 
 ---
@@ -644,6 +650,7 @@ Tiap entri menyebut keputusan lama yang digantinya; entri lama tidak dihapus.
 - **Alasan:** Permintaan user: "Input nomor suratnya biarkan dari mereka semua jadi mereka semua input full". Penomoran mengikuti buku agenda TU; aplikasi tidak perlu tahu arti "MRD" atau kapan nomor urut direset.
 - **Dampak:** `LetterNumber::normalize()` / `numberError()` / `key()` / `example()`; `letters.sequence` boleh kosong; indeks unik `(type, year, sequence)` diganti `(type, full_number)`; tahun dan bulan diambil dari tanggal surat. Nomor tetap tidak bisa diubah setelah PDF dibuat (koreksi = D-49, dengan nomor baru).
 - **Status:** final (keputusan user). Menggantikan bagian format `{seq}` dan keunikan nomor urut per tahun di D-06/D-43; "format nomor hanya Admin" di D-60 kini berarti contoh nomor. Menjawab §F-3.
+- *5 Nov 2026, kemudian (D-188, SV6, hanya `smaga_server`):* nomor unik per jenis surat hanya di antara surat yang **tidak dicabut**; nomor surat yang dicabut boleh dipakai lagi, juga oleh surat Koreksi-nya (indeks unik `(type, active_full_number)`). Bagian "termasuk nomor surat yang sudah dicabut" dan "koreksi … dengan nomor baru" digantikan di sana; Smaga4 tetap.
 
 ### D-83 · Satu surat satu form; "Kirim" sekali · 4 Okt 2026
 - **Keputusan:** Surat siswa dan surat guru pendamping masing-masing punya **form sendiri** (tab sendiri): nomor, tanggal surat, dasar, dan pelaksanaan diisi per surat, lalu **"Buat PDF"** per surat. **"Kirim"** tetap satu kali, dan baru bisa setelah semua surat yang wajib ada (surat siswa; ditambah surat guru bila ada guru pembimbing). Tombol tidak dibuat abu-abu: bila ada yang kurang, layar langsung menuju daftar kesalahan yang menyebut kolomnya.
@@ -1529,6 +1536,9 @@ Konteks: permintaan lead 3 Nov 2026 setelah memakai server sekolah. Berlaku **ha
   + satu kalimat di layar, `ActivationReport::writeXlsx()` (menggantikan `writeCsv()`; `HEADER`, `LEVELS`,
   `NO_LEVEL_SHEET`), `StatusAktivasi` (`$unduhTingkat`, `DOWNLOAD_LEVELS`, `export()`), view Status aktivasi, tes terkait.
   Tanpa migrasi.
+- *5 Nov 2026, kemudian (D-185, SV6):* file Excel Status aktivasi untuk seluruh sekolah dimulai dengan sheet "Ringkasan"
+  dan hanya memuat sheet tingkat yang berisi siswa ("sheet kosong tetap ada" digantikan); pilihan kelas di daftar kini
+  dipakai (satu sheet bernama kelas itu); tanpa baris tidak ada file. Download juga di dialog kelas dan di Admin › Kelas.
 
 ## D27. Kelas bernomor, siswa per kelas, tahun ajaran manual, data siswa dikosongkan, ubah status siswa (4 Nov 2026, SV4, hanya `smaga_server`)
 
@@ -1584,6 +1594,10 @@ Permintaan lead 4 Nov 2026 untuk server sekolah. Smaga4 tidak berubah (tetap D-1
   tahun yang hilang setelah halaman kata sandi ditemukan saat uji di browser (juga untuk tahun di daftar, sejak dulu).
 - **Dampak:** `Akun\ImportSiswa` (`OTHER_YEAR`, `OTHER_YEAR_SPAN`, `customYear`, `effectiveSchoolYear()`, `YEAR_QUERY`,
   `CUSTOM_YEAR_QUERY`, `returnUrl()`), view Import siswa, `tests/Feature/Accounts/ImportSiswaTahunLainTest.php`.
+- *5 Nov 2026, kemudian (D-184, SV6, sementara):* kolom ini bernama "Tahun ajaran" dan hanya menawarkan "2026/2027",
+  tanpa "Tahun lain…" dan tanpa tahun yang diketik; algoritma tahun ajaran tidak berubah. Di bawahnya pilihan wajib
+  "Kelas" (X, XI, XII): file hanya untuk siswa tingkat itu. Tahun yang diketik dari keputusan ini tidak dipakai untuk
+  sementara.
 
 ### D-178 · Data siswa dikosongkan sebelum data sungguhan, satu lomba contoh · 4 Nov 2026
 - **Keputusan:**
@@ -1750,6 +1764,9 @@ Permintaan lead 5 Nov 2026 untuk server sekolah. Smaga4 tidak berubah (tetap D-1
   - alasan hapus tampil di daftar Sampah untuk setiap Admin;
   - baris import dengan NIS dan NISN siswa di Sampah "Dilewati" ("Siswa ini ada di Sampah. Pulihkan dulu atau tunggu
     terhapus permanen."): tidak membuat akun kedua dan tidak memulihkan diam-diam.
+- *5 Nov 2026, kemudian (D-185, SV6):* siswa juga bisa dihapus ke Sampah dari Status aktivasi, lewat dialog bersama
+  `Admin\HapusSiswa` (menggantikan dialog `kelas-siswa-hapus`), dan oleh Kesiswaan (izin baru `student.trash`). Hapus
+  kelas, daftar Sampah dan "Pulihkan" tetap Admin. Import siswa kini menyebut siswa di Sampah pada barisnya (D-184).
 
 ### D-182 · Hapus permanen dari Sampah · 5 Nov 2026
 - **Keputusan:**
@@ -1789,6 +1806,193 @@ Permintaan lead 5 Nov 2026 untuk server sekolah. Smaga4 tidak berubah (tetap D-1
   ketuanya di Sampah tim tidak pernah maju, juga saat undangan terakhir dijawab; setelah Pulihkan tidak ada yang
   memeriksa tim itu lagi. Begitu juga tim yang satu-satunya undangan belum dijawab milik siswa yang terhapus permanen:
   semua orang tersisa sudah konfirmasi, tetapi tidak ada langkah yang memajukannya. Ketua masih bisa membatalkan (D-33).
+- *5 Nov 2026, kemudian (D-186, SV6):* Admin juga bisa "Hapus permanen" satu entri Sampah sebelum 7 hari, dengan aturan
+  hapus yang sama (`PurgeStudents`) dalam satu transaksi dengan pemeriksaan batas pulih, audit `trash.purged_by_admin`
+  (`PurgeFromTrash`). Jadwal 02.00 tetap. Tombol "Hapus permanen" di daftar Sampah Admin › Kelas. (tombol di layar menyusul di rilis berikutnya; Action, aturan dan tes sudah ada)
+
+## D29. Stempel lebih besar, siswa terdaftar di Import siswa, aksi siswa yang sama, Ubah data siswa, hapus permanen, Koreksi dengan nomor lama (5 Nov 2026, SV6, hanya `smaga_server`)
+
+Permintaan kedua lead pada 5 Nov 2026 untuk server sekolah. Smaga4 tidak berubah. **Template surat tidak berubah** (teks
+Dasar surat siswa dan guru; lead: "skip"). Catatan kerja: `docs/dev-notes/SV6.md`. Baris yang ditandai
+Satu bagian belum lengkap di D-186: tombol "Hapus permanen" di layar menyusul di rilis berikutnya;
+Action, aturan dan tesnya sudah masuk rilis ini.
+
+### D-183 · Gambar tanda tangan + stempel sekitar 30 % lebih besar · 5 Nov 2026
+- **Keputusan:**
+  - PDF surat tugas siswa dan guru (juga halaman Lampiran guru): gambar tanda tangan + stempel kira-kira 30 % lebih
+    tinggi dari kotaknya, siswa 60,95 → 79,25 pt (`.s-ttd .gambar img`), guru 58 → 75,4 pt (`.g-ttd .gambar img`), dan
+    ditarik ke atas separuh pertambahannya (`position: relative`, `top` −9,15 pt / −8,7 pt). Gambar menimpa baris di
+    atasnya ("Kepala Sekolah") dan nama di bawahnya sama banyak.
+  - Kotak `.gambar` tetap setinggi berkas sekolah: tidak ada baris yang bergeser dan jumlah halaman tetap. Urutan gambar:
+    gambar menutupi baris di atas, nama tercetak di atas gambar; gambar stempel karena itu sebaiknya berlatar transparan.
+    Lebar mengikuti rasio gambar: 2:1 muat di bloknya, gambar yang jauh lebih lebar masuk ke margin kanan.
+  - Pratinjau TU tetap tanpa gambar asli (SECURITY §3m-5): slot 52 px tetap, kotak putus-putus "Tanda tangan + stempel"
+    menimpa 8 px ke atas dan 8 px ke bawah (68 px), seperti gambarnya di PDF.
+  - Surat yang sudah terbit tetap dengan ukuran lama (PDF tersimpan apa adanya) sampai dikoreksi. Surat demo mengikuti
+    sendiri.
+- **Alasan:** lead, 5 Nov 2026: "Stempel tanda tangan pada tiap surat dibesarkan sedikit, nabrak atau kena tulisan gpp".
+- **Dampak:** `resources/pdf/layout.blade.php` (aturan `img` + komentar kepala), `tata-usaha/partials/ttd.blade.php`, tes
+  `LetterLayoutTest` (aturan baru, tinggi `.gambar` tetap, jumlah halaman). Tanpa migrasi.
+- **Status:** final.
+
+### D-184 · Import siswa menyebut siswa yang sudah terdaftar; "Tahun ajaran" hanya 2026/2027 dan pilihan "Kelas" · 5 Nov 2026
+*menggantikan untuk sementara tahun yang diketik ("Tahun lain…") dari D-177*
+- **Keputusan:**
+  - Setiap baris pratinjau yang NIS atau NISN-nya cocok atau bertabrakan dengan siswa terdaftar menyebut siswa itu di
+    bawah namanya: "Terdaftar: <nama> · <kelas> · NISN <nisn> · <status>". Berlaku untuk pindah kelas, tidak berubah,
+    data diperbarui, alumni yang dilewati, siswa di Sampah ("Di Sampah, terhapus permanen <tanggal>"), baris yang
+    didaftarkan impor lain, dan penolakan karena NIS/NISN milik siswa lain (satu baris bisa menyebut dua siswa). Contoh
+    fiktif: "Terdaftar: Nadia Putri Anindya · XII-9 · NISN 0012345678 · Aktif".
+  - "Lihat" di sebelahnya membuka dialog bersama "Ubah data siswa" (D-187) di layar yang sama; pratinjau dan file tetap.
+    "Lihat" mengirim nomor baris dan urutan siswa di baris itu, bukan id: id dibaca dari cache pratinjau di server
+    (laporan `matches` dari `ImportStudents`), hanya dari baris yang sedang tampil, dan tidak pernah masuk payload
+    Livewire, "Download baris yang perlu dicek", atau audit. Hanya untuk akun dengan `student.update`.
+  - Siswa di Sampah tidak punya "Lihat": Admin mendapat link ke bagian Sampah Admin › Kelas di tab baru (pratinjau tetap
+    di sini), Kesiswaan membaca "Minta Admin memulihkannya di menu Kelas.". Siswa yang masuk Sampah atau terhapus
+    permanen setelah layar digambar: toast peringatan dan baris digambar ulang.
+  - Setelah "Ubah data siswa" disimpan, pratinjau tidak dibaca ulang dan tidak ada yang diimpor sendiri; toast "Data
+    siswa disimpan. Periksa ulang file sebelum import.".
+  - **Algoritma tahun ajaran tidak berubah** (`GraduationCalculator`, `SchoolYear`, tanggal arsip).
+  - Kolom tahun bernama **"Tahun ajaran"** dan hanya menawarkan **"2026/2027"** (tahun ajaran sekarang): tanpa "Tahun
+    lain…" dan tanpa tahun yang diketik; untuk sementara tidak ada cara memilih atau menambah tahun lain.
+   
+  - Di bawahnya pilihan wajib **"Kelas"** dengan X, XI, XII. File hanya boleh berisi siswa tingkat itu: baris dengan
+    kelas tingkat lain **Ditolak** dengan "Kelas <nama kelas> bukan kelas <X|XI|XII>. File ini untuk kelas <X|XI|XII>
+    saja." (contoh: "Kelas XI-3 bukan kelas X. File ini untuk kelas X saja.").
+- **Alasan:** lead, 5 Nov 2026: "bisa langsung ditunjukan siswa mana"; untuk tahun: "algoritma tahun ajarannya biarkan
+  saja balikkan menjadi seperti awal", lalu (18.20) "kembalikan namanya jadi tahun ajaran tpi bukan 2026 melainkan
+  2026/2027 saja dulu untuk saat ini lalu dibawahnya kasih opsi pilihan kelas yang pilihannya hanya X, XI, XII"; untuk
+  baris tingkat lain lead memilih "Cek tingkat file". Pemicunya: 2024 yang diketik di "Tahun lain…" membuat siswa kelas
+  XII tertulis "Angkatan 2022" dengan tanggal arsip yang sudah lewat.
+- **Dampak:** `ImportStudents` (`matches`, `matchIds()`, `markTaken()`), `Akun\ImportSiswa` (`showRegistered()`,
+  `studentDataSaved()`, `registeredLines()`, `STUDENT_DATA_SAVED`, `ASK_ADMIN_RESTORE`, `REGISTERED_TRASHED`,
+  `REGISTERED_GONE`, `TRASH_ANCHOR`), view Import siswa, tes `ImportStudentsTest`, `ImportSiswaTerdaftarTest`. "Tahun
+  ajaran" 2026/2027 saja, pilihan "Kelas" dan penolakan baris tingkat lain: `Akun\ImportSiswa`, `ImportStudents`, view,
+  tes. Tanpa migrasi.
+- **Status:** final untuk "Terdaftar" dan "Lihat". *Sementara* untuk "Tahun ajaran" = 2026/2027 saja (lead: "saja dulu
+  untuk saat ini"); tahun yang diketik dari D-177 kembali hanya kalau lead memintanya. Final untuk pilihan "Kelas" dan
+  penolakan baris tingkat lain (pilihan lead "Cek tingkat file").
+
+### D-185 · Status aktivasi dengan aksi siswa yang sama; Kesiswaan boleh menghapus ke Sampah; Excel dengan "Ringkasan" · 5 Nov 2026
+*menggantikan "sheet kosong tetap ada" dan "pilihan kelas di daftar tidak dipakai untuk file" dari D-174*
+- **Keputusan:**
+  - Status aktivasi (tab Daftar siswa dan dialog kelas "Lihat") punya aksi siswa yang sama dengan Admin › Kelas › Lihat
+    siswa: centang dan "Pilih semua yang tampil" (paling banyak 400 sekaligus), "Ubah data" (D-187), "Ubah status" /
+    "Aktifkan lagi" dan "Ubah status terpilih (N)" (Admin, `user.archive`), "Hapus" dan "Hapus terpilih (N)" ke Sampah.
+    Baris aksi, centang dan bar pilihan adalah partial yang sama di dua halaman; id selalu dicek terhadap baris yang
+    tampil.
+  - Hapus siswa memakai satu dialog bersama, `App\Livewire\Admin\HapusSiswa`, di kedua halaman: alasan 10–500 karakter,
+    kata sandi terbaru, menyebut sampai tiga siswa dengan kelasnya atau "dari N kelas", toast basi kalau siswa sudah
+    terhapus atau pindah kelas.
+  - **Izin baru `student.trash`** (Admin dan Kesiswaan; lead memilih "Admin dan Kesiswaan") untuk memindahkan **siswa**
+    ke Sampah (`TrashEntryPolicy::trashStudents()` = `student.trash` atau `classroom.manage`). Hapus kelas, daftar
+    Sampah, "Pulihkan" dan "Hapus permanen" (D-186) tetap Admin (`classroom.manage`). Setelah Kesiswaan menghapus, toast
+    menyebut bahwa Admin bisa memulihkan siswanya di Admin › Kelas dalam 7 hari.
+  - File Excel K9 ditulis satu Action, `ExportActivationReport`, untuk dua halaman. Seluruh sekolah = sheet
+    **"Ringkasan"** lebih dulu (per kelas: jumlah siswa dan jumlah per status dalam urutan Status aktivasi, baris
+    "Semua kelas" di akhir), lalu hanya sheet tingkat yang berisi siswa. Satu tingkat = satu sheet. Satu kelas = satu
+    sheet bernama kelas itu: filter kelas di daftar kini dipakai dan menang atas tingkat. Tab status dan pencarian
+    tetap menyempitkan file. Tanpa baris: tidak ada file dan tidak ada audit, toast "Tidak ada siswa untuk pilihan ini.".
+  - Download ada di Status aktivasi (kedua tab dan dialog kelas) dan di Admin › Kelas ("Download semua kelas" di atas
+    halaman, "Download Excel" di Lihat siswa). Konfirmasi kata sandi, `LargeExportNotice` dan audit
+    `account.activation_report_exported` tetap (kini juga kelas, filter status, pencarian ya/tidak, layar, jumlah baris;
+    tanpa nama atau NISN).
+- **Alasan:** lead, 5 Nov 2026: Status aktivasi "bisa jg menghapus siswa sama seperti logic tab kelas", "bisa
+  ngedownload list siswa termasuk statusnya mereka", dan file yang "masih kosong saja tanpa ada siswanya" (Excel membuka
+  sheet pertama `X`, yang kosong setelah data siswa dikosongkan).
+- **Dampak:** `Permission::StudentTrash`, `RoleName` (Kesiswaan), `TrashEntryPolicy::trashStudents()`, `TrashStudents`,
+  `Admin\HapusSiswa` + view, `Admin\Concerns\SelectsListedStudents`, partial `livewire/partials/siswa-aksi`,
+  `siswa-pilih`, `siswa-cek`, `Akun\StatusAktivasi` + view, `Admin\Kelas` + view (dialog `kelas-siswa-hapus` pindah ke
+  `HapusSiswa`; `exportAll()`, `exportClass()`), `ActivationReport` (`SUMMARY_SHEET`, `SUMMARY_TOTAL`, `writeXlsx()`,
+  `sheetName()`), `ExportActivationReport`. **`RoleSeeder` wajib dijalankan ulang** di setiap database. Tanpa migrasi.
+- **Status:** final.
+
+### D-186 · "Hapus permanen" per entri Sampah · 5 Nov 2026
+- **Keputusan:**
+  - Setiap entri teratas di daftar Sampah Admin › Kelas punya "Hapus permanen" di samping "Pulihkan", hanya Admin
+    (`classroom.manage`). (tombol di layar menyusul di rilis berikutnya; Action, aturan dan tes sudah ada)
+  - Dialog meminta kata sandi terbaru (15 menit); untuk entri kelas Admin juga mengetik nama kelasnya. Entri kelas ikut
+    menghapus siswa kelas itu yang dihapus sendiri lebih dulu (tanpa itu kelas tidak bisa dihapus); dialog menyebut
+    mereka terpisah. (tombol di layar menyusul di rilis berikutnya; Action, aturan dan tes sudah ada)
+  - Satu transaksi (`App\Actions\Trash\PurgeFromTrash` lewat `PurgeStudents::handleWithin()`): entri dikunci lebih dulu
+    dengan urutan kunci `RestoreFromTrash` dan diperiksa ulang (masih terbuka, setiap siswanya masih di Sampah), lalu
+    hapus dengan aturan D-182 (tim campuran tetap), kelas dihapus (`forceDelete()`), setiap entri yang diambil diberi
+    `purged_at`, dan audit ditulis. Hapus yang ditolak tidak menulis apa pun dan entri tetap bisa dipulihkan; "Pulihkan"
+    yang diklik bersamaan menunggu atau menang, tidak pernah diikuti hapus permanen siswa itu. Isi file dihapus setelah
+    commit. Nama kelas yang diketik dibandingkan tanpa huruf besar/kecil dan spasi ("Ketik nama kelas persis seperti di
+    judul.").
+  - Satu baris audit `trash.purged_by_admin` (log `account`, Admin sebagai pelaku; id dan jumlah, tanpa nama atau NISN).
+    Izin: `TrashEntryPolicy::forceDelete` (`classroom.manage`).
+- **Alasan:** lead, 5 Nov 2026: hapus permanen sekarang tanpa menunggu 7 hari (siswa dari import dengan tahun yang salah).
+- **Dampak:** `App\Actions\Trash\PurgeFromTrash` (baru), `PurgeStudents::handleWithin()`, `TrashEntryPolicy::forceDelete()`,
+  tes `tests/Feature/Trash/PurgeFromTrashTest.php`; tombol dan dialog di `Admin\Kelas` + view, label Log audit
+  (tombol di layar menyusul di rilis berikutnya).
+- **Status:** final sebagai keputusan; kodenya boleh dikirim di paket susulan kalau tidak selesai 5 Nov 2026.
+
+### D-187 · "Ubah data siswa" untuk Admin, Kesiswaan dan Tata Usaha · 5 Nov 2026
+- **Keputusan:**
+  - Satu dialog bersama, `App\Livewire\Akun\UbahDataSiswa`, mengubah **Nama lengkap, NIS, NISN, Tanggal lahir
+    (DD-MM-YYYY) dan Kelas** satu siswa yang tidak di Sampah, lewat `App\Actions\Students\UpdateStudentData`. Izin
+    `student.update`: Admin, **Kesiswaan dan Tata Usaha** (`StudentPolicy::update`).
+  - Dibuka dari Admin › Kelas › Lihat siswa, Status aktivasi (daftar dan dialog kelas), Import siswa ("Lihat", D-184),
+    Admin › Pengguna & peran › Bantuan akun siswa ("Ubah data"), dan halaman baru **Tata Usaha › Data siswa**
+    (`tu.siswa.index`, `/tu/data-siswa`; lead memilih halaman ini): semua siswa yang tidak di Sampah, status apa pun,
+    cari nama atau NISN, filter kelas, kolom Nama, NISN, NIS, Kelas, Status, "Ubah data" per baris.
+  - Aturan import dengan kalimat staf: nama wajib, maksimal 150 karakter, hanya huruf; NIS 4–20 angka, NISN 10 angka,
+    masing-masing **unik terhadap semua siswa termasuk yang di Sampah** ("NISN ini milik siswa di Sampah."); usia 13–21
+    tahun; kelas aktif yang tidak di Sampah. Kelas dengan tingkat lain menghitung ulang tanggal arsip seperti import
+    dengan tahun ajaran hari ini (algoritma tetap) dan menolak tanggal arsip yang sudah lewat; tingkat sama = tanggal
+    tetap; kelas siswa alumni tidak bisa diubah. Hanya field yang berubah yang diperiksa dan ditulis.
+  - Baris hanya-baca: status, email tersamar, "Angkatan N · arsip otomatis <bulan tahun>". Kotak dampak di atas "Simpan
+    perubahan" hanya untuk field yang berubah: "Siswa masuk dengan NISN baru. Beri tahu siswanya.", "Kata sandi awal ikut
+    tanggal lahir baru.", "Samakan juga di file Excel sekolah agar import berikutnya cocok.", "Surat yang sudah terbit
+    tetap; pakai Koreksi.".
+  - Kata sandi terbaru (15 menit) diminta **saat dialog dibuka** (isian tidak pernah hilang karena halaman kata sandi) dan
+    diperiksa lagi saat simpan; tanpa alasan, tanpa dialog kedua. **Tidak ada yang diberi tahu.**
+  - **Kata sandi awal (D-173):** tanggal lahir baru meng-hash ulang kata sandi hanya kalau semua terpenuhi: status
+    `pending_activation`, `must_change_password`, tanpa kata sandi sementara Admin, dan kata sandi tersimpan masih
+    `InitialPassword::forBirthDate(tanggal lama)` (`Hash::check`). Siswa aktif, kata sandi sementara, nilai D-138 dan
+    kata sandi milik siswa sendiri tidak disentuh; `initial_password_expires_at` dan sesi tetap. Nilainya tidak pernah
+    ditampilkan, dikembalikan, dicatat, atau diaudit.
+  - Satu baris audit per simpan, `student.data_updated` (log `student`, juga log keamanan): nama field, layar
+    (`source`) dan boolean saja (`initial_password_rehashed`), tidak pernah nama, NIS, NISN, tanggal lahir, kelas atau
+    kata sandi. `PublicAchievements::flush()` kalau nama atau kelas berubah. Surat yang sudah terbit tetap menyimpan
+    apa yang dicetaknya (D-108).
+  - Kesiswaan dan Tata Usaha kini **melihat tanggal lahir** siswa di dialog ini (keputusan lead; konsekuensinya, untuk
+    siswa yang belum aktivasi mereka bisa mengetahui atau menetapkan kata sandi awalnya, seperti import).
+  - Layar basi: data berubah di tab lain → toast peringatan dan isian dimuat ulang; siswa masuk Sampah → dialog tutup
+    dengan toast; tidak ada yang beda → "Tidak ada data yang diubah.".
+- **Alasan:** lead, 5 Nov 2026: staf membetulkan data siswa (nama, NIS, NISN, tanggal lahir, kelas) setelah import yang
+  salah ketik, tanpa import ulang; untuk Tata Usaha lead memilih halaman "Data siswa".
+- **Dampak:** `Permission::StudentUpdate` (dipakai lagi; Kesiswaan dan Tata Usaha di `RoleName`), `StudentPolicy::update()`,
+  `UpdateStudentData`, `Akun\UbahDataSiswa` + view, `TataUsaha\DataSiswa` + view, route `tu.siswa.index`, menu TU
+  "Data" › "Data siswa", `Admin\Pengaturan\Pengguna` (`openStudentData()`, `refreshStudentData()`), host Kelas,
+  Status aktivasi, Import siswa, docblock `InitialPassword`, `SecurityEventSubscriber` (`student.data_updated`), label
+  Log audit "Data siswa diubah", tes `UpdateStudentDataTest`. **`RoleSeeder` wajib dijalankan ulang.** Tanpa migrasi.
+- **Status:** final.
+
+### D-188 · Koreksi surat tugas: nomor lama boleh dipakai lagi, isian lama sudah terisi · 5 Nov 2026
+*menggantikan bagian "termasuk nomor surat yang sudah dicabut" dari D-82 untuk `smaga_server`*
+- **Keputusan:**
+  - Nomor surat unik per jenis surat **hanya di antara surat yang tidak dicabut** (dibandingkan tanpa spasi dan huruf
+    besar/kecil, seperti D-82). Surat Koreksi boleh memakai nomor surat lamanya: surat lama dicabut lebih dulu, lalu surat
+    baru disimpan, dalam satu transaksi. Nomor surat lain yang tidak dicabut tetap ditolak.
+  - Migrasi `2026_11_05_180000_sv6_letters_number_free_after_revoke`: kolom generated (virtual)
+    `letters.active_full_number` = `LOWER(REPLACE(full_number, ' ', ''))` selama `revoked_at` kosong, NULL setelah
+    dicabut; indeks unik `(type, full_number)` diganti `(type, active_full_number)`. Migrasi menolak berjalan kalau ada
+    nomor aktif ganda per jenis; tidak ada baris yang berubah. Hanya maju di produksi.
+  - Koreksi surat siswa dan guru tidak lagi menampilkan peringatan oranye.
+  - "Koreksi" mengisi setiap field dari surat lama (nomor, tanggal surat, jadwal, undangan); field yang masih sama
+    dengan surat lama berlatar biru muda, dengan satu kalimat "Isian berwarna biru masih sama dengan surat sebelum
+    dikoreksi."; warnanya hilang begitu isinya diubah.
+- **Alasan:** lead, 5 Nov 2026: "di bagian koreksi surat tugas dan guru ini nomor dan data lama yang sudah diinput …
+  bisa dipakai lagi … jdi peringatan itu hilangkan saja. Lalu ketika klik koreksi auto keisi data data lama … dikasih
+  backlight color yang berbeda".
+- **Dampak:** migrasi di atas, `IssueLetters` (pemeriksaan nomor tanpa surat yang dicabut dan tanpa surat yang
+  dikoreksi; surat lama dicabut sebelum baris baru disimpan), `RevokeLetter`, `TataUsaha\SuratTugas` (`SAME_LINE`) +
+  view, `x-sth.input` (latar `bg-blue-bg`), tes `KoreksiSuratTest`, `SuratTugasTest`, `RevokeLetterTest`
+ . Server produksi: migrasi E6a setelah backup.
+- **Status:** final.
 
 ## E. Usulan keamanan yang belum diputuskan
 

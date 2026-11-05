@@ -159,25 +159,54 @@ final class ActivationReport
     /** Extra sheet for a student whose class has no tingkat of LEVELS: never dropped from a whole-school file. */
     public const NO_LEVEL_SHEET = 'Tanpa kelas';
 
+    /**
+     * First sheet of a whole-school file (SV6, D-185, replacing "sheet kosong tetap ada" of D-174): one row per class with
+     * its student count and the count per status, then the total row SUMMARY_TOTAL.
+     */
+    public const SUMMARY_SHEET = 'Ringkasan';
+
+    public const SUMMARY_TOTAL = 'Semua kelas';
+
     /** Column widths of the export in Excel characters, in HEADER order. */
     private const WIDTHS = [12, 32, 14, 16, 28, 18, 18, 22, 40];
 
+    /** Column widths of SUMMARY_SHEET, in summaryHeader() order. */
+    private const SUMMARY_WIDTHS = [14, 14, 16, 10, 14, 12, 12, 12];
+
+    /** @return list<string> header of SUMMARY_SHEET: Kelas, Jumlah siswa, then the six states in the order of Status aktivasi */
+    public static function summaryHeader(): array
+    {
+        return ['Kelas', 'Jumlah siswa', ...array_values(array_column(AccountControls::STATES, 'label'))];
+    }
+
     /**
-     * Excel export written to $path (SV3, replaces the CSV): $level null = one sheet per tingkat of LEVELS, always all
-     * three (header only when empty), plus NO_LEVEL_SHEET only when a row has no such tingkat; an int = that one sheet.
+     * Excel export written to $path (SV3, replaces the CSV; SV6, D-185 changed the whole-school file):
+     * - $classroom set (the name of the one class the rows come from) = one sheet named after that class;
+     * - else $level set = that one tingkat sheet;
+     * - else (the whole school) = SUMMARY_SHEET first, then one sheet per tingkat of LEVELS that has rows (an empty
+     *   tingkat no longer gets a header-only sheet: Excel opened the file on an empty first sheet), plus NO_LEVEL_SHEET
+     *   when a row has no such tingkat.
      * Rows keep the order of rows() (class, then name). Every cell is formula-safe text, so the NISN keeps its zeros.
      *
      * @param  Collection<int, array<string, mixed>>  $rows
      */
-    public function writeXlsx(Collection $rows, string $path, ?int $level): void
+    public function writeXlsx(Collection $rows, string $path, ?int $level = null, ?string $classroom = null): void
     {
         $byLevel = $rows->groupBy(fn (array $row): string => (string) (array_key_exists((int) $row['level'], self::LEVELS) ? $row['level'] : ''));
-        $sheets = $level !== null
-            ? [self::LEVELS[$level] => $byLevel->get((string) $level, collect())]
-            : collect(self::LEVELS)->mapWithKeys(fn (string $name, int $l): array => [$name => $byLevel->get((string) $l, collect())])->all();
 
-        if ($level === null && $byLevel->has('')) {
-            $sheets[self::NO_LEVEL_SHEET] = $byLevel->get('');
+        if ($classroom !== null) {
+            $sheets = [self::sheetName($classroom) => $rows];
+        } elseif ($level !== null) {
+            $sheets = [self::LEVELS[$level] => $byLevel->get((string) $level, collect())];
+        } else {
+            $sheets = collect(self::LEVELS)
+                ->filter(fn (string $name, int $l): bool => $byLevel->has((string) $l))
+                ->mapWithKeys(fn (string $name, int $l): array => [$name => $byLevel->get((string) $l)])
+                ->all();
+
+            if ($byLevel->has('')) {
+                $sheets[self::NO_LEVEL_SHEET] = $byLevel->get('');
+            }
         }
 
         $writer = SimpleExcelWriter::create($path);
@@ -185,7 +214,7 @@ final class ActivationReport
         $bold = (new Style)->setFontBold();
         $first = true;
 
-        foreach ($sheets as $name => $sheetRows) {
+        $newSheet = function (string $name, array $widths) use ($writer, &$first): void {
             if (! $first) {
                 $writer->getWriter()->addNewSheetAndMakeItCurrent();
             }
@@ -194,31 +223,54 @@ final class ActivationReport
             $sheet = $writer->getWriter()->getCurrentSheet();
             $sheet->setName($name);
 
-            foreach (self::WIDTHS as $i => $width) {
+            foreach ($widths as $i => $width) {
                 $sheet->setColumnWidth($width, $i + 1);
             }
+        };
+        $textRow = fn (array $values, ?Style $style = null): Row => new Row(array_map(
+            fn (mixed $value): StringCell => new StringCell(self::cell($value), $style ?? $text),
+            $values,
+        ));
 
+        if ($classroom === null && $level === null) {
+            $newSheet(self::SUMMARY_SHEET, self::SUMMARY_WIDTHS);
+            $writer->addRow(Row::fromValues(self::summaryHeader(), $bold));
+
+            foreach ($this->summary($rows) as $class) {
+                $writer->addRow($textRow([$class['classroom'], (string) $class['total'], ...array_map(strval(...), array_values($class['counts']))]));
+            }
+
+            $writer->addRow($textRow([self::SUMMARY_TOTAL, (string) $rows->count(), ...array_map(strval(...), array_values(self::totals($rows)))], $bold));
+        }
+
+        foreach ($sheets as $name => $sheetRows) {
+            $newSheet((string) $name, self::WIDTHS);
             $writer->addRow(Row::fromValues(self::HEADER, $bold));
 
             foreach ($sheetRows as $row) {
-                $writer->addRow(new Row(array_map(
-                    fn (string $value): StringCell => new StringCell(self::cell($value), $text),
-                    [
-                        (string) $row['classroom'],
-                        (string) $row['name'],
-                        (string) $row['nisn'],
-                        AccountControls::stateLabel($row['state']),
-                        (string) ($row['email'] ?? ''),
-                        $row['activatedAt']?->format('Y-m-d H:i') ?? '',
-                        $row['lastLoginAt']?->format('Y-m-d H:i') ?? '',
-                        $row['expiresAt']?->format('Y-m-d H:i') ?? '',
-                        implode('; ', $row['flags']),
-                    ],
-                )));
+                $writer->addRow($textRow([
+                    (string) $row['classroom'],
+                    (string) $row['name'],
+                    (string) $row['nisn'],
+                    AccountControls::stateLabel($row['state']),
+                    (string) ($row['email'] ?? ''),
+                    $row['activatedAt']?->format('Y-m-d H:i') ?? '',
+                    $row['lastLoginAt']?->format('Y-m-d H:i') ?? '',
+                    $row['expiresAt']?->format('Y-m-d H:i') ?? '',
+                    implode('; ', $row['flags']),
+                ]));
             }
         }
 
         $writer->close();
+    }
+
+    /** A class name as an Excel sheet name: no : \ / ? * [ ], at most 31 characters, never empty. */
+    public static function sheetName(string $name): string
+    {
+        $name = trim((string) preg_replace('/[:\\\\\/?*\[\]]+/u', ' ', $name));
+
+        return mb_substr($name !== '' ? $name : 'Kelas', 0, 31);
     }
 
     /** Spreadsheet cell text: values a spreadsheet would read as a formula get a leading apostrophe (OWASP CSV injection). */

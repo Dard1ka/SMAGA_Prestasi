@@ -23,6 +23,7 @@ use App\Livewire\Kesiswaan\Talenta;
 use App\Livewire\Kesiswaan\VerifikasiHasil;
 use App\Livewire\Sekolah\Dashboard;
 use App\Livewire\TataUsaha\ArsipSurat;
+use App\Livewire\TataUsaha\DataSiswa;
 use App\Livewire\TataUsaha\SuratTugas;
 use App\Livewire\TataUsaha\TemplateSurat;
 use Illuminate\Support\Facades\Route;
@@ -49,6 +50,8 @@ Route::middleware(['area.staff', 'role:tata_usaha'])->prefix('tu')->name('tu.')-
     // D-150: Tata Usaha approves registrations too; the Kepala Sekolah's screen under the TU address (ApprovalQueue).
     Route::livewire('/persetujuan', Persetujuan::class)->name('persetujuan.index');
     Route::livewire('/surat/arsip', ArsipSurat::class)->name('surat.arsip');
+    // SV6, D-187: the student list with "Ubah data" (DataSiswa authorizes student.update on mount and in every action).
+    Route::livewire('/data-siswa', DataSiswa::class)->name('siswa.index');
     Route::livewire('/surat/{registration}', SuratTugas::class)
         ->whereUlid('registration')
         ->name('surat.show');

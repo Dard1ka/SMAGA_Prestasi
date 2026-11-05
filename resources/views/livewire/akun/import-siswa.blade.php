@@ -35,25 +35,12 @@
 
             <x-sth.card as="section" aria-labelledby="h-unggah" class="flex flex-col gap-3">
                 <h2 id="h-unggah" class="title-card m-0">2 · Upload file</h2>
-                <x-sth.select wire:model.live="schoolYear" id="import-tahun-ajaran" label="Tahun ajaran data" :options="$yearOptions"
-                    hint="Dipakai untuk menghitung kelas XII dan tanggal arsip. Tahun yang tidak ada di daftar: pilih Tahun lain." />
-                {{-- SV4 (lead, 2026-11-04): "Tahun lain…" opens "Tahun mulai" right below. The typed text stays as typed
-                     (debounced, never trimmed back into the box); the line under it names the school year once the year is
-                     valid, the reason stands under the field otherwise. --}}
-                @if ($otherYear)
-                    <div class="flex flex-col gap-2 rounded-tile border border-line bg-subtle p-3">
-                        <x-sth.input wire:model.live.debounce.400ms="customYear" id="import-tahun-mulai" label="Tahun mulai"
-                            inputmode="numeric" maxlength="4" autocomplete="off" :placeholder="'Contoh: '.$otherYearExample" />
-                        <div aria-live="polite">
-                            @if ($otherYearLabel)
-                                <p class="m-0 flex items-center gap-2 text-sm">
-                                    <x-sth.icon name="calendar" :size="18" class="text-primary" />
-                                    <span class="font-bold text-ink">{{ $otherYearLabel }}</span>
-                                </p>
-                            @endif
-                        </div>
-                    </div>
-                @endif
+                {{-- SV6, D-184 (sementara): "Tahun ajaran" offers 2026/2027 only; "Kelas" (X, XI, XII) is required before
+                     the file is read, and a change reads the chosen file again. --}}
+                <x-sth.select wire:model.live="schoolYear" id="import-tahun-ajaran" label="Tahun ajaran" :options="$yearOptions"
+                    hint="Dipakai untuk menghitung kelas XII dan tanggal arsip." />
+                <x-sth.select wire:model.live="level" id="import-kelas" label="Kelas" :options="$levelOptions" placeholder="Pilih kelas"
+                    hint="File hanya boleh berisi siswa kelas ini. Baris kelas lain ditolak." />
                 @if ($passwordAsked && ! $preview)
                     {{-- QA9: the password first, then the upload, so the file is chosen only once. Also while an import
                          runs (SV1 review): a file chosen to wait for it would otherwise end on the password page; back
@@ -73,7 +60,7 @@
             <div class="flex flex-wrap items-center justify-between gap-2">
                 <h2 id="h-periksa" class="title-card m-0">3 · Periksa & impor</h2>
                 @if ($preview)
-                    <span class="text-xs text-muted">{{ $preview['fileName'] }} · Tahun ajaran {{ $preview['schoolYear'] }}</span>
+                    <span class="text-xs text-muted">{{ $preview['fileName'] }} · Tahun ajaran {{ $preview['schoolYear'] }}{{ $previewLevel !== null ? ' · Kelas '.$previewLevel : '' }}</span>
                 @endif
             </div>
 
@@ -99,9 +86,9 @@
             @endif
 
             @if ($preview === null)
-                @if ($yearMissing)
-                    {{-- SV4: a file chosen under "Tahun lain…" before its start year is valid waits for the year. --}}
-                    <x-sth.empty-state icon="calendar" title="Tahun ajaran belum lengkap" :card="false">Isi tahun mulai di langkah 2. Sesudah itu file {{ $chosenName }} langsung diperiksa.</x-sth.empty-state>
+                @if ($levelMissing)
+                    {{-- SV6, D-184: a file chosen before "Kelas" waits for it. --}}
+                    <x-sth.empty-state icon="file" title="Kelas belum dipilih" :card="false">Pilih kelas di langkah 2. Sesudah itu file {{ $chosenName }} langsung diperiksa.</x-sth.empty-state>
                 @elseif (! $job)
                     <x-sth.empty-state icon="file" title="Belum ada file untuk diperiksa" :card="false">Upload file Excel di langkah 2.</x-sth.empty-state>
                 @endif
@@ -189,6 +176,25 @@
                                         @foreach ($row['notes'] as $note)
                                             <span class="mt-0.5 block text-xs text-orange">{{ $note }}</span>
                                         @endforeach
+                                        {{-- SV6, D-184: the registered student(s) the row matches or collides with. "Lihat" sends the
+                                             row number and the place in the row, never an id (showRegistered()); a student in
+                                             the Sampah gets no "Lihat": the Admin a link to the Sampah in a new tab (the preview
+                                             stays here), anybody else the sentence to ask the Admin. --}}
+                                        @foreach ($row['registered'] as $match)
+                                            <span class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-ink-2">
+                                                <span class="[overflow-wrap:anywhere]">{{ $match['text'] }}</span>
+                                                @if ($match['trashed'])
+                                                    @if ($trashUrl)
+                                                        <x-sth.link :href="$trashUrl" :navigate="false" target="_blank" rel="noopener" icon-right="external">Buka Sampah<span class="sr-only"> di menu Kelas (tab baru)</span></x-sth.link>
+                                                    @else
+                                                        <span>{{ \App\Livewire\Akun\ImportSiswa::ASK_ADMIN_RESTORE }}</span>
+                                                    @endif
+                                                @elseif ($canEditStudents)
+                                                    <x-sth.button variant="quiet" size="sm" icon="eye" wire:click="showRegistered({{ $row['row'] }}, {{ $match['slot'] }})"
+                                                        aria-haspopup="dialog">Lihat<span class="sr-only"> data {{ $match['name'] }}</span></x-sth.button>
+                                                @endif
+                                            </span>
+                                        @endforeach
                                     </td>
                                     <td class="num">{{ $row['nisn'] ?? '–' }}</td>
                                     <td>{{ $row['kelas'] ?? '–' }}</td>
@@ -253,4 +259,9 @@
             @endif
         </x-slot:footer>
     </x-sth.modal>
+
+    {{-- SV6, D-184 / D-187: the shared "Ubah data siswa" dialog, once per page, for an account that may edit student data. --}}
+    @if ($canEditStudents)
+        <livewire:akun.ubah-data-siswa :key="'ubah-data-siswa'" />
+    @endif
 </div>

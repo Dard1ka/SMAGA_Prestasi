@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Livewire\Akun;
 
+use App\Actions\Accounts\AccountControls;
 use App\Actions\Accounts\ImportStudents;
 use App\Actions\Accounts\StudentImportReport;
 use App\Domain\Archive\GraduationCalculator;
-use App\Domain\Archive\SchoolYear;
 use App\Domain\Files\InvalidUpload;
 use App\Domain\Files\StoreUpload;
 use App\Enums\Permission;
@@ -16,7 +16,10 @@ use App\Enums\StudentImportStatus;
 use App\Jobs\ImportStudentsJob;
 use App\Livewire\Admin\Concerns\RequiresRecentPassword;
 use App\Livewire\Kesiswaan\Concerns\WithKesiswaanBadges;
+use App\Models\Classroom;
+use App\Models\Student;
 use App\Models\StudentImport;
+use App\Models\TrashEntry;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\View\View;
@@ -27,6 +30,7 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
+use Livewire\Attributes\On;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
@@ -68,10 +72,19 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
  * meanwhile to the other import, the result names those rows (TAKEN_BY_OTHER_IMPORT), and a unique index the import still
  * met reads the file again (IMPORT_COLLIDED) instead of Livewire's 500. A finished queued import above a file it did not
  * import names its own file and says that the file on screen is not imported yet.
- * SV4 (lead, 2026-11-04): "Tahun ajaran data" ends with "Tahun lain…" (OTHER_YEAR): a start year typed under it
- * ("Tahun mulai", OTHER_YEAR_SPAN years around the current school year) gives "YYYY/YYYY+1". effectiveSchoolYear() is
- * the one year the dry run, the import and the queued import use; a typed year that is not complete or refused drops
- * the preview of the previous year and keeps the chosen file, which is read as soon as the year is valid.
+ * SV6, D-184 (the lead, 5 Nov 2026, sementara; replaces SV4's "Tahun lain…" and typed start year): "Tahun ajaran" offers
+ * FIXED_SCHOOL_YEAR only, and every step (dry run, import, queued import) uses it whatever the browser or the address
+ * sends. Under it the required "Kelas" (X, XI, XII = ImportStudents::LEVELS): a chosen file waits for it, a change reads
+ * the file again, and ImportStudents refuses every row of another tingkat (levelMismatch()). The preview cache keeps
+ * the tingkat it was read with, the import uses that one (recheckedForYear()).
+ * SV6, D-184 (the lead, 5 Nov 2026): a row that matches or collides with a registered student names that student under
+ * the name, "Terdaftar: <nama> · <kelas> · NISN <nisn> · <status>" (registeredLines(), read at every render; the ids
+ * stay in the preview cache, ImportStudents report `matches`). "Lihat" sends the row NUMBER and the place of the student
+ * in that row (showRegistered()); the screen finds the id in its cache among the rows it lists and opens the shared
+ * dialog "Ubah data siswa" (UbahDataSiswa, D-187, only for `student.update`). A student in the Sampah has no "Lihat":
+ * the Admin (`classroom.manage`) gets a link to the Sampah of Admin › Kelas in a new tab (TRASH_ANCHOR; the preview stays
+ * here), Kesiswaan the sentence ASK_ADMIN_RESTORE. After a save in that dialog the preview stays as it is and a toast
+ * asks to check the file again (STUDENT_DATA_SAVED); nothing is read or imported by itself.
  */
 #[Title('Import data siswa')]
 #[Layout('layouts::app', ['subtitle' => 'Akun siswa dibuat otomatis dari file Excel.'])]
@@ -128,22 +141,35 @@ class ImportSiswa extends Component
      */
     public const INITIAL_PASSWORD_NOTE = 'Kata sandi awal dibuat hanya untuk siswa baru, dari tanggal lahirnya: SMAGA_ diikuti tanggal lahir ddmmyyyy (01-02-2010 menjadi SMAGA_01022010), dan wajib diganti saat aktivasi. Kata sandi siswa lama tidak berubah.';
 
-    /** The last choice of "Tahun ajaran data": the school year starts in the year typed under it ("Tahun mulai"). */
-    public const OTHER_YEAR = 'lain';
+    /** SV6, D-184 (sementara): the one school year "Tahun ajaran" offers and every step uses. */
+    public const FIXED_SCHOOL_YEAR = '2026/2027';
 
-    /** "Tahun mulai" accepts the start year of the current school year minus and plus this many years. */
-    public const OTHER_YEAR_SPAN = 10;
+    /** SV6, D-184: the address key that carries the chosen "Kelas" across the password page (returnUrl()). */
+    public const LEVEL_QUERY = 'kelas';
 
-    /** Address keys that carry the year choice across the password page (SV4, returnUrl()). */
-    public const YEAR_QUERY = 'tahun';
-
-    public const CUSTOM_YEAR_QUERY = 'tahun_mulai';
+    /** SV6, D-184: under "Kelas" when a file is chosen (or imported) before a tingkat. */
+    public const LEVEL_MISSING = 'Pilih kelas dulu.';
 
     /**
-     * The click on "Impor N siswa" when the preview on screen was read with another school year than the one chosen
-     * now: the file was read again with the chosen year.
+     * The click on "Impor N siswa" when the preview on screen was read with another school year or tingkat than the one
+     * chosen now: the file was read again with the chosen ones.
      */
-    public const PREVIEW_YEAR_RECHECKED = 'Tahun ajaran berubah. File ini sudah diperiksa ulang dengan tahun ajaran yang dipilih; cek angkanya sebelum mengimpor.';
+    public const PREVIEW_YEAR_RECHECKED = 'Pilihan tahun ajaran atau kelas berubah. File ini sudah diperiksa ulang; cek angkanya sebelum mengimpor.';
+
+    /** SV6, D-184: the toast after "Ubah data siswa" saved a student; the preview on screen stays as it was read. */
+    public const STUDENT_DATA_SAVED = 'Data siswa disimpan. Periksa ulang file sebelum import.';
+
+    /** SV6, D-184: under a matched student in the Sampah, for an account without `classroom.manage` (Kesiswaan). */
+    public const ASK_ADMIN_RESTORE = 'Minta Admin memulihkannya di menu Kelas.';
+
+    /** SV6, D-184: "Lihat" on a student who went into the Sampah after the screen was drawn. */
+    public const REGISTERED_TRASHED = 'Siswa ini sudah ada di Sampah. Daftar sudah diperbarui.';
+
+    /** SV6, D-184: "Lihat" on a student whose data was deleted for good after the screen was drawn. */
+    public const REGISTERED_GONE = 'Data siswa ini sudah terhapus permanen. Daftar sudah diperbarui.';
+
+    /** The id of the heading of the section "Sampah" on Admin › Kelas (the Admin's link from a matched student). */
+    public const TRASH_ANCHOR = 'h-kelas-sampah';
 
     /** The result of an import that wrote nothing (the same words as the dialog for that case). */
     private const NOTHING_CHANGED = 'Tidak ada data yang berubah';
@@ -167,14 +193,14 @@ class ImportSiswa extends Component
     /** @var TemporaryUploadedFile|null */
     public $file = null;
 
-    /** A listed school year "YYYY/YYYY", or OTHER_YEAR for the year typed in `customYear`. */
-    public string $schoolYear = '';
-
     /**
-     * "Tahun mulai" under "Tahun lain…": kept exactly as typed (never trimmed and written back while it is typed, SV1);
-     * it is trimmed where it is read (customYearProblem(), effectiveSchoolYear()).
+     * SV6, D-184: the select "Tahun ajaran" (FIXED_SCHOOL_YEAR only). Any other value the browser sends is put back
+     * (updatedSchoolYear()), and no step reads it: they use FIXED_SCHOOL_YEAR.
      */
-    public string $customYear = '';
+    public string $schoolYear = self::FIXED_SCHOOL_YEAR;
+
+    /** SV6, D-184: "Kelas", '' or a key of ImportStudents::LEVELS as a string ('10', '11', '12'). */
+    public string $level = '';
 
     /** all | bad (ditolak) | notes (rows with a note) */
     public string $filter = 'all';
@@ -222,8 +248,8 @@ class ImportSiswa extends Component
     public function mount(): void
     {
         $this->authorize(Permission::StudentImport->value);
-        $this->schoolYear = SchoolYear::containing(CarbonImmutable::now())->toString();
-        $this->restoreYearChoice();
+        $this->schoolYear = self::FIXED_SCHOOL_YEAR;
+        $this->restoreLevelChoice();
         $this->importId = StudentImport::query()->activeFor($this->actor())->latest()->value('id');
         $this->returnTo = request()->routeIs('admin.import') || (! request()->routeIs('kesiswaan.import') && $this->actor()->hasRole(RoleName::Admin->value))
             ? route('admin.import')
@@ -293,30 +319,22 @@ class ImportSiswa extends Component
         $this->check($import);
     }
 
-    public function updatedSchoolYear(ImportStudents $import): void
+    /** SV6, D-184: only FIXED_SCHOOL_YEAR is offered; any other value (a forged request) is put back, nothing is read. */
+    public function updatedSchoolYear(): void
     {
-        $this->yearChanged($import, typed: false);
-    }
-
-    /** "Tahun mulai" (debounced in the view): only while "Tahun lain…" is chosen. */
-    public function updatedCustomYear(ImportStudents $import): void
-    {
-        if ($this->schoolYear === self::OTHER_YEAR) {
-            $this->yearChanged($import, typed: true);
-        }
+        $this->schoolYear = self::FIXED_SCHOOL_YEAR;
     }
 
     /**
-     * The school year changed: a listed year, "Tahun lain…" or the typed start year. A complete year reads the chosen
-     * file again (as before for a listed year). Without one ("Tahun lain…" with an empty, incomplete or refused start
-     * year) the preview and the result of the previous year go and the file stays chosen; the reason stands under
-     * "Tahun mulai" once something was typed there (a fresh "Tahun lain…" opens without a red line).
+     * SV6, D-184: "Kelas" changed. A tingkat of ImportStudents::LEVELS reads the chosen file again (as a year change did).
+     * Anything else (a forged value) empties the choice: the preview and the result go, the file stays chosen and waits
+     * for a tingkat with LEVEL_MISSING under "Kelas".
      */
-    private function yearChanged(ImportStudents $import, bool $typed): void
+    public function updatedLevel(ImportStudents $import): void
     {
-        $this->resetErrorBag('customYear');
+        $this->resetErrorBag('level');
 
-        if ($this->effectiveSchoolYear() !== null) {
+        if ($this->effectiveLevel() !== null) {
             if ($this->file !== null) {
                 $this->check($import);
             }
@@ -324,8 +342,10 @@ class ImportSiswa extends Component
             return;
         }
 
-        if ($typed || trim($this->customYear) !== '') {
-            $this->addError('customYear', (string) $this->customYearProblem());
+        $this->level = '';
+
+        if ($this->file !== null) {
+            $this->addError('level', self::LEVEL_MISSING);
         }
 
         if ($this->previewToken !== null || $this->imported !== null) {
@@ -347,9 +367,9 @@ class ImportSiswa extends Component
     }
 
     /**
-     * The dry run of the chosen file with effectiveSchoolYear(): the old preview goes, the new one is cached. False, with
-     * the reason on the field and the file dropped, when the file or the school year is refused; false with the reason
-     * under "Tahun mulai" and the file kept when "Tahun lain…" has no valid start year yet.
+     * The dry run of the chosen file with FIXED_SCHOOL_YEAR and the chosen tingkat: the old preview goes, the new one is
+     * cached. False, with the reason on the field and the file dropped, when the file is refused; false with
+     * LEVEL_MISSING under "Kelas" and the file kept when no tingkat is chosen yet (SV6, D-184).
      */
     private function readFile(ImportStudents $import): bool
     {
@@ -370,16 +390,16 @@ class ImportSiswa extends Component
                 ],
             );
 
-            $schoolYear = $this->effectiveSchoolYear();
+            $level = $this->effectiveLevel();
 
-            if ($schoolYear === null) {
-                // "Tahun lain…" without a valid start year: nothing is read, the file waits for the year.
-                $this->addError('customYear', (string) $this->customYearProblem());
+            if ($level === null) {
+                // SV6, D-184: no tingkat yet: nothing is read, the file waits for "Kelas".
+                $this->addError('level', self::LEVEL_MISSING);
 
                 return false;
             }
 
-            $report = $import->handle($this->actor(), (string) $this->file->getRealPath(), $this->extension(), $schoolYear, dryRun: true);
+            $report = $import->handle($this->actor(), (string) $this->file->getRealPath(), $this->extension(), self::FIXED_SCHOOL_YEAR, dryRun: true, level: $level);
         } catch (ValidationException $e) {
             $this->setErrorBag($e->validator->errors());
             $this->reset('file');
@@ -392,6 +412,8 @@ class ImportSiswa extends Component
             'rows' => $report->rows,
             'fileName' => $this->file->getClientOriginalName(),
             'schoolYear' => $report->schoolYear,
+            // SV6, D-184: the tingkat the rows were checked for; the import uses this one.
+            'level' => $level,
         ], now()->addMinutes(self::CACHE_MINUTES));
         $this->filter = 'all';
         // Read next to a queued or running import: these counts hold only until that import writes its rows.
@@ -422,13 +444,16 @@ class ImportSiswa extends Component
     }
 
     /**
-     * Defensive: the preview on screen was read with another school year than effectiveSchoolYear() (the year hooks
-     * normally read the file again at once). The file is read again with the chosen year and the click stops with a
-     * warning toast, so nothing is asked or written for a year nobody saw. True when it read again (the caller stops).
+     * Defensive: the preview on screen was read with another school year than FIXED_SCHOOL_YEAR or another tingkat than
+     * the chosen "Kelas" (updatedLevel() normally reads the file again at once; a preview cached before SV6 has no
+     * tingkat). The file is read again and the click stops with a warning toast, so nothing is asked or written for a
+     * choice nobody saw. True when it read again (the caller stops).
      */
     private function recheckedForYear(ImportStudents $import): bool
     {
-        if (($this->preview()['schoolYear'] ?? null) === $this->effectiveSchoolYear()) {
+        $preview = $this->preview();
+
+        if (($preview['schoolYear'] ?? null) === self::FIXED_SCHOOL_YEAR && ($preview['level'] ?? null) === $this->effectiveLevel()) {
             return false;
         }
 
@@ -514,8 +539,8 @@ class ImportSiswa extends Component
         }
 
         try {
-            // The year the preview was read with (recheckedForYear() made sure it is the chosen one).
-            $report = $import->handle($this->actor(), (string) $this->file->getRealPath(), $this->extension(), $preview['schoolYear'], dryRun: false);
+            // The year and the tingkat the preview was read with (recheckedForYear() made sure they are the chosen ones).
+            $report = $import->handle($this->actor(), (string) $this->file->getRealPath(), $this->extension(), $preview['schoolYear'], dryRun: false, level: $preview['level'] ?? null);
         } catch (ValidationException $e) {
             $this->setErrorBag($e->validator->errors());
 
@@ -580,9 +605,8 @@ class ImportSiswa extends Component
         $import = new StudentImport([
             'user_id' => $actor->getKey(),
             'extension' => $this->extension(),
-            // The year the preview was read with, which is effectiveSchoolYear() (recheckedForYear()); never the select's
-            // raw value, which is OTHER_YEAR for a typed year.
-            'school_year' => $this->preview()['schoolYear'] ?? (string) $this->effectiveSchoolYear(),
+            // The year the preview was read with, which is FIXED_SCHOOL_YEAR (recheckedForYear()); never the select's raw value.
+            'school_year' => $this->preview()['schoolYear'] ?? self::FIXED_SCHOOL_YEAR,
             'file_name' => $file->original_name,
             'file_sha256' => $file->sha256,
         ]);
@@ -590,7 +614,8 @@ class ImportSiswa extends Component
 
         $this->importId = $import->getKey();
         $this->queuedPreview = $this->previewToken;
-        ImportStudentsJob::dispatch($import->getKey());
+        // SV6, D-184: the tingkat the preview was read with goes with every slice.
+        ImportStudentsJob::dispatch($import->getKey(), 0, $this->preview()['level'] ?? null);
 
         $this->dispatch('sth-toast', message: 'Impor berjalan di latar belakang. Kemajuannya tampil di sini.', tone: 'info');
     }
@@ -632,6 +657,59 @@ class ImportSiswa extends Component
         return response()->download($path, 'baris-perlu-dicek.xlsx')->deleteFileAfterSend();
     }
 
+    /**
+     * SV6, D-184, "Lihat" next to "Terdaftar: …": the row NUMBER of the preview and the place of the student in that row
+     * (0, or 1 for the second of two students the row collides with). The id comes from the cached preview, and only from
+     * a row the screen lists now (filter and first PREVIEW_ROWS rows): a row number or a place the screen did not show,
+     * a preview that is gone or a row without a registered student opens nothing and says nothing. A student who went
+     * into the Sampah or was deleted for good meanwhile gets a warning toast and the redrawn line instead (§6 stale
+     * screens). Otherwise the shared dialog "Ubah data siswa" opens for that one student (D-187).
+     */
+    public function showRegistered(int $row, int $slot = 0): void
+    {
+        $this->authorize(Permission::StudentImport->value);
+        $this->authorize(Permission::StudentUpdate->value);
+
+        $listed = collect($this->listedRows($this->preview()['rows'] ?? []))
+            ->first(fn (array $r): bool => (int) $r['row'] === $row);
+        $userId = $listed !== null ? (self::matchesOf($listed)[$slot] ?? null) : null;
+
+        if ($userId === null) {
+            return;
+        }
+
+        $student = Student::withTrashed()->where('user_id', $userId)->first();
+        $user = $student !== null ? User::withTrashed()->find($userId) : null;
+
+        if ($student === null || $user === null) {
+            $this->dispatch('sth-toast', message: self::REGISTERED_GONE, tone: 'warning');
+
+            return;
+        }
+
+        if ($student->trashed() || $user->trashed()) {
+            $this->dispatch('sth-toast', message: self::REGISTERED_TRASHED, tone: 'warning');
+
+            return;
+        }
+
+        $this->dispatch(UbahDataSiswa::OPEN_EVENT, userId: (int) $user->getKey())->to(UbahDataSiswa::class);
+    }
+
+    /**
+     * SV6, D-184: "Ubah data siswa" saved a student. The preview stays as it was read (nothing is read again or imported
+     * by itself); the lines "Terdaftar: …" are read again by render(), and a toast asks to check the file again.
+     */
+    #[On(UbahDataSiswa::DONE_EVENT)]
+    public function studentDataSaved(): void
+    {
+        $this->authorize(Permission::StudentImport->value);
+
+        if ($this->preview() !== null) {
+            $this->dispatch('sth-toast', message: self::STUDENT_DATA_SAVED, tone: 'info');
+        }
+    }
+
     public function render(): View
     {
         $preview = $this->preview();
@@ -639,11 +717,10 @@ class ImportSiswa extends Component
         $invalid = array_values(array_filter($rows, fn (array $r): bool => $r['errors'] !== []));
         $noted = array_values(array_filter($rows, fn (array $r): bool => ($r['notes'] ?? []) !== []));
         $summary = StudentImportReport::summarize($rows);
-        $list = match ($this->filter) {
-            'bad' => $invalid,
-            'notes' => $noted,
-            default => $rows,
-        };
+        $list = $this->filteredRows($rows);
+        $shown = array_slice($list, 0, self::PREVIEW_ROWS);
+        // SV6, D-184: the matched students of the listed rows, read now (Kesiswaan and Admin open this page).
+        $registered = $this->actor()->can(Permission::StudentImport->value) ? self::registeredLines($shown) : [];
         $job = $this->importId !== null ? StudentImport::query()->find($this->importId) : null;
         $job = $job !== null && $this->actor()->can('view', $job) ? $job : null;
         $jobActive = $job?->isActive() ?? false;
@@ -670,12 +747,10 @@ class ImportSiswa extends Component
         // new + moved + corrected = $changeCount: the button, the dialog and the tiles count the same students.
         $kinds = StudentImportReport::changeKinds($rows);
         $passwordAsked = ! $this->passwordConfirmedRecently();
-        // SV4: "Tahun lain…" and the year typed under it.
-        $otherYear = $this->schoolYear === self::OTHER_YEAR;
-        $typedYear = $otherYear && $this->customYearProblem() === null ? new SchoolYear((int) trim($this->customYear)) : null;
         $chosenName = $preview['fileName'] ?? ($this->file instanceof TemporaryUploadedFile ? $this->file->getClientOriginalName() : null);
-        // A chosen file that waits for the typed start year: no preview was read yet.
-        $yearMissing = $preview === null && $chosenName !== null && $otherYear && $typedYear === null;
+        // SV6, D-184: a chosen file that waits for "Kelas": no preview was read yet.
+        $levelMissing = $preview === null && $chosenName !== null && $this->effectiveLevel() === null;
+        $previewLevel = is_int($preview['level'] ?? null) ? (ImportStudents::LEVELS[$preview['level']] ?? null) : null;
 
         return view('livewire.akun.import-siswa', [
             'step' => $step,
@@ -685,14 +760,13 @@ class ImportSiswa extends Component
                 $this->imported !== null => 'Selesai',
                 $job !== null && ($preview === null || $queuedHere) => $job->status->label(),
                 $preview !== null => count($rows).' baris terbaca',
-                $yearMissing => 'Menunggu tahun ajaran',
+                $levelMissing => 'Menunggu pilihan kelas',
                 default => 'Belum ada file',
             },
-            'otherYear' => $otherYear,
-            'otherYearLabel' => $typedYear !== null ? 'Tahun ajaran '.$typedYear->toString() : null,
-            'otherYearExample' => (string) self::customYearExample(),
             'chosenName' => $chosenName,
-            'yearMissing' => $yearMissing,
+            'levelMissing' => $levelMissing,
+            // SV6, D-184: "Kelas XII" in the header of step 3 (null for a preview cached before SV6).
+            'previewLevel' => $previewLevel,
             'preview' => $preview,
             'rowCount' => count($rows),
             'previewDone' => $previewDone,
@@ -766,12 +840,15 @@ class ImportSiswa extends Component
                 $this->filter === 'notes' => 'Tidak ada baris dengan catatan.',
                 default => 'Tidak ada baris yang ditolak.',
             },
-            'list' => array_map(function (array $r): array {
+            'list' => array_map(function (array $r) use ($registered): array {
                 [$status, $tone] = self::KIND_LABELS[StudentImportReport::kindOf($r)];
                 $notes = $r['notes'] ?? [];
+                // SV6, D-184: the ids stay in the cache; the view gets the lines only.
+                unset($r['matches']);
 
                 return [
                     ...$r,
+                    'registered' => $registered[(int) $r['row']] ?? [],
                     'grade12' => self::monthLabel($r['grade12_start_date']),
                     'archive' => self::monthLabel($r['archive_at']),
                     'angkatan' => $r['grade12_start_date'] !== null ? (string) ((int) substr($r['grade12_start_date'], 0, 4) - 2) : null,
@@ -782,9 +859,15 @@ class ImportSiswa extends Component
                     // The chip "Sel dibersihkan" for a refused row; a valid row says it in its note (ImportStudents::NOTE_SANITIZED).
                     'cleaned' => ($r['sanitized'] ?? false) && ! in_array(ImportStudents::NOTE_SANITIZED, $notes, true),
                 ];
-            }, array_slice($list, 0, self::PREVIEW_ROWS)),
+            }, $shown),
             'listTotal' => count($list),
-            'yearOptions' => self::yearOptions(),
+            // SV6, D-184: "Lihat" opens "Ubah data siswa" (D-187) for an account that may edit student data; the Admin
+            // reaches the Sampah of Admin › Kelas, everybody else is asked to turn to the Admin.
+            'canEditStudents' => $this->actor()->can(Permission::StudentUpdate->value),
+            'trashUrl' => $this->actor()->can(Permission::ClassroomManage->value) ? route('admin.kelas.index').'#'.self::TRASH_ANCHOR : null,
+            'yearOptions' => [self::FIXED_SCHOOL_YEAR => self::FIXED_SCHOOL_YEAR],
+            // SV6, D-184: "Kelas" X, XI, XII (values 10, 11, 12).
+            'levelOptions' => array_combine(array_map(strval(...), array_keys(ImportStudents::LEVELS)), ImportStudents::LEVELS),
         ])->layoutData(['badges' => $this->kesiswaanBadges()]);
     }
 
@@ -967,13 +1050,13 @@ class ImportSiswa extends Component
      * The preview an import starts from, or null with the reason on the field `file` (no file yet, or the preview
      * ran out). The same check for the question and for the confirm step.
      *
-     * @return array{rows: list<array<string, mixed>>, fileName: string, schoolYear: string}|null
+     * @return array{rows: list<array<string, mixed>>, fileName: string, schoolYear: string, level?: int}|null
      */
     private function previewToImport(): ?array
     {
-        if ($this->file !== null && $this->effectiveSchoolYear() === null) {
-            // "Tahun lain…" without a valid start year: the file waits for it (no preview was read).
-            $this->addError('customYear', (string) $this->customYearProblem());
+        if ($this->file !== null && $this->effectiveLevel() === null) {
+            // SV6, D-184: no "Kelas" chosen: the file waits for it (no preview was read).
+            $this->addError('level', self::LEVEL_MISSING);
 
             return null;
         }
@@ -1006,6 +1089,107 @@ class ImportSiswa extends Component
         return $data;
     }
 
+    /**
+     * The preview rows of the chosen filter ("Semua baris", "Ditolak", "Ada catatan").
+     *
+     * @param  list<array<string, mixed>>  $rows
+     * @return list<array<string, mixed>>
+     */
+    private function filteredRows(array $rows): array
+    {
+        return match ($this->filter) {
+            'bad' => array_values(array_filter($rows, fn (array $r): bool => $r['errors'] !== [])),
+            'notes' => array_values(array_filter($rows, fn (array $r): bool => ($r['notes'] ?? []) !== [])),
+            default => $rows,
+        };
+    }
+
+    /**
+     * The rows the table lists: the chosen filter, the first PREVIEW_ROWS (render() and showRegistered() alike).
+     *
+     * @param  list<array<string, mixed>>  $rows
+     * @return list<array<string, mixed>>
+     */
+    private function listedRows(array $rows): array
+    {
+        return array_slice($this->filteredRows($rows), 0, self::PREVIEW_ROWS);
+    }
+
+    /**
+     * SV6, D-184: the users.id of the registered student(s) a cached report row matches (ImportStudents report `matches`;
+     * [] for a row without one and for a preview read before SV6).
+     *
+     * @param  array<string, mixed>  $row
+     * @return list<int>
+     */
+    private static function matchesOf(array $row): array
+    {
+        $ids = is_array($row['matches'] ?? null) ? $row['matches'] : [];
+
+        return array_values(array_filter(array_map(intval(...), array_filter($ids, is_numeric(...))), fn (int $id): bool => $id > 0));
+    }
+
+    /**
+     * SV6, D-184: "Terdaftar: <nama> · <kelas> · NISN <nisn> · <status>" for every registered student of the listed rows,
+     * keyed by the report row number, in the order of `matches` (`slot`). Read from the database at every render, so a
+     * change saved in "Ubah data siswa" shows at once. The status is the label of Status aktivasi
+     * (AccountControls::state()) or, in the Sampah, "Di Sampah, terhapus permanen <tanggal>"; a class in the Sampah still
+     * prints its name. Never a birth date, a phone number or an id; a student deleted for good meanwhile has no line.
+     *
+     * @param  list<array<string, mixed>>  $rows
+     * @return array<int, list<array{slot: int, name: string, text: string, trashed: bool}>>
+     */
+    private static function registeredLines(array $rows): array
+    {
+        $ids = array_values(array_unique(array_merge(...array_map(self::matchesOf(...), $rows))));
+
+        if ($ids === []) {
+            return [];
+        }
+
+        $users = User::withTrashed()->whereKey($ids)->get()->keyBy(fn (User $u): int => (int) $u->getKey());
+        $students = Student::withTrashed()->whereIn('user_id', $ids)->get()->keyBy(fn (Student $s): int => (int) $s->user_id);
+        /** @var array<string, string> $classNames classroom id => name, classes in the Sampah included */
+        $classNames = Classroom::withTrashed()->whereKey($students->pluck('classroom_id')->filter()->unique()->values()->all())->pluck('name', 'id')->all();
+        $purgeDates = TrashEntry::query()->open()->where('kind', TrashEntry::KIND_STUDENT)->whereIn('user_id', $ids)->get()
+            ->mapWithKeys(fn (TrashEntry $e): array => [(int) $e->user_id => $e->purge_after]);
+
+        $lines = [];
+
+        foreach ($rows as $row) {
+            foreach (self::matchesOf($row) as $slot => $id) {
+                $user = $users->get($id);
+                $student = $students->get($id);
+
+                if ($user === null || $student === null) {
+                    continue;
+                }
+
+                $trashed = $student->trashed() || $user->trashed();
+                $purge = $purgeDates->get($id);
+                $status = match (true) {
+                    ! $trashed => AccountControls::stateLabel(AccountControls::state($user)),
+                    $purge !== null => 'Di Sampah, terhapus permanen '.$purge->translatedFormat('j F Y'),
+                    default => 'Di Sampah',
+                };
+
+                $lines[(int) $row['row']][] = [
+                    'slot' => $slot,
+                    'name' => (string) $user->name,
+                    'text' => 'Terdaftar: '.implode(' · ', array_filter([
+                        (string) $user->name,
+                        $classNames[(string) $student->classroom_id] ?? null,
+                        filled($student->nisn) ? 'NISN '.$student->nisn : null,
+                        $status,
+                    ], fn (?string $part): bool => $part !== null && $part !== '')),
+                    'trashed' => $trashed,
+                ];
+            }
+        }
+
+        return $lines;
+    }
+
     private function forgetPreview(): void
     {
         if ($this->previewToken !== null) {
@@ -1028,67 +1212,12 @@ class ImportSiswa extends Component
         return strtolower((string) $this->file?->getClientOriginalExtension());
     }
 
-    /**
-     * Next, current and previous school year, then "Tahun lain…" (OTHER_YEAR) for a start year typed by hand.
-     *
-     * @return array<string, string>
-     */
-    private static function yearOptions(): array
+    /** SV6, D-184: the chosen "Kelas" as a key of ImportStudents::LEVELS (10, 11, 12), null while none (or a forged one). */
+    private function effectiveLevel(): ?int
     {
-        $current = SchoolYear::containing(CarbonImmutable::now());
-        $years = [new SchoolYear($current->startYear + 1), $current, new SchoolYear($current->startYear - 1)];
+        $level = (int) $this->level;
 
-        return collect($years)->mapWithKeys(fn (SchoolYear $y): array => [$y->toString() => $y->toString()])->all()
-            + [self::OTHER_YEAR => 'Tahun lain…'];
-    }
-
-    /**
-     * The school year every step uses (dry run, import, queued import): the listed choice as it is, or the typed start
-     * year as "YYYY/YYYY+1"; null while "Tahun lain…" has no valid start year (customYearProblem()).
-     */
-    private function effectiveSchoolYear(): ?string
-    {
-        if ($this->schoolYear !== self::OTHER_YEAR) {
-            return $this->schoolYear;
-        }
-
-        return $this->customYearProblem() === null ? (new SchoolYear((int) trim($this->customYear)))->toString() : null;
-    }
-
-    /** Why the typed start year is refused (empty, not 4 digits, outside customYearRange()), or null when it is valid. */
-    private function customYearProblem(): ?string
-    {
-        $value = trim($this->customYear);
-        [$min, $max] = self::customYearRange();
-
-        return match (true) {
-            $value === '' => 'Isi tahun mulai, misalnya '.self::customYearExample().'.',
-            preg_match('/^\d{4}$/', $value) !== 1 => 'Tahun mulai harus 4 angka, misalnya '.self::customYearExample().'.',
-            (int) $value < $min || (int) $value > $max => 'Tahun mulai harus antara '.$min.' dan '.$max.'.',
-            default => null,
-        };
-    }
-
-    /**
-     * The start years "Tahun mulai" accepts: the start year of the current school year ± OTHER_YEAR_SPAN, inside the
-     * years SchoolYear knows.
-     *
-     * @return array{0: int, 1: int}
-     */
-    private static function customYearRange(): array
-    {
-        $current = SchoolYear::containing(CarbonImmutable::now())->startYear;
-
-        return [
-            max(SchoolYear::MIN_YEAR, $current - self::OTHER_YEAR_SPAN),
-            min(SchoolYear::MAX_YEAR, $current + self::OTHER_YEAR_SPAN),
-        ];
-    }
-
-    /** The example start year in the placeholder and the messages: two years after the current one (2028 in 2026/2027). */
-    private static function customYearExample(): int
-    {
-        return SchoolYear::containing(CarbonImmutable::now())->startYear + 2;
+        return $this->level === (string) $level && array_key_exists($level, ImportStudents::LEVELS) ? $level : null;
     }
 
     private static function monthLabel(?string $date): string
@@ -1122,28 +1251,22 @@ class ImportSiswa extends Component
     protected function returnUrl(): string
     {
         $base = $this->returnTo !== '' ? $this->returnTo : route('kesiswaan.import');
-        $query = $this->schoolYear === SchoolYear::containing(CarbonImmutable::now())->toString() ? [] : array_filter([
-            self::YEAR_QUERY => $this->schoolYear,
-            self::CUSTOM_YEAR_QUERY => $this->schoolYear === self::OTHER_YEAR ? trim($this->customYear) : '',
-        ]);
+        $level = $this->effectiveLevel();
 
-        return $base.($query !== [] ? '?'.http_build_query($query) : '');
+        return $base.($level !== null ? '?'.http_build_query([self::LEVEL_QUERY => (string) $level]) : '');
     }
 
     /**
-     * SV4: the year chosen before the password page comes back with it (returnUrl() puts it in the address), so the
-     * page never silently falls back to the current school year. Anything that is not a listed choice is ignored.
+     * SV6, D-184: the "Kelas" chosen before the password page comes back with it (returnUrl() puts it in the address).
+     * Anything that is not a tingkat of ImportStudents::LEVELS is ignored; the school year is never read from the address
+     * (FIXED_SCHOOL_YEAR).
      */
-    private function restoreYearChoice(): void
+    private function restoreLevelChoice(): void
     {
-        $asked = request()->query(self::YEAR_QUERY);
+        $asked = request()->query(self::LEVEL_QUERY);
 
-        if (! is_string($asked) || ! array_key_exists($asked, self::yearOptions())) {
-            return;
+        if (is_string($asked) && array_key_exists((int) $asked, ImportStudents::LEVELS) && $asked === (string) (int) $asked) {
+            $this->level = $asked;
         }
-
-        $this->schoolYear = $asked;
-        $typed = request()->query(self::CUSTOM_YEAR_QUERY);
-        $this->customYear = $asked === self::OTHER_YEAR && is_string($typed) ? substr((string) preg_replace('/\D/', '', $typed), 0, 4) : '';
     }
 }

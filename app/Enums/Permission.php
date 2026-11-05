@@ -46,7 +46,8 @@ enum Permission: string
     // Students & accounts
     case StudentImport = 'student.import';                  // Kesiswaan + Admin (D-26)
     case StudentView = 'student.view';
-    case StudentUpdate = 'student.update';
+    case StudentUpdate = 'student.update';                  // "Ubah data siswa": Admin, Kesiswaan, Tata Usaha (SV6, D-187)
+    case StudentTrash = 'student.trash';                    // students into the Sampah: Admin, Kesiswaan (SV6, D-185); restore/purge stay classroom.manage
     case UserManage = 'user.manage';
     case UserResetPassword = 'user.reset_password';
     case UserArchive = 'user.archive';                      // manual disable/archive (D-30)

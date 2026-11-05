@@ -13,6 +13,10 @@ use App\Models\User;
  * `classroom.manage`, the permission of Admin › Kelas, which only Admin holds (RoleName::defaultPermissions()), and an
  * account that can log in. The rules of a restore (before `purge_after`, not while the class is in the trash) live in
  * App\Actions\Trash\RestoreFromTrash.
+ *
+ * SV6, D-185 (the lead, 5 Nov 2026): putting STUDENTS into the trash (trashStudents(), App\Actions\Trash\TrashStudents)
+ * also takes `student.trash`, which Kesiswaan holds. A class into the trash (create()), the Sampah list (viewAny()) and
+ * "Pulihkan" (restore()) stay `classroom.manage`, so only an Admin can undo a delete of Kesiswaan.
  */
 final class TrashEntryPolicy
 {
@@ -27,14 +31,29 @@ final class TrashEntryPolicy
         return $this->manages($actor);
     }
 
-    /** Put a class or students into the trash. */
+    /** Put a class (with its students) into the trash. */
     public function create(User $actor): bool
     {
         return $this->manages($actor);
     }
 
+    /**
+     * Put students into the trash (SV6, D-185): `student.trash` (Kesiswaan, Admin) or `classroom.manage` (Admin, also on a
+     * database where RoleSeeder has not given the Admin role the new permission yet).
+     */
+    public function trashStudents(User $actor): bool
+    {
+        return $actor->can(Permission::StudentTrash->value) || $this->manages($actor);
+    }
+
     /** "Pulihkan". */
     public function restore(User $actor, TrashEntry $entry): bool
+    {
+        return $this->manages($actor);
+    }
+
+    /** "Hapus permanen" now, before `purge_after` (SV6, D-186, App\Actions\Trash\PurgeFromTrash): Admin only. */
+    public function forceDelete(User $actor, TrashEntry $entry): bool
     {
         return $this->manages($actor);
     }

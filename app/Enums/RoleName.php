@@ -72,6 +72,8 @@ enum RoleName: string
                 Permission::TalentAssess,
                 Permission::StudentImport,
                 Permission::StudentView,
+                Permission::StudentUpdate, // SV6, D-187: "Ubah data siswa"
+                Permission::StudentTrash,  // SV6, D-185: Hapus siswa into the Sampah (Pulihkan stays Admin)
                 Permission::DashboardView,
             ],
             self::KepalaSekolah => [
@@ -90,6 +92,7 @@ enum RoleName: string
                 Permission::LetterSend,
                 Permission::LetterView,
                 Permission::StudentView,
+                Permission::StudentUpdate, // SV6, D-187: "Ubah data siswa" from TU › Data siswa
             ],
             self::Humas => [
                 Permission::AchievementViewAll,

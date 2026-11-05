@@ -202,7 +202,7 @@ it('queues a big import from the screen and shows its progress, then the result'
     Queue::fake();
     $rows = ImportStudentsJob::SYNC_MAX_ROWS + 1;
 
-    $component = Livewire::actingAs($this->kesiswaan)->test(ImportSiswa::class)
+    $component = Livewire::actingAs($this->kesiswaan)->withQueryParams([ImportSiswa::LEVEL_QUERY => '10'])->test(ImportSiswa::class)
         ->set('schoolYear', '2026/2027')
         ->set('file', UploadedFile::fake()->createWithContent('data-siswa.csv', b2ImportCsv($rows)))
         ->assertSee("Impor {$rows} siswa")
@@ -229,7 +229,7 @@ it('queues a big import from the screen and shows its progress, then the result'
     expect(StudentImport::query()->count())->toBe(1);
 
     // Coming back to the page shows the running import.
-    Livewire::actingAs($this->kesiswaan)->test(ImportSiswa::class)->assertSee('Menunggu antrean');
+    Livewire::actingAs($this->kesiswaan)->withQueryParams([ImportSiswa::LEVEL_QUERY => '10'])->test(ImportSiswa::class)->assertSee('Menunggu antrean');
 
     (new ImportStudentsJob($import->getKey()))->handle(app(ImportStudents::class), app(StoreUpload::class));
 
@@ -242,7 +242,7 @@ it('queues a big import from the screen and shows its progress, then the result'
 it('keeps small imports synchronous', function (): void {
     Queue::fake();
 
-    Livewire::actingAs($this->kesiswaan)->test(ImportSiswa::class)
+    Livewire::actingAs($this->kesiswaan)->withQueryParams([ImportSiswa::LEVEL_QUERY => '10'])->test(ImportSiswa::class)
         ->set('schoolYear', '2026/2027')
         ->set('file', UploadedFile::fake()->createWithContent('data-siswa.csv', b2ImportCsv(3)))
         ->call('askImport')
@@ -256,7 +256,7 @@ it('keeps small imports synchronous', function (): void {
 it('shows the "Sel dibersihkan" chip and a note on the preview', function (): void {
     $csv = b2ImportCsv(1, 0, [['=Nadia Putri Anindya', '225226201', '0098765432', '02-03-2010', 'X-1', '']]);
 
-    Livewire::actingAs($this->kesiswaan)->test(ImportSiswa::class)
+    Livewire::actingAs($this->kesiswaan)->withQueryParams([ImportSiswa::LEVEL_QUERY => '10'])->test(ImportSiswa::class)
         ->set('schoolYear', '2026/2027')
         ->set('file', UploadedFile::fake()->createWithContent('data-siswa.csv', $csv))
         ->assertSee('Sel dibersihkan')
@@ -272,5 +272,5 @@ it('shows an import only to the person who started it', function (): void {
         ->and($admin->can('create', StudentImport::class))->toBeTrue()
         ->and(F::staff(RoleName::Guru, 'Pak Guru Uji')->can('create', StudentImport::class))->toBeFalse();
 
-    Livewire::actingAs($admin)->test(ImportSiswa::class)->assertDontSee('Menunggu antrean');
+    Livewire::actingAs($admin)->withQueryParams([ImportSiswa::LEVEL_QUERY => '10'])->test(ImportSiswa::class)->assertDontSee('Menunggu antrean');
 });

@@ -279,7 +279,7 @@ it('imports students in three steps and never shows the initial password pattern
         ."Galang Putra Mahendra;226227004;0102345686;31-02-2011;X-3;\n";
     $file = UploadedFile::fake()->createWithContent('data-siswa-2026-2027.csv', $csv);
 
-    $component = Livewire::actingAs($this->kesiswaan)->test(ImportSiswa::class)
+    $component = Livewire::actingAs($this->kesiswaan)->withQueryParams([ImportSiswa::LEVEL_QUERY => '10'])->test(ImportSiswa::class)
         ->call('downloadTemplate')
         ->assertFileDownloaded('template-import-siswa.xlsx')
         ->set('schoolYear', '2026/2027')
@@ -303,7 +303,7 @@ it('imports students in three steps and never shows the initial password pattern
 });
 
 it('rejects a non-spreadsheet upload on the import screen', function (): void {
-    Livewire::actingAs($this->admin)->test(ImportSiswa::class)
+    Livewire::actingAs($this->admin)->withQueryParams([ImportSiswa::LEVEL_QUERY => '10'])->test(ImportSiswa::class)
         ->set('file', UploadedFile::fake()->createWithContent('foto.png', 'not really'))
         ->assertHasErrors('file');
 });

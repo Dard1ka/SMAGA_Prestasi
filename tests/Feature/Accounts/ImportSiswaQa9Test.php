@@ -39,7 +39,7 @@ function qa9ImportFile(): UploadedFile
 it('asks for the password again before an import writes anything (QA9)', function (RoleName $role): void {
     $actor = F::staff($role, $role === RoleName::Admin ? 'Operator STH' : 'Ibu Dwi Rahayu');
 
-    Livewire::actingAs($actor)->test(ImportSiswa::class)
+    Livewire::actingAs($actor)->withQueryParams([ImportSiswa::LEVEL_QUERY => '10'])->test(ImportSiswa::class)
         ->set('schoolYear', '2026/2027')
         ->set('file', qa9ImportFile())
         ->assertHasNoErrors()
@@ -55,7 +55,7 @@ it('asks for the password again before an import writes anything (QA9)', functio
 it('imports once the password was confirmed in the last 15 minutes (QA9)', function (): void {
     session(A::passwordConfirmed());
 
-    Livewire::actingAs(F::staff(RoleName::Kesiswaan))->test(ImportSiswa::class)
+    Livewire::actingAs(F::staff(RoleName::Kesiswaan))->withQueryParams([ImportSiswa::LEVEL_QUERY => '10'])->test(ImportSiswa::class)
         ->set('schoolYear', '2026/2027')
         ->set('file', qa9ImportFile())
         ->call('askImport')
@@ -72,14 +72,14 @@ it('says before the import when the confirmation of step 2 is too old and the fi
     $hint = 'Konfirmasi kata sandi sudah lebih dari 15 menit. Sebelum impor kata sandi diminta lagi, sesudahnya upload file ini lagi.';
     $kesiswaan = F::staff(RoleName::Kesiswaan);
 
-    Livewire::actingAs($kesiswaan)->test(ImportSiswa::class)
+    Livewire::actingAs($kesiswaan)->withQueryParams([ImportSiswa::LEVEL_QUERY => '10'])->test(ImportSiswa::class)
         ->set('schoolYear', '2026/2027')
         ->set('file', qa9ImportFile())
         ->assertSee($hint);
 
     session(A::passwordConfirmed());
 
-    Livewire::actingAs($kesiswaan)->test(ImportSiswa::class)
+    Livewire::actingAs($kesiswaan)->withQueryParams([ImportSiswa::LEVEL_QUERY => '10'])->test(ImportSiswa::class)
         ->set('schoolYear', '2026/2027')
         ->set('file', qa9ImportFile())
         ->assertDontSee($hint);
@@ -88,12 +88,13 @@ it('says before the import when the confirmation of step 2 is too old and the fi
 it('sends Kesiswaan and Admin back to their own import page after the password (QA9)', function (RoleName $role, string $route): void {
     $actor = F::staff($role, $role === RoleName::Admin ? 'Operator STH' : 'Ibu Dwi Rahayu');
 
-    Livewire::actingAs($actor)->test(ImportSiswa::class)
+    Livewire::actingAs($actor)->withQueryParams([ImportSiswa::LEVEL_QUERY => '10'])->test(ImportSiswa::class)
         ->set('schoolYear', '2026/2027')
         ->set('file', qa9ImportFile())
         ->call('askImport');
 
-    expect(session('url.intended'))->toBe(route($route));
+    // SV6, D-184: the chosen kelas comes back with the page.
+    expect(session('url.intended'))->toBe(route($route).'?'.ImportSiswa::LEVEL_QUERY.'=10');
 })->with([
     'kesiswaan' => [RoleName::Kesiswaan, 'kesiswaan.import'],
     'admin' => [RoleName::Admin, 'admin.import'],
@@ -104,7 +105,7 @@ it('asks for the password before the upload, so the file is chosen only once (QA
     // so the file had to be uploaded twice. Now step 2 asks first and shows the upload field afterwards.
     $kesiswaan = F::staff(RoleName::Kesiswaan);
 
-    Livewire::actingAs($kesiswaan)->test(ImportSiswa::class)
+    Livewire::actingAs($kesiswaan)->withQueryParams([ImportSiswa::LEVEL_QUERY => '10'])->test(ImportSiswa::class)
         ->assertSee('Konfirmasi kata sandi')
         ->assertDontSee('Pilih file atau seret ke sini')
         ->call('askPassword')
@@ -112,7 +113,7 @@ it('asks for the password before the upload, so the file is chosen only once (QA
 
     session(A::passwordConfirmed());
 
-    Livewire::actingAs($kesiswaan)->test(ImportSiswa::class)
+    Livewire::actingAs($kesiswaan)->withQueryParams([ImportSiswa::LEVEL_QUERY => '10'])->test(ImportSiswa::class)
         ->assertSee('Pilih file atau seret ke sini')
         ->assertDontSee('Konfirmasi kata sandi')
         ->assertDontSee('upload file ini lagi');
