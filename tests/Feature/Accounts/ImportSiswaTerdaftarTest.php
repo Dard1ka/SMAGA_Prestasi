@@ -188,7 +188,8 @@ it('warns instead of opening when the student went into the Sampah meanwhile, an
         ->assertDispatched('sth-toast', message: ImportSiswa::REGISTERED_TRASHED, tone: 'warning')
         ->assertDontSeeHtml('wire:click="showRegistered(2, 0)"')
         ->assertSee('Terdaftar: Nadia Putri Anindya · X-1 · NISN 0098765432 · Di Sampah, terhapus permanen')
-        ->assertSee(ImportSiswa::ASK_ADMIN_RESTORE);
+        // Kesiswaan holds classroom.manage since 2026-11-05: the link to the Sampah of its own Kelas page.
+        ->assertSeeHtml('href="'.route('kesiswaan.kelas.index').'#'.ImportSiswa::TRASH_ANCHOR.'"');
 });
 
 it('warns when the student was deleted for good meanwhile (SV6, D-184)', function (): void {
@@ -202,7 +203,7 @@ it('warns when the student was deleted for good meanwhile (SV6, D-184)', functio
         ->assertDontSee('Terdaftar: Nadia Putri Anindya');
 });
 
-it('shows a student in the Sampah without "Lihat": a link for the Admin, a sentence for Kesiswaan (SV6, D-184)', function (): void {
+it('shows a student in the Sampah without "Lihat": a link to the own Sampah, a sentence without classroom.manage (SV6, D-184)', function (): void {
     sv6tStudent(731004, 'Dimas Arya Nugroho', '225226204', '0098765435', 'XI-4');
     // The class goes into the Sampah with its student; the line still prints the class name.
     app(TrashClassroom::class)->handle($this->admin, Classroom::query()->where('name', 'XI-4')->sole(), 'Kelas digabung (data contoh).');
@@ -213,13 +214,22 @@ it('shows a student in the Sampah without "Lihat": a link for the Admin, a sente
 
     expect($purge)->toBe('13 November 2026');
 
+    // Kesiswaan: the Sampah of its own Kelas page (classroom.manage since 2026-11-05), never the Admin address.
     sv6tScreen($this->kesiswaan, $rows)
         ->assertSee('Dilewati')
         ->assertSee(ImportStudents::NOTE_IN_TRASH)
         ->assertSee($line)
-        ->assertSee(ImportSiswa::ASK_ADMIN_RESTORE)
+        ->assertSeeHtml('href="'.route('kesiswaan.kelas.index').'#'.ImportSiswa::TRASH_ANCHOR.'"')
+        ->assertDontSee(ImportSiswa::ASK_ADMIN_RESTORE)
         ->assertDontSeeHtml($link)
         ->assertDontSeeHtml('showRegistered(');
+
+    // Without classroom.manage: the sentence instead of a link.
+    Role::findByName(RoleName::Kesiswaan->value)->revokePermissionTo(Permission::ClassroomManage->value);
+    app(PermissionRegistrar::class)->forgetCachedPermissions();
+    sv6tScreen(User::query()->findOrFail($this->kesiswaan->getKey()), $rows)
+        ->assertSee(ImportSiswa::ASK_ADMIN_RESTORE)
+        ->assertDontSeeHtml(ImportSiswa::TRASH_ANCHOR.'"');
 
     sv6tScreen($this->admin, $rows)
         ->assertSee($line)

@@ -77,13 +77,13 @@ function sv6ExportCells(string $xlsx): array
     return $cells;
 }
 
-it('writes the whole school: Ringkasan first, then only the tingkat sheets that have students, every cell text', function (): void {
+it('writes the whole school: only the tingkat sheets that have students, Ringkasan last, every cell text', function (): void {
     $file = app(ExportActivationReport::class)->handle($this->kesiswaan);
 
     expect($file)->not->toBeNull()
         ->and($file->rows)->toBe(3)
         ->and($file->filename)->toStartWith('status-aktivasi-semua-')
-        ->and(sv6ExportSheets($file->path))->toBe([ActivationReport::SUMMARY_SHEET, 'X', 'XII'])
+        ->and(sv6ExportSheets($file->path))->toBe(['X', 'XII', ActivationReport::SUMMARY_SHEET])
         ->and(array_column(SimpleExcelReader::create($file->path)->fromSheetName(ActivationReport::SUMMARY_SHEET)->getRows()->all(), 'Jumlah siswa'))->toBe(['1', '2', '3'])
         ->and(array_column(SimpleExcelReader::create($file->path)->fromSheetName('XII')->getRows()->all(), 'Status'))->toBe(['Nonaktif', 'Diarsipkan'])
         // Formula-safe (OWASP): the leading "+" gets an apostrophe.
@@ -160,6 +160,7 @@ it('refuses an unknown tingkat, status, class or screen', function (array $argum
     'status' => [['state' => 'apa-saja']],
     'class' => [['classroomId' => 'tidak-ada']],
     'screen' => [['source' => 'lain']],
+    'file kind' => [['kind' => 'lain']],
 ]);
 
 it('gives a class name a valid sheet name', function (string $name, string $sheet): void {

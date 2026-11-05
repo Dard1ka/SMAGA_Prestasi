@@ -82,13 +82,12 @@
                     Daftar siswa <span class="cnt">{{ $number(array_sum($totals)) }}</span>
                 </button>
             </div>
-            {{-- SV3: the Excel file per tingkat. SV6, D-185: on both tabs; "Semua kelas" starts with the sheet "Ringkasan"; on
-                 "Daftar siswa" a class filter gives that class, so the tingkat choice steps aside. --}}
+            {{-- The Status aktivasi file (student data + status, "Ringkasan" last for the whole school) on both tabs, with the
+                 one chooser of every student download (the same list as the Kelas page); a class filter of "Daftar siswa"
+                 is copied into it. --}}
             <div class="flex flex-col items-end gap-1 max-sm:w-full max-sm:items-start">
                 <div class="flex items-center gap-2">
-                    @unless ($tampil === 'siswa' && $daftarKelas !== '')
-                        <x-sth.select wire:model.live="unduhTingkat" label="Tingkat untuk download" hide-label size="sm" :options="\App\Livewire\Akun\StatusAktivasi::DOWNLOAD_LEVELS" class="w-40" />
-                    @endunless
+                    <x-sth.select wire:model.live="unduhTingkat" label="Kelas untuk download" hide-label size="sm" :options="$downloadOptions" class="w-40" />
                     <x-sth.button variant="quiet" size="sm" icon="download" wire:click="export" wire:loading.attr="disabled" wire:target="export">Download Excel</x-sth.button>
                 </div>
                 <p class="m-0 text-xs text-muted">{{ $downloadNote }}</p>

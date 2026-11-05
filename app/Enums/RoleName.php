@@ -40,8 +40,9 @@ enum RoleName: string
     /**
      * Seeded permission set (RoleSeeder). Admin gets everything except approving registrations,
      * which stays with the Kepala Sekolah and Tata Usaha (D-01, D-150, CLAUDE.md §8). Only siswa (usulan) and Admin
-     * add a lomba (D-145); Kesiswaan checks, corrects and decides it. `classroom.manage` (Admin › Kelas) is Admin only:
-     * it comes with "everything" and no other role lists it.
+     * add a lomba (D-145); Kesiswaan checks, corrects and decides it. `classroom.manage` (the Kelas page) and
+     * `student.status` (Ubah status of a student) are Admin, Kesiswaan and Tata Usaha since 2026-11-05; the account-wide
+     * `user.*` permissions (Pengguna & peran, Arsip otomatis, staff accounts) stay Admin only.
      *
      * @return list<Permission>
      */
@@ -73,7 +74,10 @@ enum RoleName: string
                 Permission::StudentImport,
                 Permission::StudentView,
                 Permission::StudentUpdate, // SV6, D-187: "Ubah data siswa"
-                Permission::StudentTrash,  // SV6, D-185: Hapus siswa into the Sampah (Pulihkan stays Admin)
+                Permission::StudentTrash,  // SV6, D-185: Hapus siswa into the Sampah
+                // 2026-11-05 (the lead: Kelas "sama persis Admin"): the Kelas page with every action of Admin › Kelas.
+                Permission::ClassroomManage,
+                Permission::StudentStatus,
                 Permission::DashboardView,
             ],
             self::KepalaSekolah => [
@@ -92,7 +96,12 @@ enum RoleName: string
                 Permission::LetterSend,
                 Permission::LetterView,
                 Permission::StudentView,
-                Permission::StudentUpdate, // SV6, D-187: "Ubah data siswa" from TU › Data siswa
+                Permission::StudentUpdate, // SV6, D-187: "Ubah data siswa"
+                // 2026-11-05 (the lead: Kelas "sama persis Admin"): TU › Kelas replaces TU › Data siswa, with every action
+                // of Admin › Kelas.
+                Permission::ClassroomManage,
+                Permission::StudentStatus,
+                Permission::StudentTrash,
             ],
             self::Humas => [
                 Permission::AchievementViewAll,

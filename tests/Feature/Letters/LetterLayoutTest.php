@@ -434,22 +434,22 @@ function sv6SignatureBoxes(string $view, LetterContent $content, string $number)
     return $blocks;
 }
 
-it('makes the signature + stamp image about 30 % larger and keeps the reserved box, so no line moves (SV6, D-183)', function (): void {
+it('makes the signature + stamp image twice as tall as its reserved box, so no line moves (SV7, D-189)', function (): void {
     $siswa = m1aLayoutHtml('surat-tugas-siswa', m1aLayoutContent($this), '400.3.8/313/MRD/X/2026');
     $guru = m1aLayoutHtml('surat-perintah-tugas-guru', m1aLayoutContent($this), '400.3.8.6/1681/2026');
 
     // The boxes keep the heights of the school files; only the image grows and is pulled up by half its growth.
     expect($siswa)->toContain('.s-ttd .gambar { height: 60.95pt; }')
-        ->toContain('.s-ttd .gambar img { height: 79.25pt; position: relative; top: -9.15pt; }')
+        ->toContain('.s-ttd .gambar img { height: 121.9pt; position: relative; top: -30.475pt; }')
         ->not->toContain('.s-ttd .gambar img { height: 60.95pt; }')
         ->and($guru)->toContain('.g-ttd .gambar { height: 58pt; }')
-        ->toContain('.g-ttd .gambar img { height: 75.4pt; position: relative; top: -8.7pt; }')
+        ->toContain('.g-ttd .gambar img { height: 116pt; position: relative; top: -29pt; }')
         ->not->toContain('.g-ttd .gambar img { height: 58pt; }')
         // the Lampiran block is a .g-ttd too, so its image follows the same rule
         ->toContain('class="g-ttd g-ttd-lampiran utuh"');
 });
 
-it('lays the larger signature + stamp out over the lines around it in a real PDF, the box and the lines unmoved (SV6, D-183)', function (string $view, string $number, float $box, float $image, int $blocks): void {
+it('lays the larger signature + stamp out over the lines around it in a real PDF, the box and the lines unmoved (SV7, D-189)', function (string $view, string $number, float $box, float $image, int $blocks): void {
     $found = sv6SignatureBoxes($view, m1aLayoutContent($this), $number);
 
     expect($found)->toHaveCount($blocks);
@@ -463,19 +463,20 @@ it('lays the larger signature + stamp out over the lines around it in a real PDF
         // the reserved box and the name under it stay where they were
         expect($gambarH)->toEqualWithDelta($box, 0.01)
             ->and($nama[1])->toEqualWithDelta($gambarY + $box, 0.01)
-            // the image: 30 % taller, 2:1 like the sample, half of the growth above the box and half below it
+            // the image: twice as tall, 2:1 like the sample, half of the growth above the box and half below it
             ->and($imgH)->toEqualWithDelta($image, 0.01)
-            ->and($imgH / $box)->toEqualWithDelta(1.3, 0.005)
+            ->and($imgH / $box)->toEqualWithDelta(2.0, 0.005)
             ->and($imgW)->toEqualWithDelta($image * 2, 0.05)
             ->and($imgY)->toEqualWithDelta($gambarY - $grow, 0.01)
             ->and($imgY + $imgH)->toEqualWithDelta($gambarY + $box + $grow, 0.01)
-            // and it still fits the width of its block
-            ->and($imgX)->toBeGreaterThanOrEqual($blockX - 0.01)
-            ->and($imgX + $imgW)->toBeLessThanOrEqual($blockX + $blockW + 0.01);
+            // it may run a little past its block (the lead: "kena kata-kata tidak apa-apa"), never off the A4 page
+            ->and($imgX)->toBeGreaterThanOrEqual($blockX - 20)
+            ->and($imgX + $imgW)->toBeLessThanOrEqual($blockX + $blockW + 20)
+            ->and($imgX + $imgW)->toBeLessThanOrEqual(595.28 - 20);
     }
 })->with([
-    'siswa' => ['surat-tugas-siswa', '400.3.8/313/MRD/X/2026', 60.95, 79.25, 1],
-    'guru and its Lampiran' => ['surat-perintah-tugas-guru', '400.3.8.6/1681/2026', 58.0, 75.4, 2],
+    'siswa' => ['surat-tugas-siswa', '400.3.8/313/MRD/X/2026', 60.95, 121.9, 1],
+    'guru and its Lampiran' => ['surat-perintah-tugas-guru', '400.3.8.6/1681/2026', 58.0, 116.0, 2],
 ]);
 
 it('lays the dashed placeholder of the TU preview over the lines around its slot the same way (SV6, D-183)', function (string $ttd): void {

@@ -182,10 +182,10 @@ it('keeps an archived account archived: it is not reset at all', function (): vo
     expect($user->fresh()->status)->toBe(UserStatus::Archived);
 });
 
-it('only lets Admin reset accounts, with a reason, and never staff accounts', function (): void {
+it('only lets Admin (and student.status) reset accounts, with a reason, and never staff accounts', function (): void {
     $user = H::activeStudent()->user;
 
-    expect(fn () => app(ResetStudentAccount::class)->handle(H::staff(RoleName::Kesiswaan), $user, 'Alasan', 'sementara8'))
+    expect(fn () => app(ResetStudentAccount::class)->handle(H::staff(RoleName::Humas), $user, 'Alasan', 'sementara8'))
         ->toThrow(AuthorizationException::class)
         ->and(fn () => app(ResetStudentAccount::class)->handle($this->admin, $user, '   ', 'sementara8'))
         ->toThrow(ValidationException::class)
@@ -217,10 +217,10 @@ it('archives an account by hand (D-30)', function (): void {
         ->and(Activity::query()->where('event', 'account.archived')->exists())->toBeTrue();
 });
 
-it('refuses non-admins and self-disable', function (): void {
+it('refuses roles without user.archive or student.status, and self-disable', function (): void {
     $user = H::activeStudent()->user;
 
-    expect(fn () => app(DisableAccount::class)->handle(H::staff(RoleName::Kesiswaan), $user, 'Alasan'))
+    expect(fn () => app(DisableAccount::class)->handle(H::staff(RoleName::Humas), $user, 'Alasan'))
         ->toThrow(AuthorizationException::class)
         ->and(fn () => app(DisableAccount::class)->handle($this->admin, $this->admin, 'Alasan'))
         ->toThrow(ValidationException::class)

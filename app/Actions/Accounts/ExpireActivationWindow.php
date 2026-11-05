@@ -9,7 +9,6 @@ use App\Enums\UserStatus;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -55,7 +54,7 @@ final class ExpireActivationWindow
      */
     public function handle(User $actor, User $target, string $reason): CarbonImmutable
     {
-        Gate::forUser($actor)->authorize(Permission::UserArchive->value);
+        StudentStatusAuthorization::authorize($actor, $target, Permission::UserArchive);
 
         if (! $actor->canLogIn()) {
             abort(403);

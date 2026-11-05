@@ -183,6 +183,11 @@
 | D-186 | **"Hapus permanen" per entri Sampah** oleh Admin (kata sandi terbaru, nama kelas diketik), satu transaksi dengan batas pulih, audit `trash.purged_by_admin` (hanya `smaga_server`) | Lead, 5 Nov 2026 (SV6) | final sebagai keputusan; kode boleh menyusul di paket berikutnya |
 | D-187 | **"Ubah data siswa"** (Nama, NIS, NISN, Tanggal lahir, Kelas) untuk Admin, Kesiswaan dan Tata Usaha (`student.update`), satu dialog bersama, halaman baru Tata Usaha › Data siswa; tanggal lahir baru meng-hash ulang kata sandi awal siswa yang belum aktivasi dengan syarat ketat (hanya `smaga_server`) | Lead, 5 Nov 2026 (SV6) | final |
 | D-188 | **Koreksi surat tugas: nomor lama boleh dipakai lagi** setelah surat lama dicabut (nomor unik hanya di antara surat yang tidak dicabut), tanpa peringatan oranye, semua isian terisi dari surat lama dengan warna biru muda selama sama (hanya `smaga_server`) | Lead, 5 Nov 2026 (SV6) | final (menggantikan bagian "termasuk nomor surat yang sudah dicabut" dari D-82) |
+| D-189 | **Tanda tangan + stempel dua kali tinggi kotaknya** di surat siswa, surat guru dan Lampiran, boleh menimpa tulisan di atas dan di bawahnya (hanya `smaga_server`) | Lead, 5 Nov 2026 (SV7) | final (menggantikan ukuran 30 % D-183) |
+| D-190 | **Dua jenis Excel siswa dengan satu pilihan kelas**: "Data siswa" dari tab Kelas (No, Kelas, Nama, NIS, NISN, Tanggal lahir, No HP, Email) dan "Status aktivasi" (kolom yang sama + status aktivasi, Ringkasan di akhir); pilihan Semua kelas / X / XI / XII / satu kelas sama di kedua layar dan semua peran (hanya `smaga_server`) | Lead, 5 Nov 2026 (SV7) | final (tanggal lahir siswa belum aktivasi = kata sandi awalnya: diterima) |
+| D-191 | **Tab Kelas untuk Tata Usaha dan Kesiswaan sama dengan Admin**, Sampah menyebut siapa yang menghapus; TU tanpa "Data siswa"; izin baru `student.status` (hanya `smaga_server`) | Lead, 5 Nov 2026 (SV7) | final (pembekuan "Bukan saya?" tetap hanya Admin; Kesiswaan juga Ubah status di Status aktivasi: sementara) |
+| D-192 | **Tombol "Hapus permanen" di Sampah** (keputusan D-186, sekarang di layar) untuk Admin, Kesiswaan dan Tata Usaha (hanya `smaga_server`) | Lead, 5 Nov 2026 (SV7) | final |
+| D-193 | **Konfirmasi kata sandi kedua diingat 30 hari di browser** untuk akun staf; login dengan kata sandi juga dihitung (hanya `smaga_server`) | Lead, 5 Nov 2026 (SV7) | final (risiko PC bersama diterima) |
 | U-01…U-06 | Usulan keamanan yang belum diputuskan | Agent H (keamanan) | menunggu jawaban sekolah / sementara |
 
 ---
@@ -1993,6 +1998,81 @@ Action, aturan dan tesnya sudah masuk rilis ini.
   view, `x-sth.input` (latar `bg-blue-bg`), tes `KoreksiSuratTest`, `SuratTugasTest`, `RevokeLetterTest`
  . Server produksi: migrasi E6a setelah backup.
 - **Status:** final.
+
+## D30. Tanda tangan lebih besar, Excel siswa lengkap, tab Kelas untuk TU dan Kesiswaan, hapus permanen, kata sandi diingat (5 Nov 2026, SV7, hanya `smaga_server`)
+
+Permintaan lead 5 Nov 2026 malam. Catatan kerja: `docs/dev-notes/SV7.md`.
+
+### D-189 · Tanda tangan + stempel dua kali tinggi kotaknya · 5 Nov 2026
+*menggantikan ukuran D-183*
+- **Keputusan:** gambar tanda tangan + stempel di PDF surat tugas setinggi dua kali kotaknya (surat siswa 60,95 → 121,9 pt,
+  surat guru dan Lampiran 58 → 116 pt), ditarik ke atas separuh pertambahannya, jadi menimpa baris kota/jabatan di atas dan
+  nama di bawahnya. Kotak dan baris tidak bergeser, jumlah halaman tetap; di surat siswa gambar boleh sedikit melewati
+  bloknya, tidak pernah keluar halaman.
+- **Alasan:** lead: "tanda tangan di PDF surat tugas tolong dibesarkan, kena kata-kata tidak apa-apa … tolong verif dulu
+  baru bilang done". Diperiksa pada PDF sungguhan dengan gambar tanda tangan sekolah (tiga halaman).
+- **Dampak:** `resources/pdf/layout.blade.php`, `tests/Feature/Letters/LetterLayoutTest.php`. Surat yang sudah terbit tidak
+  berubah.
+
+### D-190 · Dua jenis Excel siswa, satu pilihan kelas · 5 Nov 2026
+- **Keputusan:** semua download daftar siswa memakai satu implementasi (`ExportActivationReport`, `ActivationReport`):
+  - **Data siswa** (tab Kelas, juga "Download Excel" di Lihat siswa): No, Kelas, Nama, NIS, NISN, Tanggal lahir (DD-MM-YYYY),
+    No HP, Email; tanpa kolom status, tanpa Ringkasan; nama file `data-siswa-…`.
+  - **Status aktivasi** (Status aktivasi, juga dialog per kelas): kolom yang sama, lalu Status, Aktivasi, Login terakhir,
+    Batas kata sandi awal, Catatan; sheet Ringkasan di akhir; nama file `status-aktivasi-…`.
+  - Satu sheet per tingkat untuk semua kelas (urut kelas lalu nama), satu sheet bernama kelas untuk satu kelas; semua sel
+    teks dan aman formula (nol di depan tetap); email tersamar seperti di layar.
+  - Pilihan download yang sama di kedua layar dan untuk Admin, Kesiswaan dan Tata Usaha: Semua kelas, Kelas X, XI, XII, lalu
+    setiap kelas yang punya siswa. Status aktivasi tetap memakai tab status dan pencariannya. Konfirmasi kata sandi, audit
+    (`file` = `data_siswa` / `status_aktivasi`) dan peringatan ekspor besar tetap.
+- **Alasan:** lead: file "harusnya lengkap, ada nama, NISN, dll"; dari tab Kelas semuanya kecuali status aktivasi, dari
+  Status aktivasi termasuk statusnya; pilihan kelas konsisten di semua akun dan tab. Tanggal lahir dan No HP ikut (pilihan
+  lead); risiko diterima: untuk siswa yang belum aktivasi tanggal lahir = kata sandi awal (D-173), jadi file ini rahasia.
+- **Dampak:** `ActivationReport` (`KIND_DATA`, `KIND_STATUS`, `rows(personal:)`), `ExportActivationReport` (`scopeOptions()`),
+  `Admin\Kelas::export()`, `Akun\StatusAktivasi`, tes.
+
+### D-191 · Tab Kelas untuk Tata Usaha dan Kesiswaan, sama dengan Admin · 5 Nov 2026
+- **Keputusan:** Tata Usaha (`tu.kelas.index`, menggantikan menu "Data siswa"; `/tu/data-siswa` diarahkan ke sana) dan
+  Kesiswaan (`kesiswaan.kelas.index`) mendapat layar Admin › Kelas yang sama: tambah/ganti nama/hapus kelas, Lihat siswa,
+  Ubah data, Ubah status, Hapus ke Sampah, Pulihkan, Hapus permanen, download. Alamat, kembali dari halaman kata sandi
+  dan tautan di layar itu memakai area peran sendiri (`App\Support\ClassroomArea`), tidak pernah `admin.*`. Sampah menulis
+  "Dihapus <tanggal, jam> oleh <nama> (<peran>)". Izin: baru `student.status` (Ubah status akun siswa saja) untuk Admin,
+  Kesiswaan, Tata Usaha; Kesiswaan + `classroom.manage`; Tata Usaha + `classroom.manage`, `student.trash`. Yang lain tetap
+  Admin saja (Pengguna & peran, Pengaturan, Log audit, Arsip otomatis, Status sistem; akun staf). `RoleSeeder` wajib
+  dijalankan ulang saat deploy.
+- **Ditambahkan pelaksana (sementara, perlu persetujuan lead):** pembekuan "Bukan saya?" (K8) tetap hanya bisa dibuka Admin;
+  Kesiswaan juga mendapat Ubah status di Status aktivasi (supaya sama dengan tab Kelas); pilihan download hanya menampilkan
+  kelas yang punya siswa. Teks lama yang masih menyebut "Admin" (pembekuan "Dibekukan Admin" oleh TU/Kesiswaan) belum diganti.
+- **Alasan:** lead: "di TU, tab Data siswa digantikan tab Kelas yang sama kayak di Admin"; "di Kesiswaan juga tambahi tab
+  Kelas yang sama"; "sama persis Admin tapi dikasih tahu yang menghapus siswa ini siapa".
+- **Dampak:** `routes/staff.php`, `Navigation`, `Admin\Kelas`, `UbahStatusSiswa`, `HapusSiswa`, `ImportSiswa`, `UbahDataSiswa`,
+  `Permission`, `RoleName`, `UserPolicy`, `App\Actions\Accounts\StudentStatusAuthorization`, Action status siswa; dihapus
+  `TataUsaha\DataSiswa`; tes `tests/Feature/Admin/KelasAreaTest.php` dan tes yang berubah.
+
+### D-192 · "Hapus permanen" di layar Sampah · 5 Nov 2026
+- **Keputusan:** tombol yang diputuskan D-186: tiap entri Sampah (siswa atau kelas) punya "Hapus permanen" di samping
+  "Pulihkan", dengan dialog sendiri (tidak bisa dibatalkan, apa saja yang ikut terhapus; untuk kelas nama kelas diketik),
+  kata sandi terbaru, `PurgeFromTrash`, audit `trash.purged_by_admin`. Untuk Admin, Kesiswaan dan Tata Usaha.
+- **Alasan:** lead: "supaya ada tombol supaya user bisa langsung hapus total, daripada nunggu 7 hari".
+- **Dampak:** `Admin\Kelas` (`askPurge()`, `purge()`, dialog `kelas-hapus-permanen`), view, tes.
+
+### D-193 · Konfirmasi kata sandi kedua diingat 30 hari di browser · 5 Nov 2026
+- **Keputusan:** untuk akun staf (bukan siswa), login yang berhasil dengan kata sandi (juga setelah TOTP) dan halaman
+  "Konfirmasi kata sandi" menyimpan cookie `sth_password_confirmed` (terenkripsi, HttpOnly, SameSite=Lax, Secure di https)
+  selama 30 hari sejak kata sandi diketik. Isinya terikat ke id akun dan kata sandi saat itu (HMAC dengan kunci aplikasi),
+  jadi ganti kata sandi atau reset Admin mengakhirinya. Middleware terakhir di grup `web`
+  (`RestoreRememberedPasswordConfirmation`) mengisi ulang `auth.password_confirmed_at` untuk akun staf dengan cookie yang
+  sah, sehingga `RequiresRecentPassword` dan `password.confirm` tidak bertanya lagi. Cookie akun lain, kedaluwarsa atau
+  diubah diabaikan dan dihapus; keluar tidak menghapusnya. Browser tanpa cookie tetap ditanya seperti dulu.
+- **Alasan:** lead: "habis login di TU, Admin, dll harus input password lagi untuk melakukan sesuatu … dibuat disimpan ke
+  cookie browser aja … ini buat yang kedua aja, bukan login pertama"; pilihan: 30 hari.
+- **Risiko yang diterima:** di PC bersama, siapa pun yang membuka sesi staf di browser itu dalam 30 hari bisa melakukan aksi
+  penting (reset akun, ubah peran, import, pengaturan, hapus permanen) tanpa ditanya kata sandi lagi. Ini melonggarkan
+  SECURITY §3m-9 dan sikap "PC bersama" §3a atas pilihan lead. Staf sebaiknya selalu keluar dan tidak memakai profil
+  browser bersama.
+- **Dampak:** `App\Actions\Fortify\RememberedPasswordConfirmation`, `PasswordConfirmedResponse`,
+  `App\Http\Middleware\RestoreRememberedPasswordConfirmation`, `FortifyServiceProvider`, `bootstrap/app.php`,
+  `tests/Feature/Auth/RememberedPasswordConfirmationTest.php`.
 
 ## E. Usulan keamanan yang belum diputuskan
 

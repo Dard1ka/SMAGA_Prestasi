@@ -9,8 +9,9 @@ use App\Models\Classroom;
 use App\Models\User;
 
 /**
- * Classes (Admin › Kelas, `admin.kelas.index`). Deny by default: every ability needs `classroom.manage`, which only
- * Admin holds (RoleName::defaultPermissions()). Reading a class name elsewhere (import, lists) needs no policy: the
+ * Classes (the Kelas page: `admin.kelas.index`, `kesiswaan.kelas.index`, `tu.kelas.index`). Deny by default: every ability
+ * needs `classroom.manage`, which Admin holds, and since 2026-11-05 Kesiswaan and Tata Usaha (RoleName::defaultPermissions();
+ * the lead: their tab Kelas "sama persis Admin"). Reading a class name elsewhere (import, lists) needs no policy: the
  * name is not personal data. The rules of a delete (no student row left) live in DeleteClassroom.
  */
 final class ClassroomPolicy

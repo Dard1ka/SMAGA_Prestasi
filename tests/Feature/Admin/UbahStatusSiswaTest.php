@@ -146,7 +146,7 @@ it('refuses a staff, unknown, malformed, empty or too large selection with 404',
     'too many' => fn () => [range(1, UbahStatusSiswa::MAX_STUDENTS + 1)],
 ]);
 
-it('is Admin only: the component and every action refuse other roles with 403', function (RoleName $role): void {
+it('is for Admin, Kesiswaan and Tata Usaha only (student.status): the component and every action refuse other roles with 403', function (RoleName $role): void {
     $student = ubahStatusSiswa('nonaktif');
     $ask = fn () => Livewire::test(UbahStatusSiswa::class)
         ->call('open', [$student->getKey()])
@@ -161,7 +161,7 @@ it('is Admin only: the component and every action refuse other roles with 403', 
 
     expect($student->fresh()->status)->toBe(UserStatus::Disabled)
         ->and(Activity::query()->where('event', 'like', 'account.%')->exists())->toBeFalse();
-})->with([RoleName::Kesiswaan, RoleName::TataUsaha, RoleName::KepalaSekolah, RoleName::Humas]);
+})->with([RoleName::KepalaSekolah, RoleName::Humas, RoleName::Guru]);
 
 // --- Every target from every state --------------------------------------------------------------------------------
 

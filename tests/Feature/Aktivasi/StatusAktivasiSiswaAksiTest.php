@@ -118,30 +118,28 @@ it('gives Admin ticks, "Pilih semua", Ubah data, Ubah status and Hapus on both l
         ->assertSee('wire:name="akun.ubah-data-siswa"', false);
 });
 
-it('gives Kesiswaan ticks, Ubah data and Hapus but no Ubah status (no user.archive)', function (): void {
+it('gives Kesiswaan ticks, Ubah data, Ubah status and Hapus (student.status since 2026-11-05)', function (): void {
     foreach ([sv6List($this->kesiswaan), Livewire::test(StatusAktivasi::class)->call('showClass', $this->x1->getKey())] as $screen) {
         $screen->assertSee('Pilih semua yang tampil')
             ->assertSeeHtml('Hapus terpilih (<span class="num">0</span>)')
-            ->assertDontSee('Ubah status terpilih')
-            ->assertDontSeeHtml('askStatus(')
-            ->assertDontSeeHtml('askStatusSelected')
+            ->assertSeeHtml('Ubah status terpilih (<span class="num">0</span>)')
+            ->assertSeeHtml('wire:click="askStatus('.$this->nadia->user_id.')"')
             ->assertSeeHtml('wire:click="askTrashStudent('.$this->nadia->user_id.')"')
             ->assertSeeHtml('wire:click="askData('.$this->nadia->user_id.')"');
     }
 
     $this->get(route('kesiswaan.aktivasi.index', ['tampil' => 'siswa']))
         ->assertOk()
-        ->assertDontSee('id="'.UbahStatusSiswa::DIALOG.'"', false)
+        ->assertSee('id="'.UbahStatusSiswa::DIALOG.'"', false)
         ->assertSee('id="'.HapusSiswa::DIALOG.'"', false)
         ->assertSee('wire:name="akun.ubah-data-siswa"', false);
 
-    $screen = sv6List($this->kesiswaan);
-    $screen->call('askStatus', $this->nadia->user_id)->assertForbidden();
-    sv6List($this->kesiswaan)->set('selectedStudents', [(string) $this->nadia->user_id])->call('askStatusSelected')->assertForbidden();
+    sv6List($this->kesiswaan)->set('selectedStudents', [(string) $this->nadia->user_id])->call('askStatusSelected')
+        ->assertDispatchedTo(UbahStatusSiswa::class, UbahStatusSiswa::OPEN_EVENT, ids: [(int) $this->nadia->user_id]);
 });
 
-it('shows no ticks, no Hapus and no Ubah data to a Kesiswaan whose role lost student.trash and student.update', function (): void {
-    Role::findByName(RoleName::Kesiswaan->value)->revokePermissionTo(['student.trash', 'student.update']);
+it('shows no ticks, no Hapus, no Ubah status and no Ubah data to a Kesiswaan whose role lost those permissions', function (): void {
+    Role::findByName(RoleName::Kesiswaan->value)->revokePermissionTo(['student.trash', 'student.update', 'student.status', 'classroom.manage']);
     app(PermissionRegistrar::class)->forgetCachedPermissions();
     $kesiswaan = $this->kesiswaan->fresh();
 

@@ -25,9 +25,9 @@ use Livewire\Component;
  * rendered once inside Admin › Kelas (rows of "Lihat siswa", one or many ticked) and inside Status aktivasi (both lists,
  * one or many ticked), built like UbahStatusSiswa. The students go to the Sampah of Admin › Kelas (TrashStudents).
  *
- * - Who: TrashEntryPolicy::trashStudents(), so `student.trash` (Kesiswaan, Admin) or `classroom.manage` (Admin). The
- *   Sampah itself and "Pulihkan" stay Admin only; after a delete by Kesiswaan the toast says that the Admin can restore
- *   the students in Admin › Kelas within TrashEntry::KEEP_DAYS days.
+ * - Who: TrashEntryPolicy::trashStudents(), so `student.trash` or `classroom.manage` (Admin, Kesiswaan, Tata Usaha since
+ *   2026-11-05). The Sampah itself and "Pulihkan" need `classroom.manage`; after a delete by an account without it the
+ *   toast says that the Admin can restore the students in the menu Kelas within TrashEntry::KEEP_DAYS days.
  * - The host page checks the ids against the rows it showed and sends OPEN_EVENT; open() checks them again (every id a
  *   student account that is not in the trash, else 404; at most TrashStudents::MAX_STUDENTS), asks for a password from
  *   the last 15 minutes (SECURITY §3m-9, again on "Hapus siswa"), and keeps the ids with the class each student was in

@@ -6,6 +6,7 @@ use App\Http\Middleware\EnsureStaffTwoFactor;
 use App\Http\Middleware\EnsureTalentChosen;
 use App\Http\Middleware\PreventCredentialPageCaching;
 use App\Http\Middleware\RememberLoggedOutAccount;
+use App\Http\Middleware\RestoreRememberedPasswordConfirmation;
 use App\Http\Middleware\RestrictTwoFactorToStaff;
 use App\Http\Middleware\SecurityHeaders;
 use App\Providers\ErrorPageServiceProvider;
@@ -62,7 +63,14 @@ return Application::configure(basePath: dirname(__DIR__))
         // TOTP management (Fortify's two-factor.* routes, /akun/2fa) is staff only: 404 for student accounts.
         // RememberLoggedOutAccount comes first so it also sees a logout done by the middleware after it: the next
         // account that logs in on this browser never lands on the previous account's page.
-        $middleware->web(append: [RememberLoggedOutAccount::class, EnsureAccountActive::class, RestrictTwoFactorToStaff::class]);
+        // RestoreRememberedPasswordConfirmation (2026-11-05, lead) last: after EnsureAccountActive, before every route
+        // middleware (`password.confirm`) and inside every Livewire update (RequiresRecentPassword).
+        $middleware->web(append: [
+            RememberLoggedOutAccount::class,
+            EnsureAccountActive::class,
+            RestrictTwoFactorToStaff::class,
+            RestoreRememberedPasswordConfirmation::class,
+        ]);
 
         $middleware->alias([
             'active' => EnsureAccountActive::class,

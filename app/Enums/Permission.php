@@ -47,12 +47,13 @@ enum Permission: string
     case StudentImport = 'student.import';                  // Kesiswaan + Admin (D-26)
     case StudentView = 'student.view';
     case StudentUpdate = 'student.update';                  // "Ubah data siswa": Admin, Kesiswaan, Tata Usaha (SV6, D-187)
-    case StudentTrash = 'student.trash';                    // students into the Sampah: Admin, Kesiswaan (SV6, D-185); restore/purge stay classroom.manage
+    case StudentTrash = 'student.trash';                    // students into the Sampah: Admin, Kesiswaan, Tata Usaha (SV6, D-185; TU 2026-11-05)
+    case StudentStatus = 'student.status';                  // "Ubah status" of STUDENT accounts only: Admin, Kesiswaan, Tata Usaha (2026-11-05)
     case UserManage = 'user.manage';
     case UserResetPassword = 'user.reset_password';
     case UserArchive = 'user.archive';                      // manual disable/archive (D-30)
     case UserReplacePrincipal = 'user.replace_principal';   // D-01
-    case ClassroomManage = 'classroom.manage';              // kelola kelas: tambah, ganti nama, hapus (Admin only, Admin › Kelas)
+    case ClassroomManage = 'classroom.manage';              // the Kelas page: classes, Sampah, Pulihkan, Hapus permanen (Admin, Kesiswaan, Tata Usaha since 2026-11-05)
 
     // Settings
     case WeightManage = 'weight.manage';

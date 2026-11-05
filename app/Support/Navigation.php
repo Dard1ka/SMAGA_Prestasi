@@ -371,6 +371,8 @@ final class Navigation
                         ['key' => 'talenta', 'label' => 'Database talenta siswa', 'icon' => 'users', 'route' => ['kesiswaan.talenta.index', 'kesiswaan.talenta']],
                         ['key' => 'apresiasi', 'label' => 'Apresiasi', 'icon' => 'award', 'route' => ['kesiswaan.apresiasi.index', 'kesiswaan.apresiasi']],
                         // D-26: Kesiswaan may import students too.
+                        // 2026-11-05 (the lead): the Kelas page of Admin (classes, students, Sampah) under the Kesiswaan address.
+                        ['key' => 'kelas', 'label' => 'Kelas', 'icon' => 'folder', 'route' => ['kesiswaan.kelas.index'], 'match' => ['kesiswaan.kelas*']],
                         ['key' => 'import', 'label' => 'Import siswa', 'icon' => 'upload', 'route' => ['kesiswaan.import']],
                         // B1 (K9/K2): activation report, reopen windows.
                         ['key' => 'aktivasi', 'label' => 'Status aktivasi', 'icon' => 'check-circle', 'route' => ['kesiswaan.aktivasi.index'], 'match' => ['kesiswaan.aktivasi*']],
@@ -404,8 +406,8 @@ final class Navigation
                         ['key' => 'template', 'label' => 'Template surat', 'icon' => 'file', 'route' => ['tu.surat.template', 'tu.template']],
                     ]],
                     ['label' => 'Data', 'items' => [
-                        // SV6, D-187: the students with "Ubah data" (name, NIS, NISN, birth date, class).
-                        ['key' => 'siswa', 'label' => 'Data siswa', 'icon' => 'users', 'route' => ['tu.siswa.index'], 'match' => ['tu.siswa*']],
+                        // 2026-11-05 (the lead): the Kelas page of Admin (classes, students, Sampah), replacing "Data siswa".
+                        ['key' => 'kelas', 'label' => 'Kelas', 'icon' => 'folder', 'route' => ['tu.kelas.index'], 'match' => ['tu.kelas*', 'tu.siswa*']],
                     ]],
                 ],
             ],

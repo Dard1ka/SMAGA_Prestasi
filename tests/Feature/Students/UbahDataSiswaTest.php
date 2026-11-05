@@ -327,6 +327,8 @@ it('names the screen the dialog stands on', function (?string $route, string $so
         ->and(UpdateStudentData::SOURCES)->toContain($source);
 })->with([
     ['admin.kelas.index', 'kelas'],
+    ['kesiswaan.kelas.index', 'kelas'],
+    ['tu.kelas.index', 'kelas'],
     ['kesiswaan.aktivasi.index', 'aktivasi'],
     ['admin.aktivasi.index', 'aktivasi'],
     ['kesiswaan.import', 'import'],

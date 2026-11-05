@@ -10,13 +10,13 @@ use App\Models\User;
 
 /**
  * The trash of Admin › Kelas ("Sampah", the lead's decision of 5 Nov 2026). Deny by default: every ability needs
- * `classroom.manage`, the permission of Admin › Kelas, which only Admin holds (RoleName::defaultPermissions()), and an
- * account that can log in. The rules of a restore (before `purge_after`, not while the class is in the trash) live in
+ * `classroom.manage`, the permission of the Kelas page (Admin; since 2026-11-05 also Kesiswaan and Tata Usaha,
+ * RoleName::defaultPermissions()), and an account that can log in. The rules of a restore (before `purge_after`, not while the class is in the trash) live in
  * App\Actions\Trash\RestoreFromTrash.
  *
  * SV6, D-185 (the lead, 5 Nov 2026): putting STUDENTS into the trash (trashStudents(), App\Actions\Trash\TrashStudents)
  * also takes `student.trash`, which Kesiswaan holds. A class into the trash (create()), the Sampah list (viewAny()) and
- * "Pulihkan" (restore()) stay `classroom.manage`, so only an Admin can undo a delete of Kesiswaan.
+ * "Pulihkan" (restore()) and "Hapus permanen" (forceDelete()) stay `classroom.manage`.
  */
 final class TrashEntryPolicy
 {
@@ -52,7 +52,7 @@ final class TrashEntryPolicy
         return $this->manages($actor);
     }
 
-    /** "Hapus permanen" now, before `purge_after` (SV6, D-186, App\Actions\Trash\PurgeFromTrash): Admin only. */
+    /** "Hapus permanen" now, before `purge_after` (SV6, D-186, App\Actions\Trash\PurgeFromTrash): `classroom.manage`. */
     public function forceDelete(User $actor, TrashEntry $entry): bool
     {
         return $this->manages($actor);

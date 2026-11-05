@@ -87,20 +87,18 @@ function pftAuditRows(): array
 
 // --- Who may ------------------------------------------------------------------------------------------------------
 
-it('refuses "Hapus permanen" to every role but Admin, Kesiswaan with student.trash included', function (RoleName $role): void {
+it('refuses "Hapus permanen" to every role without classroom.manage (Admin, Kesiswaan and Tata Usaha hold it since 2026-11-05)', function (RoleName $role): void {
     $s = pftScenario();
     $actor = A::staff($role);
     $before = pftSnapshot();
 
-    if ($role === RoleName::Kesiswaan) {
-        expect($actor->can(Permission::StudentTrash->value))->toBeTrue();
-    }
+    expect($actor->can(Permission::ClassroomManage->value))->toBeFalse();
 
     expect(fn () => app(PurgeFromTrash::class)->handle($actor, $s['alone']))->toThrow(AuthorizationException::class)
         ->and(fn () => app(PurgeFromTrash::class)->handle($actor, $s['class'], 'X-4'))->toThrow(AuthorizationException::class)
         ->and(fn () => app(PurgeFromTrash::class)->preview($actor, $s['class']))->toThrow(AuthorizationException::class)
         ->and(pftSnapshot())->toBe($before);
-})->with([RoleName::Kesiswaan, RoleName::TataUsaha, RoleName::KepalaSekolah, RoleName::Humas, RoleName::Guru]);
+})->with([RoleName::KepalaSekolah, RoleName::Humas, RoleName::Guru]);
 
 it('refuses an Admin who can no longer log in', function (): void {
     $s = pftScenario();

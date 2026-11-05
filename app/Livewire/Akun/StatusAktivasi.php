@@ -25,6 +25,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
@@ -106,9 +107,6 @@ final class StatusAktivasi extends Component
 
     public const VIEW_STUDENTS = 'siswa';
 
-    /** SV3 (lead, 2026-11-03): the choice next to "Download Excel"; '' = Semua kelas, else classrooms.level. */
-    public const DOWNLOAD_LEVELS = ['' => 'Semua kelas', '10' => 'Kelas X', '11' => 'Kelas XI', '12' => 'Kelas XII'];
-
     public const ACTION_REOPEN = 'buka';
 
     public const ACTION_UNFREEZE = 'cair';
@@ -143,9 +141,11 @@ final class StatusAktivasi extends Component
     public string $q = '';
 
     /**
-     * SV3: the tingkat of the Excel download, '' = every tingkat (SV6: "Ringkasan" + one sheet per tingkat with
-     * students); a key of DOWNLOAD_LEVELS. Not used while "Daftar siswa" is filtered by a class. In the address (SV3
-     * review) so the download that resumes after the password page is the tingkat that was chosen.
+     * The chooser next to "Download Excel" (SV3; since 2026-11-05 the one chooser of every student download,
+     * ExportActivationReport::scopeOptions(): '' = Semua kelas, '10' / '11' / '12' = a tingkat, else a classroom id).
+     * A class picked in the list filter of "Daftar siswa" is copied into it, so the file and the list agree until the
+     * chooser is changed. In the address (SV3 review) so the download that resumes after the password page is the
+     * choice that was made.
      */
     #[Url(as: 'unduh', except: '')]
     public string $unduhTingkat = '';
@@ -194,7 +194,7 @@ final class StatusAktivasi extends Component
             $this->status = '';
         }
 
-        if (! array_key_exists($this->unduhTingkat, self::DOWNLOAD_LEVELS)) {
+        if (ExportActivationReport::scope($this->unduhTingkat) === null) {
             $this->unduhTingkat = '';
         }
 
@@ -215,6 +215,11 @@ final class StatusAktivasi extends Component
 
     public function updated(string $property): void
     {
+        // The class of the list is also the class of the file (the one chooser, 2026-11-05).
+        if ($property === 'daftarKelas') {
+            $this->unduhTingkat = self::knownClass($this->daftarKelas) ? $this->daftarKelas : ExportActivationReport::SCOPE_ALL;
+        }
+
         if (in_array($property, ['daftarKelas', 'status', 'q'], true)) {
             $this->limit = self::PREVIEW;
             $this->tampil = self::VIEW_STUDENTS;
@@ -264,6 +269,11 @@ final class StatusAktivasi extends Component
 
     public function resetFilters(): void
     {
+        // The chooser followed the list's class: it follows the reset too.
+        if ($this->daftarKelas !== '' && $this->unduhTingkat === $this->daftarKelas) {
+            $this->unduhTingkat = ExportActivationReport::SCOPE_ALL;
+        }
+
         $this->reset('daftarKelas', 'status', 'q', 'selectedStudents');
         $this->limit = self::PREVIEW;
         $this->forgetClass();
@@ -403,14 +413,14 @@ final class StatusAktivasi extends Component
      */
     public function askStatus(int $userId): void
     {
-        Gate::authorize(Permission::UserArchive->value);
+        Gate::authorize('changeStudentStatus', User::class);
         $student = $this->listedStudent($userId);
 
         if ($student === null) {
             return;
         }
 
-        Gate::authorize('archive', $student);
+        Gate::authorize('changeStudentStatus', $student);
 
         $this->dispatch(
             UbahStatusSiswa::OPEN_EVENT,
@@ -422,7 +432,7 @@ final class StatusAktivasi extends Component
     /** SV6 "Ubah status terpilih (N)" (Admin only): the shared dialog for the ticked rows. */
     public function askStatusSelected(): void
     {
-        Gate::authorize(Permission::UserArchive->value);
+        Gate::authorize('changeStudentStatus', User::class);
         $ids = $this->tickedStudents();
 
         if ($ids !== null) {
@@ -467,7 +477,7 @@ final class StatusAktivasi extends Component
     public function toggleAllStudents(ActivationReport $report): void
     {
         Gate::authorize(Permission::StudentView->value);
-        abort_unless(Gate::allows(Permission::UserArchive->value) || Gate::allows('trashStudents', TrashEntry::class), 403);
+        abort_unless(Gate::allows('changeStudentStatus', User::class) || Gate::allows('trashStudents', TrashEntry::class), 403);
 
         $this->toggleTicks($this->listedIds($report));
     }
@@ -501,14 +511,15 @@ final class StatusAktivasi extends Component
     }
 
     /**
-     * "Download Excel" next to the two tabs (SV3; SV6, D-185 moved the file into ExportActivationReport): on "Per kelas"
-     * the whole school or the chosen tingkat; on "Daftar siswa" what the list shows (its class filter = one sheet named
-     * after the class, else the tingkat choice; its status tab and search apply). No match: a warning toast, no file.
+     * "Download Excel" next to the two tabs (SV3; SV6, D-185 moved the file into ExportActivationReport; since 2026-11-05
+     * the Status aktivasi file with the student data and the one chooser): the chosen scope (Semua kelas, a tingkat or one
+     * class); on "Daftar siswa" its status tab and search apply too. No match: a warning toast, no file.
      */
     public function export(ExportActivationReport $export): ?BinaryFileResponse
     {
         Gate::authorize(Permission::StudentView->value);
-        abort_unless(array_key_exists($this->unduhTingkat, self::DOWNLOAD_LEVELS), 404);
+        // A value the chooser never offered (forged): 404. A class that lost its students meanwhile: the toast below.
+        abort_unless(ExportActivationReport::scope($this->unduhTingkat) !== null || Str::isUlid($this->unduhTingkat), 404);
         // The file belongs to the tab: coming back from the password page must not reopen a dialog.
         $this->forgetClass();
 
@@ -518,13 +529,13 @@ final class StatusAktivasi extends Component
 
         $scope = $this->downloadScope();
 
-        if ($scope['classroom'] !== null && ! self::knownClass($scope['classroom'])) {
+        if ($scope === null) {
             $this->dispatch('sth-toast', message: ExportActivationReport::MSG_EMPTY, tone: 'warning');
 
             return null;
         }
 
-        return $this->download($export->handle($this->actor(), $scope['classroom'], $scope['level'], $scope['state'], $scope['search']));
+        return $this->download($export->handle($this->actor(), $scope['classroom'], $scope['level'], $scope['state'], $scope['search'], kind: ActivationReport::KIND_STATUS));
     }
 
     /** SV6, D-185 "Download Excel" in the class dialog: every student of that class, every status, one sheet. */
@@ -544,7 +555,7 @@ final class StatusAktivasi extends Component
             return null;
         }
 
-        return $this->download(app(ExportActivationReport::class)->handle($this->actor(), (string) $classroom->getKey()));
+        return $this->download(app(ExportActivationReport::class)->handle($this->actor(), (string) $classroom->getKey(), kind: ActivationReport::KIND_STATUS));
     }
 
     // View ----------------------------------------------------------------------------------------
@@ -559,7 +570,7 @@ final class StatusAktivasi extends Component
         $filtered = $report->rows($this->daftarKelas ?: null, $this->status ?: null, $this->q);
         $isAdmin = Gate::allows(Permission::UserResetPassword->value);
         $canReopen = Gate::allows(Permission::StudentImport->value);
-        $canChangeStatus = Gate::allows(Permission::UserArchive->value);
+        $canChangeStatus = Gate::allows('changeStudentStatus', User::class);
         $canTrash = Gate::allows('trashStudents', TrashEntry::class);
         $target = $this->targetId !== null
             ? User::query()->with('student.classroom:id,name')->find($this->targetId, ['id', 'name', 'initial_password_expires_at', 'frozen_at'])
@@ -592,6 +603,7 @@ final class StatusAktivasi extends Component
             'canTrash' => $canTrash,
             'canEditData' => Gate::allows(Permission::StudentUpdate->value),
             'downloadNote' => $this->downloadNote(),
+            'downloadOptions' => ExportActivationReport::scopeOptions(),
             'filteredCount' => $filtered->count(),
             // r3: no button at the cap (a click could not show more); the note says how to narrow the list instead.
             'hasMore' => $filtered->count() > $this->limit && $this->limit < self::MAX,
@@ -851,21 +863,22 @@ final class StatusAktivasi extends Component
     }
 
     /**
-     * SV6, D-185: what "Download Excel" next to the tabs writes. "Daftar siswa": its class filter (else the tingkat
-     * choice), its status tab and its search. "Per kelas": the tingkat choice only.
+     * What "Download Excel" next to the tabs writes: the class or tingkat of the chooser (ExportActivationReport::scope());
+     * on "Daftar siswa" also its status tab and its search. Null when the chosen class no longer has a student.
      *
-     * @return array{classroom: ?string, level: ?int, state: string, search: string}
+     * @return array{classroom: ?string, level: ?int, state: string, search: string}|null
      */
-    private function downloadScope(): array
+    private function downloadScope(): ?array
     {
-        $list = $this->tampil === self::VIEW_STUDENTS;
-        $classroom = $list && $this->daftarKelas !== '' ? $this->daftarKelas : null;
+        $chosen = ExportActivationReport::scope($this->unduhTingkat);
 
-        return [
-            'classroom' => $classroom,
-            'level' => $classroom === null && $this->unduhTingkat !== '' && array_key_exists($this->unduhTingkat, self::DOWNLOAD_LEVELS)
-                ? (int) $this->unduhTingkat
-                : null,
+        if ($chosen === null) {
+            return null;
+        }
+
+        $list = $this->tampil === self::VIEW_STUDENTS;
+
+        return $chosen + [
             'state' => $list && array_key_exists($this->status, AccountControls::STATES) ? $this->status : '',
             'search' => $list ? trim($this->q) : '',
         ];
@@ -876,15 +889,11 @@ final class StatusAktivasi extends Component
     {
         $scope = $this->downloadScope();
         $parts = [
-            match (true) {
-                $scope['classroom'] !== null => 'Kelas '.(ActivationReport::classOptions()->get($scope['classroom']) ?? 'yang dipilih'),
-                $scope['level'] !== null => self::DOWNLOAD_LEVELS[(string) $scope['level']],
-                default => self::DOWNLOAD_LEVELS[''],
-            },
-            $scope['state'] !== '' ? 'status '.AccountControls::stateLabel($scope['state']) : 'semua status',
+            ExportActivationReport::scopeLabel($this->unduhTingkat),
+            ($scope['state'] ?? '') !== '' ? 'status '.AccountControls::stateLabel($scope['state']) : 'semua status',
         ];
 
-        if ($scope['search'] !== '') {
+        if (($scope['search'] ?? '') !== '') {
             $parts[] = 'hasil pencarian';
         }
 

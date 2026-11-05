@@ -296,7 +296,7 @@ it('refuses to freeze an account that is closed, already frozen, staff or own, a
 
 // --- Admin only ----------------------------------------------------------------------------------------------------
 
-it('lets no other role use the three Actions', function (RoleName $role): void {
+it('lets no role without user.archive or student.status use the three Actions', function (RoleName $role): void {
     $actor = A::staff($role);
     $belum = sv6Student('belum');
     $reason = 'Perubahan status oleh staf.';
@@ -307,4 +307,18 @@ it('lets no other role use the three Actions', function (RoleName $role): void {
 
     expect(AccountControls::state($belum->fresh()))->toBe(AccountControls::STATE_PENDING)
         ->and(Activity::query()->whereIn('event', [ActivateStudentAccount::EVENT, ExpireActivationWindow::EVENT, FreezeAccount::EVENT])->exists())->toBeFalse();
-})->with([RoleName::Kesiswaan, RoleName::KepalaSekolah, RoleName::TataUsaha, RoleName::Humas, RoleName::Guru]);
+})->with([RoleName::KepalaSekolah, RoleName::Humas, RoleName::Guru]);
+
+it('lets Kesiswaan and Tata Usaha use the three Actions on a student (student.status, 2026-11-05), never on a staff account', function (RoleName $role): void {
+    $actor = A::staff($role);
+    $reason = 'Perubahan status oleh staf.';
+
+    app(ActivateStudentAccount::class)->handle($actor, $active = sv6Student('belum'), $reason);
+    app(ExpireActivationWindow::class)->handle($actor, $expired = sv6Student('belum'), $reason);
+    app(FreezeAccount::class)->handle($actor, $frozen = sv6Student('belum'), $reason);
+
+    expect(AccountControls::state($active->fresh()))->toBe(AccountControls::STATE_ACTIVE)
+        ->and(AccountControls::state($expired->fresh()))->toBe(AccountControls::STATE_EXPIRED)
+        ->and(AccountControls::state($frozen->fresh()))->toBe(AccountControls::STATE_FROZEN)
+        ->and(fn () => app(FreezeAccount::class)->handle($actor, A::staff(RoleName::Guru), $reason))->toThrow(AuthorizationException::class);
+})->with([RoleName::Kesiswaan, RoleName::TataUsaha]);

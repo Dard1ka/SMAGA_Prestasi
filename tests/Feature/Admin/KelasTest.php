@@ -55,13 +55,14 @@ function kelasPublicVersion(): int
 
 // --- Permission and policy ---------------------------------------------------------------------------------------
 
-it('grants classroom.manage to Admin only', function (RoleName $role): void {
-    expect(in_array(Permission::ClassroomManage, $role->defaultPermissions(), true))->toBe($role === RoleName::Admin);
+it('grants classroom.manage to Admin, Kesiswaan and Tata Usaha only (2026-11-05)', function (RoleName $role): void {
+    expect(in_array(Permission::ClassroomManage, $role->defaultPermissions(), true))
+        ->toBe(in_array($role, [RoleName::Admin, RoleName::Kesiswaan, RoleName::TataUsaha], true));
 })->with(RoleName::cases());
 
-it('lets only Admin view, add, rename and delete classes', function (RoleName $role): void {
+it('lets only Admin, Kesiswaan and Tata Usaha view, add, rename and delete classes', function (RoleName $role): void {
     $user = $role === RoleName::Siswa ? H::activeStudent()->user->fresh() : A::staff($role);
-    $allowed = $role === RoleName::Admin;
+    $allowed = in_array($role, [RoleName::Admin, RoleName::Kesiswaan, RoleName::TataUsaha], true);
 
     expect($user->can('viewAny', Classroom::class))->toBe($allowed)
         ->and($user->can('create', Classroom::class))->toBe($allowed)
@@ -164,7 +165,7 @@ it('refuses an Admin action to anyone without classroom.manage', function (RoleN
         ->and(fn () => app(RenameClassroom::class)->handle($user, $this->xa, 'K'))->toThrow(AuthorizationException::class)
         ->and(fn () => app(DeleteClassroom::class)->handle($user, $this->xa))->toThrow(AuthorizationException::class)
         ->and($this->xa->fresh()->name)->toBe('X-A');
-})->with([RoleName::Kesiswaan, RoleName::TataUsaha, RoleName::KepalaSekolah]);
+})->with([RoleName::KepalaSekolah, RoleName::Humas, RoleName::Guru]);
 
 // --- RenameClassroom ---------------------------------------------------------------------------------------------
 
@@ -423,8 +424,8 @@ it('answers a delete confirmed after the class changed elsewhere with a toast', 
     expect(Classroom::query()->whereKey($this->xa->getKey())->exists())->toBe($change !== 'deleted');
 })->with(['renamed', 'deleted', 'filled']);
 
-it('refuses the screen and its actions to Kesiswaan', function (): void {
-    $this->actingAs(A::staff(RoleName::Kesiswaan));
+it('refuses the screen to roles without classroom.manage', function (RoleName $role): void {
+    $this->actingAs(A::staff($role));
 
     Livewire::test(Kelas::class)->assertForbidden();
-});
+})->with([RoleName::KepalaSekolah, RoleName::Humas, RoleName::Guru]);

@@ -192,11 +192,11 @@ it('refuses an account that is not disabled, a staff account, the own account an
         ->and(Activity::query()->where('event', 'account.enabled')->exists())->toBeFalse();
 });
 
-it('is Admin only', function (RoleName $role): void {
+it('refuses every role without user.archive or student.status (Kesiswaan and Tata Usaha hold it since 2026-11-05)', function (RoleName $role): void {
     $user = disabledStudent();
 
     expect(fn () => app(EnableAccount::class)->handle(A::staff($role), $user, 'Siswa kembali bersekolah.'))
         ->toThrow(AuthorizationException::class);
 
     expect($user->fresh()->status)->toBe(UserStatus::Disabled);
-})->with([RoleName::Kesiswaan, RoleName::KepalaSekolah, RoleName::TataUsaha, RoleName::Humas, RoleName::Guru]);
+})->with([RoleName::KepalaSekolah, RoleName::Humas, RoleName::Guru]);

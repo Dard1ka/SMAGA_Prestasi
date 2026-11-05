@@ -13,6 +13,7 @@ use App\Livewire\Admin\ArsipOtomatis;
 use App\Models\Classroom;
 use App\Models\Setting;
 use App\Models\Student;
+use App\Models\User;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
@@ -154,14 +155,24 @@ it('refuses to restore without a future date or for accounts that are not archiv
         ->and($alumni->user->fresh()->status)->toBe(UserStatus::Archived);
 });
 
-it('lets only user.archive change archive data', function (RoleName $role): void {
+it('lets no role without user.archive or student.status change archive data', function (RoleName $role): void {
     $actor = A::staff($role);
     $alumni = b5ArsipStudent('2029-11-01', archived: true);
     $student = b5ArsipStudent('2030-01-01');
 
     expect(fn () => app(UnarchiveStudent::class)->handle($actor, $alumni->user, '2030-07-01', 'x'))->toThrow(AuthorizationException::class)
         ->and(fn () => app(ChangeArchiveDate::class)->handle($actor, $student, '2031-01-01', 'x'))->toThrow(AuthorizationException::class);
-})->with([RoleName::Kesiswaan, RoleName::KepalaSekolah, RoleName::TataUsaha]);
+})->with([RoleName::KepalaSekolah, RoleName::Humas, RoleName::Guru]);
+
+it('keeps the archive date and the screen Admin only for Kesiswaan and Tata Usaha (their student.status only brings an alumnus back through Ubah status)', function (RoleName $role): void {
+    $actor = A::staff($role);
+    $student = b5ArsipStudent('2030-01-01');
+
+    expect(fn () => app(ChangeArchiveDate::class)->handle($actor, $student, '2031-01-01', 'Tinggal kelas.'))->toThrow(AuthorizationException::class)
+        ->and($actor->can('viewArchive', User::class))->toBeFalse();
+
+    $this->actingAs($actor)->get(route('admin.arsip.index'))->assertForbidden();
+})->with([RoleName::Kesiswaan, RoleName::TataUsaha]);
 
 // Livewire -------------------------------------------------------------------------------------------
 

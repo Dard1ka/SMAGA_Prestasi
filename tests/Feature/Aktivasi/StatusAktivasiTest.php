@@ -330,7 +330,7 @@ function sv3SheetRows(string $xlsx, string $sheet): array
     return SimpleExcelReader::create($xlsx)->fromSheetName($sheet)->getRows()->all();
 }
 
-it('downloads every class with the sheet "Ringkasan" first and only the tingkat sheets that have students (SV6, D-185)', function (): void {
+it('downloads every class: only the tingkat sheets that have students, then the sheet "Ringkasan" last (2026-11-05)', function (): void {
     $this->actingAs($this->kesiswaan);
     session(A::passwordConfirmed());
 
@@ -339,7 +339,8 @@ it('downloads every class with the sheet "Ringkasan" first and only the tingkat 
 
     // Kelas XII has no student: no header-only sheet any more (Excel opened the file on an empty first sheet).
     expect($component->effects['download']['name'] ?? '')->toStartWith('status-aktivasi-semua-')->toEndWith('.xlsx')
-        ->and(sv3Sheets($file))->toBe([ActivationReport::SUMMARY_SHEET, 'X', 'XI'])
+        ->and(sv3Sheets($file))->toBe(['X', 'XI', ActivationReport::SUMMARY_SHEET])
+        ->and(SimpleExcelReader::create($file)->fromSheetName('XI')->getHeaders())->toBe(ActivationReport::HEADER)
         ->and(SimpleExcelReader::create($file)->fromSheetName(ActivationReport::SUMMARY_SHEET)->getHeaders())->toBe(ActivationReport::summaryHeader())
         ->and(sv3SheetRows($file, ActivationReport::SUMMARY_SHEET))->toBe([
             ['Kelas' => 'X-1', 'Jumlah siswa' => '2', 'Belum aktivasi' => '0', 'Aktif' => '0', 'Kedaluwarsa' => '0', 'Dibekukan' => '1', 'Nonaktif' => '0', 'Diarsipkan' => '1'],
@@ -377,7 +378,7 @@ it('puts a student of a class without tingkat on its own sheet instead of droppi
 
     $file = sv3Download(Livewire::test(StatusAktivasi::class)->call('export'));
 
-    expect(sv3Sheets($file))->toBe([ActivationReport::SUMMARY_SHEET, 'X', 'XI', ActivationReport::NO_LEVEL_SHEET])
+    expect(sv3Sheets($file))->toBe(['X', 'XI', ActivationReport::NO_LEVEL_SHEET, ActivationReport::SUMMARY_SHEET])
         ->and(array_column(sv3SheetRows($file, ActivationReport::NO_LEVEL_SHEET), 'Nama'))->toBe(['Yoga Pratama']);
 });
 
@@ -392,15 +393,16 @@ it('follows the open status tab of the list (SV3) and its class filter: one shee
     $file = sv3Download($component);
 
     // Every class of the tab "Aktif": only Nadia (XI-4), so the file has no sheet X.
-    expect(sv3Sheets($file))->toBe([ActivationReport::SUMMARY_SHEET, 'XI'])
+    expect(sv3Sheets($file))->toBe(['XI', ActivationReport::SUMMARY_SHEET])
         ->and(array_column(sv3SheetRows($file, 'XI'), 'Nama'))->toBe(['Nadia Putri Anindya']);
 
     $component = Livewire::test(StatusAktivasi::class)
-        ->set('daftarKelas', $this->xi4->getKey())
         ->set('unduhTingkat', '10')
+        ->set('daftarKelas', $this->xi4->getKey())
+        // The class filter of the list is copied into the one chooser (2026-11-05), which stays on the screen.
+        ->assertSet('unduhTingkat', (string) $this->xi4->getKey())
         ->assertSee('Isi file: Kelas XI-4, semua status.')
-        // The class filter decides; the tingkat choice steps aside.
-        ->assertDontSeeHtml('wire:model.live="unduhTingkat"')
+        ->assertSeeHtml('wire:model.live="unduhTingkat"')
         ->call('export');
     $file = sv3Download($component);
     $log = Activity::query()->where('event', 'account.activation_report_exported')->latest('id')->first();

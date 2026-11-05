@@ -249,6 +249,13 @@ it('lets only an Admin open Pengguna & peran and reset a student', function (Rol
     $this->actingAs($actor);
 
     Livewire::test(Pengguna::class)->assertForbidden();
+
+    // Kesiswaan and Tata Usaha hold student.status since 2026-11-05: the reset is theirs only inside "Ubah status" of the
+    // Kelas page (aktif → Belum aktivasi); Pengguna & peran stays Admin only.
+    if (in_array($role, [RoleName::Kesiswaan, RoleName::TataUsaha], true)) {
+        return;
+    }
+
     expect(fn () => app(ResetStudentAccount::class)->handle($actor, $nadia->user, 'Alasan', 'sementara8'))
         ->toThrow(AuthorizationException::class);
 })->with([RoleName::Kesiswaan, RoleName::KepalaSekolah, RoleName::TataUsaha, RoleName::Humas, RoleName::Guru]);

@@ -10,7 +10,6 @@ use App\Enums\UserStatus;
 use App\Models\OtpCode;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 
@@ -71,7 +70,7 @@ final class ResetStudentAccount
      */
     public function handle(User $actor, User $student, string $reason, string $temporaryPassword): void
     {
-        Gate::forUser($actor)->authorize(Permission::UserResetPassword->value);
+        StudentStatusAuthorization::authorize($actor, $student, Permission::UserResetPassword);
 
         $reason = trim($reason);
         $errors = [];

@@ -47,3 +47,4 @@ Thumbs.db
 
 # The school's own letter files (real names, NIS, NIP): never in git (CLAUDE.md §3.2).
 /Template surat/
+/CONTOH-DATA-LAPTOP.md

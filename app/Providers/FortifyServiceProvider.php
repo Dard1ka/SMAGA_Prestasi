@@ -11,6 +11,8 @@ use App\Actions\Fortify\GuardedTwoFactorLoginRequest;
 use App\Actions\Fortify\KnownDevices;
 use App\Actions\Fortify\LoginIdentifier;
 use App\Actions\Fortify\LoginResponse;
+use App\Actions\Fortify\PasswordConfirmedResponse;
+use App\Actions\Fortify\RememberedPasswordConfirmation;
 use App\Actions\Fortify\TwoFactorChallenge;
 use App\Http\Middleware\EnsureStaffTwoFactor;
 use App\Http\Middleware\RememberLoggedOutAccount;
@@ -32,6 +34,7 @@ use Laravel\Fortify\Actions\AttemptToAuthenticate;
 use Laravel\Fortify\Actions\PrepareAuthenticatedSession;
 use Laravel\Fortify\Actions\RedirectIfTwoFactorAuthenticatable;
 use Laravel\Fortify\Contracts\LoginResponse as LoginResponseContract;
+use Laravel\Fortify\Contracts\PasswordConfirmedResponse as PasswordConfirmedResponseContract;
 use Laravel\Fortify\Events\TwoFactorAuthenticationChallenged;
 use Laravel\Fortify\Events\TwoFactorAuthenticationFailed;
 use Laravel\Fortify\Events\ValidTwoFactorAuthenticationCodeProvided;
@@ -56,6 +59,9 @@ class FortifyServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->singleton(LoginResponseContract::class, LoginResponse::class);
+
+        // 2026-11-05 (lead): a correct password on the confirm page is remembered in this browser for staff, 30 days.
+        $this->app->singleton(PasswordConfirmedResponseContract::class, PasswordConfirmedResponse::class);
 
         // QA10: every request to the TOTP challenge first asks TwoFactorChallenge whether it may go on.
         $this->app->bind(TwoFactorLoginRequest::class, GuardedTwoFactorLoginRequest::class);
@@ -151,6 +157,12 @@ class FortifyServiceProvider extends ServiceProvider
             // account is closed to unknown devices after many failures).
             if ($event->user instanceof User) {
                 KnownDevices::remember($event->user);
+            }
+
+            // 2026-11-05 (lead): the password typed at the login (and the TOTP code after it) also counts as the
+            // password confirmation of the sensitive staff actions, remembered in this browser for 30 days.
+            if ($event->user instanceof User && request()->routeIs('login.store', 'two-factor.login.store')) {
+                RememberedPasswordConfirmation::remember($event->user);
             }
         });
 

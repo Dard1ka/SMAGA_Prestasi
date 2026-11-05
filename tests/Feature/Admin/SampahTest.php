@@ -138,7 +138,7 @@ function sampahCsv(array $rows): string
 
 // --- Who may ------------------------------------------------------------------------------------------------------
 
-it('lets only Admin put a class into the trash and restore, and refuses students to roles without student.trash', function (RoleName $role): void {
+it('refuses a class, students and restore to roles without classroom.manage or student.trash', function (RoleName $role): void {
     $student = sampahSiswa($this->x4, 'Raka Pratama Wijaya');
     $entry = app(TrashStudents::class)->handle($this->admin, [$student->user_id], 'Data ganda dari import.')[0];
     $other = sampahSiswa($this->x5, 'Bima Satria Nugraha');
@@ -150,35 +150,35 @@ it('lets only Admin put a class into the trash and restore, and refuses students
         ->and(Student::query()->whereKey($other->getKey())->exists())->toBeTrue()
         ->and(Classroom::query()->whereKey($this->x5->getKey())->exists())->toBeTrue()
         ->and($entry->fresh()->restored_at)->toBeNull();
-})->with([RoleName::TataUsaha, RoleName::KepalaSekolah, RoleName::Humas, RoleName::Guru]);
+})->with([RoleName::KepalaSekolah, RoleName::Humas, RoleName::Guru]);
 
-it('lets Kesiswaan put students into the trash (student.trash, SV6 D-185) but not a class, the Sampah list or Pulihkan', function (): void {
-    $kesiswaan = A::staff(RoleName::Kesiswaan);
+it('lets Kesiswaan and Tata Usaha put students and a class into the trash, see the Sampah and restore (2026-11-05)', function (RoleName $role): void {
+    $staff = A::staff($role);
     $raka = sampahSiswa($this->x4, 'Raka Pratama Wijaya');
 
-    expect($kesiswaan->can('trashStudents', TrashEntry::class))->toBeTrue()
-        ->and($kesiswaan->can('create', TrashEntry::class))->toBeFalse()
-        ->and($kesiswaan->can('viewAny', TrashEntry::class))->toBeFalse();
+    expect($staff->can('trashStudents', TrashEntry::class))->toBeTrue()
+        ->and($staff->can('create', TrashEntry::class))->toBeTrue()
+        ->and($staff->can('viewAny', TrashEntry::class))->toBeTrue();
 
-    $entry = app(TrashStudents::class)->handle($kesiswaan, [$raka->user_id], 'Data ganda dari import.')[0];
+    $entry = app(TrashStudents::class)->handle($staff, [$raka->user_id], 'Data ganda dari import.')[0];
 
     expect(Student::query()->whereKey($raka->getKey())->exists())->toBeFalse()
-        ->and($entry->deleted_by)->toBe((int) $kesiswaan->getKey())
-        ->and(Activity::query()->where('event', TrashStudents::EVENT)->sole()->causer_id)->toBe($kesiswaan->getKey())
-        ->and(fn () => app(RestoreFromTrash::class)->handle($kesiswaan, $entry))->toThrow(AuthorizationException::class)
-        ->and(fn () => app(TrashClassroom::class)->handle($kesiswaan, $this->x5, 'Kelas digabung ke kelas lain.'))->toThrow(AuthorizationException::class)
-        ->and(Classroom::query()->whereKey($this->x5->getKey())->exists())->toBeTrue();
+        ->and($entry->deleted_by)->toBe((int) $staff->getKey())
+        ->and(Activity::query()->where('event', TrashStudents::EVENT)->sole()->causer_id)->toBe($staff->getKey());
 
-    // The Admin restores it.
-    app(RestoreFromTrash::class)->handle($this->admin, $entry);
-    expect(Student::query()->whereKey($raka->getKey())->exists())->toBeTrue();
-});
+    app(RestoreFromTrash::class)->handle($staff, $entry);
+    $class = app(TrashClassroom::class)->handle($staff, $this->x5, 'Kelas digabung ke kelas lain.');
 
-it('refuses students to a Kesiswaan account whose role lost student.trash, and still lets an Admin without it (classroom.manage)', function (): void {
+    expect(Student::query()->whereKey($raka->getKey())->exists())->toBeTrue()
+        ->and(Classroom::query()->whereKey($this->x5->getKey())->exists())->toBeFalse()
+        ->and($class->deleted_by)->toBe((int) $staff->getKey());
+})->with([RoleName::Kesiswaan, RoleName::TataUsaha]);
+
+it('refuses students to a Kesiswaan account whose role lost student.trash and classroom.manage, and still lets an Admin without student.trash (classroom.manage)', function (): void {
     $kesiswaan = A::staff(RoleName::Kesiswaan);
     $raka = sampahSiswa($this->x4, 'Raka Pratama Wijaya');
     $bima = sampahSiswa($this->x4, 'Bima Satria Nugraha');
-    Role::findByName(RoleName::Kesiswaan->value)->revokePermissionTo('student.trash');
+    Role::findByName(RoleName::Kesiswaan->value)->revokePermissionTo(['student.trash', 'classroom.manage']);
     Role::findByName(RoleName::Admin->value)->revokePermissionTo('student.trash');
     app(PermissionRegistrar::class)->forgetCachedPermissions();
 
@@ -196,10 +196,10 @@ it('refuses the trash to an Admin who can no longer log in', function (): void {
     expect(fn () => app(TrashStudents::class)->handle($disabled, [$student->user_id], 'Data ganda dari import.'))->toThrow(AuthorizationException::class);
 });
 
-it('sends a guest from Admin › Kelas to the login page and refuses the screen to Kesiswaan', function (): void {
+it('sends a guest from Admin › Kelas to the login page and refuses the screen to Humas', function (): void {
     $this->get(route('admin.kelas.index'))->assertRedirect(route('login'));
 
-    $this->actingAs(A::staff(RoleName::Kesiswaan));
+    $this->actingAs(A::staff(RoleName::Humas));
     Livewire::test(Kelas::class)->assertForbidden();
 });
 
@@ -673,7 +673,7 @@ it('lists a class with its count and a student trashed alone, not the class\'s s
     $screen = sampahScreen()
         ->assertSee('Dewi Kartika Sari')
         ->assertSee('Kelas X-5')
-        ->assertSee('Dihapus 5 Nov 2026, 10.00 oleh Admin Sekolah Contoh')
+        ->assertSee('Dihapus 5 Nov 2026, 10.00 oleh Admin Sekolah Contoh (Admin)')
         ->assertSee('Kelas X-4')
         ->assertSee('1 siswa ikut dihapus')
         ->assertDontSee('Raka Pratama Wijaya')

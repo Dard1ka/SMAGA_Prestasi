@@ -255,7 +255,8 @@ final class UbahDataSiswa extends Component
 
         return match (true) {
             $route === '' => UpdateStudentData::SOURCE_OTHER,
-            str_starts_with($route, 'admin.kelas') => 'kelas',
+            // The Kelas page of Admin, Kesiswaan and Tata Usaha (2026-11-05, App\Support\ClassroomArea).
+            str_starts_with($route, 'admin.kelas') || str_starts_with($route, 'kesiswaan.kelas') || str_starts_with($route, 'tu.kelas') => 'kelas',
             str_contains($route, '.aktivasi') => 'aktivasi',
             in_array($route, ['kesiswaan.import', 'admin.import'], true) => 'import',
             str_starts_with($route, 'admin.pengguna') || str_starts_with($route, 'admin.pengaturan') => 'pengguna',

@@ -8,6 +8,7 @@ use App\Models\Classroom;
 use App\Models\Student;
 use App\Models\User;
 use Carbon\CarbonImmutable;
+use DateTimeInterface;
 use Illuminate\Support\Collection;
 use OpenSpout\Common\Entity\Cell\StringCell;
 use OpenSpout\Common\Entity\Row;
@@ -39,13 +40,16 @@ final class ActivationReport
     public const FLAG_FROZEN_ADMIN = AccountControls::FROZEN_ADMIN_LABEL;
 
     /**
+     * The student rows. `$personal` (the Excel files only, the lead 2026-11-05) adds the NIS, the birth date and the phone
+     * number (`nis`, `birthDate`, `phone`): the screens never ask for them, so a page render decrypts no phone number.
+     *
      * @return Collection<int, array{
      *     userId: int, name: string, nisn: string, classroomId: ?string, classroom: string, level: int,
      *     state: string, email: ?string, activatedAt: ?CarbonImmutable, lastLoginAt: ?CarbonImmutable,
      *     expiresAt: ?CarbonImmutable, frozenReason: ?string, attempts: int, flags: list<string>, sort: string,
      * }>
      */
-    public function rows(?string $classroomId = null, ?string $state = null, string $search = ''): Collection
+    public function rows(?string $classroomId = null, ?string $state = null, string $search = '', bool $personal = false): Collection
     {
         $now = CarbonImmutable::now();
         $search = trim($search);
@@ -61,9 +65,13 @@ final class ActivationReport
                     'failed_activation_attempts', 'frozen_at', 'frozen_reason', 'activated_at', 'last_login_at',
                 ]),
             ])
-            ->get(['id', 'user_id', 'nisn', 'classroom_id'])
+            ->get($personal ? ['id', 'user_id', 'nis', 'nisn', 'birth_date', 'phone', 'classroom_id'] : ['id', 'user_id', 'nisn', 'classroom_id'])
             ->filter(fn (Student $s): bool => $s->user !== null)
-            ->map(fn (Student $s): array => $this->row($s, $now))
+            ->map(fn (Student $s): array => $personal ? $this->row($s, $now) + [
+                'nis' => (string) $s->nis,
+                'birthDate' => $s->birth_date,
+                'phone' => (string) ($s->phone ?? ''),
+            ] : $this->row($s, $now))
             ->when($state !== null && $state !== '', fn (Collection $c) => $c->where('state', $state))
             ->sortBy('sort')
             ->values();
@@ -150,8 +158,26 @@ final class ActivationReport
             ->values();
     }
 
-    /** Header row of every sheet of the Excel export (the CSV columns before SV3). */
-    public const HEADER = ['Kelas', 'Nama', 'NISN', 'Status', 'Email', 'Aktivasi', 'Login terakhir', 'Batas kata sandi awal', 'Catatan'];
+    /**
+     * The two kinds of student file (the lead, 2026-11-05: "harusnya lengkap, ada nama, nisn, dll."), one implementation:
+     * - KIND_DATA "Data siswa" (every download of the Kelas page): DATA_HEADER only, no status column, no SUMMARY_SHEET;
+     * - KIND_STATUS "Status aktivasi" (every download of Status aktivasi): DATA_HEADER, then STATUS_COLUMNS, and for the
+     *   whole school SUMMARY_SHEET as the last sheet.
+     */
+    public const KIND_DATA = 'data_siswa';
+
+    public const KIND_STATUS = 'status_aktivasi';
+
+    public const KINDS = [self::KIND_DATA, self::KIND_STATUS];
+
+    /** The student columns of both files (the email masked as on the screens, D-131). */
+    public const DATA_HEADER = ['No', 'Kelas', 'Nama', 'NIS', 'NISN', 'Tanggal lahir', 'No HP', 'Email'];
+
+    /** The columns the Status aktivasi file adds after DATA_HEADER. */
+    public const STATUS_COLUMNS = ['Status', 'Aktivasi', 'Login terakhir', 'Batas kata sandi awal', 'Catatan'];
+
+    /** Header row of every student sheet of the Status aktivasi file. */
+    public const HEADER = [...self::DATA_HEADER, ...self::STATUS_COLUMNS];
 
     /** Sheet name per tingkat (classrooms.level) of the Excel export, in sheet order (SV3, lead 2026-11-03). */
     public const LEVELS = [10 => 'X', 11 => 'XI', 12 => 'XII'];
@@ -160,15 +186,18 @@ final class ActivationReport
     public const NO_LEVEL_SHEET = 'Tanpa kelas';
 
     /**
-     * First sheet of a whole-school file (SV6, D-185, replacing "sheet kosong tetap ada" of D-174): one row per class with
-     * its student count and the count per status, then the total row SUMMARY_TOTAL.
+     * Counts sheet of a whole-school Status aktivasi file: one row per class with its student count and the count per
+     * status, then the total row SUMMARY_TOTAL. Since 2026-11-05 the LAST sheet (the lead opened the file on it and saw
+     * only counts), so Excel opens a student list.
      */
     public const SUMMARY_SHEET = 'Ringkasan';
 
     public const SUMMARY_TOTAL = 'Semua kelas';
 
-    /** Column widths of the export in Excel characters, in HEADER order. */
-    private const WIDTHS = [12, 32, 14, 16, 28, 18, 18, 22, 40];
+    /** Column widths in Excel characters, in DATA_HEADER order, then in STATUS_COLUMNS order. */
+    private const DATA_WIDTHS = [6, 12, 32, 12, 14, 14, 16, 28];
+
+    private const STATUS_WIDTHS = [16, 18, 18, 22, 40];
 
     /** Column widths of SUMMARY_SHEET, in summaryHeader() order. */
     private const SUMMARY_WIDTHS = [14, 14, 16, 10, 14, 12, 12, 12];
@@ -179,19 +208,26 @@ final class ActivationReport
         return ['Kelas', 'Jumlah siswa', ...array_values(array_column(AccountControls::STATES, 'label'))];
     }
 
+    /** @return list<string> the header row of the student sheets of a file of this kind */
+    public static function header(string $kind): array
+    {
+        return $kind === self::KIND_DATA ? self::DATA_HEADER : self::HEADER;
+    }
+
     /**
-     * Excel export written to $path (SV3, replaces the CSV; SV6, D-185 changed the whole-school file):
+     * Excel file written to $path (SV3; SV6 D-185; both kinds since 2026-11-05). The rows come from rows(…, personal: true).
      * - $classroom set (the name of the one class the rows come from) = one sheet named after that class;
      * - else $level set = that one tingkat sheet;
-     * - else (the whole school) = SUMMARY_SHEET first, then one sheet per tingkat of LEVELS that has rows (an empty
-     *   tingkat no longer gets a header-only sheet: Excel opened the file on an empty first sheet), plus NO_LEVEL_SHEET
-     *   when a row has no such tingkat.
-     * Rows keep the order of rows() (class, then name). Every cell is formula-safe text, so the NISN keeps its zeros.
+     * - else (the whole school) = one sheet per tingkat of LEVELS that has rows, plus NO_LEVEL_SHEET when a row has no
+     *   such tingkat; a Status aktivasi file ends with SUMMARY_SHEET.
+     * Rows keep the order of rows() (class, then name); "No" counts from 1 on every sheet. Every cell is formula-safe
+     * text, so NIS, NISN and the phone number keep their leading zeros; the birth date reads DD-MM-YYYY.
      *
      * @param  Collection<int, array<string, mixed>>  $rows
      */
-    public function writeXlsx(Collection $rows, string $path, ?int $level = null, ?string $classroom = null): void
+    public function writeXlsx(Collection $rows, string $path, ?int $level = null, ?string $classroom = null, string $kind = self::KIND_STATUS): void
     {
+        $status = $kind !== self::KIND_DATA;
         $byLevel = $rows->groupBy(fn (array $row): string => (string) (array_key_exists((int) $row['level'], self::LEVELS) ? $row['level'] : ''));
 
         if ($classroom !== null) {
@@ -232,7 +268,40 @@ final class ActivationReport
             $values,
         ));
 
-        if ($classroom === null && $level === null) {
+        foreach ($sheets as $name => $sheetRows) {
+            $newSheet((string) $name, $status ? [...self::DATA_WIDTHS, ...self::STATUS_WIDTHS] : self::DATA_WIDTHS);
+            $writer->addRow(Row::fromValues(self::header($kind), $bold));
+            $number = 0;
+
+            foreach ($sheetRows as $row) {
+                $birthDate = $row['birthDate'] ?? null;
+                $values = [
+                    (string) ++$number,
+                    (string) $row['classroom'],
+                    (string) $row['name'],
+                    (string) ($row['nis'] ?? ''),
+                    (string) $row['nisn'],
+                    $birthDate instanceof DateTimeInterface ? $birthDate->format('d-m-Y') : '',
+                    (string) ($row['phone'] ?? ''),
+                    (string) ($row['email'] ?? ''),
+                ];
+
+                if ($status) {
+                    $values = [
+                        ...$values,
+                        AccountControls::stateLabel($row['state']),
+                        $row['activatedAt']?->format('Y-m-d H:i') ?? '',
+                        $row['lastLoginAt']?->format('Y-m-d H:i') ?? '',
+                        $row['expiresAt']?->format('Y-m-d H:i') ?? '',
+                        implode('; ', $row['flags']),
+                    ];
+                }
+
+                $writer->addRow($textRow($values));
+            }
+        }
+
+        if ($status && $classroom === null && $level === null) {
             $newSheet(self::SUMMARY_SHEET, self::SUMMARY_WIDTHS);
             $writer->addRow(Row::fromValues(self::summaryHeader(), $bold));
 
@@ -241,25 +310,6 @@ final class ActivationReport
             }
 
             $writer->addRow($textRow([self::SUMMARY_TOTAL, (string) $rows->count(), ...array_map(strval(...), array_values(self::totals($rows)))], $bold));
-        }
-
-        foreach ($sheets as $name => $sheetRows) {
-            $newSheet((string) $name, self::WIDTHS);
-            $writer->addRow(Row::fromValues(self::HEADER, $bold));
-
-            foreach ($sheetRows as $row) {
-                $writer->addRow($textRow([
-                    (string) $row['classroom'],
-                    (string) $row['name'],
-                    (string) $row['nisn'],
-                    AccountControls::stateLabel($row['state']),
-                    (string) ($row['email'] ?? ''),
-                    $row['activatedAt']?->format('Y-m-d H:i') ?? '',
-                    $row['lastLoginAt']?->format('Y-m-d H:i') ?? '',
-                    $row['expiresAt']?->format('Y-m-d H:i') ?? '',
-                    implode('; ', $row['flags']),
-                ]));
-            }
         }
 
         $writer->close();

@@ -13,6 +13,8 @@ use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Spatie\Activitylog\Models\Activity;
+use Spatie\Permission\Models\Role;
+use Spatie\Permission\PermissionRegistrar;
 use Tests\Feature\Admin\AdminTestHelpers as A;
 
 /*
@@ -54,7 +56,7 @@ it('is mounted only for an account that may put students into the trash', functi
 })->with([
     'admin' => [RoleName::Admin, true],
     'kesiswaan' => [RoleName::Kesiswaan, true],
-    'tata usaha' => [RoleName::TataUsaha, false],
+    'tata usaha' => [RoleName::TataUsaha, true],
     'kepala sekolah' => [RoleName::KepalaSekolah, false],
     'humas' => [RoleName::Humas, false],
     'guru' => [RoleName::Guru, false],
@@ -97,7 +99,12 @@ it('names the students and their class, or "dari N kelas" when the ticks come fr
         ->assertDontSee('Kelas X-4');
 });
 
-it('lets Kesiswaan delete, says the Admin can restore within 7 days, audits without names', function (): void {
+it('lets a Kesiswaan without the Sampah delete, says the Admin can restore within 7 days, audits without names', function (): void {
+    // Since 2026-11-05 Kesiswaan holds classroom.manage (its own Kelas page with the Sampah): without it, the toast and
+    // the dialog still name who can restore.
+    Role::findByName(RoleName::Kesiswaan->value)->revokePermissionTo('classroom.manage');
+    app(PermissionRegistrar::class)->forgetCachedPermissions();
+    $this->kesiswaan = $this->kesiswaan->fresh();
     $this->actingAs($this->kesiswaan);
     session(A::passwordConfirmed());
 
@@ -240,7 +247,7 @@ it('refuses "Hapus siswa" to an account that lost the right after the question',
         ->call('open', [(int) $this->raka->user_id])
         ->set('reason', 'Data ganda dari import.');
 
-    $this->actingAs(A::staff(RoleName::TataUsaha));
+    $this->actingAs(A::staff(RoleName::Humas));
     $dialog->call('trash')->assertForbidden();
 
     expect(Student::query()->whereKey($this->raka->getKey())->exists())->toBeTrue();

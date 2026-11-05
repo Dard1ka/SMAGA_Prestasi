@@ -3,12 +3,9 @@
 declare(strict_types=1);
 
 use App\Actions\Students\UpdateStudentData;
-use App\Enums\Permission;
 use App\Enums\RoleName;
-use App\Enums\UserStatus;
 use App\Livewire\Admin\Pengaturan\Pengguna;
 use App\Livewire\Akun\UbahDataSiswa;
-use App\Livewire\TataUsaha\DataSiswa;
 use App\Models\Classroom;
 use App\Models\Student;
 use App\Models\User;
@@ -16,12 +13,12 @@ use App\Support\Navigation;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Role;
-use Spatie\Permission\PermissionRegistrar;
 use Tests\Feature\Admin\AdminTestHelpers as A;
 
 /*
- | SV6, D-187: Tata Usaha › Data siswa (students not in the Sampah, search, class filter, 25 per page, "Ubah data" opening
- | the shared dialog for a listed row) and "Ubah data" on Admin › Pengguna & peran › Bantuan akun siswa. Fictional data.
+ | SV6, D-187: "Ubah data" on Admin › Pengguna & peran › Bantuan akun siswa. Tata Usaha › Data siswa of SV6 became TU ›
+ | Kelas on 2026-11-05 (the lead): its old address redirects there (the screen itself: tests/Feature/Admin/KelasAreaTest.php).
+ | Fictional data.
  */
 
 uses(RefreshDatabase::class);
@@ -52,165 +49,28 @@ function dsMenu(string $role, ?string $route = null): array
         ->all();
 }
 
-// --- Route × role ----------------------------------------------------------------------------------------------------
+// --- TU › Data siswa became TU › Kelas (2026-11-05) -----------------------------------------------------------------
 
-it('opens Data siswa for Tata Usaha only (role × route)', function (): void {
-    dsStudent('Nadia Putri Anindya', $this->x1, '0012345670');
+it('sends the old Data siswa address of Tata Usaha to TU › Kelas', function (): void {
+    $this->actingAs($this->tu)->get(route('tu.siswa.index'))->assertRedirect('/tu/kelas');
+    $this->actingAs($this->tu)->get('/tu/data-siswa')->assertRedirect('/tu/kelas');
 
-    $this->actingAs($this->tu)->get(route('tu.siswa.index'))
-        ->assertOk()
-        ->assertSee('Data siswa')
-        ->assertSee('Nadia Putri Anindya')
-        ->assertSee('Ubah data')
-        // One search box per screen (D-90) and the shared dialog exactly once.
-        ->assertDontSee('id="cari-atas"', false)
-        ->assertSee('id="'.UbahDataSiswa::DIALOG.'"', false);
-
-    foreach ([RoleName::Admin, RoleName::Kesiswaan, RoleName::KepalaSekolah, RoleName::Humas, RoleName::Guru] as $role) {
-        $this->actingAs(A::staff($role))->get(route('tu.siswa.index'))->assertForbidden();
-    }
-
-    $student = dsStudent('Raka Pratama', $this->x1, '0012345671', [
-        'status' => UserStatus::Active,
-        'must_change_password' => false,
-        'email' => 'raka.pratama@example.test',
-        'email_verified_at' => now(),
-        'activated_at' => now(),
-    ]);
-    $this->actingAs($student)->get(route('tu.siswa.index'))->assertForbidden();
-
+    // Still the TU area: another role is refused, a guest goes to the login page.
+    $this->actingAs(A::staff(RoleName::Kesiswaan))->get('/tu/data-siswa')->assertForbidden();
     auth()->logout();
-    $this->get(route('tu.siswa.index'))->assertRedirect(route('login'));
+    $this->get('/tu/data-siswa')->assertRedirect(route('login'));
 });
 
-it('renders the dialog once on the page', function (): void {
-    dsStudent('Nadia Putri Anindya', $this->x1, '0012345670');
+it('puts Kelas instead of Data siswa in the Tata Usaha menu, also current on the old address', function (): void {
+    $items = dsMenu('tata_usaha', 'tu.kelas.index');
 
-    $html = $this->actingAs($this->tu)->get(route('tu.siswa.index'))->assertOk()->getContent();
-
-    expect(substr_count((string) $html, 'id="'.UbahDataSiswa::DIALOG.'"'))->toBe(1)
-        ->and(substr_count((string) $html, 'id="f-ubah-data-nama"'))->toBe(0);
-});
-
-it('refuses a Tata Usaha account without student.update', function (): void {
-    Role::findByName(RoleName::TataUsaha->value, 'web')->revokePermissionTo(Permission::StudentUpdate->value);
-    app(PermissionRegistrar::class)->forgetCachedPermissions();
-
-    $this->actingAs($this->tu->fresh())->get(route('tu.siswa.index'))->assertForbidden();
-});
-
-it('puts Data siswa in the Tata Usaha menu only', function (): void {
-    $items = dsMenu('tata_usaha', 'tu.siswa.index');
-
-    expect($items)->toHaveKey('siswa')
-        ->and($items['siswa']['label'])->toBe('Data siswa')
-        ->and($items['siswa']['href'])->toBe(route('tu.siswa.index'))
-        ->and($items['siswa']['current'])->toBeTrue()
-        ->and(collect($items)->where('current', true))->toHaveCount(1);
-
-    foreach (['kesiswaan', 'admin', 'kepala_sekolah', 'humas', 'guru'] as $role) {
-        expect(collect(dsMenu($role))->pluck('route')->flatten()->all())->not->toContain('tu.siswa.index');
-    }
-});
-
-// --- The list --------------------------------------------------------------------------------------------------------
-
-it('lists every student outside the Sampah with name, NISN, NIS, class and status', function (): void {
-    $nadia = dsStudent('Nadia Putri Anindya', $this->x1, '0012345670');
-    $alumni = dsStudent('Bima Satria Wicaksono', $this->x2, '0012345672', ['status' => UserStatus::Archived]);
-    $trashed = dsStudent('Raka Pratama', $this->x1, '0012345671');
-    $trashed->student->delete();
-    $trashed->delete();
-
-    $screen = Livewire::actingAs($this->tu)->test(DataSiswa::class)
-        ->assertSee('Nadia Putri Anindya')
-        ->assertSee('0012345670')
-        ->assertSee($nadia->student->nis)
-        ->assertSee('X-1')
-        ->assertSee('Belum aktivasi')
-        ->assertSee('Bima Satria Wicaksono')
-        ->assertSee('Diarsipkan')
-        ->assertDontSee('Raka Pratama');
-
-    expect($screen->get('shownIds'))->toBe([(int) $alumni->getKey(), (int) $nadia->getKey()]);
-});
-
-it('searches by name or NISN and filters by class', function (): void {
-    $nadia = dsStudent('Nadia Putri Anindya', $this->x1, '0012345670');
-    $raka = dsStudent('Raka Pratama', $this->x2, '0098765432');
-
-    $screen = Livewire::actingAs($this->tu)->test(DataSiswa::class);
-
-    $screen->set('q', ' raka ')->assertSet('q', ' raka ');
-    expect($screen->get('shownIds'))->toBe([(int) $raka->getKey()]);
-
-    $screen->set('q', '00123');
-    expect($screen->get('shownIds'))->toBe([(int) $nadia->getKey()]);
-
-    $screen->set('q', '')->set('kelas', (string) $this->x2->getKey());
-    expect($screen->get('shownIds'))->toBe([(int) $raka->getKey()]);
-
-    $screen->set('kelas', 'tidak-ada')->assertSet('kelas', '');
-
-    $screen->set('q', 'Tidak ada siswa ini')->assertSee('Tidak ada siswa yang cocok');
-});
-
-it('shows 25 students a page', function (): void {
-    foreach (range(1, 26) as $i) {
-        dsStudent('Siswa Contoh '.str_pad((string) $i, 2, '0', STR_PAD_LEFT), $this->x1, '00'.str_pad((string) $i, 8, '0', STR_PAD_LEFT));
-    }
-
-    $screen = Livewire::actingAs($this->tu)->test(DataSiswa::class);
-
-    expect($screen->get('shownIds'))->toHaveCount(DataSiswa::PER_PAGE)
-        ->and($screen->viewData('students')->total())->toBe(26);
-});
-
-// --- "Ubah data" -----------------------------------------------------------------------------------------------------
-
-it('opens the shared dialog for a listed student only', function (): void {
-    $nadia = dsStudent('Nadia Putri Anindya', $this->x1, '0012345670');
-    $other = dsStudent('Raka Pratama', $this->x2, '0098765432');
-
-    $screen = Livewire::actingAs($this->tu)->test(DataSiswa::class)->set('kelas', (string) $this->x1->getKey());
-
-    $screen->call('edit', (int) $nadia->getKey())
-        ->assertDispatched(UbahDataSiswa::OPEN_EVENT, userId: (int) $nadia->getKey());
-
-    // Not on this page (another class, a staff account): 404.
-    foreach ([(int) $other->getKey(), (int) $this->tu->getKey()] as $id) {
-        Livewire::actingAs($this->tu)->test(DataSiswa::class)->set('kelas', (string) $this->x1->getKey())
-            ->call('edit', $id)
-            ->assertNotFound();
-    }
-});
-
-it('says so when a listed student left for the Sampah meanwhile', function (): void {
-    $nadia = dsStudent('Nadia Putri Anindya', $this->x1, '0012345670');
-    $screen = Livewire::actingAs($this->tu)->test(DataSiswa::class);
-
-    $nadia->student->delete();
-    $nadia->delete();
-
-    $screen->call('edit', (int) $nadia->getKey())
-        ->assertNotDispatched(UbahDataSiswa::OPEN_EVENT)
-        ->assertDispatched('sth-toast', message: DataSiswa::MSG_GONE, tone: 'warning')
-        ->assertDontSee('Nadia Putri Anindya');
-});
-
-it('redraws the list after the dialog saved', function (): void {
-    $nadia = dsStudent('Nadia Putri Anindya', $this->x1, '0012345670');
-    $screen = Livewire::actingAs($this->tu)->test(DataSiswa::class)->assertSee('Nadia Putri Anindya');
-
-    app(UpdateStudentData::class)->handle($this->tu, $nadia, [
-        'name' => 'Nadia Putri Anindita',
-        'nis' => $nadia->student->nis,
-        'nisn' => '0012345670',
-        'birth_date' => $nadia->student->birth_date->format('d-m-Y'),
-        'classroom_id' => (string) $this->x1->getKey(),
-    ], 'data_siswa');
-
-    $screen->dispatch(UbahDataSiswa::DONE_EVENT)->assertSee('Nadia Putri Anindita');
+    expect($items)->toHaveKey('kelas')
+        ->and($items)->not->toHaveKey('siswa')
+        ->and($items['kelas']['label'])->toBe('Kelas')
+        ->and($items['kelas']['href'])->toBe(route('tu.kelas.index'))
+        ->and($items['kelas']['current'])->toBeTrue()
+        ->and(collect($items)->where('current', true))->toHaveCount(1)
+        ->and(dsMenu('tata_usaha', 'tu.siswa.index')['kelas']['current'])->toBeTrue();
 });
 
 // --- Admin › Pengguna & peran › Bantuan akun siswa -------------------------------------------------------------------

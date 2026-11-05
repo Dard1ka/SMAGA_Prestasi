@@ -103,9 +103,9 @@ function udsAudit(): Collection
 
 // --- Role matrix and policy -------------------------------------------------------------------------------------------
 
-it('grants student.update to Admin, Kesiswaan and Tata Usaha only, and student.trash to Admin and Kesiswaan only', function (RoleName $role): void {
+it('grants student.update to Admin, Kesiswaan and Tata Usaha only, and student.trash to Admin, Kesiswaan and Tata Usaha only (TU since 2026-11-05)', function (RoleName $role): void {
     $update = in_array($role, [RoleName::Admin, RoleName::Kesiswaan, RoleName::TataUsaha], true);
-    $trash = in_array($role, [RoleName::Admin, RoleName::Kesiswaan], true);
+    $trash = in_array($role, [RoleName::Admin, RoleName::Kesiswaan, RoleName::TataUsaha], true);
     $seeded = Role::findByName($role->value, 'web');
 
     expect(in_array(Permission::StudentUpdate, $role->defaultPermissions(), true))->toBe($update)

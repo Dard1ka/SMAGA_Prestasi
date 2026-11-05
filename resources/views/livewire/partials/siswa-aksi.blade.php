@@ -1,7 +1,7 @@
 {{--
     SV6, D-185/D-187: the student actions of one row, the same on Admin › Kelas › Lihat siswa and both lists of Status
-    aktivasi: "Ubah data" (student.update, shared dialog UbahDataSiswa), "Ubah status" / "Aktifkan lagi" (user.archive,
-    shared dialog UbahStatusSiswa) and "Hapus" (student.trash, shared dialog HapusSiswa). The component has askData(),
+    aktivasi: "Ubah data" (student.update, shared dialog UbahDataSiswa), "Ubah status" / "Aktifkan lagi" (student.status or user.archive,
+    shared dialog UbahStatusSiswa) and "Hapus" (student.trash or classroom.manage, shared dialog HapusSiswa). The component has askData(),
     askStatus() and askTrashStudent(); each checks the id against the rows it listed.
     @include('livewire.partials.siswa-aksi', ['userId' => 12, 'name' => 'Nadia Putri Anindya', 'change' => 'Ubah status', 'canData' => true, 'canTrash' => true])
 --}}

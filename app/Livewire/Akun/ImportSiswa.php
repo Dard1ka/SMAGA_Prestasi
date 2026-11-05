@@ -21,6 +21,7 @@ use App\Models\Student;
 use App\Models\StudentImport;
 use App\Models\TrashEntry;
 use App\Models\User;
+use App\Support\ClassroomArea;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\UniqueConstraintViolationException;
@@ -82,8 +83,8 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
  * stay in the preview cache, ImportStudents report `matches`). "Lihat" sends the row NUMBER and the place of the student
  * in that row (showRegistered()); the screen finds the id in its cache among the rows it lists and opens the shared
  * dialog "Ubah data siswa" (UbahDataSiswa, D-187, only for `student.update`). A student in the Sampah has no "Lihat":
- * the Admin (`classroom.manage`) gets a link to the Sampah of Admin › Kelas in a new tab (TRASH_ANCHOR; the preview stays
- * here), Kesiswaan the sentence ASK_ADMIN_RESTORE. After a save in that dialog the preview stays as it is and a toast
+ * an account with `classroom.manage` (Admin; Kesiswaan since 2026-11-05) gets a link to the Sampah of its own Kelas page
+ * in a new tab (TRASH_ANCHOR, App\Support\ClassroomArea; the preview stays here), any other the sentence ASK_ADMIN_RESTORE. After a save in that dialog the preview stays as it is and a toast
  * asks to check the file again (STUDENT_DATA_SAVED); nothing is read or imported by itself.
  */
 #[Title('Import data siswa')]
@@ -864,7 +865,7 @@ class ImportSiswa extends Component
             // SV6, D-184: "Lihat" opens "Ubah data siswa" (D-187) for an account that may edit student data; the Admin
             // reaches the Sampah of Admin › Kelas, everybody else is asked to turn to the Admin.
             'canEditStudents' => $this->actor()->can(Permission::StudentUpdate->value),
-            'trashUrl' => $this->actor()->can(Permission::ClassroomManage->value) ? route('admin.kelas.index').'#'.self::TRASH_ANCHOR : null,
+            'trashUrl' => $this->actor()->can(Permission::ClassroomManage->value) ? ClassroomArea::indexUrl(ClassroomArea::forUser($this->actor())).'#'.self::TRASH_ANCHOR : null,
             'yearOptions' => [self::FIXED_SCHOOL_YEAR => self::FIXED_SCHOOL_YEAR],
             // SV6, D-184: "Kelas" X, XI, XII (values 10, 11, 12).
             'levelOptions' => array_combine(array_map(strval(...), array_keys(ImportStudents::LEVELS)), ImportStudents::LEVELS),

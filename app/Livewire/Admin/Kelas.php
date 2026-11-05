@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace App\Livewire\Admin;
 
 use App\Actions\Accounts\AccountControls;
+use App\Actions\Accounts\ActivationReport;
 use App\Actions\Accounts\ExportActivationReport;
 use App\Actions\Classrooms\ClassroomName;
 use App\Actions\Classrooms\CreateClassroom;
 use App\Actions\Classrooms\RenameClassroom;
 use App\Actions\Exports\ExportedFile;
+use App\Actions\Trash\PurgeFromTrash;
 use App\Actions\Trash\RestoreFromTrash;
 use App\Actions\Trash\TrashClassroom;
 use App\Actions\Trash\TrashReason;
@@ -21,21 +23,27 @@ use App\Models\Classroom;
 use App\Models\Student;
 use App\Models\TrashEntry;
 use App\Models\User;
+use App\Support\ClassroomArea;
+use App\Support\StaffRoleLabel;
 use Carbon\CarbonImmutable;
+use DomainException;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Title;
+use Livewire\Attributes\Url;
 use Livewire\Component;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 /**
- * Admin › Kelas (`admin.kelas.index`, ClassroomPolicy / `classroom.manage`, Admin only): the classes per tingkat with
+ * Kelas (`admin.kelas.index`, `kesiswaan.kelas.index`, `tu.kelas.index`; ClassroomPolicy / `classroom.manage`: Admin,
+ * and since 2026-11-05 Kesiswaan and Tata Usaha, see below): the classes per tingkat with
  * their active and total students, "Tambah kelas" (CreateClassroom) and "Ganti nama" in a dialog (RenameClassroom, only
  * the part after the dash). The student import puts students only into the classes listed here; it never adds one.
  *
@@ -71,9 +79,22 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
  * - "Lihat siswa" offers the same student actions as Status aktivasi (partials livewire.partials.siswa-pilih /
  *   siswa-cek / siswa-aksi, SelectsListedStudents): ticks, "Ubah status", "Hapus" through the shared HapusSiswa (D-185)
  *   and "Ubah data" through the shared UbahDataSiswa (`student.update`, D-187; askData()).
- * - "Download semua kelas" on top (exportAll()) and "Download Excel" in "Lihat siswa" (exportClass(), that class) write
- *   the Status aktivasi file (ExportActivationReport, D-185): password from the last 15 minutes, resumed by itself after
- *   the password page; no student = a warning toast and no file.
+ *
+ * The lead's requests of 5 Nov 2026 ("sama persis Admin, tapi dikasih tau yang menghapus siswa ini siapa"):
+ * - One screen under three addresses: `admin.kelas.index`, `kesiswaan.kelas.index` and `tu.kelas.index` (the TU one
+ *   replaces TU › Data siswa, whose address redirects here). Kesiswaan and Tata Usaha hold `classroom.manage`,
+ *   `student.status`, `student.trash`, `student.update` and `student.view`, so every action of the page is theirs too.
+ *   #[Locked] $area (App\Support\ClassroomArea, set in mount()) picks every link, the password page's return address
+ *   and the return address of the shared dialogs, so a TU or Kesiswaan user never lands on an `admin.*` address.
+ * - Downloads write the "Data siswa" file (ExportActivationReport with ActivationReport::KIND_DATA: No, Kelas, Nama, NIS,
+ *   NISN, Tanggal lahir, No HP, Email; no status): export() with the chooser $unduh (the same list as Status aktivasi,
+ *   ExportActivationReport::scopeOptions()) and exportClass() in "Lihat siswa". Password from the last 15 minutes,
+ *   resumed by itself after the password page; no student = a warning toast and no file.
+ * - The Sampah rows say who deleted: "Dihapus <tanggal, jam> oleh <nama> (<peran>)" (StaffRoleLabel).
+ * - "Hapus permanen" per Sampah row (D-186; askPurge() → purge(), App\Actions\Trash\PurgeFromTrash): dialog
+ *   `kelas-hapus-permanen` that says it cannot be undone and what goes with it, the typed class name for a class entry,
+ *   a password from the last 15 minutes when asking and again when confirming; audited by the Action
+ *   (`trash.purged_by_admin`), then a toast and the redrawn list.
  */
 #[Title('Kelas')]
 #[Layout('layouts::app', ['subtitle' => 'Daftar kelas yang dipakai import siswa.'])]
@@ -83,6 +104,8 @@ final class Kelas extends Component
     use SelectsListedStudents;
 
     public const RENAME_DIALOG = 'kelas-ganti-nama';
+
+    public const PURGE_DIALOG = 'kelas-hapus-permanen';
 
     public const DELETE_DIALOG = 'kelas-hapus';
 
@@ -157,9 +180,32 @@ final class Kelas extends Component
     /** Rows of the Sampah section (clamped in render()). */
     public int $trashLimit = self::TRASH_STEP;
 
+    /** Trash entry in the "Hapus permanen" dialog; set only by askPurge(). */
+    #[Locked]
+    public ?string $purgingId = null;
+
+    /** The class name typed in the "Hapus permanen" dialog of a class entry (PurgeFromTrash::CONFIRM_KEY). */
+    public string $purgeConfirmName = '';
+
+    /** Which Kelas page this is (App\Support\ClassroomArea): the address family of every link and return address. */
+    #[Locked]
+    public string $area = ClassroomArea::ADMIN;
+
+    /**
+     * The chooser of "Download Excel" on top: a value of ExportActivationReport::scopeOptions() ('' = Semua kelas, a
+     * tingkat, a classroom id). In the address so the download that resumes after the password page is the one chosen.
+     */
+    #[Url(as: 'unduh', except: '')]
+    public string $unduh = '';
+
     public function mount(): void
     {
         Gate::authorize('viewAny', Classroom::class);
+        $this->area = ClassroomArea::resolve(request()->route()?->getName(), $this->actor());
+
+        if (ExportActivationReport::scope($this->unduh) === null) {
+            $this->unduh = ExportActivationReport::SCOPE_ALL;
+        }
     }
 
     public function add(CreateClassroom $create): void
@@ -325,7 +371,7 @@ final class Kelas extends Component
         }
 
         Gate::authorize('viewAny', Classroom::class);
-        Gate::authorize('viewAny', User::class);
+        Gate::authorize(Permission::StudentView->value);
 
         $this->viewingId = (string) $classroom->getKey();
         $this->dispatch('sth-modal-open', id: self::STUDENTS_DIALOG);
@@ -363,6 +409,7 @@ final class Kelas extends Component
     /** "Ubah status" of one row: the shared dialog for that student. */
     public function askStatus(int $userId): void
     {
+        Gate::authorize('changeStudentStatus', User::class);
         $student = $this->listedStudent($userId);
 
         if ($student === null) {
@@ -375,6 +422,7 @@ final class Kelas extends Component
     /** "Ubah status terpilih (N)": the shared dialog for the ticked rows. */
     public function askStatusSelected(): void
     {
+        Gate::authorize('changeStudentStatus', User::class);
         $ids = $this->selectedInClass();
 
         if ($ids !== null) {
@@ -432,19 +480,38 @@ final class Kelas extends Component
 
     // Downloads (SV6, D-185) ----------------------------------------------------------------------
 
-    /** "Download semua kelas": the Status aktivasi file of the whole school ("Ringkasan" + one sheet per tingkat). */
-    public function exportAll(): ?BinaryFileResponse
+    /**
+     * "Download Excel" on top with the chooser $unduh: the "Data siswa" file of the whole school (one sheet per tingkat),
+     * of one tingkat or of one class (one sheet named after it). A value the chooser never offered answers 404, a class
+     * that lost its students meanwhile a warning toast.
+     */
+    public function export(): ?BinaryFileResponse
     {
         Gate::authorize('viewAny', Classroom::class);
+        abort_unless(ExportActivationReport::scope($this->unduh) !== null || Str::isUlid($this->unduh), 404);
 
-        if (! $this->passwordRecentlyConfirmed('exportAll')) {
+        if (! $this->passwordRecentlyConfirmed('export')) {
             return null;
         }
 
-        return $this->download(app(ExportActivationReport::class)->handle($this->actor(), source: ExportActivationReport::SOURCE_CLASSES));
+        $scope = ExportActivationReport::scope($this->unduh);
+
+        if ($scope === null) {
+            $this->stale(ExportActivationReport::MSG_EMPTY);
+
+            return null;
+        }
+
+        return $this->download(app(ExportActivationReport::class)->handle(
+            $this->actor(),
+            $scope['classroom'],
+            $scope['level'],
+            source: ExportActivationReport::SOURCE_CLASSES,
+            kind: ActivationReport::KIND_DATA,
+        ));
     }
 
-    /** "Download Excel" in "Lihat siswa": every student of that class with its status, one sheet named after the class. */
+    /** "Download Excel" in "Lihat siswa": the "Data siswa" file of that class, one sheet named after the class. */
     public function exportClass(string $id): ?BinaryFileResponse
     {
         Gate::authorize('viewAny', Classroom::class);
@@ -461,7 +528,7 @@ final class Kelas extends Component
             return null;
         }
 
-        return $this->download(app(ExportActivationReport::class)->handle($this->actor(), (string) $classroom->getKey(), source: ExportActivationReport::SOURCE_CLASSES));
+        return $this->download(app(ExportActivationReport::class)->handle($this->actor(), (string) $classroom->getKey(), source: ExportActivationReport::SOURCE_CLASSES, kind: ActivationReport::KIND_DATA));
     }
 
     // Trash: restore -----------------------------------------------------------------------------
@@ -537,6 +604,104 @@ final class Kelas extends Component
         $this->reset('restoringId');
     }
 
+    // Trash: Hapus permanen (D-186) --------------------------------------------------------------
+
+    /** "Hapus permanen" on a Sampah row: the question, after the checks a purge would make. */
+    public function askPurge(string $id): void
+    {
+        $this->forgetPurge();
+        $entry = TrashEntry::query()->whereNull('parent_id')->find($id);
+
+        // Entries are never deleted and a child is never listed: an unknown id was never on this page.
+        abort_if($entry === null, 404);
+        Gate::authorize('forceDelete', $entry);
+
+        if (! $entry->isOpen()) {
+            $this->stale(self::MSG_ENTRY_CLOSED);
+
+            return;
+        }
+
+        $refusal = app(PurgeFromTrash::class)->preview($this->actor(), $entry)['refusal'];
+
+        if ($refusal !== null) {
+            $this->stale($refusal);
+
+            return;
+        }
+
+        if (! $this->passwordRecentlyConfirmed()) {
+            return;
+        }
+
+        $this->purgingId = (string) $entry->getKey();
+        $this->dispatch('sth-modal-open', id: self::PURGE_DIALOG);
+    }
+
+    /**
+     * "Hapus permanen" in the dialog; a silent no-op without the question of askPurge(). A wrong class name stays under
+     * the field; anything else that stops the purge (restored or purged meanwhile, a refusal of PurgeStudents) closes
+     * the dialog with a warning toast and writes nothing.
+     */
+    public function purge(PurgeFromTrash $purge): void
+    {
+        if ($this->purgingId === null) {
+            return;
+        }
+
+        $entry = TrashEntry::query()->with(['classroom:id,name,deleted_at', 'user:id,name,deleted_at'])->whereNull('parent_id')->find($this->purgingId);
+        abort_if($entry === null, 404);
+        Gate::authorize('forceDelete', $entry);
+
+        if (! $entry->isOpen()) {
+            $this->closePurge();
+            $this->stale(self::MSG_ENTRY_CLOSED);
+
+            return;
+        }
+
+        if ($entry->isClassroom() && trim($this->purgeConfirmName) === '') {
+            throw ValidationException::withMessages([PurgeFromTrash::CONFIRM_KEY => PurgeFromTrash::MSG_CONFIRM_NAME]);
+        }
+
+        if (! $this->passwordRecentlyConfirmed()) {
+            return;
+        }
+
+        $title = $entry->isClassroom() ? 'Kelas '.($entry->classroom?->name ?? '') : (string) ($entry->user?->name ?? 'Siswa');
+
+        try {
+            $counts = $purge->handle($this->actor(), $entry, $entry->isClassroom() ? $this->purgeConfirmName : null);
+        } catch (ValidationException $e) {
+            if (array_key_exists(PurgeFromTrash::CONFIRM_KEY, $e->errors())) {
+                throw $e;
+            }
+
+            $this->closePurge();
+            $this->stale((string) (collect($e->errors())->flatten()->first() ?? self::MSG_ENTRY_CLOSED));
+
+            return;
+        } catch (DomainException $e) {
+            $this->closePurge();
+            $this->stale($e->getMessage());
+
+            return;
+        }
+
+        $students = (int) ($counts['students'] ?? 0);
+        $this->closePurge();
+        $this->dispatch('sth-toast', message: $entry->isClassroom() && $students > 0
+            ? "{$title} dan {$students} siswanya dihapus permanen."
+            : "{$title} dihapus permanen.", tone: 'success');
+    }
+
+    /** The "Hapus permanen" dialog closed: forget the question and the typed name. */
+    public function forgetPurge(): void
+    {
+        $this->reset('purgingId', 'purgeConfirmName');
+        $this->resetErrorBag(PurgeFromTrash::CONFIRM_KEY);
+    }
+
     public function showMoreTrash(): void
     {
         $this->trashLimit = min(self::TRASH_MAX, $this->trashLimit + self::TRASH_STEP);
@@ -592,11 +757,70 @@ final class Kelas extends Component
             // where RoleSeeder has not run yet from showing a button that answers 403).
             'canTrash' => Gate::allows('trashStudents', TrashEntry::class),
             'canEditData' => Gate::allows(Permission::StudentUpdate->value),
+            'canChangeStatus' => Gate::allows('changeStudentStatus', User::class),
+            // The page's own address (ClassroomArea): the shared dialogs come back here after the password page.
+            'pageUrl' => ClassroomArea::indexUrl($this->area),
+            'downloadOptions' => ExportActivationReport::scopeOptions(),
+            'downloadNote' => 'Isi file: '.ExportActivationReport::scopeLabel($this->unduh).'; nama, NIS, NISN, tanggal lahir, nomor HP, dan email siswa.',
             'trash' => $this->trashList(),
             'restoreDialog' => $this->restoreDialog(),
+            'purgeDialog' => $this->purgeDialog(),
             'trashReasonMin' => TrashReason::MIN,
             'trashReasonMax' => TrashReason::MAX,
         ]);
+    }
+
+    /**
+     * View model of the "Hapus permanen" dialog, null without a question (or when the entry closed meanwhile): what goes
+     * now, that it cannot be undone, and for a class entry the name to type.
+     *
+     * @return array{title: string, lines: list<string>, className: ?string}|null
+     */
+    private function purgeDialog(): ?array
+    {
+        if ($this->purgingId === null) {
+            return null;
+        }
+
+        $entry = TrashEntry::query()->with(['classroom:id,name,deleted_at', 'user:id,name,deleted_at'])->whereNull('parent_id')->find($this->purgingId);
+
+        if ($entry === null || ! $entry->isOpen()) {
+            return null;
+        }
+
+        $preview = app(PurgeFromTrash::class)->preview($this->actor(), $entry);
+        $date = $entry->purge_after->translatedFormat('j F Y');
+        $data = 'Akun, pendaftaran, surat tugas, laporan hasil, prestasi, talenta, dan file siswanya ikut terhapus. Tim yang juga berisi siswa lain tetap ada tanpa siswa ini.';
+        $undo = 'Ini tidak bisa dibatalkan dan tidak bisa dipulihkan.';
+
+        if ($entry->isClassroom()) {
+            $name = (string) $entry->classroom?->name;
+            $students = (int) $preview['students'];
+            $alone = (int) $preview['alone'];
+
+            return [
+                'title' => 'Hapus permanen kelas '.$name.'?',
+                'className' => $name,
+                'lines' => array_values(array_filter([
+                    $students > 0
+                        ? "Kelas ini dan {$students} siswanya langsung terhapus permanen, tanpa menunggu {$date}."
+                        : "Kelas ini langsung terhapus permanen, tanpa menunggu {$date}.",
+                    $alone > 0 ? "Termasuk {$alone} siswa kelas ini yang lebih dulu dihapus sendiri." : null,
+                    $students > 0 ? $data : null,
+                    $undo,
+                ])),
+            ];
+        }
+
+        return [
+            'title' => 'Hapus permanen '.($entry->user?->name ?? 'siswa ini').'?',
+            'className' => null,
+            'lines' => [
+                "Siswa ini langsung terhapus permanen, tanpa menunggu {$date}.",
+                $data,
+                $undo,
+            ],
+        ];
     }
 
     /**
@@ -687,7 +911,7 @@ final class Kelas extends Component
 
         $now = CarbonImmutable::now();
         $entries = $query()
-            ->with(['classroom:id,name,deleted_at', 'user:id,name,deleted_at', 'deleter:id,name'])
+            ->with(['classroom:id,name,deleted_at', 'user:id,name,deleted_at', 'deleter' => fn ($q) => $q->select(['id', 'name'])->with('roles:id,name')])
             ->withCount('children')
             ->orderByDesc('deleted_at')
             ->orderByDesc('id')
@@ -706,7 +930,7 @@ final class Kelas extends Component
                 'meta' => $entry->isClassroom()
                     ? ($students > 0 ? $students.' siswa ikut dihapus' : 'Tanpa siswa')
                     : 'Kelas '.$classroom,
-                'deleted' => 'Dihapus '.$entry->deleted_at->translatedFormat('j M Y, H.i').' oleh '.($entry->deleter?->name ?? 'Admin'),
+                'deleted' => 'Dihapus '.$entry->deleted_at->translatedFormat('j M Y, H.i').' oleh '.self::deleterText($entry->deleter),
                 'reason' => $entry->reason,
                 'purge' => $entry->isRestorable($now)
                     ? 'Terhapus permanen '.$entry->purge_after->translatedFormat('j F Y')
@@ -721,6 +945,22 @@ final class Kelas extends Component
             'hasMore' => $hasMore,
             'capped' => $hasMore && $this->trashLimit >= self::TRASH_MAX,
         ];
+    }
+
+    /**
+     * Who put an entry into the Sampah, for "Dihapus … oleh <nama> (<peran>)" (the lead, 2026-11-05: "dikasih tau yang
+     * menghapus siswa ini siapa"): the name and the staff role it acted in (StaffRoleLabel), the name alone for an account
+     * without a staff role, and a neutral phrase when the account no longer exists.
+     */
+    public static function deleterText(?User $deleter): string
+    {
+        if ($deleter === null) {
+            return 'akun yang sudah tidak ada';
+        }
+
+        $role = StaffRoleLabel::of($deleter);
+
+        return (string) $deleter->name.($role !== '' ? ' ('.$role.')' : '');
     }
 
     /**
@@ -823,7 +1063,7 @@ final class Kelas extends Component
     {
         abort_if($this->viewingId === null, 404);
         Gate::authorize('viewAny', Classroom::class);
-        Gate::authorize('viewAny', User::class);
+        Gate::authorize(Permission::StudentView->value);
 
         // Malformed or never listed: 404; nothing ticked or more than 400: a toast (SelectsListedStudents).
         $ids = $this->tickedIds();
@@ -856,7 +1096,7 @@ final class Kelas extends Component
     {
         abort_unless($this->viewingId !== null && in_array($userId, $this->shownStudents, true), 404);
         Gate::authorize('viewAny', Classroom::class);
-        Gate::authorize('viewAny', User::class);
+        Gate::authorize(Permission::StudentView->value);
 
         /** @var User|null $user */
         $user = User::query()->whereHas('student')->with('student:id,user_id,classroom_id')->find($userId);
@@ -919,14 +1159,21 @@ final class Kelas extends Component
         $this->dispatch('sth-modal-close', id: self::RESTORE_DIALOG);
     }
 
+    private function closePurge(): void
+    {
+        $this->forgetPurge();
+        $this->dispatch('sth-modal-close', id: self::PURGE_DIALOG);
+    }
+
     private function stale(string $message): void
     {
         $this->dispatch('sth-toast', message: $message, tone: 'warning');
     }
 
+    /** Back from the password page: this Kelas page (its own area), with the download choice. */
     protected function returnUrl(): string
     {
-        return route('admin.kelas.index');
+        return ClassroomArea::indexUrl($this->area).($this->unduh !== '' ? '?'.http_build_query(['unduh' => $this->unduh]) : '');
     }
 
     private function actor(): User

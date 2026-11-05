@@ -18,6 +18,8 @@
 
 ---
 
+> **5 Nov 2026 (SV7, D-193, hanya `smaga_server`):** konfirmasi kata sandi staf diingat 30 hari per browser (cookie terenkripsi terikat akun + kata sandi; login juga dihitung). Melonggarkan §3m-9 dan sikap PC bersama §3a atas pilihan lead; risiko di PC bersama diterima. Excel daftar siswa (D-190) memuat tanggal lahir = kata sandi awal siswa yang belum aktivasi: perlakukan file itu sebagai rahasia.
+
 ## 0. Temuan yang mengubah arsitektur (baca dulu)
 
 1. **Stack sudah diputuskan: Laravel 13 + PHP 8.4 + MySQL 8.4 LTS** (D-17). Laravel 12 hanya menerima security fix sampai 24 Feb 2027. Laravel 13 (rilis 17 Mar 2026) mendapat security fix sampai **17 Mar 2028**, dan PHP 8.4 sampai 31 Des 2028. Upgrade ke Laravel 14 dijadwalkan sebelum Mar 2028.

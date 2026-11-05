@@ -15,14 +15,18 @@ use Illuminate\Validation\ValidationException;
 /**
  * Admin "Buka pembekuan" (B1, docs/SECURITY.md §3a K3/K8): lifts any freeze (failed logins or "Bukan saya?")
  * after the Admin checked the owner's identity. Counter reset; an account that still has to change an
- * initial/temporary password gets at least 72 more hours (a later deadline stays, QA9). Admin only
- * (`user.reset_password`), never on the Admin's own account, reason required, audited (`account.unfrozen`). When
+ * initial/temporary password gets at least 72 more hours (a later deadline stays, QA9). Admin (`user.reset_password`),
+ * and since 2026-11-05 Kesiswaan and Tata Usaha for a student through "Ubah status" (`student.status`,
+ * StudentStatusAuthorization) except a "Bukan saya?" freeze (MSG_NOT_ME_ADMIN); never on the Admin's own account, reason required, audited (`account.unfrozen`). When
  * the email itself is suspect (a "Bukan saya?" freeze), use "Reset kata sandi & email" (ResetStudentAccount) instead: it
  * always removes the email (lead, 21 Okt 2026).
  */
 final class UnfreezeAccount
 {
     public const MAX_REASON = 500;
+
+    /** A "Bukan saya?" freeze (K8) stays the Admin's: Kesiswaan and Tata Usaha (`student.status`) cannot lift it. */
+    public const MSG_NOT_ME_ADMIN = 'Akun ini dibekukan lewat laporan "Bukan saya". Hanya Admin yang bisa membukanya.';
 
     public function __construct(private readonly LoginLockout $lockout) {}
 
@@ -31,7 +35,7 @@ final class UnfreezeAccount
      */
     public function handle(User $actor, User $target, string $reason): void
     {
-        Gate::forUser($actor)->authorize(Permission::UserResetPassword->value);
+        StudentStatusAuthorization::authorize($actor, $target, Permission::UserResetPassword);
 
         if (! $actor->canLogIn() || $actor->is($target)) {
             abort(403);
@@ -52,6 +56,13 @@ final class UnfreezeAccount
             }
 
             $frozenReason = AccountControls::frozenReason($locked);
+
+            // K8: a hijack report is checked by an Admin (`user.reset_password`), also when Ubah status is used by Kesiswaan
+            // or Tata Usaha (`student.status`, 2026-11-05).
+            if ($frozenReason === AccountControls::FROZEN_NOT_ME && ! Gate::forUser($actor)->allows(Permission::UserResetPassword->value)) {
+                throw ValidationException::withMessages(['user' => self::MSG_NOT_ME_ADMIN]);
+            }
+
             $changes = ['frozen_at' => null, 'frozen_reason' => null, 'failed_activation_attempts' => 0];
 
             $current = AccountControls::date($locked, 'initial_password_expires_at');

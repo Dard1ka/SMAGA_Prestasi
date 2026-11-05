@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AppreciationListPrintController;
 use App\Http\Controllers\LetterPrintController;
+use App\Livewire\Admin\Kelas;
 use App\Livewire\Akun\ImportSiswa;
 use App\Livewire\Akun\StatusAktivasi;
 use App\Livewire\Guru\Binaan;
@@ -23,7 +24,6 @@ use App\Livewire\Kesiswaan\Talenta;
 use App\Livewire\Kesiswaan\VerifikasiHasil;
 use App\Livewire\Sekolah\Dashboard;
 use App\Livewire\TataUsaha\ArsipSurat;
-use App\Livewire\TataUsaha\DataSiswa;
 use App\Livewire\TataUsaha\SuratTugas;
 use App\Livewire\TataUsaha\TemplateSurat;
 use Illuminate\Support\Facades\Route;
@@ -50,8 +50,11 @@ Route::middleware(['area.staff', 'role:tata_usaha'])->prefix('tu')->name('tu.')-
     // D-150: Tata Usaha approves registrations too; the Kepala Sekolah's screen under the TU address (ApprovalQueue).
     Route::livewire('/persetujuan', Persetujuan::class)->name('persetujuan.index');
     Route::livewire('/surat/arsip', ArsipSurat::class)->name('surat.arsip');
-    // SV6, D-187: the student list with "Ubah data" (DataSiswa authorizes student.update on mount and in every action).
-    Route::livewire('/data-siswa', DataSiswa::class)->name('siswa.index');
+    // 2026-11-05 (the lead): the Kelas page of Admin under the TU address (ClassroomPolicy, `classroom.manage`; the
+    // component picks its links with AppSupportClassroomArea). It replaces TU › Data siswa (SV6, D-187), whose old
+    // address only redirects here.
+    Route::livewire('/kelas', Kelas::class)->name('kelas.index');
+    Route::redirect('/data-siswa', '/tu/kelas')->name('siswa.index');
     Route::livewire('/surat/{registration}', SuratTugas::class)
         ->whereUlid('registration')
         ->name('surat.show');
@@ -98,6 +101,9 @@ Route::middleware(['area.staff', 'role:kesiswaan|admin'])->prefix('kesiswaan')->
         ->whereUlid('report')
         ->name('verifikasi.show');
     Route::livewire('/talenta', Talenta::class)->name('talenta.index');
+    // 2026-11-05 (the lead): the Kelas page of Admin under the Kesiswaan address (ClassroomPolicy, `classroom.manage`;
+    // AppSupportClassroomArea picks the links). Admin keeps admin.kelas.index.
+    Route::livewire('/kelas', Kelas::class)->name('kelas.index');
     Route::livewire('/import-siswa', ImportSiswa::class)->name('import');
     // Shared with Humas (W2-C's class, authorized by appreciation.manage through AppreciationEventPolicy).
     Route::livewire('/apresiasi', Apresiasi::class)->name('apresiasi.index');

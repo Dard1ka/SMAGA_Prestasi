@@ -191,9 +191,10 @@ it('reopens an expired window for 72 hours (Kesiswaan), audited, and the student
     b1Login(H::NISN)->assertRedirect(route('aktivasi'));
 });
 
-it('refuses reopen without a reason, for active accounts, staff, or roles without student.import', function (): void {
+it('refuses reopen without a reason, for active accounts, staff, or roles without student.import or student.status', function (): void {
     $pending = H::pendingStudent();
-    $tu = A::staff(RoleName::TataUsaha);
+    // Tata Usaha holds student.status since 2026-11-05 (Ubah status on its Kelas page): Humas holds neither.
+    $tu = A::staff(RoleName::Humas);
     $reason = 'Siswa sakit saat aktivasi kelas.';
 
     expect(fn () => app(ReopenActivationWindow::class)->handle($this->kesiswaan, $pending->user, '  '))->toThrow(ValidationException::class, 'Isi alasannya.')
@@ -446,7 +447,9 @@ it('freezes the account from the "Bukan saya?" page: GET changes nothing, the bu
 
     // Kesiswaan cannot lift a "Bukan saya" freeze; Admin can, with a reason.
     expect(fn () => app(ReopenActivationWindow::class)->handle($this->kesiswaan, $user, 'Siswa datang ke ruang Kesiswaan.'))->toThrow(ValidationException::class)
-        ->and(fn () => app(UnfreezeAccount::class)->handle($this->kesiswaan, $user, 'Alasan'))->toThrow(AuthorizationException::class);
+        // Kesiswaan holds student.status since 2026-11-05, but a "Bukan saya" freeze stays the Admin's.
+        ->and(fn () => app(UnfreezeAccount::class)->handle($this->kesiswaan, $user, 'Alasan'))->toThrow(ValidationException::class, UnfreezeAccount::MSG_NOT_ME_ADMIN)
+        ->and(fn () => app(UnfreezeAccount::class)->handle(A::staff(RoleName::Humas), $user, 'Alasan'))->toThrow(AuthorizationException::class);
 
     app(UnfreezeAccount::class)->handle($this->admin, $user, 'Pemilik datang dengan kartu pelajar.');
     expect(AccountControls::isFrozen(b1User($student)))->toBeFalse()

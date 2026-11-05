@@ -14,7 +14,6 @@ use App\Models\User;
 use Carbon\CarbonImmutable;
 use DateTimeInterface;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -75,7 +74,7 @@ final class EnableAccount
      */
     public function handle(User $actor, User $target, string $reason, DateTimeInterface|string|null $newArchiveDate = null): User
     {
-        Gate::forUser($actor)->authorize(Permission::UserArchive->value);
+        StudentStatusAuthorization::authorize($actor, $target, Permission::UserArchive);
 
         if (! $actor->canLogIn()) {
             abort(403);

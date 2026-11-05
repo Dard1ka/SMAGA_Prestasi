@@ -14,6 +14,8 @@ use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
 use Livewire\Livewire;
+use Spatie\Permission\Models\Role;
+use Spatie\Permission\PermissionRegistrar;
 use Tests\Feature\Admin\AdminTestHelpers as A;
 
 /*
@@ -87,8 +89,25 @@ it('gives Admin "Aktifkan lagi" on rows that can be brought back and "Ubah statu
         ->assertSee('id="'.UbahStatusSiswa::DIALOG.'"', false);
 });
 
-it('shows Kesiswaan nothing new and refuses its call', function (): void {
+it('gives Kesiswaan "Aktifkan lagi" and the shared dialog too (student.status, 2026-11-05)', function (): void {
     $this->actingAs($this->kesiswaan);
+    $student = $this->students['nonaktif'];
+
+    Livewire::test(StatusAktivasi::class)->call('setView', 'siswa')
+        ->assertSee('Aktifkan lagi')
+        ->assertSeeHtml('askStatus(')
+        ->call('askStatus', $student->user_id)
+        ->assertDispatchedTo(UbahStatusSiswa::class, UbahStatusSiswa::OPEN_EVENT, ids: [(int) $student->user_id]);
+
+    $this->get(route('kesiswaan.aktivasi.index', ['tampil' => 'siswa']))
+        ->assertOk()
+        ->assertSee('id="'.UbahStatusSiswa::DIALOG.'"', false);
+});
+
+it('shows a Kesiswaan whose role lost student.status nothing of it and refuses its call', function (): void {
+    Role::findByName(RoleName::Kesiswaan->value)->revokePermissionTo('student.status');
+    app(PermissionRegistrar::class)->forgetCachedPermissions();
+    $this->actingAs($this->kesiswaan->fresh());
 
     $list = Livewire::test(StatusAktivasi::class)->call('setView', 'siswa')
         ->assertDontSee('Aktifkan lagi')

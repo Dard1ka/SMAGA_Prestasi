@@ -3,11 +3,17 @@
     @include('livewire.partials.resume-download')
     <x-sth.alert>Import siswa hanya memasukkan siswa ke kelas yang ada di daftar ini. Kelas baru bisa langsung dipakai di kolom "Kelas" file import.</x-sth.alert>
 
-    {{-- SV6, D-185: the Status aktivasi file of the whole school (sheet "Ringkasan", then one sheet per tingkat). --}}
+    {{-- The "Data siswa" file (2026-11-05): the one chooser of every student download (the same list as Status aktivasi). --}}
     @if ($groups !== [])
         <div class="flex flex-wrap items-center justify-between gap-3">
-            <p class="muted m-0 text-sm">Download daftar siswa semua kelas beserta status akunnya dalam satu file Excel.</p>
-            <x-sth.button variant="quiet" size="sm" icon="download" wire:click="exportAll" wire:loading.attr="disabled" wire:target="exportAll">Download semua kelas</x-sth.button>
+            <p class="muted m-0 text-sm">Download data siswa dalam satu file Excel: semua kelas, satu tingkat, atau satu kelas.</p>
+            <div class="flex flex-col items-end gap-1 max-sm:w-full max-sm:items-start">
+                <div class="flex items-center gap-2">
+                    <x-sth.select wire:model.live="unduh" label="Kelas untuk download" hide-label size="sm" :options="$downloadOptions" class="w-40" />
+                    <x-sth.button variant="quiet" size="sm" icon="download" wire:click="export" wire:loading.attr="disabled" wire:target="export">Download Excel</x-sth.button>
+                </div>
+                <p class="m-0 text-xs text-muted">{{ $downloadNote }}</p>
+            </div>
         </div>
     @endif
 
@@ -108,12 +114,19 @@
                             </div>
                         </td>
                         <td class="text-right">
-                            @if ($entry['restorable'])
-                                <x-sth.button variant="quiet" size="sm" icon="recycle" aria-haspopup="dialog" wire:click="askRestore('{{ $entry['id'] }}')"
-                                              wire:loading.attr="disabled" wire:target="askRestore">
-                                    Pulihkan<span class="sr-only"> {{ $entry['title'] }}</span>
+                            <span class="inline-flex flex-wrap justify-end gap-2">
+                                @if ($entry['restorable'])
+                                    <x-sth.button variant="quiet" size="sm" icon="recycle" aria-haspopup="dialog" wire:click="askRestore('{{ $entry['id'] }}')"
+                                                  wire:loading.attr="disabled" wire:target="askRestore">
+                                        Pulihkan<span class="sr-only"> {{ $entry['title'] }}</span>
+                                    </x-sth.button>
+                                @endif
+                                {{-- D-186: delete this entry for good now, behind the dialog kelas-hapus-permanen. --}}
+                                <x-sth.button variant="quiet" size="sm" icon="trash" aria-haspopup="dialog" wire:click="askPurge('{{ $entry['id'] }}')"
+                                              wire:loading.attr="disabled" wire:target="askPurge">
+                                    Hapus permanen<span class="sr-only"> {{ $entry['title'] }}</span>
                                 </x-sth.button>
-                            @endif
+                            </span>
                         </td>
                     </tr>
                 @endforeach
@@ -182,7 +195,7 @@
                 @else
                     {{-- SV5/SV6: ticks for several students at once; the shared dialogs UbahStatusSiswa and HapusSiswa do the
                          rest. The same bar, ticks and row actions as Status aktivasi. --}}
-                    @include('livewire.partials.siswa-pilih', ['pilihId' => 'kelas-siswa-pilih-semua', 'ticks' => $studentsDialog, 'canStatus' => true, 'canTrash' => $canTrash])
+                    @include('livewire.partials.siswa-pilih', ['pilihId' => 'kelas-siswa-pilih-semua', 'ticks' => $studentsDialog, 'canStatus' => $canChangeStatus, 'canTrash' => $canTrash])
                     <x-sth.table :caption="'Siswa kelas '.$studentsDialog['name']" class="overflow-hidden rounded-tile border border-line" :card="false">
                         <x-slot:head>
                             <th scope="col" class="w-12"><span class="sr-only">Pilih</span></th>
@@ -202,7 +215,7 @@
                                 <td><x-sth.chip :tone="$student['tone']" size="sm">{{ $student['status'] }}</x-sth.chip></td>
                                 <td class="text-right">
                                     <span class="inline-flex flex-wrap justify-end gap-1">
-                                        @include('livewire.partials.siswa-aksi', ['userId' => $student['id'], 'name' => $student['name'], 'change' => $student['change'], 'canData' => $canEditData, 'canTrash' => $canTrash])
+                                        @include('livewire.partials.siswa-aksi', ['userId' => $student['id'], 'name' => $student['name'], 'change' => $canChangeStatus ? $student['change'] : null, 'canData' => $canEditData, 'canTrash' => $canTrash])
                                     </span>
                                 </td>
                             </tr>
@@ -252,11 +265,41 @@
         </x-slot:footer>
     </x-sth.modal>
 
-    {{-- SV5: "Ubah status" of one or several listed students, the dialog shared with Status aktivasi (Admin). --}}
-    <livewire:admin.ubah-status-siswa :return-to="route('admin.kelas.index')" :key="'ubah-status-siswa'" />
+    {{-- D-186: "Hapus permanen" of one Sampah entry. on-close forgets the question and the typed name. --}}
+    <x-sth.modal :id="\App\Livewire\Admin\Kelas::PURGE_DIALOG" size="sm" on-close="forgetPurge"
+                 :title="$purgeDialog['title'] ?? 'Hapus permanen?'"
+                 description="Penghapusan permanen dicatat di log audit.">
+        @if ($purgeDialog)
+            <form id="kelas-hapus-permanen-form" wire:submit="purge" class="flex flex-col gap-4" novalidate>
+                <div class="flex flex-col gap-2">
+                    @foreach ($purgeDialog['lines'] as $line)
+                        <p class="m-0 text-md" wire:key="kelas-hapus-permanen-baris-{{ $loop->index }}">{{ $line }}</p>
+                    @endforeach
+                </div>
+                @if ($purgeDialog['className'] !== null)
+                    <x-sth.input wire:model="purgeConfirmName" id="f-kelas-hapus-permanen-nama" maxlength="40" autocomplete="off"
+                                 label="Ketik nama kelas" :hint="'Ketik '.$purgeDialog['className'].' untuk memastikan.'" />
+                @endif
+            </form>
+        @else
+            <p class="m-0 text-md text-muted">Data tidak ditemukan. Tutup lalu coba lagi.</p>
+        @endif
+        <x-slot:footer>
+            <x-sth.button variant="quiet" data-sth-close>Batal</x-sth.button>
+            @if ($purgeDialog)
+                <x-sth.button type="submit" variant="danger" form="kelas-hapus-permanen-form" wire:loading.attr="disabled" wire:target="purge">Hapus permanen</x-sth.button>
+            @endif
+        </x-slot:footer>
+    </x-sth.modal>
+
+    {{-- SV5: "Ubah status" of one or several listed students, the dialog shared with Status aktivasi. The shared dialogs come
+         back to this page's own address (Admin, Kesiswaan or Tata Usaha) after the password page. --}}
+    @if ($canChangeStatus)
+        <livewire:admin.ubah-status-siswa :return-to="$pageUrl" :key="'ubah-status-siswa'" />
+    @endif
     {{-- SV6, D-185: "Hapus siswa?" of one or several listed students, the dialog shared with Status aktivasi. --}}
     @if ($canTrash)
-        <livewire:admin.hapus-siswa :return-to="route('admin.kelas.index')" :key="'hapus-siswa'" />
+        <livewire:admin.hapus-siswa :return-to="$pageUrl" :key="'hapus-siswa'" />
     @endif
     {{-- SV6, D-187: "Ubah data siswa" of one listed student, the dialog shared with Status aktivasi and TU › Data siswa. --}}
     @if ($canEditData)

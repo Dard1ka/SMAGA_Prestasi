@@ -16,7 +16,6 @@ use App\Actions\Accounts\ResetStudentAccount;
 use App\Actions\Accounts\UnfreezeAccount;
 use App\Actions\Archive\ArchiveDates;
 use App\Actions\Archive\UnarchiveStudent;
-use App\Enums\Permission;
 use App\Enums\UserStatus;
 use App\Livewire\Admin\Concerns\RequiresRecentPassword;
 use App\Livewire\Publik\Data\PublicAchievements;
@@ -34,11 +33,13 @@ use Livewire\Attributes\On;
 use Livewire\Component;
 
 /**
- * "Ubah status" of student accounts (SV5, the lead 2026-11-04; every state since 2026-11-05): ONE dialog for Admin,
- * rendered once inside Admin › Kelas (rows of "Lihat siswa", one or many ticked) and inside Status aktivasi (Admin only,
- * one row). The host page checks the ids against the rows it showed and sends OPEN_EVENT to this component; this
- * component checks them again (Admin only: 403 for others; every id a student account: a staff or unknown id answers
- * 404) and keeps them in #[Locked] $userIds.
+ * "Ubah status" of student accounts (SV5, the lead 2026-11-04; every state since 2026-11-05): ONE dialog, rendered once
+ * inside the Kelas page (rows of "Lihat siswa", one or many ticked) and inside Status aktivasi. Who: UserPolicy::
+ * changeStudentStatus (`user.archive` or `student.status`: Admin, and since 2026-11-05 Kesiswaan and Tata Usaha; the
+ * chained Actions accept `student.status` for a student account through StudentStatusAuthorization).
+ * The host page checks the ids against the rows it showed and sends OPEN_EVENT to this component; this component checks
+ * them again (403 without the right; every id a student account: a staff or unknown id answers 404) and keeps them in
+ * #[Locked] $userIds.
  *
  * Targets = the six K9 states of AccountControls::state(), the tabs of Status aktivasi. A target is offered when at
  * least one picked student is in another state; a student already in it is skipped. Each student walks a chain of the
@@ -167,7 +168,7 @@ final class UbahStatusSiswa extends Component
 
     public function mount(?string $returnTo = null): void
     {
-        Gate::authorize(Permission::UserArchive->value);
+        Gate::authorize('changeStudentStatus', User::class);
         $this->returnTo = $returnTo ?? url()->current();
     }
 
@@ -186,7 +187,7 @@ final class UbahStatusSiswa extends Component
     #[On(self::OPEN_EVENT)]
     public function open(array $ids = [], ?string $target = null): void
     {
-        Gate::authorize(Permission::UserArchive->value);
+        Gate::authorize('changeStudentStatus', User::class);
         $this->forget();
 
         $userIds = [];
@@ -203,7 +204,7 @@ final class UbahStatusSiswa extends Component
         abort_unless($students->count() === count($userIds), 404);
 
         foreach ($students as $student) {
-            Gate::authorize('archive', $student);
+            Gate::authorize('changeStudentStatus', $student);
         }
 
         $this->userIds = $userIds;
@@ -241,13 +242,13 @@ final class UbahStatusSiswa extends Component
             return;
         }
 
-        Gate::authorize(Permission::UserArchive->value);
+        Gate::authorize('changeStudentStatus', User::class);
 
         $target = array_key_exists($this->statusTarget, self::TARGETS) ? $this->statusTarget : null;
         $students = $this->students();
 
         foreach ($students as $student) {
-            Gate::authorize('archive', $student);
+            Gate::authorize('changeStudentStatus', $student);
         }
 
         $plan = $target === null
@@ -293,7 +294,7 @@ final class UbahStatusSiswa extends Component
                 continue;
             }
 
-            Gate::authorize('archive', $user);
+            Gate::authorize('changeStudentStatus', $user);
 
             try {
                 if (! $this->apply($user, $target, $reason, $date, $temporaryPassword)) {

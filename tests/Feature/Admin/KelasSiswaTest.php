@@ -320,9 +320,9 @@ it('redraws the list, the chips, the counts and clears the ticks after the share
     expect(collect($screen->viewData('studentsDialog')['rows'])->firstWhere('name', 'Dimas Saputra')['status'])->toBe('Nonaktif');
 });
 
-it('refuses the screen, the student list, the ticks and "Ubah status" to Kesiswaan', function (): void {
+it('refuses the screen, the student list, the ticks and "Ubah status" to a role without classroom.manage (Humas)', function (): void {
     $raka = kelasSiswa($this->x1, 'Raka Pratama');
-    $kesiswaan = A::staff(RoleName::Kesiswaan);
+    $kesiswaan = A::staff(RoleName::Humas);
 
     $this->actingAs($kesiswaan)->get(route('admin.kelas.index'))->assertForbidden();
     Livewire::test(Kelas::class)->assertForbidden();
@@ -402,31 +402,31 @@ it('clears the ticks after the shared delete or data dialog finished (SV6)', fun
         ->assertSet('viewingId', (string) $this->x1->getKey());
 })->with([HapusSiswa::DONE_EVENT, UbahDataSiswa::DONE_EVENT]);
 
-it('downloads every class from "Download semua kelas": Ringkasan first, one sheet per tingkat with students (SV6, D-185)', function (): void {
+it('downloads the Data siswa file of every class: one sheet per tingkat with students, no status, no Ringkasan (2026-11-05)', function (): void {
     kelasSiswa($this->x1, 'Raka Pratama');
     kelasSiswa($this->x1, 'Dimas Saputra', UserStatus::Disabled);
     $xi = Classroom::factory()->level(11)->create(['name' => 'XI-3']);
     kelasSiswa($xi, 'Nadia Putri Anindya', UserStatus::PendingActivation);
 
     Livewire::test(Kelas::class)
-        ->assertSeeHtml('wire:click="exportAll"')
-        ->call('exportAll')
+        ->assertSeeHtml('wire:click="export"')
+        ->assertSeeHtml('wire:model.live="unduh"')
+        ->call('export')
         ->assertRedirect(route('password.confirm'))
         ->assertNoFileDownloaded();
 
     session(A::passwordConfirmed());
-    Livewire::test(Kelas::class)->assertSeeHtml('wire:init="exportAll"');
+    Livewire::test(Kelas::class)->assertSeeHtml('wire:init="export"');
 
-    $screen = Livewire::test(Kelas::class)->call('exportAll');
+    $screen = Livewire::test(Kelas::class)->call('export');
     $file = kelasSiswaDownload($screen);
-    $summary = SimpleExcelReader::create($file)->fromSheetName(ActivationReport::SUMMARY_SHEET)->getRows()->all();
     $log = Activity::query()->where('event', ExportActivationReport::EVENT)->sole();
 
-    expect($screen->effects['download']['name'] ?? '')->toStartWith('status-aktivasi-semua-')
-        ->and(kelasSiswaSheets($file))->toBe([ActivationReport::SUMMARY_SHEET, 'X', 'XI'])
-        ->and(array_column($summary, 'Kelas'))->toBe(['X-1', 'XI-3', ActivationReport::SUMMARY_TOTAL])
-        ->and(array_column($summary, 'Nonaktif'))->toBe(['1', '0', '1'])
+    expect($screen->effects['download']['name'] ?? '')->toStartWith('data-siswa-semua-')
+        ->and(kelasSiswaSheets($file))->toBe(['X', 'XI'])
+        ->and(SimpleExcelReader::create($file)->fromSheetName('X')->getHeaders())->toBe(ActivationReport::DATA_HEADER)
         ->and(array_column(SimpleExcelReader::create($file)->fromSheetName('X')->getRows()->all(), 'Nama'))->toBe(['Dimas Saputra', 'Raka Pratama'])
+        ->and($log->properties['file'])->toBe(ActivationReport::KIND_DATA)
         ->and($log->properties['source'])->toBe(ExportActivationReport::SOURCE_CLASSES)
         ->and($log->properties['tingkat'])->toBe('semua')
         ->and($log->properties['rows'])->toBe(3);
@@ -443,7 +443,9 @@ it('downloads one class from "Lihat siswa", and says so when the class has no st
     $file = kelasSiswaDownload($screen);
 
     expect(kelasSiswaSheets($file))->toBe(['X-1'])
-        ->and(array_column(SimpleExcelReader::create($file)->fromSheetName('X-1')->getRows()->all(), 'Status'))->toBe(['Aktif'])
+        ->and($screen->effects['download']['name'] ?? '')->toStartWith('data-siswa-kelas-x-1-')
+        ->and(SimpleExcelReader::create($file)->fromSheetName('X-1')->getHeaders())->toBe(ActivationReport::DATA_HEADER)
+        ->and(array_column(SimpleExcelReader::create($file)->fromSheetName('X-1')->getRows()->all(), 'Nama'))->toBe(['Raka Pratama'])
         ->and(Activity::query()->where('event', ExportActivationReport::EVENT)->sole()->properties['kelas'])->toBe('X-1');
 
     // An empty class shows no download, and a forged call answers with a toast and no file.
@@ -464,22 +466,22 @@ it('downloads one class from "Lihat siswa", and says so when the class has no st
 it('says that there is nothing to download when no class has students (SV6)', function (): void {
     session(A::passwordConfirmed());
 
-    Livewire::test(Kelas::class)->call('exportAll')
+    Livewire::test(Kelas::class)->call('export')
         ->assertDispatched('sth-toast', message: ExportActivationReport::MSG_EMPTY, tone: 'warning')
         ->assertNoFileDownloaded();
 
     expect(Activity::query()->where('event', ExportActivationReport::EVENT)->exists())->toBeFalse();
 });
 
-it('refuses the downloads, Ubah data and Hapus of Admin › Kelas to Kesiswaan (no classroom.manage)', function (): void {
+it('refuses the downloads, Ubah data and Hapus of the Kelas page to Humas (no classroom.manage)', function (): void {
     $raka = kelasSiswa($this->x1, 'Raka Pratama');
     $opened = fn () => Livewire::test(Kelas::class)->call('showStudents', $this->x1->getKey());
     $screens = [$opened(), $opened(), $opened(), $opened()];
 
-    $this->actingAs(A::staff(RoleName::Kesiswaan));
+    $this->actingAs(A::staff(RoleName::Humas));
     session(A::passwordConfirmed());
 
-    $screens[0]->call('exportAll')->assertForbidden();
+    $screens[0]->call('export')->assertForbidden();
     $screens[1]->call('exportClass', $this->x1->getKey())->assertForbidden();
     $screens[2]->call('askData', $raka->user_id)->assertForbidden();
     $screens[3]->call('askTrashStudent', $raka->user_id)->assertForbidden();

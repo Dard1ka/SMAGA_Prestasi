@@ -9,7 +9,6 @@ use App\Enums\UserStatus;
 use App\Livewire\Publik\Data\PublicAchievements;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -26,7 +25,7 @@ final class DisableAccount
      */
     public function handle(User $actor, User $target, string $reason, UserStatus $status = UserStatus::Disabled): void
     {
-        Gate::forUser($actor)->authorize(Permission::UserArchive->value);
+        StudentStatusAuthorization::authorize($actor, $target, Permission::UserArchive);
 
         if (! in_array($status, [UserStatus::Disabled, UserStatus::Archived], true)) {
             throw ValidationException::withMessages(['status' => 'Status tidak valid.']);

@@ -10,7 +10,6 @@ use App\Enums\UserStatus;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -79,7 +78,7 @@ final class ReopenActivationWindow
      */
     public function handle(User $actor, User $student, string $reason): CarbonImmutable
     {
-        Gate::forUser($actor)->authorize(Permission::StudentImport->value);
+        StudentStatusAuthorization::authorize($actor, $student, Permission::StudentImport);
 
         if (! $actor->canLogIn()) {
             abort(403);
