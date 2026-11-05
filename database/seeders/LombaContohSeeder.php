@@ -86,11 +86,7 @@ final class LombaContohSeeder extends Seeder
             return;
         }
 
-        $admin = User::query()
-            ->role(RoleName::Admin->value)
-            ->where('status', UserStatus::Active)
-            ->orderBy('id')
-            ->first();
+        $admin = self::firstActiveAdmin();
 
         if ($admin === null) {
             $this->command?->error(self::NO_ADMIN);
@@ -98,7 +94,16 @@ final class LombaContohSeeder extends Seeder
             return;
         }
 
-        $competition = $this->create($admin, CarbonImmutable::today());
+        $today = CarbonImmutable::today();
+        $competition = $this->publish(
+            $admin,
+            self::NAME,
+            self::JUKNIS_NAME,
+            $today,
+            $today->addDays(self::REGISTRATION_DAYS),
+            $today->addDays(self::LOMBA_DAY),
+            'seeder',
+        );
 
         $this->command?->info(sprintf(
             'Lomba contoh dibuat dan dipublikasikan: %s. Pendaftaran %s sampai %s, lomba %s.',
@@ -109,20 +114,45 @@ final class LombaContohSeeder extends Seeder
         ));
     }
 
-    private function create(User $admin, CarbonImmutable $today): Competition
+    /** The first active Admin by id: submitter and verifier of a sample lomba (null = none, nothing is written). */
+    public static function firstActiveAdmin(): ?User
     {
+        return User::query()
+            ->role(RoleName::Admin->value)
+            ->where('status', UserStatus::Active)
+            ->orderBy('id')
+            ->first();
+    }
+
+    /**
+     * Creates and publishes one fictional one-day individual lomba of this shape (Provinsi · Daring, organiser
+     * self::ORGANIZER, bidang Riset unless $bidang says otherwise) as "Tambah lomba" + publish store it. Also used by
+     * `sth:lomba:demo` (DemoLombaCommand) for the presentation lomba whose registration and lomba day are both today,
+     * in bidang Sains: its laporan hasil needs only the certificate and photos, no research fields. $source goes into
+     * both audit rows.
+     */
+    public function publish(
+        User $admin,
+        string $name,
+        string $juknisName,
+        CarbonImmutable $opens,
+        CarbonImmutable $closes,
+        CarbonImmutable $lombaDay,
+        string $source,
+        Bidang $bidang = Bidang::Riset,
+    ): Competition {
         $input = [
-            'name' => self::NAME,
+            'name' => $name,
             'description' => self::DESCRIPTION,
-            'bidang' => Bidang::Riset->value,
+            'bidang' => $bidang->value,
             'organizer_name' => self::ORGANIZER,
             'organizer_type' => OrganizerType::YayasanLembaga->value,
             'level' => Level::Provinsi->value,
             'mode' => EventMode::Daring->value,
-            'registration_opens_at' => $today->toDateString(),
-            'registration_closes_at' => $today->addDays(self::REGISTRATION_DAYS)->toDateString(),
-            'starts_on' => $today->addDays(self::LOMBA_DAY)->toDateString(),
-            'final_on' => $today->addDays(self::LOMBA_DAY)->toDateString(),
+            'registration_opens_at' => $opens->toDateString(),
+            'registration_closes_at' => $closes->toDateString(),
+            'starts_on' => $lombaDay->toDateString(),
+            'final_on' => $lombaDay->toDateString(),
             'location' => 'Daring',
             'participation' => Participation::Individu->value,
         ];
@@ -133,7 +163,7 @@ final class LombaContohSeeder extends Seeder
         $data = CreateCompetition::normalize($validator->validate());
         $weight = OrganizerWeight::for(OrganizerType::YayasanLembaga, puspresnas: false);
 
-        $upload = $this->juknis($data);
+        $upload = $this->juknis($data, $juknisName);
 
         try {
             $files = ['juknis' => CreateCompetition::storeFile($admin, $upload, FilePurpose::Juknis), 'cover' => null];
@@ -141,7 +171,7 @@ final class LombaContohSeeder extends Seeder
             @unlink((string) $upload->getRealPath());
         }
 
-        return CreateCompetition::discardOnFailure($files, fn (): Competition => DB::transaction(function () use ($admin, $data, $weight, $files): Competition {
+        return CreateCompetition::discardOnFailure($files, fn (): Competition => DB::transaction(function () use ($admin, $data, $weight, $files, $source): Competition {
             $competition = new Competition([
                 ...Arr::except($data, CreateCompetition::WEIGHT_FIELDS),
                 'juknis_file_id' => $files['juknis']->getKey(),
@@ -163,7 +193,7 @@ final class LombaContohSeeder extends Seeder
                     'level' => $competition->level?->value,
                     'weight_category' => $competition->weight_category?->value,
                     'event_status' => $competition->event_status?->value,
-                    'source' => 'seeder',
+                    'source' => $source,
                 ])
                 ->log('competition.created');
 
@@ -193,7 +223,7 @@ final class LombaContohSeeder extends Seeder
                     'note' => null,
                     'past_dates' => [],
                     'weight_override' => null,
-                    'source' => 'seeder',
+                    'source' => $source,
                 ])
                 ->log('competition.published');
 
@@ -207,20 +237,20 @@ final class LombaContohSeeder extends Seeder
      *
      * @param  array<string, mixed>  $data  normalized form values
      */
-    private function juknis(array $data): UploadedFile
+    private function juknis(array $data, string $juknisName): UploadedFile
     {
         $opens = CarbonImmutable::parse((string) $data['registration_opens_at'])->startOfDay();
         $closes = CarbonImmutable::parse((string) $data['registration_closes_at'])->startOfDay();
         $starts = CarbonImmutable::parse((string) $data['starts_on']);
 
         $event = new DemoEvent(
-            name: self::NAME,
+            name: (string) $data['name'],
             organizer: self::ORGANIZER,
             opensOn: $opens,
             closesOn: $closes,
             startsOn: $starts,
             finalOn: CarbonImmutable::parse((string) $data['final_on']),
-            bidang: Bidang::Riset,
+            bidang: Bidang::from((string) $data['bidang']),
             level: Level::Provinsi,
             organizerType: OrganizerType::YayasanLembaga,
             online: true,
@@ -234,6 +264,6 @@ final class LombaContohSeeder extends Seeder
         $path = (string) tempnam(sys_get_temp_dir(), 'sth-lomba-contoh-');
         file_put_contents($path, $pdf->bytes);
 
-        return new UploadedFile($path, self::JUKNIS_NAME, 'application/pdf', null, true);
+        return new UploadedFile($path, $juknisName, 'application/pdf', null, true);
     }
 }

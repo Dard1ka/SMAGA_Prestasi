@@ -132,6 +132,21 @@ New: `tests/Feature/Accounts/AdminStudentStatusActionsTest.php` (11), `tests/Fea
 No new package, no container change, no RoleSeeder run (`classroom.manage` and `user.archive` already exist), no asset
 build.
 
+## Demo lomba for a presentation (the lead, 5 Nov 2026)
+The lead: "Buatkan satu lomba dummy yang daftar dan selesainya hari ini untuk presentasi mulai dari cara daftar sampai
+upload hasil pada hari ini juga". `php artisan sth:lomba:demo` (`App\Console\Commands\DemoLombaCommand`) publishes
+"Lomba Demo Presentasi STH <tanggal> (Contoh)": LombaContohSeeder's fictional sample (now `publish()` with name, dates,
+audit `source` and bidang; the seeder itself writes what it wrote before) with registration opening and closing today
+(23:59), the one-day lomba today, individu, bidang **Sains** (a Riset laporan hasil also asks a research title, abstract
+and report PDF). The daily job opens the report window only the day after `final_on` (`AwaitReport`, 00:15), so
+`php artisan sth:lomba:demo --majukan`, run after Tata Usaha sends the surat tugas, moves THIS lomba's `surat_terbit`
+and `berlangsung` registrations to `menunggu_laporan` at once with the same Actions (reference date final_on + 1;
+their audit rows say `by` = scheduler). Refused in production. Tests: `tests/Feature/Console/DemoLombaCommandTest.php`
+and `DemoLombaFlowTest.php` (the whole flow on one frozen day: register → approve → both letters + Kirim → --majukan →
+certificate + photo → Verifikasi dan beri poin, 24 points). Before a presentation: an active Admin, the signature image
+(Admin › Pengaturan), a guru account, an active student with a talent choice. The lomba shows in every student's
+catalog until 23:59, a report mails Kesiswaan and Humas, and a verification gives real points on the public pages.
+
 ## Open questions for the lead
 1. **"Aktif" for a student who never activated** (D-180, *sementara*): the K1 window ends and the K3 freeze no longer
    applies (it covers pending accounts only), so until the student replaces it the birth-date initial password (D-173)
