@@ -433,24 +433,25 @@ function sv6SignatureBoxes(string $view, LetterContent $content, string $number)
     return $blocks;
 }
 
-it('makes the signature + stamp image 80 % of the SV7 size and moves it 17 pt left, so no line moves (SV8, D-194)', function (): void {
+it('gives the signature + stamp image one size on both letters and moves it 30 pt left, so no line moves (SV9, D-200)', function (): void {
     $siswa = m1aLayoutHtml('surat-tugas-siswa', m1aLayoutContent($this), '400.3.8/313/MRD/X/2026');
     $guru = m1aLayoutHtml('surat-perintah-tugas-guru', m1aLayoutContent($this), '400.3.8.6/1681/2026');
 
     // The boxes keep their heights (the guru letter's = the three empty lines of the school's signature space); the
-    // image is 80 % of SV7's (121.9 / 116 pt), pulled up by half of what it is taller than the box and 17 pt left.
+    // image is 92 pt on both letters (the same stamp), pulled up by half of what it is taller than the box and 30 pt left.
+    // The school found SV6's too small and SV7's (121.9 pt) too big.
     expect($siswa)->toContain('.s-ttd .gambar { height: 60.95pt; }')
-        ->toContain('.s-ttd .gambar img { height: 97.52pt; position: relative; top: -18.285pt; left: -17pt; }')
+        ->toContain('.s-ttd .gambar img { height: 92pt; position: relative; top: -15.525pt; left: -30pt; }')
         ->not->toContain('height: 121.9pt')
         ->and($guru)->toContain('.g-ttd .gambar { height: 44.67pt; }')
-        ->toContain('.g-ttd .gambar img { height: 92.8pt; position: relative; top: -24.065pt; left: -17pt; }')
+        ->toContain('.g-ttd .gambar img { height: 92pt; position: relative; top: -23.665pt; left: -30pt; }')
         ->not->toContain('height: 116pt')
         // one signature block on the guru letter: the Lampiran is gone
         ->and(substr_count($guru, 'class="g-ttd utuh"'))->toBe(1)
         ->and($guru)->not->toContain('g-ttd-lampiran');
 });
 
-it('lays the smaller signature + stamp over the lines around it in a real PDF, 17 pt left, the box and the lines unmoved (SV8, D-194)', function (string $view, string $number, float $box, float $image, bool $centred): void {
+it('lays the signature + stamp over the lines around it in a real PDF, 30 pt left, the box and the lines unmoved (SV9, D-200)', function (string $view, string $number, float $box, float $image, bool $centred): void {
     $found = sv6SignatureBoxes($view, m1aLayoutContent($this), $number);
 
     expect($found)->toHaveCount(1);
@@ -464,22 +465,22 @@ it('lays the smaller signature + stamp over the lines around it in a real PDF, 1
     // the reserved box and the name under it stay where they were
     expect($gambarH)->toEqualWithDelta($box, 0.01)
         ->and($nama[1])->toEqualWithDelta($gambarY + $box, 0.01)
-        // the image: 80 % of SV7, 2:1 like the sample, half of the difference above the box and half below it
+        // the image: 92 pt on both letters, 2:1 like the sample, half of the difference above the box and half below it
         ->and($imgH)->toEqualWithDelta($image, 0.01)
         ->and($imgW)->toEqualWithDelta($image * 2, 0.05)
         ->and($imgY)->toEqualWithDelta($gambarY - $grow, 0.01)
         ->and($imgY + $imgH)->toEqualWithDelta($gambarY + $box + $grow, 0.01)
-        // 17 pt to the left of where SV7 put it: the student letter's middle, the guru letter's left edge
-        ->and($centred ? $imgX + $imgW / 2 : $imgX)->toEqualWithDelta($centred ? $blockX + $blockW / 2 - 17 : $blockX - 17, 0.01)
+        // 30 pt to the left of the student letter's middle and of the guru letter's left edge
+        ->and($centred ? $imgX + $imgW / 2 : $imgX)->toEqualWithDelta($centred ? $blockX + $blockW / 2 - 30 : $blockX - 30, 0.01)
         // never off the A4 page
         ->and($imgX)->toBeGreaterThan(20)
         ->and($imgX + $imgW)->toBeLessThanOrEqual(595.28 - 20);
 })->with([
-    'siswa' => ['surat-tugas-siswa', '400.3.8/313/MRD/X/2026', 60.95, 97.52, true],
-    'guru' => ['surat-perintah-tugas-guru', '400.3.8.6/1681/2026', 44.67, 92.8, false],
+    'siswa' => ['surat-tugas-siswa', '400.3.8/313/MRD/X/2026', 60.95, 92.0, true],
+    'guru' => ['surat-perintah-tugas-guru', '400.3.8.6/1681/2026', 44.67, 92.0, false],
 ]);
 
-it('lays the dashed placeholder of the TU preview over the lines around its slot like the image (SV8, D-194)', function (string $ttd, string $slotHeight, array $boxClasses): void {
+it('lays the dashed placeholder of the TU preview over the lines around its slot like the image (SV9, D-200)', function (string $ttd, string $slotHeight, array $boxClasses): void {
     $html = view('livewire.tata-usaha.partials.ttd', ['ttd' => $ttd, 'content' => m1aLayoutContent($this)])->render();
     $dom = new DOMDocument;
     @$dom->loadHTML('<?xml encoding="utf-8"?>'.$html);
@@ -498,10 +499,9 @@ it('lays the dashed placeholder of the TU preview over the lines around its slot
         ->not->toContain($slotHeight)
         ->and($html)->not->toContain('style=');
 })->with([
-    // 97.52 pt = 92 px high, a 2:1 image 183 px wide, centred 16 px (17 pt) left of the middle
-    'siswa' => ['siswa', 'h-[52px]', ['inset-x-0', 'mx-auto', '-top-5', '-bottom-5', 'w-[183px]', '-translate-x-4']],
-    // the three empty lines (42 px), 92.8 pt = 87 px high, 16 px left of the text
-    'guru' => ['guru', 'h-[42px]', ['left-0', '-top-[22.5px]', '-bottom-[22.5px]', 'w-[174px]', '-translate-x-4']],
+    // 92 pt = 87 px high on both letters, a 2:1 image 174 px wide, 28 px (30 pt) left of the middle / of the text
+    'siswa' => ['siswa', 'h-[52px]', ['inset-x-0', 'mx-auto', '-top-[17.5px]', '-bottom-[17.5px]', 'w-[174px]', '-translate-x-7']],
+    'guru' => ['guru', 'h-[42px]', ['left-0', '-top-[22.5px]', '-bottom-[22.5px]', 'w-[174px]', '-translate-x-7']],
     // a guru letter printed before D-194 keeps the preview of SV6
     'guru letter printed before' => ['lampiran', 'h-[52px]', ['inset-x-0', '-top-2', '-bottom-2']],
 ]);

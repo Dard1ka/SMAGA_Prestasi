@@ -255,10 +255,10 @@ it('renders the guru letter on one page at the places measured on the school\'s 
 
     expect($found['pages'])->toBe(1);
 
-    // Kop: both emblems where the school's PDF has them, the rule from x 78.85 to 552.6 pt at 114.99 pt.
+    // Kop: both emblems where the school's PDF has them, the rule from the left emblem's edge (55.2) to the right emblem's edge (577.45 pt) at 114.99 pt (SV9, D-200).
     $at($found['img']['Lambang Provinsi Jawa Tengah'], [55.2, 23.8, 81.7, 85.05]);
     $at($found['img']['Lambang SMA Negeri 3 Semarang'], [513.6, 26.35, 63.85, 85.05]);
-    $at($found['class']['kop-garis-g'], [78.85, 114.99, 473.75]);
+    $at($found['class']['kop-garis-g'], [55.2, 114.99, 522.25]);
     // Titles centred on their own axes (311.13, 308.53 and 326.74 pt).
     $centre = static fn (array $box): float => round($box[0] + $box[2] / 2, 2);
     expect($centre($found['class']['g-judul']))->toEqualWithDelta(311.13, 0.01)

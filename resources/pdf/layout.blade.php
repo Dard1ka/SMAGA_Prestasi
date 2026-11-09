@@ -19,10 +19,11 @@
     SV6, D-183 (lead, 2026-11-05: "Stempel tanda tangan … dibesarkan sedikit, nabrak atau kena tulisan gpp"), made
     bigger on 5 Nov 2026 (SV7, D-189: "tanda tangan di PDF surat tugas tolong dibesarkan, kena kata-kata tidak apa-apa")
     and a little smaller and further left again on 9 Nov 2026 (SV8, D-194: "tanda tangan kebesaran, dikecilin sedikit.
-    Ttd sama stempelnya juga digeser agak ke kiri"): the signature + stamp image is 80 % of the SV7 size (student letter
-    121.9 → 97.52 pt, guru letter 116 → 92.8 pt), taller than its reserved box (.gambar) and pulled up by half the
-    difference with position: relative, so it overlaps the line above and the name below equally, and 17 pt to the left
-    of where SV7 put it in its block. The boxes keep the letters' heights (the guru letter's is the three empty lines
+    Ttd sama stempelnya juga digeser agak ke kiri"), made one size on both letters on 9 Nov 2026 (SV9, D-200: the same
+    stamp, the school found SV6's too small and SV7's 121.9 pt too big): the signature + stamp image is 92 pt high on the
+    student and the guru letter, taller than its reserved box (.gambar) and pulled up by half the difference with
+    position: relative, so it overlaps the line above and the name below equally, and 30 pt to the left of the student
+    block's middle and of the guru block's left edge. The boxes keep the letters' heights (the guru letter's is the three empty lines
     of the school's signature space): no line moves and the page count stays. Paint order: the image covers the line
     above, the name is drawn over the image (a stamp image needs a transparent background). Width follows the image's
     ratio; at 2:1 it fits the block, a much wider image runs into the right margin.
@@ -77,7 +78,7 @@
         .kop-g .kop-rinci { padding-top: 0.84pt; }
         .kop-g .kop-4 { font-size: 9pt; line-height: 10.221pt; }
         .kop-g .tautan { color: #00f; border-bottom: 0.6pt solid #00f; }
-        .kop-garis-g { margin-left: 23.65pt; width: 473.75pt; }
+        .kop-garis-g { margin-left: 0; width: 522.25pt; } /* SV9, D-200: from the left emblem's edge to the right one's */
 
         /* The sheet carries the kop as one picture, 473 pt wide: the same kop, smaller, logos inside the rule.
            473 pt is also the width of the page between the margins, so the kop and every block below it are centred.
@@ -132,7 +133,7 @@
         /* SV8, D-194: the box = the three empty lines of the school's signature space; the image 80 % of SV7's 116 pt,
            centred on the box, 17 pt left of the text. */
         .g-ttd .gambar { height: 44.67pt; }
-        .g-ttd .gambar img { height: 92.8pt; position: relative; top: -24.065pt; left: -17pt; }
+        .g-ttd .gambar img { height: 92pt; position: relative; top: -23.665pt; left: -30pt; }
 
         /* Surat Tugas (siswa). */
         .siswa { font-size: 11pt; line-height: 15.95pt; }
@@ -178,7 +179,7 @@
         /* SV8, D-194: the image 80 % of SV7's (D-189: 121.9 pt, twice the box) = 97.52 pt, half of the 36.57 pt it is
            taller than its box above it, and 17 pt to the left of the block's middle. */
         .s-ttd .gambar { height: 60.95pt; }
-        .s-ttd .gambar img { height: 97.52pt; position: relative; top: -18.285pt; left: -17pt; }
+        .s-ttd .gambar img { height: 92pt; position: relative; top: -15.525pt; left: -30pt; }
         .s-ttd .nama { font-weight: bold; text-decoration: underline; }
 
         /* Verification QR + code: small, bottom-left, on every page. */
