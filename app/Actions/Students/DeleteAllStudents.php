@@ -64,6 +64,8 @@ final class DeleteAllStudents
         'report_files',
         'reports',
         'letters',
+        // SV8, D-199: the revisions of the registrations (ids of students and accounts only).
+        'registration_revisions',
         'registration_reminders',
         'registration_members',
         'registrations',

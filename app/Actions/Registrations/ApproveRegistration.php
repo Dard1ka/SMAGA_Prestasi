@@ -41,6 +41,9 @@ final class ApproveRegistration
 
     public const MSG_MENTOR = 'Guru ini tidak bisa dipilih. Pilih guru lain.';
 
+    /** SV8, D-199: the ketua invited new anggota while the registration waited for the decision (ChangeRegistration). */
+    public const MSG_BACK_TO_MEMBERS = 'Ketua tim mengubah pendaftaran ini, jadi pendaftaran menunggu konfirmasi anggota baru dulu.';
+
     public function __construct(private readonly RegistrationStateMachine $stateMachine) {}
 
     /**
@@ -127,9 +130,11 @@ final class ApproveRegistration
     {
         if ($registration->status !== RegistrationStatus::MenungguKepsek) {
             throw ValidationException::withMessages([
-                'registration' => $registration->status === RegistrationStatus::Dibatalkan
-                    ? 'Pendaftaran ini sudah dibatalkan siswa.'
-                    : 'Pendaftaran ini sudah diputuskan.',
+                'registration' => match ($registration->status) {
+                    RegistrationStatus::Dibatalkan => 'Pendaftaran ini sudah dibatalkan siswa.',
+                    RegistrationStatus::MenungguKonfirmasi => self::MSG_BACK_TO_MEMBERS,
+                    default => 'Pendaftaran ini sudah diputuskan.',
+                },
             ]);
         }
     }
@@ -166,15 +171,26 @@ final class ApproveRegistration
     /**
      * Did the approver put another guru in the place of the student's choice when approving (D-132)? Read from the audit
      * row of that decision: a screen says "Ditetapkan <peran>" (StaffRoleLabel, D-150) only then.
+     * SV8, D-198: Kesiswaan may set the guru apart from the approval (ChangeMentor, `source` kesiswaan). Only the LATEST
+     * change counts, and only when it was the approval's: the approver did not choose a guru Kesiswaan set before or
+     * after the decision.
      */
     public static function mentorWasReplaced(Registration $registration): bool
     {
-        return $registration->principal_decided_at !== null
-            && Activity::query()
-                ->where('event', self::EVENT_MENTOR_CHANGED)
-                ->where('subject_type', $registration->getMorphClass())
-                ->where('subject_id', $registration->getKey())
-                ->exists();
+        if ($registration->principal_decided_at === null) {
+            return false;
+        }
+
+        $latest = Activity::query()
+            ->where('event', self::EVENT_MENTOR_CHANGED)
+            ->where('subject_type', $registration->getMorphClass())
+            ->where('subject_id', $registration->getKey())
+            ->latest('id')
+            ->first();
+
+        // SV8, D-199: the approval's row has no `source`; Kesiswaan (ChangeMentor::SOURCE), the ketua before the approval
+        // (ChangeRegistration::MENTOR_SOURCE) and an approved revision (ApproveRevision::MENTOR_SOURCE) write one.
+        return $latest !== null && ($latest->properties['source'] ?? null) === null;
     }
 
     /**

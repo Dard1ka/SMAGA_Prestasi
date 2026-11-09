@@ -123,8 +123,13 @@
             {{-- Surat tugas --}}
             <x-sth.card as="section" aria-labelledby="h-surat" class="flex flex-col gap-3">
                 <x-sth.page-header id="h-surat" title="Surat tugas" :level="3" />
+                @if ($guruLetterStale)
+                    <p class="m-0 text-sm text-muted">{{ $guruLetterStale }}</p>
+                @endif
                 @if ($letters === [])
-                    <p class="m-0 text-sm text-muted">Surat muncul di sini setelah Tata Usaha mengirimnya.</p>
+                    @unless ($guruLetterStale)
+                        <p class="m-0 text-sm text-muted">Surat muncul di sini setelah Tata Usaha mengirimnya.</p>
+                    @endunless
                 @else
                     <ul class="m-0 flex list-none flex-col gap-2 p-0">
                         @foreach ($letters as $letter)

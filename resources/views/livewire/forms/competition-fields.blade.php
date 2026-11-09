@@ -77,7 +77,7 @@
         <div class="grid grid-cols-1 items-start gap-4 sm:grid-cols-[1fr_140px]">
             <x-sth.segmented wire:model.live="form.participation" label="Peserta" block :options="$options['participation']" />
             @if ($form->allowsTeams())
-                <x-sth.input type="number" wire:model="form.max_team_size" label="Maks anggota" min="2" max="20" inputmode="numeric" />
+                <x-sth.input type="number" wire:model="form.max_team_size" label="Maks anggota" min="2" :max="\App\Models\Competition::MAX_TEAM_SIZE" inputmode="numeric" />
             @endif
         </div>
         @if ($staff)

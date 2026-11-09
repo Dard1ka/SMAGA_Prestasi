@@ -29,6 +29,12 @@ use Illuminate\Validation\ValidationException;
  * the invitation's Nomor and Tanggal (`siswa_basis`). A saved template without `siswa_dasar` takes the built-in
  * text; a letter printed with `siswa_basis` keeps it in $oldSiswaBasis, so its preview still shows what it printed.
  *
+ * SV8, D-195 (lead, 2026-11-09: "dasarnya baru bisa 1. Dibuat bisa lebih dari 1 kayak surat guru"): the student "Dasar"
+ * is a list of 1 to SISWA_DASAR_MAX regulation texts, stored in the fixed fields of SISWA_DASAR (`siswa_dasar` = number
+ * 1, then `siswa_dasar_2` …, built-in text: empty). Saving closes the gaps (an empty text is dropped and the rest move
+ * up), so at least the first one is required. A template saved before, and every letter printed before
+ * (letters.printed, D-108), has only `siswa_dasar`: the others read as empty, so it is the one-item list it printed.
+ *
  * Version 0 = the built-in defaults below (no row yet, or the seeded null row); every saved change is a new version
  * (UpdateLetterTemplate, audited `letter_template.updated` with a full snapshot of the values).
  */
@@ -48,6 +54,31 @@ final readonly class LetterTemplate
     private const GURU_BASIS_HINT = 'Peraturan yang berlaku tahun ini. Boleh kosong: nomor berikutnya naik. Surat undangan selalu jadi nomor terakhir.';
 
     /**
+     * SV8, D-194: the layouts of the guru letter (Surat Perintah Tugas). New letters print GURU_LAYOUT (body in
+     * resources/pdf/partials/guru-<layout>.blade.php, TU preview in tata-usaha/partials/pratinjau-guru-<layout>), and it
+     * is stored with the letter (toArray(), `guru_layout`). A letter printed before stores none: fromArray() reads it as
+     * GURU_LAYOUT_LAMPIRAN (M1-A: "Kepada … Terlampir" and a Lampiran page), so its preview stays what it printed (D-108).
+     * Another version from the school = one more key here, its two partials and its CSS.
+     */
+    public const GURU_LAYOUT_LAMPIRAN = 'lampiran';
+
+    /** SV8, D-194: the school's example of 2026-11-09, one page, the one guru right under "Kepada". */
+    public const GURU_LAYOUT_LANGSUNG = 'langsung';
+
+    public const GURU_LAYOUT = self::GURU_LAYOUT_LANGSUNG;
+
+    /** @var list<string> */
+    public const GURU_LAYOUTS = [self::GURU_LAYOUT_LAMPIRAN, self::GURU_LAYOUT_LANGSUNG];
+
+    private const SISWA_DASAR_HINT = 'Peraturan yang berlaku tahun ini. Tertulis di surat siswa sesudah "Dasar :".';
+
+    /** The student letter's Dasar texts in print order (SV8, D-195): number 1 is the old single field. */
+    public const SISWA_DASAR = ['siswa_dasar', 'siswa_dasar_2', 'siswa_dasar_3', 'siswa_dasar_4', 'siswa_dasar_5', 'siswa_dasar_6'];
+
+    /** At most this many student Dasar texts in the template (the invitation of a letter comes on top). */
+    public const SISWA_DASAR_MAX = 6;
+
+    /**
      * field => [label, max length, required, allowed placeholders, default, hint].
      *
      * @var array<string, array{0: string, 1: int, 2: bool, 3: list<string>, 4: string, 5: string}>
@@ -62,7 +93,12 @@ final readonly class LetterTemplate
         'school_name' => ['Nama sekolah di isi surat', 100, true, [], 'SMA Negeri 3 Semarang', 'Dipakai untuk kode {sekolah}.'],
         'city' => ['Tempat surat', 60, true, [], 'Semarang', 'Tertulis sebelum tanggal surat.'],
         'signer_title' => ['Jabatan penandatangan', 60, true, [], 'Kepala Sekolah', 'Di atas tanda tangan.'],
-        'siswa_dasar' => ['Surat siswa: Dasar', 600, true, ['{sekolah}', '{tahun_ajaran}'], 'Peraturan Menteri Pendidikan Dasar dan Menengah Republik Indonesia Nomor 8 Tahun 2026 Hal : Penggunaan Dana BOS Kinerja bagi sekolah yang memiliki prestasi', 'Peraturan yang berlaku tahun ini. Tertulis di surat siswa sesudah "Dasar :".'],
+        'siswa_dasar' => ['Surat siswa: Dasar nomor 1', 600, true, ['{sekolah}', '{tahun_ajaran}'], 'Peraturan Menteri Pendidikan Dasar dan Menengah Republik Indonesia Nomor 8 Tahun 2026 Hal : Penggunaan Dana BOS Kinerja bagi sekolah yang memiliki prestasi', self::SISWA_DASAR_HINT],
+        'siswa_dasar_2' => ['Surat siswa: Dasar nomor 2', 600, false, ['{sekolah}', '{tahun_ajaran}'], '', self::SISWA_DASAR_HINT],
+        'siswa_dasar_3' => ['Surat siswa: Dasar nomor 3', 600, false, ['{sekolah}', '{tahun_ajaran}'], '', self::SISWA_DASAR_HINT],
+        'siswa_dasar_4' => ['Surat siswa: Dasar nomor 4', 600, false, ['{sekolah}', '{tahun_ajaran}'], '', self::SISWA_DASAR_HINT],
+        'siswa_dasar_5' => ['Surat siswa: Dasar nomor 5', 600, false, ['{sekolah}', '{tahun_ajaran}'], '', self::SISWA_DASAR_HINT],
+        'siswa_dasar_6' => ['Surat siswa: Dasar nomor 6', 600, false, ['{sekolah}', '{tahun_ajaran}'], '', self::SISWA_DASAR_HINT],
         'siswa_intro' => ['Surat siswa: kalimat pembuka', 200, true, ['{sekolah}'], 'Kepala {sekolah} memberikan tugas kepada :', ''],
         'siswa_closing' => ['Surat siswa: kalimat penutup', 500, true, ['{sekolah}'], 'Demikian surat tugas ini dibuat dan diberikan kepada yang bersangkutan untuk dapat dilaksanakan sebagaimana mestinya dengan penuh tanggung jawab.', ''],
         'guru_basis_1' => ['Surat guru: Dasar nomor 1', 600, false, ['{sekolah}', '{tahun_ajaran}'], 'Peraturan Daerah Provinsi Jawa Tengah Nomor 11 Tahun 2025 tentang Anggaran Pendapatan Daerah dan Belanja Daerah Tahun Anggaran 2026 (Lembaran Daerah Provinsi Jawa Tengah Tahun 2025 Nomor 11, Tambahan Lembaran Provinsi Jawa Tengah Nomor 173) (tanggal 30 Desember 2025);', self::GURU_BASIS_HINT],
@@ -75,6 +111,7 @@ final readonly class LetterTemplate
     /**
      * @param  array<string, string>  $values  every key of FIELDS
      * @param  string|null  $oldSiswaBasis  only from fromArray(): the `siswa_basis` text of a letter printed before D-154
+     * @param  string  $guruLayout  one of GURU_LAYOUTS (SV8, D-194); only fromArray() passes another than GURU_LAYOUT
      */
     public function __construct(
         public int $version,
@@ -82,6 +119,7 @@ final readonly class LetterTemplate
         public ?string $updatedAt = null,
         public ?string $updatedByName = null,
         public ?string $oldSiswaBasis = null,
+        public string $guruLayout = self::GURU_LAYOUT,
     ) {}
 
     /** @return array<string, string> */
@@ -119,7 +157,10 @@ final readonly class LetterTemplate
             ? self::clean($values[self::OLD_SISWA_BASIS])
             : null;
 
-        return new self($data['version'], self::merge($values), oldSiswaBasis: $old);
+        // SV8, D-194: a letter printed before the layout was stored has the M1-A guru letter with its Lampiran page.
+        $guruLayout = in_array($data['guru_layout'] ?? null, self::GURU_LAYOUTS, true) ? $data['guru_layout'] : self::GURU_LAYOUT_LAMPIRAN;
+
+        return new self($data['version'], self::merge($values), oldSiswaBasis: $old, guruLayout: $guruLayout);
     }
 
     /** An unsaved draft (TU preview): same merge, no validation. */
@@ -140,6 +181,9 @@ final readonly class LetterTemplate
     {
         $errors = [];
         $values = [];
+        // SV8, D-195: the student Dasar list has no gaps, an empty text is dropped and the next ones move up (number 1
+        // stays required, so an all-empty list is refused on `siswa_dasar`).
+        $input = self::withSiswaDasar($input, self::siswaDasarTexts($input));
 
         foreach (self::FIELDS as $field => [$label, $max, $required, $allowed]) {
             $value = self::clean($input[$field] ?? '');
@@ -167,7 +211,47 @@ final readonly class LetterTemplate
     /** Name of a field for TU (version history); the old student Dasar of saved versions before D-154 too. */
     public static function label(string $field): string
     {
-        return self::FIELDS[$field][0] ?? ($field === self::OLD_SISWA_BASIS ? self::FIELDS['siswa_dasar'][0] : $field);
+        return self::FIELDS[$field][0] ?? ($field === self::OLD_SISWA_BASIS ? 'Surat siswa: Dasar' : $field);
+    }
+
+    /**
+     * The non-empty student Dasar texts of a set of values, in print order, cleaned (codes not filled yet).
+     *
+     * @param  array<string, mixed>  $values
+     * @return list<string>
+     */
+    public static function siswaDasarTexts(array $values): array
+    {
+        $texts = [];
+
+        foreach (self::SISWA_DASAR as $field) {
+            $text = self::clean($values[$field] ?? '');
+
+            if ($text !== '') {
+                $texts[] = $text;
+            }
+        }
+
+        return $texts;
+    }
+
+    /**
+     * $values with the student Dasar fields set to $texts in order (the first text is number 1) and the rest empty;
+     * texts beyond SISWA_DASAR_MAX are dropped. Every other field stays as it is.
+     *
+     * @param  array<string, mixed>  $values
+     * @param  list<string>  $texts
+     * @return array<string, mixed>
+     */
+    public static function withSiswaDasar(array $values, array $texts): array
+    {
+        $texts = array_values($texts);
+
+        foreach (self::SISWA_DASAR as $index => $field) {
+            $values[$field] = $texts[$index] ?? '';
+        }
+
+        return $values;
     }
 
     public function get(string $field): string
@@ -202,10 +286,25 @@ final readonly class LetterTemplate
         return $this->get('signer_title');
     }
 
-    /** The student letter's "Dasar" (D-154): the regulation text of the template. */
-    public function siswaDasar(string $schoolYear): string
+    /**
+     * The student letter's "Dasar" texts of the template (D-154; a list since SV8, D-195), codes filled, empty ones
+     * skipped. LetterContent::siswaBasis() puts the invitation of a letter after them.
+     *
+     * @return list<string>
+     */
+    public function siswaDasarItems(string $schoolYear): array
     {
-        return $this->fill('siswa_dasar', ['{tahun_ajaran}' => $schoolYear]);
+        $items = [];
+
+        foreach (self::SISWA_DASAR as $field) {
+            $text = $this->fill($field, ['{tahun_ajaran}' => $schoolYear]);
+
+            if ($text !== '') {
+                $items[] = $text;
+            }
+        }
+
+        return $items;
     }
 
     /**
@@ -258,10 +357,30 @@ final readonly class LetterTemplate
         return $this->fill('guru_closing');
     }
 
-    /** @return array{version: int, values: array<string, string>} */
+    /**
+     * SV8, D-194: a kop line in pieces for the guru letter, which prints the host of a web address ("sman3-smg.sch.id"
+     * after "https://") blue and underlined as the school's letter does; everything else, the scheme and the comma
+     * after it included, is plain. A line without an address is one plain piece.
+     *
+     * @return list<array{text: string, link: bool}>
+     */
+    public static function kopLineParts(string $line): array
+    {
+        $pieces = preg_split('~(?<=https://|http://)([^\s,;]+?)(?=[.,;]?(?:\s|$))~u', $line, -1, PREG_SPLIT_DELIM_CAPTURE | PREG_SPLIT_NO_EMPTY) ?: [$line];
+        $parts = [];
+
+        foreach ($pieces as $index => $piece) {
+            // A host is the piece right after one that ends with the scheme.
+            $parts[] = ['text' => $piece, 'link' => preg_match('~https?://$~u', $pieces[$index - 1] ?? '') === 1];
+        }
+
+        return $parts;
+    }
+
+    /** @return array{version: int, values: array<string, string>, guru_layout: string} */
     public function toArray(): array
     {
-        return ['version' => $this->version, 'values' => $this->values];
+        return ['version' => $this->version, 'values' => $this->values, 'guru_layout' => $this->guruLayout];
     }
 
     /** @param array<string, string> $extra */

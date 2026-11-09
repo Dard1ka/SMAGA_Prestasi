@@ -2,7 +2,9 @@
     Letterhead of both letters, as on the school's own files (M1-A): Pemprov Jawa Tengah emblem left, school
     emblem right (resources/pdf/assets, inside the dompdf chroot), the lines of the TU letter template in the
     middle (App\Actions\Templates\LetterTemplate, plain text, escaped), then a thick + thin rule.
-    Vars: $kop ('guru' | 'siswa': sizes and offsets in layout.blade.php) · $tpl / $letterTemplate (optional)
+    Since SV8, D-194 the guru letter has its own kop after the school's PDF (partials/kop-guru), so this one is the
+    student letter's.
+    Vars: $kop ('siswa': sizes and offsets in layout.blade.php) · $tpl / $letterTemplate (optional)
 --}}
 @php($tpl ??= $letterTemplate ?? \App\Actions\Templates\LetterTemplate::current())
 <table class="kop kop-{{ $kop }}">

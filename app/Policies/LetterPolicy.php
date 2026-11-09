@@ -4,17 +4,20 @@ declare(strict_types=1);
 
 namespace App\Policies;
 
+use App\Actions\Registrations\ApproveRegistration;
 use App\Enums\LetterType;
 use App\Enums\Permission;
 use App\Enums\RegistrationStatus;
 use App\Models\Letter;
 use App\Models\Registration;
 use App\Models\User;
+use Spatie\Activitylog\Models\Activity;
 
 /**
  * Surat tugas (D-06, SECURITY §3g, UI-MAP #21). Deny by default; letters are immutable (no update/delete).
  * - staff with `letter.view` (TU, Kepala Sekolah, Kesiswaan, Admin) see every letter;
- * - after sending, team members see the siswa letter, the guru pembimbing sees both;
+ * - after sending, team members see the siswa letter, the guru pembimbing sees both; the guru letter only while it
+ *   names that guru (namesCurrentMentor(): no guru change since it was generated; SV8, 2026-11-09);
  * - only `letter.generate` issues letters, one letter type at a time, only for `disetujui` registrations
  *   that do not have that letter yet (checked again inside IssueLetters under a row lock); only `letter.send`
  *   sends them, once every required letter exists.
@@ -55,7 +58,9 @@ class LetterPolicy
         }
 
         if ($registration->mentor_id !== null && (int) $registration->mentor_id === (int) $user->getKey()) {
-            return true;
+            // SV8: the guru letter prints its guru's NIP, pangkat and jabatan. After a guru change it names the guru
+            // before, so the new guru gets it only from Tata Usaha's Koreksi (the next version, generated later).
+            return self::namesCurrentMentor($letter);
         }
 
         if ($letter->type !== LetterType::Siswa) {
@@ -69,6 +74,33 @@ class LetterPolicy
             ->whereNotNull('confirmed_at')
             ->whereNull('declined_at')
             ->exists();
+    }
+
+    /**
+     * SV8 (2026-11-09): whether a letter still names the guru pembimbing its registration has now. Only the guru letter
+     * prints a guru (name, NIP, pangkat, jabatan), and a letter is never edited: after a guru change (Kesiswaan, D-198;
+     * an approved revision, D-199; audit `registration.mentor_changed`) logged at or after the moment the letter was
+     * generated, it names the guru before until Tata Usaha's Koreksi issues the next version from the current data. A
+     * change in the same second counts as later (the letter is withheld rather than shown to the wrong guru). Always
+     * true for the student letter (it names no guru). One query on the activity log's subject index. view() uses it for
+     * the guru pembimbing, and so does every screen that lists a guru letter to the guru or names its guru (Guru › detail
+     * binaan, the student's "Surat tugas" card), so no link there leads to a 403.
+     */
+    public static function namesCurrentMentor(Letter $letter): bool
+    {
+        if ($letter->type !== LetterType::Guru) {
+            return true;
+        }
+
+        $since = $letter->generated_at ?? $letter->created_at;
+
+        return $since !== null && Activity::query()
+            ->where('log_name', 'registration')
+            ->where('event', ApproveRegistration::EVENT_MENTOR_CHANGED)
+            ->where('subject_type', (new Registration)->getMorphClass())
+            ->where('subject_id', (string) $letter->registration_id)
+            ->where('created_at', '>=', $since)
+            ->doesntExist();
     }
 
     /**

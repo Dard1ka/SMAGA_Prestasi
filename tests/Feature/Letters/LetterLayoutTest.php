@@ -113,9 +113,13 @@ it('words the activity, the ranges and the guru letter texts like the school fil
         ->and($content->dateRange())->toBe(['7 November 2026', '9 November 2026'])
         ->and($content->timeRange())->toBe(['07.00 WIB', 'Selesai'])
         ->and($content->guruBasis())->toBe('Surat dari Panitia NSIF 2026 Nomor 012/NSIF/IX/2026 Tanggal 15 September 2026 Hal Undangan')
-        ->and($content->guruTask())->toBe('Melaksanakan tugas kegiatan mendampingi siswa Lomba National Science and Invention Fair (NSIF) 2026'
+        // SV8, D-194: the school's letter of 2026-11-09 names the kegiatan itself (bold on the PDF)
+        ->and($content->guruTask())->toBe('Melaksanakan tugas kegiatan National Science and Invention Fair (NSIF) 2026'
             .' pada hari Sabtu tanggal 7 November 2026 s.d 9 November 2026, Pukul 07.00 WIB s.d Selesai di Gedung Serbaguna Universitas Contoh')
-        // the year at the end of the lomba name moves to the second line of the Lampiran title
+        // the M1-A wording, for the preview of a guru letter printed before D-194
+        ->and($content->guruTask(LetterTemplate::GURU_LAYOUT_LAMPIRAN))->toBe('Melaksanakan tugas kegiatan mendampingi siswa Lomba National Science and Invention Fair (NSIF) 2026'
+            .' pada hari Sabtu tanggal 7 November 2026 s.d 9 November 2026, Pukul 07.00 WIB s.d Selesai di Gedung Serbaguna Universitas Contoh')
+        // the year at the end of the lomba name moves to the second line of the (M1-A) Lampiran title
         ->and($content->attachmentTitle())->toBe(['DAFTAR PENDAMPING LOMBA NATIONAL SCIENCE AND INVENTION FAIR (NSIF)', 'TAHUN 2026']);
 
     $single = m1aLayoutContent($this, ['Hana Safira'], m1aLayoutDraft('7 November 2026', 'Daring'));
@@ -270,7 +274,7 @@ it('gives the student letter one Dasar row and the kop measures of the school le
 
     // The Dasar text of the template takes the school year code.
     $tpl = LetterTemplate::draft(['siswa_dasar' => 'Program {sekolah} {tahun_ajaran}']);
-    expect($tpl->siswaDasar('2026/2027'))->toBe('Program SMA Negeri 3 Semarang 2026/2027');
+    expect($tpl->siswaDasarItems('2026/2027'))->toBe(['Program SMA Negeri 3 Semarang 2026/2027']);
 
     // With the invitation: still one "Dasar" label, beside it a numbered list of the two texts (D-157).
     $numbered = m1aLayoutHtml('surat-tugas-siswa', m1aLayoutContent($this, ['Citra Ayu Lestari']), '400.3.8/314/MRD/X/2026');
@@ -284,33 +288,28 @@ it('gives the student letter one Dasar row and the kop measures of the school le
         ->and($numbered)->toContain('.s-daftar .n { width: 16pt; }');
 });
 
-it('lays the guru letter out like the school Word file, "Kepada" stacked with its colons', function (): void {
+it('lays the guru letter out after the school\'s PDF: one guru under "Kepada", no Lampiran (SV8, D-194)', function (): void {
+    // The details and the measures are in GuruLetterTest.
     $html = m1aLayoutHtml('surat-perintah-tugas-guru', m1aLayoutContent($this), '400.3.8.6/1681/2026');
     $flat = (string) preg_replace('/\s+/', ' ', $html);
 
     expect($html)->toContain('<div class="g-judul">SURAT PERINTAH TUGAS</div>')
-        ->toContain('<div class="g-judul">Nomor 400.3.8.6/1681/2026</div>')
+        ->toContain('<div class="g-nomor">Nomor 400.3.8.6/1681/2026</div>')
         ->toContain('Peraturan Daerah Provinsi Jawa Tengah Nomor 11 Tahun 2025')
-        ->toContain('<td class="n">4.</td><td class="rata">Surat dari Panitia NSIF 2026 Nomor 012/NSIF/IX/2026 Tanggal 15 September 2026 Hal Undangan</td>')
         ->toContain('MEMERINTAHKAN:')
-        ->toContain('kurung-kurawal.svg')
         ->toContain('Melaporkan hasil pelaksanaan tugas kepada pejabat pemberi tugas.')
         ->toContain('Perintah ini dilaksanakan dengan penuh tanggung jawab.')
-        ->toContain('Lampiran Surat Tugas Kepala SMA Negeri 3 Semarang')
-        ->toContain('DAFTAR PENDAMPING LOMBA NATIONAL SCIENCE AND INVENTION FAIR (NSIF)')
-        ->toContain('TAHUN 2026')
-        ->toContain(': Hendra Kusuma, S.Pd., M.Si.')
-        ->toContain(': 198001012005011001')
-        ->toContain('Kepala SMA Negeri 3 Semarang')
-        ->toContain('@page { margin: 15.3pt 24.5pt 15.3pt 41.05pt; }')
-        // the old one-line form is gone
-        ->not->toContain('Nama/Pangkat/Gol/NIP/Jabatan');
+        ->toContain('@page { margin: 23.8pt 17.83pt 15.3pt 55.2pt; }')
+        ->not->toContain('kurung-kurawal.svg')
+        ->not->toContain('Terlampir')
+        ->not->toContain('Lampiran Surat Tugas')
+        ->not->toContain('DAFTAR PENDAMPING');
 
-    // "Kepada": four rows, each label with its own colon, "Terlampir" on the second.
-    expect($flat)->toContain('<td class="k">Kepada</td> <td class="s">:</td> <td class="n">1.</td> <td class="label">Nama</td> <td class="titik">:</td>')
-        ->toContain('<td class="label">Pangkat/Gol</td> <td class="titik">:</td> <td class="lampir">Terlampir</td>')
-        ->toContain('<td class="label">NIP</td> <td class="titik">:</td>')
-        ->toContain('<td class="label">Jabatan</td> <td class="titik">:</td>');
+    // The invitation is Dasar 4; the guru stands right under "Kepada", each label with its own colon.
+    expect($flat)->toContain('<td class="n">4.</td> <td class="isi"><div class="baris"')
+        ->toContain('Surat dari Panitia NSIF 2026 Nomor 012/NSIF/IX/2026')
+        ->toContain('<td class="k">Kepada</td><td class="s">:</td><td class="n">1.</td><td class="label">Nama</td><td class="titik">:</td><td class="nilai">Hendra Kusuma, S.Pd., M.Si.</td>')
+        ->toContain('<td class="label">NIP</td><td class="titik">:</td><td class="nilai">198001012005011001</td>');
 });
 
 // Real PDFs ------------------------------------------------------------------------------------------
@@ -325,15 +324,15 @@ it('renders the student letter on one page for a team of three and for one stude
     'one student' => [['Hana Safira']],
 ]);
 
-it('renders the guru letter on two pages: the letter and its Lampiran', function (): void {
+it('renders the guru letter on one page, without the Lampiran (SV8, D-194)', function (): void {
     $document = m1aLayoutPdf('surat-perintah-tugas-guru', m1aLayoutContent($this), '400.3.8.6/1681/2026');
 
     expect($document->bytes)->toStartWith('%PDF-')
-        ->and($document->pageCount)->toBe(2);
+        ->and($document->pageCount)->toBe(1);
 });
 
 it('ships the letterhead emblems and the brace inside the dompdf chroot', function (): void {
-    foreach (['logo-pemprov.png' => IMAGETYPE_PNG, 'logo-sekolah.jpg' => IMAGETYPE_JPEG] as $file => $type) {
+    foreach (['logo-pemprov.png' => IMAGETYPE_PNG, 'logo-pemprov-guru.png' => IMAGETYPE_PNG, 'logo-sekolah.jpg' => IMAGETYPE_JPEG] as $file => $type) {
         $info = getimagesize(resource_path('pdf/assets/'.$file));
 
         expect($info)->not->toBeFalse()
@@ -372,7 +371,7 @@ it('keeps the end of each letter with its signature, so a long lomba never leave
         ->and($siswaBoxes[0])->toContain(trim(preg_replace('/\s+/', ' ', LetterTemplate::current()->siswaClosing())));
 });
 
-// SV6, D-183: the signature + stamp image about 30 % larger, the lines around it where they were ------------------
+// The signature + stamp image: SV6 (D-183) and SV7 (D-189) larger, SV8 (D-194) a little smaller and 17 pt left ------
 
 /**
  * Lays one letter out with dompdf (the renderer's own options and a sandbox holding the 640 × 320 sample signature)
@@ -434,67 +433,75 @@ function sv6SignatureBoxes(string $view, LetterContent $content, string $number)
     return $blocks;
 }
 
-it('makes the signature + stamp image twice as tall as its reserved box, so no line moves (SV7, D-189)', function (): void {
+it('makes the signature + stamp image 80 % of the SV7 size and moves it 17 pt left, so no line moves (SV8, D-194)', function (): void {
     $siswa = m1aLayoutHtml('surat-tugas-siswa', m1aLayoutContent($this), '400.3.8/313/MRD/X/2026');
     $guru = m1aLayoutHtml('surat-perintah-tugas-guru', m1aLayoutContent($this), '400.3.8.6/1681/2026');
 
-    // The boxes keep the heights of the school files; only the image grows and is pulled up by half its growth.
+    // The boxes keep their heights (the guru letter's = the three empty lines of the school's signature space); the
+    // image is 80 % of SV7's (121.9 / 116 pt), pulled up by half of what it is taller than the box and 17 pt left.
     expect($siswa)->toContain('.s-ttd .gambar { height: 60.95pt; }')
-        ->toContain('.s-ttd .gambar img { height: 121.9pt; position: relative; top: -30.475pt; }')
-        ->not->toContain('.s-ttd .gambar img { height: 60.95pt; }')
-        ->and($guru)->toContain('.g-ttd .gambar { height: 58pt; }')
-        ->toContain('.g-ttd .gambar img { height: 116pt; position: relative; top: -29pt; }')
-        ->not->toContain('.g-ttd .gambar img { height: 58pt; }')
-        // the Lampiran block is a .g-ttd too, so its image follows the same rule
-        ->toContain('class="g-ttd g-ttd-lampiran utuh"');
+        ->toContain('.s-ttd .gambar img { height: 97.52pt; position: relative; top: -18.285pt; left: -17pt; }')
+        ->not->toContain('height: 121.9pt')
+        ->and($guru)->toContain('.g-ttd .gambar { height: 44.67pt; }')
+        ->toContain('.g-ttd .gambar img { height: 92.8pt; position: relative; top: -24.065pt; left: -17pt; }')
+        ->not->toContain('height: 116pt')
+        // one signature block on the guru letter: the Lampiran is gone
+        ->and(substr_count($guru, 'class="g-ttd utuh"'))->toBe(1)
+        ->and($guru)->not->toContain('g-ttd-lampiran');
 });
 
-it('lays the larger signature + stamp out over the lines around it in a real PDF, the box and the lines unmoved (SV7, D-189)', function (string $view, string $number, float $box, float $image, int $blocks): void {
+it('lays the smaller signature + stamp over the lines around it in a real PDF, 17 pt left, the box and the lines unmoved (SV8, D-194)', function (string $view, string $number, float $box, float $image, bool $centred): void {
     $found = sv6SignatureBoxes($view, m1aLayoutContent($this), $number);
 
-    expect($found)->toHaveCount($blocks);
+    expect($found)->toHaveCount(1);
 
-    foreach ($found as ['block' => $block, 'gambar' => $gambar, 'img' => $img, 'nama' => $nama]) {
-        [$blockX, , $blockW] = $block;
-        [, $gambarY, , $gambarH] = $gambar;
-        [$imgX, $imgY, $imgW, $imgH] = $img;
-        $grow = ($image - $box) / 2;
+    ['block' => $block, 'gambar' => $gambar, 'img' => $img, 'nama' => $nama] = $found[0];
+    [$blockX, , $blockW] = $block;
+    [, $gambarY, , $gambarH] = $gambar;
+    [$imgX, $imgY, $imgW, $imgH] = $img;
+    $grow = ($image - $box) / 2;
 
-        // the reserved box and the name under it stay where they were
-        expect($gambarH)->toEqualWithDelta($box, 0.01)
-            ->and($nama[1])->toEqualWithDelta($gambarY + $box, 0.01)
-            // the image: twice as tall, 2:1 like the sample, half of the growth above the box and half below it
-            ->and($imgH)->toEqualWithDelta($image, 0.01)
-            ->and($imgH / $box)->toEqualWithDelta(2.0, 0.005)
-            ->and($imgW)->toEqualWithDelta($image * 2, 0.05)
-            ->and($imgY)->toEqualWithDelta($gambarY - $grow, 0.01)
-            ->and($imgY + $imgH)->toEqualWithDelta($gambarY + $box + $grow, 0.01)
-            // it may run a little past its block (the lead: "kena kata-kata tidak apa-apa"), never off the A4 page
-            ->and($imgX)->toBeGreaterThanOrEqual($blockX - 20)
-            ->and($imgX + $imgW)->toBeLessThanOrEqual($blockX + $blockW + 20)
-            ->and($imgX + $imgW)->toBeLessThanOrEqual(595.28 - 20);
-    }
+    // the reserved box and the name under it stay where they were
+    expect($gambarH)->toEqualWithDelta($box, 0.01)
+        ->and($nama[1])->toEqualWithDelta($gambarY + $box, 0.01)
+        // the image: 80 % of SV7, 2:1 like the sample, half of the difference above the box and half below it
+        ->and($imgH)->toEqualWithDelta($image, 0.01)
+        ->and($imgW)->toEqualWithDelta($image * 2, 0.05)
+        ->and($imgY)->toEqualWithDelta($gambarY - $grow, 0.01)
+        ->and($imgY + $imgH)->toEqualWithDelta($gambarY + $box + $grow, 0.01)
+        // 17 pt to the left of where SV7 put it: the student letter's middle, the guru letter's left edge
+        ->and($centred ? $imgX + $imgW / 2 : $imgX)->toEqualWithDelta($centred ? $blockX + $blockW / 2 - 17 : $blockX - 17, 0.01)
+        // never off the A4 page
+        ->and($imgX)->toBeGreaterThan(20)
+        ->and($imgX + $imgW)->toBeLessThanOrEqual(595.28 - 20);
 })->with([
-    'siswa' => ['surat-tugas-siswa', '400.3.8/313/MRD/X/2026', 60.95, 121.9, 1],
-    'guru and its Lampiran' => ['surat-perintah-tugas-guru', '400.3.8.6/1681/2026', 58.0, 116.0, 2],
+    'siswa' => ['surat-tugas-siswa', '400.3.8/313/MRD/X/2026', 60.95, 97.52, true],
+    'guru' => ['surat-perintah-tugas-guru', '400.3.8.6/1681/2026', 44.67, 92.8, false],
 ]);
 
-it('lays the dashed placeholder of the TU preview over the lines around its slot the same way (SV6, D-183)', function (string $ttd): void {
+it('lays the dashed placeholder of the TU preview over the lines around its slot like the image (SV8, D-194)', function (string $ttd, string $slotHeight, array $boxClasses): void {
     $html = view('livewire.tata-usaha.partials.ttd', ['ttd' => $ttd, 'content' => m1aLayoutContent($this)])->render();
     $dom = new DOMDocument;
     @$dom->loadHTML('<?xml encoding="utf-8"?>'.$html);
     $xpath = new DOMXPath($dom);
     $placeholder = $xpath->query('//span[not(*)][normalize-space(.)="Tanda tangan + stempel"]');
 
-    // The 52 px slot stays in the flow (the lines keep their places); the dashed box lies over it, 8 px higher and
-    // 8 px lower (68 px, about 30 % more), and lets clicks through to the text under it.
+    // The slot stays in the flow (the lines keep their places); the dashed box lies over it like the image on the PDF
+    // (0.94 px per pt) and lets clicks through to the text under it.
     expect($placeholder->length)->toBe(1);
 
     $box = explode(' ', $placeholder->item(0)->getAttribute('class'));
     $slot = explode(' ', $placeholder->item(0)->parentNode->getAttribute('class'));
 
-    expect($slot)->toContain('relative', 'h-[52px]', 'w-full')
-        ->and($box)->toContain('absolute', 'inset-x-0', '-top-2', '-bottom-2', 'border-dashed', 'pointer-events-none')
-        ->not->toContain('h-[52px]')
+    expect($slot)->toContain('relative', $slotHeight, 'w-full')
+        ->and($box)->toContain('absolute', 'border-dashed', 'pointer-events-none', ...$boxClasses)
+        ->not->toContain($slotHeight)
         ->and($html)->not->toContain('style=');
-})->with(['siswa', 'guru']);
+})->with([
+    // 97.52 pt = 92 px high, a 2:1 image 183 px wide, centred 16 px (17 pt) left of the middle
+    'siswa' => ['siswa', 'h-[52px]', ['inset-x-0', 'mx-auto', '-top-5', '-bottom-5', 'w-[183px]', '-translate-x-4']],
+    // the three empty lines (42 px), 92.8 pt = 87 px high, 16 px left of the text
+    'guru' => ['guru', 'h-[42px]', ['left-0', '-top-[22.5px]', '-bottom-[22.5px]', 'w-[174px]', '-translate-x-4']],
+    // a guru letter printed before D-194 keeps the preview of SV6
+    'guru letter printed before' => ['lampiran', 'h-[52px]', ['inset-x-0', '-top-2', '-bottom-2']],
+]);

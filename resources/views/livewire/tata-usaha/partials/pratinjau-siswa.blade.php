@@ -6,7 +6,9 @@
     regulation text; a letter printed before D-154 (its stored template still has `siswa_basis`) shows its three old
     rows Dasar / Nomor / Tanggal, as its PDF has them (D-108). A box narrower than 560 px shrinks the whole sheet
     (`.kertas-siswa` / `.lembar-siswa` in resources/css/app.css), so the kop and the Dasar break as on the PDF.
-    D-157: an invitation TU typed makes "Dasar" a numbered list, 1. the regulation text, 2. the invitation.
+    D-157: an invitation TU typed is the last "Dasar"; more than one text (SV8, D-195: the template holds 1 to 6) is a
+    numbered list 1., 2., … with a 15 px number column (16 pt in the PDF), one alone has no number
+    (LetterContent::siswaBasis()).
     Vars: $content (LetterContent) · $number (issued or typed number, or null) · $tpl / $letterTemplate (optional)
 --}}
 <div class="kertas-siswa">
@@ -35,15 +37,16 @@
 
         <p class="relative m-0 mt-[15px]">{{ $tpl->siswaIntro() }}</p>
     @else
-        @php($siswaInvitation = $content->siswaInvitation())
+        @php($siswaBasis = $content->siswaBasis($tpl))
         <div class="relative mt-1 grid grid-cols-[90px_9px_1fr] leading-[14.1px] sm:grid-cols-[97px_8.5px_1fr]">
             <span>Dasar</span><span class="text-center">:</span>
-            @if ($siswaInvitation === null)
-                <span>{{ $tpl->siswaDasar($content->schoolYear) }}</span>
+            @if (count($siswaBasis) <= 1)
+                <span>{{ $siswaBasis[0] ?? '[dasar]' }}</span>
             @else
                 <span class="grid grid-cols-[15px_1fr]">
-                    <span>1.</span><span>{{ $tpl->siswaDasar($content->schoolYear) }}</span>
-                    <span>2.</span><span>{{ $siswaInvitation }}</span>
+                    @foreach ($siswaBasis as $item)
+                        <span>{{ $loop->iteration }}.</span><span>{{ $item }}</span>
+                    @endforeach
                 </span>
             @endif
         </div>
@@ -51,22 +54,26 @@
         <p class="relative m-0 mt-[30px]">{{ $tpl->siswaIntro() }}</p>
     @endif
 
-    <table class="relative mt-[15px] w-full border-collapse">
+    {{-- SV8, D-196 (teams up to 30): fixed columns as on the PDF, so a long name wraps inside NAMA MURID and never pushes
+         NIS or KELAS; cells centred vertically, rows at least 19 px with 12.2 px lines (20.1 pt and 13 pt at 0.94 px per
+         pt). Printed from the browser the header repeats and a row never splits. The preview stays one long sheet: the
+         PDF's page break (header repeated, the last two rows with the signature) is not drawn here. --}}
+    <table class="relative mt-[15px] w-full table-fixed border-collapse" data-tabel="murid">
         <thead>
             <tr>
-                <th scope="col" class="w-7 border border-ink px-1 py-0.5 font-bold">NO</th>
-                <th scope="col" class="border border-ink px-1 py-0.5 font-bold">NAMA MURID</th>
-                <th scope="col" class="w-[70px] border border-ink px-1 py-0.5 font-bold">NIS</th>
-                <th scope="col" class="w-[72px] border border-ink px-1 py-0.5 font-bold">KELAS</th>
+                <th scope="col" class="w-7 border border-ink px-1 py-0.5 align-middle font-bold">NO</th>
+                <th scope="col" class="border border-ink px-1 py-0.5 align-middle font-bold">NAMA MURID</th>
+                <th scope="col" class="w-[70px] border border-ink px-1 py-0.5 align-middle font-bold">NIS</th>
+                <th scope="col" class="w-[72px] border border-ink px-1 py-0.5 align-middle font-bold">KELAS</th>
             </tr>
         </thead>
         <tbody>
             @foreach ($content->students as $student)
-                <tr>
-                    <td class="border border-ink px-1 py-0.5 text-center">{{ $student['no'] }}</td>
-                    <td class="border border-ink px-1 py-0.5">{{ $student['name'] }}</td>
-                    <td class="num border border-ink px-1 py-0.5 text-center">{{ $student['nis'] }}</td>
-                    <td class="border border-ink px-1 py-0.5 text-center">{{ $student['class'] }}</td>
+                <tr class="break-inside-avoid">
+                    <td class="h-[19px] border border-ink px-1 py-0.5 text-center align-middle leading-[12.2px]">{{ $student['no'] }}</td>
+                    <td class="border border-ink px-1 py-0.5 align-middle leading-[12.2px] break-words">{{ $student['name'] }}</td>
+                    <td class="num border border-ink px-1 py-0.5 text-center align-middle leading-[12.2px] whitespace-nowrap">{{ $student['nis'] }}</td>
+                    <td class="border border-ink px-1 py-0.5 text-center align-middle leading-[12.2px]">{{ $student['class'] }}</td>
                 </tr>
             @endforeach
         </tbody>

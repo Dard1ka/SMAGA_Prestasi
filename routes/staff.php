@@ -19,10 +19,12 @@ use App\Livewire\Kepsek\PrestasiBidang as KepsekPrestasiBidang;
 use App\Livewire\Kepsek\SuratSaya;
 use App\Livewire\Kesiswaan\Beranda;
 use App\Livewire\Kesiswaan\DatabasePrestasi;
+use App\Livewire\Kesiswaan\DataGuru;
 use App\Livewire\Kesiswaan\Lomba\Index;
 use App\Livewire\Kesiswaan\Talenta;
 use App\Livewire\Kesiswaan\VerifikasiHasil;
 use App\Livewire\Sekolah\Dashboard;
+use App\Livewire\Sekolah\RevisiPendaftaran;
 use App\Livewire\TataUsaha\ArsipSurat;
 use App\Livewire\TataUsaha\SuratTugas;
 use App\Livewire\TataUsaha\TemplateSurat;
@@ -142,6 +144,29 @@ Route::middleware(['area.staff', 'role:kesiswaan|admin'])->prefix('kesiswaan')->
 });
 
 // --- end B1 ---
+
+// --- SV8, D-197: Data guru (Kesiswaan; Admin through role:kesiswaan|admin and its own menu item) ---
+// App\Livewire\Kesiswaan\DataGuru authorizes UserPolicy::viewGuruData (`guru.update`) on mount and in every action.
+
+Route::middleware(['area.staff', 'role:kesiswaan|admin'])->prefix('kesiswaan')->name('kesiswaan.')->group(function (): void {
+    Route::livewire('/data-guru', DataGuru::class)->name('guru.index');
+});
+
+// --- end SV8 Data guru ---
+
+// --- SV8, D-199: Revisi pendaftaran, one screen under each deciding area (RevisionQueue) ---
+// App\Livewire\Sekolah\RevisiPendaftaran authorizes RegistrationRevisionPolicy::viewQueue (`registration.revise_decide`:
+// Tata Usaha and Kesiswaan only; Admin reaches the Kesiswaan address through role:kesiswaan|admin and gets 403).
+
+Route::middleware(['area.staff', 'role:tata_usaha'])->prefix('tu')->name('tu.')->group(function (): void {
+    Route::livewire('/revisi-pendaftaran', RevisiPendaftaran::class)->name('revisi.index');
+});
+
+Route::middleware(['area.staff', 'role:kesiswaan|admin'])->prefix('kesiswaan')->name('kesiswaan.')->group(function (): void {
+    Route::livewire('/revisi-pendaftaran', RevisiPendaftaran::class)->name('revisi.index');
+});
+
+// --- end SV8 revision ---
 
 // --- B5: Kepala Sekolah prestasi/laporan/surat (backlog #6, UI-MAP §4b) + TU template surat (backlog #7, UI-MAP §4c) ---
 // Every screen authorizes again inside the component: AchievementPolicy::viewSchoolReport/exportSchoolReport,

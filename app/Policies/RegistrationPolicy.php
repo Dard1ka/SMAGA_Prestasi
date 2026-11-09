@@ -5,9 +5,12 @@ declare(strict_types=1);
 namespace App\Policies;
 
 use App\Actions\Registrations\CancelRegistration;
+use App\Actions\Registrations\ChangeMentor;
+use App\Actions\Registrations\RevisionRules;
 use App\Enums\MemberRole;
 use App\Enums\Permission;
 use App\Enums\RegistrationStatus;
+use App\Enums\RevisionStatus;
 use App\Enums\RoleName;
 use App\Models\Competition;
 use App\Models\Registration;
@@ -159,6 +162,29 @@ class RegistrationPolicy
         return $this->decide($user, $registration);
     }
 
+    // --- SV8, D-198: Kesiswaan (and Admin) set or replace the guru pembimbing, apart from the approval ---
+
+    /**
+     * The registrations of a lomba with their guru pembimbing (Kesiswaan › Kelola lomba › "N siswa") and "Isi / Ganti
+     * guru pembimbing" there: `registration.mentor` = Kesiswaan + Admin. Never the approvers through this permission:
+     * they change the guru with the approval (changeMentor()).
+     */
+    public function manageMentors(User $user): bool
+    {
+        return $user->canLogIn() && $user->can(Permission::RegistrationMentor->value);
+    }
+
+    /**
+     * Set or replace the guru pembimbing of one registration (App\Actions\Registrations\ChangeMentor): from the
+     * registration until the report is sent (ChangeMentor::STATUSES). An issued letter does not stop it (fixed
+     * 2026-11-09): ChangeMentor tells Tata Usaha to make a Koreksi.
+     */
+    public function assignMentor(User $user, Registration $registration): bool
+    {
+        return $this->manageMentors($user)
+            && in_array($registration->status, ChangeMentor::STATUSES, true);
+    }
+
     // --- B3: invite (replacement) members, backlog #9 ---
 
     /**
@@ -186,6 +212,38 @@ class RegistrationPolicy
     }
 
     // --- end B3 ---
+
+    // --- SV8, D-199: the ketua changes the registration (before the approval) or asks for a revision (after it) ---
+
+    /**
+     * "Ubah pendaftaran" before the approval (RevisionRules::BEFORE_APPROVAL): the ketua adds or removes anggota and
+     * changes the guru pembimbing at once (ChangeRegistration re-checks everything under its lock). Not while the ketua
+     * is in the trash of Admin › Kelas (the registration is hidden from every student screen then).
+     */
+    public function change(User $user, Registration $registration): bool
+    {
+        return $this->isLeader($user, $registration) && RevisionRules::isBeforeApproval($registration);
+    }
+
+    /**
+     * "Ajukan revisi" after the approval (RevisionRules::AFTER_APPROVAL, *sementara* not once the report was sent): the
+     * ketua, while no other revision of the registration waits for a decision (one at a time; RequestRevision checks it
+     * again under the lock).
+     */
+    public function requestRevision(User $user, Registration $registration): bool
+    {
+        return $this->isLeader($user, $registration)
+            && RevisionRules::isAfterApproval($registration)
+            && ! $registration->revisions()->where('status', RevisionStatus::Pending->value)->exists();
+    }
+
+    /** The signed-in ketua of the registration, a student who may register (`registration.create`). */
+    private function isLeader(User $user, Registration $registration): bool
+    {
+        return RevisionRules::leads($user, $registration);
+    }
+
+    // --- end SV8 revision ---
 
     // --- B4: guru pembimbing area (backlog #3, UI-MAP §4e; own binaan only, callers answer 404) ---
 

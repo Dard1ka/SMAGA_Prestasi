@@ -111,6 +111,11 @@
                 @include('livewire.siswa.lomba-saya.partials.letters-card', ['d' => $detail])
                 @include('livewire.siswa.lomba-saya.partials.team-card', ['d' => $detail])
             </div>
+
+            {{-- SV8, D-199: the ketua changes the registration (before the approval) or asks for a revision (after it). --}}
+            @if ($detail['canRevise'])
+                <livewire:siswa.lomba-saya.ubah-pendaftaran :registration-id="(string) $detail['registration']->getKey()" :key="'ubah-'.$detail['registration']->getKey()" />
+            @endif
         @endif
     </section>
 

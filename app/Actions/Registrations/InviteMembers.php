@@ -27,7 +27,7 @@ use Illuminate\Validation\ValidationException;
  * - active students only, never the ketua, never someone already in this team;
  * - someone who declined this team cannot be invited again (no invitation loops);
  * - nobody who is already in another non-final registration of the same lomba;
- * - the team (members who did not decline + new ones) stays within max_team_size.
+ * - the team (members who did not decline + new ones) stays within Competition::teamLimit() (at most 30, D-196).
  * New rows: role anggota, invited_at = now; invitees get TeamInvitation after commit. Audited
  * `registration.members_invited`. Errors use the key `members`.
  */
@@ -141,10 +141,11 @@ final class InviteMembers
             throw ValidationException::withMessages(['members' => "{$names} sudah terdaftar di lomba ini."]);
         }
 
-        $max = $competition->max_team_size;
+        // SV8, D-196: the lomba's own "Maks anggota", never more than Competition::MAX_TEAM_SIZE (also without one).
+        $max = $competition->teamLimit();
         $team = $rows->filter(fn (RegistrationMember $m): bool => $m->declined_at === null)->count();
 
-        if ($max !== null && $max > 0 && $team + count($ids) > $max) {
+        if ($team + count($ids) > $max) {
             throw ValidationException::withMessages(['members' => "Tim maksimal {$max} orang, termasuk kamu."]);
         }
     }

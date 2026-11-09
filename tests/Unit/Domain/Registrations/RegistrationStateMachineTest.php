@@ -9,7 +9,8 @@ it('allows exactly the transitions of ARCHITECTURE §6', function () {
     expect((new SM)->transitions())->toBe([
         'menunggu_lomba' => ['menunggu_konfirmasi', 'menunggu_kepsek', 'dibatalkan'],
         'menunggu_konfirmasi' => ['menunggu_kepsek', 'dibatalkan'],
-        'menunggu_kepsek' => ['disetujui', 'ditolak', 'dibatalkan'],
+        // SV8, D-199: new anggota invited while it waits for the approval send it back to their answers.
+        'menunggu_kepsek' => ['disetujui', 'ditolak', 'dibatalkan', 'menunggu_konfirmasi'],
         'disetujui' => ['surat_terbit', 'dibatalkan'],
         'ditolak' => [],
         'surat_terbit' => ['berlangsung'],

@@ -14,6 +14,7 @@ use App\Enums\RoleName;
 use App\Http\Controllers\FileController;
 use App\Livewire\Kesiswaan\Concerns\WithKesiswaanBadges;
 use App\Models\Competition;
+use App\Models\Registration;
 use App\Models\RegistrationMember;
 use App\Models\User;
 use App\Rules\ExternalUrl;
@@ -328,6 +329,17 @@ class Index extends Component
         $this->dispatch('sth-toast', message: 'Lomba ditutup dan tidak tampil lagi di katalog.', tone: 'success');
     }
 
+    /**
+     * SV8, D-198: "N siswa" on a catalog row opens the registrations of that lomba with their guru pembimbing (child
+     * Lomba\Pendaftar, Kesiswaan + Admin, `registration.mentor`), where the guru is set or replaced.
+     */
+    public function showRegistrations(string $id): void
+    {
+        $competition = $this->find($id);
+        $this->authorize('manageMentors', Registration::class);
+        $this->dispatch(Pendaftar::OPEN_EVENT, id: $competition->getKey());
+    }
+
     #[On('lomba-saved')]
     public function refreshAfterSave(): void
     {
@@ -355,6 +367,8 @@ class Index extends Component
             'closingLomba' => $this->closingLomba(),
             // "Tambah lomba" is Admin only (D-145): Kesiswaan checks and corrects, it never adds a lomba.
             'canCreate' => Auth::user()?->can('create', Competition::class) ?? false,
+            // SV8, D-198: the registrations of a lomba and its guru pembimbing (Lomba\Pendaftar).
+            'canMentor' => Auth::user()?->can('manageMentors', Registration::class) ?? false,
             // One search box per screen (D-90, backlog #60): this page has its own, so the top bar shows none.
         ])->layoutData(['badges' => $this->kesiswaanBadges(), 'search' => false]);
     }

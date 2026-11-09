@@ -47,8 +47,64 @@ final class CreateStaffAccount
 
         $valid = self::validator($data)->validate();
 
-        $role = RoleName::from($valid['role']);
+        return $this->store($actor, $valid, RoleName::from($valid['role']));
+    }
 
+    /**
+     * SV8, D-197 "Tambah guru" of Data guru (Kesiswaan and Admin, `guru.create`, UserPolicy::createGuru()): the same
+     * account as "Tambah pengguna", but the role is ALWAYS guru, whatever $data says (a typed or injected `role` is
+     * overwritten before the checks). The letter data must pass the Data guru rules too (guruErrors(): NIP 18 digits or
+     * empty, not held by another staff account; the name as printed), stored as Data guru stores it (NIP without spaces).
+     * Admins are notified as for every new staff account.
+     *
+     * @param  array<string, mixed>  $data  name, username, email?, honorific?, nip?, rank?, position?, password
+     *
+     * @throws ValidationException
+     */
+    public function handleGuru(User $actor, array $data): User
+    {
+        Gate::forUser($actor)->authorize('createGuru', User::class);
+
+        $data = ['role' => RoleName::Guru->value] + $data;
+        $errors = self::guruErrors($data);
+
+        if ($errors !== []) {
+            throw ValidationException::withMessages($errors);
+        }
+
+        $valid = self::validator($data)->validate();
+        $valid['name'] = UpdateGuruData::squish((string) $valid['name']);
+        $valid['nip'] = UpdateGuruData::digits($valid['nip'] ?? '') ?: null;
+
+        foreach (['rank', 'position', 'honorific'] as $field) {
+            $valid[$field] = UpdateGuruData::squish((string) ($valid[$field] ?? '')) ?: null;
+        }
+
+        return $this->store($actor, $valid, RoleName::Guru);
+    }
+
+    /**
+     * Every problem of a "Tambah guru" form at once (field => sentence): the account checks of validator() with the role
+     * guru, then the Data guru rules of the letter fields, which win for the same field.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array<string, string>
+     */
+    public static function guruErrors(array $data): array
+    {
+        $data['role'] = RoleName::Guru->value;
+        $errors = array_map(fn (array $messages): string => (string) $messages[0], self::validator($data)->errors()->toArray());
+
+        return array_merge($errors, UpdateGuruData::newGuruErrors($data));
+    }
+
+    /**
+     * The account itself, after the caller authorized and validated: never call it with unchecked data.
+     *
+     * @param  array<string, mixed>  $valid
+     */
+    private function store(User $actor, array $valid, RoleName $role): User
+    {
         $user = DB::transaction(function () use ($actor, $valid, $role): User {
             $user = new User;
             $user->forceFill([

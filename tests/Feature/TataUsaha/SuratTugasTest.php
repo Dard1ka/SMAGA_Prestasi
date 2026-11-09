@@ -463,7 +463,9 @@ it('gives each letter its own form: prefilled from the lomba, number empty, last
         ->set('siswa.tempat', 'Gedung A')
         ->call('setTab', 'guru')
         ->assertSee('SURAT PERINTAH TUGAS')
-        ->assertSee('Terlampir')
+        // SV8, D-194: the guru stands right under "Kepada" (no "Terlampir", no Lampiran page)
+        ->assertSee('Hendra Kusuma, S.Pd., M.Si.')
+        ->assertDontSee('Terlampir')
         ->assertSee('Buat PDF surat guru pendamping')
         ->assertSet('guru.tempat', 'Gedung A')
         ->set('guru.tempat', 'Gedung B')
@@ -900,7 +902,7 @@ it('wraps a long word on the paper preview of both letters instead of widening t
     Livewire::actingAs($this->tu)->test(SuratTugas::class, ['registration' => $registration])
         ->assertSeeHtml('sm:py-[53px] [overflow-wrap:anywhere]" aria-label="Preview surat tugas siswa"')
         ->call('setTab', 'guru')
-        ->assertSeeHtml('sm:pl-[52px] [overflow-wrap:anywhere]" aria-label="Preview surat perintah tugas guru"');
+        ->assertSeeHtml('sm:text-[11.28px] [overflow-wrap:anywhere]" aria-label="Preview surat perintah tugas guru"');
 });
 
 // D-154: the student letter as the school prints it (2026-10-16) --------------------------------------------

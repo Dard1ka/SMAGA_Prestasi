@@ -429,7 +429,9 @@ class Form extends Component
             'lombaWaits' => $competition->status === CompetitionStatus::MenungguVerifikasi,
             'teamAllowed' => $competition->allowsRegistrationType(RegistrationType::Tim),
             'individuAllowed' => $competition->allowsRegistrationType(RegistrationType::Individu),
-            'maxTeam' => $competition->max_team_size,
+            // SV8, D-196: the limit the Actions check, so "(maks N)" and "Tim sudah N orang" also name it for a lomba
+            // without its own "Maks anggota" (then Competition::MAX_TEAM_SIZE).
+            'maxTeam' => $competition->teamLimit(),
             'teamFull' => $this->teamFull(),
             'memberRows' => $this->memberRows(),
             'mentors' => $this->mentorOptions(),
@@ -596,9 +598,8 @@ class Form extends Component
 
     private function teamFull(): bool
     {
-        $max = $this->competition()->max_team_size;
-
-        return $max !== null && $max > 0 && count($this->members) + 1 >= $max;
+        // SV8, D-196: the same limit as CreateRegistration (the lomba's own, at most Competition::MAX_TEAM_SIZE).
+        return count($this->members) + 1 >= $this->competition()->teamLimit();
     }
 
     /** @return list<array{id: string, name: string, kelas: string, initials: string}> */
@@ -643,7 +644,8 @@ class Form extends Component
 
         // B3 (#9): the ketua sees the whole team (incl. who declined) and may invite replacements.
         $canInvite = Gate::allows('invite', $registration);
-        $max = $registration->competition?->max_team_size;
+        // SV8, D-196: the limit InviteMembers checks (the lomba's own, at most Competition::MAX_TEAM_SIZE).
+        $max = $registration->competition?->teamLimit();
         $active = $members->whereNull('declined_at')->count();
         // QA10: an invitation the scheduler expired at the deadline (D-50) reads "Tidak menjawab", not "Menolak".
         $expired = $canInvite ? ExpirePendingInvitations::expiredMemberIds($registration) : [];
@@ -706,9 +708,16 @@ class Form extends Component
             'lettersDone' => $registration->status === RegistrationStatus::SuratTerbit || $registration->status->phase() > 3,
             'stage' => $this->stage($registration, $mine?->role === MemberRole::Ketua),
             'lombaSaya' => $lombaSaya,
+            // SV8, D-199: "Ubah pendaftaran" before the approval, "Ajukan revisi" after it, on Lomba saya (UbahPendaftaran).
+            'revise' => Route::has('siswa.lomba-saya.show') && (Gate::allows('change', $registration) || Gate::allows('requestRevision', $registration))
+                ? [
+                    'label' => Gate::allows('change', $registration) ? 'Ubah pendaftaran' : 'Ajukan revisi',
+                    'href' => route('siswa.lomba-saya.show', $registration).'#ubah-judul',
+                ]
+                : null,
             'undangan' => route('siswa.undangan.show', $registration),
             'canInvite' => $canInvite,
-            'slotsLeft' => $max !== null && $max > 0 ? max(0, $max - $active) : null,
+            'slotsLeft' => $max !== null ? max(0, $max - $active) : null,
             // FS1: the one order of every team list (RegistrationMember::inTeamOrder()), the same as on Lomba saya.
             'team' => ! $showTeam ? [] : RegistrationMember::inTeamOrder($shown)
                 ->map(fn (RegistrationMember $m): array => [

@@ -17,14 +17,15 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  * browser's PDF viewer (`tu.surat.cetak`). Same check and audit as a download (StreamLetter: LetterPolicy::view,
  * `letter.downloaded`), `Content-Disposition: inline`, never cached.
  *
- * logo(): the two institution emblems of the letterhead (resources/pdf/assets) for the HTML preview on the TU
- * screens (`tu.surat.kop`); the PDF itself reads them from disk. Only the two known names are served.
+ * logo(): the institution emblems of the letterhead (resources/pdf/assets) for the HTML preview on the TU screens
+ * (`tu.surat.kop`); the PDF itself reads them from disk. Only the names in LOGOS are served.
  */
 final class LetterPrintController extends Controller
 {
-    /** logo key => [file in resources/pdf/assets, content type] */
+    /** logo key => [file in resources/pdf/assets, content type]; `pemprov-guru` = the guru letter's emblem (SV8, D-194) */
     public const LOGOS = [
         'pemprov' => ['logo-pemprov.png', 'image/png'],
+        'pemprov-guru' => ['logo-pemprov-guru.png', 'image/png'],
         'sekolah' => ['logo-sekolah.jpg', 'image/jpeg'],
     ];
 

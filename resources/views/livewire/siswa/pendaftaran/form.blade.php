@@ -200,6 +200,10 @@
                 @if ($status['lombaSaya'])
                     <x-sth.button variant="soft" :href="$status['lombaSaya']" icon-right="chevron-right">Lihat di Lomba saya</x-sth.button>
                 @endif
+                {{-- SV8, D-199: the ketua's change (before the approval) or revision (after it) lives on Lomba saya. --}}
+                @if ($status['revise'])
+                    <x-sth.button variant="quiet" size="sm" icon="edit" :href="$status['revise']['href']">{{ $status['revise']['label'] }}</x-sth.button>
+                @endif
                 @if ($status['canCancel'])
                     <x-sth.button variant="quiet" size="sm" data-sth-open="batal-daftar" aria-haspopup="dialog">Batalkan pendaftaran</x-sth.button>
                 @endif

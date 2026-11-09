@@ -5,7 +5,11 @@ declare(strict_types=1);
 namespace App\Livewire\Admin;
 
 use App\Actions\Accounts\AccountControls;
+use App\Actions\Registrations\ApproveRegistration;
+use App\Actions\Registrations\ApproveRevision;
 use App\Actions\Registrations\CancelApprovedRegistration;
+use App\Actions\Registrations\ChangeMentor;
+use App\Actions\Registrations\ChangeRegistration;
 use App\Actions\Reports\ExportAuditLog;
 use App\Livewire\Admin\Concerns\RequiresRecentPassword;
 use App\Models\User;
@@ -53,6 +57,8 @@ final class AuditLog extends Component
         'account.session_revoked' => 'Sesi diakhiri',
         'account.staff_created' => 'Akun staf dibuat',
         'account.staff_reset' => 'Akun staf direset',
+        // SV8, D-197: Data guru "Ubah data" by Kesiswaan or Admin (field names only).
+        'account.guru_data_updated' => 'Data guru diubah',
         'account.unarchived' => 'Akun dipulihkan dari arsip',
         // Admin "Ubah status" of a student (the lead, 2026-11-05): ActivateStudentAccount, ExpireActivationWindow,
         // FreezeAccount. Properties: reason (typed), from (K9 state), the old / new window end.
@@ -110,7 +116,8 @@ final class AuditLog extends Component
         'publication.flyer_generated' => 'E-flyer dibuat',
         'registration.created' => 'Pendaftaran dibuat',
         'registration.approved' => 'Pendaftaran disetujui',
-        'registration.mentor_changed' => 'Guru pembimbing diganti saat persetujuan',
+        // The filter option covers every source (2026-11-09); a row says where (MENTOR_APPROVAL_LABEL, MENTOR_SOURCE_LABELS).
+        'registration.mentor_changed' => 'Guru pembimbing diganti',
         'registration.rejected' => 'Pendaftaran ditolak',
         'registration.cancelled' => 'Pendaftaran dibatalkan',
         // D-148: a registration that waited for its lomba goes on once the lomba is published.
@@ -161,6 +168,14 @@ final class AuditLog extends Component
         'registration.member_declined' => 'Anggota tim menolak undangan',
         'registration.invitation_withdrawn' => 'Undangan tim dibatalkan ketua',
         'registration.invitations_expired' => 'Undangan tim kedaluwarsa',
+        // SV8, D-199: the ketua changes the registration before the approval, or asks for a revision after it.
+        'registration.changed_by_leader' => 'Pendaftaran diubah ketua sebelum disetujui',
+        'registration.revision_requested' => 'Revisi pendaftaran diajukan',
+        'registration.revision_member_confirmed' => 'Undangan revisi diterima',
+        'registration.revision_member_declined' => 'Undangan revisi ditolak',
+        'registration.revision_cancelled' => 'Revisi pendaftaran dibatalkan ketua',
+        'registration.revision_approved' => 'Revisi pendaftaran disetujui',
+        'registration.revision_rejected' => 'Revisi pendaftaran ditolak',
         'registration.laporan_dikirim' => 'Laporan hasil dikirim siswa',
         'registration.berlangsung' => 'Lomba dimulai (otomatis)',
         'registration.menunggu_laporan' => 'Menunggu laporan hasil (otomatis)',
@@ -179,6 +194,16 @@ final class AuditLog extends Component
         'updated' => 'Data diubah',
         'deleted' => 'Data dihapus',
         'restored' => 'Data dipulihkan',
+    ];
+
+    /** A `registration.mentor_changed` row without `source`: the change made with the approval (D-132, D-150). */
+    public const MENTOR_APPROVAL_LABEL = 'Guru pembimbing diganti saat persetujuan';
+
+    public const MENTOR_SOURCE_LABELS = [
+        // `registration.mentor_changed` without an approval: its `properties.source` says where (the approval writes none).
+        ChangeMentor::SOURCE => ChangeMentor::AUDIT_LABEL,
+        ChangeRegistration::MENTOR_SOURCE => 'Guru pembimbing diganti ketua sebelum disetujui',
+        ApproveRevision::MENTOR_SOURCE => 'Guru pembimbing diganti lewat revisi',
     ];
 
     /**
@@ -281,7 +306,11 @@ final class AuditLog extends Component
             'actor' => $a->causer_id === null ? 'Sistem' : (string) ($a->causer?->name ?? 'Akun #'.$a->causer_id),
             'system' => $a->causer_id === null,
             'event' => (string) ($a->event ?? $a->description),
-            'eventLabel' => self::EVENT_LABELS[(string) $a->event] ?? (string) ($a->event ?? $a->description),
+            // SV8, D-198: the same event without an approval, set by Kesiswaan or Admin on Kelola lomba (ChangeMentor).
+            // SV8, D-199: also changed by the ketua before the approval, and by an approved revision.
+            'eventLabel' => $a->event === ApproveRegistration::EVENT_MENTOR_CHANGED
+                ? (self::MENTOR_SOURCE_LABELS[(string) ($properties['source'] ?? '')] ?? self::MENTOR_APPROVAL_LABEL)
+                : (self::EVENT_LABELS[(string) $a->event] ?? (string) ($a->event ?? $a->description)),
             'log' => (string) $a->log_name,
             'subject' => ExportAuditLog::subjectLabel($a->subject_type),
             'subjectId' => (string) $a->subject_id,

@@ -34,7 +34,7 @@ D-162 (2026-10-20) there is no consent: every student is named except a deleted 
 ## 2. Sources of truth (read before changing behaviour)
 | file | content |
 |---|---|
-| `docs/DECISIONS.md` | decision log D-01…D-193 (D-189…D-193 = §D30 (SV7), 2026-11-05: bigger signature + stamp (2x the box), two student Excel kinds (Data siswa from Kelas, Status aktivasi with status) with one class chooser, the Kelas page for Tata Usaha and Kesiswaan (new `student.status`; re-run RoleSeeder), "Hapus permanen" in the Sampah, staff password confirmation remembered 30 days in a cookie; D-183…D-188 = §D29 (SV6), 2026-11-05, **this `smaga_server` copy only**: the signature + stamp image about 30 % taller and overlapping the text, page layout unchanged; Import siswa names the registered student of a matching or colliding row ("Terdaftar: …", "Lihat" opens "Ubah data siswa"), the school-year algorithm unchanged and the field "Tahun ajaran" with only "2026/2027", no "Tahun lain…" (*sementara*, replaces D-177's typed year for now), plus a required "Kelas" X / XI / XII that refuses rows of another tingkat; Status aktivasi gets the student actions of Admin › Kelas (ticks, Ubah data, Ubah status, Hapus) and Kesiswaan may move students into the Sampah (`student.trash`), the Excel starts with "Ringkasan", has no empty sheet or file and honours the class filter, downloads also on Admin › Kelas; "Hapus permanen" per Sampah entry (Admin); "Ubah data siswa" (Nama, NIS, NISN, Tanggal lahir, Kelas) for Admin, Kesiswaan and Tata Usaha (`student.update`) with TU › Data siswa; a Koreksi may keep the old letter number (unique only among letters that are not revoked), its fields pre-filled and tinted blue while unchanged; D-180…D-182 = §D28 (SV5), 2026-11-05, **this `smaga_server` copy only**: Admin "Ubah status" offers the six states of Status aktivasi (Belum aktivasi, Aktif, Kedaluwarsa, Dibekukan, Nonaktif, Diarsipkan; new Actions `ActivateStudentAccount`, `ExpireActivationWindow`, `FreezeAccount` with `frozen_reason` `admin`; replaces D-179's three targets), Admin › Kelas deletes a class with all its students, or single students, into a 7-day "Sampah" with "Pulihkan" (replaces the "only an empty class" rule of D-166 here; a trashed student is hidden and uncounted everywhere, cannot log in, gets no mail, bell row or points), and `sth:sampah:hapus-permanen` purges at 02:00 through `PurgeStudents` (mixed teams kept, the leadership handed over, refused groups stay in the Sampah); D-179, same §D27, 2026-11-04: Admin "Ubah status" for students: "Aktifkan lagi" undoes nonaktif / arsip / dibekukan / kedaluwarsa (`EnableAccount`, a new archive date when the old one passed), ticks on Admin › Kelas › Lihat siswa, the button on Status aktivasi; D-175…D-178 = §D27 (SV4), 2026-11-04, **this `smaga_server` copy only**: classes are X-1…X-12, XI-1…XI-12, XII-1…XII-12 again (`ClassroomSeeder`, `php artisan sth:kelas:nomor` for an existing database; replaces D-165 here), Admin › Kelas › "Lihat siswa" lists a class's students and disables or archives one, Import siswa takes a typed school year ("Tahun lain…", kept across the password page), `php artisan sth:siswa:hapus-semua` deletes all student data (lomba stay, a student's proposal moves to the Admin) and `LombaContohSeeder` adds one published sample lomba; D-174 = §D26 (SV3), 2026-11-03, **this `smaga_server` copy only**: the public hero names the system ("SMAGA TALENT HUB"), the import template marks the required columns, opens with readable column widths and a grey example row the import skips, and Status aktivasi downloads an Excel file per tingkat (one sheet each for "Semua kelas") instead of the CSV; D-173 = §D25 (SV2), 2026-11-02, **this `smaga_server` copy only**: a new student's initial password is "SMAGA_" + the birth date of the import row as ddmmyyyy (01-02-2010 → SMAGA_01022010), replacing the one configured value of D-138 for new imports; the rest of D-138 stays; `sth:siswa:kata-sandi-awal` moves the pending students still on the configured value; D-170…D-172 = §D24 (SV1), 2026-10-30, fixes for the school's server: when a Livewire request answers 419 the page opens the app's own dialog "Sesi sudah berakhir" with "Muat ulang" instead of Livewire's native English confirm (the lead's choice); a session renewed on a screen that stays open keeps its CSRF token (`migrate(true)`, replaces the `regenerate(true)` of D-93); the letter QR and the "Bukan saya?" link use APP_URL unless it is a loopback address (*sementara*); D-166…D-169 = §D23 (UX4), the lead's requests of 2026-10-21 for the school's server: the Admin manages classes on Admin › Kelas and X-TAHFIDZ / X-OLIMP are gone, the Admin student reset removes the email again with a temporary password the Admin types (min 8), env switches `STH_STAFF_2FA` / `STH_DEV_PAGES` (off on the lead's instances), roles apply at once without a second Admin; D-165 = §D22 (UX3), the lead's request of 2026-10-21: class names with a letter, X-A … X-J, X-TAHFIDZ, X-OLIMP, XI-A … XI-L, XII-A … XII-L; D-162…D-164 = §D21 (UX2), the lead's requests of 2026-10-20: no photo or publish consent any more (every photo may be used, every name shown, only deleted or disabled accounts stay unnamed), the laporan hasil filled in one place (the yellow card of Lomba saya, also from the Beranda), the Kesiswaan verification queues newest first; D-158…D-161 = §D20 (UX1), the lead's six requests of 2026-10-19: "Bantuan akun siswa" finds a student by name or NISN and a reset changes the password only (an easy temporary password; the email goes only after a "Bukan saya?" freeze), Status aktivasi with the attention boxes on top and one table at a time (10 rows first), students told when the report is sent, the verifier's note in "Prestasi terverifikasi", Humas publishing and appreciating the whole team from the panel, the TU queues newest first; D-157 = §D19 (ST3): an optional invitation on the student letter, printed as "Dasar" number 2 under the regulation text, the guru letter unchanged; D-155…D-156 = §D18 (ST2): Tata Usaha removes an approved registration from the letter queue by cancelling it with a reason, Humas › Arsip foto; D-154 = §D17, the student letter after the school's printed letter of 2026-10-16 (ST1): "Dasar" = one regulation text of Template surat, kop and spacing of the paper; D-152…D-153 = §D16, Profil saya and Talenta saya (PS1); D-135…D-151 = §D15, the school's feedback of 2026-10-12 (FS1); package E = D-142…D-144: talent choices without stages or verification (Kesiswaan records, optional guru pembina, tabs Semua / Belum mengisi (kelas X)), a seventh jenis and a cabang "Lainnya" with a typed text, kelas X students held on Profil talenta until they pick one; package B = D-145…D-151: only siswa (full "Usulkan lomba" page) and Admin add a lomba, Kesiswaan checks and corrects, weights computed from the jenis penyelenggara + Puspresnas, duration-based dates and a required juknis, a registration for an own queued lomba waits as `menunggu_lomba`, participant data and an editable phone, Kepala Sekolah **or** Tata Usaha approves, laporan hasil without a deadline (reminders H+3 / H+14); package A = D-135…D-136: three new names, the Admin menu item Database prestasi, the Excel without Kategori, oldest-first pending lomba, red count badges; package D = D-137…D-138: students log in with the NISN only and see the NISN instead of the NIS, one initial password for every student from config, replaced at the first login, no "Lewati"; package C = D-139…D-141: Humas verifies results next to Kesiswaan in its own area and is a privileged role, new reports are mailed to Kesiswaan and Humas, decision texts name the deciding role, Verifikasi hasil without "Tolak", "Cetak daftar" of an appreciation event; D-130…D-134 = §D14, the demo and the joint review of 2026-10-11 (RV1): open mode of the local mail allowlist, NIS in full for Kesiswaan and Admin, the Kepala Sekolah may replace the guru pembimbing with the approval and the approval notice names the guru, student letter centred, the replaced guru is told nothing; D-122…D-129 = §D13, the lead's mail and notification test of 2026-10-09 (EM2): publication schedule = reminder only, appreciation start time and picker, "Lainnya" field, lomba change notice, live bell and counts, confirm dialogs, mail templates; §D13 also carries a dated addendum of Brevo facts for D-121; D-121 = §D12, real mail from a local stack: Brevo + allowlist, *sementara*; D-45…D-61 = backlog wave + W4 product choices, *sementara*; D-62…D-65 = security hardening, *final*; D-66…D-77 = Q1 security/performance pass and the lead's follow-up choices; D-78…D-91 = §D6, the lead's choices after the hand test of 2026-10-04; D-92…D-102 = §D7, the rules changed by the fixes after the QA pass of 2026-10-05; D-103…D-108 = §D8, the lead's six requests of 2026-10-06 (wave M3) and the schema change of QA4; D-109…D-112 = §D9, the lead's answers after the retest of M3 on 2026-10-07 (QA5); D-113…D-116 = §D10, the explore round after PR 14 (QA6); D-117…D-120 = §D11, the visual direction v3 "Tinta dan Sampul", lomba covers, the staff copy rule and the school crest as the brand mark (UI3)), U-01…U-06, open questions §F. **Wins over everything.** |
+| `docs/DECISIONS.md` | decision log D-01…D-199 (D-194…D-199 = §D31 (SV8), 2026-11-09, **this `smaga_server` copy only**: the guru letter laid out like the school's PDF of that day (one page, the one guru under "Kepada", no Lampiran for new letters, Word-style justified lines; a second version from the school follows) and the signature + stamp 80 % of SV7 and 17 pt left (*sementara*), the student "Dasar" a list of 1–6 template texts, teams above 3 up to 30 (*sementara*), Kesiswaan › Data guru (`guru.update`, `guru.create`), Kesiswaan (and Admin) sets or replaces the guru pembimbing until the report is sent, Tata Usaha told to make a Koreksi when the guru letter was issued (`registration.mentor`), the ketua changes a registration at once before the approval and asks for a revision after it that Tata Usaha or Kesiswaan decides (`registration.revise_decide`, table `registration_revisions`, not after the report: *sementara*); re-run RoleSeeder and migrate; D-189…D-193 = §D30 (SV7), 2026-11-05: bigger signature + stamp (2x the box), two student Excel kinds (Data siswa from Kelas, Status aktivasi with status) with one class chooser, the Kelas page for Tata Usaha and Kesiswaan (new `student.status`; re-run RoleSeeder), "Hapus permanen" in the Sampah, staff password confirmation remembered 30 days in a cookie; D-183…D-188 = §D29 (SV6), 2026-11-05, **this `smaga_server` copy only**: the signature + stamp image about 30 % taller and overlapping the text, page layout unchanged; Import siswa names the registered student of a matching or colliding row ("Terdaftar: …", "Lihat" opens "Ubah data siswa"), the school-year algorithm unchanged and the field "Tahun ajaran" with only "2026/2027", no "Tahun lain…" (*sementara*, replaces D-177's typed year for now), plus a required "Kelas" X / XI / XII that refuses rows of another tingkat; Status aktivasi gets the student actions of Admin › Kelas (ticks, Ubah data, Ubah status, Hapus) and Kesiswaan may move students into the Sampah (`student.trash`), the Excel starts with "Ringkasan", has no empty sheet or file and honours the class filter, downloads also on Admin › Kelas; "Hapus permanen" per Sampah entry (Admin); "Ubah data siswa" (Nama, NIS, NISN, Tanggal lahir, Kelas) for Admin, Kesiswaan and Tata Usaha (`student.update`) with TU › Data siswa; a Koreksi may keep the old letter number (unique only among letters that are not revoked), its fields pre-filled and tinted blue while unchanged; D-180…D-182 = §D28 (SV5), 2026-11-05, **this `smaga_server` copy only**: Admin "Ubah status" offers the six states of Status aktivasi (Belum aktivasi, Aktif, Kedaluwarsa, Dibekukan, Nonaktif, Diarsipkan; new Actions `ActivateStudentAccount`, `ExpireActivationWindow`, `FreezeAccount` with `frozen_reason` `admin`; replaces D-179's three targets), Admin › Kelas deletes a class with all its students, or single students, into a 7-day "Sampah" with "Pulihkan" (replaces the "only an empty class" rule of D-166 here; a trashed student is hidden and uncounted everywhere, cannot log in, gets no mail, bell row or points), and `sth:sampah:hapus-permanen` purges at 02:00 through `PurgeStudents` (mixed teams kept, the leadership handed over, refused groups stay in the Sampah); D-179, same §D27, 2026-11-04: Admin "Ubah status" for students: "Aktifkan lagi" undoes nonaktif / arsip / dibekukan / kedaluwarsa (`EnableAccount`, a new archive date when the old one passed), ticks on Admin › Kelas › Lihat siswa, the button on Status aktivasi; D-175…D-178 = §D27 (SV4), 2026-11-04, **this `smaga_server` copy only**: classes are X-1…X-12, XI-1…XI-12, XII-1…XII-12 again (`ClassroomSeeder`, `php artisan sth:kelas:nomor` for an existing database; replaces D-165 here), Admin › Kelas › "Lihat siswa" lists a class's students and disables or archives one, Import siswa takes a typed school year ("Tahun lain…", kept across the password page), `php artisan sth:siswa:hapus-semua` deletes all student data (lomba stay, a student's proposal moves to the Admin) and `LombaContohSeeder` adds one published sample lomba; D-174 = §D26 (SV3), 2026-11-03, **this `smaga_server` copy only**: the public hero names the system ("SMAGA TALENT HUB"), the import template marks the required columns, opens with readable column widths and a grey example row the import skips, and Status aktivasi downloads an Excel file per tingkat (one sheet each for "Semua kelas") instead of the CSV; D-173 = §D25 (SV2), 2026-11-02, **this `smaga_server` copy only**: a new student's initial password is "SMAGA_" + the birth date of the import row as ddmmyyyy (01-02-2010 → SMAGA_01022010), replacing the one configured value of D-138 for new imports; the rest of D-138 stays; `sth:siswa:kata-sandi-awal` moves the pending students still on the configured value; D-170…D-172 = §D24 (SV1), 2026-10-30, fixes for the school's server: when a Livewire request answers 419 the page opens the app's own dialog "Sesi sudah berakhir" with "Muat ulang" instead of Livewire's native English confirm (the lead's choice); a session renewed on a screen that stays open keeps its CSRF token (`migrate(true)`, replaces the `regenerate(true)` of D-93); the letter QR and the "Bukan saya?" link use APP_URL unless it is a loopback address (*sementara*); D-166…D-169 = §D23 (UX4), the lead's requests of 2026-10-21 for the school's server: the Admin manages classes on Admin › Kelas and X-TAHFIDZ / X-OLIMP are gone, the Admin student reset removes the email again with a temporary password the Admin types (min 8), env switches `STH_STAFF_2FA` / `STH_DEV_PAGES` (off on the lead's instances), roles apply at once without a second Admin; D-165 = §D22 (UX3), the lead's request of 2026-10-21: class names with a letter, X-A … X-J, X-TAHFIDZ, X-OLIMP, XI-A … XI-L, XII-A … XII-L; D-162…D-164 = §D21 (UX2), the lead's requests of 2026-10-20: no photo or publish consent any more (every photo may be used, every name shown, only deleted or disabled accounts stay unnamed), the laporan hasil filled in one place (the yellow card of Lomba saya, also from the Beranda), the Kesiswaan verification queues newest first; D-158…D-161 = §D20 (UX1), the lead's six requests of 2026-10-19: "Bantuan akun siswa" finds a student by name or NISN and a reset changes the password only (an easy temporary password; the email goes only after a "Bukan saya?" freeze), Status aktivasi with the attention boxes on top and one table at a time (10 rows first), students told when the report is sent, the verifier's note in "Prestasi terverifikasi", Humas publishing and appreciating the whole team from the panel, the TU queues newest first; D-157 = §D19 (ST3): an optional invitation on the student letter, printed as "Dasar" number 2 under the regulation text, the guru letter unchanged; D-155…D-156 = §D18 (ST2): Tata Usaha removes an approved registration from the letter queue by cancelling it with a reason, Humas › Arsip foto; D-154 = §D17, the student letter after the school's printed letter of 2026-10-16 (ST1): "Dasar" = one regulation text of Template surat, kop and spacing of the paper; D-152…D-153 = §D16, Profil saya and Talenta saya (PS1); D-135…D-151 = §D15, the school's feedback of 2026-10-12 (FS1); package E = D-142…D-144: talent choices without stages or verification (Kesiswaan records, optional guru pembina, tabs Semua / Belum mengisi (kelas X)), a seventh jenis and a cabang "Lainnya" with a typed text, kelas X students held on Profil talenta until they pick one; package B = D-145…D-151: only siswa (full "Usulkan lomba" page) and Admin add a lomba, Kesiswaan checks and corrects, weights computed from the jenis penyelenggara + Puspresnas, duration-based dates and a required juknis, a registration for an own queued lomba waits as `menunggu_lomba`, participant data and an editable phone, Kepala Sekolah **or** Tata Usaha approves, laporan hasil without a deadline (reminders H+3 / H+14); package A = D-135…D-136: three new names, the Admin menu item Database prestasi, the Excel without Kategori, oldest-first pending lomba, red count badges; package D = D-137…D-138: students log in with the NISN only and see the NISN instead of the NIS, one initial password for every student from config, replaced at the first login, no "Lewati"; package C = D-139…D-141: Humas verifies results next to Kesiswaan in its own area and is a privileged role, new reports are mailed to Kesiswaan and Humas, decision texts name the deciding role, Verifikasi hasil without "Tolak", "Cetak daftar" of an appreciation event; D-130…D-134 = §D14, the demo and the joint review of 2026-10-11 (RV1): open mode of the local mail allowlist, NIS in full for Kesiswaan and Admin, the Kepala Sekolah may replace the guru pembimbing with the approval and the approval notice names the guru, student letter centred, the replaced guru is told nothing; D-122…D-129 = §D13, the lead's mail and notification test of 2026-10-09 (EM2): publication schedule = reminder only, appreciation start time and picker, "Lainnya" field, lomba change notice, live bell and counts, confirm dialogs, mail templates; §D13 also carries a dated addendum of Brevo facts for D-121; D-121 = §D12, real mail from a local stack: Brevo + allowlist, *sementara*; D-45…D-61 = backlog wave + W4 product choices, *sementara*; D-62…D-65 = security hardening, *final*; D-66…D-77 = Q1 security/performance pass and the lead's follow-up choices; D-78…D-91 = §D6, the lead's choices after the hand test of 2026-10-04; D-92…D-102 = §D7, the rules changed by the fixes after the QA pass of 2026-10-05; D-103…D-108 = §D8, the lead's six requests of 2026-10-06 (wave M3) and the schema change of QA4; D-109…D-112 = §D9, the lead's answers after the retest of M3 on 2026-10-07 (QA5); D-113…D-116 = §D10, the explore round after PR 14 (QA6); D-117…D-120 = §D11, the visual direction v3 "Tinta dan Sampul", lomba covers, the staff copy rule and the school crest as the brand mark (UI3)), U-01…U-06, open questions §F. **Wins over everything.** |
 | `docs/ARCHITECTURE.md` | binding contract: data model, enums, state machine, domain rules |
 | `docs/SECURITY.md` | threat model, top-10 risks §1, controls §3a–§3m (K1–K12), pre-release checklist §4 |
 | `docs/TALENT-FORM.md` | talent types/branches (seed source for `talent_types`, `talent_branches`) |
@@ -354,7 +354,8 @@ logs in through `POST /login` and expects a 403/404 on the next GET would see th
   "Menunggu persetujuan" since D-150; the value stays) → `disetujui` | `ditolak`
   (note required) → `surat_terbit` (3 Surat tugas) → `berlangsung` (4 Lomba, scheduler on `starts_on`)
   → `menunggu_laporan` (5, after `final_on`) → `laporan_dikirim` → `selesai` (6 Poin & apresiasi) or back
-  to `menunggu_laporan` on *perlu revisi*; `dibatalkan` = leader cancels from `menunggu_lomba`, `menunggu_konfirmasi` or
+  to `menunggu_laporan` on *perlu revisi*; `menunggu_kepsek` → `menunggu_konfirmasi` when the ketua invites new anggota
+  while it waits for the approval (D-199, SV8); `dibatalkan` = leader cancels from `menunggu_lomba`, `menunggu_konfirmasi` or
   `menunggu_kepsek` (lead, 2026-10-01; D-148; `CancelRegistration::LEADER_STATUSES`, checked again under the lock), or
   Kesiswaan rejects the lomba a registration waited for, or Tata Usaha removes a `disetujui` registration from the letter
   queue before its letters were sent (D-155: `CancelApprovedRegistration`, policy `cancelApproved` = `registration.approve`
@@ -381,7 +382,8 @@ logs in through `POST /login` and expects a 403/404 on the next GET would see th
   saved through `App\Actions\Accounts\UpdateStudentPhone` (own record only, `StudentPolicy::updatePhone`, audit
   `student.phone_updated` without the number) with the import's rule `App\Domain\Accounts\PhoneNumber`. Transitions are defined once in
   `App\Domain\Registrations\RegistrationStateMachine` (`assertTransition()`, `phaseFor()`). Team
-  members pick from existing accounts, each confirms personally; roster locks after approval. The ketua may withdraw an
+  members pick from existing accounts, each confirms personally; the ketua changes the team and the guru at once before the approval
+  and only through a revision Tata Usaha or Kesiswaan approves after it (D-199, below). The ketua may withdraw an
   invitation nobody answered while the team waits (`WithdrawInvitation`, D-115; on the screen behind the dialog
   `batal-undangan`, D-128); the member search marks a student who has not activated the account.
   **Approvers** (D-150): `registration.approve` = Kepala Sekolah **and** Tata Usaha (Admin never, D-01); one screen,
@@ -395,8 +397,10 @@ logs in through `POST /login` and expects a 403/404 on the next GET would see th
   Sekolah (or Tata Usaha, D-150) may put another in that place: `ApproveRegistration::handle(User, Registration, ?string $note = null, int|string|null
   $mentorId = null)` (null, '' or the guru the registration has = the choice stays; `RegistrationPolicy::changeMentor`
   = `decide`; a choice that is not a guru who can log in → `ValidationException` key `mentor`, nothing decided; audit
-  `registration.mentor_changed` with user ids only). It is one decision in one transaction: there is no way to change
-  the guru before the approval, apart from it, or after it (the letters name that guru). Who may be a guru pembimbing
+  `registration.mentor_changed` with user ids only). It is one decision in one transaction. Since SV8 the guru also
+  changes apart from the approval: Kesiswaan / Admin on Kelola lomba until the laporan hasil is sent (D-198) and the ketua
+  before the approval or through an approved revision (D-199), both below; the guru letter keeps the guru it printed
+  (Tata Usaha makes a Koreksi; the student letter prints no guru). Who may be a guru pembimbing
   is one rule, `App\Actions\Registrations\MentorChoice` (`query()`, `find()`, `options()`, `name()`, `closing()`),
   shared by the student's form, `CreateRegistration` and the approval. Notices of an approval
   (`RegistrationApproved::for(Registration, audience, bool $mentorChanged = false, ?string $replacedMentorName =
@@ -412,6 +416,54 @@ logs in through `POST /login` and expects a 403/404 on the next GET would see th
   who is told: "Siswa diberi tahu bahwa pendaftarannya disetujui dan siapa guru pembimbingnya." and "Guru pengganti
   diberi tahu bahwa ia ditetapkan sebagai guru pembimbing.", nothing about the guru the student chose) →
   `approveWithMentor()` (D-128 pattern); "Setujui" and "Setujui terpilih" pass no guru.
+  **Team size** (D-196, SV8, `smaga_server`): one limit, `Competition::teamLimit()` = the lomba's own "Maks anggota"
+  (2–30, `CreateCompetition`), never above `Competition::MAX_TEAM_SIZE` (30, *sementara*), also for a lomba without one;
+  used by `CreateRegistration`, `InviteMembers`, `RevisionRules` and the Pendaftaran lomba panel. The student letter's
+  member table may run onto a second page (`.s-murid`: header row repeated, a row never splits, the last two rows go with
+  the signature).
+  **Guru by Kesiswaan** (D-198, SV8): `registration.mentor` (Kesiswaan + Admin) sets or replaces the guru pembimbing apart
+  from the approval: Kelola lomba › "N siswa" → `Kesiswaan\Lomba\Pendaftar` → "Isi / Ganti guru pembimbing" (dialog
+  `ganti-guru-pembimbing`, D-128) → `App\Actions\Registrations\ChangeMentor` (`STATUSES` = `RevisionRules::BEFORE_APPROVAL` +
+  `AFTER_APPROVAL`, menunggu_lomba … menunggu_laporan; `laporan_dikirim` → `MSG_REPORTED`, selesai / dibatalkan /
+  ditolak / ketua in the trash refused as before). *Fixed 2026-11-09:* an issued letter no longer blocks it (`MSG_LETTER`
+  is gone: Tata Usaha has no separate "cabut" step, a Koreksi revokes and issues the next version at once from the
+  registration's current data); the letters are never touched (D-108), and when a GURU letter that is not revoked exists
+  (`$locked->guruLetter()->exists()`, read under the lock `IssueLetters` takes; only the guru letter prints the guru
+  pembimbing, a student letter alone tells nobody) every Tata Usaha account that can log in, not the actor, is told once
+  after commit to make a Koreksi (`MentorAssigned` audience `tu`, always "Guru pembimbing diganti, surat perlu Koreksi":
+  a guru letter needs a guru, so there is no "diisi" case; link `tu.surat.show`, names only, no NIP); the dialog
+  (`withExists` `guruLetter as has_guru_letter`) and the toast (`ChangeMentor::guruLetterIssuedAtLastChange()`) add
+  `ChangeMentor::TU_TOLD` only for a registration with a guru letter. Notices as D-132 / D-134
+  (`MentorAssigned`; the replaced guru nothing; no guru notice while the registration waits for its lomba); audit
+  `registration.mentor_changed` with `source` `kesiswaan` and `guru_letter_issued`; `ApproveRegistration::mentorWasReplaced()`
+  reads only the latest change and only when it was the approval's (no `source`); the approver's "Ganti guru" dialog says
+  "Guru pembimbing saat ini" instead of "Pilihan siswa" when that latest change came from `kesiswaan` or `revisi`
+  (`ChangeMentor::latestSource()`); Log audit filters the event as "Guru pembimbing diganti" (rows keep their source label,
+  `AuditLog::MENTOR_APPROVAL_LABEL` for the approval's).
+  **Changes by the ketua and revisions** (D-199, SV8): one rule set, `App\Actions\Registrations\RevisionRules`
+  (`BEFORE_APPROVAL` = menunggu_lomba, menunggu_konfirmasi, menunggu_kepsek; `AFTER_APPROVAL` = disetujui, surat_terbit,
+  berlangsung, menunggu_laporan; never after the report, *sementara*; member rules of `CreateRegistration`, 2 …
+  `teamLimit()`). Before the approval "Ubah pendaftaran" (`Siswa\LombaSaya\UbahPendaftaran` on Lomba saya,
+  `RegistrationPolicy::change`) → `ChangeRegistration` applies at once: new anggota are invited (team window needed),
+  removed ones deleted (`RemovedFromTeam` when they had been invited), a `menunggu_kepsek` team that now waits for new
+  anggota goes back to `menunggu_konfirmasi` (`ApproveRegistration::MSG_BACK_TO_MEMBERS` on Persetujuan), a guru change
+  tells nobody; audit `registration.changed_by_leader`. After it "Ajukan revisi" (`RegistrationPolicy::requestRevision`,
+  reason 10–500, one pending per registration) → `RequestRevision` stores a `registration_revisions` row (`App\Models\
+  RegistrationRevision`, `RevisionStatus` pending → approved | rejected | cancelled; `payload` ids only: `add`, `remove`,
+  `mentor_from` / `mentor_to`, `answers`; `ready_at` once every new student accepted). The approved team stays until a
+  decision. New students answer on Siswa › Undangan revisi (`siswa.undangan.revisi`, `RespondToRevision`; a decline
+  cancels the revision); the ketua may cancel (`CancelRevision`). Tata Usaha and Kesiswaan only
+  (`registration.revise_decide`; never Admin, Kepala Sekolah, Humas, guru; `RegistrationRevisionPolicy`) decide on
+  "Revisi pendaftaran" (`Sekolah\RevisiPendaftaran` under `tu.revisi.index` and `kesiswaan.revisi.index`,
+  `App\Support\RevisionQueue`, menu count `revisi.pendaftaran`): `ApproveRevision` (rules checked again, the team and the
+  guru change, `source` `revisi`, letters untouched: TU is told to make a Koreksi) or `RejectRevision` (note 5–500);
+  first decision wins. 2026-11-09: a revision that changes the guru is refused once the registration's guru is no longer
+  its `mentor_from` (Kesiswaan changed it since, D-198; `ApproveRevision::mentorChangedSince()`, key `revision`,
+  `MSG_MENTOR_CHANGED` "… Tolak revisi ini; ketua bisa mengajukan revisi baru."): warning toast + refreshed list, the row
+  offers only "Tolak". Notices `RevisionInvitation`, `RevisionAnswered`, `RevisionAwaitingDecision`, `RevisionDecided`,
+  `RevisionWithdrawn`, `RemovedFromTeam` (never the actor, never the replaced guru). Audit events
+  `registration.revision_*` with ids only, never the reason or the note. `DeleteAllStudents` / `PurgeStudents` remove the
+  revision rows too.
 - **Points** (`App\Domain\Points`): Tingkat × Capaian × Penyelenggara. Tingkat: internasional 100,
   nasional 80, provinsi 60, kota 40, sekolah 20. Capaian: juara 1 / emas 1,00 · juara 2 / perak 0,85 ·
   juara 3 / perunggu 0,70 · finalis 0,50 · **semifinalis 0,30 · penghargaan khusus 0,30** · peserta 0,10.
@@ -449,19 +501,30 @@ logs in through `POST /login` and expects a 403/404 on the next GET would see th
   one is inserted; compared without case and spaces), immutable, only for `disetujui` registrations (server check).
   "Koreksi" shows no warning box and starts every field from the old letter, tinted light blue while unchanged ("Isian
   berwarna biru masih sama dengan surat sebelum dikoreksi."). The signature + stamp image is
-  about 30 % taller than its reserved box and pulled up by half the growth (D-183: `.s-ttd` / `.g-ttd .gambar img`,
-  `position: relative`), so it overlaps the line above and the name below while no line moves. The settings formats
+  taller than its reserved box and pulled up by half the difference (`.s-ttd` / `.g-ttd .gambar img`, `position:
+  relative`; D-183 30 %, D-189 twice the box, since D-194 (SV8, *sementara*) 80 % of D-189: student 97.52 pt in its
+  60.95 pt box, guru 92.8 pt in the 44.67 pt box of the school's three empty lines, both 17 pt to the left), so it
+  overlaps the line above and the name below while no line moves. The settings formats
   are only the example under the field (D-82). One form and one "Buat PDF" per letter
   (`IssueLetters::handle(User, Registration, LetterType, LetterDraft)`), then one "Kirim" once every
   required letter exists (`LetterPolicy::requiredTypes()`, D-83). One siswa letter per registration lists
-  all members + one *Surat Perintah Tugas* with a Lampiran page for the pembimbing, both laid out like the
-  school's own files, with the Pemprov and school emblems from `resources/pdf/assets` (D-84); one private
+  all members + one *Surat Perintah Tugas* for the pembimbing, both laid out like the
+  school's own files, with the Pemprov and school emblems from `resources/pdf/assets` (D-84; since D-194, SV8, a new
+  guru letter is ONE page after the school's PDF of 2026-11-09, the guru right under "Kepada", the kegiatan bold, **no
+  Lampiran**, its own kop `partials/kop-guru` with `logo-pemprov-guru.png`; `LetterTemplate::GURU_LAYOUT` = `langsung`
+  is stored as `guru_layout` in `letters.printed`, a letter printed before has none, reads as `lampiran` and keeps its
+  Lampiran preview; a second version from the school = one more key of `GURU_LAYOUTS` with its two partials); one private
   signature+stamp image (Admin) on every letter; dompdf remote/JS off; QR code → public
   `/verifikasi-surat/{code}` (every issued letter, sent or not: "Sah" or "Dicabut", D-113 *sementara*); "Cetak" = the PDF inline via `tu.surat.cetak` (`StreamLetter`, policy-checked,
   audited) (SECURITY §3g, §3m-5). The student's "Surat tugas" card (Lomba saya) lists only letters TU already
   **sent**; the siswa letter has a download, the guru letter is an information row without a link (`LetterPolicy`
   keeps that file for the guru and staff: it carries NIP and rank; D-99, the "students may not open it" part is
-  *sementara*). `letters.printed` (json, QA4, D-108) keeps what the PDF printed (`LetterContent` + the letter
+  *sementara*). 2026-11-09: the guru pembimbing opens the guru letter only while it names that guru
+  (`LetterPolicy::namesCurrentMentor()`: no `registration.mentor_changed` row of the registration at or after the
+  letter's `generated_at`, one query): after a guru change (D-198, D-199) the sent letter still prints the guru before, so
+  the new guru (and the guru before, no longer the mentor) gets neither the file nor a row on Guru › detail binaan (one
+  line says it waits for the Koreksi, `BinaanDetail::GURU_LETTER_STALE`), and the student card leaves out its "Untuk …"
+  row, until Tata Usaha's Koreksi issues the next version; the student letter and staff with `letter.view` unchanged. `letters.printed` (json, QA4, D-108) keeps what the PDF printed (`LetterContent` + the letter
   template), written once by `IssueLetters` / `RevokeLetter` (`LetterPdf::printed()`); the TU preview of an issued
   letter is drawn from it (`LetterContent::fromArray()`, `LetterTemplate::fromArray()`), never again from today's
   data. It holds names, NIS and NIP, so it stays out of the activity log; letters made before it say so in the preview.
@@ -469,12 +532,18 @@ logs in through `POST /login` and expects a 403/404 on the next GET would see th
   never over a field TU typed for it (`SuratTugas::SHARED_FIELDS`, `$typed`, D-116); "Koreksi" on Arsip surat opens
   `tu.surat.show?koreksi=<letter>`; "Kirim" asks first once every letter exists (QA6). The student letter stands in
   the middle of the page (D-133: equal left and right margins of 61.14 pt, every block 473 pt wide, in
-  `resources/pdf/layout.blade.php`); the guru letter keeps the measures of the school's Word file. Since D-154 (the
-  school's printed student letter) the student letter's "Dasar" is one regulation text of the TU letter template
-  (`LetterTemplate` field `siswa_dasar`, `siswaDasar($schoolYear)`, codes `{sekolah}` / `{tahun_ajaran}`; `siswa_basis`
+  `resources/pdf/layout.blade.php`); the guru letter has the measures of the school's PDF (D-194: page margin = the left
+  emblem's corner 55.2 / 23.8 pt, `.kop-g` / `.g-*` offsets, Arial 12 pt with 14.89 pt lines, justified lines set the
+  Word way by `App\Domain\Letters\JustifiedLines` and printed line by line through `partials/guru-paragraf`, a one-digit
+  day written with two digits by `LetterContent::guruSignedOn()` / `guruBasis()`, "Untuk 1" from `guruTaskParts()`, the
+  QR under "Kepada"). Since D-154 (the
+  school's printed student letter) the student letter's "Dasar" is the regulation texts of the TU letter template
+  (`LetterTemplate` field `siswa_dasar`; since D-195, SV8, a list of 1–6, `SISWA_DASAR` = `siswa_dasar`, `siswa_dasar_2`
+  … `_6`, saved without gaps, `siswaDasarItems($schoolYear)`, one text unnumbered, more numbered, the invitation always
+  last, all through `LetterContent::siswaBasis()`; codes `{sekolah}` / `{tahun_ajaran}`; `siswa_basis`
   and `{penyelenggara}` are gone); the guru letter must name its invitation (Surat dari / Nomor / Tanggal / Hal,
-  `LetterDraft::requiresInvitation()`), and since D-157 the student tab shows the template's Dasar ("Dasar 1", with "Ubah
-  di Template surat") above an **optional** invitation without "Hal" ("Dasar 2": Surat dari prefilled with the
+  `LetterDraft::requiresInvitation()`), and since D-157 the student tab shows the template's Dasar ("Dasar 1", since D-195 "Dasar 1–N", with "Ubah
+  di Template surat") above an **optional** invitation without "Hal" ("Dasar 2", since D-195 "Dasar N+1": Surat dari prefilled with the
   penyelenggara, Nomor, Tanggal; a number or date without Surat dari → `IssueLetters::MSG_INVITATION_FROM`): left filled,
   the student letter's Dasar is numbered (1. the regulation text, 2. `LetterContent::siswaInvitation()` = "Surat dari …
   Nomor … Tanggal …", `.s-daftar`), emptied it is the one unnumbered Dasar; the row stores `basis_*` as typed (no
@@ -568,8 +637,16 @@ logs in through `POST /login` and expects a 403/404 on the next GET would see th
   `ApplyBirthDateInitialPasswords` (rule 3). Hosts: Admin › Kelas › Lihat siswa, Status aktivasi, Import siswa ("Lihat"
   on the "Terdaftar: …" line, D-184: the id comes from the preview cache by row number, never from the browser),
   Admin › Pengguna & peran › Bantuan akun siswa, and **Tata Usaha › Data siswa** (`tu.siswa.index`, `/tu/data-siswa`,
-  `App\Livewire\TataUsaha\DataSiswa`). **TU menu** (`Navigation`): Antrean surat, Persetujuan lomba, Arsip surat,
-  Template surat, then the group "Data" › "Data siswa". Import siswa's year field is "Tahun ajaran" with only
+  `App\Livewire\TataUsaha\DataSiswa`). **TU menu** (`Navigation`): Antrean surat, Persetujuan lomba, Revisi pendaftaran
+  (D-199, SV8, count `revisi.pendaftaran`), Arsip surat, Template surat, then the group "Data" › "Kelas" (since D-191,
+  SV7, the Kelas page of Admin replaces "Data siswa"; `/tu/data-siswa` redirects there). **Kesiswaan menu** since SV8:
+  Menu adds "Revisi pendaftaran" (D-199) after Verifikasi hasil, Data ends with "Data guru" (D-197, `kesiswaan.guru.index`,
+  also in the Admin menu Data › "Data guru"). **Data guru** (D-197): `Kesiswaan\DataGuru` lists every guru account not in
+  the trash with what the guru letter prints under "Kepada" (Nama, NIP, Pangkat/golongan, Jabatan); "Ubah data" →
+  `App\Actions\Users\UpdateGuruData` (`guru.update`, `UserPolicy::updateGuruData`: guru accounts only, not the own one;
+  NIP 18 digits or empty and unique among staff, recent password on open and on save, nobody told, one audit row
+  `account.guru_data_updated` with field names only); "Tambah guru" → `CreateStaffAccount::handleGuru()` (`guru.create`,
+  the role is always guru). Import siswa's year field is "Tahun ajaran" with only
   "2026/2027", no "Tahun lain…" and no typed year (D-184, *sementara*), and below it a required "Kelas" X / XI / XII:
   the file holds students of that tingkat only, a row of another tingkat is refused ("Kelas <nama kelas> bukan kelas
   <X|XI|XII>. File ini untuk kelas <X|XI|XII> saja."); `GraduationCalculator` is unchanged.
@@ -588,9 +665,12 @@ logs in through `POST /login` and expects a 403/404 on the next GET would see th
 - **Models & permissions**: status/verification/points columns are not in `$fillable`; Actions set them
   with `forceFill()`. Permissions = `App\Enums\Permission` (`competition.verify`, `registration.approve`,
   `letter.generate`, `report.verify`, `student.import`, `weight.manage`, …), matrix in
-  `RoleName::defaultPermissions()`; Admin has everything **except** `registration.approve`. Since FS1:
+  `RoleName::defaultPermissions()`; Admin has everything **except** `registration.approve` and, since SV8,
+  `registration.revise_decide`. Since FS1:
   `competition.create` = siswa + Admin (D-145), `registration.approve` = Kepala Sekolah + Tata Usaha (D-150),
-  `report.verify` = Kesiswaan + Humas + Admin (D-139); re-run `RoleSeeder` on every database after such a change.
+  `report.verify` = Kesiswaan + Humas + Admin (D-139); since SV8 (`smaga_server`) `registration.mentor` = Kesiswaan +
+  Admin (D-198), `registration.revise_decide` = Tata Usaha + Kesiswaan (D-199), `guru.update` and `guru.create` =
+  Kesiswaan + Admin (D-197); re-run `RoleSeeder` on every database after such a change.
 - **Talent** (since FS1-E, D-142…D-144): 7 types; six map to 4 bidang (OSN, OLPAIN → sains; Riset → riset; FLS3N,
   Debat → seni_budaya; O2SN → olahraga, D-22) and the seventh, **Lainnya**, has no bidang and no cabang
   (`TalentTypeCode::bidang()` = null; screens show "Lainnya" in its place; never a fifth bidang, D-11). Every jenis with
@@ -1418,6 +1498,29 @@ temporary password, the D-138 value, the student's own), a notice to anybody abo
 birth date, class or password value in `student.data_updated`; a number refused because a revoked letter used it, the
 orange warning on a Koreksi, a Koreksi that starts empty, the unique index (type, full_number).
 
+The lead's requests of 2026-11-09 (SV8), **D-194…D-199** (DECISIONS §D31, `docs/dev-notes/SV8.md`; **`smaga_server`
+only**, Smaga4 unchanged): D-194 the guru letter laid out like the school's PDF of that day, one page, no Lampiran for a
+new letter, the signature + stamp 80 % of SV7 and 17 pt left (**final** for the layout, the signature size
+*sementara*; a second version from the school and item 7, the guru letter template, still to come); D-195 the student
+"Dasar" a list of 1–6 template texts (**final**, at most 6 *sementara*); D-196 teams above 3, at most 30 (**final**, the 30
+*sementara*); D-197 Kesiswaan › Data guru with "Tambah guru" (**final**); D-198 Kesiswaan (and Admin) sets or replaces
+the guru pembimbing on Kelola lomba until the laporan hasil is sent, an issued guru letter only means Tata Usaha is told
+to make a Koreksi (**final**, the lead's "Keduanya", fixed 2026-11-09; replaces "only with the approval" of D-132); D-199
+the ketua's change applies at once before the approval and is a revision Tata Usaha or Kesiswaan approves after it
+(**final**; no revision once the report was sent: *sementara*). Do not bring back: the M1-A guru letter with "Terlampir" and a Lampiran page for a new letter, a guru letter whose lines dompdf justifies by
+itself, a one-digit day on it, the old Pemprov emblem in its kop, a letter printed before that loses its Lampiran preview
+(its stored template has no `guru_layout` and must read as `lampiran`), a signature of the SV7 size; a student Dasar of
+one text only, a gap in the list, an invitation that is not the last Dasar; "Maks anggota" capped at 20, a team above
+`Competition::MAX_TEAM_SIZE` or a check that reads `max_team_size` instead of `teamLimit()`, a member table that splits a
+row, loses its header on page 2 or leaves the signature alone on a page; a guru data edit outside `UpdateGuruData`, a role
+other than guru from "Tambah guru", a name, NIP, rank or position in an audit row; a guru change by Kesiswaan after the
+laporan hasil was sent, one that edits or revokes the letters by itself, one that tells the replaced guru, a Koreksi
+notice to Tata Usaha when only the student letter was issued (it prints no guru), or a refusal that asks Tata Usaha to
+revoke a letter first (there is no separate "cabut" step: a Koreksi revokes and reissues); a
+change of an approved team or its guru without a revision, a revision decided by Admin, the Kepala Sekolah, Humas or a
+guru, a revision approved before every new student accepted, two pending revisions of one registration, a revision that edits or revokes letters by itself, a reason or note in the
+audit log, a revision row that survives `sth:siswa:hapus-semua` or the purge of its registration.
+
 Known stale text (do not "fix" code to match it): since UX3 (D-165) every mockup board and older dev-note that shows a
 numbered class (X-3, XI-4, XII-2), letters issued before 2026-10-21 (their PDF and `letters.printed` keep "XI - 4") and
 audit rows `student.class_changed` written before that day; `docs/DEPLOY.md` §9 path A (Google Workspace relay) is not an option
@@ -1507,6 +1610,13 @@ lengkap>,", students keep the first name; a question for the lead in §9) and of
 keep their old sentences (Humas: "Statusnya kini Dipublikasikan.", appreciation notices with a date only); outside
 the repo the lead's report `hasil-uji-email-sth-2026-10-09.html` (mails in the old template) and the mail test guide
 (step 3-6 names another path to "Koreksi" than the app has; the lead's note: Arsip surat › siswa › Koreksi).
+Stale since SV8 (D-194…D-199): `docs/dev-notes/M1-A.md` and the older notes that describe the guru letter with "Terlampir"
+and a Lampiran page, a single student Dasar text, a roster locked after the approval or a guru that only the approver
+may change (`RV1.md`, `ST1.md`, `SV6.md`, `SV7.md`); the old texts of D-03, D-35, D-50, D-82, D-84, D-132, D-134, D-154, D-157
+and D-189 in DECISIONS (each carries a dated 9 Nov 2026 pointer; D-35 in its summary row); the mockup boards `TU-Surat-Tugas`, `Kepsek-Persetujuan`,
+`Kesiswaan-Kelola-Lomba` and `Lomba-Saya` (no revision, no "N siswa", no Data guru; mockups are design history and are
+not edited); the UI-MAP row "Data siswa" of Tata Usaha (gone since D-191, SV7); letter PDFs issued before 2026-11-09 (the
+guru letter with its Lampiran page, the SV7 signature size; files are kept as issued).
 
 ## 9. Open questions (answers come from the school; don't guess in code)
 Decided by the lead on 2026-10-04, no longer open: the letter template (= the school's own files: one team
@@ -1614,7 +1724,8 @@ IPs, which breaks the per-IP login/OTP limits). The noreply mailbox would then b
 SMTP host must not be `mail.<domain>` (proxied) and its hourly send limit needs asking.
 
 ## 10. Status
-Last updated: 2026-11-05 (SV5, D-180…D-182, `smaga_server` only, not committed); before that 2026-11-04 (SV4,
+Last updated: 2026-11-09 (SV8, D-194…D-199, `smaga_server` only, not committed, base `7a2ae54` = SV7); before that
+2026-11-05 (SV7 `7a2ae54`, SV6 `6b64e7c`, SV5, D-180…D-193, `smaga_server` only); before that 2026-11-04 (SV4,
 D-175…D-179) and 2026-11-02 (SV2, D-173, `smaga_server` only); before that 2026-10-30 (SV1, D-170); before that 2026-10-21 (UX3 and UX4, D-165…D-169) and 2026-10-14 (waves 1–2 done, W3-A integration pass, backlog wave B1–B6, W4 integration, D1 docs sync, CI green on GitHub, Q1 end-to-end/security/performance pass, PERF1 by S, M1 = the lead's 18 hand-test changes, M2 = fixes after the QA pass, QA4 by S, M3 = the lead's six requests of 2026-10-06, QA5 = fixes after the retest of M3, QA6 = explore round after PR 14, UI3 = visual direction v3 and the lead's review of it, QA7 = explore round after UI3, QA8 = explore round after PR 17, EM1 = real mail from a local stack, QA9 = explore round after EM1, QA10 = explore round after QA9, EM2 = fixes after the lead's mail and notification test of 2026-10-09, RV1 = the demo and the joint review of 2026-10-11, FS1-A = school feedback package A, FS1-D = school feedback package D, FS1-C = school feedback package C, FS1-E = school feedback package E, FS1-B = school feedback package B). Update this section whenever a milestone moves.
 EM1 2026-10-08 (`docs/dev-notes/EM1.md`, D-121, commit `4766b56` on `feat/email-brevo-dev`; merged into `main` together with QA9 and QA10 by PR 19, merge commit `a2d21e1` of 2026-10-09): the lead chose Brevo for development with a temporary Gmail sender. Built: the mailer `allowlist` (listed addresses → the real provider, everything else → Mailpit, local only), two boot guards (no allowlist outside local; in local no default mailer that delivers every mail), `sth:mail-test` says which way an address goes, a commented block in `.env.example`. The lead's first real mail through Brevo arrived (sender shown as `…@<id>.brevosend.com`, Gmail shows "Berhenti berlangganan"). No migration, no notification changed yet. Suite numbers: TEST-RESULTS in `docs/dev-notes/EM1.md`. Open: backlog #78.
 M1 2026-10-05 (`docs/dev-notes/M1.md`, plain summary for the team in `catatan.md`; branch `feat/ui-uji-manual-m1`): full suite `--parallel --processes=4` → **1767 passed (8945 assertions)**, exit 0 (680 s); `pint --test` clean (610 files); `npm run build` OK; the four M1 migrations ran on the local MySQL. Dev page times after `reload.bat` + warm-up, all seven roles: 150–540 ms per menu, login 0.75–0.93 s (`catatan.md` §2). Not re-run after M1: the email scenario and the Playwright smoke (backlog).
@@ -1757,6 +1868,16 @@ ST2 2026-10-16 (`docs/dev-notes/ST2.md`, D-155…D-156; committed in `1e18476`):
 ST3 2026-10-19 (`docs/dev-notes/ST1.md` "D-157", D-157; committed in `1e18476`): the student tab asks the
 invitation again, optional and without "Hal"; filled, it prints as "Dasar" number 2 under the regulation text (PDF,
 preview, issued summary); the guru letter is unchanged. No migration.
+SV8 2026-11-09 (`docs/dev-notes/SV8.md`, D-194…D-199; **`smaga_server` only**, Smaga4 unchanged; **not committed**, base
+`7a2ae54` = SV7 on `smaga-server`): the lead's list of 2026-11-09: the guru letter like the school's PDF (one page, no
+Lampiran for new letters) and a smaller signature moved left (D-194), the student Dasar as a list of 1–6 texts (D-195),
+teams above 3 up to 30 with the member table on two pages (D-196), Kesiswaan › Data guru (D-197), Kesiswaan sets or
+replaces the guru pembimbing on Kelola lomba (D-198), "Ubah pendaftaran" before the approval and "Ajukan revisi" after
+it, decided by TU or Kesiswaan on "Revisi pendaftaran" (D-199). Four new permissions (`registration.mentor`,
+`registration.revise_decide`, `guru.update`, `guru.create`), one migration
+(`2026_11_09_100000_sv8_create_registration_revisions_table`); deploy: migrate (E6a) after the backup, **`RoleSeeder`
+(E6c, required)**, `dev-cache.sh --force`, restart queue + scheduler. Waiting for the school: the second guru-letter
+version and item 7 (the guru letter template). Tests: TEST-RESULTS in the note (see final run).
 SV6 2026-11-05 (`docs/dev-notes/SV6.md`, D-183…D-188; **`smaga_server` only**, Smaga4 unchanged; **not committed**, base
 `49ab3ab`): the lead's second set of requests of 2026-11-05: a bigger signature + stamp image (D-183), Import siswa names
 the registered student with "Lihat", "Tahun ajaran" = 2026/2027 only and a required "Kelas" X / XI / XII that refuses

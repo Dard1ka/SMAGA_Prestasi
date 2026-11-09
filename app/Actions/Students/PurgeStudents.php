@@ -91,6 +91,7 @@ final class PurgeStudents
 
     /** Rows deleted with a registration whose every person is purged, children first. */
     public const REGISTRATION_ROWS_DELETED = [
+        ['registration_revisions', 'registration_id'], // SV8, D-199
         ['registration_reminders', 'registration_id'],
         ['letters', 'registration_id'],
         ['reports', 'registration_id'],
@@ -141,6 +142,9 @@ final class PurgeStudents
         ['reports', 'verified_by'],
         ['talent_applications', 'mentor_id'],
         ['publications', 'created_by'],
+        // SV8, D-199: a kept registration's revision asked for by a purged ketua (or decided by a deleted account).
+        ['registration_revisions', 'requested_by'],
+        ['registration_revisions', 'decided_by'],
     ];
 
     /** Rows of a purged account that go with it, in this order (`students` last: `users` needs it gone). */

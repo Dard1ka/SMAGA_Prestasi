@@ -30,8 +30,8 @@ use Illuminate\Validation\ValidationException;
  *   is told: the anggota rows carry `invited_at` = null (not invited yet) and no approver hears of it.
  *   ResumeWaitingRegistrations continues or cancels it when Kesiswaan decides the lomba.
  * Checked inside the transaction (competition + students locked): registration window, participation
- * type, team size (2 … max_team_size), active students only, nobody already in a non-final registration
- * of the same lomba, mentor is an active guru.
+ * type, team size (2 … Competition::teamLimit(), at most 30 since D-196), active students only, nobody already
+ * in a non-final registration of the same lomba, mentor is an active guru.
  */
 final class CreateRegistration
 {
@@ -153,9 +153,10 @@ final class CreateRegistration
                 throw ValidationException::withMessages(['members' => 'Tambahkan minimal 1 anggota tim.']);
             }
 
-            $max = $competition->max_team_size;
+            // SV8, D-196: the lomba's own "Maks anggota", never more than Competition::MAX_TEAM_SIZE (also without one).
+            $max = $competition->teamLimit();
 
-            if ($max !== null && $max > 0 && $invited + 1 > $max) {
+            if ($invited + 1 > $max) {
                 throw ValidationException::withMessages(['members' => "Tim maksimal {$max} orang, termasuk kamu."]);
             }
         }

@@ -40,6 +40,8 @@ final class Navigation
         'humas.publikasi',
         'humas.verifikasi',
         'humas.jadwal',
+        // SV8, D-199: revisions of approved registrations, in the Tata Usaha and Kesiswaan menus (RevisionQueue::BADGE).
+        'revisi.pendaftaran',
     ];
 
     /**
@@ -365,6 +367,8 @@ final class Navigation
                         // D-27: this queue lists every pending lomba upload (siswa, guru, staf).
                         ['key' => 'usulan', 'label' => 'Verifikasi usulan lomba', 'icon' => 'inbox', 'route' => [['kesiswaan.lomba.index', ['tab' => 'verifikasi']], 'kesiswaan.usulan'], 'match' => ['kesiswaan.usulan*'], 'query' => ['tab' => 'verifikasi'], 'badge' => 'kesiswaan.usulan'],
                         ['key' => 'verifikasi', 'label' => 'Verifikasi hasil', 'icon' => 'shield', 'route' => ['kesiswaan.verifikasi.index', 'kesiswaan.verifikasi'], 'match' => ['kesiswaan.verifikasi*'], 'badge' => 'kesiswaan.verifikasi'],
+                        // SV8, D-199: Kesiswaan decides a student's revision after the approval (with Tata Usaha).
+                        ['key' => 'revisi', 'label' => 'Revisi pendaftaran', 'icon' => 'edit', 'route' => ['kesiswaan.revisi.index'], 'match' => ['kesiswaan.revisi*'], 'badge' => 'revisi.pendaftaran'],
                     ]],
                     ['label' => 'Data', 'items' => [
                         ['key' => 'prestasi', 'label' => 'Database prestasi', 'icon' => 'database', 'route' => ['kesiswaan.prestasi.index', 'kesiswaan.prestasi']],
@@ -376,6 +380,8 @@ final class Navigation
                         ['key' => 'import', 'label' => 'Import siswa', 'icon' => 'upload', 'route' => ['kesiswaan.import']],
                         // B1 (K9/K2): activation report, reopen windows.
                         ['key' => 'aktivasi', 'label' => 'Status aktivasi', 'icon' => 'check-circle', 'route' => ['kesiswaan.aktivasi.index'], 'match' => ['kesiswaan.aktivasi*']],
+                        // SV8, D-197: what the guru letter prints (Nama, Pangkat/Gol, NIP, Jabatan), "Tambah guru".
+                        ['key' => 'guru', 'label' => 'Data guru', 'icon' => 'user', 'route' => ['kesiswaan.guru.index'], 'match' => ['kesiswaan.guru*']],
                     ]],
                 ],
             ],
@@ -402,6 +408,8 @@ final class Navigation
                         ['key' => 'surat', 'label' => 'Antrean surat', 'icon' => 'mail', 'route' => ['tu.beranda', 'tu.surat.index', 'tu.surat'], 'match' => ['tu.surat.*'], 'badge' => 'tu.surat'],
                         // D-150: Tata Usaha approves registrations too (the Kepala Sekolah's screen, its count).
                         ['key' => 'persetujuan', 'label' => 'Persetujuan lomba', 'icon' => 'check-circle', 'route' => ['tu.persetujuan.index'], 'match' => ['tu.persetujuan*'], 'badge' => 'kepsek.persetujuan'],
+                        // SV8, D-199: Tata Usaha decides a student's revision after the approval (with Kesiswaan).
+                        ['key' => 'revisi', 'label' => 'Revisi pendaftaran', 'icon' => 'edit', 'route' => ['tu.revisi.index'], 'match' => ['tu.revisi*'], 'badge' => 'revisi.pendaftaran'],
                         ['key' => 'arsip', 'label' => 'Arsip surat', 'icon' => 'folder', 'route' => ['tu.surat.arsip', 'tu.arsip']],
                         ['key' => 'template', 'label' => 'Template surat', 'icon' => 'file', 'route' => ['tu.surat.template', 'tu.template']],
                     ]],
@@ -439,6 +447,8 @@ final class Navigation
                         ['key' => 'kelas', 'label' => 'Kelas', 'icon' => 'folder', 'route' => ['admin.kelas.index'], 'match' => ['admin.kelas*']],
                         ['key' => 'import', 'label' => 'Import siswa', 'icon' => 'upload', 'route' => ['admin.import']],
                         ['key' => 'pengguna', 'label' => 'Pengguna & peran', 'icon' => 'users', 'route' => ['admin.pengguna.index', 'admin.pengguna'], 'match' => ['admin.pengguna*']],
+                        // SV8, D-197: the Kesiswaan page Data guru, allowed by role:kesiswaan|admin.
+                        ['key' => 'guru', 'label' => 'Data guru', 'icon' => 'user', 'route' => ['kesiswaan.guru.index'], 'match' => ['kesiswaan.guru*']],
                         // B1 (K9/K2/K1): activation report + activation window setting.
                         ['key' => 'aktivasi', 'label' => 'Status aktivasi', 'icon' => 'check-circle', 'route' => ['admin.aktivasi.index'], 'match' => ['admin.aktivasi*']],
                         // B5: Admin\ArsipOtomatis (the Pengaturan › Batas & arsip fallback is gone).

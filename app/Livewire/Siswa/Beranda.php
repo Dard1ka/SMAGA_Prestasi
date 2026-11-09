@@ -14,6 +14,7 @@ use App\Livewire\Siswa\LombaSaya\Index as LombaSaya;
 use App\Models\Competition;
 use App\Models\Registration;
 use App\Models\RegistrationMember;
+use App\Models\RegistrationRevision;
 use App\Models\Student;
 use App\Models\TalentApplication;
 use App\Models\User;
@@ -112,6 +113,26 @@ class Beranda extends Component
                     .($grace !== null ? 'jawab sebelum '.$grace : 'batas daftar '.LombaPresenter::date($competition->registration_closes_at)),
                 'button' => 'Lihat undangan',
                 'href' => route('siswa.undangan.show', $invite->registration),
+            ];
+        }
+
+        // SV8, D-199: a revision of an approved team that invites this student and waits for the answer.
+        $revisions = RegistrationRevision::query()
+            ->inviting((string) $student->getKey())
+            ->whereHas('registration', fn (Builder $r) => $r->whereHas('leader'))
+            ->with(['registration.competition', 'registration.leader.user:id,name'])
+            ->oldest()
+            ->get()
+            ->filter(fn (RegistrationRevision $revision): bool => $revision->answerOf((string) $student->getKey()) === null);
+
+        foreach ($revisions as $revision) {
+            $actions[] = [
+                'key' => 'revision-'.$revision->getKey(),
+                'icon' => 'users',
+                'title' => 'Undangan tim · '.$revision->registration->competition->name,
+                'note' => 'Dari '.$revision->registration->leader?->user?->name.' · tim sudah disetujui sekolah',
+                'button' => 'Lihat undangan',
+                'href' => route('siswa.undangan.revisi', $revision),
             ];
         }
 

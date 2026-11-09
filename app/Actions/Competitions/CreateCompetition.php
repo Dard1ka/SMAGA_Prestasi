@@ -253,7 +253,8 @@ final class CreateCompetition
             'final_on' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:starts_on'],
             'location' => ['nullable', 'string', 'max:200'],
             'participation' => ['nullable', Rule::enum(Participation::class)],
-            'max_team_size' => ['nullable', 'integer', 'min:2', 'max:20'],
+            // SV8, D-196: up to Competition::MAX_TEAM_SIZE (30) instead of 20.
+            'max_team_size' => ['nullable', 'integer', 'min:2', 'max:'.Competition::MAX_TEAM_SIZE],
             'default_mentor_id' => ['nullable', 'integer', function (string $attribute, mixed $value, Closure $fail) use ($keepMentorId): void {
                 if ($keepMentorId !== null && (int) $value === $keepMentorId) {
                     return;
@@ -281,7 +282,7 @@ final class CreateCompetition
             'final_on.after_or_equal' => 'Tanggal selesai tidak boleh sebelum tanggal mulai.',
             'integer' => 'Isi dengan angka.',
             'max_team_size.min' => 'Minimal 2 anggota.',
-            'max_team_size.max' => 'Maksimal 20 anggota.',
+            'max_team_size.max' => 'Maksimal '.Competition::MAX_TEAM_SIZE.' anggota.',
             'organizer_type_other.max' => 'Maksimal '.self::ORGANIZER_TYPE_OTHER_MAX.' karakter.',
         ];
     }

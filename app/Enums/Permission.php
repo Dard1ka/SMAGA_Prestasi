@@ -22,6 +22,8 @@ enum Permission: string
     case RegistrationCreate = 'registration.create';        // siswa registers individu/tim
     case RegistrationApprove = 'registration.approve';      // Kepala Sekolah or Tata Usaha (D-150; D-01: not Admin)
     case RegistrationViewAll = 'registration.view_all';
+    case RegistrationMentor = 'registration.mentor';        // set / replace the guru pembimbing until the report is sent: Kesiswaan + Admin (SV8, D-198)
+    case RegistrationReviseDecide = 'registration.revise_decide'; // approve / reject a student's revision after the approval: Tata Usaha + Kesiswaan only, not Admin (SV8, D-199)
 
     // Surat tugas (D-06)
     case LetterGenerate = 'letter.generate';
@@ -54,6 +56,8 @@ enum Permission: string
     case UserArchive = 'user.archive';                      // manual disable/archive (D-30)
     case UserReplacePrincipal = 'user.replace_principal';   // D-01
     case ClassroomManage = 'classroom.manage';              // the Kelas page: classes, Sampah, Pulihkan, Hapus permanen (Admin, Kesiswaan, Tata Usaha since 2026-11-05)
+    case GuruUpdate = 'guru.update';                        // Data guru: Nama, Pangkat/Gol, NIP, Jabatan of guru accounts: Admin, Kesiswaan (SV8, D-197)
+    case GuruCreate = 'guru.create';                        // Data guru › "Tambah guru": a guru account, never another role: Admin, Kesiswaan (SV8, D-197)
 
     // Settings
     case WeightManage = 'weight.manage';

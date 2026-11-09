@@ -5,7 +5,8 @@
     Hari / Tanggal / Pukul / Tempat · closing · signature block centred on the right.
     D-154 (the school's printed letter of 2026-10-16): "Dasar" is one regulation text of the template, wrapping under
     itself, close under the Nomor and two empty rows above the intro; the invitation's Nomor / Tanggal rows are gone.
-    D-157: an invitation TU typed (optional on this letter) is "Dasar" number 2, one sentence without "Hal".
+    D-157: an invitation TU typed (optional on this letter) is the last "Dasar", one sentence without "Hal".
+    SV8, D-195: the template holds 1 to 6 Dasar texts (LetterContent::siswaBasis()); kop, spacing and table unchanged.
     Vars: $content (App\Actions\Letters\LetterContent) · $number · $verification · $pdfImages · $replaces
 --}}
 @extends('pdf::layout', ['title' => 'Surat Tugas '.$number, 'letter' => 'siswa'])
@@ -22,19 +23,21 @@
     <div class="s-judul">Nomor : {{ $number }}</div>
     <div class="s-jarak-dasar"></div>
 
-    {{-- D-157: with an invitation typed by TU, "Dasar" is numbered: 1. the regulation text, 2. the invitation. --}}
-    @php($siswaInvitation = $content->siswaInvitation())
+    {{-- The Dasar texts of the template, then the invitation TU typed as the last one (D-157; a list since SV8, D-195):
+         more than one is numbered 1., 2., … like the guru letter, one alone stays without a number (D-154). --}}
+    @php($siswaBasis = $content->siswaBasis($tpl))
     <table class="s-dasar">
         <tr>
             <td class="k">Dasar</td>
             <td class="s">:</td>
-            @if ($siswaInvitation === null)
-                <td>{{ $tpl->siswaDasar($content->schoolYear) }}</td>
+            @if (count($siswaBasis) <= 1)
+                <td>{{ $siswaBasis[0] ?? '' }}</td>
             @else
                 <td>
                     <table class="s-daftar">
-                        <tr><td class="n">1.</td><td>{{ $tpl->siswaDasar($content->schoolYear) }}</td></tr>
-                        <tr><td class="n">2.</td><td>{{ $siswaInvitation }}</td></tr>
+                        @foreach ($siswaBasis as $item)
+                            <tr><td class="n">{{ $loop->iteration }}.</td><td>{{ $item }}</td></tr>
+                        @endforeach
                     </table>
                 </td>
             @endif

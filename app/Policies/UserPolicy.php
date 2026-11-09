@@ -79,6 +79,30 @@ final class UserPolicy
         return $actor->checkPermissionTo(Permission::UserReplacePrincipal->value);
     }
 
+    // --- SV8, D-197: Data guru (Kesiswaan › Data › Data guru, also for Admin) ---
+    // `can()`: a database where RoleSeeder has not run yet answers "no" instead of throwing.
+
+    /** The page: every guru account with the data its letter prints (`guru.update`: Kesiswaan, Admin). */
+    public function viewGuruData(User $actor): bool
+    {
+        return $actor->can(Permission::GuruUpdate->value);
+    }
+
+    /** "Ubah data" of ONE guru account (App\Actions\Users\UpdateGuruData): never another role, never one in the trash. */
+    public function updateGuruData(User $actor, User $target): bool
+    {
+        return $actor->can(Permission::GuruUpdate->value)
+            && ! $actor->is($target)
+            && ! $target->trashed()
+            && $target->hasRole(RoleName::Guru->value);
+    }
+
+    /** "Tambah guru" (CreateStaffAccount::handleGuru()): an account with the role guru, never another role (`guru.create`). */
+    public function createGuru(User $actor): bool
+    {
+        return $actor->can(Permission::GuruCreate->value);
+    }
+
     // --- B5: Admin › Arsip otomatis (SECURITY §3m-8) ---
 
     /** Archive overview (due soon, archived, history). */

@@ -314,7 +314,7 @@ it('replaces only the demo files it is asked for, at the same path, and changes 
         ->and(m3dPageText((string) $disk->get(m3dDemoFile('piagam-o2sn-2026.pdf')->path)))->toContain('PIAGAM PENGHARGAAN', 'Nadia Putri Anindya', 'PESERTA')
         ->and($siswaText)->toContain('S U R A T', '400.3.8/312/MRD/IX/2026', 'NADIA PUTRI ANINDYA', 'DIMAS ARYA NUGROHO', 'KEISHA LARASATI', $letter->verification_code, 'bukan dokumen resmi')
         ->and($guruText)->toContain('SURAT PERINTAH TUGAS', 'Retno Wulandari, S.Pd.', $guru->verification_code)
-        ->and(substr_count($guruText, 'bukan dokumen resmi'))->toBe(2) // letter + Lampiran page
+        ->and(substr_count($guruText, 'bukan dokumen resmi'))->toBe(1) // one page since SV8, D-194 (no Lampiran)
         ->and($looseText)->toContain('SERTIFIKAT', 'Lomba Cerdas Cermat 2026', 'Nadia Putri Anindya'); // nothing attached: the fallback student
 
     expect($output)->toContain('Sertifikat: 4', 'Piagam penghargaan: 1', 'Laporan penelitian: 1', 'Juknis lomba: 1', 'Brosur lomba: 1', 'Poster lomba: 1')

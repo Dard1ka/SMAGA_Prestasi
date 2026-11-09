@@ -64,16 +64,17 @@
             $typeName = $isGuru ? 'surat guru pendamping' : 'surat siswa';
             $model = $type->value;
             $guruSent = $letters->contains(fn ($l) => $l->type === \App\Enums\LetterType::Guru);
-            // D-154: the student letter's Dasar is the template's regulation text; one printed before it named the invitation.
-            // D-157: an invitation on a student letter printed since then is its Dasar number 2.
+            // D-154: the student letter's Dasar is the template's regulation texts (1 to 6 since SV8, D-195); one printed
+            // before D-154 named the invitation. D-157: an invitation on a student letter printed since then is its last Dasar.
             $oldBasis = $isGuru ? null : $letterTemplate->oldSiswaBasis($content->basisFrom);
-            $siswaInvitation = $isGuru || $oldBasis !== null ? null : $content->siswaInvitation();
-            $basisLine = ! $isGuru && $oldBasis === null
-                ? $letterTemplate->siswaDasar($content->schoolYear)
-                : ($oldBasis ?? 'Surat dari '.$content->basisFrom)
-                    .($content->basisNumber ? ', nomor '.$content->basisNumber : '')
-                    .($content->basisDateText ? ', tanggal '.$content->basisDateText : '')
-                    .($isGuru && $content->basisSubject !== '' ? ', hal '.$content->basisSubject : '');
+            $siswaDasar = $isGuru ? [] : $letterTemplate->siswaDasarItems($content->schoolYear);
+            $dasarCount = max(1, count($siswaDasar));
+            $dasarLabel = $dasarCount > 1 ? 'Dasar 1–'.$dasarCount : 'Dasar 1';
+            $siswaBasis = $isGuru || $oldBasis !== null ? [] : $content->siswaBasis($letterTemplate);
+            $basisLine = ($oldBasis ?? 'Surat dari '.$content->basisFrom)
+                .($content->basisNumber ? ', nomor '.$content->basisNumber : '')
+                .($content->basisDateText ? ', tanggal '.$content->basisDateText : '')
+                .($isGuru && $content->basisSubject !== '' ? ', hal '.$content->basisSubject : '');
         @endphp
 
         <div class="flex flex-col gap-3">
@@ -157,11 +158,20 @@
                                 </div>
                             </fieldset>
                         @else
-                            {{-- D-154: Dasar 1 of the student letter is a fixed regulation text of the template. D-157: the
-                                 invitation is optional here and, left filled, prints as Dasar 2 (no "Hal"). --}}
+                            {{-- D-154: the first Dasar texts of the student letter are fixed regulation texts of the template
+                                 (one or more since SV8, D-195). D-157: the invitation is optional here and, left filled,
+                                 prints as the next Dasar (no "Hal"). --}}
                             <div class="flex flex-col gap-1">
-                                <p class="m-0 text-sm font-bold">Dasar 1 <span class="muted font-medium">· Dari Template surat</span></p>
-                                <p class="m-0 text-sm [overflow-wrap:anywhere]">{{ $letterTemplate->siswaDasar($content->schoolYear) }}</p>
+                                <p class="m-0 text-sm font-bold">{{ $dasarLabel }} <span class="muted font-medium">· Dari Template surat</span></p>
+                                @if ($dasarCount > 1)
+                                    <ol class="m-0 flex list-decimal flex-col gap-1 pl-5 text-sm [overflow-wrap:anywhere]">
+                                        @foreach ($siswaDasar as $item)
+                                            <li wire:key="dasar-template-{{ $loop->index }}">{{ $item }}</li>
+                                        @endforeach
+                                    </ol>
+                                @else
+                                    <p class="m-0 text-sm [overflow-wrap:anywhere]">{{ $siswaDasar[0] ?? '-' }}</p>
+                                @endif
                                 <p class="muted m-0 text-xs">
                                     Sama untuk semua surat siswa.
                                     @if (Route::has('tu.surat.template'))
@@ -170,10 +180,10 @@
                                 </p>
                             </div>
                             <fieldset class="m-0 flex flex-col gap-3 border-0 p-0">
-                                <legend class="mb-2 text-sm font-bold">Dasar 2 <span class="muted font-medium">· Surat undangan lomba</span></legend>
+                                <legend class="mb-2 text-sm font-bold">Dasar {{ $dasarCount + 1 }} <span class="muted font-medium">· Surat undangan lomba</span></legend>
                                 <div class="grid grid-cols-1 items-start gap-4 md:grid-cols-2">
                                     <x-sth.input wire:model.live.debounce.500ms="{{ $model }}.dasarDari" :input-class="$tint['dasarDari'] ?? null" label="Surat dari" optional maxlength="200" class="md:col-span-2"
-                                                 hint="Diisi dari penyelenggara lomba. Kosongkan bila tidak ada surat undangan, surat siswa lalu hanya memuat Dasar 1." />
+                                                 :hint="'Diisi dari penyelenggara lomba. Kosongkan bila tidak ada surat undangan, surat siswa lalu hanya memuat '.$dasarLabel.'.'" />
                                     <x-sth.input wire:model.live.debounce.500ms="{{ $model }}.dasarNomor" :input-class="$tint['dasarNomor'] ?? null" label="Nomor surat undangan" optional maxlength="150" autocomplete="off" />
                                     <x-sth.input type="date" wire:model.live.debounce.400ms="{{ $model }}.dasarTanggal" :input-class="$tint['dasarTanggal'] ?? null" label="Tanggal surat undangan" optional />
                                 </div>
@@ -224,13 +234,17 @@
                         <dd class="m-0 text-sm">{{ $content->issuedOnText }}</dd>
                         <dt class="text-sm font-semibold text-muted">Dasar</dt>
                         <dd class="m-0 text-sm">
-                            @if ($siswaInvitation !== null)
+                            {{-- D-157, SV8 D-195: a student letter lists every Dasar it printed, numbered when more than one. --}}
+                            @if ($isGuru || $oldBasis !== null)
+                                {{ $basisLine }}
+                            @elseif (count($siswaBasis) > 1)
                                 <ol class="m-0 list-decimal pl-5">
-                                    <li>{{ $basisLine }}</li>
-                                    <li>{{ $siswaInvitation }}</li>
+                                    @foreach ($siswaBasis as $item)
+                                        <li>{{ $item }}</li>
+                                    @endforeach
                                 </ol>
                             @else
-                                {{ $basisLine }}
+                                {{ $siswaBasis[0] ?? '-' }}
                             @endif
                         </dd>
                         <dt class="text-sm font-semibold text-muted">Pelaksanaan</dt>

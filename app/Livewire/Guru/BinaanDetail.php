@@ -18,6 +18,7 @@ use App\Models\Letter;
 use App\Models\Registration;
 use App\Models\RegistrationMember;
 use App\Models\ReportFile;
+use App\Policies\LetterPolicy;
 use App\Support\StaffRoleLabel;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
@@ -38,6 +39,9 @@ use Livewire\Component;
 final class BinaanDetail extends Component
 {
     use PresentsBinaan, ReportHelpers;
+
+    /** SV8: the sent guru letter names the guru before a guru change (LetterPolicy::namesCurrentMentor()). */
+    public const GURU_LETTER_STALE = 'Surat perintah tugas guru masih memuat guru pembimbing sebelumnya. Surat yang baru muncul di sini setelah Tata Usaha mengoreksinya.';
 
     #[Locked]
     public string $registrationId = '';
@@ -122,6 +126,7 @@ final class BinaanDetail extends Component
                 },
             ])->all(),
             'letters' => $this->letterRows($registration),
+            'guruLetterStale' => $this->guruLetterStale($registration) ? self::GURU_LETTER_STALE : null,
             'report' => $report === null ? null : [
                 'status' => $report->status->label(),
                 'tone' => $report->status->tone(),
@@ -181,7 +186,8 @@ final class BinaanDetail extends Component
     }
 
     /**
-     * Letters the guru may open (LetterPolicy::view: the mentor sees both letters only after TU sent them).
+     * Letters the guru may open (LetterPolicy::view: the mentor sees both letters only after TU sent them, the guru
+     * letter only while it names this guru, LetterPolicy::namesCurrentMentor()).
      * "Buka" shows the PDF in the preview popup; the link itself stays the download (QA5, D-105's open point).
      *
      * @return list<array{title: string, meta: string, href: string, name: string, preview: ?string, previewType: ?string}>
@@ -199,5 +205,16 @@ final class BinaanDetail extends Component
                 'preview' => $letter->file !== null ? FileController::previewUrl($letter->file) : null,
                 'previewType' => $letter->file !== null ? FileController::previewType($letter->file) : null,
             ])->values()->all();
+    }
+
+    /**
+     * SV8: a sent guru letter that still names the guru before a guru change (letterRows() leaves it out, the policy
+     * refuses it): the card says so instead of only hiding it.
+     */
+    private function guruLetterStale(Registration $registration): bool
+    {
+        $guruLetter = $registration->letters->first(fn (Letter $letter): bool => $letter->type === LetterType::Guru && $letter->sent_at !== null);
+
+        return $guruLetter !== null && ! LetterPolicy::namesCurrentMentor($guruLetter);
     }
 }

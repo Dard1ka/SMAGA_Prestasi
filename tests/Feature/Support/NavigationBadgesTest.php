@@ -109,12 +109,14 @@ it('keeps the number of the page when the page passes one', function (): void {
 
     DB::enableQueryLog();
     // D-150: the TU menu also counts "Persetujuan lomba"; a page that passes both keys costs no count query.
-    $items = m2cNavItems(Navigation::for($tu, null, ['tu.surat' => 9, 'kepsek.persetujuan' => 4], 'tu.surat.arsip'));
+    // SV8, D-199: and "Revisi pendaftaran".
+    $items = m2cNavItems(Navigation::for($tu, null, ['tu.surat' => 9, 'kepsek.persetujuan' => 4, 'revisi.pendaftaran' => 1], 'tu.surat.arsip'));
     $counts = collect(DB::getQueryLog())->filter(fn (array $q): bool => str_contains($q['query'], 'count(*)'));
     DB::disableQueryLog();
 
     expect($items['surat']['badge'])->toBe(9)
         ->and($items['persetujuan']['badge'])->toBe(4)
+        ->and($items['revisi']['badge'])->toBe(1)
         ->and($counts)->toBeEmpty();
 });
 
@@ -178,8 +180,9 @@ it('runs one COUNT per badge and nothing else', function (): void {
     $queries = array_column(DB::getQueryLog(), 'query');
     DB::disableQueryLog();
 
-    expect($badges)->toBe(['kesiswaan.usulan' => 2, 'kesiswaan.verifikasi' => 0])
-        ->and($queries)->toHaveCount(2)
+    // SV8, D-199: Kesiswaan decides revisions too ("Revisi pendaftaran").
+    expect($badges)->toBe(['kesiswaan.usulan' => 2, 'kesiswaan.verifikasi' => 0, 'revisi.pendaftaran' => 0])
+        ->and($queries)->toHaveCount(3)
         ->and($queries)->each->toStartWith('select count(*)');
 
     // Keys the page passed are skipped.
@@ -189,8 +192,8 @@ it('runs one COUNT per badge and nothing else', function (): void {
     $queries = array_column(DB::getQueryLog(), 'query');
     DB::disableQueryLog();
 
-    expect($rest)->toBe(['kesiswaan.verifikasi' => 0])
-        ->and($queries)->toHaveCount(1);
+    expect($rest)->toBe(['kesiswaan.verifikasi' => 0, 'revisi.pendaftaran' => 0])
+        ->and($queries)->toHaveCount(2);
 });
 
 it('never counts for guests or preview users', function (): void {
@@ -209,8 +212,8 @@ it('never counts for guests or preview users', function (): void {
 });
 
 it('lists the badge keys of every role menu', function (): void {
-    expect(Navigation::badgeKeys('kesiswaan'))->toBe(['kesiswaan.usulan', 'kesiswaan.verifikasi'])
-        ->and(Navigation::badgeKeys('tata_usaha'))->toBe(['tu.surat', 'kepsek.persetujuan'])
+    expect(Navigation::badgeKeys('kesiswaan'))->toBe(['kesiswaan.usulan', 'kesiswaan.verifikasi', 'revisi.pendaftaran'])
+        ->and(Navigation::badgeKeys('tata_usaha'))->toBe(['tu.surat', 'kepsek.persetujuan', 'revisi.pendaftaran'])
         ->and(Navigation::badgeKeys('kepala_sekolah'))->toBe(['kepsek.persetujuan'])
         ->and(Navigation::badgeKeys('humas'))->toBe(['humas.publikasi', 'humas.verifikasi', 'humas.jadwal'])
         ->and(Navigation::badgeKeys('siswa'))->toBe(['siswa.lomba-saya'])

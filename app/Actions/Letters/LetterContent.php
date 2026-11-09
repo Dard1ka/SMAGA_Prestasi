@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Actions\Letters;
 
+use App\Actions\Templates\LetterTemplate;
 use App\Domain\Archive\SchoolYear;
 use App\Enums\MemberRole;
 use App\Enums\SettingKey;
@@ -179,8 +180,12 @@ final readonly class LetterContent
         return self::range($this->scheduleTime);
     }
 
-    /** Guru letter, "Dasar": the invitation, after the fixed regulation texts. */
-    public function guruBasis(): string
+    /**
+     * Guru letter, "Dasar": the invitation, after the fixed regulation texts. SV8, D-194: the school's letter writes a day
+     * of one digit with a leading zero ("Tanggal 02 November 2026"); $twoDigitDay = false keeps the M1-A text for the
+     * preview of a letter printed before (LetterTemplate::GURU_LAYOUT_LAMPIRAN).
+     */
+    public function guruBasis(bool $twoDigitDay = true): string
     {
         $text = 'Surat dari '.($this->basisFrom !== '' ? $this->basisFrom : '[surat dari]');
 
@@ -189,7 +194,7 @@ final readonly class LetterContent
         }
 
         if ($this->basisDateText !== null) {
-            $text .= ' Tanggal '.$this->basisDateText;
+            $text .= ' Tanggal '.($twoDigitDay ? self::twoDigitDay($this->basisDateText) : $this->basisDateText);
         }
 
         if ($this->basisSubject !== '') {
@@ -200,8 +205,23 @@ final readonly class LetterContent
     }
 
     /**
-     * Student letter, "Dasar" number 2 (D-157): the invitation TU typed, without "Hal"; null when "Surat dari" is empty,
-     * and the letter then prints its one regulation text without numbers (D-154).
+     * Student letter, every "Dasar" text in print order: the regulation texts of the template, then the invitation TU
+     * typed as the last one (D-157; the template's are a list since SV8, D-195). More than one is numbered 1., 2., …
+     * like the guru letter; one alone is printed without a number (D-154). The PDF, the TU preview and the summary of
+     * an issued letter (with the template it printed, D-108) all print this list.
+     *
+     * @return list<string>
+     */
+    public function siswaBasis(LetterTemplate $template): array
+    {
+        $invitation = $this->siswaInvitation();
+
+        return [...$template->siswaDasarItems($this->schoolYear), ...($invitation !== null ? [$invitation] : [])];
+    }
+
+    /**
+     * Student letter, the last "Dasar" (D-157): the invitation TU typed, without "Hal"; null when "Surat dari" is empty,
+     * and the letter then prints only the regulation texts of the template.
      */
     public function siswaInvitation(): ?string
     {
@@ -214,16 +234,38 @@ final readonly class LetterContent
             .($this->basisDateText !== null ? ' Tanggal '.$this->basisDateText : '');
     }
 
-    /** Guru letter, "Untuk" point 1 (worded as in the school's file, without a full stop). */
-    public function guruTask(): string
+    /** Guru letter, "Untuk" point 1 as one plain text (guruTaskParts()). */
+    public function guruTask(string $layout = LetterTemplate::GURU_LAYOUT): string
+    {
+        return implode('', $this->guruTaskParts($layout));
+    }
+
+    /**
+     * Guru letter, "Untuk" point 1 (worded as in the school's file, without a full stop) in three pieces: the words
+     * before the kegiatan, the kegiatan, the rest. SV8, D-194 (the school's letter of 2026-11-09): "Melaksanakan tugas
+     * kegiatan <kegiatan, bold> pada hari … tanggal …, Pukul … di …", the kegiatan = the lomba's name as it was entered
+     * (the school writes the event's own name). A letter printed before (GURU_LAYOUT_LAMPIRAN) said "… kegiatan
+     * mendampingi siswa Lomba <nama> …", nothing bold.
+     *
+     * @return array{0: string, 1: string, 2: string}
+     */
+    public function guruTaskParts(string $layout = LetterTemplate::GURU_LAYOUT): array
     {
         $where = $this->online ? 'secara daring' : 'di '.($this->place !== '' ? $this->place : '[tempat]');
-
-        return 'Melaksanakan tugas kegiatan mendampingi siswa '.$this->activityShort()
-            .' pada hari '.($this->scheduleDay !== '' ? $this->scheduleDay : '[hari]')
+        $rest = ' pada hari '.($this->scheduleDay !== '' ? $this->scheduleDay : '[hari]')
             .' tanggal '.($this->scheduleDate !== '' ? $this->scheduleDate : '[tanggal]')
             .', Pukul '.($this->scheduleTime !== '' ? $this->scheduleTime : '[pukul]')
             .' '.$where;
+
+        return $layout === LetterTemplate::GURU_LAYOUT_LAMPIRAN
+            ? ['Melaksanakan tugas kegiatan mendampingi siswa ', $this->activityShort(), $rest]
+            : ['Melaksanakan tugas kegiatan ', $this->competitionShort !== '' ? $this->competitionShort : '[kegiatan]', $rest];
+    }
+
+    /** SV8, D-194: the date above the signature of the guru letter, a one-digit day with a leading zero ("04 November 2026"). */
+    public function guruSignedOn(): string
+    {
+        return self::twoDigitDay($this->issuedOnText);
     }
 
     /**
@@ -247,6 +289,12 @@ final readonly class LetterContent
     public function studentCount(): int
     {
         return count($this->students);
+    }
+
+    /** "4 November 2026" → "04 November 2026" (SV8, D-194, the guru letter); any other text stays as it is. */
+    private static function twoDigitDay(string $date): string
+    {
+        return (string) preg_replace('/^(\d)(?=\s)/u', '0$1', $date);
     }
 
     private static function withLomba(string $name): string

@@ -193,7 +193,7 @@
                 </div>
                 <p class="m-0 text-md [overflow-wrap:anywhere]">
                     @if ($mentorDialog['current'])
-                        Pilihan siswa: <span class="font-semibold">{{ $mentorDialog['current'] }}</span>
+                        {{ $mentorDialog['currentLabel'] }}: <span class="font-semibold">{{ $mentorDialog['current'] }}</span>
                     @else
                         Siswa belum memilih guru pembimbing.
                     @endif

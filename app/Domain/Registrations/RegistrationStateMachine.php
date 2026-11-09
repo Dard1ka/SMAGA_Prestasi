@@ -43,11 +43,13 @@ final class RegistrationStateMachine
      * registration (tim → menunggu_konfirmasi, individu → menunggu_kepsek), rejecting it or the leader cancels it.
      * disetujui → dibatalkan (D-155): Tata Usaha removes an approved registration from the letter queue before the
      * letters were sent (CancelApprovedRegistration); the leader never cancels from here (CancelRegistration).
+     * menunggu_kepsek → menunggu_konfirmasi (SV8, D-199): the ketua invites new anggota while the registration waits for
+     * the approval (ChangeRegistration); it waits for their answers again before it goes back to the approvers.
      */
     private const TRANSITIONS = [
         self::MENUNGGU_LOMBA => [self::MENUNGGU_KONFIRMASI, self::MENUNGGU_KEPSEK, self::DIBATALKAN],
         self::MENUNGGU_KONFIRMASI => [self::MENUNGGU_KEPSEK, self::DIBATALKAN],
-        self::MENUNGGU_KEPSEK => [self::DISETUJUI, self::DITOLAK, self::DIBATALKAN],
+        self::MENUNGGU_KEPSEK => [self::DISETUJUI, self::DITOLAK, self::DIBATALKAN, self::MENUNGGU_KONFIRMASI],
         self::DISETUJUI => [self::SURAT_TERBIT, self::DIBATALKAN],
         self::DITOLAK => [],
         self::SURAT_TERBIT => [self::BERLANGSUNG],

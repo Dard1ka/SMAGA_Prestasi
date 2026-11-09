@@ -14,6 +14,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
 use Livewire\Component;
@@ -29,6 +30,11 @@ use Spatie\Activitylog\Models\Activity;
  * old snapshot into the form; saving makes it a new version). The letter number formats are shown read-only: since
  * M1-A they are only the example under the number field (TU types the complete number; Admin › Pengaturan › Surat).
  * Viewing: SettingPolicy::viewLetterTemplate; saving: manageLetterTemplate.
+ *
+ * SV8, D-195: the student letter's Dasar is a list of 1 to LetterTemplate::SISWA_DASAR_MAX texts ("Tambah dasar",
+ * "Hapus", "Naikkan" / "Turunkan" change the unsaved draft only). The form shows the first $siswaDasarRows fields of
+ * LetterTemplate::SISWA_DASAR; fields after them count as empty. Saving drops the empty rows first, so a validation
+ * error stands on the row TU sees.
  */
 #[Title('Template surat')]
 #[Layout('layouts::app', ['subtitle' => 'Teks tetap surat tugas. Perubahan berlaku untuk surat berikutnya.'])]
@@ -40,10 +46,14 @@ final class TemplateSurat extends Component
     #[Url(as: 'surat', except: 'siswa')]
     public string $preview = 'siswa';
 
+    /** SV8, D-195: how many student Dasar fields the form shows (1 … SISWA_DASAR_MAX); changed only by this class. */
+    #[Locked]
+    public int $siswaDasarRows = 1;
+
     public function mount(): void
     {
         Gate::authorize('viewLetterTemplate', Setting::class);
-        $this->form = LetterTemplate::current()->values;
+        $this->load(LetterTemplate::current()->values);
         $this->preview = $this->preview === 'guru' ? 'guru' : 'siswa';
     }
 
@@ -62,9 +72,11 @@ final class TemplateSurat extends Component
         Gate::authorize('manageLetterTemplate', Setting::class);
 
         $this->resetErrorBag();
+        // SV8, D-195: the empty Dasar rows go first and the rest move up, as the Action stores them.
+        $this->load($this->visibleForm());
         $before = LetterTemplate::current()->version;
         $saved = $update->handle($this->actor(), $this->form);
-        $this->form = $saved->values;
+        $this->load($saved->values);
 
         $this->dispatch('sth-toast',
             message: $saved->version === $before ? 'Tidak ada perubahan.' : 'Template disimpan sebagai versi '.$saved->version.'.',
@@ -76,14 +88,70 @@ final class TemplateSurat extends Component
     {
         Gate::authorize('manageLetterTemplate', Setting::class);
         $this->resetErrorBag();
-        $this->form = LetterTemplate::defaults();
+        $this->load(LetterTemplate::defaults());
         $this->dispatch('sth-toast', message: 'Teks bawaan dimuat. Simpan untuk memakainya.', tone: 'info');
     }
 
     public function revert(): void
     {
         $this->resetErrorBag();
-        $this->form = LetterTemplate::current()->values;
+        $this->load(LetterTemplate::current()->values);
+    }
+
+    /** SV8, D-195: one more, empty student Dasar row at the end (at most SISWA_DASAR_MAX). */
+    public function addSiswaDasar(): void
+    {
+        Gate::authorize('manageLetterTemplate', Setting::class);
+
+        $rows = $this->siswaDasarRows();
+
+        if ($rows >= LetterTemplate::SISWA_DASAR_MAX) {
+            $this->dispatch('sth-toast', message: 'Dasar surat siswa paling banyak '.LetterTemplate::SISWA_DASAR_MAX.'.', tone: 'warning');
+
+            return;
+        }
+
+        $this->form = LetterTemplate::withSiswaDasar($this->form, [...$this->siswaDasarDraft(), '']);
+        $this->siswaDasarRows = $rows + 1;
+    }
+
+    /** SV8, D-195: remove the student Dasar row $index (0 = number 1); the rows under it move up. One row always stays. */
+    public function removeSiswaDasar(int $index): void
+    {
+        Gate::authorize('manageLetterTemplate', Setting::class);
+
+        $texts = $this->siswaDasarDraft();
+
+        if (count($texts) <= 1) {
+            $this->dispatch('sth-toast', message: 'Surat siswa perlu minimal satu dasar.', tone: 'warning');
+
+            return;
+        }
+
+        if (! array_key_exists($index, $texts)) {
+            return;
+        }
+
+        array_splice($texts, $index, 1);
+        $this->resetErrorBag();
+        $this->form = LetterTemplate::withSiswaDasar($this->form, $texts);
+        $this->siswaDasarRows = count($texts);
+    }
+
+    /** SV8, D-195: swap the student Dasar row $index with the one above it ("Turunkan" on row i is this on row i + 1). */
+    public function moveSiswaDasarUp(int $index): void
+    {
+        Gate::authorize('manageLetterTemplate', Setting::class);
+
+        $texts = $this->siswaDasarDraft();
+
+        if ($index < 1 || $index >= count($texts)) {
+            return;
+        }
+
+        [$texts[$index - 1], $texts[$index]] = [$texts[$index], $texts[$index - 1]];
+        $this->resetErrorBag();
+        $this->form = LetterTemplate::withSiswaDasar($this->form, $texts);
     }
 
     /** Load an older version (from its audit snapshot) into the form; saving it makes a new version. */
@@ -96,7 +164,7 @@ final class TemplateSurat extends Component
         abort_unless(is_array($snapshot), 404);
 
         $this->resetErrorBag();
-        $this->form = LetterTemplate::draft($snapshot)->values;
+        $this->load(LetterTemplate::draft($snapshot)->values);
         $this->dispatch('sth-toast', message: 'Versi '.($entry->properties['version'] ?? '?').' dimuat. Simpan untuk memakainya lagi.', tone: 'info');
     }
 
@@ -105,7 +173,7 @@ final class TemplateSurat extends Component
         Gate::authorize('viewLetterTemplate', Setting::class);
 
         $current = LetterTemplate::current();
-        $draft = LetterTemplate::draft($this->form);
+        $draft = LetterTemplate::draft($this->visibleForm());
         $sample = self::sample();
 
         return view('livewire.tata-usaha.template-surat', [
@@ -113,6 +181,9 @@ final class TemplateSurat extends Component
             'draft' => $draft,
             'dirty' => $draft->values !== $current->values,
             'fields' => LetterTemplate::FIELDS,
+            // SV8, D-195: the group's `siswa_dasar` stands for the whole list of these fields.
+            'siswaDasarFields' => array_slice(LetterTemplate::SISWA_DASAR, 0, $this->siswaDasarRows()),
+            'siswaDasarMax' => LetterTemplate::SISWA_DASAR_MAX,
             'groups' => [
                 'Kop surat' => ['kop_1', 'kop_2', 'kop_3', 'kop_4', 'kop_5', 'kop_6'],
                 'Identitas' => ['school_name', 'city', 'signer_title'],
@@ -181,6 +252,47 @@ final class TemplateSurat extends Component
                 'nip' => (string) Setting::get(SettingKey::SignerNip),
             ],
         );
+    }
+
+    /**
+     * SV8, D-195: put $values in the form with the student Dasar texts closed up (number 1 first), one row per text
+     * (at least one row).
+     *
+     * @param  array<string, mixed>  $values
+     */
+    private function load(array $values): void
+    {
+        $texts = LetterTemplate::siswaDasarTexts($values);
+        $this->form = LetterTemplate::withSiswaDasar($values, $texts);
+        $this->siswaDasarRows = max(1, count($texts));
+    }
+
+    private function siswaDasarRows(): int
+    {
+        return max(1, min(LetterTemplate::SISWA_DASAR_MAX, $this->siswaDasarRows));
+    }
+
+    /**
+     * The student Dasar texts of the rows the form shows, as typed (empty ones included).
+     *
+     * @return list<string>
+     */
+    private function siswaDasarDraft(): array
+    {
+        return array_map(
+            fn (string $field): string => is_scalar($this->form[$field] ?? null) ? (string) $this->form[$field] : '',
+            array_slice(LetterTemplate::SISWA_DASAR, 0, $this->siswaDasarRows()),
+        );
+    }
+
+    /**
+     * The form as the preview and "Simpan template" read it: a student Dasar field after the shown rows is empty.
+     *
+     * @return array<string, mixed>
+     */
+    private function visibleForm(): array
+    {
+        return LetterTemplate::withSiswaDasar($this->form, $this->siswaDasarDraft());
     }
 
     private function actor(): User

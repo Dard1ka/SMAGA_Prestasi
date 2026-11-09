@@ -52,7 +52,7 @@ it('starts at version 0 with the built-in texts', function (): void {
     expect($template->version)->toBe(0)
         ->and($template->siswaIntro())->toBe('Kepala SMA Negeri 3 Semarang memberikan tugas kepada :')
         // D-154: the student letter's Dasar is the regulation text of the school's printed letter.
-        ->and($template->siswaDasar('2026/2027'))->toBe('Peraturan Menteri Pendidikan Dasar dan Menengah Republik Indonesia Nomor 8 Tahun 2026 Hal : Penggunaan Dana BOS Kinerja bagi sekolah yang memiliki prestasi')
+        ->and($template->siswaDasarItems('2026/2027'))->toBe(['Peraturan Menteri Pendidikan Dasar dan Menengah Republik Indonesia Nomor 8 Tahun 2026 Hal : Penggunaan Dana BOS Kinerja bagi sekolah yang memiliki prestasi'])
         ->and($template->oldSiswaBasis('Puspresnas'))->toBeNull()
         ->and($template->kopTitleLines())->toHaveCount(3)
         // M1-A: the kop and the guru letter's "Dasar" are the texts of the school's own files.
@@ -107,7 +107,8 @@ it('gives a template saved before D-154 the school\'s Dasar, and a letter printe
     $current = LetterTemplate::current();
 
     expect($current->version)->toBe(2)
-        ->and($current->siswaDasar('2026/2027'))->toStartWith('Peraturan Menteri Pendidikan Dasar dan Menengah')
+        ->and($current->siswaDasarItems('2026/2027'))->toHaveCount(1)
+        ->and($current->siswaDasarItems('2026/2027')[0])->toStartWith('Peraturan Menteri Pendidikan Dasar dan Menengah')
         ->and($current->values)->not->toHaveKey('siswa_basis')
         // new letters never print the old rows
         ->and($current->oldSiswaBasis('Panitia NSIF 2026'))->toBeNull();
@@ -213,8 +214,10 @@ it('prints the saved template in both PDF letters, escaped and never evaluated',
         ->and($siswa)->not->toContain('<b>laman</b>')
         ->and($guru)->toContain('Laksanakan dengan tanggung jawab.')
         ->and($guru)->toContain('Program kerja SMA Negeri 3 Semarang tahun pelajaran 2026/2027.')
-        // the empty second text is skipped: regulation 3 becomes number 2, the invitation number 3
-        ->and($guru)->toContain('<td class="n">3.</td><td class="rata">Surat dari Panitia NSIF 2026 Nomor 012/NSIF/IX/2026 Tanggal 15 September 2026 Hal Undangan</td>')
+        // the empty second text is skipped: regulation 3 becomes number 2, the invitation number 3 (SV8, D-194: set
+        // line by line, one block per line)
+        ->and((string) preg_replace('/\s+/', ' ', $guru))->toContain('<td class="n">3.</td> <td class="isi"><div class="baris"')
+        ->and((string) preg_replace('/\s+/', ' ', strip_tags($guru)))->toContain('3. Surat dari Panitia NSIF 2026 Nomor 012/NSIF/IX/2026 Tanggal 15 September 2026 Hal Undangan')
         ->and($guru)->not->toContain('<td class="n">4.</td>');
 });
 

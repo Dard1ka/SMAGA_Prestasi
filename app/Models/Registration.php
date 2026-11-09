@@ -7,6 +7,7 @@ namespace App\Models;
 use App\Enums\LetterType;
 use App\Enums\RegistrationStatus;
 use App\Enums\RegistrationType;
+use App\Enums\RevisionStatus;
 use Carbon\CarbonImmutable;
 use Database\Factories\RegistrationFactory;
 use Illuminate\Database\Eloquent\Builder;
@@ -135,6 +136,18 @@ class Registration extends Model
     public function report(): HasOne
     {
         return $this->hasOne(Report::class);
+    }
+
+    /** SV8, D-199: every revision the ketua asked for after the approval, newest last. @return HasMany<RegistrationRevision, $this> */
+    public function revisions(): HasMany
+    {
+        return $this->hasMany(RegistrationRevision::class);
+    }
+
+    /** SV8, D-199: the one revision waiting for a decision (RequestRevision allows one at a time). @return HasOne<RegistrationRevision, $this> */
+    public function pendingRevision(): HasOne
+    {
+        return $this->hasOne(RegistrationRevision::class)->where('status', RevisionStatus::Pending->value);
     }
 
     // Scopes ---------------------------------------------------------------------------------

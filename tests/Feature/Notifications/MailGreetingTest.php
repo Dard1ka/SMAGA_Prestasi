@@ -32,9 +32,16 @@ use App\Notifications\Publications\PublicationDue;
 use App\Notifications\Registrations\InvitationsExpired;
 use App\Notifications\Registrations\InvitationWithdrawn;
 use App\Notifications\Registrations\MemberResponded;
+use App\Notifications\Registrations\MentorAssigned;
 use App\Notifications\Registrations\RegistrationAwaitingPrincipal;
 use App\Notifications\Registrations\RegistrationCancelled;
 use App\Notifications\Registrations\RegistrationCancelledBySchool;
+use App\Notifications\Registrations\RemovedFromTeam;
+use App\Notifications\Registrations\RevisionAnswered;
+use App\Notifications\Registrations\RevisionAwaitingDecision;
+use App\Notifications\Registrations\RevisionDecided;
+use App\Notifications\Registrations\RevisionInvitation;
+use App\Notifications\Registrations\RevisionWithdrawn;
 use App\Notifications\Registrations\TeamInvitation;
 use App\Notifications\Reports\ReportReminder;
 use App\Notifications\Reports\ReportSubmitted;
@@ -127,6 +134,13 @@ function mailGreetingCases(): array
         [$fixed(RegistrationCancelled::for($registration, 'siswa')), 'siswa'],
         [$fixed(RegistrationCancelledBySchool::for($registration, 'siswa', $decider, 'Lomba diundur penyelenggara')), 'siswa'],
         [$fixed(RegistrationApproved::for($registration, 'siswa')), 'siswa'],
+        [$fixed(MentorAssigned::for($registration, 'siswa', 'Bu Retno Wulandari, S.Pd.', $decider)), 'siswa'], // SV8, D-198
+        // SV8, D-199: the ketua's change before the approval and the revision after it.
+        [$fixed(new RemovedFromTeam($registration)), 'siswa'],
+        [$fixed(new RevisionInvitation($registration, '01jrevisi')), 'siswa'],
+        [$fixed(new RevisionAnswered($registration, 'Dimas Arya Saputra', true, true)), 'siswa'],
+        [$fixed(RevisionDecided::for($registration, 'ketua', false, $decider, 'Anggota baru belum memenuhi syarat')), 'siswa'],
+        [$fixed(new RevisionWithdrawn($registration, RevisionWithdrawn::REJECTED)), 'siswa'],
         [$fixed(RegistrationRejected::for($registration, 'siswa')), 'siswa'],
         [$fixed(LettersIssued::for($registration, 'siswa')), 'siswa'],
         [$fixed(new LetterRevised($registration, 'siswa', '400.3.8/313/MRD/X/2026', '400.3.8/320/MRD/X/2026', null)), 'siswa'],
@@ -143,6 +157,11 @@ function mailGreetingCases(): array
         [$fixed(RegistrationApproved::for($registration, 'guru')), 'staf'],
         [$fixed(RegistrationApproved::for($registration, 'guru', true, 'Bu Retno Wulandari, S.Pd.')), 'staf'],
         [$fixed(RegistrationApproved::for($registration, 'tu')), 'staf'],
+        [$fixed(MentorAssigned::for($registration, 'guru', null, $decider)), 'staf'], // SV8, D-198
+        [$fixed(MentorAssigned::for($registration, 'tu', 'Bu Retno Wulandari, S.Pd.', $decider)), 'staf'], // D-198, fixed 2026-11-09
+        [$fixed(new RevisionAwaitingDecision($registration)), 'staf'], // SV8, D-199
+        [$fixed(RevisionDecided::for($registration, 'guru', true, $decider, null, true)), 'staf'],
+        [$fixed(RevisionDecided::for($registration, 'tu', true, $decider)), 'staf'],
         [$fixed(RegistrationRejected::for($registration, 'guru')), 'staf'],
         [$fixed(LettersIssued::for($registration, 'guru')), 'staf'],
         [$fixed(new LetterRevised($registration, 'guru', '400.3.8.6/1681/2026', '400.3.8.6/1690/2026', null)), 'staf'],

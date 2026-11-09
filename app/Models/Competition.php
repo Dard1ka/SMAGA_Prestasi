@@ -236,6 +236,25 @@ class Competition extends Model
     }
 
     /**
+     * SV8, D-196 (lead, 2026-11-09: "Siswa tim bisa lebih dari 3 orang, jangan dibatasi 3"): the largest "Maks anggota"
+     * a lomba may set, and the size no team ever passes. 30 covers the largest teams a school sends (a choir, a
+     * colossal dance, a marching band: 20 to 30 students), stays below one class of 36, and keeps the member table
+     * of the student letter on two pages (header repeated, the last rows with the signature).
+     */
+    public const MAX_TEAM_SIZE = 30;
+
+    /**
+     * The most people a team of this lomba may hold, the ketua included: its own "Maks anggota", never above
+     * MAX_TEAM_SIZE; MAX_TEAM_SIZE when none is set yet (D-196).
+     */
+    public function teamLimit(): int
+    {
+        $own = $this->max_team_size;
+
+        return $own !== null && $own > 0 ? min($own, self::MAX_TEAM_SIZE) : self::MAX_TEAM_SIZE;
+    }
+
+    /**
      * "Jenis penyelenggara" for a screen or an export: "Perguruan tinggi negeri", or "Lainnya (Sanggar seni)" when
      * the kind was typed by hand (`organizer_type_other`, D-125); null while no type is set. Needs the full row:
      * do not call it on a lomba loaded with a column subset (strict models).

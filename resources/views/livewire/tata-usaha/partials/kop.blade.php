@@ -3,7 +3,8 @@
     TU letter template (plain text, escaped), school emblem, thick + thin rule. The emblems come from the
     `tu.surat.kop` route (same files the PDF uses). Sizes are scaled to the preview sheet (max 560 px wide).
     $kop = 'siswa' (D-154): from sm up the student kop is the PDF's at the sheet's scale (560 px for 595.28 pt =
-    0.94 px per pt): emblems 75 pt, lines 11 / 13 / 8.2 pt. Without it (guru letter) the older, smaller kop.
+    0.94 px per pt): emblems 75 pt, lines 11 / 13 / 8.2 pt. Without it the older, smaller kop of a guru letter printed
+    before SV8, D-194 (pratinjau-guru-lampiran); the guru letter since then has its own kop (kop-guru).
     Vars: $kop ('siswa' | 'guru', optional) · $tpl / $letterTemplate (optional)
 --}}
 @php($tpl ??= $letterTemplate ?? \App\Actions\Templates\LetterTemplate::current())

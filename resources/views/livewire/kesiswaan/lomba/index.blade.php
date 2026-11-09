@@ -60,7 +60,14 @@
                                 @if ($row['soon'])<span class="text-xs font-bold text-orange">{{ $row['soon'] }}</span>@endif
                             </div>
                         </td>
-                        <td class="num">{{ $row['count'] }} siswa</td>
+                        <td class="num">
+                            {{-- SV8, D-198: the registrations and their guru pembimbing (Lomba\Pendaftar). --}}
+                            @if ($canMentor && $row['count'] > 0)
+                                <x-sth.button variant="quiet" size="sm" :aria-label="'Pendaftar '.$row['name']" wire:click="showRegistrations('{{ $row['id'] }}')" aria-haspopup="dialog">{{ $row['count'] }} siswa</x-sth.button>
+                            @else
+                                {{ $row['count'] }} siswa
+                            @endif
+                        </td>
                         <td><x-sth.chip :tone="$row['status'][0]" :icon="$row['status'][1]">{{ $row['status'][2] }}</x-sth.chip></td>
                         <td>
                             <div class="flex items-center gap-1.5">
@@ -209,4 +216,8 @@
     </x-sth.modal>
 
     <livewire:kesiswaan.lomba.form />
+
+    @if ($canMentor)
+        <livewire:kesiswaan.lomba.pendaftar />
+    @endif
 </div>

@@ -64,6 +64,8 @@ enum RoleName: string
                 Permission::CompetitionClose,
                 Permission::CompetitionDelete,
                 Permission::RegistrationViewAll,
+                Permission::RegistrationMentor, // SV8, D-198: "Isi / Ganti guru pembimbing" until the report is sent
+                Permission::RegistrationReviseDecide, // SV8, D-199: decide a revision after the approval (with Tata Usaha)
                 Permission::LetterView,
                 Permission::ReportVerify,
                 Permission::AchievementViewAll,
@@ -78,6 +80,9 @@ enum RoleName: string
                 // 2026-11-05 (the lead: Kelas "sama persis Admin"): the Kelas page with every action of Admin › Kelas.
                 Permission::ClassroomManage,
                 Permission::StudentStatus,
+                // SV8, D-197: Data guru (Nama, Pangkat/Gol, NIP, Jabatan of guru accounts) and "Tambah guru" (role guru only).
+                Permission::GuruUpdate,
+                Permission::GuruCreate,
                 Permission::DashboardView,
             ],
             self::KepalaSekolah => [
@@ -92,6 +97,7 @@ enum RoleName: string
             self::TataUsaha => [
                 Permission::RegistrationApprove, // D-150: Kepala Sekolah or Tata Usaha approves
                 Permission::RegistrationViewAll,
+                Permission::RegistrationReviseDecide, // SV8, D-199: decide a revision after the approval (with Kesiswaan)
                 Permission::LetterGenerate,
                 Permission::LetterSend,
                 Permission::LetterView,
@@ -109,9 +115,11 @@ enum RoleName: string
                 Permission::AppreciationManage,
                 Permission::ReportVerify,
             ],
+            // SV8, D-199: a revision after the approval is decided by "TU atau kesiswaan" only (the lead), so Admin
+            // does not get `registration.revise_decide` either.
             self::Admin => array_values(array_filter(
                 Permission::cases(),
-                fn (Permission $p) => $p !== Permission::RegistrationApprove,
+                fn (Permission $p) => ! in_array($p, [Permission::RegistrationApprove, Permission::RegistrationReviseDecide], true),
             )),
         };
     }

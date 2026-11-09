@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Livewire\Kepsek;
 
 use App\Actions\Registrations\ApproveRegistration;
+use App\Actions\Registrations\ApproveRevision;
+use App\Actions\Registrations\ChangeMentor;
 use App\Actions\Registrations\MentorChoice;
 use App\Actions\Registrations\RejectRegistration;
 use App\Enums\Bidang;
@@ -440,7 +442,7 @@ class Persetujuan extends Component
      * waits (D-132). The sentences promise a notice only to the people who get one (D-109).
      *
      * @param  Collection<int, Registration>  $rows
-     * @return array{title: string, who: string, current: ?string, options: array<int, string>, notices: list<string>}|null
+     * @return array{title: string, who: string, current: ?string, currentLabel: string, options: array<int, string>, notices: list<string>}|null
      */
     private function mentorDialog(Collection $rows): ?array
     {
@@ -463,6 +465,11 @@ class Persetujuan extends Component
             'title' => (string) $registration->competition?->name.($registration->branch ? ' · '.$registration->branch : ''),
             'who' => $names->count() > 1 ? 'Tim '.$names->count().' siswa: '.$names->implode(', ') : (string) $names->first(),
             'current' => MentorChoice::name($current),
+            // Not "Pilihan siswa" when the school set the guru (SV8: Kesiswaan on Kelola lomba, D-198, or an approved
+            // revision, D-199): the latest guru change of the registration says who chose the guru it has now.
+            'currentLabel' => in_array(ChangeMentor::latestSource($registration), [ChangeMentor::SOURCE, ApproveRevision::MENTOR_SOURCE], true)
+                ? 'Guru pembimbing saat ini'
+                : 'Pilihan siswa',
             // Every other guru: not the one the row has, and not this account itself (a Kepala Sekolah who also
             // holds the guru role gets no notice of their own click, so the sentence below would not hold for it).
             'options' => MentorChoice::options(...array_values(array_filter([
@@ -585,6 +592,8 @@ class Persetujuan extends Component
 
         $this->dispatch('sth-toast', message: match (true) {
             $registration->status === RegistrationStatus::Dibatalkan => 'Pendaftaran ini sudah dibatalkan siswa. Daftar sudah diperbarui.',
+            // SV8, D-199: the ketua invited new anggota while it waited (ChangeRegistration); it comes back once they answer.
+            $registration->status === RegistrationStatus::MenungguKonfirmasi => ApproveRegistration::MSG_BACK_TO_MEMBERS.' Daftar sudah diperbarui.',
             $registration->status !== RegistrationStatus::MenungguKepsek => 'Pendaftaran ini sudah diputuskan. Daftar sudah diperbarui.',
             default => self::MSG_NOT_LISTED,
         }, tone: 'warning');

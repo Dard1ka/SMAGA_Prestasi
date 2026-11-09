@@ -1,7 +1,8 @@
 {{--
     Signature block: the lines above the signature, the ONE signature + stamp image (settings.signature_file_id,
     copied into the render sandbox), then the signer from settings.
-    Vars: $ttd ('s-ttd' student letter: centred, name bold + underlined · 'g-ttd' guru letter · 'g-ttd-lampiran')
+    Sizes and offsets of the image (SV8, D-194: 80 % of SV7, 17 pt further left): .s-ttd / .g-ttd in layout.blade.php.
+    Vars: $ttd ('s-ttd' student letter: centred, name bold + underlined · 'g-ttd' guru letter: left-aligned, plain)
           · $ttdLines (list of lines above the image) · $content (LetterContent) · $pdfImages
 --}}
 <div class="{{ $ttd }} utuh">

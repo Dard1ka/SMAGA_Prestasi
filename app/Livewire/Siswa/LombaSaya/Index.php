@@ -7,6 +7,7 @@ namespace App\Livewire\Siswa\LombaSaya;
 use App\Actions\Registrations\ApproveRegistration;
 use App\Actions\Registrations\CancelRegistration;
 use App\Actions\Registrations\ConfirmMembership;
+use App\Actions\Registrations\RevisionRules;
 use App\Domain\Deadlines\ReportFollowUp;
 use App\Enums\LetterType;
 use App\Enums\RegistrationStatus;
@@ -22,6 +23,7 @@ use App\Models\RegistrationMember;
 use App\Models\Report;
 use App\Models\Student;
 use App\Models\User;
+use App\Policies\LetterPolicy;
 use App\Support\StaffRoleLabel;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
@@ -33,6 +35,7 @@ use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
+use Livewire\Attributes\On;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
 use Livewire\Component;
@@ -168,6 +171,13 @@ final class Index extends Component
         unset($this->selected, $this->counts, $this->items);
         $this->dispatch('sth-modal-close', id: 'batal-daftar');
         $this->dispatch('sth-toast', message: 'Pendaftaran dibatalkan.', tone: 'success');
+    }
+
+    /** SV8, D-199: the ketua changed the team or the guru (UbahPendaftaran): draw the detail and the list again. */
+    #[On(UbahPendaftaran::CHANGED)]
+    public function refreshAfterChange(): void
+    {
+        unset($this->selected, $this->counts, $this->items);
     }
 
     /** @return array{berjalan: int, selesai: int} */
@@ -321,7 +331,9 @@ final class Index extends Component
         // "sedang menyiapkan" instead of offering a file the policy would answer with 404.
         $sentLetters = $registration->letters->filter(fn (Letter $letter): bool => $letter->sent_at !== null);
         $studentLetter = $sentLetters->firstWhere('type', LetterType::Siswa);
-        $guruLetter = $sentLetters->firstWhere('type', LetterType::Guru);
+        // SV8: the row says "Untuk <guru pembimbing>", so a guru letter that still names the guru before a guru change
+        // (LetterPolicy::namesCurrentMentor()) waits for Tata Usaha's Koreksi before it is listed again.
+        $guruLetter = $sentLetters->first(fn (Letter $letter): bool => $letter->type === LetterType::Guru && LetterPolicy::namesCurrentMentor($letter));
         $achievement = $report !== null && $student !== null
             ? Achievement::query()->where('report_id', $report->getKey())->where('student_id', $student->getKey())->first()
             : null;
@@ -352,6 +364,9 @@ final class Index extends Component
                 && $status === RegistrationStatus::MenungguKonfirmasi,
             'inviteUrl' => Route::has('siswa.undangan.show') ? route('siswa.undangan.show', $registration) : null,
             'canCancel' => $canCancel,
+            // SV8, D-199: the ketua's "Ubah pendaftaran" / "Ajukan revisi" card (UbahPendaftaran), also to see a pending
+            // revision or the last decision; not once the registration ended (RevisionRules::closedReason()).
+            'canRevise' => $isLeader && RevisionRules::closedReason($registration) === null,
             // The line of the "Batalkan pendaftaran?" dialog: who CancelRegistration tells (D-109, the Detail lomba panel's
             // line too; SV1: it was a fixed text that told nothing about who hears of it).
             'cancelNote' => $canCancel ? CancelRegistration::noticeLine($registration, $this->user()) : '',

@@ -43,7 +43,7 @@
 | D-32 | Password baru siswa **minimal 10 karakter** (SECURITY K5) | Lead (1 Okt 2026) | final (tambahan aturan kata sandi: D-94) |
 | D-33 | Ketua boleh membatalkan pendaftaran selama `menunggu_konfirmasi` **atau** `menunggu_kepsek` | Lead (1 Okt 2026) | final (12 Okt 2026: juga selama `menunggu_lomba`, D-148) |
 | D-34 | Laporan hasil yang **ditolak** mengakhiri pendaftaran sebagai `selesai` **tanpa poin** | Lead (1 Okt 2026) | final (12 Okt 2026: layar Verifikasi hasil tidak lagi punya "Tolak", D-140; aturan ini tinggal untuk laporan yang ditolak sebelumnya) |
-| D-35 | **Guru pembimbing wajib** dipilih saat mendaftar | Lead (1 Okt 2026) | final (Kepala Sekolah boleh menggantinya saat menyetujui: D-132) |
+| D-35 | **Guru pembimbing wajib** dipilih saat mendaftar | Lead (1 Okt 2026) | final (Kepala Sekolah boleh menggantinya saat menyetujui: D-132; Kesiswaan di Kelola lomba dan ketua lewat revisi sejak 9 Nov 2026: D-198, D-199) |
 | D-36 | Anggota menolak undangan: tim lanjut bila tersisa **≥ 2** anggota yang sudah konfirmasi; selain itu ketua membatalkan lalu mendaftar ulang | Lead (1 Okt 2026) | final |
 | D-37 | Peringkat pribadi ("peringkatmu") dihitung di antara **siswa aktif**; peringkat publik memuat alumni (ditandai "Alumni") | Lead (1 Okt 2026) | final (tombol "Tampilkan alumni": diganti D-80) |
 | D-38 | Halaman publik menulis nama siswa hanya dengan `publish_consent` (selain itu "Siswa kelas X"); halaman publik `noindex` sampai sekolah memastikan proses izin orang tua | Lead (1 Okt 2026) | final (izin indeks: menunggu jawaban sekolah, U-04) |
@@ -92,7 +92,7 @@
 | D-81 | Import siswa tahunan **memperbarui kelas** siswa yang sudah terdaftar | Lead (4 Okt 2026) | final (menggantikan "NIS terdaftar = ditolak" D-12/D-26); berkas tahunan vs tanggal arsip manual dan siswa yang tidak ada di berkas: sementara — perlu dikonfirmasi user |
 | D-82 | Nomor surat **diketik lengkap oleh TU**, unik per jenis surat; format di Admin hanya contoh | Lead (4 Okt 2026) | final (menggantikan format `{seq}` D-06/D-43) |
 | D-83 | Satu surat satu form dan satu "Buat PDF"; "Kirim" sekali setelah semua surat yang wajib ada | Lead (4 Okt 2026) | final |
-| D-84 | Template surat = berkas asli sekolah; lambang Pemprov dan sekolah di repo; QR tetap; tombol "Cetak" | Lead (4 Okt 2026) | final (posisi surat siswa di halaman: D-133; Dasar, kop, dan jarak surat siswa mengikuti surat cetak sekolah sejak 16 Okt 2026: D-154) |
+| D-84 | Template surat = berkas asli sekolah; lambang Pemprov dan sekolah di repo; QR tetap; tombol "Cetak" | Lead (4 Okt 2026) | final (posisi surat siswa di halaman: D-133; Dasar, kop, dan jarak surat siswa mengikuti surat cetak sekolah sejak 16 Okt 2026: D-154; surat guru baru mengikuti PDF sekolah, satu halaman tanpa Lampiran, sejak 9 Nov 2026: D-194) |
 | D-85 | Talenta: dua catatan opsional (untuk guru pembina, untuk siswa); "tidak lolos" tidak wajib bercatatan | Lead (4 Okt 2026) | digantikan (D-142, 12 Okt 2026: tanpa keputusan dan tanpa catatan untuk siswa; catatan untuk guru pembina tetap) |
 | D-86 | Talenta "tidak lolos" bisa **dipulihkan**; siswa bisa "Minta ditinjau ulang"; tidak ada pengajuan kedua | Lead (4 Okt 2026) | digantikan (D-142, 12 Okt 2026: talenta tanpa tahap, tanpa "tidak lolos" dan tanpa "Minta ditinjau ulang") |
 | D-87 | Acara apresiasi: konfirmasi di acara, hapus acara (siswa diberi tahu), acara terkonfirmasi terkunci | Lead (4 Okt 2026) | final (satu prestasi satu acara, "Lepas dari acara": D-97) |
@@ -140,7 +140,7 @@
 | D-129 | Templat email STH: bagian teks tanpa sisa Markdown, satu aturan sapaan, tombol sebagai satu-satunya link, tampilan "Tinta dan Sampul" | Uji email lead 9 Okt 2026 (email mentah di langkah 11-2); rinciannya pilihan koordinator | disetujui lead 10 Okt 2026 dari uraiannya (email nyata belum dilihat, rincian tampilan masih bisa disesuaikan; melengkapi D-117 dan D-119; D-69 dan D-120 tetap) |
 | D-130 | Daftar izin email lokal bisa dibuka dengan satu tanda `*`: semua alamat nyata dikirim keluar, alamat fiktif (`@sth.test`, `example.com`, `.test`, `.invalid`) tetap di Mailpit | Lead, 11 Okt 2026 | sementara (hanya pengembangan; menyesuaikan D-121) |
 | D-131 | NIS tampil lengkap (tidak disamarkan) di layar dan file Kesiswaan dan Admin: Status aktivasi + CSV, Talenta, Database prestasi; email tetap disamarkan | Lead, review bersama 11 Okt 2026 | final (sejak D-137 yang tampil NISN, bukan NIS) |
-| D-132 | Kepala Sekolah boleh mengganti guru pembimbing pilihan siswa saat menyetujui; notifikasi persetujuan untuk siswa selalu menyebut guru pembimbingnya; ~~guru yang diganti mendapat notifikasi sendiri~~ (diganti D-134: tidak diberi tahu) | Lead, review bersama 11 Okt 2026 | final untuk kewenangan dan isi notifikasi; sementara untuk "hanya bersama persetujuan" dan kalimatnya (12 Okt 2026: Tata Usaha juga boleh, dan kalimatnya menyebut peran pemutus, D-150) |
+| D-132 | Kepala Sekolah boleh mengganti guru pembimbing pilihan siswa saat menyetujui; notifikasi persetujuan untuk siswa selalu menyebut guru pembimbingnya; ~~guru yang diganti mendapat notifikasi sendiri~~ (diganti D-134: tidak diberi tahu) | Lead, review bersama 11 Okt 2026 | final untuk kewenangan dan isi notifikasi; sementara untuk "hanya bersama persetujuan" dan kalimatnya (12 Okt 2026: Tata Usaha juga boleh, dan kalimatnya menyebut peran pemutus, D-150; 9 Nov 2026: Kesiswaan boleh mengganti terpisah dari persetujuan, D-198, dan ketua lewat revisi, D-199) |
 | D-133 | Surat tugas siswa dicetak di tengah halaman (margin kiri = kanan) | Lead, review bersama 11 Okt 2026 | final |
 | D-134 | Guru pilihan siswa yang diganti Kepala Sekolah tidak diberi tahu (menggantikan bagian itu dari D-132); kalimat dialog "Ganti guru" memakai bahasa biasa | Lead, 11 Okt 2026 (setelah melihat dialognya) | final |
 | D-135 | Penamaan dari feedback sekolah ("Pendaftaran lomba", "Verifikasi usulan lomba", "Database talenta siswa"); menu Admin "Database prestasi"; Excel Database prestasi tanpa kolom Kategori; lomba menunggu verifikasi terlama di atas | Feedback sekolah via lead, 12 Okt 2026 (FS1) | final (teks pengganti untuk tile, catatan, dan kalimat dashboard: pilihan koordinator, sementara; 14 Okt 2026: judul lonceng usulan lomba mengikuti email) |
@@ -162,10 +162,10 @@
 | D-151 | **Laporan hasil tanpa batas waktu** ("Segera laporkan"); pengingat H+3 dan H+14 setelah tanggal selesai; KPI "Belum lapor > 14 hari" | Feedback sekolah via lead, 12 Okt 2026 (FS1) | final (menggantikan D-25 dan batas laporan D-07) |
 | D-152 | Menu **Profil saya** (Data diri + Keamanan akun); tanggal lahir dan No HP wajib saat aktivasi siswa | Lead, 15 Okt 2026 (PS1) | final (beberapa butir sementara, lihat entri) |
 | D-153 | **Talenta saya** menjadi tab Profil saya; talenta wajib untuk semua siswa | Lead, 16 Okt 2026 (PS1) | final (menyesuaikan D-144 dan D-152) |
-| D-154 | **Surat tugas siswa mengikuti surat cetak sekolah**: Dasar = satu teks peraturan dari Template surat (tanpa surat undangan), kop dan jarak seperti surat sekolah | Lead, 16 Okt 2026 (ST1) | final (menyesuaikan D-84 dan D-116; teks bawaan Dasar dan jarak baris: sementara; surat undangan di tab siswa: diganti D-157) |
+| D-154 | **Surat tugas siswa mengikuti surat cetak sekolah**: Dasar = satu teks peraturan dari Template surat (tanpa surat undangan), kop dan jarak seperti surat sekolah | Lead, 16 Okt 2026 (ST1) | final (menyesuaikan D-84 dan D-116; teks bawaan Dasar dan jarak baris: sementara; surat undangan di tab siswa: diganti D-157; Dasar daftar 1–6 teks sejak 9 Nov 2026: D-195) |
 | D-155 | **TU menghapus pendaftaran dari antrean surat** = membatalkannya dengan alasan wajib; surat yang belum dikirim dicabut; siswa, guru pembimbing, dan pemberi persetujuan diberi tahu | Lead, 16 Okt 2026 (ST2) | final (menambah transisi disetujui → dibatalkan) |
 | D-156 | **Humas › Arsip foto**: foto dokumentasi dari laporan hasil yang sudah diverifikasi, bisa dilihat dan di-download untuk flyer; hanya tim yang semua anggotanya mengizinkan nama dan fotonya dipakai | Lead, 16 Okt 2026 (ST2) | final (hanya laporan terverifikasi dan tanpa ZIP: sementara) |
-| D-157 | **Surat undangan opsional di surat siswa**: bila TU mengisi "Surat dari", Dasar surat siswa bernomor (1. teks peraturan, 2. surat undangan tanpa "Hal"); surat guru tidak berubah | Lead, 19 Okt 2026 (ST3) | final (menggantikan butir 2 D-154; kalimat penolakan dan lebar kolom nomor: sementara) |
+| D-157 | **Surat undangan opsional di surat siswa**: bila TU mengisi "Surat dari", Dasar surat siswa bernomor (1. teks peraturan, 2. surat undangan tanpa "Hal"); surat guru tidak berubah | Lead, 19 Okt 2026 (ST3) | final (menggantikan butir 2 D-154; kalimat penolakan dan lebar kolom nomor: sementara; undangan = Dasar nomor terakhir sejak 9 Nov 2026: D-195) |
 | D-158 | **Bantuan akun siswa: cari dengan nama atau NISN; reset hanya mengganti kata sandi** (email, aktivasi, data diri tetap; kecuali akun yang dibekukan lewat "Bukan saya?"); kata sandi sementara mudah dibaca ("bakuro4827") | Lead, 19 Okt 2026 (UX1) | final (menggantikan "email dilepas, aktivasi ulang" dari K10 dan D-92 untuk siswa; pengecualian K8, batas hasil, bentuk kata sandi: sementara) |
 | D-159 | **Status aktivasi**: kotak angka dan dua kotak perhatian di baris atas; pilihan "Per kelas \| Daftar siswa", satu tabel selebar halaman, 10 baris lalu "Tampilkan lebih banyak" | Lead, 19 Okt 2026 (UX1) | final (langkah 20 baris, 3 baris per kotak, lebar kolom kanan: sementara) |
 | D-160 | **Notifikasi siswa dari laporan hasil sampai apresiasi**: laporan terkirim ke semua anggota, catatan verifikator ikut, publikasi dan apresiasi dari panel untuk seluruh tim, apresiasi dan publikasi tampil di Portofolio | Lead, 19 Okt 2026 (UX1) | final (tanda terima untuk ketua dan kalimatnya: sementara) |
@@ -183,11 +183,17 @@
 | D-186 | **"Hapus permanen" per entri Sampah** oleh Admin (kata sandi terbaru, nama kelas diketik), satu transaksi dengan batas pulih, audit `trash.purged_by_admin` (hanya `smaga_server`) | Lead, 5 Nov 2026 (SV6) | final sebagai keputusan; kode boleh menyusul di paket berikutnya |
 | D-187 | **"Ubah data siswa"** (Nama, NIS, NISN, Tanggal lahir, Kelas) untuk Admin, Kesiswaan dan Tata Usaha (`student.update`), satu dialog bersama, halaman baru Tata Usaha › Data siswa; tanggal lahir baru meng-hash ulang kata sandi awal siswa yang belum aktivasi dengan syarat ketat (hanya `smaga_server`) | Lead, 5 Nov 2026 (SV6) | final |
 | D-188 | **Koreksi surat tugas: nomor lama boleh dipakai lagi** setelah surat lama dicabut (nomor unik hanya di antara surat yang tidak dicabut), tanpa peringatan oranye, semua isian terisi dari surat lama dengan warna biru muda selama sama (hanya `smaga_server`) | Lead, 5 Nov 2026 (SV6) | final (menggantikan bagian "termasuk nomor surat yang sudah dicabut" dari D-82) |
-| D-189 | **Tanda tangan + stempel dua kali tinggi kotaknya** di surat siswa, surat guru dan Lampiran, boleh menimpa tulisan di atas dan di bawahnya (hanya `smaga_server`) | Lead, 5 Nov 2026 (SV7) | final (menggantikan ukuran 30 % D-183) |
+| D-189 | **Tanda tangan + stempel dua kali tinggi kotaknya** di surat siswa, surat guru dan Lampiran, boleh menimpa tulisan di atas dan di bawahnya (hanya `smaga_server`) | Lead, 5 Nov 2026 (SV7) | digantikan untuk ukuran (D-194, 9 Nov 2026: 80 % dari ukuran ini, 17 pt ke kiri; sebelumnya final, menggantikan ukuran 30 % D-183) |
 | D-190 | **Dua jenis Excel siswa dengan satu pilihan kelas**: "Data siswa" dari tab Kelas (No, Kelas, Nama, NIS, NISN, Tanggal lahir, No HP, Email) dan "Status aktivasi" (kolom yang sama + status aktivasi, Ringkasan di akhir); pilihan Semua kelas / X / XI / XII / satu kelas sama di kedua layar dan semua peran (hanya `smaga_server`) | Lead, 5 Nov 2026 (SV7) | final (tanggal lahir siswa belum aktivasi = kata sandi awalnya: diterima) |
 | D-191 | **Tab Kelas untuk Tata Usaha dan Kesiswaan sama dengan Admin**, Sampah menyebut siapa yang menghapus; TU tanpa "Data siswa"; izin baru `student.status` (hanya `smaga_server`) | Lead, 5 Nov 2026 (SV7) | final (pembekuan "Bukan saya?" tetap hanya Admin; Kesiswaan juga Ubah status di Status aktivasi: sementara) |
 | D-192 | **Tombol "Hapus permanen" di Sampah** (keputusan D-186, sekarang di layar) untuk Admin, Kesiswaan dan Tata Usaha (hanya `smaga_server`) | Lead, 5 Nov 2026 (SV7) | final |
 | D-193 | **Konfirmasi kata sandi kedua diingat 30 hari di browser** untuk akun staf; login dengan kata sandi juga dihitung (hanya `smaga_server`) | Lead, 5 Nov 2026 (SV7) | final (risiko PC bersama diterima) |
+| D-194 | **Surat guru sama dengan PDF sekolah 9 Nov 2026**: satu halaman, guru pembimbing langsung di bawah "Kepada", kegiatan tebal, **tanpa halaman Lampiran**, kop dan lambang Pemprov dari PDF itu, paragraf rata seperti Word; tanda tangan + stempel 80 % dari ukuran SV7 dan 17 pt ke kiri (hanya `smaga_server`) | Lead, 9 Nov 2026 (SV8) | final untuk tata letak (menggantikan surat guru M1-A dari D-84 untuk surat baru, dan ukuran D-189); ukuran tanda tangan: *sementara*; versi kedua surat guru dari sekolah dan butir 7 (template surat guru): menunggu sekolah |
+| D-195 | **Dasar surat siswa = daftar 1–6 teks** di Template surat ("Tambah dasar", "Naikkan", "Turunkan", "Hapus"); satu teks tanpa nomor, lebih dari satu bernomor, surat undangan selalu nomor terakhir (hanya `smaga_server`) | Lead, 9 Nov 2026 (SV8) | final (menyesuaikan D-154 dan D-157; paling banyak 6: *sementara*) |
+| D-196 | **Tim boleh lebih dari 3 orang**: "Maks anggota" 2–30 (sebelumnya 2–20), tidak ada tim di atas 30, juga di lomba tanpa "Maks anggota"; tabel nama surat siswa tetap rapi di dua halaman (hanya `smaga_server`) | Lead, 9 Nov 2026 (SV8) | final (batas 30: *sementara*) |
+| D-197 | **Kesiswaan › Data guru**: Nama, Pangkat/golongan, NIP, Jabatan akun guru (yang dicetak surat guru) diubah Kesiswaan dan Admin; "Tambah guru" (peran guru saja); izin baru `guru.update`, `guru.create` (hanya `smaga_server`) | Lead, 9 Nov 2026 (SV8) | final |
+| D-198 | **Guru pembimbing dipilih siswa, dan Kesiswaan (juga Admin) boleh mengisi atau menggantinya** di Kelola lomba sampai laporan hasil dikirim (diperbaiki 2026-11-09: surat yang sudah terbit tidak lagi menghalangi; bila surat tugas guru sudah terbit, Tata Usaha diberi tahu untuk membuat Koreksi); izin baru `registration.mentor` (hanya `smaga_server`) | Lead, 9 Nov 2026 (SV8, butir 4: "Keduanya") | final (menggantikan "ganti guru hanya bersama persetujuan" D-132) |
+| D-199 | **Ketua mengubah pendaftaran**: sebelum disetujui langsung berlaku; sesudah disetujui sebagai **revisi** yang disetujui Tata Usaha atau Kesiswaan (`registration.revise_decide`), siswa baru menerima undangan dulu; tabel baru `registration_revisions` (hanya `smaga_server`) | Lead, 9 Nov 2026 (SV8, butir 6) | final (menggantikan "susunan tim terkunci setelah disetujui"; revisi berhenti setelah laporan hasil dikirim: *sementara*) |
 | U-01…U-06 | Usulan keamanan yang belum diputuskan | Agent H (keamanan) | menunggu jawaban sekolah / sementara |
 
 ---
@@ -211,6 +217,7 @@
 - **Alasan:** Mencegah nama anggota diketik bebas atau salah, dan memastikan setiap anggota benar-benar setuju ikut.
 - **Dampak:** Endpoint pencarian anggota hanya mengembalikan nama + kelas, dengan rate limit (SECURITY §3m-3). Undangan hanya bisa dikonfirmasi oleh penerimanya. Akun arsip tidak bisa diundang. Roster tim dikunci setelah disetujui Kepala Sekolah.
 - **Status:** final.
+- *9 Nov 2026, kemudian (D-199, SV8, hanya `smaga_server`):* roster tidak lagi terkunci: sebelum disetujui ketua mengubah tim dan guru langsung, sesudahnya lewat revisi yang disetujui Tata Usaha atau Kesiswaan.
 
 ### D-04 · Usulan lomba oleh siswa · 30 Sep 2026
 - **Keputusan:** Siswa bisa mengusulkan lomba yang belum ada di katalog (nama, penyelenggara, tautan/URL, unggah brosur). Kesiswaan meninjau usulan dan mengubahnya menjadi entri katalog.
@@ -440,6 +447,7 @@ user**: dipakai sekarang, lead/sekolah boleh menggantinya dengan entri baru. Tid
 - **Alasan:** Melengkapi D-36 tanpa membuka jalan "menitipkan" anggota setelah disetujui.
 - **Dampak:** `InviteMembers`, `ExpirePendingInvitations`, job `ExpireInvitations`, notifikasi `InvitationsExpired` (B3).
 - **Status:** sementara — bisa diubah user.
+- *9 Nov 2026, kemudian (D-199, SV8, hanya `smaga_server`):* "Ubah pendaftaran" juga selama `menunggu_lomba` dan `menunggu_kepsek` (tambah, keluarkan, ganti guru; tim yang menunggu persetujuan kembali ke `menunggu_konfirmasi` bila ada anggota baru); setelah disetujui anggota masuk hanya lewat revisi yang disetujui Tata Usaha atau Kesiswaan. Aturan "siswa yang menolak tidak bisa diundang lagi" dan batas jendela undangan tetap.
 
 ### D-51 · Hak akses database per tabel · 1 Okt 2026
 - **Keputusan:** User DB runtime `sth_app` tidak punya hak tingkat database. `scripts/deploy/grants.sh` (dijalankan setelah setiap migrasi) memberi `SELECT/INSERT/UPDATE/DELETE` per tabel, kecuali `activity_log` dan `audit_seals` (hanya `SELECT/INSERT`) dan `migrations` (hanya `SELECT`).
@@ -656,6 +664,7 @@ Tiap entri menyebut keputusan lama yang digantinya; entri lama tidak dihapus.
 - **Dampak:** `LetterNumber::normalize()` / `numberError()` / `key()` / `example()`; `letters.sequence` boleh kosong; indeks unik `(type, year, sequence)` diganti `(type, full_number)`; tahun dan bulan diambil dari tanggal surat. Nomor tetap tidak bisa diubah setelah PDF dibuat (koreksi = D-49, dengan nomor baru).
 - **Status:** final (keputusan user). Menggantikan bagian format `{seq}` dan keunikan nomor urut per tahun di D-06/D-43; "format nomor hanya Admin" di D-60 kini berarti contoh nomor. Menjawab §F-3.
 - *5 Nov 2026, kemudian (D-188, SV6, hanya `smaga_server`):* nomor unik per jenis surat hanya di antara surat yang **tidak dicabut**; nomor surat yang dicabut boleh dipakai lagi, juga oleh surat Koreksi-nya (indeks unik `(type, active_full_number)`). Bagian "termasuk nomor surat yang sudah dicabut" dan "koreksi … dengan nomor baru" digantikan di sana; Smaga4 tetap.
+- *9 Nov 2026, kemudian (D-194, SV8, hanya `smaga_server`):* surat guru baru mengikuti contoh PDF sekolah: satu halaman, "Nomor <nomor>" tanpa titik dua, **tanpa halaman Lampiran**. Aturan nomor surat di entri ini tidak berubah.
 
 ### D-83 · Satu surat satu form; "Kirim" sekali · 4 Okt 2026
 - **Keputusan:** Surat siswa dan surat guru pendamping masing-masing punya **form sendiri** (tab sendiri): nomor, tanggal surat, dasar, dan pelaksanaan diisi per surat, lalu **"Buat PDF"** per surat. **"Kirim"** tetap satu kali, dan baru bisa setelah semua surat yang wajib ada (surat siswa; ditambah surat guru bila ada guru pembimbing). Tombol tidak dibuat abu-abu: bila ada yang kurang, layar langsung menuju daftar kesalahan yang menyebut kolomnya.
@@ -668,6 +677,7 @@ Tiap entri menyebut keputusan lama yang digantinya; entri lama tidak dihapus.
 - **Alasan:** Permintaan user: "samakan template nya persis" dan "kedua nya harus dalam bentuk pdf dan bisa di print". Lambang adalah lambang lembaga, bukan data pribadi; tanpa lambang, kop tidak sama dengan surat sekolah.
 - **Dampak:** `resources/pdf/*` dan preview TU dibangun ulang; `LetterTemplate` (`kop_6`, `guru_basis_1…3`); route `tu.surat.cetak` (PDF inline; diperiksa `LetterPolicy::view`; `Cache-Control: no-store, private`; CSP `frame-ancestors 'none'`; tercatat `letter.downloaded` dengan `inline: true`) dan `tu.surat.kop` (lambang untuk preview). Lambang ada di dalam chroot dompdf dan harus ikut di image produksi. Tanda tangan + stempel tetap satu gambar privat (D-06). "Cetak" hanya untuk TU; Kepala Sekolah tetap hanya download.
 - **Status:** final (keputusan user). Menyesuaikan D-20 (logo placeholder, bukan lambang sekolah) khusus untuk kop surat; D-20 tetap berlaku untuk mockup dan layar aplikasi (sejak 7 Okt 2026 tanda merek di layar aplikasi memakai lambang: D-120). Menjawab §F-2. Belum dicoba di printer asli dan belum dicocokkan dengan kertas sekolah (backlog). (11 Okt 2026: surat siswa kini dicetak di tengah halaman, tidak lagi menempel di margin kiri seperti lembar Excel-nya; lihat D-133.)
+- *9 Nov 2026, kemudian (D-194, SV8, hanya `smaga_server`):* surat guru **baru** mengikuti contoh PDF sekolah 9 Nov 2026, bukan lagi "ST PENGUKUHAN KEG OPSI.docx": satu halaman, guru pembimbing langsung di bawah "Kepada", kegiatan tebal, **tanpa halaman Lampiran**, kop sendiri dengan lambang Pemprov dari PDF itu (`logo-pemprov-guru.png`). Surat guru yang dicetak sebelumnya tetap dengan Lampiran-nya (PDF dan preview, D-108). Surat siswa tetap mengikuti lembar Excel; Dasar-nya kini daftar (D-195) dan tabel timnya boleh dua halaman (D-196).
 
 ### D-85 · Talenta: dua catatan opsional dengan pembaca berbeda · 4 Okt 2026
 - **Keputusan:** Tiap pilihan talenta punya dua catatan, keduanya **opsional**. **Catatan untuk guru pembina**: internal, hanya dibaca guru pembina dan Kesiswaan. **Catatan untuk siswa**: ikut di notifikasi keputusan (lolos, tidak lolos, dipulihkan) dan tampil di Profil talenta. Keputusan baru mengganti catatan siswa yang lama (dikosongkan = dihapus). "Tidak lolos" **tidak lagi wajib** bercatatan.
@@ -1022,6 +1032,7 @@ Dari satu hari kerja lead bersama penguji lewat demo di laptop (Cloudflare Quick
 - **Alasan:** lead setelah review bersama (11 Okt 2026): "di kepsek tambahi kewenangan supaya dia bisa ubah guru yg ditentukan siswa, lalu notif email yg ke siswa saat acc juga ditambahi siapa guru pembimbing final mereka (baik diubah oleh kepsek maupun tidak). pastikan email notif ke gurunya juga jangan salah kirim". Dijadikan satu keputusan dengan persetujuan supaya tidak ada keadaan antara: bila guru diganti lebih dulu lalu pendaftarannya ditolak, alasan penolakan akan sampai ke guru yang tidak pernah dipilih siswa dan tidak pernah tahu.
 - **Dampak:** `ApproveRegistration::handle(User, Registration, ?string $note = null, int|string|null $mentorId = null)` (null, kosong, atau guru yang sama = pilihan siswa tetap; akun yang bukan guru aktif ditolak dengan kunci `mentor`), `App\Actions\Registrations\MentorChoice` (satu aturan "siapa boleh jadi guru pembimbing", dipakai juga oleh form siswa dan `CreateRegistration`), `RegistrationPolicy::changeMentor` (= `decide`: Kepala Sekolah, selama `menunggu_kepsek`), audit `registration.mentor_changed` (id pengguna `from` / `to` saja), `RegistrationApproved` (`mentorName`, `mentorChanged`, `replacedMentorName`, `mentorLine()`), notifikasi baru `App\Notifications\Approval\MentorReplaced`, `Kepsek\Persetujuan` (`askMentor()` → `approveWithMentor()`, dialog `ganti-pembimbing`, mengikuti D-128 dan D-109), Siswa › Lomba saya ("Ditetapkan Kepala Sekolah" di bawah nama guru, hanya bila diganti). Tanpa migrasi.
 - **Status:** final untuk kewenangannya, untuk "guru pembimbing disebut di notifikasi persetujuan siswa", dan untuk siapa menerima notifikasi mana (permintaan lead). Sementara (dipilih koordinator, menunggu dilihat lead): ganti guru hanya bersama persetujuan (bukan langkah terpisah, bukan setelah disetujui); "Setujui terpilih" tidak bisa mengganti guru; guru yang diganti diberi tahu (lewat lonceng dan email); kalimat-kalimatnya. Melengkapi D-05 dan D-35 (siswa tetap wajib memilih guru); D-77 dan D-110 tetap. **Catatan 11 Okt 2026 (D-134):** lead memutuskan guru yang diganti **tidak** diberi tahu; butir (3) dan (5) di atas tidak lagi berlaku untuk guru yang diganti, notifikasi `MentorReplaced` di baris Dampak sudah dihapus, dan dua kalimat dialognya diganti. *(12 Okt 2026: Tata Usaha yang memegang izin persetujuan juga boleh mengganti guru, dan kalimatnya menyebut peran pemutus, "ditetapkan <peran>", D-150.)*
+- *9 Nov 2026, kemudian (D-198, D-199, SV8, hanya `smaga_server`):* Kesiswaan (dan Admin, `registration.mentor`) boleh mengisi atau mengganti guru pembimbing di Kelola lomba **terpisah dari persetujuan**, sampai laporan hasil dikirim (D-198; diperbaiki 2026-11-09: surat yang sudah terbit tidak menghalangi; bila surat tugas guru sudah terbit, Tata Usaha diberi tahu untuk membuat Koreksi); ketua boleh mengganti guru sebelum disetujui, dan sesudahnya lewat revisi yang disetujui Tata Usaha atau Kesiswaan (D-199). Butir (4) "setelah disetujui, guru tidak bisa diganti lagi" dan bagian sementara "ganti guru hanya bersama persetujuan" digantikan di sana; "Ganti guru" saat menyetujui tetap.
 
 ### D-133 · Surat tugas siswa dicetak di tengah halaman · 11 Okt 2026
 - **Keputusan:** PDF surat tugas siswa memakai margin kiri dan kanan yang sama (61,14 pt); kop dan semua blok di bawahnya selebar 473 pt. Isi, urutan baris, ukuran huruf, dan lebar kolom lainnya tetap seperti lembar sekolah. Surat perintah tugas guru tidak berubah.
@@ -1034,6 +1045,7 @@ Dari satu hari kerja lead bersama penguji lewat demo di laptop (Cloudflare Quick
 - **Alasan:** lead setelah melihat dialognya di layar (11 Okt 2026): "kenapa perlu memberi tahu guru yg dipilih siswa, waktu siswa daftar kan cuma ada email ke kepsek atau anggota kel, ga ada ke guru pilihan siswa", dan kalimat "Notifikasi persetujuan untuk siswa menyebut guru pembimbingnya." disebutnya "agak aneh dan perlu diubah". Guru pilihan siswa memang tidak pernah diberi tahu saat dipilih (pendaftaran baru hanya dikabarkan ke Kepala Sekolah dan anggota tim), jadi kabar "diganti" adalah hal pertama dan satu-satunya yang ia dengar tentang pendaftaran itu.
 - **Dampak:** `App\Notifications\Approval\MentorReplaced` dan `ApproveRegistration::replacedMentorToTell()` dihapus (keduanya dibuat hari itu juga dan belum pernah di-commit); `ApproveRegistration::notify()` tidak mengirim apa pun ke guru yang diganti; `Kepsek\Persetujuan::mentorDialog()` (dua kalimat). Tanpa migrasi. Yang tetap: audit `registration.mentor_changed`, tulisan "Ditetapkan Kepala Sekolah, menggantikan …" di baris Persetujuan dan "Ditetapkan Kepala Sekolah" di Lomba saya, nama guru yang digantikan di notifikasi siswa dan guru pengganti, dan aturan "tidak ada yang diberi tahu tentang keputusannya sendiri" untuk guru pengganti. Akibat yang diketahui: pendaftaran yang menunggu persetujuan sudah tampil di daftar **Siswa binaan** guru pilihan siswa (tanpa notifikasi), dan setelah diganti baris itu hilang dari daftarnya tanpa kabar.
 - **Status:** final (permintaan lead). Menggantikan bagian "guru yang diganti menerima satu notifikasi sendiri" dari D-132 butir (3) dan (5) dan menjawab pertanyaan terbuka RV1 "perlukah guru yang diganti diberi tahu". D-77 **tidak** berubah: penolakan dan pembatalan tetap dikabarkan ke guru pilihan siswa (lead belum meminta itu diubah; alasan yang sama bisa berlaku di sana).
+- *9 Nov 2026 (D-198, D-199, SV8, hanya `smaga_server`):* aturan yang sama berlaku bila Kesiswaan mengganti guru di Kelola lomba atau bila revisi pendaftaran yang disetujui mengganti guru: guru yang diganti tidak diberi tahu.
 
 ## D15. Feedback sekolah · 12 Okt 2026 (FS1)
 
@@ -1244,6 +1256,7 @@ Dua daftar feedback dari SMAGA yang ditempel lead pada 12 Okt 2026, dipecah menj
 - **Alasan:** permintaan lead 16 Okt 2026 dengan foto surat cetak sekolah ("ubah template surat siswa … menjadi menggunakan template gambar kedua"); butir 14 feedback sekolah (perbaikan template surat) yang menunggu template sekolah.
 - **Dampak:** `LetterTemplate` (`siswa_dasar`, `siswaDasar()`, `oldSiswaBasis()`, `label()`; `siswa_basis` dan kode `{penyelenggara}` dihapus), `LetterDraft::usesInvitation()`, `IssueLetters::draftErrors()` / `newLetter()`, `TataUsaha\SuratTugas` (`SHARED_FIELDS`, `draft()`), `TataUsaha\TemplateSurat` (grup, label riwayat), `resources/pdf/surat-tugas-siswa.blade.php` + `layout.blade.php` (`.kop-siswa`, `.s-jarak-kop`, `.s-jarak-dasar`, `.s-dasar`), preview TU (`partials/kop` dengan `$kop`, `partials/pratinjau-siswa`, `.kertas-siswa` / `.lembar-siswa` di `resources/css/app.css`), `DemoSeeder` / `DemoFileRefresher` (data undangan hanya di surat guru demo). Tanpa migrasi.
 - **Status:** final untuk Dasar sebagai teks peraturan dari Template surat dan untuk surat undangan hanya di surat guru. *Sementara*: teks bawaan Dasar (TU menggantinya tiap tahun anggaran di Template surat), ukuran lambang dan jarak baris (diukur dari foto, belum dibandingkan di atas kertas); bagian bawah surat (tabel NO | NAMA MURID | NIS | KELAS, pelaksanaan, tanda tangan) tidak terlihat di foto dan tidak diubah. Menyesuaikan D-84 (surat mengikuti berkas sekolah) dan D-116 (data yang dibagikan antarsurat). *19 Okt 2026:* butir 2 diganti D-157: tab surat siswa kembali punya isian surat undangan, opsional dan tanpa "Hal", dicetak sebagai Dasar nomor 2; butir 1 berlaku bila isian itu dikosongkan.
+- *9 Nov 2026, kemudian (D-195, SV8, hanya `smaga_server`):* "Surat siswa: Dasar" di Template surat kini daftar 1–6 teks peraturan. Satu teks tetap tercetak tanpa nomor seperti butir 1; lebih dari satu tercetak bernomor.
 
 ## D18. Hapus antrean surat dan arsip foto Humas · 16 Okt 2026 (ST2)
 
@@ -1279,6 +1292,7 @@ Dua daftar feedback dari SMAGA yang ditempel lead pada 12 Okt 2026, dipecah menj
 - **Alasan:** permintaan lead setelah D-154: "Tetap bisa input seperti gambar 1 tpi dibuat opsional, jika user TU input sesuaii di gambar satu maka tambahkan dasar baru dibawah gambar ketiga yang berasal dari surat undangannya siapa yang diinput oleh TU." Jawaban lead atas pertanyaan pelaksana: Dasar bernomor 1. dan 2.; "Surat dari" tetap terisi penyelenggara; tanpa "Hal".
 - **Dampak:** `LetterContent::siswaInvitation()`, `LetterDraft::requiresInvitation()` (menggantikan `usesInvitation()`), `LetterDraft::fromLetter()`, `IssueLetters::newLetter()` / `draftErrors()` (`MSG_INVITATION_FROM`), `TataUsaha\SuratTugas::draft()`, view `livewire/tata-usaha/surat-tugas` (tab siswa: Dasar 1 + Dasar 2; ringkasan bernomor), `resources/pdf/surat-tugas-siswa.blade.php` + `layout.blade.php` (`.s-daftar`), `partials/pratinjau-siswa`, `DemoSeeder` / `DemoFileRefresher` (data undangan lagi di kedua surat demo). Tanpa migrasi.
 - **Status:** final untuk Dasar 2 yang opsional, bernomor, tanpa "Hal", dan untuk surat guru yang tidak berubah. *Sementara* (pilihan pelaksana): kalimat penolakan nomor/tanggal tanpa "Surat dari"; lebar kolom nomor 16 pt (belum dibandingkan di atas kertas). Menggantikan butir 2 D-154.
+- *9 Nov 2026, kemudian (D-195, SV8, hanya `smaga_server`):* surat undangan tidak lagi selalu Dasar nomor 2, tetapi **nomor terakhir**, sesudah 1–6 teks Dasar dari Template surat ("Dasar N+1 · Surat undangan lomba" di form).
 
 ## D20. Masukan lead 19 Okt 2026: reset akun siswa, Status aktivasi, notifikasi siswa, urutan antrean (UX1)
 
@@ -2013,6 +2027,9 @@ Permintaan lead 5 Nov 2026 malam. Catatan kerja: `docs/dev-notes/SV7.md`.
   baru bilang done". Diperiksa pada PDF sungguhan dengan gambar tanda tangan sekolah (tiga halaman).
 - **Dampak:** `resources/pdf/layout.blade.php`, `tests/Feature/Letters/LetterLayoutTest.php`. Surat yang sudah terbit tidak
   berubah.
+- *9 Nov 2026, kemudian (D-194, SV8):* ukuran ini **digantikan**. Lead: "tanda tangan kebesaran, dikecilin sedikit. Ttd sama
+  stempelnya juga digeser agak ke kiri": gambar kini 80 % dari ukuran ini (siswa 97,52 pt, guru 92,8 pt) dan 17 pt lebih
+  ke kiri (*sementara*). Surat yang sudah terbit tetap.
 
 ### D-190 · Dua jenis Excel siswa, satu pilihan kelas · 5 Nov 2026
 - **Keputusan:** semua download daftar siswa memakai satu implementasi (`ExportActivationReport`, `ActivationReport`):
@@ -2073,6 +2090,277 @@ Permintaan lead 5 Nov 2026 malam. Catatan kerja: `docs/dev-notes/SV7.md`.
 - **Dampak:** `App\Actions\Fortify\RememberedPasswordConfirmation`, `PasswordConfirmedResponse`,
   `App\Http\Middleware\RestoreRememberedPasswordConfirmation`, `FortifyServiceProvider`, `bootstrap/app.php`,
   `tests/Feature/Auth/RememberedPasswordConfirmationTest.php`.
+
+## D31. Surat guru seperti PDF sekolah, Dasar surat siswa bernomor, tim lebih dari 3, Data guru, guru pembimbing oleh Kesiswaan, revisi pendaftaran (9 Nov 2026, SV8, hanya `smaga_server`)
+
+Daftar permintaan lead 9 Nov 2026 (butir 1–6, butir 7 menunggu sekolah) dengan contoh PDF surat guru dari sekolah, lalu
+jawaban lead atas dua pertanyaan pelaksana: butir 4 (guru pembimbing dipilih siswa atau ditetapkan Kesiswaan)
+"Keduanya", butir 6 (revisi pendaftaran, misalnya ganti anggota tim) di D-199. Dasar: commit `7a2ae54` (SV7). Catatan
+kerja: `docs/dev-notes/SV8.md`. Pilihan pelaksana yang belum dilihat lead ditandai *sementara*: ukuran tanda tangan
+(D-194), batas tim 30 (D-196), revisi berhenti setelah laporan hasil dikirim (D-199). Sekolah akan mengirim **versi
+kedua surat guru** nanti, dan butir 7 (template surat guru) menunggu berkas sekolah itu. Contoh PDF sekolah memuat nama
+dan NIP sungguhan: berkas itu dan hasil ukurnya hanya ada di luar repo; tes memakai orang dan nomor fiktif.
+
+### D-194 · Surat guru sama dengan PDF sekolah: satu halaman tanpa Lampiran; tanda tangan sedikit lebih kecil dan ke kiri · 9 Nov 2026
+*menggantikan tata letak surat guru M1-A dari D-84 (Surat Perintah Tugas + halaman Lampiran) untuk surat baru, dan ukuran D-189*
+- **Keputusan:**
+  - Surat Perintah Tugas guru mengikuti contoh PDF sekolah 9 Nov 2026, diukur baris per baris (pdfplumber): A4, **satu
+    halaman, tanpa halaman Lampiran**. Urutan: kop · "SURAT PERINTAH TUGAS" · "Nomor <nomor>" (tanpa titik dua) · "Dasar"
+    (teks peraturan Template surat, lalu surat undangan "Surat dari … Nomor … Tanggal … Hal …") · "MEMERINTAHKAN:" ·
+    "Kepada : 1. Nama / Pangkat/Gol / NIP / Jabatan" dengan **satu guru pembimbing pendaftaran itu langsung di bawah
+    "Kepada"** (bukan "Terlampir") · "Untuk" (1. "Melaksanakan tugas kegiatan **<nama lomba seperti dimasukkan>** pada hari
+    … tanggal …, Pukul … di …", kegiatan tebal; 2. dan 3. dari Template surat) · tanda tangan.
+  - Ukuran dari PDF: Arial 12 pt (di dompdf Helvetica, metrik sama), jarak baris 14,89 pt (baris "Kepada" 13,8 pt). Margin
+    halaman = pojok lambang kiri (55,2 pt dari kiri, 23,8 pt dari atas); setiap blok punya offset sendiri. "Dasar" dan
+    "Untuk": label x 90,42, titik dua 147,85, nomor 163,05, teks 181,05 pt. "Kepada": label 85,03, titik dua 164,65,
+    "1." 178,85, Nama / Pangkat/Gol / NIP / Jabatan 192,85, titik dua 270,88, isi 277,7 pt. Tanda tangan di x 333,3 pt.
+  - Kop sendiri (`partials/kop-guru`): lambang Pemprov dari PDF itu (`resources/pdf/assets/logo-pemprov-guru.png`,
+    81,7 × 85,05 pt), lambang sekolah 63,85 × 85,05 pt di x 513,6 pt dan 2,55 pt lebih rendah, baris kop di tengah sumbu
+    x 322,53 pt, nama host alamat web ("sman3-smg.sch.id") biru dan bergaris bawah, garis 2,7 pt + 0,9 pt dari x 78,85
+    sampai 552,6 pt di 114,99 pt. Teks kop tetap dari Template surat.
+  - Paragraf rata kiri-kanan dipecah seperti Word (`App\Domain\Letters\JustifiedLines`, diukur pada 16 baris PDF itu):
+    setiap baris kecuali yang terakhir berakhir di 548,46 pt (satu spasi sebelum tepi kolom 551,8 pt); spasi boleh
+    dipersempit sampai 80 % agar satu kata masih muat di baris itu; lebar spasi dibulatkan ke bawah ke 0,05 pt (twip).
+  - Tanggal dengan hari satu angka ditulis dua angka ("04 November 2026"): tanggal di atas tanda tangan dan tanggal surat
+    undangan di Dasar. QR verifikasi di kiri bawah, di bawah "Kepada" (x 85,03 pt).
+  - **Tanda tangan + stempel** (surat siswa dan surat guru) 80 % dari ukuran SV7 dan 17 pt lebih ke kiri, tetap ditarik
+    ke atas separuh selisihnya: surat siswa 121,9 → 97,52 pt (kotak 60,95 pt, `top` −18,285 pt), surat guru 116 →
+    92,8 pt di kotak tiga baris kosong ruang tanda tangan sekolah (44,67 pt, `top` −24,065 pt). Baris dan jumlah halaman
+    tidak bergeser. Preview TU tetap tanpa gambar asli: kotak putus-putus 92 × 183 px (siswa) dan 87 × 174 px (guru),
+    16 px ke kiri.
+  - Surat guru baru menyimpan tata letaknya di `letters.printed` (`guru_layout` = `langsung`). Surat yang dicetak
+    sebelumnya tidak punya nilai itu dan dibaca sebagai `lampiran`: preview TU-nya tetap Surat Perintah Tugas + Lampiran
+    yang dicetaknya (D-108). PDF yang sudah terbit tidak berubah; Koreksi memakai tata letak baru. Preview TU surat guru
+    baru = halaman PDF (`pratinjau-guru-langsung`, kop `kop-guru`), surat lama `pratinjau-guru-lampiran`.
+  - Hasil ukur (contoh fiktif dibandingkan dengan PDF sekolah, di luar repo): 40 baris teks; 39 baris berselisih paling
+    banyak 0,38 pt (posisi atas paling banyak 0,15 pt), satu baris alamat kop 9 pt 0,89 pt; kedua lambang di posisi yang
+    sama. Belum dibandingkan di atas kertas.
+- **Alasan:** lead 9 Nov 2026 dengan contoh PDF sekolah: "samakan persis seperti template pdf nya harus identik 100%";
+  untuk tanda tangan: "tanda tangan kebesaran, dikecilin sedikit. Ttd sama stempelnya juga digeser agak ke kiri".
+- **Dampak:** `resources/pdf/layout.blade.php` (`.kop-g`, `.g-*`, `.s-ttd` / `.g-ttd`, `.verif-guru`),
+  `surat-perintah-tugas-guru.blade.php`, partial baru `partials/kop-guru`, `partials/guru-langsung`,
+  `partials/guru-paragraf`, `partials/kop`, `partials/ttd`; `App\Domain\Letters\JustifiedLines` (baru); `LetterTemplate`
+  (`GURU_LAYOUT`, `GURU_LAYOUT_LANGSUNG`, `GURU_LAYOUT_LAMPIRAN`, `GURU_LAYOUTS`, `guru_layout` di `toArray()` /
+  `fromArray()`, `kopLineParts()`), `LetterContent` (`guruBasis(bool $twoDigitDay)`, `guruTaskParts()`, `guruSignedOn()`),
+  `LetterPrintController::LOGOS` (`pemprov-guru`); preview TU (`partials/kop-guru`, `pratinjau-guru`,
+  `pratinjau-guru-langsung`, `pratinjau-guru-lampiran`, `partials/ttd`); tes `GuruLetterTest`, `JustifiedLinesTest`,
+  `LetterLayoutTest`, `SuratTugasTest`. Tanpa migrasi.
+- **Status:** final untuk surat guru satu halaman seperti PDF sekolah. *Sementara*: ukuran dan geser tanda tangan (80 %,
+  17 pt; belum dilihat lead di kertas). Menunggu sekolah: **versi kedua surat guru** (akan dikirim nanti; menjadi satu
+  kunci baru di `LetterTemplate::GURU_LAYOUTS` dengan dua partial dan CSS-nya, surat lama tetap) dan butir 7 (template
+  surat guru). Menggantikan tata letak surat guru D-84 untuk surat baru dan ukuran D-189.
+
+### D-195 · Dasar surat siswa: daftar 1–6 teks di Template surat · 9 Nov 2026
+*menyesuaikan butir 1 D-154 (satu teks Dasar) dan butir 2 D-157 (undangan = Dasar nomor 2)*
+- **Keputusan:**
+  - TU › Template surat: "Surat siswa: Dasar" adalah daftar **1 sampai 6 teks peraturan** (`siswa_dasar`, `siswa_dasar_2`
+    … `siswa_dasar_6`; masing-masing maks. 600 karakter, kode `{sekolah}` dan `{tahun_ajaran}`), dengan "Tambah dasar"
+    dan per baris "Naikkan", "Turunkan", "Hapus". Nomor 1 wajib; teks kosong tidak disimpan dan teks di bawahnya naik
+    (tanpa lubang). Teks bawaan nomor 1 tetap teks D-154, nomor 2–6 bawaan kosong.
+  - Surat: satu Dasar saja (tanpa undangan) tercetak tanpa nomor seperti D-154; lebih dari satu menjadi daftar bernomor
+    1., 2., … seperti surat guru (`.s-daftar`). Surat undangan yang diisi TU (D-157) selalu **nomor terakhir**. PDF,
+    preview TU dan ringkasan surat yang sudah dibuat memakai satu daftar (`LetterContent::siswaBasis()`).
+  - Form surat siswa di Antrean surat: "Dasar 1–N · Dari Template surat" (daftarnya) lalu "Dasar N+1 · Surat undangan
+    lomba".
+  - Template yang disimpan sebelumnya dan surat yang dicetak sebelumnya hanya punya `siswa_dasar`: dibaca sebagai daftar
+    satu teks, jadi preview surat lama tetap seperti PDF-nya (D-108). Kop, jarak dan tabel surat siswa tidak berubah.
+- **Alasan:** lead 9 Nov 2026: "Di tu, template surat siswa, dasarnya baru bisa 1. Dibuat bisa lebih dari 1 kayak surat
+  guru".
+- **Dampak:** `LetterTemplate` (`SISWA_DASAR`, `SISWA_DASAR_MAX`, `siswaDasarTexts()`, `withSiswaDasar()`,
+  `siswaDasarItems()` menggantikan `siswaDasar()`), `LetterContent::siswaBasis()`, `LetterDraft`, `TataUsaha\TemplateSurat`
+  (`addSiswaDasar()`, `removeSiswaDasar()`, `moveSiswaDasarUp()`) + view, `tata-usaha/surat-tugas` (tab siswa),
+  `partials/pratinjau-siswa`, `resources/pdf/surat-tugas-siswa.blade.php`; tes `SiswaDasarListTest`, `TemplateSuratTest`.
+  Tanpa migrasi.
+- **Status:** final. *Sementara* (pilihan pelaksana): paling banyak 6 teks.
+
+### D-196 · Tim boleh lebih dari 3 orang, paling banyak 30 · 9 Nov 2026
+- **Keputusan:**
+  - "Maks anggota" sebuah lomba boleh **2–30** (sebelumnya 2–20; "Maksimal 30 anggota."). Batas lomba sendiri tetap
+    berlaku saat mendaftar, mengundang, mengubah pendaftaran dan revisi (D-199); **tidak ada tim di atas 30**, juga di
+    lomba tanpa "Maks anggota" (sebelumnya tanpa batas). Satu aturan: `Competition::teamLimit()` (batas lomba, paling
+    banyak `Competition::MAX_TEAM_SIZE`), dipakai `CreateRegistration`, `InviteMembers`, `RevisionRules` dan panel
+    Pendaftaran lomba ("(maks N)", "Tim sudah N orang").
+  - Tabel NO · NAMA MURID · NIS · KELAS surat siswa boleh berlanjut ke halaman kedua: baris judul tabel diulang, satu
+    baris tidak pernah terpotong (nama panjang turun di dalam selnya), judul tabel tidak tertinggal sendiri di akhir
+    halaman, dan dua baris terakhir ikut bersama pelaksanaan, penutup dan tanda tangan, jadi halaman berikutnya tidak
+    pernah dimulai dengan tanda tangan saja. Preview TU menampilkan tabel yang sama.
+- **Alasan:** lead 9 Nov 2026: "Siswa tim bisa lebih dari 3 orang, jangan dibatasi 3" dan "Cek juga tabel nama di
+  suratnya tetap rapi kalau anggotanya banyak". Angka 30 pilihan pelaksana: tim terbesar yang dikirim sekolah (paduan
+  suara, tari kolosal, marching band: 20–30 siswa), di bawah satu kelas (36), dan tabel surat siswa tetap dua halaman.
+- **Dampak:** `Competition::MAX_TEAM_SIZE`, `Competition::teamLimit()`, `CreateCompetition` (validasi `max_team_size`),
+  `livewire/forms/competition-fields`, `CreateRegistration`, `InviteMembers`, `Siswa\Pendaftaran\Form`,
+  `resources/pdf/layout.blade.php` (`.s-murid`: `thead`, aturan pemisah halaman); tes `LargeTeamTest`,
+  `LetterTeamTableTest`. Tanpa migrasi.
+- **Status:** final untuk tim di atas 3 orang dan tabel yang rapi. *Sementara*: batas atas 30.
+
+### D-197 · Data guru: Kesiswaan mengisi data yang dicetak surat guru · 9 Nov 2026
+- **Keputusan:**
+  - Halaman baru **Kesiswaan › Data › Data guru** (`kesiswaan.guru.index`, `/kesiswaan/data-guru`; Admin membuka halaman
+    yang sama dari menu Data › "Data guru"): semua akun guru yang tidak di Sampah, status apa pun, urut nama, kolom Nama,
+    NIP, Pangkat/golongan, Jabatan, Status, dengan penanda data yang kosong; cari nama atau NIP; filter "Kelengkapan
+    data" › data belum lengkap.
+  - **"Ubah data"** per baris: dialog Nama lengkap (dengan gelar, seperti tercetak), Pangkat/golongan, NIP, Jabatan, lewat
+    `App\Actions\Users\UpdateGuruData` (kolom yang juga dibaca surat guru: `users.name`, `staff_profiles.rank`, `.nip`,
+    `.position`). Aturan: nama wajib, 3–150 karakter, huruf dan tanda gelar (. , ' ’ -), diawali huruf; NIP 18 angka
+    (spasi diabaikan) atau kosong (surat mencetak "-"), tidak dipakai akun staf lain; Pangkat/golongan maks. 100 dan
+    Jabatan maks. 150 karakter, boleh kosong. Hanya field yang berubah yang diperiksa dan ditulis. Kata sandi terbaru
+    (15 menit) diminta sebelum dialog dibuka dan diperiksa lagi saat simpan. Tidak ada yang diberi tahu.
+  - **"Tambah guru"**: akun baru dengan peran **guru saja** (`CreateStaffAccount::handleGuru()`; peran lain yang dikirim
+    diabaikan): Nama lengkap, Sapaan, Nama pengguna, Email (opsional), data surat dengan aturan yang sama, kata sandi
+    sementara diketik dua kali. Admin diberi tahu seperti setiap akun staf baru; toast "Akun guru dibuat. Berikan nama
+    pengguna dan kata sandi sementara langsung ke gurunya.".
+  - Izin baru **`guru.update`** (halaman dan "Ubah data") dan **`guru.create`** ("Tambah guru") untuk Kesiswaan dan
+    Admin. Hanya akun guru: tidak pernah peran lain, akun di Sampah, atau akun sendiri.
+  - Satu baris audit per simpan, `account.guru_data_updated` (log `account`, juga log keamanan; label "Data guru diubah"):
+    nama field dan boolean saja, tidak pernah nama, NIP, pangkat atau jabatan. Surat yang sudah terbit tetap mencetak
+    data lamanya (D-108).
+  - Layar basi: data diubah di tab lain → toast dan isian dimuat ulang; akun bukan guru lagi atau di Sampah → dialog
+    tutup dengan toast dan daftar diperbarui; tidak ada yang beda → "Tidak ada data yang diubah.".
+- **Alasan:** daftar permintaan lead 9 Nov 2026 (Data guru). Baris "Kepada" surat guru D-194 mencetak Nama, Pangkat/Gol,
+  NIP dan Jabatan guru pembimbing dari akun gurunya, jadi Kesiswaan perlu bisa mengisi dan membetulkannya.
+- **Dampak:** `Permission::GuruUpdate`, `Permission::GuruCreate`, `RoleName` (Kesiswaan; Admin memegang semua izin),
+  `UserPolicy::viewGuruData()`, `updateGuruData()`, `createGuru()`, `UpdateGuruData` (baru), `CreateStaffAccount`
+  (`handleGuru()`, `guruErrors()`), `Kesiswaan\DataGuru` + view, route `kesiswaan.guru.index`, `Navigation` (Kesiswaan
+  dan Admin), label Log audit; tes `DataGuruTest`, `DataGuruScreenTest`. **`RoleSeeder` wajib dijalankan ulang.** Tanpa
+  migrasi.
+- **Status:** final.
+
+### D-198 · Guru pembimbing dipilih siswa, dan Kesiswaan boleh mengisi atau menggantinya · 9 Nov 2026
+*menggantikan "ganti guru hanya bersama persetujuan" dari D-132 (butir 4 dan bagian sementara di statusnya)*
+- **Keputusan:**
+  - Siswa tetap wajib memilih guru pembimbing saat mendaftar (D-35). Kesiswaan (dan Admin, izin baru
+    **`registration.mentor`**) boleh **mengisi atau mengganti** guru pembimbing di **Kelola lomba**, terpisah dari
+    persetujuan: "N siswa" di baris katalog membuka dialog "Pendaftar lomba" (pendaftaran yang berjalan dengan guru
+    pembimbingnya, "Tampilkan lebih banyak"), lalu "Isi / Ganti guru pembimbing" membuka pertanyaan (pola D-128) yang
+    menyebut siapa yang diberi tahu, dengan tombol "Tetapkan guru". Daftar guru = `MentorChoice` (aturan yang sama dengan
+    form siswa).
+  - Boleh sampai laporan hasil dikirim: status `menunggu_lomba`, `menunggu_konfirmasi`, `menunggu_kepsek`, `disetujui`,
+    `surat_terbit`, `berlangsung` atau `menunggu_laporan` (`ChangeMentor::STATUSES` = `RevisionRules::BEFORE_APPROVAL` +
+    `AFTER_APPROVAL`). Ditolak dengan kalimat sendiri: `laporan_dikirim` ("Laporan hasil pendaftaran ini sudah dikirim, jadi
+    guru pembimbing tidak bisa diganti lagi."), `selesai`, `dibatalkan`, `ditolak`, dan ketua di Sampah.
+  - Surat yang sudah terbit tidak menghalangi dan tidak disentuh (D-108). Hanya surat tugas guru yang memuat guru
+    pembimbing (nama, NIP, pangkat, jabatan); surat tugas siswa tidak. Jadi bila surat tugas guru sudah terbit dan tidak
+    dicabut (`guruLetter()`, dibaca di dalam kunci yang juga diambil `IssueLetters`, jadi surat yang terbit pada saat yang
+    sama ikut terlihat), setiap akun Tata Usaha yang bisa masuk (bukan pelakunya) diberi tahu sesudah commit untuk membuat
+    **Koreksi** di Arsip surat (`MentorAssigned` audiens `tu`: "Guru pembimbing diganti, surat perlu Koreksi", nama lomba,
+    ketua, guru baru dan guru yang diganti, "Surat tugas guru yang sudah terbit masih memuat …", tanpa NIP; tautan ke layar
+    surat pendaftaran itu; satu notifikasi per akun, juga bila kedua surat sudah terbit). Bila hanya surat tugas siswa yang
+    terbit, Tata Usaha tidak diberi tahu. Surat tugas guru butuh guru, jadi surat itu hanya ada bila pendaftaran sudah punya
+    guru: notifikasi Tata Usaha selalu tentang guru yang diganti, tidak pernah tentang guru yang diisi. Koreksi membuat
+    versi baru dari data pendaftaran saat itu, jadi memuat guru yang baru. Dialog menambah "Tata Usaha diberi tahu untuk
+    membuat Koreksi surat tugas." hanya bila pendaftaran punya surat tugas guru (dan ada akun Tata Usaha yang bisa masuk);
+    toast sesudahnya membaca apa yang ditulis Action.
+  - *Diperbaiki 2026-11-09:* aturan pertama "boleh selama surat belum dibuat, sesudah itu Tata Usaha perlu mencabut
+    suratnya dulu" (`MSG_LETTER`) dihapus: Tata Usaha tidak punya langkah "cabut" tersendiri (Koreksi = cabut + versi baru
+    sekaligus, dibuat dari data pendaftaran saat itu), jadi guru tidak pernah bisa diganti sesudah surat terbit. Sekarang
+    sama dengan revisi yang disetujui (D-199): guru diganti, dan bila surat tugas guru sudah terbit Tata Usaha membuat
+    Koreksi.
+  - "Ganti guru" pemberi persetujuan saat menyetujui (D-132, D-150) tetap. Yang diberi tahu mengikuti D-132 / D-134:
+    anggota yang sudah konfirmasi dan bisa masuk membaca siapa gurunya sekarang; guru baru diberi tahu sebagai penetapan,
+    tetapi tidak selama pendaftaran menunggu lombanya (D-148); **guru yang diganti tidak diberi tahu**; tidak ada yang
+    diberi tahu tentang aksinya sendiri; Tata Usaha hanya bila surat tugas guru sudah terbit (di atas).
+  - Audit `registration.mentor_changed` (id pengguna saja) dengan `source` `kesiswaan` dan `guru_letter_issued`
+    (true/false: ada surat tugas guru yang tidak dicabut;
+    label baris "Guru pembimbing diganti di Kelola lomba"; pilihan filter peristiwa di Log audit "Guru pembimbing diganti"
+    untuk semua sumber, baris dari persetujuan tetap "… saat persetujuan"). Persetujuan menulis "Ditetapkan …" hanya bila
+    perubahan terakhir milik persetujuan itu (`ApproveRegistration::mentorWasReplaced()`); dialog "Ganti guru" pemberi
+    persetujuan menulis "Guru pembimbing saat ini: …" (bukan "Pilihan siswa: …") bila perubahan terakhir dari Kesiswaan
+    atau revisi.
+  - Layar basi: baris yang diubah rekan, ketua atau pemberi persetujuan sejak daftar tampil → toast "Guru pembimbing
+    pendaftaran ini baru saja diganti. Daftar sudah diperbarui."; laporan yang terkirim, pembatalan atau penolakan
+    sementara itu → toast peringatan dengan kalimatnya + "Daftar sudah diperbarui."; daftar dimuat ulang, tidak pernah
+    halaman error. Surat yang terbit sementara itu bukan penolakan.
+- **Alasan:** butir 4 daftar lead 9 Nov 2026 (guru pembimbing dipilih siswa atau ditetapkan Kesiswaan); jawaban lead:
+  "Keduanya".
+- **Dampak:** `Permission::RegistrationMentor`, `RoleName` (Kesiswaan), `RegistrationPolicy::manageMentors()` /
+  `assignMentor()`, `App\Actions\Registrations\ChangeMentor` (baru), notifikasi
+  `App\Notifications\Registrations\MentorAssigned` (baru; audiens `tu` sejak 2026-11-09), `ApproveRegistration::mentorWasReplaced()`,
+  `Kesiswaan\Lomba\Pendaftar` + view (baru), `Kesiswaan\Lomba\Index` + view, label Log audit (`AuditLog::MENTOR_APPROVAL_LABEL`),
+  `Kepsek\Persetujuan` + view (label guru saat ini); tes `GantiGuruPembimbingTest`, `MailGreetingTest`.
+  **`RoleSeeder` wajib dijalankan ulang.** Tanpa migrasi.
+- **Status:** final.
+
+### D-199 · Ketua mengubah pendaftaran: langsung sebelum disetujui, lewat revisi sesudahnya · 9 Nov 2026
+*menggantikan "Roster tim dikunci setelah disetujui" (Dampak D-03) dan "setelah disetujui, guru tidak bisa diganti lagi" (D-132 butir 4); memperluas D-50*
+- **Keputusan:**
+  - **Sebelum disetujui** (`menunggu_lomba`, `menunggu_konfirmasi`, `menunggu_kepsek`): ketua membuka **"Ubah
+    pendaftaran"** di Lomba saya (juga dari panel Pendaftaran lomba): tambah anggota (pencarian anggota panel
+    Pendaftaran lomba), keluarkan anggota, ganti guru pembimbing. Perubahan **langsung berlaku** tanpa persetujuan tambahan
+    (`ChangeRegistration`). Anggota baru diundang dan konfirmasi seperti biasa (selama lomba menunggu Kesiswaan belum
+    diundang, D-148); undangan perlu jendela tim yang masih terbuka, setelah batas pendaftaran hanya mengeluarkan anggota
+    dan ganti guru. Pendaftaran `menunggu_kepsek` yang kini menunggu anggota baru kembali ke `menunggu_konfirmasi`
+    (transisi baru); pemberi persetujuan yang masih melihat barisnya membaca "Ketua tim mengubah pendaftaran ini, jadi
+    pendaftaran menunggu konfirmasi anggota baru dulu.". Anggota yang dikeluarkan dihapus dari tim (boleh ikut tim lain
+    atau diundang lagi), lalu aturan D-36 berjalan. Ganti guru sebelum persetujuan tidak dikabarkan ke siapa pun, sama
+    seperti pilihan pertama siswa (guru tahu dari persetujuan, D-132).
+  - **Sesudah disetujui** (`disetujui`, `surat_terbit`, `berlangsung`, `menunggu_laporan`): ketua mengajukan **revisi**
+    ("Ajukan revisi") dengan alasan 10–500 karakter. Tim belum berubah: tim yang disetujui tetap berlaku sampai **Tata
+    Usaha atau Kesiswaan** memutuskan. Satu revisi menunggu per pendaftaran; ketua boleh "Batalkan revisi".
+  - Siswa yang ditambahkan revisi menerima undangan (Siswa › Undangan revisi; kartu "Undangan tim · <lomba>" di Beranda;
+    Data peserta dan No HP seperti Undangan tim, D-149) dan harus menerimanya dulu. Satu penolakan mengakhiri revisi
+    (dibatalkan) dan siswa lain yang diundangnya diberi tahu undangannya batal. Revisi tanpa siswa baru langsung siap
+    diputuskan.
+  - Layar baru **Revisi pendaftaran** untuk Tata Usaha (`tu.revisi.index`) dan Kesiswaan (`kesiswaan.revisi.index`), satu
+    komponen, angka menu `revisi.pendaftaran`; tab Menunggu (yang siap dulu, lalu terbaru) dan Riwayat. Isinya: siswa
+    yang ditambah dengan jawabannya, yang dikeluarkan, guru, alasan ketua, apakah surat tugas sudah terbit. "Setujui
+    revisi" setelah semua siswa baru menerima; "Tolak revisi" dengan catatan 5–500 karakter kapan saja; keduanya bertanya
+    dulu (D-128) dan menyebut siapa yang diberi tahu; keputusan pertama menang. Izin baru **`registration.revise_decide`**
+    hanya untuk Tata Usaha dan Kesiswaan: Kepala Sekolah, Admin, Humas dan guru mendapat 403 (Admin tidak memegangnya,
+    seperti `registration.approve`).
+  - Setujui (satu transaksi, aturan diperiksa ulang terhadap tim saat itu): anggota yang dikeluarkan dihapus, siswa baru
+    masuk sebagai anggota yang sudah konfirmasi, guru diganti (audit `registration.mentor_changed` dengan `source`
+    `revisi`). **Surat tidak disentuh**: bila surat sudah terbit, Tata Usaha diberi tahu untuk membuat Koreksi.
+  - Aturan anggota sama dengan mendaftar (`RevisionRules::check()`): siswa aktif, bukan ketua, tidak sudah di tim atau
+    pernah menolak tim ini, tidak di pendaftaran lomba itu yang lain yang berjalan (atau diundang revisi lain yang
+    menunggu), 2 … `teamLimit()` orang (D-36, D-196). Pendaftaran individu hanya bisa mengganti guru.
+  - Yang diberi tahu (setelah commit, tidak pernah pelakunya): siswa baru (undangan), ketua (setiap jawaban dan keputusan,
+    dengan catatan penolakan), anggota yang tetap dan siswa baru (keputusan), anggota yang dikeluarkan (`RemovedFromTeam`),
+    guru pembimbing yang sekarang (guru yang diganti tidak, D-134), Tata Usaha bila surat sudah ada; Tata Usaha dan
+    Kesiswaan saat revisi siap diputuskan.
+  - Audit dengan id dan jumlah saja, tidak pernah alasan atau catatan: `registration.changed_by_leader`,
+    `registration.revision_requested`, `registration.revision_member_confirmed`, `registration.revision_member_declined`,
+    `registration.revision_cancelled`, `registration.revision_approved`, `registration.revision_rejected`.
+  - Tabel baru `registration_revisions` (migrasi `2026_11_09_100000_sv8_create_registration_revisions_table`): `payload`
+    berisi id saja (`add`, `remove`, `mentor_from` / `mentor_to`, `answers`), `status` pending → approved | rejected |
+    cancelled, `ready_at`, `reason`, `note`, `decided_by` / `decided_at`; ikut terhapus bersama pendaftarannya;
+    `DeleteAllStudents` dan `PurgeStudents` ikut membersihkannya. Hanya maju di produksi, tanpa isi awal.
+  - Layar basi: form ketua menyimpan keadaan saat dibuka; bila pendaftaran berubah sejak itu (disetujui, anggota
+    menjawab, Kesiswaan mengganti guru) "Simpan" menjawab "Pendaftaran ini baru saja berubah. Periksa lagi perubahannya
+    sebelum menyimpan." dan menggambar ulang form. Revisi yang sudah diputuskan atau dibatalkan di tempat lain → toast dan
+    daftar diperbarui.
+  - *2026-11-09:* revisi yang mengganti guru tidak bisa disetujui bila guru pembimbing pendaftaran sudah bukan
+    `mentor_from` revisi itu (Kesiswaan menggantinya sesudah revisi diajukan, D-198), supaya pilihan Kesiswaan tidak
+    tertimpa diam-diam: `ApproveRevision` menolak dengan "Guru pembimbing pendaftaran ini sudah diganti sejak revisi ini
+    diajukan. Tolak revisi ini; ketua bisa mengajukan revisi baru." (toast peringatan + daftar diperbarui; baris di
+    Revisi pendaftaran hanya menawarkan "Tolak"). Revisi yang tidak mengganti guru tetap bisa disetujui.
+  - *2026-11-09:* surat tugas guru terbuka bagi guru pembimbing hanya selama surat itu memuat guru tersebut
+    (`LetterPolicy::namesCurrentMentor()`: tidak ada baris audit `registration.mentor_changed` pendaftaran itu pada atau
+    sesudah `generated_at` surat). Sesudah guru diganti (Kesiswaan, D-198, atau revisi yang disetujui) surat yang sudah
+    terkirim masih memuat nama, NIP, pangkat dan jabatan guru sebelumnya, jadi guru baru tidak bisa membukanya dan tidak
+    melihat tautannya (Detail binaan menulis "Surat perintah tugas guru masih memuat guru pembimbing sebelumnya. Surat
+    yang baru muncul di sini setelah Tata Usaha mengoreksinya."; kartu Surat tugas siswa tidak mencantumkannya) sampai
+    Koreksi Tata Usaha menerbitkan versi baru; guru sebelumnya juga tidak lagi (bukan guru pembimbing). Surat siswa dan
+    staf dengan `letter.view` tidak berubah.
+- **Alasan:** butir 6 lead (revisi pendaftaran, misalnya ganti anggota tim); jawaban lead 9 Nov 2026: "siswa boleh
+  mengajukan revisi dalam kondisi apapun entah belum di acc tu atau kesiswaan maupun sudah di acc. Kalau sudah di acc
+  siswa tetap bisa revisi namun perlu persetujuan TU atau kesiswaan dulu untuk acc revisi tersebut".
+- **Dampak:** migrasi di atas, `App\Models\RegistrationRevision`, `App\Enums\RevisionStatus`,
+  `Registration::revisions()` / `pendingRevision()`, `RegistrationStateMachine` (`menunggu_kepsek` →
+  `menunggu_konfirmasi`), Action baru `RevisionRules`, `ChangeRegistration`, `RequestRevision`, `RespondToRevision`,
+  `CancelRevision`, `ApproveRevision`, `RejectRevision`; `ApproveRegistration` (`MSG_BACK_TO_MEMBERS`,
+  `mentorWasReplaced()`), `Kepsek\Persetujuan`; `Permission::RegistrationReviseDecide`, `RoleName` (Tata Usaha,
+  Kesiswaan; Admin tanpa), `RegistrationPolicy::change()` / `requestRevision()`, `RegistrationRevisionPolicy`;
+  `Sekolah\RevisiPendaftaran` + view, `App\Support\RevisionQueue`, `Siswa\LombaSaya\UbahPendaftaran` + view,
+  `Siswa\LombaSaya\Index`, `Siswa\UndanganRevisi` + view, `Siswa\Beranda`, `Siswa\Pendaftaran\Form`; notifikasi
+  `RevisionInvitation`, `RevisionAnswered`, `RevisionAwaitingDecision`, `RevisionDecided`, `RevisionWithdrawn`,
+  `RemovedFromTeam`; route `siswa.undangan.revisi`, `tu.revisi.index`, `kesiswaan.revisi.index`; `Navigation` +
+  `NavigationServiceProvider` (angka menu); `DeleteAllStudents`, `PurgeStudents`; label Log audit; tes
+  `RevisiPendaftaranTest`, `RevisiPendaftaranScreenTest`, `RegistrationStateMachineTest`, `NavigationBadgesTest`.
+  **`RoleSeeder` wajib dijalankan ulang; migrasi wajib.**
+- **Status:** final untuk perubahan langsung sebelum disetujui dan revisi dengan persetujuan Tata Usaha atau Kesiswaan
+  sesudahnya. *Sementara* (pilihan pelaksana): revisi tidak bisa lagi setelah laporan hasil dikirim (`laporan_dikirim`,
+  `selesai`), karena poin diberikan per anggota ("Laporan hasil sudah dikirim, jadi tim dan guru pembimbing tidak bisa
+  diubah lagi."); satu revisi menunggu per pendaftaran; batas panjang alasan dan catatan; surat tidak dikoreksi otomatis.
 
 ## E. Usulan keamanan yang belum diputuskan
 

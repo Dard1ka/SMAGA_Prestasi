@@ -10,9 +10,11 @@ use App\Livewire\Humas\HumasQueries;
 use App\Models\Competition;
 use App\Models\Letter;
 use App\Models\Registration;
+use App\Models\RegistrationRevision;
 use App\Models\Report;
 use App\Models\User;
 use App\Support\Navigation;
+use App\Support\RevisionQueue;
 use Illuminate\Support\ServiceProvider;
 
 /**
@@ -110,6 +112,10 @@ final class NavigationServiceProvider extends ServiceProvider
             // Humas › Jadwal: scheduled publications past their time, not marked as published yet (D-122).
             'humas.jadwal' => $user->can(Permission::PublicationManage->value)
                 ? HumasQueries::overduePublications()->count()
+                : null,
+            // SV8, D-199: Sekolah\RevisiPendaftaran: RegistrationRevisionPolicy::viewQueue, RegistrationRevision::awaitingDecision().
+            RevisionQueue::BADGE => $user->can('viewQueue', RegistrationRevision::class)
+                ? RegistrationRevision::query()->awaitingDecision()->count()
                 : null,
             // 'siswa.lomba-saya': no screen computes a count for it today.
             default => null,

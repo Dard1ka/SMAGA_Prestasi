@@ -121,8 +121,9 @@ final readonly class LetterDraft
 
     /**
      * Must this letter type name the invitation ("Surat dari" required)? Only the Surat Perintah Tugas. The student
-     * letter prints it as "Dasar" number 2 when TU leaves "Surat dari" filled (D-157), after the regulation text of the
-     * TU letter template (D-154); emptied, the letter has that one Dasar.
+     * letter prints it as its last, numbered "Dasar" when TU leaves "Surat dari" filled (D-157), after the regulation
+     * texts of the TU letter template (D-154, a list since SV8, D-195); emptied, the letter has only those texts
+     * (LetterContent::siswaBasis()).
      */
     public static function requiresInvitation(LetterType $type): bool
     {
