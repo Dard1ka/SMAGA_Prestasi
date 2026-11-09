@@ -12,7 +12,7 @@
 ########################################################################################################
 # php-ext: same extensions as the dev image (docker/php/Dockerfile, stage base), compiled once.
 ########################################################################################################
-FROM php:8.4-fpm-bookworm@sha256:43e1ac38217031dbbecae60e84ccf8593722031559178d199bf56adb0145d5d0 AS php-ext
+FROM php:8.4-fpm-bookworm@sha256:b75642e8c89c321039f351466134df951576fb0f7017117b3931e9a19b908d6c AS php-ext
 
 RUN apt-get update \
  && apt-get install -y --no-install-recommends \
@@ -26,7 +26,7 @@ RUN apt-get update \
 ########################################################################################################
 FROM php-ext AS vendor
 
-COPY --from=composer:2@sha256:af98f42dfff7c68ba8d53c2164fd9fde1087b7d449514baa38c418b1f6bc4bac /usr/bin/composer /usr/bin/composer
+COPY --from=composer:2@sha256:8de2184c6de224f4689e8f80ed5f5edaf0030b6b8b7839a22a2bcb6722ac87d0 /usr/bin/composer /usr/bin/composer
 ENV COMPOSER_ALLOW_SUPERUSER=1 \
     COMPOSER_NO_INTERACTION=1
 WORKDIR /app
@@ -44,7 +44,7 @@ RUN composer dump-autoload --no-dev --classmap-authoritative --no-scripts \
 ########################################################################################################
 # assets: Vite/Tailwind build. Node exists only in this stage (the Ubuntu 18.04 host never runs Node).
 ########################################################################################################
-FROM node:24-bookworm-slim@sha256:0e0ff40c39bc087845bfb27465a0df4ea419520094bc35842ff83dd8cbe6f9b6 AS assets
+FROM node:24-bookworm-slim@sha256:01d566e8d94d8c619591d78652babfccd3c6992a3dffa9ed5ab39e11cf6c70e9 AS assets
 
 WORKDIR /app
 COPY package.json package-lock.json .npmrc ./
@@ -59,14 +59,17 @@ RUN npm run build \
 ########################################################################################################
 # web: nginx serving public/ and forwarding /index.php to app:9000 (docker/nginx/prod.conf).
 ########################################################################################################
-FROM nginxinc/nginx-unprivileged:1.30-alpine@sha256:ed04ec1ff34502c339ee5c3ae3f855442398edc1d05591e2b98981dcbbd20b1e AS web
+FROM nginxinc/nginx-unprivileged:1.30-alpine@sha256:f5116ed4606f3eb015dd4a8e28cb9b351476dc0ad4bc6e9f93b19cec130cdf03 AS web
 
 # Security fixes that are newer than the pinned base image (CI: Trivy fails on fixable HIGH/CRITICAL). List only the
-# packages Trivy names, and drop one again once a newer base digest (Dependabot) already contains the fix.
-#   pcre2 10.49-r0: CVE-2026-103111 (added 2026-10-02)
-#   tiff 4.7.2-r0: CVE-2026-4775 (added 2026-10-10)
+# packages Trivy names, and drop one again once a newer base digest already contains the fix (pcre2, tiff and libx11
+# of 2026-10 were dropped on 2026-11-10: the base digest of that day ships the fixed versions).
+#   libexpat 2.10.0-r0: CVE-2026-113351, CVE-2026-115506, CVE-2026-117610, CVE-2026-118370 (base has 2.9.0-r0;
+#     first added 2026-10-19 for CVE-2026-77214, which the base now has)
+#   brotli-libs 1.2.1-r0: CVE-2026-111497; curl, libcurl 8.23.0-r0: CVE-2026-92392;
+#   musl, musl-utils 1.2.6-r3: CVE-2026-107891; zlib 1.3.2-r1: CVE-2026-85091 (added 2026-11-10)
 USER root
-RUN apk upgrade --no-cache pcre2 tiff
+RUN apk upgrade --no-cache libexpat brotli-libs curl libcurl musl musl-utils zlib
 USER 101
 
 COPY docker/nginx/prod.conf /etc/nginx/conf.d/default.conf
@@ -82,18 +85,16 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
 # app: php-fpm runtime. Code is root-owned and read-only for www-data; only storage/ and bootstrap/cache
 # are writable (a volume and a tmpfs in compose). Runs with read_only: true.
 ########################################################################################################
-FROM php:8.4-fpm-bookworm@sha256:43e1ac38217031dbbecae60e84ccf8593722031559178d199bf56adb0145d5d0 AS app
+FROM php:8.4-fpm-bookworm@sha256:b75642e8c89c321039f351466134df951576fb0f7017117b3931e9a19b908d6c AS app
 
 # Runtime libraries of the compiled extensions (no -dev packages, no compilers) + cgi-fcgi for the healthcheck.
 # Security fixes that are newer than the pinned base image (same rule as the web stage: only the packages Trivy
-# names, and drop one again once a newer base digest already contains the fix).
-#   libpcre2-8-0 10.42-1+deb12u2: CVE-2026-103111 (added 2026-10-06)
-#   perl, perl-base, libperl5.36, perl-modules-5.36 5.36.0-7+deb12u4: CVE-2026-13221 and others (added 2026-10-06)
+# names, and drop one again once a newer base digest already contains the fix). None needed since 2026-11-10: the
+# base digest of that day ships libpcre2-8-0, the perl packages and linux-libc-dev at the fixed versions, so the
+# `apt-get install -y --no-install-recommends --only-upgrade <package>` step is gone until Trivy names a package again.
 RUN apt-get update \
  && apt-get install -y --no-install-recommends \
       libicu72 libzip4 libpng16-16 libjpeg62-turbo libwebp7 libfreetype6 libfcgi-bin \
- && apt-get install -y --no-install-recommends --only-upgrade \
-      libpcre2-8-0 perl perl-base libperl5.36 perl-modules-5.36 \
  && rm -rf /var/lib/apt/lists/*
 
 COPY --from=php-ext /usr/local/lib/php/extensions/ /usr/local/lib/php/extensions/
