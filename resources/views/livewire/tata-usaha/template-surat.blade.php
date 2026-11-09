@@ -33,35 +33,8 @@
                     <h3 id="h-tpl-{{ $loop->index }}" class="title-card">{{ $title }}</h3>
                     @foreach ($keys as $key)
                         @php [$label, $max, $required, $allowed, $default, $hint] = $fields[$key]; @endphp
-                        @if ($key === 'siswa_dasar')
-                            {{-- SV8, D-195: the student letter's Dasar is a list of 1 to $siswaDasarMax texts, like the guru letter's. --}}
-                            <fieldset class="m-0 flex min-w-0 flex-col gap-3 border-0 p-0">
-                                <legend class="mb-1 text-sm font-bold">Surat siswa: Dasar</legend>
-                                <p class="muted m-0 text-xs">
-                                    Satu dasar tercetak tanpa nomor. Lebih dari satu tercetak bernomor 1., 2., dan seterusnya; surat undangan yang diisi saat membuat surat selalu jadi nomor terakhir.
-                                    Paling banyak {{ $siswaDasarMax }} dasar. Dasar yang kosong tidak disimpan.
-                                </p>
-                                @foreach ($siswaDasarFields as $dasarKey)
-                                    <div wire:key="siswa-dasar-{{ $loop->index }}" class="flex min-w-0 flex-col gap-2 rounded-tile border border-line p-3">
-                                        <x-sth.textarea wire:model.live.debounce.500ms="form.{{ $dasarKey }}" :label="$fields[$dasarKey][0]" rows="3"
-                                                        :hint="$fields[$dasarKey][5].' Maks. '.$fields[$dasarKey][1].' karakter.'" :disabled="! $canEdit" />
-                                        @if ($canEdit && count($siswaDasarFields) > 1)
-                                            <div class="flex flex-wrap justify-end gap-2">
-                                                @unless ($loop->first)
-                                                    <x-sth.button variant="quiet" size="sm" wire:click="moveSiswaDasarUp({{ $loop->index }})">Naikkan<span class="sr-only"> dasar nomor {{ $loop->iteration }}</span></x-sth.button>
-                                                @endunless
-                                                @unless ($loop->last)
-                                                    <x-sth.button variant="quiet" size="sm" wire:click="moveSiswaDasarUp({{ $loop->index + 1 }})">Turunkan<span class="sr-only"> dasar nomor {{ $loop->iteration }}</span></x-sth.button>
-                                                @endunless
-                                                <x-sth.button variant="quiet" size="sm" icon="trash" wire:click="removeSiswaDasar({{ $loop->index }})">Hapus<span class="sr-only"> dasar nomor {{ $loop->iteration }}</span></x-sth.button>
-                                            </div>
-                                        @endif
-                                    </div>
-                                @endforeach
-                                @if ($canEdit && count($siswaDasarFields) < $siswaDasarMax)
-                                    <x-sth.button variant="soft" size="sm" icon="plus" class="self-start" wire:click="addSiswaDasar">Tambah dasar</x-sth.button>
-                                @endif
-                            </fieldset>
+                        @if (isset($dasarLists[$key]))
+                            @include('livewire.tata-usaha.partials.dasar-list', ['group' => $dasarLists[$key]['group'], 'dasarFields' => $dasarLists[$key]['fields']])
                         @elseif ($max > 150)
                             <x-sth.textarea wire:model.live.debounce.500ms="form.{{ $key }}" :label="$label" rows="3" :hint="$hint !== '' ? $hint : 'Maks. '.$max.' karakter.'" :optional="! $required" :disabled="! $canEdit" />
                         @else

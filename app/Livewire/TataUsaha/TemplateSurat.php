@@ -47,8 +47,18 @@ final class TemplateSurat extends Component
     public string $preview = 'siswa';
 
     /** SV8, D-195: how many student Dasar fields the form shows (1 … SISWA_DASAR_MAX); changed only by this class. */
+    /** SV9, D-200: the toast when the last row of a Dasar list would be removed. */
+    private const LAST_ROW = [
+        'siswa' => 'Surat siswa perlu minimal satu dasar.',
+        'guru' => 'Surat guru perlu minimal satu baris dasar. Kosongkan barisnya bila tidak perlu.',
+    ];
+
     #[Locked]
     public int $siswaDasarRows = 1;
+
+    /** SV9, D-200: the same for the guru letter's Dasar (LetterTemplate::GURU_DASAR). */
+    #[Locked]
+    public int $guruDasarRows = 1;
 
     public function mount(): void
     {
@@ -98,60 +108,38 @@ final class TemplateSurat extends Component
         $this->load(LetterTemplate::current()->values);
     }
 
-    /** SV8, D-195: one more, empty student Dasar row at the end (at most SISWA_DASAR_MAX). */
+    /** SV8, D-195: one more, empty student Dasar row at the end (at most DASAR_MAX). */
     public function addSiswaDasar(): void
     {
-        Gate::authorize('manageLetterTemplate', Setting::class);
-
-        $rows = $this->siswaDasarRows();
-
-        if ($rows >= LetterTemplate::SISWA_DASAR_MAX) {
-            $this->dispatch('sth-toast', message: 'Dasar surat siswa paling banyak '.LetterTemplate::SISWA_DASAR_MAX.'.', tone: 'warning');
-
-            return;
-        }
-
-        $this->form = LetterTemplate::withSiswaDasar($this->form, [...$this->siswaDasarDraft(), '']);
-        $this->siswaDasarRows = $rows + 1;
+        $this->addDasar('siswa');
     }
 
     /** SV8, D-195: remove the student Dasar row $index (0 = number 1); the rows under it move up. One row always stays. */
     public function removeSiswaDasar(int $index): void
     {
-        Gate::authorize('manageLetterTemplate', Setting::class);
-
-        $texts = $this->siswaDasarDraft();
-
-        if (count($texts) <= 1) {
-            $this->dispatch('sth-toast', message: 'Surat siswa perlu minimal satu dasar.', tone: 'warning');
-
-            return;
-        }
-
-        if (! array_key_exists($index, $texts)) {
-            return;
-        }
-
-        array_splice($texts, $index, 1);
-        $this->resetErrorBag();
-        $this->form = LetterTemplate::withSiswaDasar($this->form, $texts);
-        $this->siswaDasarRows = count($texts);
+        $this->removeDasar('siswa', $index);
     }
 
     /** SV8, D-195: swap the student Dasar row $index with the one above it ("Turunkan" on row i is this on row i + 1). */
     public function moveSiswaDasarUp(int $index): void
     {
-        Gate::authorize('manageLetterTemplate', Setting::class);
+        $this->moveDasarUp('siswa', $index);
+    }
 
-        $texts = $this->siswaDasarDraft();
+    /** SV9, D-200: the same three actions for the guru letter's Dasar. */
+    public function addGuruDasar(): void
+    {
+        $this->addDasar('guru');
+    }
 
-        if ($index < 1 || $index >= count($texts)) {
-            return;
-        }
+    public function removeGuruDasar(int $index): void
+    {
+        $this->removeDasar('guru', $index);
+    }
 
-        [$texts[$index - 1], $texts[$index]] = [$texts[$index], $texts[$index - 1]];
-        $this->resetErrorBag();
-        $this->form = LetterTemplate::withSiswaDasar($this->form, $texts);
+    public function moveGuruDasarUp(int $index): void
+    {
+        $this->moveDasarUp('guru', $index);
     }
 
     /** Load an older version (from its audit snapshot) into the form; saving it makes a new version. */
@@ -181,14 +169,17 @@ final class TemplateSurat extends Component
             'draft' => $draft,
             'dirty' => $draft->values !== $current->values,
             'fields' => LetterTemplate::FIELDS,
-            // SV8, D-195: the group's `siswa_dasar` stands for the whole list of these fields.
-            'siswaDasarFields' => array_slice(LetterTemplate::SISWA_DASAR, 0, $this->siswaDasarRows()),
-            'siswaDasarMax' => LetterTemplate::SISWA_DASAR_MAX,
+            // SV8, D-195 / SV9, D-200: `siswa_dasar` and `guru_basis_1` stand for the whole list of their letter.
+            'dasarLists' => [
+                'siswa_dasar' => ['group' => 'siswa', 'fields' => array_slice(LetterTemplate::SISWA_DASAR, 0, $this->dasarRows('siswa'))],
+                'guru_basis_1' => ['group' => 'guru', 'fields' => array_slice(LetterTemplate::GURU_DASAR, 0, $this->dasarRows('guru'))],
+            ],
+            'dasarMax' => LetterTemplate::DASAR_MAX,
             'groups' => [
                 'Kop surat' => ['kop_1', 'kop_2', 'kop_3', 'kop_4', 'kop_5', 'kop_6'],
                 'Identitas' => ['school_name', 'city', 'signer_title'],
                 'Surat tugas siswa' => ['siswa_dasar', 'siswa_intro', 'siswa_closing'],
-                'Surat perintah tugas guru' => ['guru_basis_1', 'guru_basis_2', 'guru_basis_3', 'guru_report', 'guru_closing'],
+                'Surat perintah tugas guru' => ['guru_basis_1', 'guru_report', 'guru_closing'],
             ],
             'placeholders' => LetterTemplate::PLACEHOLDERS,
             'canEdit' => Gate::allows('manageLetterTemplate', Setting::class),
@@ -255,44 +246,107 @@ final class TemplateSurat extends Component
     }
 
     /**
-     * SV8, D-195: put $values in the form with the student Dasar texts closed up (number 1 first), one row per text
-     * (at least one row).
+     * SV8, D-195 / SV9, D-200: put $values in the form with each letter's Dasar texts closed up (number 1 first), one
+     * row per text (at least one row).
      *
      * @param  array<string, mixed>  $values
      */
     private function load(array $values): void
     {
-        $texts = LetterTemplate::siswaDasarTexts($values);
-        $this->form = LetterTemplate::withSiswaDasar($values, $texts);
-        $this->siswaDasarRows = max(1, count($texts));
+        foreach (array_keys(LetterTemplate::DASAR) as $group) {
+            $texts = LetterTemplate::dasarTexts($group, $values);
+            $values = LetterTemplate::withDasar($group, $values, $texts);
+            $this->{$group.'DasarRows'} = max(1, count($texts));
+        }
+
+        $this->form = $values;
     }
 
-    private function siswaDasarRows(): int
+    private function dasarRows(string $group): int
     {
-        return max(1, min(LetterTemplate::SISWA_DASAR_MAX, $this->siswaDasarRows));
+        return max(1, min(LetterTemplate::DASAR_MAX, $this->{$group.'DasarRows'}));
     }
 
     /**
-     * The student Dasar texts of the rows the form shows, as typed (empty ones included).
+     * The Dasar texts of one letter's rows the form shows, as typed (empty ones included).
      *
      * @return list<string>
      */
-    private function siswaDasarDraft(): array
+    private function dasarDraft(string $group): array
     {
         return array_map(
             fn (string $field): string => is_scalar($this->form[$field] ?? null) ? (string) $this->form[$field] : '',
-            array_slice(LetterTemplate::SISWA_DASAR, 0, $this->siswaDasarRows()),
+            array_slice(LetterTemplate::DASAR[$group], 0, $this->dasarRows($group)),
         );
     }
 
     /**
-     * The form as the preview and "Simpan template" read it: a student Dasar field after the shown rows is empty.
+     * The form as the preview and "Simpan template" read it: a Dasar field after the shown rows is empty.
      *
      * @return array<string, mixed>
      */
     private function visibleForm(): array
     {
-        return LetterTemplate::withSiswaDasar($this->form, $this->siswaDasarDraft());
+        $form = $this->form;
+
+        foreach (array_keys(LetterTemplate::DASAR) as $group) {
+            $form = LetterTemplate::withDasar($group, $form, $this->dasarDraft($group));
+        }
+
+        return $form;
+    }
+
+    private function addDasar(string $group): void
+    {
+        Gate::authorize('manageLetterTemplate', Setting::class);
+
+        $rows = $this->dasarRows($group);
+
+        if ($rows >= LetterTemplate::DASAR_MAX) {
+            $this->dispatch('sth-toast', message: 'Dasar surat '.$group.' paling banyak '.LetterTemplate::DASAR_MAX.'.', tone: 'warning');
+
+            return;
+        }
+
+        $this->form = LetterTemplate::withDasar($group, $this->form, [...$this->dasarDraft($group), '']);
+        $this->{$group.'DasarRows'} = $rows + 1;
+    }
+
+    private function removeDasar(string $group, int $index): void
+    {
+        Gate::authorize('manageLetterTemplate', Setting::class);
+
+        $texts = $this->dasarDraft($group);
+
+        if (count($texts) <= 1) {
+            $this->dispatch('sth-toast', message: self::LAST_ROW[$group], tone: 'warning');
+
+            return;
+        }
+
+        if (! array_key_exists($index, $texts)) {
+            return;
+        }
+
+        array_splice($texts, $index, 1);
+        $this->resetErrorBag();
+        $this->form = LetterTemplate::withDasar($group, $this->form, $texts);
+        $this->{$group.'DasarRows'} = count($texts);
+    }
+
+    private function moveDasarUp(string $group, int $index): void
+    {
+        Gate::authorize('manageLetterTemplate', Setting::class);
+
+        $texts = $this->dasarDraft($group);
+
+        if ($index < 1 || $index >= count($texts)) {
+            return;
+        }
+
+        [$texts[$index - 1], $texts[$index]] = [$texts[$index], $texts[$index - 1]];
+        $this->resetErrorBag();
+        $this->form = LetterTemplate::withDasar($group, $this->form, $texts);
     }
 
     private function actor(): User

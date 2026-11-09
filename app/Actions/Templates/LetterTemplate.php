@@ -51,7 +51,7 @@ final readonly class LetterTemplate
     /** The student letter's Dasar before D-154 (field `siswa_basis`), kept for the preview of letters printed with it. */
     private const OLD_SISWA_BASIS = 'siswa_basis';
 
-    private const GURU_BASIS_HINT = 'Peraturan yang berlaku tahun ini. Boleh kosong: nomor berikutnya naik. Surat undangan selalu jadi nomor terakhir.';
+    private const GURU_BASIS_HINT = 'Peraturan yang berlaku tahun ini. Tertulis di surat guru sesudah "Dasar :".';
 
     /**
      * SV8, D-194: the layouts of the guru letter (Surat Perintah Tugas). New letters print GURU_LAYOUT (body in
@@ -76,7 +76,20 @@ final readonly class LetterTemplate
     public const SISWA_DASAR = ['siswa_dasar', 'siswa_dasar_2', 'siswa_dasar_3', 'siswa_dasar_4', 'siswa_dasar_5', 'siswa_dasar_6'];
 
     /** At most this many student Dasar texts in the template (the invitation of a letter comes on top). */
-    public const SISWA_DASAR_MAX = 6;
+    public const SISWA_DASAR_MAX = self::DASAR_MAX;
+
+    /**
+     * SV9, D-200: the guru letter's Dasar regulation texts, the same list of fixed fields as the student one (`guru_basis_1`
+     * = number 1; built-in: the three regulations of the school, 4–6 empty). They stay optional: the invitation is always
+     * the guru letter's last Dasar. A template saved before SV9 has only 1–3: the others read as empty.
+     */
+    public const GURU_DASAR = ['guru_basis_1', 'guru_basis_2', 'guru_basis_3', 'guru_basis_4', 'guru_basis_5', 'guru_basis_6'];
+
+    /** SV9, D-200: the Dasar lists of the two letters, one editor and one gap rule for both. */
+    public const DASAR = ['siswa' => self::SISWA_DASAR, 'guru' => self::GURU_DASAR];
+
+    /** At most this many Dasar texts per letter (the invitation of a letter not counted). */
+    public const DASAR_MAX = 6;
 
     /**
      * field => [label, max length, required, allowed placeholders, default, hint].
@@ -104,6 +117,9 @@ final readonly class LetterTemplate
         'guru_basis_1' => ['Surat guru: Dasar nomor 1', 600, false, ['{sekolah}', '{tahun_ajaran}'], 'Peraturan Daerah Provinsi Jawa Tengah Nomor 11 Tahun 2025 tentang Anggaran Pendapatan Daerah dan Belanja Daerah Tahun Anggaran 2026 (Lembaran Daerah Provinsi Jawa Tengah Tahun 2025 Nomor 11, Tambahan Lembaran Provinsi Jawa Tengah Nomor 173) (tanggal 30 Desember 2025);', self::GURU_BASIS_HINT],
         'guru_basis_2' => ['Surat guru: Dasar nomor 2', 600, false, ['{sekolah}', '{tahun_ajaran}'], 'Peraturan Gubernur Jawa Tengah Nomor 58 Tahun 2023 tentang Perubahan Atas Peraturan Gubernur Nomor 45 Tahun 2022 tentang pedoman Perjalanan Dinas Dalam Negeri di Lingkungan Pemerintah Provinsi Jawa Tengah (Berita Daerah Provinsi Jawa Tengah Tahun 2023 Nomor 58);', self::GURU_BASIS_HINT],
         'guru_basis_3' => ['Surat guru: Dasar nomor 3', 600, false, ['{sekolah}', '{tahun_ajaran}'], 'Peraturan Gubernur Jawa Tengah Nomor 36 Tahun 2025 tentang Penjabaran Anggaran Pendapatan Dan Belanja Daerah Tahun Anggaran 2026 (Berita Daerah Provinsi Jawa Tengah Tahun 2025 Nomor 36) (tanggal 30 Desember 2025);', self::GURU_BASIS_HINT],
+        'guru_basis_4' => ['Surat guru: Dasar nomor 4', 600, false, ['{sekolah}', '{tahun_ajaran}'], '', self::GURU_BASIS_HINT],
+        'guru_basis_5' => ['Surat guru: Dasar nomor 5', 600, false, ['{sekolah}', '{tahun_ajaran}'], '', self::GURU_BASIS_HINT],
+        'guru_basis_6' => ['Surat guru: Dasar nomor 6', 600, false, ['{sekolah}', '{tahun_ajaran}'], '', self::GURU_BASIS_HINT],
         'guru_report' => ['Surat guru: Untuk nomor 2', 300, true, ['{sekolah}'], 'Melaporkan hasil pelaksanaan tugas kepada pejabat pemberi tugas.', ''],
         'guru_closing' => ['Surat guru: Untuk nomor 3', 300, true, ['{sekolah}'], 'Perintah ini dilaksanakan dengan penuh tanggung jawab.', ''],
     ];
@@ -181,9 +197,12 @@ final readonly class LetterTemplate
     {
         $errors = [];
         $values = [];
-        // SV8, D-195: the student Dasar list has no gaps, an empty text is dropped and the next ones move up (number 1
-        // stays required, so an all-empty list is refused on `siswa_dasar`).
-        $input = self::withSiswaDasar($input, self::siswaDasarTexts($input));
+        // SV8, D-195 / SV9, D-200: a Dasar list has no gaps, an empty text is dropped and the next ones move up (the
+        // student number 1 stays required, so an all-empty student list is refused on `siswa_dasar`; the guru texts
+        // may all be empty).
+        foreach (array_keys(self::DASAR) as $group) {
+            $input = self::withDasar($group, $input, self::dasarTexts($group, $input));
+        }
 
         foreach (self::FIELDS as $field => [$label, $max, $required, $allowed]) {
             $value = self::clean($input[$field] ?? '');
@@ -222,9 +241,21 @@ final readonly class LetterTemplate
      */
     public static function siswaDasarTexts(array $values): array
     {
+        return self::dasarTexts('siswa', $values);
+    }
+
+    /**
+     * The non-empty Dasar texts of one letter (`siswa` | `guru`, a key of DASAR) in a set of values, in print order,
+     * cleaned (codes not filled yet).
+     *
+     * @param  array<string, mixed>  $values
+     * @return list<string>
+     */
+    public static function dasarTexts(string $group, array $values): array
+    {
         $texts = [];
 
-        foreach (self::SISWA_DASAR as $field) {
+        foreach (self::DASAR[$group] as $field) {
             $text = self::clean($values[$field] ?? '');
 
             if ($text !== '') {
@@ -245,9 +276,22 @@ final readonly class LetterTemplate
      */
     public static function withSiswaDasar(array $values, array $texts): array
     {
+        return self::withDasar('siswa', $values, $texts);
+    }
+
+    /**
+     * $values with the Dasar fields of one letter set to $texts in order and the rest empty (texts beyond DASAR_MAX are
+     * dropped). Every other field stays as it is.
+     *
+     * @param  array<string, mixed>  $values
+     * @param  list<string>  $texts
+     * @return array<string, mixed>
+     */
+    public static function withDasar(string $group, array $values, array $texts): array
+    {
         $texts = array_values($texts);
 
-        foreach (self::SISWA_DASAR as $index => $field) {
+        foreach (self::DASAR[$group] as $index => $field) {
             $values[$field] = $texts[$index] ?? '';
         }
 
@@ -336,7 +380,7 @@ final readonly class LetterTemplate
     {
         $items = [];
 
-        foreach (['guru_basis_1', 'guru_basis_2', 'guru_basis_3'] as $field) {
+        foreach (self::GURU_DASAR as $field) {
             $text = $this->fill($field, ['{tahun_ajaran}' => $schoolYear]);
 
             if ($text !== '') {

@@ -277,8 +277,9 @@ it('adds student Dasar rows up to six and refuses a seventh', function (): void 
         $component->call('addSiswaDasar')->assertSet('siswaDasarRows', $rows)->assertSet('form.'.LetterTemplate::SISWA_DASAR[$rows - 1], '');
     }
 
+    // SV9, D-200: the guru list below has its own "Tambah dasar"; the student one is gone at six rows
     $component->assertSee('Surat siswa: Dasar nomor 6')
-        ->assertDontSee('Tambah dasar')
+        ->assertDontSeeHtml('wire:click="addSiswaDasar"')
         ->assertSeeHtml('wire:click="removeSiswaDasar(5)"')
         ->call('addSiswaDasar')
         ->assertDispatched('sth-toast', message: 'Dasar surat siswa paling banyak 6.', tone: 'warning')
