@@ -67,8 +67,9 @@
             // D-154: the student letter's Dasar is the template's regulation texts (1 to 6 since SV8, D-195); one printed
             // before D-154 named the invitation. D-157: an invitation on a student letter printed since then is its last Dasar.
             $oldBasis = $isGuru ? null : $letterTemplate->oldSiswaBasis($content->basisFrom);
-            $siswaDasar = $isGuru ? [] : $letterTemplate->siswaDasarItems($content->schoolYear);
-            $dasarCount = max(1, count($siswaDasar));
+            // SV9, D-200: the guru letter's template Dasar (0 to 6 texts) is shown the same way, the invitation after it.
+            $templateDasar = $isGuru ? $letterTemplate->guruBasisItems($content->schoolYear) : $letterTemplate->siswaDasarItems($content->schoolYear);
+            $dasarCount = $isGuru ? count($templateDasar) : max(1, count($templateDasar));
             $dasarLabel = $dasarCount > 1 ? 'Dasar 1–'.$dasarCount : 'Dasar 1';
             $siswaBasis = $isGuru || $oldBasis !== null ? [] : $content->siswaBasis($letterTemplate);
             $basisLine = ($oldBasis ?? 'Surat dari '.$content->basisFrom)
@@ -147,8 +148,25 @@
                         </div>
 
                         @if ($isGuru)
+                            {{-- SV9, D-200: like the student tab, the template's regulation texts first, the invitation as the next number. --}}
+                            @if ($dasarCount > 0)
+                                <div class="flex flex-col gap-1">
+                                    <p class="m-0 text-sm font-bold">{{ $dasarLabel }} <span class="muted font-medium">· Dari Template surat</span></p>
+                                    <ol class="m-0 flex list-decimal flex-col gap-1 pl-5 text-sm [overflow-wrap:anywhere]">
+                                        @foreach ($templateDasar as $item)
+                                            <li wire:key="dasar-template-{{ $loop->index }}">{{ $item }}</li>
+                                        @endforeach
+                                    </ol>
+                                    <p class="muted m-0 text-xs">
+                                        Sama untuk semua surat guru.
+                                        @if (Route::has('tu.surat.template'))
+                                            <a href="{{ route('tu.surat.template') }}" class="font-semibold" wire:navigate>Ubah di Template surat</a>
+                                        @endif
+                                    </p>
+                                </div>
+                            @endif
                             <fieldset class="m-0 flex flex-col gap-3 border-0 p-0">
-                                <legend class="mb-2 text-sm font-bold">Dasar <span class="muted font-medium">· Surat undangan lomba</span></legend>
+                                <legend class="mb-2 text-sm font-bold">Dasar {{ $dasarCount + 1 }} <span class="muted font-medium">· Surat undangan lomba</span></legend>
                                 <div class="grid grid-cols-1 items-start gap-4 md:grid-cols-2">
                                     <x-sth.input wire:model.live.debounce.500ms="{{ $model }}.dasarDari" :input-class="$tint['dasarDari'] ?? null" label="Surat dari" maxlength="200" class="md:col-span-2"
                                                  hint="Diisi dari penyelenggara lomba. Boleh diubah." />
@@ -165,12 +183,12 @@
                                 <p class="m-0 text-sm font-bold">{{ $dasarLabel }} <span class="muted font-medium">· Dari Template surat</span></p>
                                 @if ($dasarCount > 1)
                                     <ol class="m-0 flex list-decimal flex-col gap-1 pl-5 text-sm [overflow-wrap:anywhere]">
-                                        @foreach ($siswaDasar as $item)
+                                        @foreach ($templateDasar as $item)
                                             <li wire:key="dasar-template-{{ $loop->index }}">{{ $item }}</li>
                                         @endforeach
                                     </ol>
                                 @else
-                                    <p class="m-0 text-sm [overflow-wrap:anywhere]">{{ $siswaDasar[0] ?? '-' }}</p>
+                                    <p class="m-0 text-sm [overflow-wrap:anywhere]">{{ $templateDasar[0] ?? '-' }}</p>
                                 @endif
                                 <p class="muted m-0 text-xs">
                                     Sama untuk semua surat siswa.
@@ -235,7 +253,15 @@
                         <dt class="text-sm font-semibold text-muted">Dasar</dt>
                         <dd class="m-0 text-sm">
                             {{-- D-157, SV8 D-195: a student letter lists every Dasar it printed, numbered when more than one. --}}
-                            @if ($isGuru || $oldBasis !== null)
+                            @if ($isGuru && $templateDasar !== [])
+                                {{-- SV9, D-200: the guru letter's printed template texts, then its invitation --}}
+                                <ol class="m-0 list-decimal pl-5">
+                                    @foreach ($templateDasar as $item)
+                                        <li>{{ $item }}</li>
+                                    @endforeach
+                                    <li>{{ $basisLine }}</li>
+                                </ol>
+                            @elseif ($isGuru || $oldBasis !== null)
                                 {{ $basisLine }}
                             @elseif (count($siswaBasis) > 1)
                                 <ol class="m-0 list-decimal pl-5">
@@ -256,7 +282,7 @@
                         {{-- min-w-48: the three buttons wrap to their own row instead of squeezing the file name to nothing. --}}
                         <span class="flex min-w-48 flex-1 flex-col gap-0.5">
                             <span class="text-sm font-bold [overflow-wrap:anywhere]">{{ $letter->file?->original_name }}</span>
-                            <span class="muted text-xs">{{ $letter->type->label() }}{{ $letter->file !== null ? ' · '.\App\Support\FileSizeLabel::format((int) $letter->file->size) : '' }}{{ $isGuru ? ' · dengan lampiran' : ' · '.$n.' siswa' }}</span>
+                            <span class="muted text-xs">{{ $letter->type->label() }}{{ $letter->file !== null ? ' · '.\App\Support\FileSizeLabel::format((int) $letter->file->size) : '' }}{{ $isGuru ? ($letterTemplate->guruLayout === \App\Actions\Templates\LetterTemplate::GURU_LAYOUT_LAMPIRAN ? ' · dengan lampiran' : '') : ' · '.$n.' siswa' }}</span>
                         </span>
                         @if ($letter->file_id)
                           <div class="flex flex-wrap gap-2">

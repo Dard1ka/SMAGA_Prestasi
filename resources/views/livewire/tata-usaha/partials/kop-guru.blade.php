@@ -3,7 +3,8 @@
     From sm up it is the PDF's kop at the sheet's scale (0.94 px per pt): the emblems at their own places (the Pemprov
     emblem of the school's PDF, `tu.surat.kop` logo `pemprov-guru`), the lines centred in a box wider than the gap
     between them and drawn over the emblems, the web address host blue and underlined (LetterTemplate::kopLineParts()),
-    the rule from x 78.85 to 552.6 pt. On a phone the emblems stand beside the lines.
+    the rule from the left emblem's edge to the right one's (SV9, D-200: 522.25 pt = 490.9 px). On a phone the emblems
+    stand beside the lines.
     Vars: $tpl / $letterTemplate (optional)
 --}}
 @php($tpl ??= $letterTemplate ?? \App\Actions\Templates\LetterTemplate::current())
@@ -20,7 +21,7 @@
     </div>
     <img src="{{ route('tu.surat.kop', ['logo' => 'sekolah']) }}" alt="" width="60" height="80" class="block h-[52px] w-auto shrink-0 sm:absolute sm:top-[2.4px] sm:left-[430.9px] sm:h-[80px] sm:w-[60px]">
 </div>
-<div class="relative mt-1.5 flex flex-col gap-px sm:mt-0 sm:ml-[22.2px] sm:w-[445.3px] sm:gap-[0.85px]" aria-hidden="true">
+<div class="relative mt-1.5 flex flex-col gap-px sm:mt-0 sm:ml-0 sm:w-[490.9px] sm:gap-[0.85px]" aria-hidden="true">
     <span class="h-[2.5px] bg-ink"></span>
     <span class="h-px bg-ink sm:h-[0.85px]"></span>
 </div>

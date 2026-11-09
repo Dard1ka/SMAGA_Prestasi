@@ -167,7 +167,8 @@ final class TemplateSurat extends Component
         return view('livewire.tata-usaha.template-surat', [
             'current' => $current,
             'draft' => $draft,
-            'dirty' => $draft->values !== $current->values,
+            // SV9 review: a template saved with a gap in a Dasar list opens closed up; that alone is no change.
+            'dirty' => $draft->values !== LetterTemplate::closeGaps($current->values),
             'fields' => LetterTemplate::FIELDS,
             // SV8, D-195 / SV9, D-200: `siswa_dasar` and `guru_basis_1` stand for the whole list of their letter.
             'dasarLists' => [

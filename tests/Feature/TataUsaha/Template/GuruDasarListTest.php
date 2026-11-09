@@ -2,10 +2,17 @@
 
 declare(strict_types=1);
 
+use App\Actions\Letters\IssueLetters;
+use App\Actions\Letters\LetterDraft;
 use App\Actions\Templates\LetterTemplate;
+use App\Actions\Templates\UpdateLetterTemplate;
+use App\Enums\LetterType;
+use App\Enums\RegistrationStatus;
 use App\Enums\RoleName;
+use App\Livewire\TataUsaha\SuratTugas;
 use App\Livewire\TataUsaha\TemplateSurat;
 use App\Models\Setting;
+use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
 use Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException;
@@ -55,12 +62,15 @@ it('reads a template saved before SV9 with a gap as its texts in order, and a le
     expect(LetterTemplate::current()->guruBasisItems('2026/2027'))->toBe($expected)
         ->and(LetterTemplate::fromArray(['version' => 2, 'values' => $before])->guruBasisItems('2026/2027'))->toBe($expected);
 
-    // the screen shows them closed up, two rows
+    // the screen shows them closed up, two rows, and the closed-up list is not an unsaved change (SV9 review)
     Livewire::actingAs($this->tu)->test(TemplateSurat::class)
         ->assertSet('guruDasarRows', 2)
         ->assertSet('form.guru_basis_1', LetterTemplate::FIELDS['guru_basis_2'][4])
         ->assertSet('form.guru_basis_2', 'DPA {sekolah}.')
-        ->assertSet('form.guru_basis_3', '');
+        ->assertSet('form.guru_basis_3', '')
+        ->assertDontSee('Belum disimpan')
+        ->call('revert')
+        ->assertDontSee('Belum disimpan');
 });
 
 it('closes the gaps of the guru list on save and still accepts a guru letter without template texts', function (): void {
@@ -154,3 +164,39 @@ it('lets a reader of letters who may not change the template neither add, remove
         Livewire::actingAs($reader)->test(TemplateSurat::class)->call(...$call)->assertForbidden();
     }
 })->with([RoleName::KepalaSekolah, RoleName::Kesiswaan]);
+
+it('shows the template Dasar on the guru tab of Surat tugas like the student tab, the invitation as the next number (SV9 review)', function (): void {
+    F::signature();
+    $registration = F::registration(RegistrationStatus::Disetujui, ['Raka Pradipta'], F::mentor());
+    app(UpdateLetterTemplate::class)->handle($this->tu, LetterTemplate::withDasar('guru', LetterTemplate::defaults(), [
+        LetterTemplate::FIELDS['guru_basis_1'][4], LetterTemplate::FIELDS['guru_basis_2'][4], LetterTemplate::FIELDS['guru_basis_3'][4], D200_DASAR_4,
+    ]));
+
+    Livewire::actingAs($this->tu)->test(SuratTugas::class, ['registration' => $registration])
+        ->call('setTab', 'guru')
+        ->assertSee('Dasar 1–4')
+        ->assertSee('Sama untuk semua surat guru.')
+        ->assertSeeHtml('<li wire:key="dasar-template-3">Program Kerja SMA Negeri 3 Semarang Tahun Pelajaran 2026/2027</li>')
+        ->assertSee('Dasar 5');
+
+    // the issued guru letter lists what it printed: the four texts, then the invitation; no "dengan lampiran"
+    $letter = app(IssueLetters::class)->handle($this->tu, $registration, LetterType::Guru, new LetterDraft(
+        number: '400.3.8.6/1681/2026',
+        issuedOn: CarbonImmutable::parse('2026-10-01'),
+        basisFrom: 'Panitia NSIF 2026',
+        basisNumber: '012/NSIF/IX/2026',
+        basisDate: CarbonImmutable::parse('2026-09-15'),
+        scheduleDay: 'Sabtu',
+        scheduleDate: '7 November 2026',
+        scheduleTime: '07.00 WIB s.d Selesai',
+        place: 'Daring',
+        basisSubject: 'Undangan',
+    ));
+    expect($letter->printed['template']['values']['guru_basis_4'])->toBe(D200_DASAR_4);
+
+    Livewire::actingAs($this->tu)->test(SuratTugas::class, ['registration' => $registration])
+        ->call('setTab', 'guru')
+        ->assertSeeHtml('<li>Program Kerja SMA Negeri 3 Semarang Tahun Pelajaran 2026/2027</li>')
+        ->assertSeeHtml('<li>Surat dari Panitia NSIF 2026, nomor 012/NSIF/IX/2026, tanggal 15 September 2026, hal Undangan</li>')
+        ->assertDontSee('dengan lampiran');
+});

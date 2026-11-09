@@ -940,11 +940,14 @@ it('gives the student letter the Dasar of the template and an optional invitatio
         ->assertDontSeeHtml('<span>1.</span>')
         ->assertSeeHtml('<span>'.$dasar.'</span>');
 
-    // The guru letter is unchanged: its invitation with "Hal", no template Dasar block.
+    // The guru letter keeps its invitation with "Hal"; since SV9 (D-200) its tab lists the template Dasar like the
+    // student tab (the three built-in regulation texts), the invitation as Dasar 4.
     $component->call('setTab', 'guru')
         ->assertSee('Nomor surat undangan')
         ->assertSeeHtml('guru.dasarHal')
-        ->assertDontSee('Dari Template surat');
+        ->assertSee('Dari Template surat')
+        ->assertSee('Dasar 1–3')
+        ->assertSee('Dasar 4');
 
     $css = (string) file_get_contents(resource_path('css/app.css'));
     expect($css)->toContain('.kertas-siswa > .lembar-siswa {')

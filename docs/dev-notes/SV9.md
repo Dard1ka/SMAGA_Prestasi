@@ -20,6 +20,12 @@ D-200.
   optional (a guru letter always ends its Dasar with the invitation); the last visible guru row cannot be removed ("Surat
   guru perlu minimal satu baris dasar. Kosongkan barisnya bila tidak perlu."). Every row that may be empty is labelled
   "(opsional)".
+- **Review fixes**: the TU preview of the guru kop draws its rule from emblem to emblem too
+  (`tata-usaha/partials/kop-guru.blade.php`: `sm:ml-0 sm:w-[490.9px]`, was 22.2 / 445.3 px); TU › Surat tugas, guru
+  tab, lists the template Dasar like the student tab ("Dasar 1–N · Dari Template surat", the invitation "Dasar N+1"; an
+  issued guru letter's summary lists them numbered with the invitation last; "· dengan lampiran" only for a letter printed
+  with the Lampiran layout); `LetterTemplate::closeGaps()` closes both Dasar lists in `validate()` and for the screen's
+  "Belum disimpan" check, so a template saved before SV9 with an empty guru row no longer opens as an unsaved change.
 - **Checked, not changed**: guru pembimbing by Kesiswaan (D-198), teams up to 30 (D-196; a fictional 30-member student
   letter runs onto page 2 with the header row repeated), revisions (D-199): their SV8 tests pass on this tree.
 

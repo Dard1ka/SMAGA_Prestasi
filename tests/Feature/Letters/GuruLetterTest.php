@@ -418,3 +418,15 @@ it('renders a real guru PDF with the QR footer and one page', function (): void 
     expect($document->bytes)->toStartWith('%PDF-')
         ->and($document->pageCount)->toBe(1);
 });
+
+it('draws the preview kop rule of the guru letter from emblem to emblem like the PDF (SV9, D-200)', function (): void {
+    $html = view('livewire.tata-usaha.partials.kop-guru')->render();
+    $dom = new DOMDocument;
+    @$dom->loadHTML('<?xml encoding="utf-8"?>'.$html);
+    $rule = (new DOMXPath($dom))->query('//div[@aria-hidden="true"]')->item(0);
+
+    // 0.94 px per pt: from the left emblem's edge (0) to the right emblem's edge (430.9 + 60 px = 522.25 pt)
+    expect($rule)->not->toBeNull()
+        ->and(explode(' ', $rule->getAttribute('class')))->toContain('sm:ml-0', 'sm:w-[490.9px]')
+        ->not->toContain('sm:w-[445.3px]');
+});

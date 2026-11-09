@@ -200,9 +200,7 @@ final readonly class LetterTemplate
         // SV8, D-195 / SV9, D-200: a Dasar list has no gaps, an empty text is dropped and the next ones move up (the
         // student number 1 stays required, so an all-empty student list is refused on `siswa_dasar`; the guru texts
         // may all be empty).
-        foreach (array_keys(self::DASAR) as $group) {
-            $input = self::withDasar($group, $input, self::dasarTexts($group, $input));
-        }
+        $input = self::closeGaps($input);
 
         foreach (self::FIELDS as $field => [$label, $max, $required, $allowed]) {
             $value = self::clean($input[$field] ?? '');
@@ -239,6 +237,22 @@ final readonly class LetterTemplate
      * @param  array<string, mixed>  $values
      * @return list<string>
      */
+    /**
+     * $values with each letter's Dasar texts closed up (number 1 first, empty texts dropped), as a save stores them
+     * (SV9, D-200). A template saved before SV9 may have a gap in the guru list; the screen compares against this.
+     *
+     * @param  array<string, mixed>  $values
+     * @return array<string, mixed>
+     */
+    public static function closeGaps(array $values): array
+    {
+        foreach (array_keys(self::DASAR) as $group) {
+            $values = self::withDasar($group, $values, self::dasarTexts($group, $values));
+        }
+
+        return $values;
+    }
+
     public static function siswaDasarTexts(array $values): array
     {
         return self::dasarTexts('siswa', $values);
