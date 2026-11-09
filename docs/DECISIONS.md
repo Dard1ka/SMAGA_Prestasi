@@ -2362,6 +2362,37 @@ dan NIP sungguhan: berkas itu dan hasil ukurnya hanya ada di luar repo; tes mema
   `selesai`), karena poin diberikan per anggota ("Laporan hasil sudah dikirim, jadi tim dan guru pembimbing tidak bisa
   diubah lagi."); satu revisi menunggu per pendaftaran; batas panjang alasan dan catatan; surat tidak dikoreksi otomatis.
 
+## D32. Surat konsisten: satu ukuran tanda tangan, garis kop guru, satu editor Dasar (9 Nov 2026, SV9, hanya `smaga_server`)
+
+Konteks: feedback sekolah 9 Nov 2026 dari foto production (sebelum SV8): tanda tangan + stempel bolak-balik
+"kekecilan" (SV6) dan "kebesaran" (SV7), garis kop surat guru kurang panjang, Dasar surat siswa hanya satu. SV8 sudah
+mengubah sebagian, tetapi ukuran tanda tangan berbeda di dua surat, garis kop guru masih mulai jauh dari logo kiri, dan
+editor Dasar surat siswa (daftar + tombol) berbeda dengan surat guru (tiga kolom tetap). Lead: "pokoknya apply yg best
+practice menurutmu dan konsisten dan bagus dan rapi". Catatan kerja: `docs/dev-notes/SV9.md`.
+
+### D-200 · Satu ukuran tanda tangan, garis kop guru dari logo ke logo, satu editor Dasar · 9 Nov 2026
+- **Keputusan:**
+  - Gambar tanda tangan + stempel **92 pt** tingginya di surat siswa **dan** surat guru (stempelnya satu), 30 pt ke kiri
+    dari tengah blok surat siswa dan dari tepi kiri blok surat guru, ditarik ke atas setengah selisih dengan kotaknya
+    seperti D-183 (menimpa baris di atas dan nama di bawah, tidak ada baris yang bergeser). 92 pt ada di antara ukuran
+    SV6 yang "kekecilan" dan 121,9 pt SV7 yang "kebesaran" (± 75 %). Pratinjau TU: kotak putus-putus 87 × 174 px, 28 px
+    ke kiri, di kedua surat. Menggantikan ukuran D-194 (80 % SV7 per surat, 17 pt ke kiri).
+  - Garis ganda di bawah kop surat guru dari tepi kiri logo kiri sampai tepi kanan logo kanan (`.kop-garis-g`, 522,25 pt,
+    seperti garis surat siswa yang sudah dari logo ke logo). Judul dan nomor tetap di tempat PDF sekolah (D-194).
+  - Dasar surat guru diedit seperti Dasar surat siswa (D-195): daftar 1–6 baris dengan "Tambah dasar", "Naikkan" /
+    "Turunkan", "Hapus" (`LetterTemplate::GURU_DASAR` = `guru_basis_1` … `guru_basis_6`, `DASAR`, `DASAR_MAX`; tiga
+    peraturan bawaan = baris 1–3, 4–6 bawaan kosong; satu partial `tata-usaha/partials/dasar-list`). Simpan menutup celah
+    di kedua daftar. Bedanya tetap: Dasar surat siswa nomor 1 wajib (tanpa undangan surat siswa bisa tanpa Dasar), Dasar
+    surat guru boleh kosong semua (undangan selalu Dasar terakhir surat guru). Baris yang boleh kosong berlabel
+    "(opsional)" di kedua daftar.
+- **Alasan:** feedback sekolah 9 Nov 2026 dan permintaan lead agar dua surat konsisten.
+- **Dampak:** `resources/pdf/layout.blade.php`, `tata-usaha/partials/ttd.blade.php`, `LetterTemplate`,
+  `TataUsaha\TemplateSurat`, `template-surat.blade.php` + `partials/dasar-list.blade.php`, tes surat dan template; aset
+  frontend di-build ulang (kelas baru pratinjau TU). Tanpa migrasi. Surat yang sudah terbit tidak berubah (D-108).
+  Diverifikasi ulang di kode ini, tanpa perubahan: guru pembimbing oleh Kesiswaan (D-198), tim sampai 30 + tabel surat
+  siswa bersambung rapi (D-196, dicoba 30 anggota), revisi pendaftaran (D-199). Surat guru versi kedua tetap menunggu
+  template sekolah.
+
 ## E. Usulan keamanan yang belum diputuskan
 
 | ID | Usulan | Alasan singkat | Status |
