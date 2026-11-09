@@ -6,7 +6,7 @@
 #
 # docker/compose.prod.yaml builds both. Stages: php-ext (extensions) → vendor (composer, no dev) →
 # assets (npm ci + vite build) → web (nginx) → app (php-fpm runtime, non-root, read-only friendly).
-# Base images are pinned by digest; Dependabot (.github/dependabot.yml) proposes digest bumps.
+# Base images are pinned by digest, bumped by hand (DEPLOY §18; no Dependabot).
 # No .env, secrets or storage data ever enter the image (.dockerignore); configuration arrives at runtime.
 
 ########################################################################################################
@@ -62,7 +62,7 @@ RUN npm run build \
 FROM nginxinc/nginx-unprivileged:1.30-alpine@sha256:ed04ec1ff34502c339ee5c3ae3f855442398edc1d05591e2b98981dcbbd20b1e AS web
 
 # Security fixes that are newer than the pinned base image (CI: Trivy fails on fixable HIGH/CRITICAL). List only the
-# packages Trivy names, and drop one again once a newer base digest (Dependabot) already contains the fix.
+# packages Trivy names, and drop one again once a newer base digest already contains the fix.
 #   pcre2 10.49-r0: CVE-2026-103111 (added 2026-10-02)
 #   tiff 4.7.2-r0: CVE-2026-4775 (added 2026-10-10)
 USER root

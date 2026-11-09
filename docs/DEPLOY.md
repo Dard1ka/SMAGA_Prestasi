@@ -30,7 +30,7 @@ Browser ──HTTPS──> Apache 2.4.29 (host, TLS, vhost prestasi.*) ──> 1
 | `docker/env.production.example` | template `.env` production |
 | `scripts/deploy/{deploy,backup,restore}.sh` | deploy, backup terenkripsi, restore |
 | `scripts/deploy/grants.sh` | hak akses `sth_app` per tabel (dijalankan otomatis setelah migrasi, §8.2) |
-| `.github/workflows/{ci,docker}.yml`, `.github/dependabot.yml`, `.github/gitleaks.toml`, `.github/trivy/` | CI + update dependensi (§18) |
+| `.github/workflows/{ci,docker}.yml`, `.github/gitleaks.toml`, `.github/trivy/` | CI + update dependensi manual (§18) |
 | `tests/E2E/` | uji E2E Playwright (smoke) untuk CI dan lokal (§18) |
 
 Keputusan teknis yang perlu diketahui:
@@ -565,8 +565,10 @@ queue/scheduler, `DROP` + impor database, menerapkan ulang hak akses per tabel (
       runc/containerd. Langkah: uji staging → backup → `sthc stop` → `sudo systemctl stop docker docker.socket containerd`
       → pasang `/opt/docker/<ver>` + ganti symlink `current` + symlink `/usr/local/bin` → start → `sthc up -d` →
       smoke test → catat di `/opt/docker/CHANGELOG`. Simpan 2 versi terakhir untuk rollback.
-- [ ] Merge PR Dependabot (composer/npm/digest image/actions) yang CI-nya hijau, lalu `deploy.sh`.
-- [ ] Image alat CI yang tidak diurus Dependabot (§18): `GITLEAKS_IMAGE` di `ci.yml`, `TRIVY_IMAGE` di `docker.yml` dan Playwright di
+- [ ] Update dependensi manual (tanpa Dependabot sejak 9 Nov 2026): `composer update` patch/minor, `npm update`, digest image dasar
+      (`docker pull` lalu ganti `@sha256:` di `docker/Dockerfile.prod` / `docker/compose.prod.yaml`), SHA action di `.github/workflows/`;
+      satu PR, CI hijau, lalu `deploy.sh`.
+- [ ] Image alat CI (§18): `GITLEAKS_IMAGE` di `ci.yml`, `TRIVY_IMAGE` di `docker.yml` dan Playwright di
       `tests/E2E/compose.e2e.yaml` + `tests/E2E/package.json` (versi harus sama). Cek entri `.github/trivy/trivyignore.yaml`.
 - [ ] `bash scripts/deploy/grants.sh --check` → `OK` (§8.2).
 - [ ] `certbot renew --dry-run`; sisa masa sertifikat > 14 hari.
@@ -639,14 +641,14 @@ bukan sekitar 32. Run mingguan (Senin 01.00 WIB) menangkap advisory dan CVE baru
 ada di tab Actions (bila run terjadwal gagal, GitHub memberi tahu akun yang terakhir mengubah baris `cron` di file
 workflow).
 
-Semua action dipin ke commit SHA (komentar = versi); Dependabot memperbaruinya. Temuan gitleaks: **rotasi** rahasianya
+Semua action dipin ke commit SHA (komentar = versi); diperbarui manual saat update bulanan. Temuan gitleaks: **rotasi** rahasianya
 dulu, baru bersihkan riwayat; jangan masukkan rahasia asli ke allowlist.
 
 **Bila job `docker` merah karena Trivy** (kerentanan baru di image dasar, bukan karena kode; contoh 2 Okt 2026:
 `pcre2` CVE-2026-103111 di image nginx):
 1. Baca temuannya: `gh run view <id> --log-failed` → nama paket, versi terpasang, versi perbaikan, image (`sth-app`/`sth-web`).
 2. Cek apakah tag image dasar sudah dibangun ulang (`docker pull <tag>` lalu bandingkan digest). Bila sudah, ganti
-   digest di `docker/Dockerfile.prod` (atau merge PR digest dari Dependabot).
+   digest di `docker/Dockerfile.prod`.
 3. Bila belum: tambahkan paket itu ke baris `apk upgrade --no-cache …` di stage `web` (`docker/Dockerfile.prod`),
    dengan komentar CVE dan tanggal. Untuk stage `app` (Debian) pakai `apt-get install --only-upgrade <paket>`.
    Hapus lagi dari daftar setelah digest baru sudah memuat perbaikannya.
