@@ -7,7 +7,7 @@
 # against new advisories.
 #
 # Supply chain:
-# - every action is pinned to a full commit SHA (comment = release tag); Dependabot (.github/dependabot.yml) bumps them
+# - every action is pinned to a full commit SHA (comment = release tag), bumped by hand (DEPLOY §18; no Dependabot)
 # - the gitleaks image is pinned by tag + digest below, Trivy in docker.yml, Playwright in tests/E2E/compose.e2e.yaml.
 #   Those are bumped by hand in the monthly routine (docs/DEPLOY.md §13), Playwright together with
 #   tests/E2E/package.json.

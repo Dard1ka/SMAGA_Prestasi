@@ -52,7 +52,7 @@
 | 7 | **Pemalsuan surat & manipulasi poin**: gambar ttd disalin, nomor ganda, bobot/poin diubah, farming lewat anggota tim | Surat palsu beredar, apresiasi tidak adil | QR + kode verifikasi publik, SHA-256 PDF, nomor unik per jenis surat (constraint DB `(type, full_number)` sejak D-82; sebelumnya per jenis + tahun), roster tim dikunci setelah disetujui, bobot berversi + audit (§3g, §3h) | backend |
 | 8 | **Upload & mesin PDF berbahaya**: sertifikat, brosur usulan, ttd; dompdf ≤ 3.1.5 (chroot bypass, baca file via SVG `data:`); EXIF GPS | XSS, baca file server (`.env`), malware ke staf, lokasi rumah anak bocor, DoS disk | Allowlist + re-encode, private disk + controller ber-policy, dompdf ≥ 3.1.6 tanpa remote/JS/`data://`, chroot sempit, kuota (§3d, §3g) | backend + devops |
 | 9 | **XSS, injeksi formula, phishing via tautan usulan lomba** | Pembajakan sesi staf, eksekusi formula di laptop TU, siswa diarahkan ke situs palsu | Blade `{{ }}`, CSP nonce, `url:https` + tampilkan host, `rel="nofollow noopener noreferrer ugc"`, URL tidak pernah di-fetch server (tanpa SSRF), `StringValueBinder` (§3f, §3m-1) | frontend + backend |
-| 10 | **Salah konfigurasi & rantai pasok**: bypass OTP lolos ke production, `APP_DEBUG=true`, `.env`/`APP_KEY` bocor, port DB terbuka, backup tidak ada, paket usang (Livewire CVE-2025-54068, dompdf) | Takeover massal, RCE, kehilangan data total | Boot guard + test CI, `.env` 600 di luar git/image, compose bind `127.0.0.1`, backup terenkripsi + uji restore, `composer audit`/Trivy/Dependabot (§3b, §3j, §3k) | devops + backend |
+| 10 | **Salah konfigurasi & rantai pasok**: bypass OTP lolos ke production, `APP_DEBUG=true`, `.env`/`APP_KEY` bocor, port DB terbuka, backup tidak ada, paket usang (Livewire CVE-2025-54068, dompdf) | Takeover massal, RCE, kehilangan data total | Boot guard + test CI, `.env` 600 di luar git/image, compose bind `127.0.0.1`, backup terenkripsi + uji restore, `composer audit`/`npm audit`/Trivy + update terencana (§3b, §3j, §3k) | devops + backend |
 
 ---
 
@@ -1119,8 +1119,8 @@ USER www-data
   - grep `{!!` dan `$request->all()`
   - boot guard bypass OTP (§3b): `APP_ENV=production STH_OTP_TEST_MODE=true php artisan about` harus gagal
   - grep `Http::get(`/`file_get_contents(`/`curl_` di kode yang menyentuh URL usulan/katalog (harus nol, §3m-1)
-- **Dependabot/Renovate** untuk `composer`, `npm`, `docker`, `github-actions`; security update di-merge ≤ 7 hari (CRITICAL ≤ 48 jam).
-- Pin **digest** image (`@sha256:`), diperbarui oleh Dependabot. Tidak memakai image pihak ketiga yang tidak resmi.
+- Update dependensi `composer`, `npm`, `docker`, `github-actions` manual dan terencana (tanpa Dependabot sejak 9 Nov 2026; CI menjalankan `composer audit`, `npm audit` dan Trivy tiap minggu dan di tiap PR); perbaikan keamanan di-merge ≤ 7 hari setelah audit merah (CRITICAL ≤ 48 jam).
+- Pin **digest** image (`@sha256:`), diperbarui manual saat update dependensi. Tidak memakai image pihak ketiga yang tidak resmi.
 - Pantau advisori paket berisiko tinggi di stack ini: `livewire/livewire` (≥ 3.6.4), `dompdf/dompdf` (≥ 3.1.6), `barryvdh/laravel-dompdf`, library QR code, `phpoffice/phpspreadsheet`, `maatwebsite/excel`, `intervention/image`, `laravel/framework`, `laravel/fortify`. Di sisi host: Docker Engine/runc/containerd (§3j) dan USN apache2/openssl/linux (ESM).
 - `composer.lock` dan `package-lock.json` di-commit. `npm ci --ignore-scripts` bila paket tidak butuh postinstall.
 
@@ -1410,7 +1410,7 @@ Target verifikasi: **ASVS 5.0 Level 1 untuk semua area, Level 2 untuk V6/V7/V8/V
 
 **Supply chain** (A06/A08 · V15)
 - [ ] `composer audit` & `npm audit --omit=dev` tanpa temuan HIGH/CRITICAL; Trivy image lulus.
-- [ ] Digest image di-pin; Dependabot aktif; `gitleaks` bersih; lockfile di-commit.
+- [ ] Digest image di-pin; audit CI (`composer audit`, `npm audit`, Trivy) hijau; `gitleaks` bersih; lockfile di-commit.
 - [ ] Versi: Laravel 13, PHP 8.4, MySQL 8.4 LTS, dompdf ≥ 3.1.6, Livewire ≥ 3.6.4 bila dipakai. Jadwal upgrade ke Laravel 14 sebelum 17-03-2028 tercatat.
 
 **Monitoring & IR** (A09 · V16)

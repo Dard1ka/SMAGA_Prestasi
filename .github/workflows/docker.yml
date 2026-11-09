@@ -89,7 +89,7 @@ jobs:
           restore-keys: trivy-db-
 
       # SECURITY §3k: fail on HIGH/CRITICAL vulnerabilities that have a fixed version (OS packages + composer vendor).
-      # Fix = rebuild/bump (Dependabot digests) or update the package; exceptions only in .github/trivy/trivyignore.yaml
+      # Fix = rebuild/bump the base digest or update the package; exceptions only in .github/trivy/trivyignore.yaml
       # with a statement and an expiry date.
       - name: Trivy scan (sth-app, sth-web)
         run: |

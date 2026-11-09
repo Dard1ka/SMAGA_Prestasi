@@ -159,9 +159,11 @@ CI must be green before a merge: `.github/workflows/ci.yml` (every PR, by hand, 
 npm audit, Pest, boot guard; gitleaks; E2E) and `.github/workflows/docker.yml` (production images + Trivy: on a PR that
 touches `docker/`, the lock files or the Trivy settings, weekly and by hand; run it by hand before a release). Since
 2026-10-08 neither runs again on the push to `main` after a merge (the PR run already tested the merge result; `main` has
-no branch protection on this plan, so nothing is a "required check"). Read a failed run with `gh run view <id> --log-failed`. Dependabot (`.github/dependabot.yml`) only brings
-digest/patch updates for the `php`, `node` and `mysql` images, and nginx stays on the stable (even) line. **Never merge a
-Dependabot PR with red checks.** A PHP minor, Node major or MySQL upgrade is a planned task that changes the dev + prod
+no branch protection on this plan, so nothing is a "required check"). Read a failed run with `gh run view <id> --log-failed`. **No Dependabot** since 2026-11-09 (the lead: its weekly
+version PRs were noise and its security alerts were off; CI's weekly `composer audit`, `npm audit` and Trivy are the
+security check): dependency and image updates are a planned manual bump (monthly, or when an audit turns CI red; steps
+DEPLOY §18), digest/patch only for the `php`, `node` and `mysql` images, nginx on the stable (even) line. **Never merge
+an update with red checks.** A PHP minor, Node major or MySQL upgrade is a planned task that changes the dev + prod
 image, CI `PHP_VERSION`/`NODE_VERSION` and the composer platform together, with a full test run (PHP 8.5 has OPcache
 built in, so `docker-php-ext-install opcache` fails; MySQL 9.x are short-lived Innovation releases).
 When the `docker` job fails on Trivy because a base image has a new fixable CVE that upstream has not rebuilt yet, add
