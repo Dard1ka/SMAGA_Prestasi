@@ -2,8 +2,10 @@
 
 declare(strict_types=1);
 
+use Illuminate\Contracts\Http\Kernel as HttpKernel;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use Tests\Support\ProcessEnv;
 
 /*
 | TrustHosts / TrustProxies (bootstrap/app.php, docs/SECURITY.md §3e). Laravel skips TrustHosts in local/testing,
@@ -56,4 +58,23 @@ it('takes the client IP from X-Forwarded-For only when it comes from the trusted
         ->withHeaders(['X-Forwarded-For' => '203.0.113.9'])
         ->get('https://prestasi.sman3-smg.sch.id/_test/ip')
         ->assertSeeText('198.51.100.7');
+});
+
+it('trusts every entry of a comma-separated STH_TRUSTED_PROXY, CIDR ranges included', function (): void {
+    // The school's server behind Cloudflare (compose.https.yaml): the proxies are Cloudflare's published ranges.
+    Route::middleware('web')->get('/_test/proxy', fn (Request $request) => $request->ip().'|'.($request->isSecure() ? 'https' : 'http'));
+
+    ProcessEnv::with(['STH_TRUSTED_PROXY' => '173.245.48.0/20, 2400:cb00::/32'], function (): void {
+        // TrustProxies::at() is set when the HTTP kernel is built, so build it again with this environment.
+        $this->app->forgetInstance(HttpKernel::class);
+        $this->app->make(HttpKernel::class);
+    });
+
+    $through = fn (string $remote) => $this->withServerVariables(['REMOTE_ADDR' => $remote])
+        ->withHeaders(['X-Forwarded-For' => '203.0.113.9', 'X-Forwarded-Proto' => 'https'])
+        ->get('http://prestasi.sman3-smg.sch.id/_test/proxy');
+
+    $through('173.245.48.9')->assertSeeText('203.0.113.9|https');
+    $through('2400:cb00::7')->assertSeeText('203.0.113.9|https');
+    $through('198.51.100.7')->assertSeeText('198.51.100.7|http');
 });

@@ -42,8 +42,11 @@ return Application::configure(basePath: dirname(__DIR__))
 
         // Apache (host) → 127.0.0.1:8080 → docker-proxy → nginx → php-fpm: REMOTE_ADDR = gateway of the compose
         // network `edge` (docs/dev-notes/W1-E.md). Never trust X-Forwarded-Host/-Prefix (SECURITY §3e).
+        // STH_TRUSTED_PROXY: one address or a comma-separated list, CIDR allowed (the school's server behind Cloudflare,
+        // compose.https.yaml). Passed as a string, which Laravel splits; inside an array a list was one bad entry.
+        // Read before .env is loaded: a container variable (compose), never a .env line.
         $middleware->trustProxies(
-            at: [env('STH_TRUSTED_PROXY', '172.30.10.1')],
+            at: (string) env('STH_TRUSTED_PROXY', '172.30.10.1'),
             headers: Request::HEADER_X_FORWARDED_FOR | Request::HEADER_X_FORWARDED_PORT | Request::HEADER_X_FORWARDED_PROTO,
         );
 
