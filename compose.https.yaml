@@ -2,15 +2,10 @@
 # COMPOSE_FILE=compose.yaml:compose.server.yaml:compose.https.yaml in the server's .env, together with
 # APP_URL=https://prestasi.sman3-smg.sch.id and SESSION_SECURE_COOKIE=true; the laptop ignores this file.
 # Port 8149 then speaks TLS with the Cloudflare Origin certificate in STH_TLS_DIR (default /opt/sth-tls: origin.pem +
-# origin.key, never in the repo); plain http on it is sent to the domain (docker/nginx/https.conf).
+# origin.key, never in the repo); plain http on it is sent to the domain. The visitor's address comes from
+# CF-Connecting-IP through nginx (docker/nginx/https.conf), so the app needs no STH_TRUSTED_PROXY here: trusting every
+# Cloudflare range for X-Forwarded-For would let another Cloudflare account choose the address (security review).
 services:
-  app:
-    environment:
-      # Cloudflare's published ranges (https://www.cloudflare.com/ips-v4 and /ips-v6, 2026-11-19): the client IP and
-      # the https scheme are read from X-Forwarded-For / -Proto only for these. Read when the HTTP kernel is built,
-      # before .env is loaded (bootstrap/app.php), so it must be a container variable, not a .env line.
-      STH_TRUSTED_PROXY: "173.245.48.0/20,103.21.244.0/22,103.22.200.0/22,103.31.4.0/22,141.101.64.0/18,108.162.192.0/18,190.93.240.0/20,188.114.96.0/20,197.234.240.0/22,198.41.128.0/17,162.158.0.0/15,104.16.0.0/13,104.24.0.0/14,172.64.0.0/13,131.0.72.0/22,2400:cb00::/32,2606:4700::/32,2803:f800::/32,2405:b500::/32,2405:8100::/32,2a06:98c0::/29,2c0f:f248::/32"
-
   web:
     ports: !override
       - "8149:443"
